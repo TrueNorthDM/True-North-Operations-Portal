@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --muted: #64748b;
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
 }
 
 @theme inline {
@@ -12,15 +20,32 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Brand tokens — kept in a plain @theme (no `inline`) so Tailwind v4
+   emits both the CSS variables on :root AND the utility classes:
+   bg-aaaf-primary / text-aaaf-ink / font-aaaf-display, etc. */
+@theme {
+  /* AAAF brand — sampled from askanadventistfriend.com */
+  --color-aaaf-primary: #44ad85;
+  --color-aaaf-primary-hover: #3a9472;
+  --color-aaaf-secondary: #0e4777;
+  --color-aaaf-ink: #263954;
+  --color-aaaf-soft: #eaf6f1;
+
+  /* HFA brand — sampled from hopefor.africa */
+  --color-hfa-primary: #fe9d2d;
+  --color-hfa-primary-hover: #e58a1a;
+  --color-hfa-secondary: #a03319;
+  --color-hfa-ink: #212121;
+  --color-hfa-soft: #fff3e2;
+
+  /* Brand display fonts (defined via next/font in layout.tsx) */
+  --font-aaaf-display: var(--font-nunito), system-ui, sans-serif;
+  --font-aaaf-body: var(--font-open-sans), system-ui, sans-serif;
+  --font-hfa-display: var(--font-bebas-neue), system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
