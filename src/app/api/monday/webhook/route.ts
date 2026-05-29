@@ -28,7 +28,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { isChallengeBody, isEventBody, type MondayEventBody } from '@/lib/monday/types'
 import { verifyMondayAuthHeader } from '@/lib/monday/verify'
 import { runLinkHandler, doneHandler } from '@/lib/monday/handlers'
@@ -68,10 +68,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'unexpected payload shape' }, { status: 400 })
   }
 
-  // 4. Look up settings: signing secret + API token. The webhook handler
-  //    uses anon client (no user session), but anon read on app_settings
-  //    is allowed by RLS (we'll tighten this when service_role is wired).
-  const supabase = await createServerClient()
+  // 4. Look up settings: signing secret + API token. The webhook is a
+  //    machine-to-machine endpoint with no user session, so we use the
+  //    admin (service_role) client — bypasses RLS, which would otherwise
+  //    hide every row from `sites`, `app_settings`, etc.
+  const supabase = createAdminClient()
   const { data: settingsRow } = await supabase
     .from('app_settings')
     .select('monday_signing_secret, monday_api_token')
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
  */
 async function dispatch(
   event: MondayEventBody['event'],
-  ctx: { token: string; supabase: Awaited<ReturnType<typeof createServerClient>> },
+  ctx: { token: string; supabase: ReturnType<typeof createAdminClient> },
 ): Promise<string> {
   const colId = event.columnId
   const boardId = event.boardId != null ? String(event.boardId) : null
