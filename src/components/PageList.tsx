@@ -8,7 +8,7 @@
  * roundtrips, so it's instant even on 100+ pages.
  */
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { languageStatusPalette } from '@/lib/language-colors'
 import type { MondayStatus } from '@/lib/types/database.types'
@@ -223,6 +223,64 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
   const needsUpdateCount = useMemo(() => rows.filter(r => r.needsUpdate).length, [rows])
   const notRelevantCount = useMemo(() => rows.filter(r => r.notRelevant).length, [rows])
 
+  // ── Row groups ────────────────────────────────────────────────────
+  // Three buckets based on the user's mental model:
+  //   - On-going    : active work — neither completed nor opted out
+  //   - Completed   : strict definition — confirmed_done_at is stamped
+  //   - Not relevant: explicitly opted out of the workflow
+  // The order in the array is the order they render in the table.
+  type GroupKey = 'ongoing' | 'completed' | 'not_relevant'
+  const GROUP_ORDER: GroupKey[] = ['ongoing', 'completed', 'not_relevant']
+  const GROUP_LABEL: Record<GroupKey, string> = {
+    ongoing: 'On-going',
+    completed: 'Completed',
+    not_relevant: 'Not relevant',
+  }
+
+  function groupOf(r: PageListRow): GroupKey {
+    if (r.notRelevant) return 'not_relevant'
+    if (r.confirmedDoneAt) return 'completed'
+    return 'ongoing'
+  }
+
+  const grouped = useMemo(() => {
+    const out: Record<GroupKey, PageListRow[]> = {
+      ongoing: [], completed: [], not_relevant: [],
+    }
+    for (const r of filtered) out[groupOf(r)].push(r)
+    return out
+  }, [filtered])
+
+  // Collapse state per group, persisted per site in localStorage so HFA
+  // and AAAF remember independently. SSR-safe: starts from sensible
+  // defaults, then hydrates on mount.
+  const COLLAPSE_KEY = `pageList:${siteCode}:groups`
+  const [collapsed, setCollapsed] = useState<Record<GroupKey, boolean>>({
+    ongoing: false,        // active work — open by default
+    completed: true,       // reference / archive — closed by default
+    not_relevant: true,    // archive — closed by default
+  })
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(COLLAPSE_KEY) : null
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === 'object') setCollapsed(c => ({ ...c, ...parsed }))
+      }
+    } catch { /* localStorage unavailable — keep defaults */ }
+  // Only hydrate on mount per site; intentionally ignore COLLAPSE_KEY dep.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteCode])
+  function toggleGroup(key: GroupKey) {
+    setCollapsed(prev => {
+      const next = { ...prev, [key]: !prev[key] }
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next))
+      } catch { /* ignore quota / private mode */ }
+      return next
+    })
+  }
+
   return (
     <>
       {/* Toolbar — search + filter dropdowns + counts. */}
@@ -408,8 +466,45 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r, i) => {
-                const done = isDone(r)
+              {/* Three section groups (On-going / Completed / Not relevant).
+                  Empty groups are skipped entirely so the table doesn't show
+                  redundant headers when the filter narrows things down. */}
+              {GROUP_ORDER.map(groupKey => {
+                const groupRows = grouped[groupKey]
+                if (groupRows.length === 0) return null
+                const isOpen = !collapsed[groupKey]
+                return (
+                  <Fragment key={groupKey}>
+                    <tr className="bg-slate-50/80 border-y border-slate-200">
+                      <th
+                        colSpan={7}
+                        scope="colgroup"
+                        className="px-3 py-2 text-left"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(groupKey)}
+                          aria-expanded={isOpen}
+                          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-900 transition-colors"
+                        >
+                          <svg
+                            width="12" height="12" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor"
+                            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                            aria-hidden="true"
+                            className={`transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                          >
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                          <span>{GROUP_LABEL[groupKey]}</span>
+                          <span className="text-slate-400 font-normal normal-case tracking-normal">
+                            {groupRows.length}
+                          </span>
+                        </button>
+                      </th>
+                    </tr>
+                    {isOpen && groupRows.map((r, i) => {
+                      const done = isDone(r)
                 // HREFLANG (SYSTEM) tracks what THIS system holds — i.e.
                 // URLs received from the Monday Run Link webhook. So we
                 // color and count by `hasUrl`. The final "✓ Done" pill
@@ -544,6 +639,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       </Tooltip>
                     </td>
                   </tr>
+                )
+                    })}
+                  </Fragment>
                 )
               })}
             </tbody>
