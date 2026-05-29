@@ -64,7 +64,7 @@ export async function verifyMondayAuthHeader(
   // Verify signature: HMAC-SHA256(`${headerB64}.${payloadB64}`)
   try {
     const key = await importHmacKey(signingSecret)
-    const sig = base64UrlDecode(sigB64)
+    const sig = new Uint8Array(base64UrlDecode(sigB64))
     const signingInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`)
     const valid = await crypto.subtle.verify('HMAC', key, sig, signingInput)
     if (!valid) return { ok: false, reason: 'signature mismatch' }

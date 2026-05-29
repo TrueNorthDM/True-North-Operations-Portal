@@ -55,7 +55,7 @@ export async function getRecentActivity(
       .from('page_urls')
       .select('monday_item_id, pages(name)')
       .in('monday_item_id', itemIds)
-    for (const j of (joins ?? []) as PageUrlJoinRow[]) {
+    for (const j of (joins ?? []) as unknown as PageUrlJoinRow[]) {
       if (j.monday_item_id && j.pages?.name) {
         nameByItem.set(j.monday_item_id, j.pages.name)
       }

@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import type { LanguageCode } from '@/lib/types/database.types'
 
 type SiteCode = 'aaaf' | 'hfa'
 
@@ -115,7 +116,7 @@ export async function updateSiteLanguages(input: {
   // Update site languages
   const { error: updateErr } = await supabase
     .from('sites')
-    .update({ languages: input.newLanguages })
+    .update({ languages: input.newLanguages as LanguageCode[] })
     .eq('id', site.id)
   if (updateErr) return { ok: false, error: updateErr.message }
 
@@ -281,7 +282,7 @@ export async function savePageUrls(input: {
     .filter(u => u.url.trim() !== '')
     .map(u => ({
       page_id: input.pageId,
-      language_code: u.language_code,
+      language_code: u.language_code as LanguageCode,
       url: u.url.trim(),
     }))
 
@@ -301,7 +302,7 @@ export async function savePageUrls(input: {
       .from('page_urls')
       .delete()
       .eq('page_id', input.pageId)
-      .in('language_code', toDelete)
+      .in('language_code', toDelete as LanguageCode[])
     if (error) return { ok: false, error: error.message }
   }
 
@@ -353,7 +354,7 @@ export async function toggleConfirmation(input: {
       .from('page_urls')
       .select('id')
       .eq('page_id', pageId)
-      .eq('language_code', languageCode)
+      .eq('language_code', languageCode as LanguageCode)
       .maybeSingle()
     if (!urlRow) return { ok: false, error: 'Enter the URL first.' }
   }
@@ -364,7 +365,7 @@ export async function toggleConfirmation(input: {
       .from('confirmations')
       .select('confirmed_on_live')
       .eq('page_id', pageId)
-      .eq('language_code', languageCode)
+      .eq('language_code', languageCode as LanguageCode)
       .maybeSingle()
     if (!confRow?.confirmed_on_live) return { ok: false, error: "Confirm it's live first." }
   }
@@ -392,7 +393,8 @@ export async function toggleConfirmation(input: {
 
   const { error } = await supabase
     .from('confirmations')
-    .upsert(payload, { onConflict: 'page_id,language_code' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .upsert(payload as any, { onConflict: 'page_id,language_code' })
   if (error) return { ok: false, error: error.message }
 
   // ──────────────────────────────────────────────────────────────
@@ -406,7 +408,7 @@ export async function toggleConfirmation(input: {
       .select('languages')
       .eq('code', input.siteCode)
       .single()
-    const langs: string[] = site?.languages ?? []
+    const langs = (site?.languages ?? []) as LanguageCode[]
 
     const { data: confs } = await supabase
       .from('confirmations')
