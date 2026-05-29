@@ -37,6 +37,15 @@ const SITES = [
   },
 ] as const
 
+interface ProjectStats {
+  /** Pages shipped in the trailing 14 days (confirmed_done_at within window). */
+  recentCompletions: number
+  /** Pages we consider "done" overall — fully live OR explicitly set aside. */
+  totalDone: number
+  /** Pages still pending work. */
+  remaining: number
+}
+
 export default async function DashboardPage() {
   // Pages flagged after a language config change, grouped by site
   const supabase = await createClient()
@@ -50,6 +59,31 @@ export default async function DashboardPage() {
     if (staleBySite[code]) staleBySite[code].push({ id: p.id, name: p.name })
   }
   const totalStale = (stalePages ?? []).length
+
+  // Project-level stats for the cards below each project widget.
+  // One query, computed in JS — cheaper than 6 separate COUNT(*) calls.
+  const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000
+  const twoWeeksAgo = new Date(Date.now() - TWO_WEEKS_MS)
+  const { data: allPages } = await supabase
+    .from('pages')
+    .select('confirmed_done_at, not_relevant, sites!inner(code)')
+  const statsBySite: Record<string, ProjectStats> = {
+    aaaf: { recentCompletions: 0, totalDone: 0, remaining: 0 },
+    hfa:  { recentCompletions: 0, totalDone: 0, remaining: 0 },
+  }
+  for (const p of allPages ?? []) {
+    const code = (p.sites as unknown as { code: string }).code
+    const s = statsBySite[code]
+    if (!s) continue
+    const isDone = p.confirmed_done_at != null || p.not_relevant === true
+    if (isDone) s.totalDone++
+    else s.remaining++
+    // "Recent" = confirmed live in last 14 days. Not-relevant pages don't
+    // count here — they were set aside, not shipped.
+    if (p.confirmed_done_at && new Date(p.confirmed_done_at) >= twoWeeksAgo) {
+      s.recentCompletions++
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -112,8 +146,8 @@ export default async function DashboardPage() {
           (→ external site). Valid HTML, no JS, fully keyboard accessible. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {SITES.map(site => (
+          <div key={site.code} className="flex flex-col gap-3">
           <article
-            key={site.code}
             className={`relative rounded-xl border-2 p-6 transition-all hover:shadow-md ${site.cardCls}`}
           >
             <div className="flex items-stretch gap-5">
@@ -174,6 +208,29 @@ export default async function DashboardPage() {
               </div>
             </div>
           </article>
+
+          {/* Stats strip — three at-a-glance numbers per project. Lives
+              outside the <article> so its clicks aren't swallowed by the
+              card-wide ::before link. */}
+          <div className="rounded-xl bg-white border border-slate-200 p-4 grid grid-cols-3 divide-x divide-slate-100">
+            <StatCell
+              value={statsBySite[site.code]?.recentCompletions ?? 0}
+              label="Last 2 weeks"
+              hint="Pages confirmed live in the last 14 days"
+            />
+            <StatCell
+              value={statsBySite[site.code]?.totalDone ?? 0}
+              label="Total done"
+              hint="Pages fully live or marked Not relevant"
+            />
+            <StatCell
+              value={statsBySite[site.code]?.remaining ?? 0}
+              label="Remaining"
+              hint="Pages still requiring work"
+              tone="active"
+            />
+          </div>
+          </div>
         ))}
       </div>
 
@@ -321,6 +378,38 @@ export default async function DashboardPage() {
           ))}
         </ul>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Single-metric block used in the project stats strip on the dashboard.
+ *
+ * `tone="active"` is a subtle slate-on-slate look that pulls a tiny bit of
+ * attention to the "Remaining" number — it's the one the team actually
+ * needs to act on. The other two numbers are diagnostic, not actionable.
+ */
+function StatCell({
+  value,
+  label,
+  hint,
+  tone = 'default',
+}: {
+  value: number
+  label: string
+  hint?: string
+  tone?: 'default' | 'active'
+}) {
+  return (
+    <div className="px-4 first:pl-2 last:pr-2 flex flex-col" title={hint}>
+      <span className={`text-3xl font-extrabold tabular-nums ${
+        tone === 'active' ? 'text-slate-900' : 'text-slate-700'
+      }`}>
+        {value}
+      </span>
+      <span className="text-xs text-slate-500 mt-1 font-medium">
+        {label}
+      </span>
     </div>
   )
 }
