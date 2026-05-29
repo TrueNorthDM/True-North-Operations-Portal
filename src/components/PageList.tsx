@@ -203,7 +203,12 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
             <tbody>
               {filtered.map((r, i) => {
                 const done = isDone(r)
-                const confirmedCount = languages.filter(l => r.langStatus[l]?.confirmed).length
+                // HREFLANG (SYSTEM) tracks what THIS system holds — i.e.
+                // URLs received from the Monday Run Link webhook. So we
+                // color and count by `hasUrl`. The final "✓ Done" pill
+                // still uses `confirmed` because that means all langs
+                // were marked Done in Monday (live in WordPress).
+                const urlCount = languages.filter(l => r.langStatus[l]?.hasUrl).length
                 return (
                   <tr
                     key={r.id}
@@ -229,12 +234,15 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       <div className="flex gap-1">
                         {languages.map(lang => {
                           const s = r.langStatus[lang] ?? { hasUrl: false, confirmed: false }
-                          const { bg, text } = languageStatusPalette(lang, s.confirmed)
+                          // Coloured when the system holds the URL for this
+                          // language. "Confirmed live" status surfaces in
+                          // the MONDAY (WORDPRESS) block on the right.
+                          const { bg, text } = languageStatusPalette(lang, s.hasUrl)
                           const title = s.confirmed
-                            ? `${lang.toUpperCase()}: confirmed live`
+                            ? `${lang.toUpperCase()}: URL received, confirmed live`
                             : s.hasUrl
-                              ? `${lang.toUpperCase()}: URL saved, not yet confirmed`
-                              : `${lang.toUpperCase()}: no URL`
+                              ? `${lang.toUpperCase()}: URL received`
+                              : `${lang.toUpperCase()}: no URL yet`
                           return (
                             <span
                               key={lang}
@@ -254,12 +262,12 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                         className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
                           done
                             ? 'bg-green-100 text-green-700'
-                            : confirmedCount > 0
+                            : urlCount > 0
                               ? 'bg-yellow-100 text-yellow-700'
                               : 'bg-slate-100 text-slate-500'
                         }`}
                       >
-                        {done ? '✓ Done' : `${confirmedCount} of ${languages.length}`}
+                        {done ? '✓ Done' : `${urlCount} of ${languages.length}`}
                       </span>
                     </td>
 
