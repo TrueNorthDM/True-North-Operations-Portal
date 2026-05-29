@@ -16,8 +16,23 @@
 
 export type ActivitySeverity = 'ok' | 'warn' | 'error'
 
+/**
+ * Short categorical label for the colored tag that prefixes each entry.
+ * Maps 1-1 to a color in the ActivityLog component, so adding a new tag
+ * here means adding the matching color there.
+ */
+export type ActivityTag =
+  | 'URL_RECEIVED'  // blue   — Run Link saved a single language URL
+  | 'APPLY_LINK'    // purple — all languages ready; system wrote Apply Link back to Monday
+  | 'DONE'          // green  — Monday Done received for a single language
+  | 'ALL_LIVE'      // emerald — all languages now Done; confirmed_done_at stamped
+  | 'DELETED'       // red    — page deleted locally by a user
+  | 'WARN'          // amber  — skipped on purpose (unknown lang, item gone, empty URL, etc.)
+  | 'ERROR'         // red    — handler hit a DB or API error
+
 export interface ActivitySummary {
   severity: ActivitySeverity
+  tag: ActivityTag
   message: string
 }
 
@@ -34,7 +49,7 @@ function langLabel(code: string): string {
 }
 
 export function summarizeResult(result: string | null): ActivitySummary {
-  if (!result) return { severity: 'warn', message: 'No outcome recorded' }
+  if (!result) return { severity: 'warn', tag: 'WARN', message: 'No outcome recorded' }
 
   // ── Local user actions ───────────────────────────────────────────
   // "ok:deleted "PAGE NAME" by user@example.com"
@@ -42,7 +57,8 @@ export function summarizeResult(result: string | null): ActivitySummary {
   if (deletedMatch) {
     return {
       severity: 'ok',
-      message: `Page deleted: "${deletedMatch[1]}" (by ${deletedMatch[2]})`,
+      tag: 'DELETED',
+      message: `"${deletedMatch[1]}" (by ${deletedMatch[2]})`,
     }
   }
 
@@ -54,6 +70,7 @@ export function summarizeResult(result: string | null): ActivitySummary {
     const waiting = savedMatch[2].split(',').map(langLabel).join(', ')
     return {
       severity: 'ok',
+      tag: 'URL_RECEIVED',
       message: `${lang} URL received — still waiting on ${waiting}`,
     }
   }
@@ -63,13 +80,18 @@ export function summarizeResult(result: string | null): ActivitySummary {
   if (appliedMatch) {
     return {
       severity: 'ok',
+      tag: 'APPLY_LINK',
       message: `All languages received → Monday set to Apply Link (${appliedMatch[1]} items)`,
     }
   }
 
   // "partial:applied to X/Y; failed: ..."
   if (result.startsWith('partial:')) {
-    return { severity: 'warn', message: result.replace(/^partial:/, 'Partial apply: ') }
+    return {
+      severity: 'warn',
+      tag: 'WARN',
+      message: result.replace(/^partial:/, 'Partial apply: '),
+    }
   }
 
   // ── Done handler ─────────────────────────────────────────────────
@@ -79,38 +101,54 @@ export function summarizeResult(result: string | null): ActivitySummary {
     const lang = langLabel(confirmMatch[1])
     const stamped = confirmMatch[4].includes('stamped')
     if (stamped) {
-      return { severity: 'ok', message: `${lang} marked Done — page now fully live ✓` }
+      return {
+        severity: 'ok',
+        tag: 'ALL_LIVE',
+        message: `${lang} marked Done — page now fully live ✓`,
+      }
     }
-    return { severity: 'ok', message: `${lang} marked Done in Monday` }
+    return {
+      severity: 'ok',
+      tag: 'DONE',
+      message: `${lang} marked Done in Monday`,
+    }
   }
 
   // ── Skips ─────────────────────────────────────────────────────────
   if (result.startsWith('skipped:column')) {
-    return { severity: 'warn', message: 'Skipped (column not Href Links)' }
+    return { severity: 'warn', tag: 'WARN', message: 'Skipped (column not Href Links)' }
   }
   if (result.includes('not found in Monday')) {
-    return { severity: 'warn', message: 'Item no longer in Monday' }
+    return { severity: 'warn', tag: 'WARN', message: 'Item no longer in Monday' }
   }
   if (result.includes('unknown language')) {
-    return { severity: 'warn', message: result.replace(/^skipped:/, '').trim() }
+    return { severity: 'warn', tag: 'WARN', message: result.replace(/^skipped:/, '').trim() }
   }
   if (result.includes('empty Page Link')) {
-    return { severity: 'warn', message: 'Item has no Page Link URL yet' }
+    return { severity: 'warn', tag: 'WARN', message: 'Item has no Page Link URL yet' }
   }
   if (result.includes('not in DB')) {
-    return { severity: 'warn', message: 'Done arrived before Run Link — page not in system yet' }
+    return {
+      severity: 'warn',
+      tag: 'WARN',
+      message: 'Done arrived before Run Link — page not in system yet',
+    }
   }
   if (result.startsWith('skipped:')) {
-    return { severity: 'warn', message: result.replace(/^skipped:/, '').trim() }
+    return { severity: 'warn', tag: 'WARN', message: result.replace(/^skipped:/, '').trim() }
   }
 
   // ── Errors ───────────────────────────────────────────────────────
   if (result.startsWith('error:')) {
-    return { severity: 'error', message: result.replace(/^error:/, '').trim() }
+    return {
+      severity: 'error',
+      tag: 'ERROR',
+      message: result.replace(/^error:/, '').trim(),
+    }
   }
 
   // Fallback — show raw
-  return { severity: 'warn', message: result }
+  return { severity: 'warn', tag: 'WARN', message: result }
 }
 
 /**

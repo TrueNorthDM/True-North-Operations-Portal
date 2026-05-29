@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react'
-import { summarizeResult, relativeTime, type ActivitySeverity } from '@/lib/activity'
+import { summarizeResult, relativeTime, type ActivityTag } from '@/lib/activity'
 
 export interface ActivityRow {
   id: string
@@ -29,16 +29,20 @@ interface Props {
   rows: ActivityRow[]
 }
 
-const dotClass: Record<ActivitySeverity, string> = {
-  ok:    'bg-emerald-500',
-  warn:  'bg-amber-500',
-  error: 'bg-red-500',
-}
-
-const textClass: Record<ActivitySeverity, string> = {
-  ok:    'text-emerald-700',
-  warn:  'text-amber-700',
-  error: 'text-red-700',
+/**
+ * Visual style per tag. Same shape as the System / Monday / WordPress
+ * badges in the dashboard's "How to do this" section — keeps the visual
+ * grammar consistent: small uppercase pill with bg/text/border in the
+ * same color family.
+ */
+const tagStyle: Record<ActivityTag, { label: string; className: string }> = {
+  URL_RECEIVED: { label: 'URL received', className: 'bg-sky-50 text-sky-700 border-sky-200' },
+  APPLY_LINK:   { label: 'Apply Link',   className: 'bg-purple-50 text-purple-700 border-purple-200' },
+  DONE:         { label: 'Done',         className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  ALL_LIVE:     { label: 'All live',     className: 'bg-green-100 text-green-800 border-green-300' },
+  DELETED:      { label: 'Deleted',      className: 'bg-red-50 text-red-700 border-red-200' },
+  WARN:         { label: 'Warning',      className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  ERROR:        { label: 'Error',        className: 'bg-red-50 text-red-700 border-red-200' },
 }
 
 export function ActivityLog({ rows }: Props) {
@@ -91,14 +95,19 @@ export function ActivityLog({ rows }: Props) {
             <ul className="divide-y divide-slate-100">
               {rows.map(row => {
                 const summary = summarizeResult(row.result)
+                const style = tagStyle[summary.tag]
                 return (
                   <li key={row.id} className="px-5 py-3 flex items-start gap-3 text-sm">
                     <span
-                      className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${dotClass[summary.severity]}`}
-                      aria-label={summary.severity}
-                    />
+                      className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 mt-0.5 ${style.className}`}
+                    >
+                      {style.label}
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <div className={`font-medium ${textClass[summary.severity]}`}>
+                      {/* Body text uses slate-800 (same as page names in the
+                          table) so the visual hierarchy stays consistent:
+                          tag = category, text = content. */}
+                      <div className="font-medium text-slate-800">
                         {summary.message}
                       </div>
                       {row.page_name && (
@@ -110,7 +119,7 @@ export function ActivityLog({ rows }: Props) {
                     <time
                       dateTime={row.received_at}
                       title={new Date(row.received_at).toLocaleString()}
-                      className="text-xs text-slate-400 shrink-0 tabular-nums"
+                      className="text-xs text-slate-400 shrink-0 tabular-nums mt-1"
                     >
                       {relativeTime(row.received_at)}
                     </time>
