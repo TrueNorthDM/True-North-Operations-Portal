@@ -13,7 +13,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/auth']
+// Paths that bypass the user-session auth gate.
+//   /login + /auth     — sign-in flow itself
+//   /api/monday        — webhooks from Monday; authentication is HMAC of the
+//                        payload (see src/lib/monday/verify.ts), not a user
+//                        cookie. Without this exception, Monday's POSTs get
+//                        a 307 → /login and the webhook test fails.
+const PUBLIC_PATHS = ['/login', '/auth', '/api/monday']
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
