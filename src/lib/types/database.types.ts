@@ -27,14 +27,10 @@ export interface PageRow {
   name: string
   monday_item_id: string | null
   monday_item_name: string | null
-  cluster: string | null
-  primary_keyword: string | null
-  /** HFA-only. Whether this page is part of the SEO rank-tracking set. */
-  tracked: boolean
-  /** HFA-only. Additional target keyphrases beyond the primary one. */
-  secondary_keyphrases: string[]
   /** True when the site's language config changed after this page was last updated. */
   needs_hreflang_update: boolean
+  /** Intentional opt-out: pages with not_relevant=true count as done in progress. */
+  not_relevant: boolean
   /** Overall Monday implementation status (will be updated by Monday API once integrated). */
   monday_status: MondayStatus
   /** Per-language Monday status — keys are language codes, values are booleans (true = done in Monday). */

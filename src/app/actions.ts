@@ -152,6 +152,28 @@ async function clearStaleFlag(supabase: Awaited<ReturnType<typeof createClient>>
 }
 
 /**
+ * Toggle a page's `not_relevant` flag. When true, the page is treated as
+ * intentionally out of scope — it counts toward the project's progress
+ * bar as "done" (the team isn't going to ship it, so it shouldn't
+ * suppress the percent-complete number).
+ */
+export async function setPageNotRelevant(input: {
+  pageId: string
+  siteCode: SiteCode
+  value: boolean
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('pages')
+    .update({ not_relevant: input.value })
+    .eq('id', input.pageId)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath(`/${input.siteCode}/${input.pageId}`)
+  revalidatePath(`/${input.siteCode}`)
+  return { ok: true }
+}
+
+/**
  * Saves the Monday board ID for a given site.
  * Stored on `sites.monday_board_id`. Used by webhook + GraphQL queries to scope
  * Monday API calls to the correct board.
@@ -175,39 +197,6 @@ export async function saveMondayBoardId(input: {
   return { ok: true }
 }
 
-/**
- * Saves HFA-only SEO metadata for a page: cluster, primary keyword,
- * tracked flag, and secondary keyphrases. All optional — empty/null clears.
- * Only intended for HFA pages (siteCode='hfa'), but the action doesn't
- * enforce that — the UI only renders the form on HFA pages.
- */
-export async function saveHfaPageSeo(input: {
-  pageId: string
-  cluster: string | null
-  primaryKeyword: string | null
-  tracked: boolean
-  secondaryKeyphrases: string[]
-}): Promise<{ ok: boolean; error?: string }> {
-  const supabase = await createClient()
-  // Trim + drop blanks from the secondary list so the DB doesn't accumulate
-  // empty strings from people who hit save on a half-edited chip input.
-  const secondary = (input.secondaryKeyphrases ?? [])
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
-  const { error } = await supabase
-    .from('pages')
-    .update({
-      cluster: input.cluster?.trim() || null,
-      primary_keyword: input.primaryKeyword?.trim() || null,
-      tracked: input.tracked,
-      secondary_keyphrases: secondary,
-    })
-    .eq('id', input.pageId)
-  if (error) return { ok: false, error: error.message }
-  revalidatePath(`/hfa/${input.pageId}`)
-  revalidatePath('/hfa')
-  return { ok: true }
-}
 
 /**
  * Saves the WordPress Dev/Live URLs for a given site. Either can be empty

@@ -19,7 +19,7 @@ export default async function AaafPagesPage() {
 
   const { data: pages } = await supabase
     .from('pages')
-    .select('id, name, needs_hreflang_update, monday_status, monday_lang_status, confirmed_done_at, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
+    .select('id, name, needs_hreflang_update, monday_status, monday_lang_status, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
     .eq('site_id', site?.id ?? '')
 
   const siteLanguages: string[] = site?.languages ?? ['en', 'pt', 'es', 'sw']
@@ -51,10 +51,15 @@ export default async function AaafPagesPage() {
       needsUpdate: p.needs_hreflang_update,
       hreflangHtml,
       confirmedDoneAt: p.confirmed_done_at,
+      notRelevant: p.not_relevant ?? false,
     }
   })
 
-  const done = rows.filter(r => siteLanguages.every(l => r.langStatus[l]?.confirmed)).length
+  // "Done" for progress includes pages marked Not relevant — the team
+  // isn't going to ship them, so they shouldn't drag the percentage down.
+  const done = rows.filter(
+    r => r.notRelevant || siteLanguages.every(l => r.langStatus[l]?.confirmed),
+  ).length
   const activity = await getRecentActivity(supabase, (site?.monday_board_id as string | null) ?? null)
 
   return (

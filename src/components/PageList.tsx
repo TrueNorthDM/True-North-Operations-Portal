@@ -15,7 +15,7 @@ import type { MondayStatus } from '@/lib/types/database.types'
 
 // All filter + sort state lives in URL query params, so the view is
 // shareable and the browser Back button rewinds filter changes.
-type StatusFilter = 'all' | 'incomplete' | 'done' | 'needs_update'
+type StatusFilter = 'all' | 'incomplete' | 'done' | 'needs_update' | 'not_relevant'
 type SortKey = 'name' | 'hreflang_status' | 'all_live' | 'monday_status'
 type SortDir = 'asc' | 'desc'
 
@@ -24,6 +24,7 @@ const STATUS_LABEL: Record<StatusFilter, string> = {
   incomplete: 'Incomplete',
   done: 'Done',
   needs_update: 'Needs update',
+  not_relevant: 'Not relevant',
 }
 
 const LANG_LABEL: Record<string, string> = {
@@ -45,7 +46,6 @@ const MONDAY_RANK: Record<MondayStatus, number> = {
 export interface PageListRow {
   id: string
   name: string
-  cluster?: string | null
   langStatus: Record<string, { hasUrl: boolean; confirmed: boolean }>
   /** Monday's truth: per-language implemented status (true = Monday says done). */
   mondayLangStatus: Record<string, boolean>
@@ -53,6 +53,8 @@ export interface PageListRow {
   mondayStatus: MondayStatus
   /** Flagged after a language config change — page may have stale hreflang. */
   needsUpdate?: boolean
+  /** Intentional opt-out: counts as done in progress; shown faded in the list. */
+  notRelevant?: boolean
   /**
    * Pre-rendered hreflang HTML, available only when every language has a URL.
    * Undefined means the Copy button stays disabled — there's nothing to paste yet.
@@ -109,7 +111,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
   const searchParams = useSearchParams()
 
   const status: StatusFilter =
-    (['incomplete', 'done', 'needs_update'] as const).find(
+    (['incomplete', 'done', 'needs_update', 'not_relevant'] as const).find(
       v => v === searchParams.get('status'),
     ) ?? 'all'
   const hasLangs = (searchParams.get('lang') ?? '')
@@ -162,6 +164,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
   )
 
   function isDone(r: PageListRow) {
+    // "Not relevant" pages are explicitly opted out — they count as done
+    // for progress, filtering, and the "Done" status pill.
+    if (r.notRelevant) return true
     return languages.every(l => r.langStatus[l]?.confirmed)
   }
 
@@ -173,12 +178,13 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     const q = search.toLowerCase().trim()
     const base = rows.filter(r => {
       if (q) {
-        const hay = (r.name + ' ' + (r.cluster ?? '')).toLowerCase()
+        const hay = r.name.toLowerCase()
         if (!hay.includes(q)) return false
       }
       if (status === 'incomplete' && isDone(r)) return false
       if (status === 'done' && !isDone(r)) return false
       if (status === 'needs_update' && r.needsUpdate !== true) return false
+      if (status === 'not_relevant' && r.notRelevant !== true) return false
       // Has-language filter is OR: row passes if any selected language
       // has a URL saved. Empty selection = no constraint.
       if (hasLangs.length > 0) {
@@ -215,6 +221,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
   const doneCount = useMemo(() => rows.filter(isDone).length, [rows])
   const incompleteCount = rows.length - doneCount
   const needsUpdateCount = useMemo(() => rows.filter(r => r.needsUpdate).length, [rows])
+  const notRelevantCount = useMemo(() => rows.filter(r => r.notRelevant).length, [rows])
 
   return (
     <>
@@ -226,7 +233,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${rows.length} pages — by name or cluster…`}
+            placeholder={`Search ${rows.length} pages by name…`}
             className={`w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 ${a.ring}`}
           />
         </div>
@@ -257,17 +264,26 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                   </span>
                 </PopoverItem>
               ))}
+              {(needsUpdateCount > 0 || notRelevantCount > 0) && (
+                <li className="border-t border-slate-100 my-1" />
+              )}
               {needsUpdateCount > 0 && (
-                <>
-                  <li className="border-t border-slate-100 my-1" />
-                  <PopoverItem
-                    selected={status === 'needs_update'}
-                    onClick={() => { updateUrl({ status: 'needs_update' }); close() }}
-                  >
-                    <span className="flex-1 text-amber-700">⚠ Needs update</span>
-                    <span className="text-xs text-amber-600 ml-3">{needsUpdateCount}</span>
-                  </PopoverItem>
-                </>
+                <PopoverItem
+                  selected={status === 'needs_update'}
+                  onClick={() => { updateUrl({ status: 'needs_update' }); close() }}
+                >
+                  <span className="flex-1 text-amber-700">⚠ Needs update</span>
+                  <span className="text-xs text-amber-600 ml-3">{needsUpdateCount}</span>
+                </PopoverItem>
+              )}
+              {notRelevantCount > 0 && (
+                <PopoverItem
+                  selected={status === 'not_relevant'}
+                  onClick={() => { updateUrl({ status: 'not_relevant' }); close() }}
+                >
+                  <span className="flex-1 text-slate-600">Not relevant</span>
+                  <span className="text-xs text-slate-400 ml-3">{notRelevantCount}</span>
+                </PopoverItem>
               )}
             </ul>
           )}
@@ -403,7 +419,12 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                 return (
                   <tr
                     key={r.id}
-                    className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${i === filtered.length - 1 ? 'border-0' : ''}`}
+                    // Not-relevant pages fade the whole row so they read
+                    // as "set aside, not part of the active work" without
+                    // hiding them entirely.
+                    className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                      i === filtered.length - 1 ? 'border-0' : ''
+                    } ${r.notRelevant ? 'opacity-50' : ''}`}
                   >
                     <td className="px-5 py-4 font-medium text-slate-800">
                       <div className="flex items-center gap-2 min-w-0">
@@ -416,7 +437,20 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                             ⚠
                           </span>
                         )}
-                        <span className="truncate" title={r.name}>{r.name}</span>
+                        <span
+                          className={`truncate ${r.notRelevant ? 'line-through decoration-slate-400' : ''}`}
+                          title={r.name}
+                        >
+                          {r.name}
+                        </span>
+                        {r.notRelevant && (
+                          <span
+                            className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-300 shrink-0"
+                            aria-label="Marked not relevant"
+                          >
+                            Not relevant
+                          </span>
+                        )}
                       </div>
                     </td>
 

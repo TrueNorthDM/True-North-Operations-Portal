@@ -17,6 +17,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { HreflangCodeBlock } from '@/components/HreflangCodeBlock'
 import { DeletePageButton } from '@/components/DeletePageButton'
+import { NotRelevantButton } from '@/components/NotRelevantButton'
 import { savePageUrls, toggleConfirmation } from '@/app/actions'
 import { languagePalette } from '@/lib/language-colors'
 
@@ -30,10 +31,6 @@ interface Props {
   pageId: string
   siteCode: 'aaaf' | 'hfa'
   pageName: string
-  /** HFA-only cluster tag (Faith, Health, Family, Utility, …). Shown next to the title. */
-  cluster?: string | null
-  /** HFA-only SEO target keyphrase. Shown next to the title. */
-  primaryKeyword?: string | null
   languages: string[]
   savedUrls: { language_code: string; url: string }[]
   confirmations: ConfirmationState[]
@@ -47,6 +44,8 @@ interface Props {
   mondayLangStatus?: Record<string, boolean>
   /** ISO timestamp set the first time all languages were confirmed live. Preserved on un-toggle. */
   confirmedDoneAt?: string | null
+  /** Marks the page as intentionally out of scope. Counts as done for progress. */
+  notRelevant?: boolean
   /**
    * Optional slot rendered at the bottom of the page (after Monday tracking).
    * Used by HFA to mount the SEO metadata editor without coupling PageDetail
@@ -72,8 +71,6 @@ export function PageDetail({
   pageId,
   siteCode,
   pageName,
-  cluster,
-  primaryKeyword,
   languages,
   savedUrls,
   confirmations,
@@ -83,6 +80,7 @@ export function PageDetail({
   mondayStatus = 'pending',
   mondayLangStatus = {},
   confirmedDoneAt = null,
+  notRelevant = false,
   extraSection = null,
 }: Props) {
   const doneDateLabel = confirmedDoneAt
@@ -168,23 +166,6 @@ export function PageDetail({
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-slate-900">{pageName}</h1>
-            {/* HFA metadata chips — shown here (instead of in the list column)
-                so the cluster + primary keyword surface only when you're focused
-                on a single page. */}
-            {(cluster || primaryKeyword) && (
-              <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
-                {cluster && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold">
-                    <span className="text-slate-400 mr-1.5 font-normal">Cluster:</span> {cluster}
-                  </span>
-                )}
-                {primaryKeyword && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
-                    <span className="text-slate-400 mr-1.5 font-normal">Primary keyword:</span> {primaryKeyword}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
           <div className="flex gap-2 flex-wrap items-center">
             {(() => {
@@ -256,6 +237,7 @@ export function PageDetail({
             )}
             {/* Delete — destructive, kept visually separate (red outline) so it
                 doesn't compete with the primary Edit action. */}
+            <NotRelevantButton pageId={pageId} siteCode={siteCode} initialValue={notRelevant} />
             <DeletePageButton pageId={pageId} pageName={pageName} siteCode={siteCode} />
           </div>
         </div>
