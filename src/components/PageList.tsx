@@ -8,9 +8,39 @@
  * roundtrips, so it's instant even on 100+ pages.
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { languageStatusPalette } from '@/lib/language-colors'
 import type { MondayStatus } from '@/lib/types/database.types'
+
+// All filter + sort state lives in URL query params, so the view is
+// shareable and the browser Back button rewinds filter changes.
+type StatusFilter = 'all' | 'incomplete' | 'done' | 'needs_update'
+type SortKey = 'name' | 'hreflang_status' | 'all_live' | 'monday_status'
+type SortDir = 'asc' | 'desc'
+
+const STATUS_LABEL: Record<StatusFilter, string> = {
+  all: 'All pages',
+  incomplete: 'Incomplete',
+  done: 'Done',
+  needs_update: 'Needs update',
+}
+
+const LANG_LABEL: Record<string, string> = {
+  en: 'English',
+  pt: 'Portuguese',
+  es: 'Spanish',
+  sw: 'Swahili',
+  fr: 'French',
+}
+
+// Numeric value for the Monday status so we can sort it sensibly
+// (pending < in_progress < done).
+const MONDAY_RANK: Record<MondayStatus, number> = {
+  pending: 0,
+  in_progress: 1,
+  done: 2,
+}
 
 export interface PageListRow {
   id: string
@@ -69,8 +99,61 @@ const accentMap = {
 
 export function PageList({ rows, languages, siteCode, accent }: Props) {
   const a = accentMap[accent]
+  // Search stays as plain state — typing into the URL on every keystroke
+  // would spam history. Filter/sort are URL-backed so a filtered view is
+  // shareable via link.
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'incomplete' | 'done' | 'needs_update'>('all')
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const status: StatusFilter =
+    (['incomplete', 'done', 'needs_update'] as const).find(
+      v => v === searchParams.get('status'),
+    ) ?? 'all'
+  const hasLangs = (searchParams.get('lang') ?? '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => languages.includes(s))
+  const sortKey: SortKey =
+    (['hreflang_status', 'all_live', 'monday_status'] as const).find(
+      v => v === searchParams.get('sort'),
+    ) ?? 'name'
+  const sortDir: SortDir = searchParams.get('dir') === 'desc' ? 'desc' : 'asc'
+
+  // Single helper used by every dropdown + every sortable header to write
+  // back to the URL. Empty/null values get deleted (URL stays clean for
+  // defaults — no `?status=all` clutter).
+  function updateUrl(patch: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [k, v] of Object.entries(patch)) {
+      if (v == null || v === '') params.delete(k)
+      else params.set(k, v)
+    }
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
+  function toggleSort(key: SortKey) {
+    // Cycle: not-sorted → asc → desc → not-sorted (= back to default 'name' asc)
+    if (sortKey !== key) {
+      updateUrl({ sort: key, dir: null })
+      return
+    }
+    if (sortDir === 'asc') {
+      updateUrl({ sort: key, dir: 'desc' })
+      return
+    }
+    updateUrl({ sort: null, dir: null })
+  }
+
+  function toggleLang(lang: string) {
+    const next = hasLangs.includes(lang)
+      ? hasLangs.filter(l => l !== lang)
+      : [...hasLangs, lang]
+    updateUrl({ lang: next.join(',') })
+  }
 
   // Intl.Collator handles "10 < 11 < 100" instead of string-sort "10 < 100 < 11"
   const collator = useMemo(
@@ -82,29 +165,60 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     return languages.every(l => r.langStatus[l]?.confirmed)
   }
 
+  function urlCount(r: PageListRow) {
+    return languages.filter(l => r.langStatus[l]?.hasUrl).length
+  }
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
-    return rows
-      .filter(r => {
-        if (q) {
-          const hay = (r.name + ' ' + (r.cluster ?? '')).toLowerCase()
-          if (!hay.includes(q)) return false
-        }
-        if (filter === 'incomplete') return !isDone(r)
-        if (filter === 'done') return isDone(r)
-        if (filter === 'needs_update') return r.needsUpdate === true
-        return true
-      })
-      .sort((x, y) => collator.compare(x.name, y.name))
+    const base = rows.filter(r => {
+      if (q) {
+        const hay = (r.name + ' ' + (r.cluster ?? '')).toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      if (status === 'incomplete' && isDone(r)) return false
+      if (status === 'done' && !isDone(r)) return false
+      if (status === 'needs_update' && r.needsUpdate !== true) return false
+      // Has-language filter is OR: row passes if any selected language
+      // has a URL saved. Empty selection = no constraint.
+      if (hasLangs.length > 0) {
+        const anyMatch = hasLangs.some(l => r.langStatus[l]?.hasUrl)
+        if (!anyMatch) return false
+      }
+      return true
+    })
+
+    // Sort
+    base.sort((x, y) => {
+      let cmp = 0
+      if (sortKey === 'hreflang_status') {
+        cmp = urlCount(x) - urlCount(y)
+      } else if (sortKey === 'all_live') {
+        // Nulls last in asc, first in desc — so dates always group together
+        const tx = x.confirmedDoneAt ? new Date(x.confirmedDoneAt).getTime() : null
+        const ty = y.confirmedDoneAt ? new Date(y.confirmedDoneAt).getTime() : null
+        if (tx === ty) cmp = 0
+        else if (tx === null) cmp = 1
+        else if (ty === null) cmp = -1
+        else cmp = tx - ty
+      } else if (sortKey === 'monday_status') {
+        cmp = MONDAY_RANK[x.mondayStatus] - MONDAY_RANK[y.mondayStatus]
+      }
+      if (cmp === 0) cmp = collator.compare(x.name, y.name) // stable tiebreaker
+      else if (sortDir === 'desc') cmp = -cmp
+      return cmp
+    })
+    return base
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, search, filter, collator])
+  }, [rows, search, status, hasLangs.join(','), sortKey, sortDir, collator])
 
   const doneCount = useMemo(() => rows.filter(isDone).length, [rows])
+  const incompleteCount = rows.length - doneCount
   const needsUpdateCount = useMemo(() => rows.filter(r => r.needsUpdate).length, [rows])
 
   return (
     <>
-      {/* Toolbar — search + filter chips + counts */}
+      {/* Toolbar — search + filter dropdowns + counts. */}
       <div className="rounded-xl bg-white border border-slate-200 p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">⌕</span>
@@ -116,42 +230,104 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
             className={`w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 ${a.ring}`}
           />
         </div>
-        <div className="flex items-center gap-1 text-xs">
-          {(['all', 'incomplete', 'done'] as const).map(f => {
-            const active = filter === f
-            const count =
-              f === 'all' ? rows.length :
-              f === 'done' ? doneCount :
-              rows.length - doneCount
-            return (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  active
-                    ? 'bg-slate-800 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {f === 'all' ? 'All' : f === 'incomplete' ? 'Incomplete' : 'Done'}
-                <span className={`ml-1.5 ${active ? 'opacity-70' : 'opacity-60'}`}>{count}</span>
-              </button>
-            )
-          })}
-          {needsUpdateCount > 0 && (
-            <button
-              onClick={() => setFilter('needs_update')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                filter === 'needs_update'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
-              }`}
-            >
-              ⚠ Needs update
-              <span className={`ml-1.5 ${filter === 'needs_update' ? 'opacity-80' : 'opacity-70'}`}>{needsUpdateCount}</span>
-            </button>
+
+        {/* Status dropdown — single select. Button shows the active value
+            so users don't have to open the menu to remember. */}
+        <Popover
+          label={
+            <>
+              <span className="text-slate-500 font-normal">Status:</span>{' '}
+              <span className="font-semibold">{STATUS_LABEL[status]}</span>
+            </>
+          }
+          highlight={status !== 'all'}
+          accentRing={a.ring}
+        >
+          {({ close }) => (
+            <ul className="py-1 min-w-[180px]">
+              {(['all', 'incomplete', 'done'] as const).map(s => (
+                <PopoverItem
+                  key={s}
+                  selected={status === s}
+                  onClick={() => { updateUrl({ status: s === 'all' ? null : s }); close() }}
+                >
+                  <span className="flex-1">{STATUS_LABEL[s]}</span>
+                  <span className="text-xs text-slate-400 ml-3">
+                    {s === 'all' ? rows.length : s === 'done' ? doneCount : incompleteCount}
+                  </span>
+                </PopoverItem>
+              ))}
+              {needsUpdateCount > 0 && (
+                <>
+                  <li className="border-t border-slate-100 my-1" />
+                  <PopoverItem
+                    selected={status === 'needs_update'}
+                    onClick={() => { updateUrl({ status: 'needs_update' }); close() }}
+                  >
+                    <span className="flex-1 text-amber-700">⚠ Needs update</span>
+                    <span className="text-xs text-amber-600 ml-3">{needsUpdateCount}</span>
+                  </PopoverItem>
+                </>
+              )}
+            </ul>
           )}
-        </div>
+        </Popover>
+
+        {/* Has-language dropdown — multi-select (OR). Button shows current
+            count so the toolbar communicates state without opening it. */}
+        <Popover
+          label={
+            <>
+              <span className="text-slate-500 font-normal">Has language:</span>{' '}
+              <span className="font-semibold">
+                {hasLangs.length === 0
+                  ? 'All'
+                  : hasLangs.length === 1
+                    ? hasLangs[0].toUpperCase()
+                    : `${hasLangs.length} selected`}
+              </span>
+            </>
+          }
+          highlight={hasLangs.length > 0}
+          accentRing={a.ring}
+        >
+          {() => (
+            <ul className="py-1 min-w-[200px]">
+              {languages.map(lang => {
+                const checked = hasLangs.includes(lang)
+                return (
+                  <li key={lang}>
+                    <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleLang(lang)}
+                        className="w-4 h-4 rounded border-slate-300"
+                      />
+                      <span className="font-mono uppercase text-xs text-slate-500 w-7">{lang}</span>
+                      <span className="text-slate-800">{LANG_LABEL[lang] ?? lang}</span>
+                    </label>
+                  </li>
+                )
+              })}
+              {hasLangs.length > 0 && (
+                <>
+                  <li className="border-t border-slate-100 my-1" />
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => updateUrl({ lang: null })}
+                      className="w-full text-left px-3 py-2 text-xs text-slate-500 hover:bg-slate-50"
+                    >
+                      Clear selection
+                    </button>
+                  </li>
+                </>
+              )}
+            </ul>
+          )}
+        </Popover>
+
         <div className="text-xs text-slate-500 ml-auto">
           Showing <strong className="text-slate-700">{filtered.length}</strong> of {rows.length}
         </div>
@@ -194,10 +370,25 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
               </tr>
               <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-500">
                 <th className="px-5 pb-3 font-medium border-l border-slate-200">Langs</th>
-                <th className="px-5 pb-3 font-medium">Status</th>
-                <th className="px-5 pb-3 font-medium">All Live</th>
+                <SortHeader
+                  label="Status"
+                  active={sortKey === 'hreflang_status'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('hreflang_status')}
+                />
+                <SortHeader
+                  label="All Live"
+                  active={sortKey === 'all_live'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('all_live')}
+                />
                 <th className="px-5 pb-3 font-medium border-l border-slate-200">Langs</th>
-                <th className="px-5 pb-3 font-medium">Status</th>
+                <SortHeader
+                  label="Status"
+                  active={sortKey === 'monday_status'}
+                  dir={sortDir}
+                  onClick={() => toggleSort('monday_status')}
+                />
               </tr>
             </thead>
             <tbody>
@@ -413,5 +604,144 @@ function MondayStatusBadge({ status }: { status: MondayStatus }) {
     <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${cls}`}>
       {label}
     </span>
+  )
+}
+
+/**
+ * Generic popover used by the filter dropdowns.
+ *
+ * Why a custom component vs. native <select>? <select> doesn't support
+ * multi-checkbox layouts and is impossible to style consistently across
+ * browsers. The trade-off is we own the click-outside + escape-key
+ * dismissal manually; the implementation below is the smallest correct
+ * version that doesn't pull in a library.
+ */
+function Popover({
+  label,
+  highlight,
+  accentRing,
+  children,
+}: {
+  label: React.ReactNode
+  highlight: boolean
+  accentRing: string
+  children: (api: { close: () => void }) => React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`inline-flex items-center gap-2 text-xs px-3 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 ${accentRing} ${
+          highlight
+            ? 'bg-slate-800 text-white border-slate-800'
+            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+        }`}
+      >
+        <span>{label}</span>
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M3 4.5L6 7.5L9 4.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          className="absolute z-20 mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"
+        >
+          {children({ close: () => setOpen(false) })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PopoverItem({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        role="option"
+        aria-selected={selected}
+        onClick={onClick}
+        className={`w-full text-left flex items-center px-3 py-2 text-sm hover:bg-slate-50 ${
+          selected ? 'bg-slate-50 text-slate-900' : 'text-slate-700'
+        }`}
+      >
+        <span className={`w-4 mr-2 ${selected ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true">✓</span>
+        {children}
+      </button>
+    </li>
+  )
+}
+
+/**
+ * Sortable column header. Click cycles asc → desc → off.
+ * The asc/desc arrow appears only on the active column; inactive
+ * columns keep an outlined "↕" hint to communicate sortability.
+ */
+function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+  className = '',
+}: {
+  label: string
+  active: boolean
+  dir: SortDir
+  onClick: () => void
+  className?: string
+}) {
+  const ariaSort = !active ? 'none' : dir === 'asc' ? 'ascending' : 'descending'
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort}
+      className={`px-5 pb-3 font-medium ${className}`}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        className={`inline-flex items-center gap-1 group hover:text-slate-700 transition-colors ${
+          active ? 'text-slate-700' : 'text-slate-500'
+        }`}
+      >
+        {label}
+        <span aria-hidden="true" className="text-[10px] leading-none">
+          {active ? (dir === 'asc' ? '↑' : '↓') : <span className="opacity-40 group-hover:opacity-70">↕</span>}
+        </span>
+      </button>
+    </th>
   )
 }
