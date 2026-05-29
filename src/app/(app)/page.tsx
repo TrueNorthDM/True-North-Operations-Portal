@@ -185,22 +185,40 @@ export default async function DashboardPage() {
       <div className="rounded-lg bg-white border border-slate-200 p-5">
         <h3 className="font-semibold text-slate-800 mb-3">How to do this</h3>
 
+        {/* Legend chips. Two orthogonal axes per step:
+              - mode (Auto vs Manual) = WHO does it (system vs human)
+              - where (Monday/System/WordPress) = WHERE the action lives
+            Combining both lets you scan a step and immediately know if you
+            need to open WordPress, check Monday, or watch our dashboard. */}
+        <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-slate-100 text-[10px] uppercase tracking-wider">
+          <span className="text-slate-400 font-semibold">Legend:</span>
+          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Auto</span>
+          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Manual</span>
+          <span className="text-slate-300">·</span>
+          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">Monday</span>
+          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">System</span>
+          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">WordPress</span>
+        </div>
+
         <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">General workflow</div>
         <ol className="space-y-3 text-sm text-slate-600">
+          {/* `w` (where) names the primary actor of the step. Cross-boundary
+              actions (e.g. system writes to Monday) tag the actor, not the
+              destination — answers "where do I look to see this happen?". */}
           {([
-            { m: 'auto',   t: 'Publishing item moves to Done → Monday automation sets Href Links to "Run Link"' },
-            { m: 'auto',   t: 'Monday webhook fires; the system receives the "Run Link" trigger' },
-            { m: 'auto',   t: 'System verifies the page exists; creates it if missing' },
-            { m: 'auto',   t: 'System reads each language URL from Monday and saves them to the page' },
-            { m: 'auto',   t: 'Once all URLs are present, system generates WordPress-ready hreflang tags' },
-            { m: 'auto',   t: 'System updates Href Links on Monday to "Apply Link"' },
-            { m: 'auto',   t: 'Monday runs automations: assigns SEO 2 and sends notifications' },
-            { m: 'manual', t: 'SEO 2 logs in to WordPress in the browser' },
-            { m: 'manual', t: 'SEO 2 opens each language URL from the system and clicks Edit in WordPress' },
-            { m: 'manual', t: 'SEO 2 copies the hreflang tags from the system, pastes them into the "custom_hreflang" custom field on each page, and saves', d: 'Select "custom_hreflang" as the field name, paste as value, then click "Add Custom Field" or it will not save.' },
-            { m: 'manual', t: 'SEO 2 marks every language item for the page as Done in Monday' },
-            { m: 'auto',   t: 'Monday webhook fires; system ticks "Confirmed live" for each language and stamps the All Live date' },
-          ] as { m: 'auto' | 'manual'; t: string; d?: string }[]).map((step, i) => (
+            { m: 'auto',   w: 'monday',    t: 'Publishing item moves to Done → Monday automation sets Href Links to "Run Link"' },
+            { m: 'auto',   w: 'system',    t: 'Monday webhook fires; the system receives the "Run Link" trigger' },
+            { m: 'auto',   w: 'system',    t: 'System verifies the page exists; creates it if missing' },
+            { m: 'auto',   w: 'system',    t: 'System reads each language URL from Monday and saves them to the page' },
+            { m: 'auto',   w: 'system',    t: 'Once all URLs are present, system generates WordPress-ready hreflang tags' },
+            { m: 'auto',   w: 'system',    t: 'System updates Href Links on Monday to "Apply Link"' },
+            { m: 'auto',   w: 'monday',    t: 'Monday runs automations: assigns SEO 2 and sends notifications' },
+            { m: 'manual', w: 'wordpress', t: 'SEO 2 logs in to WordPress in the browser' },
+            { m: 'manual', w: 'wordpress', t: 'SEO 2 opens each language URL from the system and clicks Edit in WordPress' },
+            { m: 'manual', w: 'wordpress', t: 'SEO 2 copies the hreflang tags from the system, pastes them into the "custom_hreflang" custom field on each page, and saves', d: 'Select "custom_hreflang" as the field name, paste as value, then click "Add Custom Field" or it will not save.' },
+            { m: 'manual', w: 'monday',    t: 'SEO 2 marks every language item for the page as Done in Monday' },
+            { m: 'auto',   w: 'system',    t: 'Monday webhook fires; system ticks "Confirmed live" for each language and stamps the All Live date' },
+          ] as { m: 'auto' | 'manual'; w: 'monday' | 'system' | 'wordpress'; t: string; d?: string }[]).map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold">
                 {i + 1}
@@ -215,6 +233,15 @@ export default async function DashboardPage() {
                     }`}
                   >
                     {step.m}
+                  </span>
+                  <span
+                    className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                      step.w === 'monday'    ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                      step.w === 'system'    ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                                               'bg-blue-50 text-blue-700 border-blue-200'
+                    }`}
+                  >
+                    {step.w === 'wordpress' ? 'WordPress' : step.w}
                   </span>
                   <span className="font-medium text-slate-800">{step.t}</span>
                 </div>
@@ -233,6 +260,7 @@ export default async function DashboardPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">manual</span>
+                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">WordPress</span>
                 <span className="font-medium text-slate-800">Remove any canonical tags and allow indexing (Yoast Advanced)</span>
               </div>
               <div className="text-slate-500 text-xs mt-1">Make sure each language version is set to allow indexing.</div>
@@ -247,6 +275,7 @@ export default async function DashboardPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">manual</span>
+                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">System</span>
                 <span className="font-medium text-slate-800">Once Google indexes the page, tick "Indexed in GSC"</span>
               </div>
               <div className="text-slate-500 text-xs mt-1">Available only after "Confirmed live" is set.</div>
