@@ -36,6 +36,16 @@ function langLabel(code: string): string {
 export function summarizeResult(result: string | null): ActivitySummary {
   if (!result) return { severity: 'warn', message: 'No outcome recorded' }
 
+  // ── Local user actions ───────────────────────────────────────────
+  // "ok:deleted "PAGE NAME" by user@example.com"
+  const deletedMatch = result.match(/^ok:deleted "(.+)" by (.+)$/)
+  if (deletedMatch) {
+    return {
+      severity: 'ok',
+      message: `Page deleted: "${deletedMatch[1]}" (by ${deletedMatch[2]})`,
+    }
+  }
+
   // ── Successful Run Link saves ────────────────────────────────────
   // "ok:saved en (waiting on: sw)"
   const savedMatch = result.match(/^ok:saved (\w+) \(waiting on: ([\w,]+)\)$/)

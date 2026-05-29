@@ -5,6 +5,7 @@
 // revalidate the affected routes so the UI reflects the new DB state.
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 type SiteCode = 'aaaf' | 'hfa'
@@ -18,16 +19,52 @@ type SiteCode = 'aaaf' | 'hfa'
  * usually what you want (the system stays reactive to Monday) but worth
  * knowing when cleaning up test items.
  *
- * Returns ok/error to the caller; the client component handles redirect
- * on success (cleaner separation than having the action throw a redirect).
+ * Also writes a `system.page_deleted` event to monday_events so the
+ * Recent activity feed on the project page reflects locally-initiated
+ * actions, not just inbound Monday webhooks. We reuse that table (instead
+ * of a parallel one) because the feed semantics are "what happened on
+ * this site, in order" — the source of the event matters less than the
+ * fact that it happened.
+ *
+ * Returns ok/error to the caller; the client component handles redirect.
  */
 export async function deletePage(input: {
   pageId: string
   siteCode: SiteCode
 }): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient()
+
+  // Look up the page name + site board id BEFORE deleting, so the audit
+  // entry can carry meaningful subject info after the row is gone.
+  const { data: page } = await supabase
+    .from('pages')
+    .select('name, site_id, sites(monday_board_id)')
+    .eq('id', input.pageId)
+    .maybeSingle<{ name: string; site_id: string; sites: { monday_board_id: string | null } | null }>()
+  const pageName = page?.name ?? '(unknown)'
+  const boardId = page?.sites?.monday_board_id ?? null
+
+  // Capture the actor's email so the feed can show "by X".
+  const { data: { user } } = await supabase.auth.getUser()
+  const actorEmail = user?.email ?? 'unknown'
+
   const { error } = await supabase.from('pages').delete().eq('id', input.pageId)
   if (error) return { ok: false, error: error.message }
+
+  // Best-effort audit log. We use the admin client because INSERT on
+  // monday_events is blocked by RLS for the authenticated role (writes
+  // are server-side only). Failure here is non-fatal — the delete itself
+  // already succeeded.
+  const admin = createAdminClient()
+  await admin.from('monday_events').insert({
+    event_type: 'system.page_deleted',
+    board_id: boardId,
+    monday_item_id: null,
+    column_id: null,
+    result: `ok:deleted "${pageName}" by ${actorEmail}`,
+    processed_at: new Date().toISOString(),
+  })
+
   revalidatePath(`/${input.siteCode}`)
   return { ok: true }
 }
