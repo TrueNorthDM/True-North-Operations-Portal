@@ -16,6 +16,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { HreflangCodeBlock } from '@/components/HreflangCodeBlock'
+import { DeletePageButton } from '@/components/DeletePageButton'
 import { savePageUrls, toggleConfirmation } from '@/app/actions'
 import { languagePalette } from '@/lib/language-colors'
 
@@ -253,6 +254,9 @@ export function PageDetail({
                 Edit
               </button>
             )}
+            {/* Delete — destructive, kept visually separate (red outline) so it
+                doesn't compete with the primary Edit action. */}
+            <DeletePageButton pageId={pageId} pageName={pageName} siteCode={siteCode} />
           </div>
         </div>
       </div>

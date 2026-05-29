@@ -5,13 +5,15 @@ import { createClient } from '@/lib/supabase/server'
 import { PageList, type PageListRow } from '@/components/PageList'
 import { renderHreflangHtml } from '@/lib/hreflang'
 import { WpLinks } from '@/components/WpLinks'
+import { ActivityLog } from '@/components/ActivityLog'
+import { getRecentActivity } from '@/lib/get-activity'
 
 export default async function HfaPagesPage() {
   const supabase = await createClient()
 
   const { data: site } = await supabase
     .from('sites')
-    .select('id, name, languages, wp_dev_url, wp_live_url')
+    .select('id, name, languages, wp_dev_url, wp_live_url, monday_board_id')
     .eq('code', 'hfa')
     .single()
 
@@ -52,6 +54,7 @@ export default async function HfaPagesPage() {
   })
 
   const done = rows.filter(r => siteLanguages.every(l => r.langStatus[l]?.confirmed)).length
+  const activity = await getRecentActivity(supabase, (site?.monday_board_id as string | null) ?? null)
 
   return (
     <div className="space-y-6">
@@ -72,6 +75,10 @@ export default async function HfaPagesPage() {
           <WpLinks dev={site?.wp_dev_url as string | null} live={site?.wp_live_url as string | null} accent="hfa" />
         </div>
       </div>
+
+      {/* Recent activity — collapsed by default; green dot when there's a
+          fresh webhook event so the user knows it's worth opening. */}
+      <ActivityLog rows={activity} />
 
       <div className="rounded-xl bg-white border border-slate-200 p-5">
         <div className="flex items-center justify-between text-sm mb-3">

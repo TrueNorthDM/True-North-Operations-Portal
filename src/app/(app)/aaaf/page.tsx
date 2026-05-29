@@ -5,13 +5,15 @@ import { createClient } from '@/lib/supabase/server'
 import { PageList, type PageListRow } from '@/components/PageList'
 import { renderHreflangHtml } from '@/lib/hreflang'
 import { WpLinks } from '@/components/WpLinks'
+import { ActivityLog } from '@/components/ActivityLog'
+import { getRecentActivity } from '@/lib/get-activity'
 
 export default async function AaafPagesPage() {
   const supabase = await createClient()
 
   const { data: site } = await supabase
     .from('sites')
-    .select('id, name, languages, wp_dev_url, wp_live_url')
+    .select('id, name, languages, wp_dev_url, wp_live_url, monday_board_id')
     .eq('code', 'aaaf')
     .single()
 
@@ -53,6 +55,7 @@ export default async function AaafPagesPage() {
   })
 
   const done = rows.filter(r => siteLanguages.every(l => r.langStatus[l]?.confirmed)).length
+  const activity = await getRecentActivity(supabase, (site?.monday_board_id as string | null) ?? null)
 
   return (
     <div className="space-y-6">
@@ -75,6 +78,10 @@ export default async function AaafPagesPage() {
           <WpLinks dev={site?.wp_dev_url as string | null} live={site?.wp_live_url as string | null} accent="aaaf" />
         </div>
       </div>
+
+      {/* Recent activity — collapsed by default. Hint with a green dot
+          when there's a fresh event so the user knows it's worth opening. */}
+      <ActivityLog rows={activity} />
 
       {/* Progress */}
       <div className="rounded-xl bg-white border border-slate-200 p-5">

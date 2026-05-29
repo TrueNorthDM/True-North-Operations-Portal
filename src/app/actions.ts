@@ -10,6 +10,29 @@ import { revalidatePath } from 'next/cache'
 type SiteCode = 'aaaf' | 'hfa'
 
 /**
+ * Deletes a page and its URLs + confirmations (FK ON DELETE CASCADE).
+ *
+ * Important caveat: this only deletes our local copy. The corresponding
+ * Monday items still exist. If you ever change their Href Link to "Run
+ * Link" again, the webhook will recreate the page from scratch — which is
+ * usually what you want (the system stays reactive to Monday) but worth
+ * knowing when cleaning up test items.
+ *
+ * Returns ok/error to the caller; the client component handles redirect
+ * on success (cleaner separation than having the action throw a redirect).
+ */
+export async function deletePage(input: {
+  pageId: string
+  siteCode: SiteCode
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('pages').delete().eq('id', input.pageId)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath(`/${input.siteCode}`)
+  return { ok: true }
+}
+
+/**
  * Updates a site's `languages` array AND flags every page that already has at
  * least one saved URL as `needs_hreflang_update = TRUE`. Empty pages are left
  * alone — they're already "incomplete" by definition.
