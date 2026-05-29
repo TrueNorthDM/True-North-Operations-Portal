@@ -110,14 +110,3 @@ export async function setStatusLabel(opts: {
   })
 }
 
-/**
- * Look up the integration's own Monday userId. Used by the webhook handler
- * to ignore events caused by our own writes (loop guard).
- */
-export async function getMyUserId(token: string): Promise<string> {
-  const data = await gql<{ me: { id: string } }>({
-    token,
-    query: '{ me { id } }',
-  })
-  return data.me.id
-}

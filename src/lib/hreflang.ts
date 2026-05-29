@@ -36,15 +36,6 @@ function resolveHreflang(languageCode: string): string | null {
   return null
 }
 
-/** Internal: track codes we've seen that we couldn't resolve. Surfaces via getUnknownLanguageWarnings(). */
-const seenUnknownCodes = new Set<string>()
-export function getUnknownLanguageWarnings(): string[] {
-  return [...seenUnknownCodes]
-}
-export function clearUnknownLanguageWarnings(): void {
-  seenUnknownCodes.clear()
-}
-
 export interface PageUrl {
   language_code: string
   url: string
@@ -83,9 +74,6 @@ export function generateHreflangTags(
     const hreflangCode = resolveHreflang(language_code)
     if (hreflangCode) {
       tags.push({ hreflang: hreflangCode, href: url })
-    } else {
-      // Surface unknown codes so the UI can warn (no silent skip).
-      seenUnknownCodes.add(language_code)
     }
   }
 
@@ -110,24 +98,3 @@ export function renderHreflangHtml(urls: PageUrl[], defaultLang = 'en'): string 
     .join('\n')
 }
 
-/**
- * Returns true if ALL languages for this page have URLs defined.
- */
-export function isPageComplete(
-  urls: PageUrl[],
-  requiredLanguages: string[],
-): boolean {
-  const defined = new Set(urls.map(u => u.language_code))
-  return requiredLanguages.every(lang => defined.has(lang))
-}
-
-/**
- * Returns the list of languages still missing a URL for this page.
- */
-export function missingLanguages(
-  urls: PageUrl[],
-  requiredLanguages: string[],
-): string[] {
-  const defined = new Set(urls.map(u => u.language_code))
-  return requiredLanguages.filter(lang => !defined.has(lang))
-}

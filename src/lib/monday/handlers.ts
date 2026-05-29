@@ -23,7 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { fetchItem, setStatusLabel } from './client'
 
-interface SiteRow {
+interface SiteQueryRow {
   id: string
   code: string
   languages: string[]
@@ -45,7 +45,7 @@ interface HandlerCtx {
 }
 
 interface PreparedEvent {
-  site: SiteRow
+  site: SiteQueryRow
   cfg: MondayColumnConfig
   pageName: string
   langCode: string
@@ -68,7 +68,7 @@ async function prepareEventContext(
     .from('sites')
     .select('id, code, languages, monday_board_id, monday_column_ids')
     .eq('monday_board_id', boardId)
-    .maybeSingle<SiteRow>()
+    .maybeSingle<SiteQueryRow>()
   if (!site) return `skipped:unknown board ${boardId}`
   if (!site.monday_column_ids) return `skipped:no column mapping for ${site.code}`
   const cfg = site.monday_column_ids
@@ -106,7 +106,7 @@ async function prepareEventContext(
   }
 }
 
-interface PageRow {
+interface PageQueryRow {
   id: string
   confirmed_done_at: string | null
 }
@@ -137,7 +137,7 @@ export async function runLinkHandler(
       { onConflict: 'site_id,name', ignoreDuplicates: false },
     )
     .select('id, confirmed_done_at')
-    .single<PageRow>()
+    .single<PageQueryRow>()
   if (pageErr || !page) return `error:upsert page (${pageErr?.message ?? 'no row'})`
 
   // Upsert page_urls for this language. Tracks the source Monday item id
@@ -208,7 +208,7 @@ interface ConfirmationRow {
   confirmed_on_live: boolean
 }
 
-interface PageWithMondayRow extends PageRow {
+interface PageQueryWithMondayRow extends PageQueryRow {
   monday_lang_status: Record<string, boolean> | null
 }
 
@@ -247,7 +247,7 @@ export async function doneHandler(
     .select('id, confirmed_done_at, monday_lang_status')
     .eq('site_id', site.id)
     .eq('name', pageName)
-    .maybeSingle<PageWithMondayRow>()
+    .maybeSingle<PageQueryWithMondayRow>()
   if (!page) return `skipped:page "${pageName}" not in DB`
 
   const nowIso = new Date().toISOString()

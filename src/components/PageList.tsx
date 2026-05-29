@@ -55,11 +55,6 @@ export interface PageListRow {
   needsUpdate?: boolean
   /** Intentional opt-out: counts as done in progress; shown faded in the list. */
   notRelevant?: boolean
-  /**
-   * Pre-rendered hreflang HTML, available only when every language has a URL.
-   * Undefined means the Copy button stays disabled — there's nothing to paste yet.
-   */
-  hreflangHtml?: string
   /** ISO timestamp: first date all langs went live. Preserved on un-toggle. */
   confirmedDoneAt?: string | null
 }
@@ -653,42 +648,6 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
 }
 
 /**
- * Per-row copy button. Disabled (greyed out) until all configured languages
- * have URLs — without a complete set, the hreflang block would be partial.
- */
-function CopyHreflangButton({ html, enabled, accentText }: { html?: string; enabled: boolean; accentText: string }) {
-  const [copied, setCopied] = useState(false)
-  if (!enabled || !html) {
-    return (
-      <Tooltip label="Enter URLs for all languages first">
-        <span
-          aria-label="Copy hreflang (disabled — incomplete URLs)"
-          className="inline-flex items-center justify-center p-1.5 text-slate-300 cursor-not-allowed"
-        >
-          <CopyIcon />
-        </span>
-      </Tooltip>
-    )
-  }
-  return (
-    <Tooltip label={copied ? 'Copied!' : 'Copy hreflang tags'}>
-      <button
-        type="button"
-        onClick={async () => {
-          await navigator.clipboard.writeText(html)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1500)
-        }}
-        aria-label="Copy hreflang tags"
-        className={`${accentText} inline-flex items-center justify-center p-1.5 rounded transition-colors hover:bg-slate-100`}
-      >
-        {copied ? <CheckIcon /> : <CopyIcon />}
-      </button>
-    </Tooltip>
-  )
-}
-
-/**
  * Lightweight CSS-only tooltip. Appears instantly on hover (no 2s delay like
  * the native `title` attribute) and matches the app's visual language. Uses
  * `group-hover` + absolute positioning — no JS, no library.
@@ -705,23 +664,6 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
         <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-800" aria-hidden="true" />
       </span>
     </span>
-  )
-}
-
-function CopyIcon() {
-  return (
-    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  )
-}
-
-function CheckIcon() {
-  return (
-    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
   )
 }
 
