@@ -1,6 +1,7 @@
 // Login page — Server Component shell, Client Component for the form.
 // Skips the sidebar/main layout (uses its own minimal layout via the route group).
 
+import { Suspense } from 'react'
 import { LoginForm } from '@/components/LoginForm'
 
 export default function LoginPage() {
@@ -15,7 +16,10 @@ export default function LoginPage() {
             Sign in with your <strong className="text-slate-700">@goodnewsadvocates.org</strong> email.
           </p>
         </div>
-        <LoginForm />
+        {/* Suspense is required because LoginForm calls useSearchParams() */}
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   )

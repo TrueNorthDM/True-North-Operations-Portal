@@ -127,8 +127,8 @@ export function SettingsForm({ site, embedded = false }: Props) {
     })
   }
 
-  // How many pages WILL be flagged on save (only those with ≥1 URL)
-  const flagCountOnSave = added.length > 0 ? site.pagesWithUrlsCount : 0
+  // How many pages WILL be flagged on save (any language change — add OR remove — requires a hreflang update)
+  const flagCountOnSave = isDirty ? site.pagesWithUrlsCount : 0
 
   return (
     <section className={embedded ? 'space-y-5' : 'rounded-xl bg-white border border-slate-200 p-6 space-y-5'}>

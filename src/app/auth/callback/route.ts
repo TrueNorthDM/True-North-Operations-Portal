@@ -12,7 +12,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
-  const next = url.searchParams.get('next') ?? '/'
+  // Sanitize `next` to prevent open-redirect attacks: only allow relative paths.
+  const rawNext = url.searchParams.get('next') ?? '/'
+  const next = rawNext.startsWith('/') ? rawNext : '/'
 
   if (code) {
     const supabase = await createClient()

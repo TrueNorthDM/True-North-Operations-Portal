@@ -12,6 +12,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { saveMondayBoardId } from '@/app/actions'
 
 interface Props {
@@ -26,6 +27,7 @@ const accentBtn = {
 }
 
 export function MondayBoardField({ siteCode, initialBoardId, accent }: Props) {
+  const router = useRouter()
   const [boardId, setBoardId] = useState(initialBoardId ?? '')
   const [saving, startSave] = useTransition()
   const [flash, setFlash] = useState<'saved' | null>(null)
@@ -43,6 +45,7 @@ export function MondayBoardField({ siteCode, initialBoardId, accent }: Props) {
       }
       setFlash('saved')
       setTimeout(() => setFlash(null), 2000)
+      router.refresh()
     })
   }
 

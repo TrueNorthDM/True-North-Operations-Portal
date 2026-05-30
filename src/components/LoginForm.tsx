@@ -8,14 +8,17 @@
  */
 
 import { useState, useTransition } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { sendMagicLink } from '@/app/auth/actions'
 import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS } from '@/lib/auth-constants'
 
 export function LoginForm() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [sending, startSend] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  // Pre-populate with any ?error= the auth callback may have set.
+  const [error, setError] = useState<string | null>(searchParams.get('error'))
 
   const trimmed = email.trim().toLowerCase()
   const looksLikeEmail = /\S+@\S+\.\S+/.test(trimmed)

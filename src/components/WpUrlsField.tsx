@@ -11,6 +11,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { saveSiteWpUrls } from '@/app/actions'
 
 interface Props {
@@ -26,6 +27,7 @@ const accentBtn = {
 }
 
 export function WpUrlsField({ siteCode, initialDev, initialLive, accent }: Props) {
+  const router = useRouter()
   const [dev, setDev] = useState(initialDev ?? '')
   const [live, setLive] = useState(initialLive ?? '')
   const [saving, startSave] = useTransition()
@@ -44,6 +46,7 @@ export function WpUrlsField({ siteCode, initialDev, initialLive, accent }: Props
       }
       setFlash('saved')
       setTimeout(() => setFlash(null), 2000)
+      router.refresh()
     })
   }
 

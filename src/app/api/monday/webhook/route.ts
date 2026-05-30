@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       .eq('id', auditId)
   }
 
-  return NextResponse.json({ ok: true, result, claims: verifiedClaims }, { status: 200 })
+  return NextResponse.json({ ok: true, result }, { status: 200 })
 }
 
 /**
