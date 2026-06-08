@@ -22,6 +22,7 @@ import {
   type StatusKind,
 } from '@/lib/boards/translation'
 import { BoardsTabs } from './BoardsTabs'
+import { downloadCsv } from '@/lib/boards/csv'
 
 const KIND_LABEL: Record<StatusKind, string> = {
   done: 'Done',
@@ -91,6 +92,18 @@ export function TranslationView() {
       .sort((a, b) => KIND_ORDER.indexOf(a.statusKind) - KIND_ORDER.indexOf(b.statusKind))
   }, [items, boardFilter, statusFilter, query])
 
+  function exportCsv() {
+    const rows = filtered.map((it): (string | number)[] => [
+      it.name,
+      it.boardShort,
+      it.stageName,
+      it.currentOwners.join('; '),
+      it.subitemProgress ? `${it.subitemProgress.done}/${it.subitemProgress.total}` : '',
+      fmtDays(businessDays(it.stageDays)),
+    ])
+    downloadCsv('translation.csv', ['Item', 'Board', 'Stage', 'Owner', 'Languages', 'In stage'], rows)
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -150,6 +163,12 @@ export function TranslationView() {
                 </option>
               ))}
             </select>
+            <button
+              onClick={exportCsv}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Export CSV
+            </button>
           </div>
 
           {/* Table */}

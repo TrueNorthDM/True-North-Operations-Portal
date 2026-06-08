@@ -24,6 +24,7 @@ import {
 import type { TargetsMap } from '@/lib/boards/types'
 import { GoalsChart } from './GoalsChart'
 import { BoardsTabs } from './BoardsTabs'
+import { downloadCsv } from '@/lib/boards/csv'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week', label: 'This week' },
@@ -32,6 +33,7 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'month', label: 'This month' },
   { value: 'quarter', label: 'Last quarter' },
   { value: 'all', label: 'Last 90d (ref.)' },
+  { value: 'custom', label: 'Custom…' },
 ]
 
 const round1 = (n: number) => Math.round(n * 10) / 10
@@ -50,6 +52,8 @@ const selectCls =
 export function GoalsView() {
   const [period, setPeriod] = useState<Period>('month')
   const [boardFilter, setBoardFilter] = useState('all')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [items, setItems] = useState<PublishedItem[] | null>(null)
   const [targets, setTargets] = useState<TargetsMap>({})
   const [loading, setLoading] = useState(true)
@@ -84,9 +88,17 @@ export function GoalsView() {
 
   const metrics = useMemo(() => {
     if (!items) return null
-    const { from, to } = getDateRange(period)
+    const { from, to } = getDateRange(period, customFrom, customTo)
     return computePublishingMetrics(items, targets, period, from, to, boardFilter)
-  }, [items, targets, period, boardFilter])
+  }, [items, targets, period, boardFilter, customFrom, customTo])
+
+  function exportCsv() {
+    if (!metrics) return
+    const rows = metrics.boards.flatMap((b) =>
+      b.langs.map((l): (string | number)[] => [b.short, l.lang, l.done, round1(l.target), l.pct]),
+    )
+    downloadCsv(`goals-${period}.csv`, ['Board', 'Language', 'Published', 'Target', 'Pct'], rows)
+  }
 
   return (
     <div className="space-y-6">
@@ -101,7 +113,14 @@ export function GoalsView() {
       <BoardsTabs />
 
       {/* Filters */}
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {period === 'custom' && (
+          <>
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className={selectCls} aria-label="From" />
+            <span className="text-slate-400">→</span>
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={selectCls} aria-label="To" />
+          </>
+        )}
         <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} className={selectCls} aria-label="Period">
           {PERIODS.map((p) => (
             <option key={p.value} value={p.value}>
@@ -117,6 +136,13 @@ export function GoalsView() {
             </option>
           ))}
         </select>
+        <button
+          onClick={exportCsv}
+          disabled={!metrics}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+        >
+          Export CSV
+        </button>
       </div>
 
       {loading && (
