@@ -47,21 +47,6 @@ const SettingsIcon = (
   </svg>
 )
 
-// Projects use brand-colored monogram avatars (24×24 squares with the first
-// letter in white). Pattern is consistent with workspace switchers in Linear,
-// Vercel, etc. Brand color carries the identity; same shape across projects
-// keeps the rail visually aligned regardless of how many projects exist.
-function Monogram({ letter, bgClass }: { letter: string; bgClass: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`w-6 h-6 shrink-0 rounded text-white font-bold text-[11px] flex items-center justify-center ${bgClass}`}
-    >
-      {letter}
-    </span>
-  )
-}
-
 interface Item {
   href: string
   label: string
@@ -81,7 +66,7 @@ const home: Item = {
 const dashboards: Item = {
   href: '/dashboards',
   label: 'Dashboards',
-  icon: BoardsIcon,
+  icon: DashboardIcon,
   match: p => p === '/dashboards' || p.startsWith('/boards-beta'),
 }
 
@@ -89,24 +74,9 @@ const dashboards: Item = {
 const projectsNav: Item = {
   href: '/projects',
   label: 'Projects',
-  icon: DashboardIcon,
+  icon: BoardsIcon,
   match: p => p === '/projects',
 }
-
-const projects: Item[] = [
-  {
-    href: '/aaaf',
-    label: 'AAAF',
-    icon: <Monogram letter="A" bgClass="bg-aaaf-primary" />,
-    match: p => p === '/aaaf' || p.startsWith('/aaaf/'),
-  },
-  {
-    href: '/hfa',
-    label: 'HFA',
-    icon: <Monogram letter="H" bgClass="bg-hfa-primary" />,
-    match: p => p === '/hfa' || p.startsWith('/hfa/'),
-  },
-]
 
 function NavLink({ item, active }: { item: Item; active: boolean }) {
   return (
@@ -133,18 +103,6 @@ export function Sidebar({ userEmail }: { userEmail?: string | null }) {
         <NavLink item={home} active={home.match(pathname)} />
         <NavLink item={dashboards} active={dashboards.match(pathname)} />
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
-      </nav>
-
-      <div className="px-3 mt-3">
-        <div className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Projects
-        </div>
-      </div>
-
-      <nav className="p-3 pt-1 space-y-1">
-        {projects.map(p => (
-          <NavLink key={p.href} item={p} active={p.match(pathname)} />
-        ))}
       </nav>
 
       <div className="mt-auto border-t border-slate-100 p-3 space-y-1">
