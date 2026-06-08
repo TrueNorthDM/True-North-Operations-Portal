@@ -15,6 +15,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // Vercel Hobby allows up to 60s. First load (1500+ items + log chunks per board)
 // can approach it; the HTTP cache covers subsequent calls.
@@ -332,10 +333,38 @@ async function processBoard(token: string, boardReq: BoardReq & { since: string 
 
 /* ---------- HTTP handler ---------- */
 
+/**
+ * Resolve the Monday API token. Primary source is the Settings page
+ * (app_settings.monday_api_token) — the same token the Monday webhook uses, so
+ * the whole portal shares one token managed in one place. Falls back to the
+ * MONDAY_TOKEN env var (handy for local dev without the service-role key).
+ */
+async function getMondayToken(): Promise<string | null> {
+  try {
+    const supabase = createAdminClient()
+    const { data } = await supabase
+      .from('app_settings')
+      .select('monday_api_token')
+      .eq('singleton_id', 1)
+      .maybeSingle<{ monday_api_token: string | null }>()
+    if (data?.monday_api_token) return data.monday_api_token
+  } catch {
+    // Admin client unavailable (e.g. no SUPABASE_SERVICE_ROLE_KEY locally) —
+    // fall through to the env-var fallback.
+  }
+  return process.env.MONDAY_TOKEN ?? null
+}
+
 export async function POST(request: Request) {
-  const MONDAY_TOKEN = process.env.MONDAY_TOKEN
+  const MONDAY_TOKEN = await getMondayToken()
   if (!MONDAY_TOKEN) {
-    return NextResponse.json({ error: 'MONDAY_TOKEN env var not configured on the server' }, { status: 500 })
+    return NextResponse.json(
+      {
+        error:
+          'Monday API token not configured — set it on the Settings page (app_settings.monday_api_token) or via the MONDAY_TOKEN env var.',
+      },
+      { status: 500 },
+    )
   }
 
   let body: { boards?: BoardReq[]; since?: string }

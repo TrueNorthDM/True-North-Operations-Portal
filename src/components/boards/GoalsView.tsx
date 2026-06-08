@@ -127,8 +127,9 @@ export function GoalsView() {
           <div className="font-semibold">Couldn&apos;t load data</div>
           <div className="mt-1 text-red-600">{error}</div>
           <div className="mt-2 text-xs text-red-500">
-            In local dev this usually means <code>MONDAY_TOKEN</code> isn&apos;t set on the server. Live data works once the
-            token is configured (Vercel env or .env.local).
+            The Monday token is read from the Settings page. Live data works automatically in production. In local dev,
+            reading it also needs <code>SUPABASE_SERVICE_ROLE_KEY</code> in .env.local (or set <code>MONDAY_TOKEN</code>{' '}
+            directly as a fallback).
           </div>
         </div>
       )}
