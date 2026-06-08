@@ -19,7 +19,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 //                        payload (see src/lib/monday/verify.ts), not a user
 //                        cookie. Without this exception, Monday's POSTs get
 //                        a 307 → /login and the webhook test fails.
-const PUBLIC_PATHS = ['/login', '/auth', '/api/monday']
+const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron']
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
