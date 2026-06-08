@@ -5,10 +5,10 @@
  * Monday (using the token from Settings) and writes them to the warm store, so
  * /api/snapshot — and therefore the dashboards — load instantly.
  *
- * Window: INGEST_DAYS of activity logs. 365 days keeps the run within the
- * Vercel Hobby 60s function limit for the two (subitem-free) Publishing boards.
- * True 2-year retention would need incremental ingestion (backfill once +
- * nightly delta merge) — a follow-up if needed.
+ * Window: a rolling INGEST_DAYS (3 years). Each nightly run does a full
+ * re-fetch and OVERWRITES the store, so it always holds exactly the last 3
+ * years — no pruning needed. maxDuration 300s (Vercel Pro) covers it
+ * comfortably (1yr took ~48s).
  */
 
 import { NextResponse } from 'next/server'
@@ -18,11 +18,11 @@ import { BOARDS, PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
 import { getBoardColumnIds, getBoardSubitemColumnIds, getBoardLogRelevantColumnIds } from '@/lib/boards/data'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 export const preferredRegion = 'iad1'
 export const dynamic = 'force-dynamic'
 
-const INGEST_DAYS = 365
+const INGEST_DAYS = 1095 // 3 years (rolling)
 
 export async function GET(request: Request) {
   // Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
