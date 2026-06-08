@@ -11,12 +11,11 @@
 import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { languageStatusPalette } from '@/lib/language-colors'
-import type { MondayStatus } from '@/lib/types/database.types'
 
 // All filter + sort state lives in URL query params, so the view is
 // shareable and the browser Back button rewinds filter changes.
 type StatusFilter = 'all' | 'incomplete' | 'done' | 'needs_update' | 'not_relevant'
-type SortKey = 'name' | 'hreflang_status' | 'all_live' | 'monday_status'
+type SortKey = 'name' | 'hreflang_status' | 'all_live'
 type SortDir = 'asc' | 'desc'
 
 const STATUS_LABEL: Record<StatusFilter, string> = {
@@ -35,22 +34,10 @@ const LANG_LABEL: Record<string, string> = {
   fr: 'French',
 }
 
-// Numeric value for the Monday status so we can sort it sensibly
-// (pending < in_progress < done).
-const MONDAY_RANK: Record<MondayStatus, number> = {
-  pending: 0,
-  in_progress: 1,
-  done: 2,
-}
-
 export interface PageListRow {
   id: string
   name: string
   langStatus: Record<string, { hasUrl: boolean; confirmed: boolean }>
-  /** Monday's truth: per-language implemented status (true = Monday says done). */
-  mondayLangStatus: Record<string, boolean>
-  /** Monday's truth: overall WP implementation status. */
-  mondayStatus: MondayStatus
   /** Flagged after a language config change — page may have stale hreflang. */
   needsUpdate?: boolean
   /** Intentional opt-out: counts as done in progress; shown faded in the list. */
@@ -114,7 +101,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     .map(s => s.trim())
     .filter(s => languages.includes(s))
   const sortKey: SortKey =
-    (['hreflang_status', 'all_live', 'monday_status'] as const).find(
+    (['hreflang_status', 'all_live'] as const).find(
       v => v === searchParams.get('sort'),
     ) ?? 'name'
   const sortDir: SortDir = searchParams.get('dir') === 'desc' ? 'desc' : 'asc'
@@ -202,8 +189,6 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
         else if (tx === null) cmp = 1
         else if (ty === null) cmp = -1
         else cmp = tx - ty
-      } else if (sortKey === 'monday_status') {
-        cmp = MONDAY_RANK[x.mondayStatus] - MONDAY_RANK[y.mondayStatus]
       }
       if (cmp === 0) cmp = collator.compare(x.name, y.name) // stable tiebreaker
       else if (sortDir === 'desc') cmp = -cmp
@@ -423,18 +408,14 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
               <col className="w-44" />
               <col className="w-32" />
               <col className="w-28" />
-              <col className="w-44" />
-              <col className="w-32" />
               <col className="w-12" />
             </colgroup>
             <thead>
-              {/* Two-row header: group labels on top (Hreflang / Monday),
-                  individual column headers underneath. Vertical dividers make
-                  the two "sources of truth" visually obvious. */}
+              {/* Two-row header: group label on top (Hreflang system),
+                  individual column headers underneath. */}
               <tr className="border-b border-slate-100 bg-slate-50 text-left text-[10px] uppercase tracking-wider text-slate-500">
                 <th rowSpan={2} className="px-5 pt-3 pb-2 font-semibold text-slate-600 text-xs normal-case tracking-normal align-bottom">Page name</th>
                 <th colSpan={3} className="px-5 pt-2 pb-1 font-semibold border-l border-slate-200 text-center">Hreflang (system)</th>
-                <th colSpan={2} className="px-5 pt-2 pb-1 font-semibold border-l border-slate-200 text-center">Monday (WordPress)</th>
                 <th rowSpan={2} className="px-3 align-bottom" />
               </tr>
               <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-500">
@@ -451,13 +432,6 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                   dir={sortDir}
                   onClick={() => toggleSort('all_live')}
                 />
-                <th className="px-5 pb-3 font-medium border-l border-slate-200">Langs</th>
-                <SortHeader
-                  label="Status"
-                  active={sortKey === 'monday_status'}
-                  dir={sortDir}
-                  onClick={() => toggleSort('monday_status')}
-                />
               </tr>
             </thead>
             <tbody>
@@ -472,7 +446,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                   <Fragment key={groupKey}>
                     <tr className="bg-slate-50/80 border-y border-slate-200">
                       <th
-                        colSpan={7}
+                        colSpan={5}
                         scope="colgroup"
                         className="px-3 py-2 text-left"
                       >
@@ -591,33 +565,6 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       {formatDoneDate(r.confirmedDoneAt) ?? <span className="text-slate-300">—</span>}
                     </td>
 
-                    {/* MONDAY — languages (grey until Monday marks done) */}
-                    <td className="px-5 py-4 border-l border-slate-100">
-                      <div className="flex gap-1">
-                        {languages.map(lang => {
-                          const mondayDone = r.mondayLangStatus[lang] === true
-                          const { bg, text } = languageStatusPalette(lang, mondayDone)
-                          const title = mondayDone
-                            ? `${lang.toUpperCase()}: implemented in WordPress (Monday)`
-                            : `${lang.toUpperCase()}: pending in Monday`
-                          return (
-                            <span
-                              key={lang}
-                              title={title}
-                              className={`inline-flex items-center justify-center w-7 h-6 rounded text-xs font-semibold uppercase ${bg} ${text}`}
-                            >
-                              {lang}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    </td>
-
-                    {/* MONDAY — implementation status */}
-                    <td className="px-5 py-4">
-                      <MondayStatusBadge status={r.mondayStatus} />
-                    </td>
-
                     {/* ACTIONS — View only. Copy lives on the detail card. */}
                     <td className="px-3 py-4 text-right">
                       <Tooltip label="View page">
@@ -663,20 +610,6 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
         {label}
         <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-800" aria-hidden="true" />
       </span>
-    </span>
-  )
-}
-
-function MondayStatusBadge({ status }: { status: MondayStatus }) {
-  const map = {
-    pending: { label: 'Pending', cls: 'bg-slate-100 text-slate-500' },
-    in_progress: { label: 'In progress', cls: 'bg-yellow-100 text-yellow-700' },
-    done: { label: '✓ Live', cls: 'bg-green-100 text-green-700' },
-  } as const
-  const { label, cls } = map[status]
-  return (
-    <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${cls}`}>
-      {label}
     </span>
   )
 }

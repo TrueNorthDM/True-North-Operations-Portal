@@ -28,8 +28,6 @@ export type SiteRow = {
   created_at: string
 }
 
-export type MondayStatus = 'pending' | 'in_progress' | 'done'
-
 export type PageRow = {
   id: string
   site_id: string
@@ -40,10 +38,6 @@ export type PageRow = {
   needs_hreflang_update: boolean
   /** Intentional opt-out: pages with not_relevant=true count as done in progress. */
   not_relevant: boolean
-  /** Overall Monday implementation status (will be updated by Monday API once integrated). */
-  monday_status: MondayStatus
-  /** Per-language Monday status — keys are language codes, values are booleans (true = done in Monday). */
-  monday_lang_status: Record<string, boolean>
   /** ISO timestamp set the first time all languages were confirmed live. Preserved on un-toggle. */
   confirmed_done_at: string | null
   created_at: string

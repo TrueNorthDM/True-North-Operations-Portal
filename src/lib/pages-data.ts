@@ -44,7 +44,7 @@ export async function getSitePageData(siteCode: 'aaaf' | 'hfa'): Promise<SitePag
 
   const { data: pages } = await supabase
     .from('pages')
-    .select('id, name, needs_hreflang_update, monday_status, monday_lang_status, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
+    .select('id, name, needs_hreflang_update, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
     .eq('site_id', site?.id ?? '')
 
   const rows: PageListRow[] = (pages ?? []).map(p => {
@@ -63,8 +63,6 @@ export async function getSitePageData(siteCode: 'aaaf' | 'hfa'): Promise<SitePag
       id: p.id,
       name: p.name,
       langStatus,
-      mondayLangStatus: (p.monday_lang_status ?? {}) as Record<string, boolean>,
-      mondayStatus: (p.monday_status ?? 'pending') as 'pending' | 'in_progress' | 'done',
       needsUpdate: p.needs_hreflang_update,
       confirmedDoneAt: p.confirmed_done_at,
       notRelevant: p.not_relevant ?? false,

@@ -35,16 +35,12 @@ interface Props {
   accent: 'aaaf' | 'hfa'
   /** True when the site's language config changed after this page was last addressed. */
   needsUpdate?: boolean
-  /** Monday's truth: overall implementation status (synced from Monday API). */
-  mondayStatus?: 'pending' | 'in_progress' | 'done'
-  /** Monday's truth: per-language implemented status. */
-  mondayLangStatus?: Record<string, boolean>
   /** ISO timestamp set the first time all languages were confirmed live. Preserved on un-toggle. */
   confirmedDoneAt?: string | null
   /** Marks the page as intentionally out of scope. Counts as done for progress. */
   notRelevant?: boolean
   /**
-   * Optional slot rendered at the bottom of the page (after Monday tracking).
+   * Optional slot rendered at the bottom of the page.
    * Used by HFA to mount the SEO metadata editor without coupling PageDetail
    * to HFA-specific concerns.
    */
@@ -73,8 +69,6 @@ export function PageDetail({
   confirmations,
   accent,
   needsUpdate = false,
-  mondayStatus = 'pending',
-  mondayLangStatus = {},
   confirmedDoneAt = null,
   notRelevant = false,
   extraSection = null,
@@ -186,17 +180,6 @@ export function PageDetail({
                       Done {doneDateLabel}
                     </span>
                   )}
-                  {/* Monday (WordPress) overall status — read-only, syncs from Monday API */}
-                  <span
-                    title="WordPress implementation status (synced from Monday)"
-                    className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      mondayStatus === 'done' ? 'bg-green-100 text-green-700'
-                        : mondayStatus === 'in_progress' ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    {mondayStatus === 'done' ? '✓ Live in WP' : mondayStatus === 'in_progress' ? 'WP in progress' : 'WP pending'}
-                  </span>
                 </>
               )
             })()}
@@ -394,53 +377,6 @@ export function PageDetail({
             })}
           </tbody>
         </table>
-      </section>
-
-      {/* 4. Monday tracking — read-only mirror of Monday.com's truth.
-          When the Monday API integration lands, this section reflects the
-          actual implementation state per language in WordPress. */}
-      <section className="rounded-xl bg-slate-50/60 border border-slate-200 p-5 space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h2 className="font-semibold text-slate-800">Monday tracking</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Read-only — syncs from Monday.com when the page reaches the implementation step.
-            </p>
-          </div>
-          {/* Overall status */}
-          <span
-            className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${
-              mondayStatus === 'done' ? 'bg-green-100 text-green-700'
-                : mondayStatus === 'in_progress' ? 'bg-yellow-100 text-yellow-700'
-                : 'bg-slate-100 text-slate-500'
-            }`}
-          >
-            {mondayStatus === 'done' ? '✓ Implemented in WP' : mondayStatus === 'in_progress' ? 'In progress' : 'Pending'}
-          </span>
-        </div>
-        <div className="rounded-lg bg-white border border-slate-200 p-3">
-          <div className="text-xs text-slate-500 mb-2 font-medium">Per-language implementation:</div>
-          <div className="flex flex-wrap gap-2">
-            {languages.map(lang => {
-              const langC = languagePalette(lang)
-              const done = mondayLangStatus[lang] === true
-              return (
-                <span
-                  key={lang}
-                  title={done ? `${lang.toUpperCase()}: implemented (Monday)` : `${lang.toUpperCase()}: pending in Monday`}
-                  className={`inline-flex items-center gap-1.5 text-xs font-semibold uppercase rounded-full px-2.5 py-1 border ${
-                    done
-                      ? `${langC.bg} ${langC.text} ${langC.border}`
-                      : 'bg-slate-100 text-slate-400 border-slate-200'
-                  }`}
-                >
-                  {done && <span className="text-xs leading-none">✓</span>}
-                  {lang}
-                </span>
-              )
-            })}
-          </div>
-        </div>
       </section>
 
       {/* Site-specific bottom slot (e.g. HFA SEO metadata editor). */}

@@ -17,7 +17,7 @@ export default async function AaafPageDetail({ params }: { params: Promise<{ id:
 
   const { data: page } = await supabase
     .from('pages')
-    .select('id, name, needs_hreflang_update, monday_status, monday_lang_status, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
+    .select('id, name, needs_hreflang_update, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
     .eq('id', id)
     .maybeSingle()
 
@@ -33,8 +33,6 @@ export default async function AaafPageDetail({ params }: { params: Promise<{ id:
       confirmations={page.confirmations ?? []}
       accent="aaaf"
       needsUpdate={page.needs_hreflang_update}
-      mondayStatus={page.monday_status as 'pending' | 'in_progress' | 'done'}
-      mondayLangStatus={page.monday_lang_status as Record<string, boolean>}
       confirmedDoneAt={page.confirmed_done_at}
       notRelevant={page.not_relevant ?? false}
     />

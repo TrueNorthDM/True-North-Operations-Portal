@@ -208,28 +208,18 @@ interface ConfirmationRow {
   confirmed_on_live: boolean
 }
 
-interface PageQueryWithMondayRow extends PageQueryRow {
-  monday_lang_status: Record<string, boolean> | null
-}
-
 /**
  * Done handler. Step 12 of the workflow.
  *
- * Updates two parallel sets of data:
+ * Updates the HREFLANG SYSTEM side only:
  *
- *  - `confirmations` (HREFLANG SYSTEM side). What our app considers
- *    "verified live" for the hreflang tag. Drives the "All Live" badge
- *    and date stamp.
+ *  - `confirmations` — what our app considers "verified live" for the
+ *    hreflang tag. Drives the "All Live" badge.
+ *  - `pages.confirmed_done_at` — stamped the first time ALL languages are
+ *    confirmed live (preserved on un-toggle).
  *
- *  - `pages.monday_lang_status` + `pages.monday_status` (MONDAY/WP side).
- *    Mirror of Monday's truth — what Monday says is implemented. Drives
- *    the MONDAY (WORDPRESS) column block in the list.
- *
- * They're both updated on the same event because in the new workflow
- * "Monday Done" IS the source of truth — there's no longer a separate
- * SEO 2 manual confirmation step. If you ever want to decouple them
- * (e.g. require human verification before HREFLANG side flips), split
- * this into two handlers.
+ * Note: the Monday/WordPress implementation mirror (monday_status /
+ * monday_lang_status) was removed — this handler no longer tracks it.
  */
 export async function doneHandler(
   boardId: string,
@@ -244,10 +234,10 @@ export async function doneHandler(
   // earlier via Run Link). If missing, log + skip.
   const { data: page } = await ctx.supabase
     .from('pages')
-    .select('id, confirmed_done_at, monday_lang_status')
+    .select('id, confirmed_done_at')
     .eq('site_id', site.id)
     .eq('name', pageName)
-    .maybeSingle<PageQueryWithMondayRow>()
+    .maybeSingle<PageQueryRow>()
   if (!page) return `skipped:page "${pageName}" not in DB`
 
   const nowIso = new Date().toISOString()
@@ -266,20 +256,7 @@ export async function doneHandler(
     )
   if (confErr) return `error:upsert confirmation (${confErr.message})`
 
-  // ── MONDAY (WP) side: mirror the per-language done flag on pages ────
-  const existingMondayLang = page.monday_lang_status ?? {}
-  const updatedMondayLang = { ...existingMondayLang, [langCode]: true }
-  // Recompute overall Monday status. 'done' once all configured langs
-  // are true; 'in_progress' if at least one but not all; 'pending' if
-  // none (we should never re-enter pending here, but the logic is safe).
-  const langs = site.languages
-  const trueCount = langs.filter(l => updatedMondayLang[l] === true).length
-  const overall: 'pending' | 'in_progress' | 'done' =
-    trueCount === langs.length ? 'done'
-      : trueCount === 0          ? 'pending'
-      :                            'in_progress'
-
-  // ── HREFLANG side: completeness check + auto-stamp confirmed_done_at ─
+  // ── Completeness check + auto-stamp confirmed_done_at ────────────────
   const { data: confs } = await ctx.supabase
     .from('confirmations')
     .select('language_code, confirmed_on_live')
@@ -289,25 +266,19 @@ export async function doneHandler(
   )
   const allLive = site.languages.every(l => liveSet.has(l))
 
-  // One UPDATE to set monday_lang_status + monday_status, and optionally
-  // confirmed_done_at if this is the first time the page is fully live.
-  // Single statement = atomic; safer than two updates if a retry interleaves.
-  const pageUpdate: Record<string, unknown> = {
-    monday_lang_status: updatedMondayLang,
-    monday_status: overall,
-  }
+  // Only touch the page row when this is the first time it's fully live,
+  // to stamp confirmed_done_at. Otherwise there's nothing to update.
   if (allLive && !page.confirmed_done_at) {
-    pageUpdate.confirmed_done_at = nowIso
+    const { error: updErr } = await ctx.supabase
+      .from('pages')
+      .update({ confirmed_done_at: nowIso })
+      .eq('id', page.id)
+    if (updErr) return `error:update page (${updErr.message})`
   }
-  const { error: updErr } = await ctx.supabase
-    .from('pages')
-    .update(pageUpdate)
-    .eq('id', page.id)
-  if (updErr) return `error:update page (${updErr.message})`
 
   revalidatePath(`/${site.code}`)
   revalidatePath(`/${site.code}/${page.id}`)
 
   const stamped = allLive && !page.confirmed_done_at ? ' [stamped All Live]' : ''
-  return `ok:confirmed ${langCode} (monday=${overall}, all-live=${allLive})${stamped}`
+  return `ok:confirmed ${langCode} (all-live=${allLive})${stamped}`
 }
