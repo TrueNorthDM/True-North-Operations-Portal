@@ -11,14 +11,14 @@ export default function DashboardsPage() {
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <NavCard
-          href="/boards-beta"
-          title="Boards Review"
-          description="Goals, Translation, and Targets — the native dashboard."
+          href="/boards.html"
+          title="Publishing Goals"
+          description="Weekly publishing pace vs target — the live dashboard."
         />
         <NavCard
-          href="/boards.html"
-          title="Boards Review — Legacy"
-          description="The original COE dashboard. Kept until cutover."
+          href="/boards-beta"
+          title="Workload — IN CONSTRUCTION"
+          description="Native rewrite (Goals, Translation, Targets). Work in progress."
         />
       </div>
     </div>
