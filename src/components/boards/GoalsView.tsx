@@ -23,6 +23,7 @@ import {
 } from '@/lib/boards/publishing'
 import type { TargetsMap } from '@/lib/boards/types'
 import { GoalsChart } from './GoalsChart'
+import { BoardsTabs } from './BoardsTabs'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week', label: 'This week' },
@@ -89,31 +90,33 @@ export function GoalsView() {
 
   return (
     <div className="space-y-6">
-      {/* Header + filters */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Boards Review · Goals</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Weekly publishing pace vs target <span className="text-slate-400">(beta — native rewrite)</span>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} className={selectCls} aria-label="Period">
-            {PERIODS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <select value={boardFilter} onChange={(e) => setBoardFilter(e.target.value)} className={selectCls} aria-label="Board">
-            <option value="all">All boards</option>
-            {PUBLISHING_BOARD_IDS.map((bid) => (
-              <option key={bid} value={bid}>
-                {BOARDS[bid].short}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Boards Review</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Weekly publishing pace vs target <span className="text-slate-400">(beta — native rewrite)</span>
+        </p>
+      </div>
+
+      <BoardsTabs />
+
+      {/* Filters */}
+      <div className="flex flex-wrap justify-end gap-2">
+        <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} className={selectCls} aria-label="Period">
+          {PERIODS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <select value={boardFilter} onChange={(e) => setBoardFilter(e.target.value)} className={selectCls} aria-label="Board">
+          <option value="all">All boards</option>
+          {PUBLISHING_BOARD_IDS.map((bid) => (
+            <option key={bid} value={bid}>
+              {BOARDS[bid].short}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading && (
