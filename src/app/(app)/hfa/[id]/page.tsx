@@ -1,6 +1,5 @@
 // HFA — page detail (Server Component)
 // Fetches one page with its URLs + confirmations, renders the shared editor.
-// HFA additionally tracks GSC indexing, so showGsc is true.
 
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -18,7 +17,7 @@ export default async function HfaPageDetail({ params }: { params: Promise<{ id: 
 
   const { data: page } = await supabase
     .from('pages')
-    .select('id, name, needs_hreflang_update, monday_status, monday_lang_status, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live, indexed_in_gsc)')
+    .select('id, name, needs_hreflang_update, monday_status, monday_lang_status, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
     .eq('id', id)
     .maybeSingle()
 
@@ -33,7 +32,6 @@ export default async function HfaPageDetail({ params }: { params: Promise<{ id: 
       savedUrls={page.page_urls ?? []}
       confirmations={page.confirmations ?? []}
       accent="hfa"
-      showGsc={true}
       needsUpdate={page.needs_hreflang_update}
       mondayStatus={page.monday_status as 'pending' | 'in_progress' | 'done'}
       mondayLangStatus={page.monday_lang_status as Record<string, boolean>}

@@ -66,8 +66,6 @@ export type ConfirmationRow = {
   language_code: LanguageCode
   confirmed_on_live: boolean
   confirmed_at: string | null
-  indexed_in_gsc: boolean
-  gsc_confirmed_at: string | null
   created_at: string
   updated_at: string
 }

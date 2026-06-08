@@ -10,7 +10,6 @@
  *
  * Enforce-order rules (mirrored from the server actions so the UI matches):
  *   - 'confirmed live' is disabled until a URL is saved for that language
- *   - 'indexed in GSC'  is disabled until 'confirmed live' is set
  */
 
 import { useState, useTransition } from 'react'
@@ -24,7 +23,6 @@ import { languagePalette } from '@/lib/language-colors'
 interface ConfirmationState {
   language_code: string
   confirmed_on_live: boolean
-  indexed_in_gsc: boolean
 }
 
 interface Props {
@@ -35,7 +33,6 @@ interface Props {
   savedUrls: { language_code: string; url: string }[]
   confirmations: ConfirmationState[]
   accent: 'aaaf' | 'hfa'
-  showGsc: boolean
   /** True when the site's language config changed after this page was last addressed. */
   needsUpdate?: boolean
   /** Monday's truth: overall implementation status (synced from Monday API). */
@@ -75,7 +72,6 @@ export function PageDetail({
   savedUrls,
   confirmations,
   accent,
-  showGsc,
   needsUpdate = false,
   mondayStatus = 'pending',
   mondayLangStatus = {},
@@ -138,7 +134,7 @@ export function PageDetail({
 
   function handleToggle(
     languageCode: string,
-    field: 'confirmed_on_live' | 'indexed_in_gsc',
+    field: 'confirmed_on_live',
     value: boolean,
   ) {
     setError(null)
@@ -171,8 +167,6 @@ export function PageDetail({
             {(() => {
               const liveCount = languages.filter(l => confirmFor(l)?.confirmed_on_live).length
               const liveDone = liveCount === languages.length
-              const gscCount = languages.filter(l => confirmFor(l)?.indexed_in_gsc).length
-              const gscDone = gscCount === languages.length
               return (
                 <>
                   <span
@@ -190,17 +184,6 @@ export function PageDetail({
                       className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200"
                     >
                       Done {doneDateLabel}
-                    </span>
-                  )}
-                  {showGsc && (
-                    <span
-                      className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${
-                        gscDone ? 'bg-green-100 text-green-700'
-                          : gscCount > 0 ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {gscDone ? '✓ Indexed in GSC' : `${gscCount}/${languages.length} indexed in GSC`}
                     </span>
                   )}
                   {/* Monday (WordPress) overall status — read-only, syncs from Monday API */}
@@ -379,16 +362,13 @@ export function PageDetail({
             <tr className="text-left text-slate-500 border-b border-slate-100">
               <th className="py-2 font-medium">Language</th>
               <th className="py-2 font-medium">Confirmed live</th>
-              {showGsc && <th className="py-2 font-medium">Indexed in GSC</th>}
             </tr>
           </thead>
           <tbody>
             {languages.map(lang => {
               const c = confirmFor(lang)
               const liveChecked = c?.confirmed_on_live ?? false
-              const gscChecked = c?.indexed_in_gsc ?? false
               const canConfirmLive = hasUrlFor(lang)
-              const canConfirmGsc = liveChecked
               const langC = languagePalette(lang)
               return (
                 <tr key={lang} className="border-b border-slate-100 last:border-0">
@@ -409,22 +389,6 @@ export function PageDetail({
                       )}
                     </label>
                   </td>
-                  {showGsc && (
-                    <td className="py-3">
-                      <label className="inline-flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={gscChecked}
-                          disabled={!isEditing || saving || (!gscChecked && !canConfirmGsc)}
-                          onChange={e => handleToggle(lang, 'indexed_in_gsc', e.target.checked)}
-                          className="h-4 w-4 rounded disabled:opacity-40"
-                        />
-                        {isEditing && !canConfirmGsc && !gscChecked && (
-                          <span className="text-xs text-slate-400">confirm live first</span>
-                        )}
-                      </label>
-                    </td>
-                  )}
                 </tr>
               )
             })}

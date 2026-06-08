@@ -316,33 +316,24 @@ export async function savePageUrls(input: {
 }
 
 /**
- * Toggles a single confirmation flag for one language of a page.
- *
- * `field` is either:
- *   - 'confirmed_on_live'  → the hreflang tags are live on WordPress
- *   - 'indexed_in_gsc'     → Google Search Console shows the page indexed (HFA only)
+ * Toggles the 'confirmed_on_live' flag for one language of a page —
+ * meaning the hreflang tags are verified live on WordPress.
  *
  * AGREED BUSINESS RULES (decided with the user):
  *   1. ENFORCE ORDER: 'confirmed_on_live' may only be set TRUE if a URL row
  *      already exists for this (page, language). You can't confirm tags that
  *      were never generated.
- *   2. GSC AFTER LIVE: 'indexed_in_gsc' may only be set TRUE if 'confirmed_on_live'
- *      is already TRUE for this language. A page must be live before Google indexes it.
- *   3. TIMESTAMPS: when a flag goes TRUE, stamp its *_at column with NOW();
- *      when it goes FALSE, clear that column back to NULL.
- *   4. Setting 'confirmed_on_live' back to FALSE should NOT silently leave a
- *      dangling 'indexed_in_gsc = true'. (Decide how to handle — see TODO.)
+ *   2. TIMESTAMPS: when the flag goes TRUE, stamp confirmed_at with NOW();
+ *      when it goes FALSE, clear it back to NULL.
  *
  * The confirmations table is keyed by (page_id, language_code). Use upsert with
- * onConflict: 'page_id,language_code'. Helper queries you'll likely need:
- *   - check a URL exists:  supabase.from('page_urls').select('id').eq('page_id', …).eq('language_code', …).maybeSingle()
- *   - read current row:    supabase.from('confirmations').select('*').eq('page_id', …).eq('language_code', …).maybeSingle()
+ * onConflict: 'page_id,language_code'.
  */
 export async function toggleConfirmation(input: {
   pageId: string
   siteCode: SiteCode
   languageCode: string
-  field: 'confirmed_on_live' | 'indexed_in_gsc'
+  field: 'confirmed_on_live'
   value: boolean
 }): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient()
@@ -359,36 +350,13 @@ export async function toggleConfirmation(input: {
     if (!urlRow) return { ok: false, error: 'Enter the URL first.' }
   }
 
-  // Rule 2 — GSC AFTER LIVE: can't mark indexed in GSC unless live=true already.
-  if (field === 'indexed_in_gsc' && value === true) {
-    const { data: confRow } = await supabase
-      .from('confirmations')
-      .select('confirmed_on_live')
-      .eq('page_id', pageId)
-      .eq('language_code', languageCode as LanguageCode)
-      .maybeSingle()
-    if (!confRow?.confirmed_on_live) return { ok: false, error: "Confirm it's live first." }
-  }
-
-  // Build upsert payload (Rules 3 + 4)
+  // Build upsert payload (Rule 2 — timestamps).
   const nowIso = new Date().toISOString()
   const payload: Record<string, unknown> = {
     page_id: pageId,
     language_code: languageCode,
-  }
-
-  if (field === 'confirmed_on_live') {
-    payload.confirmed_on_live = value
-    payload.confirmed_at = value ? nowIso : null
-    // Rule 4 — CASCADE: un-checking live also clears GSC so the row never
-    // ends up in the impossible "indexed in Google but not live" state.
-    if (value === false) {
-      payload.indexed_in_gsc = false
-      payload.gsc_confirmed_at = null
-    }
-  } else {
-    payload.indexed_in_gsc = value
-    payload.gsc_confirmed_at = value ? nowIso : null
+    confirmed_on_live: value,
+    confirmed_at: value ? nowIso : null,
   }
 
   const { error } = await supabase

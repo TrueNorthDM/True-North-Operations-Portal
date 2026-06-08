@@ -324,21 +324,6 @@ export default async function DashboardPage() {
             </div>
           </li>
         </ul>
-
-        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mt-5 mb-2">HFA only</div>
-        <ul className="space-y-2 text-sm text-slate-600">
-          <li className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-hfa-soft text-hfa-secondary flex items-center justify-center text-[10px] font-bold">H</span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">manual</span>
-                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">System</span>
-                <span className="font-medium text-slate-800">Once Google indexes the page, tick "Indexed in GSC"</span>
-              </div>
-              <div className="text-slate-500 text-xs mt-1">Available only after "Confirmed live" is set.</div>
-            </div>
-          </li>
-        </ul>
       </div>
 
       {/* Resources — links from the original Sheets Instructions tab */}
