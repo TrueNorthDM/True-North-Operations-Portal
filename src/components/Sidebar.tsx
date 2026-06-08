@@ -81,6 +81,16 @@ const boardsReview: Item = {
   match: () => false,
 }
 
+// Native React rewrite (Phase B), served at /boards-beta. Shown alongside the
+// legacy boards.html during the transition so the two can be compared; the
+// legacy link + file are removed at cutover (B6) once this is verified.
+const boardsReviewBeta: Item = {
+  href: '/boards-beta',
+  label: 'Boards Review (beta)',
+  icon: BoardsIcon,
+  match: p => p === '/boards-beta' || p.startsWith('/boards-beta/'),
+}
+
 const projects: Item[] = [
   {
     href: '/aaaf',
@@ -120,6 +130,7 @@ export function Sidebar({ userEmail }: { userEmail?: string | null }) {
       <nav className="p-3 space-y-1">
         <NavLink item={dashboard} active={dashboard.match(pathname)} />
         <NavLink item={boardsReview} active={boardsReview.match(pathname)} />
+        <NavLink item={boardsReviewBeta} active={boardsReviewBeta.match(pathname)} />
       </nav>
 
       <div className="px-3 mt-3">
