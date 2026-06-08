@@ -12,7 +12,15 @@ import { signOut } from '@/app/auth/actions'
 
 const iconClass = 'w-5 h-5 shrink-0'
 
-// Dashboard — system-level destination, uses an outline icon (Lucide-style).
+// Home — house outline.
+const HomeIcon = (
+  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <path d="M3 10.5 12 3l9 7.5" />
+    <path d="M5 9.5V21h14V9.5" />
+  </svg>
+)
+
+// Grid icon — used for the Projects overview.
 const DashboardIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <rect x="3" y="3" width="7" height="9" rx="1" />
@@ -61,34 +69,28 @@ interface Item {
   match: (path: string) => boolean
 }
 
-const dashboard: Item = {
+const home: Item = {
   href: '/',
-  label: 'Dashboard',
-  icon: DashboardIcon,
+  label: 'Home',
+  icon: HomeIcon,
   match: p => p === '/',
 }
 
-// Boards Review — the editorial pipeline + publishing-goals dashboard (absorbed
-// from the COE Dashboard). For now it's served as a self-contained page at
-// /boards.html (still behind the portal auth gate), so this is a plain full-page
-// navigation out of the React shell. match() never matches a React route, so it
-// doesn't highlight — clicking it leaves the SPA entirely. Phase B rewrites it
-// into native portal routes.
-const boardsReview: Item = {
-  href: '/boards.html',
-  label: 'Boards Review',
+// Dashboards landing → the Boards Review dashboards. Also highlights while on
+// any /boards-beta route, since those are reached from this section.
+const dashboards: Item = {
+  href: '/dashboards',
+  label: 'Dashboards',
   icon: BoardsIcon,
-  match: () => false,
+  match: p => p === '/dashboards' || p.startsWith('/boards-beta'),
 }
 
-// Native React rewrite (Phase B), served at /boards-beta. Shown alongside the
-// legacy boards.html during the transition so the two can be compared; the
-// legacy link + file are removed at cutover (B6) once this is verified.
-const boardsReviewBeta: Item = {
-  href: '/boards-beta',
-  label: 'Boards Review (beta)',
-  icon: BoardsIcon,
-  match: p => p === '/boards-beta' || p.startsWith('/boards-beta/'),
+// Projects overview (AAAF/HFA hreflang management) — the former root dashboard.
+const projectsNav: Item = {
+  href: '/projects',
+  label: 'Projects',
+  icon: DashboardIcon,
+  match: p => p === '/projects',
 }
 
 const projects: Item[] = [
@@ -128,9 +130,9 @@ export function Sidebar({ userEmail }: { userEmail?: string | null }) {
   return (
     <aside className="hidden md:flex flex-col w-44 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] overflow-y-auto">
       <nav className="p-3 space-y-1">
-        <NavLink item={dashboard} active={dashboard.match(pathname)} />
-        <NavLink item={boardsReview} active={boardsReview.match(pathname)} />
-        <NavLink item={boardsReviewBeta} active={boardsReviewBeta.match(pathname)} />
+        <NavLink item={home} active={home.match(pathname)} />
+        <NavLink item={dashboards} active={dashboards.match(pathname)} />
+        <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
       </nav>
 
       <div className="px-3 mt-3">
