@@ -2529,13 +2529,10 @@
             <p>Publishing pace versus target for the AAAF and HFA Publishing boards over the selected timeframe — tracked from the Publishing column in Monday.</p>
           </div>
           <div class="hero-controls">
-            <button class="calendar-btn" id="refreshBtn" title="Refresh data">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10"/>
-                <polyline points="1 20 1 14 7 14"/>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-              </svg>
-            </button>
+            <!-- Os dados são atualizados automaticamente pelo cron de ingestão.
+                 Em vez de um botão de refresh manual (que só re-lia o mesmo store),
+                 mostramos quão fresco o store está. -->
+            <span id="lastUpdated" title="Last data update" style="font-size:12px;color:var(--text-dim);white-space:nowrap;align-self:center;">Updated —</span>
             <!-- Botão Admin: abre modal de login se deslogado, abre admin panel se logado -->
             <button class="admin-btn" id="adminBtn" title="Admin">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4625,6 +4622,22 @@
 
     /* Novo caminho de produção. Faz 1 POST pra /api/snapshot e enriquece
        localmente. */
+    /* Atualiza o indicador "Updated X ago" a partir do ingested_at do store. */
+    function updateLastUpdated(iso) {
+      const el = document.getElementById('lastUpdated');
+      if (!el || !iso) return;
+      const then = new Date(iso).getTime();
+      if (isNaN(then)) return;
+      const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+      let rel;
+      if (mins < 1) rel = 'just now';
+      else if (mins < 60) rel = mins + ' min ago';
+      else if (mins < 1440) rel = Math.round(mins / 60) + 'h ago';
+      else rel = Math.round(mins / 1440) + 'd ago';
+      el.textContent = 'Updated ' + rel;
+      el.title = new Date(iso).toLocaleString();
+    }
+
     async function loadAllViaSnapshot(since) {
       // Carrega só os boards da view ATIVA. No launch (só Goals visível),
       // isso significa apenas os 2 boards de Publishing — pulamos os 2 de
@@ -4657,6 +4670,7 @@
       if (data?._meta?.elapsedMs != null) {
         console.log(`%c[snapshot] server processed in ${data._meta.elapsedMs}ms`, 'color:#44AD85;font-weight:700;');
       }
+      if (data?._meta?.ingestedAt) updateLastUpdated(data._meta.ingestedAt);
 
       // Enriquece cada board localmente. Operação pura (sem I/O) — rápido.
       const enriched = [];
@@ -6714,10 +6728,8 @@
       loadAll();
     });
 
-    $('refreshBtn').addEventListener('click', () => {
-      if (!STORE.token) STORE.token = sanitizeToken($('apiToken').value);
-      loadAll();
-    });
+    // (Botão de refresh removido — os dados se atualizam pelo cron; o indicador
+    //  "Updated X ago" no hero mostra o frescor do store.)
 
     // Botão "Copy audit" do Publishing pace card
     // Estratégia em 3 camadas (cada uma é fallback da anterior):

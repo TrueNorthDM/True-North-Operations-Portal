@@ -45,14 +45,19 @@ export async function POST(request: Request) {
   const boardIds = boards.map((b) => b.id)
   const stored: Record<string, BoardSnapshot> = {}
   let storeError: string | null = null
+  let ingestedAt: string | null = null
 
   // 1) Read what the nightly cron has stored.
   try {
     const supabase = readClient()
-    const { data, error } = await supabase.from('monday_snapshot').select('board_id, data').in('board_id', boardIds)
+    const { data, error } = await supabase
+      .from('monday_snapshot')
+      .select('board_id, data, ingested_at')
+      .in('board_id', boardIds)
     if (error) storeError = error.message
-    for (const row of (data ?? []) as { board_id: string; data: BoardSnapshot }[]) {
+    for (const row of (data ?? []) as { board_id: string; data: BoardSnapshot; ingested_at: string }[]) {
       stored[row.board_id] = row.data
+      if (!ingestedAt || row.ingested_at > ingestedAt) ingestedAt = row.ingested_at
     }
   } catch (e) {
     storeError = e instanceof Error ? e.message : 'store read failed'
@@ -82,7 +87,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       boards: results,
-      _meta: { elapsedMs: elapsed, region, fromStore: results.length - liveCount, live: liveCount, storeError },
+      _meta: { elapsedMs: elapsed, region, ingestedAt, fromStore: results.length - liveCount, live: liveCount, storeError },
     },
     {
       headers: {
