@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 const TABS = [
   { href: '/boards-beta', label: 'Goals' },
   { href: '/boards-beta/translation', label: 'Translation' },
+  { href: '/boards-beta/targets', label: 'Targets' },
 ]
 
 export function BoardsTabs() {

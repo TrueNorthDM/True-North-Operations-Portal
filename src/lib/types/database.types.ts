@@ -64,6 +64,41 @@ export type ConfirmationRow = {
   updated_at: string
 }
 
+// ── Boards Review tables (merged from the COE Dashboard) ─────
+
+export type Role = 'admin' | 'viewer'
+
+export type ProfileRow = {
+  id: string
+  email: string | null
+  full_name: string | null
+  role: Role
+  created_at: string
+  updated_at: string
+}
+
+export type PublishingTargetRow = {
+  id: string
+  board_id: string
+  board_short: string | null
+  language: string
+  target_value: number
+  period_type: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AuditLogRow = {
+  id: string
+  user_email: string | null
+  action: 'insert' | 'update' | 'delete'
+  entity_id: string | null
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+  created_at: string
+}
+
 // ── Composite types (joins used in the UI) ───────────────────
 
 export type PageWithUrls = PageRow & {
@@ -139,6 +174,28 @@ export type Database = {
         Row: { id: string; board_id: string; received_at: string; monday_item_id: string | null; result: string | null }
         Insert: { id?: string; board_id: string; received_at?: string; monday_item_id?: string | null; result?: string | null }
         Update: { result?: string | null }
+        Relationships: []
+      }
+      profiles: {
+        Row: ProfileRow
+        Insert: Omit<ProfileRow, 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string }
+        Update: Partial<Omit<ProfileRow, 'id' | 'created_at' | 'updated_at'>>
+        Relationships: []
+      }
+      publishing_targets: {
+        Row: PublishingTargetRow
+        Insert: Omit<PublishingTargetRow, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Omit<PublishingTargetRow, 'id' | 'created_at'>>
+        Relationships: []
+      }
+      audit_log: {
+        Row: AuditLogRow
+        Insert: Omit<AuditLogRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<AuditLogRow, 'id' | 'created_at'>>
         Relationships: []
       }
     }
