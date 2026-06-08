@@ -106,7 +106,8 @@ export function GoalsView() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Boards Review</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Weekly publishing pace vs target <span className="text-slate-400">(beta — native rewrite)</span>
+          Publishing pace vs target, over the selected timeframe{' '}
+          <span className="text-slate-400">(beta — native rewrite)</span>
         </p>
       </div>
 
