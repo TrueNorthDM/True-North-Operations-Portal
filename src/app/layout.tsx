@@ -10,8 +10,8 @@ const openSans = Open_Sans({ variable: '--font-open-sans', subsets: ['latin'] })
 const bebas = Bebas_Neue({ variable: '--font-bebas-neue', subsets: ['latin'], weight: ['400'] })
 
 export const metadata: Metadata = {
-  title: 'True North — Href Links',
-  description: 'Manage and apply hreflang tags for AAAF and HFA WordPress sites',
+  title: 'True North — Operations Portal',
+  description: 'Operations portal for AAAF and HFA — editorial pipeline, publishing goals, and hreflang workflows',
 }
 
 /**

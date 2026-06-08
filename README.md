@@ -1,10 +1,16 @@
-# tnhref
+# True North Operations Portal
 
-Internal hreflang tracker for AAAF and HFA WordPress sites.
+Unified operations portal for the **AAAF** and **HFA** sites. Brings together,
+in one Next.js app:
 
-Replaces two legacy Google Sheets workflows with a Next.js 16 app:
-auth (magic link, domain-restricted), Supabase + RLS, per-site language
-config, hreflang generation, Monday status mirror, per-page detail editor.
+- **Boards Review** — editorial translation pipeline + weekly publishing goals
+  (Monday.com integration; absorbed from the former COE Dashboard).
+- **Href Links** — hreflang tag tracker for the WordPress sites (replaces two
+  legacy Google Sheets workflows).
+
+Auth (magic link, domain-restricted with a named admin exception), Supabase +
+RLS, per-site language config, hreflang generation, Monday status mirror,
+per-page detail editor.
 
 ## Stack
 
@@ -18,6 +24,12 @@ config, hreflang generation, Monday status mirror, per-page detail editor.
 
 ```bash
 npm install
-cp .env.local.example .env.local   # fill Supabase URL + anon key
-npm run dev
+cp .env.local.example .env.local   # fill Supabase URL + anon key (+ Monday token)
+npm run dev                        # http://localhost:3000
 ```
+
+## Access
+
+- Anyone with a **@goodnewsadvocates.org** email can sign in.
+- **arnaldo.oliveira@me.com** is allowed as a named exception and is auto-promoted to **admin**.
+- Roles: `admin` (can edit publishing targets) / `viewer` (read-only).

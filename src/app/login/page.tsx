@@ -10,7 +10,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-slate-900">
-            True North <span className="text-slate-400 font-medium">/ Href Links</span>
+            True North <span className="text-slate-400 font-medium">/ Operations Portal</span>
           </h1>
           <p className="text-sm text-slate-500 mt-2">
             Sign in with your <strong className="text-slate-700">@goodnewsadvocates.org</strong> email.

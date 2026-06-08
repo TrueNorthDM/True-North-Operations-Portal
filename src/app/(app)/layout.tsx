@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </span>
           <span className="text-slate-300">/</span>
           <span className="text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors">
-            Href Links
+            Operations Portal
           </span>
         </a>
       </header>
