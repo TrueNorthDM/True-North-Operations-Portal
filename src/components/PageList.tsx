@@ -272,8 +272,18 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={`Search ${rows.length} pages by name…`}
-            className={`w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 ${a.ring}`}
+            className={`w-full pl-9 pr-9 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 ${a.ring}`}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors text-base leading-none"
+            >
+              ×
+            </button>
+          )}
         </div>
 
         {/* Status dropdown — single select. Button shows the active value
