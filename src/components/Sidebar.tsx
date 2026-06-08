@@ -22,6 +22,15 @@ const DashboardIcon = (
   </svg>
 )
 
+// Boards Review — kanban board outline (split into columns). Distinct from the
+// dashboard grid icon so the two top-level views read differently at a glance.
+const BoardsIcon = (
+  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 3v18M15 3v18" />
+  </svg>
+)
+
 // Settings — gear icon
 const SettingsIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -57,6 +66,19 @@ const dashboard: Item = {
   label: 'Dashboard',
   icon: DashboardIcon,
   match: p => p === '/',
+}
+
+// Boards Review — the editorial pipeline + publishing-goals dashboard (absorbed
+// from the COE Dashboard). For now it's served as a self-contained page at
+// /boards.html (still behind the portal auth gate), so this is a plain full-page
+// navigation out of the React shell. match() never matches a React route, so it
+// doesn't highlight — clicking it leaves the SPA entirely. Phase B rewrites it
+// into native portal routes.
+const boardsReview: Item = {
+  href: '/boards.html',
+  label: 'Boards Review',
+  icon: BoardsIcon,
+  match: () => false,
 }
 
 const projects: Item[] = [
@@ -97,6 +119,7 @@ export function Sidebar({ userEmail }: { userEmail?: string | null }) {
     <aside className="hidden md:flex flex-col w-44 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] overflow-y-auto">
       <nav className="p-3 space-y-1">
         <NavLink item={dashboard} active={dashboard.match(pathname)} />
+        <NavLink item={boardsReview} active={boardsReview.match(pathname)} />
       </nav>
 
       <div className="px-3 mt-3">
