@@ -22,7 +22,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} ${openSans.variable} ${bebas.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-slate-50">
+      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) inject
+          attributes like data-gr-ext-installed into <body> before React
+          hydrates, causing a harmless attribute mismatch. This suppresses the
+          warning for <body>'s own attributes only — it does NOT mask real
+          hydration bugs deeper in the tree. */}
+      <body className="min-h-full flex flex-col bg-slate-50" suppressHydrationWarning>
         {children}
       </body>
     </html>
