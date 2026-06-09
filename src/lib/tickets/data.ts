@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-015.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-016.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -94,8 +94,19 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-004',
     type: 'feature',
-    title: 'Admin → People & Teams editor (F2)',
-    description: 'Manage people (invite/deactivate, link account), teams (members + project grants). The team detail is the core "who can access what" screen.',
+    title: 'Admin → People editor (F2a)',
+    description: 'Add/edit/remove people; set title, manager (reporting line) and status. Edits revalidate the home org chart. Unblocks fixing the seeded reporting lines (TN-014).',
+    status: 'done',
+    priority: 'medium',
+    area: 'RBAC',
+    createdAt: '2026-06-09',
+    doneAt: '2026-06-09',
+  },
+  {
+    code: 'TN-015',
+    type: 'feature',
+    title: 'Admin → Teams editor (F2b): members + project grants',
+    description: 'Team list + detail (members add/remove, project access with role). The core "who can access what" screen. Writes team_members + grants.',
     status: 'backlog',
     priority: 'medium',
     area: 'RBAC',
