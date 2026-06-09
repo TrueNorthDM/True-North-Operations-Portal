@@ -31,12 +31,7 @@ export default async function AaafPagesPage() {
 
       <div className="rounded-xl bg-white border border-slate-200 p-5">
         <div className="flex items-center justify-between text-sm mb-3">
-          <div className="flex items-center gap-3">
-            <span className="font-medium text-slate-700">Overall progress</span>
-            <a href="/aaaf/audit" className="text-xs font-medium text-aaaf-primary hover:text-aaaf-secondary">
-              Run Link Audit →
-            </a>
-          </div>
+          <span className="font-medium text-slate-700">Overall progress</span>
           <span className="text-slate-500">{done} / {rows.length} pages complete</span>
         </div>
         <div className="w-full bg-slate-100 rounded-full h-2">

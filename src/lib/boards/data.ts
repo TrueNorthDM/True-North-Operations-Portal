@@ -31,7 +31,6 @@ export function getBoardColumnIds(bid: string): string[] {
   if (b.publishedCol) set.add(b.publishedCol)
   if (b.publisherCol) set.add(b.publisherCol)
   if (b.dateCol) set.add(b.dateCol)
-  if (b.hrefLinkCol) set.add(b.hrefLinkCol) // Href Link status — feeds the Run Link audit
   return [...set]
 }
 
