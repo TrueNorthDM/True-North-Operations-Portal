@@ -5,10 +5,12 @@
 import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
 import { createClient } from '@/lib/supabase/server'
+import { isCurrentUserAdmin } from '@/lib/auth/role'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const isAdmin = await isCurrentUserAdmin()
 
   return (
     <>
@@ -27,7 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar + main */}
       <div className="flex flex-1">
-        <Sidebar userEmail={user?.email ?? null} />
+        <Sidebar userEmail={user?.email ?? null} isAdmin={isAdmin} />
         <MainContent>{children}</MainContent>
       </div>
     </>

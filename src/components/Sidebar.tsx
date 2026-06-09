@@ -39,6 +39,21 @@ const BoardsIcon = (
   </svg>
 )
 
+// Tools — wrench outline (capabilities that run inside a project).
+const ToolsIcon = (
+  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  </svg>
+)
+
+// Admin — shield with check (access control: people, teams, permissions).
+const AdminIcon = (
+  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+)
+
 // Settings — gear icon
 const SettingsIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -78,6 +93,23 @@ const projectsNav: Item = {
   match: p => p === '/projects',
 }
 
+// Tools — capabilities that run inside a project (Href Link Management, …).
+const toolsNav: Item = {
+  href: '/tools',
+  label: 'Tools',
+  icon: ToolsIcon,
+  match: p => p === '/tools' || p.startsWith('/tools/'),
+}
+
+// Admin — people, teams, and access control. Only shown to portal admins; the
+// /admin route also guards server-side, so hiding the link is convenience only.
+const adminNav: Item = {
+  href: '/admin',
+  label: 'Admin',
+  icon: AdminIcon,
+  match: p => p === '/admin' || p.startsWith('/admin/'),
+}
+
 function NavLink({ item, active }: { item: Item; active: boolean }) {
   return (
     <a
@@ -94,7 +126,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
   )
 }
 
-export function Sidebar({ userEmail }: { userEmail?: string | null }) {
+export function Sidebar({ userEmail, isAdmin = false }: { userEmail?: string | null; isAdmin?: boolean }) {
   const pathname = usePathname()
 
   return (
@@ -103,9 +135,13 @@ export function Sidebar({ userEmail }: { userEmail?: string | null }) {
         <NavLink item={home} active={home.match(pathname)} />
         <NavLink item={dashboards} active={dashboards.match(pathname)} />
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
+        <NavLink item={toolsNav} active={toolsNav.match(pathname)} />
       </nav>
 
       <div className="mt-auto border-t border-slate-100 p-3 space-y-1">
+        {/* Admin (management) is kept separate from the content pillars above,
+            and only rendered for admins. */}
+        {isAdmin && <NavLink item={adminNav} active={adminNav.match(pathname)} />}
         <NavLink
           item={{
             href: '/settings',
