@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-019.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-020.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -193,22 +193,33 @@ export const TICKETS: Ticket[] = [
     type: 'task',
     title: 'Verify /boards-beta visually (B1–B5)',
     description: 'The React rewrite of Boards Review (Goals, Translation, Targets) passed tsc/eslint but was never run. Verify on the live deploy before any cutover.',
-    status: 'in_progress',
+    status: 'done',
     priority: 'medium',
     area: 'Dashboards',
     createdAt: '2026-06-09',
-    notes: 'Code review passed (data path sound). Awaiting Arnaldo’s visual check on the deploy — Goals/Translation/Targets render + numbers match boards.html.',
+    doneAt: '2026-06-09',
+    notes: 'Verified: all 3 tabs render with real data (Goals/Translation/Targets). But the desired Boards Review functionality is under review — see TN-019.',
+  },
+  {
+    code: 'TN-019',
+    type: 'idea',
+    title: 'Rethink what Boards Review should do',
+    description: 'The current /boards-beta (Goals/Translation/Targets, ported from the COE) renders correctly but isn’t the functionality Arnaldo wants. Revisit with him: what should Boards Review actually show/do? Decide before any cutover.',
+    status: 'backlog',
+    priority: 'medium',
+    area: 'Dashboards',
+    createdAt: '2026-06-09',
   },
   {
     code: 'TN-010',
     type: 'task',
     title: 'B6 cutover: retire boards.html, /boards-beta becomes Boards Review',
-    description: 'Remove the legacy static dashboard once the React version is verified; only do the destructive step after TN-009.',
+    description: 'Remove the legacy static dashboard and promote the React version. Destructive — only after the Boards Review direction is settled.',
     status: 'blocked',
     priority: 'low',
     area: 'Dashboards',
     createdAt: '2026-06-09',
-    notes: 'Blocked by TN-009 (visual verification).',
+    notes: 'On hold: /boards-beta renders, but its purpose is being rethought (TN-019). Don’t cut over until that’s decided.',
   },
 
   {
