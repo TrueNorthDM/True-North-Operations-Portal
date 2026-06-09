@@ -107,10 +107,11 @@ export const TICKETS: Ticket[] = [
     type: 'feature',
     title: 'Admin → Teams editor (F2b): members + project grants',
     description: 'Team list + detail (members add/remove, project access with role). The core "who can access what" screen. Writes team_members + grants.',
-    status: 'backlog',
+    status: 'done',
     priority: 'medium',
     area: 'RBAC',
     createdAt: '2026-06-09',
+    doneAt: '2026-06-09',
   },
   {
     code: 'TN-005',

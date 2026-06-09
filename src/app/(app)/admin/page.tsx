@@ -15,6 +15,7 @@ const SECTIONS: { title: string; description: string; href?: string }[] = [
   {
     title: 'Teams',
     description: 'Group people into teams and grant each team access to projects, with a role (Admin / Member / Viewer).',
+    href: '/admin/teams',
   },
   {
     title: 'Access',
