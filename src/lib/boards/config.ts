@@ -52,6 +52,14 @@ export interface BoardConfig {
   publishedLabel?: string
   /** Groups excluded from the "Not Published" KPI (already published / out of scope). */
   excludedGroups?: string[]
+  /**
+   * Monday "Href Link(s)" status column (Run Link → Apply Link → Done). Not a
+   * dashboard stage — it drives the hreflang workflow and the Run Link audit.
+   * Ingested into the snapshot so the audit can reconcile Monday's live status
+   * against the system's pages without a separate Monday call. Mirror of
+   * sites.monday_column_ids.hrefLinksStatus (see migration 002).
+   */
+  hrefLinkCol?: string
 }
 
 /**
@@ -128,6 +136,7 @@ export const BOARDS: Record<string, BoardConfig> = {
     publishedCol: 'status31',
     publishedLabel: 'Done',
     excludedGroups: ['Published', 'French - Unpublished'],
+    hrefLinkCol: 'color_mkr2bbjs', // HFA Href Link(s) — Run/Apply/Done (migration 002)
   },
   '462251934': {
     name: 'AAAF · Publishing',
@@ -147,6 +156,7 @@ export const BOARDS: Record<string, BoardConfig> = {
     publishedCol: 'status31',
     publishedLabel: 'Done',
     excludedGroups: ['Published'],
+    hrefLinkCol: 'color_mm1z7ve4', // AAAF Href Link(s) — Run/Apply/Done (migration 002)
   },
 }
 
