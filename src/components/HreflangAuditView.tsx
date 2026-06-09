@@ -126,7 +126,7 @@ export function HreflangAuditView({ audit, siteCode }: { audit: HreflangAudit; s
                               {l.confirmed ? '✓' : l.hasUrl ? '•' : '–'}
                             </span>
                             <span className={`text-[10px] leading-tight ${l.mondayHref ? 'text-slate-500' : 'text-slate-300'}`}>
-                              {l.mondayHref ?? '—'}
+                              {l.mondayHref === null ? '—' : l.mondayHref === '' ? '(vazio)' : l.mondayHref}
                             </span>
                           </div>
                         </td>

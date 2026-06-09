@@ -131,7 +131,7 @@ function classifyPage(
       name,
       status: 'stale_desync',
       langs,
-      note: `Tem URL no sistema mas o Monday saiu do Run Link: ${stale.map((l) => `${l.code.toUpperCase()}→"${l.mondayHref}"`).join(', ')}.`,
+      note: `Tem URL no sistema mas o Monday saiu do Run Link: ${stale.map((l) => `${l.code.toUpperCase()}→${l.mondayHref ? `"${l.mondayHref}"` : '(vazio)'}`).join(', ')}.`,
     }
   }
 
@@ -243,7 +243,10 @@ export async function getHreflangAudit(siteCode: 'aaaf' | 'hfa'): Promise<Hrefla
       code,
       hasUrl: sys?.hasUrl.has(code) ?? false,
       confirmed: sys?.confirmed.has(code) ?? false,
-      mondayHref: mon?.has(code) ? mon.get(code)! || null : null,
+      // null = no Monday item for this lang; '' = item exists but Href Link is
+      // blank (cleared/reverted). The distinction matters: blank-but-present is
+      // a desync (item exists), absent is an orphan (item gone). Don't collapse.
+      mondayHref: mon?.has(code) ? mon.get(code)! : null,
     }))
 
     rows.push(
