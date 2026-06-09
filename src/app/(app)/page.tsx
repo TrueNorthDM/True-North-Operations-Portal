@@ -1,13 +1,12 @@
 // Home — the portal's launcher (top-level pillars) plus the company org chart,
-// which lives permanently on the main page. Admin pillar shows only for admins.
+// which lives permanently on the main page. Admin is reachable from the sidebar.
 
 import { NavCard } from '@/components/NavCard'
 import { OrgChart } from '@/components/OrgChart'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { getOrgChart } from '@/lib/org/data'
 
 export default async function HomePage() {
-  const [isAdmin, org] = await Promise.all([isCurrentUserAdmin(), getOrgChart()])
+  const org = await getOrgChart()
 
   return (
     <div className="space-y-8">
@@ -32,13 +31,6 @@ export default async function HomePage() {
           title="Tools"
           description="Capabilities you use inside a project, like Href Link Management."
         />
-        {isAdmin && (
-          <NavCard
-            href="/admin"
-            title="Admin"
-            description="People, teams, and who can access what."
-          />
-        )}
       </div>
 
       {/* Company org chart — permanent fixture of the home page. */}

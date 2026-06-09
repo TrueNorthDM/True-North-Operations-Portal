@@ -1,41 +1,37 @@
 /**
- * OrgChart — read-only company org chart, auto-laid-out from the reporting
- * hierarchy (lib/org/data.ts) using the pure-CSS .org-tree (globals.css).
- * Server-rendered; no interactivity, no diagram library.
+ * OrgChart — read-only company org chart as an indented vertical tree (like a
+ * file tree), built from the reporting hierarchy (lib/org/data.ts). Grows
+ * downward, barely sideways, so the whole structure fits in one view without
+ * heavy horizontal scrolling. Server-rendered; no diagram library.
  */
 
 import type { OrgPerson } from '@/lib/org/data'
 
-function PersonCard({ p }: { p: OrgPerson }) {
+function TeamChips({ teams }: { teams: OrgPerson['teams'] }) {
+  if (teams.length === 0) return null
   return (
-    <div className="inline-block min-w-[150px] max-w-[200px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-sm">
-      <div className="text-sm font-semibold text-slate-800 leading-tight">{p.name}</div>
-      {p.title && <div className="mt-0.5 text-[11px] text-slate-500 leading-tight">{p.title}</div>}
-      {p.teams.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {p.teams.map(t => (
-            <span
-              key={t.name}
-              className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-500"
-              title={t.name}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.color ?? '#cbd5e1' }} />
-              {t.name}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      {teams.map(t => (
+        <span key={t.name} className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400" title={t.name}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.color ?? '#cbd5e1' }} />
+          {t.name}
+        </span>
+      ))}
+    </>
   )
 }
 
-function OrgNode({ node }: { node: OrgPerson }) {
+function Node({ node }: { node: OrgPerson }) {
   return (
     <li>
-      <PersonCard p={node} />
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5">
+        <span className="text-sm font-semibold text-slate-800">{node.name}</span>
+        {node.title && <span className="text-xs text-slate-500">{node.title}</span>}
+        <TeamChips teams={node.teams} />
+      </div>
       {node.children.length > 0 && (
-        <ul>
-          {node.children.map(c => <OrgNode key={c.id} node={c} />)}
+        <ul className="ml-2 border-l border-slate-200 pl-4">
+          {node.children.map(c => <Node key={c.id} node={c} />)}
         </ul>
       )}
     </li>
@@ -51,10 +47,8 @@ export function OrgChart({ roots }: { roots: OrgPerson[] }) {
     )
   }
   return (
-    <div className="org-tree overflow-x-auto pb-2">
-      <ul>
-        {roots.map(r => <OrgNode key={r.id} node={r} />)}
-      </ul>
-    </div>
+    <ul className="overflow-x-auto">
+      {roots.map(r => <Node key={r.id} node={r} />)}
+    </ul>
   )
 }
