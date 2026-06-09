@@ -23,11 +23,20 @@ export function MainContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const bg = bgForPath(pathname)
 
+  // Framed pages (a legacy dashboard inside an iframe) need to fill the whole
+  // content area edge-to-edge, so they opt out of the centered max-width box and
+  // get a full-height wrapper instead. `<main>` is a stretched flex item with a
+  // definite height, so `h-full` here resolves — no viewport math needed, the
+  // iframe just fills via flex-1.
+  const fullBleed = pathname === '/dashboards/publishing'
+
   return (
     <main className={`flex-1 transition-colors ${bg}`}>
-      <div className="px-6 py-8 max-w-7xl w-full mx-auto">
-        {children}
-      </div>
+      {fullBleed ? (
+        <div className="h-full p-3">{children}</div>
+      ) : (
+        <div className="px-6 py-8 max-w-7xl w-full mx-auto">{children}</div>
+      )}
     </main>
   )
 }
