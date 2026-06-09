@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-017.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-019.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -144,6 +144,26 @@ export const TICKETS: Ticket[] = [
     status: 'backlog',
     priority: 'medium',
     area: 'RBAC',
+    createdAt: '2026-06-09',
+  },
+  {
+    code: 'TN-017',
+    type: 'feature',
+    title: 'Admin → System manual (auto-maintained)',
+    description: 'An admin page documenting the whole system: what each page does, who can access it (RBAC), how pages interact, and how the system + each page is fed by Monday. Code-based and kept up to date by Claude as features change — like the tracker.',
+    status: 'backlog',
+    priority: 'medium',
+    area: 'Docs',
+    createdAt: '2026-06-09',
+  },
+  {
+    code: 'TN-018',
+    type: 'feature',
+    title: 'Admin → Test page (auto-maintained)',
+    description: 'An admin page listing how to test everything we build — manual steps + checks per feature, updated automatically as we ship, so the whole system can be verified end-to-end.',
+    status: 'backlog',
+    priority: 'medium',
+    area: 'QA',
     createdAt: '2026-06-09',
   },
   {
