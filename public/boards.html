@@ -2534,12 +2534,8 @@
                  mostramos quão fresco o store está. -->
             <span id="lastUpdated" title="Last data update" style="font-size:12px;color:var(--text-dim);white-space:nowrap;align-self:center;">Updated —</span>
             <!-- Botão Admin: abre modal de login se deslogado, abre admin panel se logado -->
-            <button class="admin-btn" id="adminBtn" title="Admin">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <span id="adminBtnLabel">Admin</span>
-            </button>
+            <!-- Admin movido pra página Settings do portal (Publishing Targets). -->
+
             <div class="period-select-wrap">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
@@ -2566,7 +2562,10 @@
              A aba Translations está oculta nesta fase do lançamento.
              Pra re-habilitar: remove `style="display:none"` do botão Translations
              e troca `activeView` default de volta pra 'translation' em STORE. -->
-        <div class="view-tabs" id="viewTabs">
+        <!-- Tab-bar oculta: só havia a aba "Goals" (Translation já estava oculta),
+             então um tab-bar de uma aba só é inútil. Os botões ficam no DOM pra
+             não quebrar os handlers de view; a view segue em 'publishing'. -->
+        <div class="view-tabs" id="viewTabs" style="display:none;">
           <button class="view-tab translation" data-view="translation" style="display:none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 8l6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
@@ -2575,11 +2574,6 @@
             Translations
           </button>
           <button class="view-tab publishing active" data-view="publishing">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <circle cx="12" cy="12" r="6"/>
-              <circle cx="12" cy="12" r="2"/>
-            </svg>
             Goals
           </button>
         </div>
@@ -7069,7 +7063,7 @@
     });
 
     /* ---------- AUTH EVENT WIRING ---------- */
-    $('adminBtn').addEventListener('click', openAdminFlow);
+    // (Botão Admin removido — admin agora vive na página Settings do portal.)
     $auth('loginCloseBtn').addEventListener('click', closeLoginModal);
     $auth('loginBackdrop').addEventListener('click', (e) => {
       if (e.target === $auth('loginBackdrop')) closeLoginModal();
