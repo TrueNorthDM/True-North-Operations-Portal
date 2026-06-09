@@ -60,11 +60,12 @@ export const TICKETS: Ticket[] = [
     title: 'Apply migration 014 (People & Teams directory + access grants) in Supabase',
     description:
       'F1 schema: people, teams, team_members, grants + RLS. Run 014_directory_and_access.sql in the portal Supabase SQL Editor. Foundation for the org chart and RBAC.',
-    status: 'in_progress',
+    status: 'done',
     priority: 'high',
     area: 'RBAC',
     createdAt: '2026-06-09',
-    notes: 'Waiting on Arnaldo to run the SQL — apply 014 then 015 (seed) together.',
+    doneAt: '2026-06-09',
+    notes: 'Applied by Arnaldo in Supabase (014 + 015 seed).',
   },
   {
     code: 'TN-002',
