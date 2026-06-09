@@ -4,9 +4,13 @@ import { getSitePageData } from '@/lib/pages-data'
 import { PageList } from '@/components/PageList'
 import { WpLinks } from '@/components/WpLinks'
 import { ActivityLog } from '@/components/ActivityLog'
+import { isCurrentUserAdmin } from '@/lib/auth/role'
 
 export default async function AaafPagesPage() {
-  const { site, siteLanguages, rows, done, activity } = await getSitePageData('aaaf')
+  const [{ site, siteLanguages, rows, done, activity }, isAdmin] = await Promise.all([
+    getSitePageData('aaaf'),
+    isCurrentUserAdmin(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -23,7 +27,14 @@ export default async function AaafPagesPage() {
             </h1>
             <p className="text-slate-500 text-sm mt-1">askanadventistfriend.com</p>
           </div>
-          <WpLinks dev={site?.wp_dev_url as string | null} live={site?.wp_live_url as string | null} accent="aaaf" />
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <a href="/admin/access" className="text-xs font-medium text-slate-500 hover:text-slate-800 whitespace-nowrap">
+                Manage access
+              </a>
+            )}
+            <WpLinks dev={site?.wp_dev_url as string | null} live={site?.wp_live_url as string | null} accent="aaaf" />
+          </div>
         </div>
       </div>
 

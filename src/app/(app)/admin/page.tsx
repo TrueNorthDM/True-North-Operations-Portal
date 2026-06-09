@@ -20,6 +20,7 @@ const SECTIONS: { title: string; description: string; href?: string }[] = [
   {
     title: 'Access',
     description: 'A bird’s-eye matrix of which teams can reach which projects, for review and auditing.',
+    href: '/admin/access',
   },
 ]
 
