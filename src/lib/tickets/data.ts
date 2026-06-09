@@ -193,10 +193,11 @@ export const TICKETS: Ticket[] = [
     type: 'task',
     title: 'Verify /boards-beta visually (B1–B5)',
     description: 'The React rewrite of Boards Review (Goals, Translation, Targets) passed tsc/eslint but was never run. Verify on the live deploy before any cutover.',
-    status: 'backlog',
+    status: 'in_progress',
     priority: 'medium',
     area: 'Dashboards',
     createdAt: '2026-06-09',
+    notes: 'Code review passed (data path sound). Awaiting Arnaldo’s visual check on the deploy — Goals/Translation/Targets render + numbers match boards.html.',
   },
   {
     code: 'TN-010',
