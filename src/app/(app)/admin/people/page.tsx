@@ -19,15 +19,25 @@ export default async function PeoplePage() {
   if (!(await isCurrentUserAdmin())) redirect('/')
   const supabase = await createClient()
 
-  const [{ data: pData }, { data: tData }, { data: mData }] = await Promise.all([
+  const [{ data: pData }, { data: tData }, { data: mData }, { data: prData }] = await Promise.all([
     supabase.from('people').select('id, full_name, title, manager_id, status, profile_id'),
     supabase.from('teams').select('id, name'),
     supabase.from('team_members').select('team_id, person_id'),
+    supabase.from('profiles').select('id, email'),
   ])
 
   const people = (pData ?? []) as unknown as PersonRow[]
   const teams = (tData ?? []) as unknown as { id: string; name: string }[]
   const members = (mData ?? []) as unknown as { team_id: string; person_id: string }[]
+  const profiles = (prData ?? []) as unknown as { id: string; email: string | null }[]
+
+  // Accounts: which profile each person is linked to, and which are still free.
+  const emailByProfile = new Map(profiles.map(pr => [pr.id, pr.email ?? '(no email)']))
+  const linkedProfileIds = new Set(people.map(p => p.profile_id).filter((x): x is string => !!x))
+  const availableAccounts = profiles
+    .filter(pr => !linkedProfileIds.has(pr.id))
+    .map(pr => ({ id: pr.id, email: pr.email ?? '(no email)' }))
+    .sort((a, b) => a.email.localeCompare(b.email))
 
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
   const teamNameById = new Map(teams.map(t => [t.id, t.name]))
@@ -49,9 +59,10 @@ export default async function PeoplePage() {
       managerName: p.manager_id ? nameById.get(p.manager_id) ?? null : null,
       status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
       teams: teamsByPerson.get(p.id) ?? [],
-      hasAccount: p.profile_id != null,
+      accountId: p.profile_id,
+      accountEmail: p.profile_id ? emailByProfile.get(p.profile_id) ?? null : null,
     }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
 
-  return <PeopleManager people={rows} />
+  return <PeopleManager people={rows} availableAccounts={availableAccounts} />
 }

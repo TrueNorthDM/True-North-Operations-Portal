@@ -28,6 +28,14 @@ export interface PersonInput {
   title?: string | null
   manager_id?: string | null
   status?: 'active' | 'inactive'
+  /** Portal account (profiles.id) to link, or null to unlink. Omit to leave as-is. */
+  profile_id?: string | null
+}
+
+/** Friendlier message for the one-account-per-person unique index. */
+function mapError(message: string): string {
+  if (/people_profile_id_unique/.test(message)) return 'That portal account is already linked to another person.'
+  return message
 }
 
 export async function createPerson(input: PersonInput) {
@@ -41,8 +49,9 @@ export async function createPerson(input: PersonInput) {
     title: input.title?.trim() || null,
     manager_id: input.manager_id || null,
     status: input.status || 'active',
+    profile_id: input.profile_id || null,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(mapError(error.message))
   revalidate()
 }
 
@@ -52,17 +61,17 @@ export async function updatePerson(id: string, input: PersonInput) {
   if (!name) throw new Error('Name is required')
   if (input.manager_id === id) throw new Error('A person cannot report to themselves')
   const supabase = await createClient()
+  const patch: Record<string, unknown> = {
+    full_name: name,
+    title: input.title?.trim() || null,
+    manager_id: input.manager_id || null,
+    status: input.status || 'active',
+  }
+  // Only touch the account link when the caller passed it.
+  if (input.profile_id !== undefined) patch.profile_id = input.profile_id || null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
-    .from('people')
-    .update({
-      full_name: name,
-      title: input.title?.trim() || null,
-      manager_id: input.manager_id || null,
-      status: input.status || 'active',
-    })
-    .eq('id', id)
-  if (error) throw new Error(error.message)
+  const { error } = await (supabase as any).from('people').update(patch).eq('id', id)
+  if (error) throw new Error(mapError(error.message))
   revalidate()
 }
 

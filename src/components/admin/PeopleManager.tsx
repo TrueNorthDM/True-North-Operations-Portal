@@ -18,12 +18,15 @@ export interface PersonView {
   managerName: string | null
   status: 'active' | 'inactive'
   teams: string[]
-  hasAccount: boolean
+  accountId: string | null
+  accountEmail: string | null
 }
+
+interface Account { id: string; email: string }
 
 type EditTarget = PersonView | 'new' | null
 
-export function PeopleManager({ people }: { people: PersonView[] }) {
+export function PeopleManager({ people, availableAccounts }: { people: PersonView[]; availableAccounts: Account[] }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [search, setSearch] = useState('')
@@ -35,7 +38,7 @@ export function PeopleManager({ people }: { people: PersonView[] }) {
     const q = search.toLowerCase().trim()
     if (!q) return people
     return people.filter(p =>
-      `${p.full_name} ${p.title ?? ''} ${p.managerName ?? ''} ${p.teams.join(' ')}`.toLowerCase().includes(q),
+      `${p.full_name} ${p.title ?? ''} ${p.managerName ?? ''} ${p.teams.join(' ')} ${p.accountEmail ?? ''}`.toLowerCase().includes(q),
     )
   }, [people, search])
 
@@ -82,6 +85,7 @@ export function PeopleManager({ people }: { people: PersonView[] }) {
         <PersonForm
           target={edit}
           people={people}
+          availableAccounts={availableAccounts}
           pending={pending}
           error={error}
           onCancel={() => { setEdit(null); setError(null) }}
@@ -128,8 +132,8 @@ export function PeopleManager({ people }: { people: PersonView[] }) {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  {p.hasAccount
-                    ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Portal</span>
+                  {p.accountEmail
+                    ? <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700" title={p.accountEmail}><span className="w-1.5 h-1.5 rounded-full bg-green-500" />{p.accountEmail}</span>
                     : <span className="text-slate-300 text-xs">—</span>}
                 </td>
                 <td className="px-4 py-3">
@@ -166,6 +170,7 @@ export function PeopleManager({ people }: { people: PersonView[] }) {
 function PersonForm({
   target,
   people,
+  availableAccounts,
   pending,
   error,
   onCancel,
@@ -173,20 +178,29 @@ function PersonForm({
 }: {
   target: PersonView | 'new'
   people: PersonView[]
+  availableAccounts: Account[]
   pending: boolean
   error: string | null
   onCancel: () => void
-  onSubmit: (input: { full_name: string; title: string | null; manager_id: string | null; status: 'active' | 'inactive' }) => void
+  onSubmit: (input: { full_name: string; title: string | null; manager_id: string | null; status: 'active' | 'inactive'; profile_id: string | null }) => void
 }) {
   const existing = target === 'new' ? null : target
   const [fullName, setFullName] = useState(existing?.full_name ?? '')
   const [title, setTitle] = useState(existing?.title ?? '')
   const [managerId, setManagerId] = useState(existing?.manager_id ?? '')
   const [status, setStatus] = useState<'active' | 'inactive'>(existing?.status ?? 'active')
+  const [accountId, setAccountId] = useState(existing?.accountId ?? '')
 
   const managerOptions = people
     .filter(p => p.id !== existing?.id)
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
+
+  // The person's currently-linked account isn't in availableAccounts (only free
+  // ones are), so keep it as a selectable option.
+  const accountOptions: Account[] =
+    existing?.accountId && existing.accountEmail
+      ? [{ id: existing.accountId, email: existing.accountEmail }, ...availableAccounts]
+      : availableAccounts
 
   return (
     <div className="rounded-xl border border-slate-300 bg-white p-5 space-y-4">
@@ -210,6 +224,12 @@ function PersonForm({
             <option value="inactive">Inactive</option>
           </select>
         </Field>
+        <Field label="Portal account">
+          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputCls}>
+            <option value="">— No account —</option>
+            {accountOptions.map(a => <option key={a.id} value={a.id}>{a.email}</option>)}
+          </select>
+        </Field>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -218,7 +238,7 @@ function PersonForm({
         <button
           type="button"
           disabled={pending || !fullName.trim()}
-          onClick={() => onSubmit({ full_name: fullName, title: title || null, manager_id: managerId || null, status })}
+          onClick={() => onSubmit({ full_name: fullName, title: title || null, manager_id: managerId || null, status, profile_id: accountId || null })}
           className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors disabled:opacity-50"
         >
           {pending ? 'Saving…' : existing ? 'Save changes' : 'Add person'}
