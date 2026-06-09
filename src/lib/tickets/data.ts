@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-014.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-015.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -64,27 +64,31 @@ export const TICKETS: Ticket[] = [
     priority: 'high',
     area: 'RBAC',
     createdAt: '2026-06-09',
-    notes: 'Waiting on Arnaldo to run the SQL (no service role here).',
+    notes: 'Waiting on Arnaldo to run the SQL — apply 014 then 015 (seed) together.',
   },
   {
     code: 'TN-002',
     type: 'task',
     title: 'Seed the directory from the company org chart',
-    description: 'Migration 015: extract ~40 people, titles, teams and reporting lines from the org chart and seed people/teams/team_members so the chart starts populated.',
-    status: 'backlog',
+    description: 'Migration 015: 33 people, titles, teams and (best-guess) reporting lines seeded into people/teams/team_members so the chart starts populated.',
+    status: 'done',
     priority: 'high',
     area: 'Org Chart',
     createdAt: '2026-06-09',
+    doneAt: '2026-06-09',
+    notes: 'Written; applied as part of TN-001 (run after 014).',
   },
   {
     code: 'TN-003',
     type: 'feature',
     title: 'Company org chart on Home (auto-layout, read-only)',
-    description: 'Render people + teams + manager_id as an auto-laid-out org chart (React Flow / d3-hierarchy), pinned to the portal home. Everyone sees it; admins edit.',
-    status: 'backlog',
+    description: 'People + teams + manager_id rendered as an auto-laid-out pure-CSS connector tree, pinned to the home page. Everyone sees it; admins will edit (F2).',
+    status: 'done',
     priority: 'high',
     area: 'Org Chart',
     createdAt: '2026-06-09',
+    doneAt: '2026-06-09',
+    notes: 'Shows once 014 + 015 are applied and deployed.',
   },
   {
     code: 'TN-004',
@@ -156,6 +160,17 @@ export const TICKETS: Ticket[] = [
     area: 'Dashboards',
     createdAt: '2026-06-09',
     notes: 'Blocked by TN-009 (visual verification).',
+  },
+
+  {
+    code: 'TN-014',
+    type: 'task',
+    title: 'Refine org chart reporting lines + verify on deploy',
+    description: 'After 014/015 are applied: check the org chart renders, then correct the best-guess manager lines (who reports to whom) — easiest once the People editor (F2) exists, or directly in SQL.',
+    status: 'backlog',
+    priority: 'low',
+    area: 'Org Chart',
+    createdAt: '2026-06-09',
   },
 
   // ── Done ──────────────────────────────────────────────────────────────────
