@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           hydrates, causing a harmless attribute mismatch. This suppresses the
           warning for <body>'s own attributes only — it does NOT mask real
           hydration bugs deeper in the tree. */}
-      <body className="min-h-full flex flex-col bg-slate-50" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
       </body>
     </html>
