@@ -11,7 +11,7 @@ export default function DashboardsPage() {
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <NavCard
-          href="/boards.html"
+          href="/dashboards/publishing"
           title="Publishing Goals"
           description="Weekly publishing pace vs target — the live dashboard."
         />
