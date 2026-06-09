@@ -14,6 +14,8 @@ export interface OrgPerson {
   id: string
   name: string
   title: string | null
+  /** Signature color for the card/threads: the team they lead, else their first team. */
+  color: string | null
   teams: { name: string; color: string | null }[]
   children: OrgPerson[]
 }
@@ -30,6 +32,7 @@ interface TeamRow {
   id: string
   name: string
   color: string | null
+  leader_person_id: string | null
 }
 interface MemberRow {
   team_id: string
@@ -41,7 +44,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
 
   const [{ data: pData }, { data: tData }, { data: mData }] = await Promise.all([
     supabase.from('people').select('id, full_name, title, manager_id, status, sort_order'),
-    supabase.from('teams').select('id, name, color'),
+    supabase.from('teams').select('id, name, color, leader_person_id'),
     supabase.from('team_members').select('team_id, person_id'),
   ])
 
@@ -62,14 +65,21 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
     teamsByPerson.set(m.person_id, arr)
   }
 
+  // Signature color: the team a person LEADS wins (so leaders carry their team's
+  // color even when they aren't listed as a member), else their first team.
+  const leaderColor = new Map<string, string | null>()
+  for (const t of teams) if (t.leader_person_id && t.color) leaderColor.set(t.leader_person_id, t.color)
+
   // Build nodes, then wire children by manager_id.
   const nodeById = new Map<string, OrgPerson>()
   for (const p of people) {
+    const myTeams = teamsByPerson.get(p.id) ?? []
     nodeById.set(p.id, {
       id: p.id,
       name: p.full_name,
       title: p.title,
-      teams: teamsByPerson.get(p.id) ?? [],
+      color: leaderColor.get(p.id) ?? myTeams[0]?.color ?? null,
+      teams: myTeams,
       children: [],
     })
   }

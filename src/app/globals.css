@@ -51,3 +51,54 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* ── Org chart — horizontal connector tree ──────────────────────────────────
+   Auto-laid-out from the reporting hierarchy (no diagram library). Each level
+   is a centered flex row; ::before/::after draw the connector elbows. Each <li>
+   sets --thread to its team colour, so the connector INTO a node is tinted. */
+.org-tree ul {
+  display: flex;
+  justify-content: center;
+  padding-top: 18px;
+  position: relative;
+}
+.org-tree li {
+  list-style: none;
+  position: relative;
+  padding: 18px 10px 0;
+  text-align: center;
+}
+.org-tree li::before,
+.org-tree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 18px;
+  border-top: 2px solid var(--thread, #d6d3cb);
+}
+.org-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid var(--thread, #d6d3cb);
+}
+.org-tree li:only-child::before,
+.org-tree li:only-child::after { display: none; }
+.org-tree li:only-child { padding-top: 18px; }
+.org-tree li:first-child::before,
+.org-tree li:last-child::after { border: 0 none; }
+.org-tree li:last-child::before {
+  border-right: 2px solid var(--thread, #d6d3cb);
+  border-radius: 0 6px 0 0;
+}
+.org-tree li:first-child::after { border-radius: 6px 0 0 0; }
+.org-tree ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 18px;
+  border-left: 2px solid var(--thread, #d6d3cb);
+}
