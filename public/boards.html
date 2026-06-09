@@ -2529,7 +2529,7 @@
             <div class="hero-meta" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:20px; position:relative;">
               <span id="lastUpdated" title="Last data update" style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-soft);white-space:nowrap;">
                 <span>Updated&nbsp;<strong id="lastUpdatedRel">—</strong></span>
-                <button class="kpi-info-btn" data-info-key="schedule" title="Update schedule" type="button" aria-label="Update schedule" style="margin-right:0;width:18px;height:18px;">
+                <button class="kpi-info-btn" id="scheduleInfoBtn" data-info-key="schedule" title="Update schedule" type="button" aria-label="Update schedule" style="margin-right:0;width:18px;height:18px;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
                   </svg>
@@ -7010,6 +7010,11 @@
       }
     });
     $('closeDiagBtn').addEventListener('click', () => { $('diagPanel').style.display = 'none'; });
+
+    // Botão "i" do chip "Updated" → abre o modal de info com a explicação do
+    // agendamento. (O handler dos KPIs é delegado em #kpiGrid, que não cobre o
+    // hero, então este botão precisa do seu próprio listener.)
+    $('scheduleInfoBtn').addEventListener('click', () => openKpiInfo('schedule'));
 
     $('modalClose').addEventListener('click', closeModal);
     $('modalBackdrop').addEventListener('click', (e) => { if (e.target === $('modalBackdrop')) closeModal(); });
