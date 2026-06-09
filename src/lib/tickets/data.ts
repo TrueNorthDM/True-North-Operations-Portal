@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-016.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-017.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -127,8 +127,20 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-006',
     type: 'feature',
-    title: 'Enforce access in sidebar/hubs by grants (F4)',
-    description: 'Filter projects/tools/dashboards by the signed-in user’s grants; super-admin sees all.',
+    title: 'Enforce access by grants (F4)',
+    description: 'accessible_site_ids() SECURITY DEFINER (migration 016) resolves a user’s reachable projects; /projects hub filters its cards and /aaaf,/hfa guard (redirect). Safe rule: admins → all, ungranted site → everyone, else needs a grant.',
+    status: 'done',
+    priority: 'medium',
+    area: 'RBAC',
+    createdAt: '2026-06-09',
+    doneAt: '2026-06-09',
+    notes: 'Apply migration 016. Zero grants today → nothing hidden yet.',
+  },
+  {
+    code: 'TN-016',
+    type: 'feature',
+    title: 'Link a person to a portal account (in People editor)',
+    description: 'Set people.profile_id from the People editor so grants resolve to real users. Until accounts are linked, granting a project only restricts it to admins. Needed before enforcement is meaningful for non-admins.',
     status: 'backlog',
     priority: 'medium',
     area: 'RBAC',

@@ -4,6 +4,7 @@
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { languagePalette } from '@/lib/language-colors'
+import { getAccessibleSiteIds } from '@/lib/auth/access'
 
 // Each card carries its project's brand identity — colors + display font + real logo.
 const SITES = [
@@ -49,6 +50,19 @@ interface ProjectStats {
 export default async function ProjectsPage() {
   // Pages flagged after a language config change, grouped by site
   const supabase = await createClient()
+
+  // Access enforcement: only show project cards the user can reach. Admins and
+  // ungranted (unrestricted) projects pass; nothing is hidden until granted.
+  const [{ data: siteRows }, accessibleIds] = await Promise.all([
+    supabase.from('sites').select('id, code'),
+    getAccessibleSiteIds(),
+  ])
+  const accessibleCodes = new Set(
+    ((siteRows ?? []) as { id: string; code: string }[])
+      .filter(s => accessibleIds.has(s.id))
+      .map(s => s.code),
+  )
+  const visibleSites = SITES.filter(s => accessibleCodes.has(s.code))
   const { data: stalePages } = await supabase
     .from('pages')
     .select('id, name, site_id, sites!inner(code, name)')
@@ -148,7 +162,7 @@ export default async function ProjectsPage() {
           (→ project page) AND the domain inside is independently clickable
           (→ external site). Valid HTML, no JS, fully keyboard accessible. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {SITES.map(site => (
+        {visibleSites.map(site => (
           <div key={site.code} className="flex flex-col gap-3">
           <article
             className={`relative rounded-xl border-2 p-6 transition-all hover:shadow-md ${site.cardCls}`}

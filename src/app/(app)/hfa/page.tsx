@@ -1,16 +1,21 @@
 // HFA — page list (Server Component)
 
+import { redirect } from 'next/navigation'
 import { getSitePageData } from '@/lib/pages-data'
 import { PageList } from '@/components/PageList'
 import { WpLinks } from '@/components/WpLinks'
 import { ActivityLog } from '@/components/ActivityLog'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { canAccessSite } from '@/lib/auth/access'
 
 export default async function HfaPagesPage() {
   const [{ site, siteLanguages, rows, done, activity }, isAdmin] = await Promise.all([
     getSitePageData('hfa'),
     isCurrentUserAdmin(),
   ])
+
+  // Access enforcement — admins & unrestricted sites pass; otherwise needs a grant.
+  if (site && !(await canAccessSite(site.id))) redirect('/')
 
   return (
     <div className="space-y-6">
