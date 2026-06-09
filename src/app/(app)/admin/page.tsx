@@ -39,21 +39,37 @@ export default async function AdminPage() {
         <p className="mt-1 text-slate-500">People, teams, and who can access what.</p>
       </div>
 
-      {/* Tickets — live now. */}
-      <a
-        href="/admin/tickets"
-        className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-slate-900 group-hover:text-slate-700">Tickets</h2>
-          <span className="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-slate-700">
-            Open <span aria-hidden="true">→</span>
-          </span>
-        </div>
-        <p className="mt-1.5 text-sm text-slate-500">
-          The dev work tracker — everything we need to resolve, so nothing gets lost.
-        </p>
-      </a>
+      {/* Live admin tools. */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <a
+          href="/admin/tickets"
+          className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-bold text-slate-900 group-hover:text-slate-700">Tickets</h2>
+            <span className="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-slate-700">
+              Open <span aria-hidden="true">→</span>
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm text-slate-500">
+            The dev work tracker — everything we need to resolve, so nothing gets lost.
+          </p>
+        </a>
+        <a
+          href="/admin/tests"
+          className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-bold text-slate-900 group-hover:text-slate-700">Tests</h2>
+            <span className="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-slate-700">
+              Open <span aria-hidden="true">→</span>
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm text-slate-500">
+            A checklist to verify the whole system end-to-end — tick off what works.
+          </p>
+        </a>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {SECTIONS.map(s =>
