@@ -17,7 +17,15 @@ export interface OrgPerson {
   /** Signature color for the card/threads: the team they lead, else their first team. */
   color: string | null
   teams: { name: string; color: string | null }[]
+  /** Teams this person leads — rendered as a box of members under them. */
+  ledTeams: OrgTeamGroup[]
   children: OrgPerson[]
+}
+
+export interface OrgTeamGroup {
+  name: string
+  color: string | null
+  members: { id: string; name: string }[]
 }
 
 interface PersonRow {
@@ -70,6 +78,26 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   const leaderColor = new Map<string, string | null>()
   for (const t of teams) if (t.leader_person_id && t.color) leaderColor.set(t.leader_person_id, t.color)
 
+  // Members per team (for the team box rendered under the leader).
+  const nameById = new Map(people.map(p => [p.id, p.full_name]))
+  const membersByTeam = new Map<string, { id: string; name: string }[]>()
+  for (const m of members) {
+    if (!teamById.has(m.team_id)) continue
+    const arr = membersByTeam.get(m.team_id) ?? []
+    arr.push({ id: m.person_id, name: nameById.get(m.person_id) ?? '?' })
+    membersByTeam.set(m.team_id, arr)
+  }
+  for (const arr of membersByTeam.values()) arr.sort((a, b) => a.name.localeCompare(b.name))
+
+  // Teams each person leads, with their members.
+  const ledTeamsByLeader = new Map<string, OrgTeamGroup[]>()
+  for (const t of teams) {
+    if (!t.leader_person_id) continue
+    const arr = ledTeamsByLeader.get(t.leader_person_id) ?? []
+    arr.push({ name: t.name, color: t.color, members: membersByTeam.get(t.id) ?? [] })
+    ledTeamsByLeader.set(t.leader_person_id, arr)
+  }
+
   // Build nodes, then wire children by manager_id.
   const nodeById = new Map<string, OrgPerson>()
   for (const p of people) {
@@ -80,6 +108,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
       title: p.title,
       color: leaderColor.get(p.id) ?? myTeams[0]?.color ?? null,
       teams: myTeams,
+      ledTeams: ledTeamsByLeader.get(p.id) ?? [],
       children: [],
     })
   }
