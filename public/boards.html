@@ -2527,7 +2527,14 @@
             <!-- Linha sob o subtítulo: frescor do store + filtro de período (descido
                  pra cá). position:relative ancora o custom-date-range (absolute). -->
             <div class="hero-meta" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:20px; position:relative;">
-              <span id="lastUpdated" title="Last data update" style="display:inline-flex;align-items:center;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-soft);white-space:nowrap;">Updated&nbsp;<strong id="lastUpdatedRel">—</strong></span>
+              <span id="lastUpdated" title="Last data update" style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-soft);white-space:nowrap;">
+                <span>Updated&nbsp;<strong id="lastUpdatedRel">—</strong></span>
+                <button class="kpi-info-btn" data-info-key="schedule" title="Update schedule" type="button" aria-label="Update schedule" style="margin-right:0;width:18px;height:18px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                </button>
+              </span>
               <div class="period-select-wrap">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)">
                   <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
@@ -3901,6 +3908,17 @@
           body: `
             <p><strong>What it shows:</strong> Average business days an item spends in each stage of the translation workflow.</p>
             <p><strong>Why it matters:</strong> Indicator of workflow velocity. Helps identify which stages are slowest.</p>
+          `
+        }
+      },
+      schedule: {
+        publishing: {
+          title: 'Data update schedule',
+          body: `
+            <p><strong>What it shows:</strong> This dashboard reads from a snapshot the system refreshes automatically — you never wait for Monday to load when you open it.</p>
+            <p><strong>When it updates:</strong> 6 times a day, every 4 hours, in <strong>Eastern Time (EST)</strong>:</p>
+            <p style="font-weight:700;">12:00 AM · 4:00 AM · 8:00 AM · 12:00 PM · 4:00 PM · 8:00 PM</p>
+            <p>The <strong>"Updated X ago"</strong> chip shows how fresh the current data is.</p>
           `
         }
       }
