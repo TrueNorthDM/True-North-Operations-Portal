@@ -134,7 +134,7 @@ export const TICKETS: Ticket[] = [
     area: 'RBAC',
     createdAt: '2026-06-09',
     doneAt: '2026-06-09',
-    notes: 'Apply migration 016. Zero grants today → nothing hidden yet.',
+    notes: 'Migration 016 applied 2026-06-12. Zero grants today → nothing hidden yet.',
   },
   {
     code: 'TN-016',
@@ -146,7 +146,7 @@ export const TICKETS: Ticket[] = [
     area: 'RBAC',
     createdAt: '2026-06-09',
     doneAt: '2026-06-09',
-    notes: 'Apply migration 017.',
+    notes: 'Migration 017 applied 2026-06-12.',
   },
   {
     code: 'TN-017',
@@ -266,7 +266,7 @@ export const TICKETS: Ticket[] = [
     area: 'RBAC',
     createdAt: '2026-06-12',
     doneAt: '2026-06-12',
-    notes: 'Real enforcement still needs migration 016 (and 017 for account linking) applied.',
+    notes: 'Migrations 016/017 applied 2026-06-12 — enforcement fully wired.',
   },
   {
     code: 'TN-023',
@@ -290,7 +290,7 @@ export const TICKETS: Ticket[] = [
     area: 'Home',
     createdAt: '2026-06-12',
     doneAt: '2026-06-12',
-    notes: 'Apply migration 018 (favorites table).',
+    notes: 'Migration 018 applied 2026-06-12.',
   },
   {
     code: 'TN-011',
