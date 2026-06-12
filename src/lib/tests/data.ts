@@ -89,7 +89,7 @@ export const TEST_AREAS: TestArea[] = [
   {
     area: 'Access enforcement',
     cases: [
-      { id: 'ENF-1', check: 'With no grants set, open /projects as any logged-in user.', expect: 'Both AAAF and HFA cards are visible (nothing is hidden until a project is granted).', needs: 'migration 016 applied' },
+      { id: 'ENF-1', check: 'With no grants set, open /projects as any logged-in user.', expect: 'Both AAAF and HFA cards are visible (nothing is hidden until a project is granted — even if migration 016 isn’t applied yet, access fails open).' },
       { id: 'ENF-2', check: 'Grant AAAF to one team only; log in as a non-admin NOT in that team (with a linked account).', expect: 'That user no longer sees AAAF in /projects and /aaaf redirects them home; admins still see everything.', needs: 'a non-admin account linked to a person' },
     ],
   },

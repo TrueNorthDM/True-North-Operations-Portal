@@ -53,16 +53,21 @@ export default async function ProjectsPage() {
 
   // Access enforcement: only show project cards the user can reach. Admins and
   // ungranted (unrestricted) projects pass; nothing is hidden until granted.
+  // accessibleIds === null means access couldn't be evaluated (e.g. migration
+  // 016 not applied) → fail open and show everything, per the design rule.
   const [{ data: siteRows }, accessibleIds] = await Promise.all([
     supabase.from('sites').select('id, code'),
     getAccessibleSiteIds(),
   ])
-  const accessibleCodes = new Set(
-    ((siteRows ?? []) as { id: string; code: string }[])
-      .filter(s => accessibleIds.has(s.id))
-      .map(s => s.code),
-  )
-  const visibleSites = SITES.filter(s => accessibleCodes.has(s.code))
+  const accessibleCodes =
+    accessibleIds === null
+      ? null
+      : new Set(
+          ((siteRows ?? []) as { id: string; code: string }[])
+            .filter(s => accessibleIds.has(s.id))
+            .map(s => s.code),
+        )
+  const visibleSites = accessibleCodes === null ? [...SITES] : SITES.filter(s => accessibleCodes.has(s.code))
   const { data: stalePages } = await supabase
     .from('pages')
     .select('id, name, site_id, sites!inner(code, name)')

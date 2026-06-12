@@ -4,21 +4,32 @@
  *
  * Safe rule: admins → all; a site with no grants → everyone; otherwise only
  * via a team or direct person grant. So with zero grants nothing is hidden.
+ *
+ * Fail OPEN on errors: if the RPC is missing (migration 016 not applied yet)
+ * or fails transiently, return null = "couldn't evaluate" and callers skip
+ * filtering. That matches the design rule — nothing is hidden until access is
+ * deliberately granted — and avoids silently blanking the portal.
  */
 
 import { createClient } from '@/lib/supabase/server'
 
-export async function getAccessibleSiteIds(): Promise<Set<string>> {
+/** Set of reachable site ids, or null when access couldn't be evaluated. */
+export async function getAccessibleSiteIds(): Promise<Set<string> | null> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return new Set()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any).rpc('accessible_site_ids', { uid: user.id })
+  const { data, error } = await (supabase as any).rpc('accessible_site_ids', { uid: user.id })
+  if (error) {
+    console.error('[access] accessible_site_ids failed (migration 016 applied?):', error.message)
+    return null
+  }
   return new Set(((data ?? []) as { site_id: string }[]).map(r => r.site_id))
 }
 
 export async function canAccessSite(siteId: string): Promise<boolean> {
-  return (await getAccessibleSiteIds()).has(siteId)
+  const ids = await getAccessibleSiteIds()
+  return ids === null ? true : ids.has(siteId)
 }

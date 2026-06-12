@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-024.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-025.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -256,6 +256,18 @@ export const TICKETS: Ticket[] = [
   },
 
   // ── Done ──────────────────────────────────────────────────────────────────
+  {
+    code: 'TN-024',
+    type: 'bug',
+    title: 'Project cards vanished from /projects — enforcement failed closed',
+    description: 'With migration 016 not applied, the accessible_site_ids RPC errored and the code treated it as "no access", hiding AAAF/HFA for everyone (even admins). Fixed: access now fails OPEN when it can’t be evaluated — per the "unrestricted until granted" rule — and logs the error. Applies to /projects, /aaaf and /hfa guards.',
+    status: 'done',
+    priority: 'high',
+    area: 'RBAC',
+    createdAt: '2026-06-12',
+    doneAt: '2026-06-12',
+    notes: 'Real enforcement still needs migration 016 (and 017 for account linking) applied.',
+  },
   {
     code: 'TN-023',
     type: 'feature',
