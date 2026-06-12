@@ -30,6 +30,15 @@ export const TEST_AREAS: TestArea[] = [
     ],
   },
   {
+    area: 'Home · Widgets & favourites',
+    cases: [
+      { id: 'HOME-1', check: 'Open Home on a desktop-size window.', expect: 'Block 1 shows five widgets side by side: Dashboards, Projects, Tools (clickable) and My Team / My Work (dashed, “Soon” badge, not clickable).' },
+      { id: 'HOME-2', check: 'In “My favourites”, click Choose favourites (or Edit), pick a few destinations, try picking a 6th.', expect: 'The counter shows n/5 and unchecked options disable at 5.', needs: 'migration 018 applied' },
+      { id: 'HOME-3', check: 'Save, reload the page (and ideally open another browser where you are logged in).', expect: 'Your picks show as star cards, in order, and persist — they are stored per user, not per browser.' },
+      { id: 'HOME-4', check: 'Click a favourite card.', expect: 'It navigates to that destination.' },
+    ],
+  },
+  {
     area: 'Home · Org chart',
     cases: [
       { id: 'ORG-1', check: 'Open Home.', expect: 'The “Organization” section shows the company org chart: a tree from David Sharpe down, ~33 people, with team chips on cards.', needs: 'migrations 014 + 015 applied' },

@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-020.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-023.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -234,7 +234,40 @@ export const TICKETS: Ticket[] = [
     createdAt: '2026-06-09',
   },
 
+  {
+    code: 'TN-021',
+    type: 'feature',
+    title: 'My Team widget — decide and build the content',
+    description: 'The Home "My Team" widget is a placeholder. Decide what it shows (your team’s members? activity? leader view?) and build it on the directory data.',
+    status: 'backlog',
+    priority: 'low',
+    area: 'Home',
+    createdAt: '2026-06-12',
+  },
+  {
+    code: 'TN-022',
+    type: 'feature',
+    title: 'My Work widget — everything a person works on across Monday',
+    description: 'The Home "My Work" widget is a placeholder. Eventually: pull every item assigned to the signed-in person across the Monday account (boards/columns TBD) and list it.',
+    status: 'backlog',
+    priority: 'low',
+    area: 'Home',
+    createdAt: '2026-06-12',
+  },
+
   // ── Done ──────────────────────────────────────────────────────────────────
+  {
+    code: 'TN-020',
+    type: 'feature',
+    title: 'Home redesign: 5 widgets + My favourites + wider container',
+    description: 'Home rebuilt in 3 blocks: five compact destination widgets (Dashboards/Projects/Tools + My Team & My Work placeholders), a per-user "My favourites" block (up to 5, picked from a catalog, stored in the DB), and the org chart. Home now uses a wider container so the five widgets sit side by side.',
+    status: 'done',
+    priority: 'medium',
+    area: 'Home',
+    createdAt: '2026-06-12',
+    doneAt: '2026-06-12',
+    notes: 'Apply migration 018 (favorites table).',
+  },
   {
     code: 'TN-011',
     type: 'feature',

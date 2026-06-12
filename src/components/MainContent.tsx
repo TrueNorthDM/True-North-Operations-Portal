@@ -19,13 +19,15 @@ export function MainContent({ children }: { children: React.ReactNode }) {
   // `<main>` is a stretched flex item with a definite height, so `h-full` here
   // resolves and the iframe fills it — no padding, no viewport math.
   const fullBleed = pathname === '/dashboards/publishing'
+  // Home uses a wider container so its five widgets fit side by side.
+  const wide = pathname === '/'
 
   return (
     <main className="flex-1">
       {fullBleed ? (
         <div className="h-full">{children}</div>
       ) : (
-        <div className="px-6 py-8 max-w-7xl w-full mx-auto">{children}</div>
+        <div className={`px-6 py-8 w-full mx-auto ${wide ? 'max-w-screen-2xl' : 'max-w-7xl'}`}>{children}</div>
       )}
     </main>
   )
