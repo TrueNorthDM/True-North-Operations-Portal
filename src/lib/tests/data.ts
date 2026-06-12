@@ -26,7 +26,16 @@ export const TEST_AREAS: TestArea[] = [
       { id: 'NAV-1', check: 'Log in and look at the left sidebar.', expect: 'Home, Dashboards, Projects, Tools are shown; Admin appears only if you are an admin; Settings sits at the bottom.' },
       { id: 'NAV-2', check: 'Open /admin (or click Admin).', expect: 'Admins see the Admin hub; a non-admin is redirected to Home (Admin never shows for them).', needs: 'to fully test, a non-admin account' },
       { id: 'NAV-3', check: 'Go to a sub-page (e.g. Admin → People) and use the breadcrumb.', expect: 'Breadcrumb reads Dashboard / Admin / People and each crumb links back.' },
-      { id: 'NAV-4', check: 'Visit several pages (Home, HFA, Admin, Settings).', expect: 'All share the same warm off-white background — consistent everywhere.' },
+      { id: 'NAV-4', check: 'Visit several pages (Home, HFA, Admin, Settings).', expect: 'All share the same background tone — warm off-white in light mode, warm near-black in dark mode. Consistent everywhere.' },
+    ],
+  },
+  {
+    area: 'Theme & account',
+    cases: [
+      { id: 'THM-1', check: 'Click the moon/sun icon at the top right.', expect: 'The whole portal flips between light and dark instantly; the icon swaps. Text and badges stay readable in both.' },
+      { id: 'THM-2', check: 'Toggle dark, reload, and navigate around.', expect: 'The chosen theme sticks (per browser). On a first-ever visit the portal follows the system preference, with no light flash.' },
+      { id: 'THM-3', check: 'Look at the top-right corner, then click the avatar.', expect: 'The avatar (your initials, navy circle) is the rightmost element; the menu shows your email and Sign out works (back to login).' },
+      { id: 'THM-4', check: 'In dark mode, open Tickets, People and a project page.', expect: 'Tables, badges and banners are readable. Known exceptions that stay light: the Publishing Goals iframe and the beta charts.' },
     ],
   },
   {

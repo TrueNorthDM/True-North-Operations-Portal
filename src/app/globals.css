@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: `dark:` utilities apply under html.dark (the toggle
+   sets the class; an inline script in layout.tsx applies it pre-paint). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   /* Single system-wide page background — the warm off-white from the COE
      dashboard, applied everywhere for consistency (no per-brand tint). */
@@ -8,11 +12,16 @@
   --card: #ffffff;
   --border: #e2e8f0;
   --muted: #64748b;
-  --primary: #1d4ed8;
-  --primary-hover: #1e40af;
+  --primary: #24466e;
+  --primary-hover: #1b3554;
   --success: #16a34a;
   --warning: #d97706;
   --danger: #dc2626;
+  /* Display face for headings — Space Grotesk (loaded via next/font). */
+  --font-display: var(--font-space-grotesk), var(--font-geist-sans), system-ui, sans-serif;
+  /* Org chart connector default (when a node has no team colour). */
+  --org-thread: #d6d3cb;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -26,6 +35,11 @@
    emits both the CSS variables on :root AND the utility classes:
    bg-aaaf-primary / text-aaaf-ink / font-aaaf-display, etc. */
 @theme {
+  /* True North portal identity — deep navy + north-star gold. Used for the
+     chrome (active nav, avatar, accents); project pages keep their brands. */
+  --color-tn-primary: #24466e;
+  --color-tn-accent: #f4c24a;
+
   /* AAAF brand — sampled from askanadventistfriend.com */
   --color-aaaf-primary: #44ad85;
   --color-aaaf-primary-hover: #3a9472;
@@ -52,6 +66,110 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Headings speak in the display face. Brand pages override per-element with
+   their own font utilities (higher specificity), so AAAF/HFA stay on-brand. */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+/* ── Dark mode — one palette remap, not per-component dark: classes ─────────
+   Tailwind v4 utilities resolve through CSS variables (bg-slate-100 →
+   var(--color-slate-100)), so flipping the palette here re-skins the whole
+   app at once. The neutral scale is MIRRORED (white↔near-black, 50↔900 …),
+   which preserves every bg/text contrast pairing by construction; the tonal
+   badge shades (x-50/100/200 fills, x-600/700/800 text) are remapped to
+   dark tints / light text the same way. Saturated mid shades (x-400/500
+   dots, bars, brand primaries) read fine on dark and stay untouched. */
+.dark {
+  color-scheme: dark;
+
+  --background: #141412;
+  --foreground: #ecece7;
+  --card: #1e1e1b;
+  --border: #3a3a35;
+  --muted: #a6a69d;
+  --primary: #93b8e4;
+  --primary-hover: #a9c6ec;
+
+  --org-thread: #45453f;
+
+  /* Portal identity */
+  --color-tn-primary: #93b8e4;
+
+  /* Neutral scale — mirrored warm grays */
+  --color-white: #1e1e1b;
+  --color-slate-50: #252522;
+  --color-slate-100: #2c2c28;
+  --color-slate-200: #3a3a35;
+  --color-slate-300: #4a4a44;
+  --color-slate-400: #8e8e86;
+  --color-slate-500: #a6a69d;
+  --color-slate-600: #c0c0b7;
+  --color-slate-700: #d4d4cb;
+  --color-slate-800: #e6e6df;
+  --color-slate-900: #f2f2ec;
+  --color-stone-100: #2a2725;
+  --color-stone-600: #c9c4be;
+
+  /* Tonal pairs used by badges, banners and stat cards */
+  --color-red-50: #2b1413;
+  --color-red-100: #3a1d1b;
+  --color-red-200: #5b2b27;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+
+  --color-green-50: #10271a;
+  --color-green-100: #173424;
+  --color-green-300: #2f6b44;
+  --color-green-700: #4ade80;
+  --color-green-800: #86efac;
+
+  --color-amber-50: #2c2210;
+  --color-amber-100: #3a2d14;
+  --color-amber-200: #5a431c;
+  --color-amber-600: #fbbf24;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+
+  --color-blue-50: #152238;
+  --color-blue-100: #1b2c4a;
+  --color-blue-200: #274068;
+  --color-blue-600: #7fb0f5;
+  --color-blue-700: #93bbf8;
+  --color-blue-800: #b6d0fa;
+
+  --color-indigo-100: #23264a;
+  --color-indigo-700: #a5b4fc;
+
+  --color-purple-50: #251536;
+  --color-purple-200: #46276b;
+  --color-purple-700: #d8b4fe;
+
+  --color-emerald-50: #0f2a1f;
+  --color-emerald-200: #1d4a37;
+  --color-emerald-700: #6ee7b7;
+
+  --color-sky-50: #0f2433;
+  --color-sky-200: #1d4258;
+  --color-sky-700: #7dd3fc;
+
+  --color-yellow-100: #393012;
+  --color-yellow-700: #fde047;
+
+  /* Brand surfaces & inks on dark */
+  --color-aaaf-soft: #13291f;
+  --color-aaaf-ink: #c2d4ec;
+  --color-aaaf-secondary: #7fb1e8;
+  --color-aaaf-primary-hover: #5fc9a0;
+  --color-hfa-soft: #33230e;
+  --color-hfa-ink: #f0ede8;
+  --color-hfa-secondary: #ff9b76;
+  --color-hfa-primary-hover: #ffb255;
+}
+
 /* ── Org chart — horizontal connector tree ──────────────────────────────────
    Auto-laid-out from the reporting hierarchy (no diagram library). Each level
    is a centered flex row; ::before/::after draw the connector elbows. Each <li>
@@ -76,12 +194,12 @@ body {
   right: 50%;
   width: 50%;
   height: 18px;
-  border-top: 2px solid var(--thread, #d6d3cb);
+  border-top: 2px solid var(--thread, var(--org-thread));
 }
 .org-tree li::after {
   right: auto;
   left: 50%;
-  border-left: 2px solid var(--thread, #d6d3cb);
+  border-left: 2px solid var(--thread, var(--org-thread));
 }
 .org-tree li:only-child::before,
 .org-tree li:only-child::after { display: none; }
@@ -89,7 +207,7 @@ body {
 .org-tree li:first-child::before,
 .org-tree li:last-child::after { border: 0 none; }
 .org-tree li:last-child::before {
-  border-right: 2px solid var(--thread, #d6d3cb);
+  border-right: 2px solid var(--thread, var(--org-thread));
   border-radius: 0 6px 0 0;
 }
 .org-tree li:first-child::after { border-radius: 6px 0 0 0; }
@@ -100,5 +218,5 @@ body {
   left: 50%;
   width: 0;
   height: 18px;
-  border-left: 2px solid var(--thread, #d6d3cb);
+  border-left: 2px solid var(--thread, var(--org-thread));
 }

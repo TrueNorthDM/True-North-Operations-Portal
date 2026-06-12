@@ -4,6 +4,8 @@
 
 import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { UserMenu } from '@/components/UserMenu'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 
@@ -14,10 +16,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* Top bar — brand only. Brand links back to dashboard. */}
-      <header className="border-b border-slate-200 bg-white px-6 py-4 flex items-center sticky top-0 z-10">
+      {/* Top bar — brand on the left; theme toggle + avatar on the right
+          (avatar is always the rightmost element). */}
+      <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">
         <a href="/" className="flex items-center gap-2 group" aria-label="Go to dashboard">
-          <span className="text-lg font-bold text-slate-900 group-hover:text-slate-700 transition-colors">
+          {/* North star — the portal's identity mark. */}
+          <svg className="w-4 h-4 text-tn-accent shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 1l2.4 8.6L23 12l-8.6 2.4L12 23l-2.4-8.6L1 12l8.6-2.4z" />
+          </svg>
+          <span className="text-lg font-bold text-slate-900 group-hover:text-tn-primary transition-colors font-(family-name:--font-display)">
             True North
           </span>
           <span className="text-slate-300">/</span>
@@ -25,11 +32,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             Operations Portal
           </span>
         </a>
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <UserMenu userEmail={user?.email ?? null} />
+        </div>
       </header>
 
       {/* Sidebar + main */}
       <div className="flex flex-1">
-        <Sidebar userEmail={user?.email ?? null} isAdmin={isAdmin} />
+        <Sidebar isAdmin={isAdmin} />
         <MainContent>{children}</MainContent>
       </div>
     </>

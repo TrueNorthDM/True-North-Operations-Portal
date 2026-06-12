@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-023.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-024.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -256,6 +256,18 @@ export const TICKETS: Ticket[] = [
   },
 
   // ── Done ──────────────────────────────────────────────────────────────────
+  {
+    code: 'TN-023',
+    type: 'feature',
+    title: 'Design system v2 — dark mode, navy identity, top-bar avatar + theme toggle',
+    description: 'Portal-wide light/dark theme via a semantic palette remap (one CSS layer, contrast preserved by construction), True North navy + north-star gold identity on the chrome, Space Grotesk display headings, and a redesigned top bar: avatar menu (rightmost, with email + Sign out — replaces the sidebar "Signed in" block) and a sun/moon theme toggle. Theme persists per browser and follows the system preference on first visit.',
+    status: 'done',
+    priority: 'medium',
+    area: 'UI',
+    createdAt: '2026-06-12',
+    doneAt: '2026-06-12',
+    notes: 'Known gaps in dark mode: the legacy Publishing Goals iframe (boards.html) and the beta chart.js charts stay light — both pending the Boards Review rethink (TN-019).',
+  },
   {
     code: 'TN-020',
     type: 'feature',

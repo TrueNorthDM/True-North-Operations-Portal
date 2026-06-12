@@ -43,7 +43,9 @@ function TeamBox({ team }: { team: OrgTeamGroup }) {
   return (
     <li style={threadStyle}>
       <div className="inline-block align-top min-w-[150px] max-w-[230px] rounded-lg border border-slate-200 bg-white text-left shadow-sm overflow-hidden">
-        <div className="px-3 py-2 text-sm font-bold text-slate-900" style={{ backgroundColor: color }}>{team.name}</div>
+        {/* Team band colours are fixed light pastels, so the header text is a
+            fixed dark ink — not a themed token — to keep contrast in dark mode. */}
+        <div className="px-3 py-2 text-sm font-bold text-[#26261f]" style={{ backgroundColor: color }}>{team.name}</div>
         {team.members.length === 0 ? (
           <div className="px-3 py-2 text-xs text-slate-400">No members</div>
         ) : (
@@ -58,8 +60,9 @@ function TeamBox({ team }: { team: OrgTeamGroup }) {
 
 function Node({ node }: { node: OrgPerson }) {
   // The connector INTO this node is tinted by the node's own team color, so each
-  // branch reads as a coloured thread down to its team.
-  const threadStyle = { ['--thread']: node.color ?? '#d6d3cb' } as React.CSSProperties
+  // branch reads as a coloured thread down to its team. Colour-less nodes fall
+  // back to the theme's connector token (light/dark aware).
+  const threadStyle = { ['--thread']: node.color ?? 'var(--org-thread)' } as React.CSSProperties
   // Members of a team this person leads are shown INSIDE the team box, so they
   // shouldn't also appear as individual report nodes.
   const ledMemberIds = new Set(node.ledTeams.flatMap(t => t.members.map(m => m.id)))
@@ -118,7 +121,7 @@ export function OrgChart({ roots }: { roots: OrgPerson[] }) {
       </div>
 
       {full && (
-        <div className="fixed inset-0 z-50 bg-[#f5f5f0] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-white/80 backdrop-blur">
             <h2 className="text-sm font-bold text-slate-800">Organization</h2>
             <button

@@ -168,7 +168,9 @@ export default async function ProjectsPage() {
             className={`relative rounded-xl border-2 p-6 transition-all hover:shadow-md ${site.cardCls}`}
           >
             <div className="flex items-stretch gap-5">
-              <div className="shrink-0 self-center rounded-lg bg-white border border-slate-200 p-3 w-36 aspect-[3/2] flex items-center justify-center">
+              {/* Logo plate stays literally white in both themes — the logo
+                  files have white backgrounds, so a themed surface would clash. */}
+              <div className="shrink-0 self-center rounded-lg bg-[#fff] border border-slate-200 p-3 w-36 aspect-[3/2] flex items-center justify-center">
                 <Image
                   src={site.logo}
                   alt={`${site.name} logo`}

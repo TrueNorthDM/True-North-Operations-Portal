@@ -5,10 +5,10 @@
  *
  * Client Component because it uses usePathname() to highlight the active item.
  * Hidden on mobile (md:flex) — the top bar remains usable on its own there.
+ * The signed-in block moved to the top-bar avatar (UserMenu).
  */
 
 import { usePathname } from 'next/navigation'
-import { signOut } from '@/app/auth/actions'
 
 const iconClass = 'w-5 h-5 shrink-0'
 
@@ -116,17 +116,17 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       href={item.href}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
         active
-          ? 'bg-slate-100 text-slate-900 font-semibold'
+          ? 'bg-tn-primary/10 text-tn-primary font-semibold'
           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
       }`}
     >
-      <span className={active ? 'text-slate-800' : 'text-slate-400'}>{item.icon}</span>
+      <span className={active ? 'text-tn-primary' : 'text-slate-400'}>{item.icon}</span>
       <span className="truncate">{item.label}</span>
     </a>
   )
 }
 
-export function Sidebar({ userEmail, isAdmin = false }: { userEmail?: string | null; isAdmin?: boolean }) {
+export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname()
 
   return (
@@ -151,27 +151,6 @@ export function Sidebar({ userEmail, isAdmin = false }: { userEmail?: string | n
           }}
           active={pathname === '/settings' || pathname.startsWith('/settings/')}
         />
-
-        {/* Signed-in user — email truncated, sign-out as small action below */}
-        {userEmail && (
-          <div className="px-3 pt-2 pb-1 border-t border-slate-100 mt-2">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Signed in</div>
-            <div
-              className="text-xs text-slate-700 font-medium truncate"
-              title={userEmail}
-            >
-              {userEmail}
-            </div>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="mt-1.5 text-xs text-slate-500 hover:text-red-600 transition-colors"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        )}
       </div>
     </aside>
   )
