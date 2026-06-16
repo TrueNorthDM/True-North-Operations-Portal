@@ -166,9 +166,13 @@ const MIN_ZOOM = 0.4
 const MAX_ZOOM = 2.5
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(z * 100) / 100))
 
-/** Full screen: bigger view with zoom in/out + scroll-to-pan. */
+/** Full screen: bigger view with zoom in/out + scroll/drag-to-pan. */
 function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => void }) {
   const treeRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  // Drag-to-pan state kept in a ref (no re-render per mouse-move).
+  const drag = useRef({ active: false, startX: 0, startY: 0, left: 0, top: 0 })
+  const [grabbing, setGrabbing] = useState(false)
   const [nat, setNat] = useState({ w: 0, h: 0 })
   const [zoom, setZoom] = useState(1)
 
@@ -191,6 +195,37 @@ function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => voi
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // Drag-to-pan: listen on window so the pan keeps tracking even if the cursor
+  // leaves the canvas mid-drag.
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const el = scrollRef.current
+      if (!drag.current.active || !el) return
+      el.scrollLeft = drag.current.left - (e.clientX - drag.current.startX)
+      el.scrollTop = drag.current.top - (e.clientY - drag.current.startY)
+    }
+    const onUp = () => {
+      if (drag.current.active) {
+        drag.current.active = false
+        setGrabbing(false)
+      }
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
+
+  function onMouseDown(e: React.MouseEvent) {
+    const el = scrollRef.current
+    if (e.button !== 0 || !el) return // left button only
+    e.preventDefault() // stop native text/image drag
+    drag.current = { active: true, startX: e.clientX, startY: e.clientY, left: el.scrollLeft, top: el.scrollTop }
+    setGrabbing(true)
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
@@ -220,7 +255,11 @@ function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => voi
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto p-8">
+      <div
+        ref={scrollRef}
+        onMouseDown={onMouseDown}
+        className={`flex-1 overflow-auto p-8 select-none ${grabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
+      >
         {/* Reserve the scaled footprint so panning works when zoomed in. */}
         <div style={{ width: nat.w ? nat.w * zoom : undefined, height: nat.h ? nat.h * zoom : undefined }}>
           <ScaledTree roots={roots} scale={zoom} innerRef={treeRef} />

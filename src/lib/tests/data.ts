@@ -51,7 +51,7 @@ export const TEST_AREAS: TestArea[] = [
     area: 'Home · Org chart',
     cases: [
       { id: 'ORG-1', check: 'Open Home.', expect: 'The “Organization” section shows the company org chart: a tree from David Sharpe down, ~33 people, with team chips and team boxes — auto-scaled to fit the block width (no horizontal scroll).', needs: 'migrations 014 + 015 applied' },
-      { id: 'ORG-2', check: 'Click “Full screen”, then use the − / + buttons (or the +/− keys), Reset, and Esc.', expect: 'The chart opens big; zoom out/in works (40–250%), Reset returns to 100%, you can scroll to pan when zoomed in, and Esc/Close exits.' },
+      { id: 'ORG-2', check: 'Click “Full screen”, then use the − / + buttons (or the +/− keys), Reset, Esc, and drag the canvas with the mouse.', expect: 'The chart opens big; zoom out/in works (40–250%), Reset returns to 100%, you can scroll OR click-and-drag to pan, and Esc/Close exits.' },
     ],
   },
   {
