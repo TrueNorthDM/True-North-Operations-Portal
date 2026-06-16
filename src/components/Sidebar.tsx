@@ -10,7 +10,7 @@
 
 import { usePathname } from 'next/navigation'
 
-const iconClass = 'w-5 h-5 shrink-0'
+const iconClass = 'w-6 h-6 shrink-0'
 
 // Home — house outline.
 const HomeIcon = (
@@ -114,14 +114,23 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
   return (
     <a
       href={item.href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+      aria-label={item.label}
+      aria-current={active ? 'page' : undefined}
+      className={`group relative mx-auto flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-primary/40 ${
         active
-          ? 'bg-tn-primary/10 text-tn-primary font-semibold'
-          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+          ? 'bg-tn-primary/10 text-tn-primary'
+          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
       }`}
     >
-      <span className={active ? 'text-tn-primary' : 'text-slate-400'}>{item.icon}</span>
-      <span className="truncate">{item.label}</span>
+      {item.icon}
+      {/* Name tooltip — appears to the right on hover/focus. bg-slate-800 +
+          text-white auto-invert in dark mode via the palette remap. */}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 z-50 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+      >
+        {item.label}
+      </span>
     </a>
   )
 }
@@ -130,15 +139,17 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname()
 
   return (
-    <aside className="hidden md:flex flex-col w-44 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] overflow-y-auto">
-      <nav className="p-3 space-y-1">
+    // Icon-only rail. No overflow clipping, so the hover tooltips can extend
+    // past the rail to the right (the few items always fit vertically).
+    <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)]">
+      <nav className="py-3 space-y-1.5">
         <NavLink item={home} active={home.match(pathname)} />
         <NavLink item={dashboards} active={dashboards.match(pathname)} />
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
         <NavLink item={toolsNav} active={toolsNav.match(pathname)} />
       </nav>
 
-      <div className="mt-auto border-t border-slate-100 p-3 space-y-1">
+      <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">
         {/* Admin (management) is kept separate from the content pillars above,
             and only rendered for admins. */}
         {isAdmin && <NavLink item={adminNav} active={adminNav.match(pathname)} />}

@@ -23,7 +23,7 @@ export const TEST_AREAS: TestArea[] = [
   {
     area: 'Navigation & access',
     cases: [
-      { id: 'NAV-1', check: 'Log in and look at the left sidebar.', expect: 'Home, Dashboards, Projects, Tools are shown; Admin appears only if you are an admin; Settings sits at the bottom.' },
+      { id: 'NAV-1', check: 'Log in; look at the narrow icon-only left rail and hover each icon.', expect: 'Icons for Home, Dashboards, Projects, Tools (+ Admin if admin, Settings at the bottom); hovering shows the name as a tooltip to the right. The active page’s icon is highlighted.' },
       { id: 'NAV-2', check: 'Open /admin (or click Admin).', expect: 'Admins see the Admin hub; a non-admin is redirected to Home (Admin never shows for them).', needs: 'to fully test, a non-admin account' },
       { id: 'NAV-3', check: 'Go to a sub-page (e.g. Admin → People) and use the breadcrumb.', expect: 'Breadcrumb reads Dashboard / Admin / People and each crumb links back.' },
       { id: 'NAV-4', check: 'Visit several pages (Home, HFA, Admin, Settings).', expect: 'All share the same background tone — warm off-white in light mode, warm near-black in dark mode. Consistent everywhere.' },
