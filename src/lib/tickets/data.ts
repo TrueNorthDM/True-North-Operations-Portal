@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-025.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-026.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -205,11 +205,22 @@ export const TICKETS: Ticket[] = [
     code: 'TN-019',
     type: 'idea',
     title: 'Rethink what Boards Review should do',
-    description: 'The current /boards-beta (Goals/Translation/Targets, ported from the COE) renders correctly but isn’t the functionality Arnaldo wants. Revisit with him: what should Boards Review actually show/do? Decide before any cutover.',
-    status: 'backlog',
+    description: 'The current /boards-beta (Goals/Translation/Targets, ported from the COE) renders correctly but isn’t the functionality Arnaldo wants. Started: targets editing moved out of the dashboard into Settings (config vs view, TN-025). Still open: what should the Boards Review *view* actually show? Decide before any cutover. Also retire the orphaned target modal inside boards.html (writes to the dead COE Supabase).',
+    status: 'in_progress',
     priority: 'medium',
     area: 'Dashboards',
     createdAt: '2026-06-09',
+  },
+  {
+    code: 'TN-025',
+    type: 'feature',
+    title: 'Move the publishing-targets editor to Settings',
+    description: 'The original target modal lived inside boards.html and wrote to the old COE Supabase — orphaned after the merge (the dashboard reads /api/targets from the PORTAL DB). The connected React editor (TargetsEditor, writes portal publishing_targets) was hidden under the /boards-beta beta tab. Re-homed it in Settings — targets are configuration; the dashboard only shows progress against them. Admin edits, viewer read-only.',
+    status: 'done',
+    priority: 'medium',
+    area: 'Dashboards',
+    createdAt: '2026-06-12',
+    doneAt: '2026-06-12',
   },
   {
     code: 'TN-010',

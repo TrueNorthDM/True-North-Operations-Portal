@@ -103,6 +103,13 @@ export const TEST_AREAS: TestArea[] = [
     ],
   },
   {
+    area: 'Settings · Publishing targets',
+    cases: [
+      { id: 'TGT-1', check: 'Open Settings → Publishing targets.', expect: 'A per-board / per-language list of weekly targets. As admin you can change a value and Save; the change records in the history.' },
+      { id: 'TGT-2', check: 'Change a target in Settings, then open Dashboards → Publishing Goals.', expect: 'The dashboard’s “target for this week” reflects the new value (both read/write the portal’s publishing_targets).' },
+    ],
+  },
+  {
     area: 'Dashboards',
     cases: [
       { id: 'DSH-1', check: 'Open Dashboards.', expect: 'Two cards: “Publishing Goals” and “Workload — IN CONSTRUCTION”.' },
