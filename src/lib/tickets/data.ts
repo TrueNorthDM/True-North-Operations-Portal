@@ -204,9 +204,10 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-019',
     type: 'idea',
-    title: 'Rethink what Boards Review should do',
-    description: 'The current /boards-beta (Goals/Translation/Targets, ported from the COE) renders correctly but isn’t the functionality Arnaldo wants. Started: targets editing moved out of the dashboard into Settings (config vs view, TN-025). Still open: what should the Boards Review *view* actually show? Decide before any cutover. Also retire the orphaned target modal inside boards.html (writes to the dead COE Supabase).',
-    status: 'in_progress',
+    title: 'Boards Review → "My Work" view (what everyone works on across Monday)',
+    description:
+      'DIRECTION CHOSEN (2026-06-12): option C. Boards Review should become a person-centric "My Work" view — for each user, everything they’re working on across the whole Monday account (all boards), not the board-centric editorial port from the COE. Converges with TN-022 (the Home "My Work" widget) — same concept, two surfaces (a Home summary + a full view). Open design questions for when we resume: which Monday boards/columns define "assigned to me" and "in progress"; grouping (by board? by status? by project?); whether it’s read-only or actionable. Deferred — Arnaldo doesn’t want to build it yet. Done so far: targets editing moved out of the dashboard to Settings (TN-025). Still pending here: build the My Work view, then retire the legacy boards.html (+ its orphaned target modal that writes to the dead COE Supabase) in the cutover (TN-010).',
+    status: 'backlog',
     priority: 'medium',
     area: 'Dashboards',
     createdAt: '2026-06-09',
@@ -259,7 +260,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-022',
     type: 'feature',
     title: 'My Work widget — everything a person works on across Monday',
-    description: 'The Home "My Work" widget is a placeholder. Eventually: pull every item assigned to the signed-in person across the Monday account (boards/columns TBD) and list it.',
+    description: 'The Home "My Work" widget is a placeholder. Eventually: pull every item assigned to the signed-in person across the Monday account (boards/columns TBD) and list it. Same concept as TN-019 (Boards Review → "My Work"): this is the Home summary, TN-019 is the full view — build them together.',
     status: 'backlog',
     priority: 'low',
     area: 'Home',
