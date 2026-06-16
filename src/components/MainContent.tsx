@@ -23,7 +23,12 @@ export function MainContent({ children }: { children: React.ReactNode }) {
   const wide = pathname === '/'
 
   return (
-    <main className="flex-1">
+    // min-w-0: as a flex item next to the sidebar, <main> defaults to
+    // min-width:auto and would refuse to shrink below its widest child (e.g.
+    // the org chart's natural width), pushing a page-level horizontal scrollbar.
+    // min-w-0 lets it shrink to the available width; wide children clip/scroll
+    // within their own containers instead.
+    <main className="flex-1 min-w-0">
       {fullBleed ? (
         <div className="h-full">{children}</div>
       ) : (
