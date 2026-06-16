@@ -40,7 +40,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Live admin tools. */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <a
           href="/admin/tickets"
           className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
@@ -67,6 +67,20 @@ export default async function AdminPage() {
           </div>
           <p className="mt-1.5 text-sm text-slate-500">
             A checklist to verify the whole system end-to-end — tick off what works.
+          </p>
+        </a>
+        <a
+          href="/admin/manual"
+          className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-bold text-slate-900 group-hover:text-slate-700">System manual</h2>
+            <span className="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-slate-700">
+              Open <span aria-hidden="true">→</span>
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm text-slate-500">
+            How the portal works — pages, access, and how Monday feeds it.
           </p>
         </a>
       </div>

@@ -61,6 +61,12 @@ export const TEST_AREAS: TestArea[] = [
     ],
   },
   {
+    area: 'Admin · System manual',
+    cases: [
+      { id: 'MAN-1', check: 'Open Admin → System manual; click a Contents link.', expect: 'The manual lists sections (Overview, Access, Pages, Monday, Data, Roadmap); jump links scroll to them; the Monday section explains the two flows + token.' },
+    ],
+  },
+  {
     area: 'Admin · People',
     cases: [
       { id: 'PPL-1', check: 'Open Admin → People.', expect: 'Table lists everyone with title, “Reports to”, teams, account, status; search works.' },
