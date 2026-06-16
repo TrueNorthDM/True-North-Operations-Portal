@@ -5,13 +5,21 @@
  * (boxes), auto-laid-out from the reporting hierarchy. Each card carries its
  * team's signature color (top band) and the connector thread leading into it is
  * tinted the same color (via the --thread CSS var on each <li>; see globals.css
- * .org-tree). A full-screen toggle gives the wide chart room to breathe.
+ * .org-tree).
+ *
+ * Inline, the tree auto-scales to fit the block's width (no horizontal scroll).
+ * A full-screen view shows it bigger with zoom in/out controls. Both scale via
+ * a CSS transform; the scroll/area math reserves the scaled size so panning
+ * works when zoomed in.
  */
 
-import { useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { OrgPerson, OrgTeamGroup } from '@/lib/org/data'
 
 const NEUTRAL = '#cbd5e1'
+
+// Measure before paint on the client; fall back to useEffect during SSR.
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 function PersonCard({ p }: { p: OrgPerson }) {
   const color = p.color ?? NEUTRAL
@@ -83,10 +91,141 @@ function Node({ node }: { node: OrgPerson }) {
 
 function Tree({ roots }: { roots: OrgPerson[] }) {
   return (
-    <div className="org-tree inline-block min-w-full">
+    <div className="org-tree inline-block">
       <ul>
         {roots.map(r => <Node key={r.id} node={r} />)}
       </ul>
+    </div>
+  )
+}
+
+/**
+ * ScaledTree — renders the tree at an explicit scale, reserving the scaled
+ * footprint so a scrolling parent can pan when zoomed in. `width: max-content`
+ * lets the inner tree take its natural width regardless of the parent.
+ */
+function ScaledTree({ roots, scale, innerRef }: { roots: OrgPerson[]; scale: number; innerRef: React.Ref<HTMLDivElement> }) {
+  return (
+    <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: 'max-content' }}>
+      <Tree roots={roots} />
+    </div>
+  )
+}
+
+/** Inline: auto-fit the tree to the block width (downscale only). */
+function FitTree({ roots }: { roots: OrgPerson[] }) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const treeRef = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState({ scale: 1, height: 0, ready: false })
+
+  useIsoLayoutEffect(() => {
+    const box = boxRef.current
+    const tree = treeRef.current
+    if (!box || !tree) return
+    const measure = () => {
+      const natW = tree.scrollWidth || 1 //  transform doesn't affect scrollWidth
+      const natH = tree.scrollHeight || 0
+      const avail = box.clientWidth || natW
+      const scale = Math.min(1, avail / natW)
+      const height = Math.ceil(natH * scale)
+      setFit(prev => (prev.scale === scale && prev.height === height && prev.ready ? prev : { scale, height, ready: true }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(box)
+    const t = setTimeout(measure, 250) // re-measure once fonts settle
+    return () => { ro.disconnect(); clearTimeout(t) }
+  }, [roots])
+
+  return (
+    <div
+      ref={boxRef}
+      className="overflow-hidden transition-opacity"
+      style={{ height: fit.ready ? fit.height : undefined, opacity: fit.ready ? 1 : 0 }}
+    >
+      <ScaledTree roots={roots} scale={fit.scale} innerRef={treeRef} />
+    </div>
+  )
+}
+
+function ZoomBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="inline-flex w-8 h-8 items-center justify-center rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200"
+    >
+      {children}
+    </button>
+  )
+}
+
+const MIN_ZOOM = 0.4
+const MAX_ZOOM = 2.5
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(z * 100) / 100))
+
+/** Full screen: bigger view with zoom in/out + scroll-to-pan. */
+function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => void }) {
+  const treeRef = useRef<HTMLDivElement>(null)
+  const [nat, setNat] = useState({ w: 0, h: 0 })
+  const [zoom, setZoom] = useState(1)
+
+  useIsoLayoutEffect(() => {
+    const el = treeRef.current
+    if (!el) return
+    const m = () => setNat({ w: el.scrollWidth, h: el.scrollHeight })
+    m()
+    const t = setTimeout(m, 250)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      else if (e.key === '+' || e.key === '=') setZoom(z => clampZoom(z + 0.2))
+      else if (e.key === '-' || e.key === '_') setZoom(z => clampZoom(z - 0.2))
+      else if (e.key === '0') setZoom(1)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-white/80 backdrop-blur">
+        <h2 className="text-sm font-bold text-slate-800">Organization</h2>
+        <div className="flex items-center gap-1.5">
+          <ZoomBtn label="Zoom out" onClick={() => setZoom(z => clampZoom(z - 0.2))}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
+          </ZoomBtn>
+          <span className="text-xs font-medium text-slate-500 tabular-nums w-12 text-center">{Math.round(zoom * 100)}%</span>
+          <ZoomBtn label="Zoom in" onClick={() => setZoom(z => clampZoom(z + 0.2))}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </ZoomBtn>
+          <button
+            type="button"
+            onClick={() => setZoom(1)}
+            className="text-xs font-medium text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1.5"
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-1 inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-1.5 bg-white"
+          >
+            Close ✕
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto p-8">
+        {/* Reserve the scaled footprint so panning works when zoomed in. */}
+        <div style={{ width: nat.w ? nat.w * zoom : undefined, height: nat.h ? nat.h * zoom : undefined }}>
+          <ScaledTree roots={roots} scale={zoom} innerRef={treeRef} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -116,27 +255,10 @@ export function OrgChart({ roots }: { roots: OrgPerson[] }) {
           Full screen
         </button>
       </div>
-      <div className="overflow-x-auto pb-2">
-        <Tree roots={roots} />
-      </div>
 
-      {full && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-white/80 backdrop-blur">
-            <h2 className="text-sm font-bold text-slate-800">Organization</h2>
-            <button
-              type="button"
-              onClick={() => setFull(false)}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-1.5 bg-white"
-            >
-              Close ✕
-            </button>
-          </div>
-          <div className="flex-1 overflow-auto p-8">
-            <Tree roots={roots} />
-          </div>
-        </div>
-      )}
+      <FitTree roots={roots} />
+
+      {full && <FullScreen roots={roots} onClose={() => setFull(false)} />}
     </>
   )
 }
