@@ -51,14 +51,15 @@ const WIDGETS: Widget[] = [
 
 export function HomeWidgets() {
   return (
-    // Four widgets across one balanced row (equal space at both ends).
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    // Fixed-width cards centred as a group → equal space at both ends, the
+    // cards keep their natural size instead of stretching to fill the row.
+    <div className="flex flex-wrap justify-center gap-4">
       {WIDGETS.map(w =>
         w.href ? (
           <a
             key={w.title}
             href={w.href}
-            className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-md"
+            className="group w-full sm:w-72 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-md"
           >
             <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-colors">
               {w.icon}
@@ -69,7 +70,7 @@ export function HomeWidgets() {
         ) : (
           <div
             key={w.title}
-            className="rounded-xl border border-dashed border-slate-300 bg-white/50 p-4"
+            className="w-full sm:w-72 rounded-xl border border-dashed border-slate-300 bg-white/50 p-4"
             aria-disabled="true"
           >
             <div className="flex items-start justify-between gap-2">
