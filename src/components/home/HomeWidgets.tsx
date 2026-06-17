@@ -16,12 +16,6 @@ const DashboardsIcon = (
     <rect x="3" y="16" width="7" height="5" rx="1" />
   </svg>
 )
-const ProjectsIcon = (
-  <svg className={icon} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M9 3v18M15 3v18" />
-  </svg>
-)
 const ToolsIcon = (
   <svg className={icon} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
@@ -50,7 +44,6 @@ interface Widget {
 
 const WIDGETS: Widget[] = [
   { title: 'Dashboards', description: 'Boards Review — pipeline & publishing goals.', icon: DashboardsIcon, href: '/dashboards' },
-  { title: 'Projects', description: 'Your workspaces — AAAF & HFA.', icon: ProjectsIcon, href: '/projects' },
   { title: 'Tools', description: 'Capabilities used inside a project.', icon: ToolsIcon, href: '/tools' },
   { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon },
   { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon },
@@ -58,7 +51,8 @@ const WIDGETS: Widget[] = [
 
 export function HomeWidgets() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+    // Four widgets across one balanced row (equal space at both ends).
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {WIDGETS.map(w =>
         w.href ? (
           <a
