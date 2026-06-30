@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-027.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-028.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -273,12 +273,24 @@ export const TICKETS: Ticket[] = [
     type: 'feature',
     title: 'QuickBooks Time (TSheets) integration — Time Report tool',
     description:
-      'Automates the admin assistant\'s manual process: TSheets → CSV → Excel pivot → copy hours into Google Sheet. Portal now pulls hours directly from the TSheets REST API (3 endpoints: /users, /jobcodes, /timesheets) and renders the employee × job code pivot for any month. Token stored in app_settings (same pattern as Monday). Page at /tools/time-report; token field in Settings. Phase 2: budget columns + cost variance in portal DB.',
-    status: 'in_progress',
+      'Automates the admin assistant\'s manual process: TSheets → CSV → Excel pivot → copy hours into Google Sheet. Portal now pulls hours directly from the TSheets REST API (3 endpoints: /users, /jobcodes, /timesheets) and renders the employee × job code pivot for any month. Token stored in app_settings. Settings system: clients/budgets (tr_budgets), people rates with history (tr_assignments), immutable audit log (tr_audit_log), all changes require justification. Migrations 019, 020, 021 applied.',
+    status: 'done',
     priority: 'medium',
     area: 'Tools',
     createdAt: '2026-06-30',
-    notes: 'Structure built (client, report builder, page, token field). Waiting for API token from Arnaldo to go live. Run migration 019 first.',
+    doneAt: '2026-06-30',
+  },
+
+  {
+    code: 'TN-027',
+    type: 'feature',
+    title: 'Time Report — Phase D: date range + cost columns',
+    description:
+      'Add day/week/month/custom date range picker (beyond the current month-only selector). Add cost columns to the matrix (hours × hourly rate from tr_assignments), budget vs actual variance per client, and total cost per employee. Requires tr_assignments to be populated first.',
+    status: 'backlog',
+    priority: 'low',
+    area: 'Tools',
+    createdAt: '2026-06-30',
   },
 
   // ── Done ──────────────────────────────────────────────────────────────────

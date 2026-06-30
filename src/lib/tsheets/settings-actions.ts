@@ -1,0 +1,287 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+import { fetchUsers, fetchJobcodes } from '@/lib/tsheets/client'
+
+// ─── Sync job codes from TSheets into tr_clients ────────────────────────────
+
+export async function syncTrClients(token: string): Promise<{ ok: boolean; count: number; error?: string }> {
+  const supabase = await createClient()
+  try {
+    const jobcodes = await fetchJobcodes(token)
+    if (jobcodes.length === 0) return { ok: true, count: 0 }
+
+    const rows = jobcodes.map(jc => ({
+      tsheets_jobcode_id: jc.id,
+      name: jc.name,
+      active: true,
+    }))
+
+    const { error } = await supabase
+      .from('tr_clients')
+      .upsert(rows, { onConflict: 'tsheets_jobcode_id', ignoreDuplicates: false })
+    if (error) return { ok: false, count: 0, error: error.message }
+
+    return { ok: true, count: rows.length }
+  } catch (e) {
+    return { ok: false, count: 0, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
+
+// ─── Sync TSheets users into the people directory ───────────────────────────
+
+export async function syncPeopleFromTsheets(token: string): Promise<{
+  ok: boolean
+  linked: number
+  imported: number
+  error?: string
+}> {
+  const supabase = await createClient()
+  try {
+    const users = await fetchUsers(token)
+    let linked = 0
+    let imported = 0
+
+    for (const user of users) {
+      const firstName = user.name.split(' ')[0].toLowerCase()
+
+      // Check if already linked by tsheets_user_id
+      const { data: byId } = await supabase
+        .from('people')
+        .select('id, tsheets_user_id')
+        .eq('tsheets_user_id', user.id)
+        .maybeSingle()
+
+      if (byId) continue // already linked
+
+      // Try to match by first name
+      const { data: byName } = await supabase
+        .from('people')
+        .select('id, name')
+        .ilike('name', `${firstName}%`)
+        .is('tsheets_user_id', null)
+        .maybeSingle()
+
+      if (byName) {
+        await supabase
+          .from('people')
+          .update({ tsheets_user_id: user.id })
+          .eq('id', byName.id)
+        linked++
+      } else {
+        // Import as tsheets_only person
+        await supabase.from('people').insert({
+          name: user.name,
+          tsheets_user_id: user.id,
+          tsheets_only: true,
+        })
+        imported++
+      }
+    }
+
+    return { ok: true, linked, imported }
+  } catch (e) {
+    return { ok: false, linked: 0, imported: 0, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
+
+// ─── Budget ──────────────────────────────────────────────────────────────────
+
+export async function saveTrBudget(input: {
+  clientId: number
+  hoursAllocated: number | null
+  budgetAmount: number | null
+  extraBudget: number
+  startDate: string   // YYYY-MM-DD (always first of month)
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Close the current active budget for this client
+  const { data: current } = await supabase
+    .from('tr_budgets')
+    .select('*')
+    .eq('client_id', input.clientId)
+    .is('end_date', null)
+    .maybeSingle()
+
+  if (current) {
+    const endDate = new Date(input.startDate)
+    endDate.setDate(endDate.getDate() - 1)
+    const { error } = await supabase
+      .from('tr_budgets')
+      .update({ end_date: endDate.toISOString().slice(0, 10) })
+      .eq('id', current.id)
+    if (error) return { ok: false, error: error.message }
+  }
+
+  // Insert new budget
+  const { data: inserted, error: insertErr } = await supabase
+    .from('tr_budgets')
+    .insert({
+      client_id: input.clientId,
+      hours_allocated: input.hoursAllocated,
+      budget_amount: input.budgetAmount,
+      extra_budget: input.extraBudget,
+      start_date: input.startDate,
+      justification: input.justification,
+      created_by: user?.id,
+    })
+    .select()
+    .single()
+  if (insertErr) return { ok: false, error: insertErr.message }
+
+  // Audit log
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'budget',
+    entity_id: inserted.id,
+    action: current ? 'update' : 'create',
+    before_data: current ?? null,
+    after_data: inserted,
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/tools/time-report/settings')
+  return { ok: true }
+}
+
+// ─── Assignment (rate history) ────────────────────────────────────────────────
+
+export async function saveTrAssignment(input: {
+  tsheetsUserId: number
+  clientId: number
+  hourlyRate: number
+  effectiveFrom: string  // YYYY-MM-DD
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Close current active assignment
+  const { data: current } = await supabase
+    .from('tr_assignments')
+    .select('*')
+    .eq('tsheets_user_id', input.tsheetsUserId)
+    .eq('client_id', input.clientId)
+    .is('effective_to', null)
+    .eq('active', true)
+    .maybeSingle()
+
+  if (current) {
+    const closeDate = new Date(input.effectiveFrom)
+    closeDate.setDate(closeDate.getDate() - 1)
+    const { error } = await supabase
+      .from('tr_assignments')
+      .update({ effective_to: closeDate.toISOString().slice(0, 10) })
+      .eq('id', current.id)
+    if (error) return { ok: false, error: error.message }
+  }
+
+  // Insert new assignment
+  const { data: inserted, error: insertErr } = await supabase
+    .from('tr_assignments')
+    .insert({
+      tsheets_user_id: input.tsheetsUserId,
+      client_id: input.clientId,
+      hourly_rate: input.hourlyRate,
+      active: true,
+      effective_from: input.effectiveFrom,
+      justification: input.justification,
+      created_by: user?.id,
+    })
+    .select()
+    .single()
+  if (insertErr) return { ok: false, error: insertErr.message }
+
+  // Audit log
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'assignment',
+    entity_id: inserted.id,
+    action: current ? 'update' : 'create',
+    before_data: current ?? null,
+    after_data: inserted,
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/tools/time-report/settings')
+  return { ok: true }
+}
+
+// ─── Portal-level sync wrappers (read token from DB — never exposed to browser) ─
+
+export async function syncClientsFromPortal(): Promise<{ ok: boolean; count: number; error?: string }> {
+  const supabase = await createClient()
+  const { data: settings } = await supabase
+    .from('app_settings')
+    .select('tsheets_api_token')
+    .eq('singleton_id', 1)
+    .maybeSingle()
+  if (!settings?.tsheets_api_token) {
+    return { ok: false, count: 0, error: 'No TSheets token configured in Settings.' }
+  }
+  return syncTrClients(settings.tsheets_api_token)
+}
+
+export async function syncPeopleFromPortal(): Promise<{
+  ok: boolean
+  linked: number
+  imported: number
+  error?: string
+}> {
+  const supabase = await createClient()
+  const { data: settings } = await supabase
+    .from('app_settings')
+    .select('tsheets_api_token')
+    .eq('singleton_id', 1)
+    .maybeSingle()
+  if (!settings?.tsheets_api_token) {
+    return { ok: false, linked: 0, imported: 0, error: 'No TSheets token configured in Settings.' }
+  }
+  return syncPeopleFromTsheets(settings.tsheets_api_token)
+}
+
+export async function deactivateTrAssignment(input: {
+  tsheetsUserId: number
+  clientId: number
+  effectiveFrom: string
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: current } = await supabase
+    .from('tr_assignments')
+    .select('*')
+    .eq('tsheets_user_id', input.tsheetsUserId)
+    .eq('client_id', input.clientId)
+    .is('effective_to', null)
+    .eq('active', true)
+    .maybeSingle()
+
+  if (!current) return { ok: false, error: 'No active assignment found.' }
+
+  const closeDate = new Date(input.effectiveFrom)
+  closeDate.setDate(closeDate.getDate() - 1)
+  const { error } = await supabase
+    .from('tr_assignments')
+    .update({ effective_to: closeDate.toISOString().slice(0, 10), active: false })
+    .eq('id', current.id)
+  if (error) return { ok: false, error: error.message }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'assignment',
+    entity_id: current.id,
+    action: 'deactivate',
+    before_data: current,
+    after_data: { ...current, effective_to: closeDate.toISOString().slice(0, 10), active: false },
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/tools/time-report/settings')
+  return { ok: true }
+}
