@@ -139,7 +139,7 @@ export const MANUAL: ManualSection[] = [
         ‘User opens /tools/time-report (optionally with ?month=YYYY-MM; defaults to current month).’,
         ‘Server reads tsheets_api_token from app_settings.’,
         ‘Server calls 3 TSheets REST v1 endpoints in parallel: GET /users, GET /jobcodes, GET /timesheets (filtered by date range).’,
-        ‘buildMatrix() sums duration (seconds → hours) per jobcode × user and pre-computes row/column totals.’,
+        ‘buildMatrix() sums duration (seconds → hours) per jobcode x user and pre-computes row/column totals.’,
         ‘The matrix is passed as props to TimeReportMatrixView (client component) for the month picker and table render.’,
         ‘No data is stored in the portal DB — always fetched fresh from TSheets on each page load.’,
       ] },
@@ -152,7 +152,7 @@ export const MANUAL: ManualSection[] = [
     body: [
       { kind: ‘list’, items: [
         ‘Time Report Phase 2 — budget hours + cost variance stored in portal DB (replaces the Google Sheet).’,
-        ‘My Work — everything you’re working on across the whole Monday account (the Home widget + a full view; TN-019 / TN-022). This would be the third Monday use.’,
+        ‘My Work — everything you\’re working on across the whole Monday account (the Home widget + a full view; TN-019 / TN-022). This would be the third Monday use.’,
         ‘My Team — a team-at-a-glance view on Home.’,
         ‘Custom SMTP (Resend) for production login (to lift the email rate limit).’,
       ] },
