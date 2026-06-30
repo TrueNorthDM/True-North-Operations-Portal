@@ -6,7 +6,7 @@
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
  *
- * Convention: codes are TN-NNN, monotonic. Next free code: TN-026.
+ * Convention: codes are TN-NNN, monotonic. Next free code: TN-027.
  */
 
 export type TicketType = 'task' | 'bug' | 'feature' | 'chore' | 'idea'
@@ -266,6 +266,19 @@ export const TICKETS: Ticket[] = [
     priority: 'low',
     area: 'Home',
     createdAt: '2026-06-12',
+  },
+
+  {
+    code: 'TN-026',
+    type: 'feature',
+    title: 'QuickBooks Time (TSheets) integration — Time Report tool',
+    description:
+      'Automates the admin assistant\'s manual process: TSheets → CSV → Excel pivot → copy hours into Google Sheet. Portal now pulls hours directly from the TSheets REST API (3 endpoints: /users, /jobcodes, /timesheets) and renders the employee × job code pivot for any month. Token stored in app_settings (same pattern as Monday). Page at /tools/time-report; token field in Settings. Phase 2: budget columns + cost variance in portal DB.',
+    status: 'in_progress',
+    priority: 'medium',
+    area: 'Tools',
+    createdAt: '2026-06-30',
+    notes: 'Structure built (client, report builder, page, token field). Waiting for API token from Arnaldo to go live. Run migration 019 first.',
   },
 
   // ── Done ──────────────────────────────────────────────────────────────────

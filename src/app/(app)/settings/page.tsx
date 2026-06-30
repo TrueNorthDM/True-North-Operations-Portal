@@ -7,6 +7,7 @@ import { MondayTokenField } from '@/components/MondayTokenField'
 import { MondayBoardField } from '@/components/MondayBoardField'
 import { WpUrlsField } from '@/components/WpUrlsField'
 import { TargetsEditor } from '@/components/boards/TargetsEditor'
+import { TsheetsTokenField } from '@/components/TsheetsTokenField'
 
 interface SiteData {
   id: string
@@ -46,19 +47,21 @@ export default async function SettingsPage() {
     .order('created_at', { ascending: false })
     .limit(30)
 
-  // Monday API token (single-row singleton).
-  // SECURITY: server reads the full token but ONLY sends { exists, last4 } to
-  // the client — the actual value never leaves the server here, so client-side
-  // inspection (DevTools, Network) can't reveal it. (The token is still in
-  // Supabase under anon-key reach; auth + RLS will fully lock it down later.)
+  // API tokens (singleton row) — full values read server-side only;
+  // client receives { exists, last4 } to show a masked preview without
+  // exposing the raw token to DevTools / Network inspection.
   const { data: appSettings } = await supabase
     .from('app_settings')
-    .select('monday_api_token')
+    .select('monday_api_token, tsheets_api_token')
     .eq('singleton_id', 1)
     .maybeSingle()
   const tokenInfo = {
     exists: !!appSettings?.monday_api_token,
     last4: appSettings?.monday_api_token ? appSettings.monday_api_token.slice(-4) : null,
+  }
+  const tsheetsTokenInfo = {
+    exists: !!appSettings?.tsheets_api_token,
+    last4: appSettings?.tsheets_api_token ? appSettings.tsheets_api_token.slice(-4) : null,
   }
 
   // For each site, count pages with ≥1 URL — used to show "X pages will be
@@ -94,6 +97,7 @@ export default async function SettingsPage() {
       </div>
 
       <MondayTokenField tokenInfo={tokenInfo} />
+      <TsheetsTokenField tokenInfo={tsheetsTokenInfo} />
 
       {/* Publishing targets — the weekly goals the Boards Review dashboard
           measures against. Config belongs here, not on the dashboard. */}
