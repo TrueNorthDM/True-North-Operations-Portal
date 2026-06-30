@@ -44,7 +44,10 @@ export async function syncPeopleFromTsheets(token: string): Promise<{
     let imported = 0
 
     for (const user of users) {
-      const firstName = user.name.split(' ')[0].toLowerCase()
+      // TsheetsUser has first_name / last_name, not a combined name field
+      const firstName = (user.first_name ?? '').toLowerCase()
+      const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
+      if (!firstName) continue // skip users with no name (admin/system accounts)
 
       // Check if already linked by tsheets_user_id
       const { data: byId } = await supabase
@@ -72,7 +75,7 @@ export async function syncPeopleFromTsheets(token: string): Promise<{
       } else {
         // Import as tsheets_only person
         await supabase.from('people').insert({
-          name: user.name,
+          name: fullName,
           tsheets_user_id: user.id,
           tsheets_only: true,
         })
