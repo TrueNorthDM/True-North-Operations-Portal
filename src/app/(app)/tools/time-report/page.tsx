@@ -8,6 +8,47 @@ import { createClient } from '@/lib/supabase/server'
 import { fetchUsers, fetchJobcodes, fetchTimesheets } from '@/lib/tsheets/client'
 import { buildMatrix, monthBounds, currentYearMonth } from '@/lib/tsheets/report'
 import { TimeReportMatrixView } from '@/components/tsheets/TimeReportMatrix'
+import type { TimeReportMatrix } from '@/lib/tsheets/types'
+
+// Sample data shown when no API token is configured, so the user can see the
+// table structure before adding their credentials.
+const MOCK_EMPLOYEES = [
+  { id: 1, name: 'Amy' },
+  { id: 2, name: 'Cheyenne' },
+  { id: 3, name: 'Jeannette' },
+  { id: 4, name: 'Kathleen' },
+  { id: 5, name: 'Samuel' },
+  { id: 6, name: 'Stephanie' },
+]
+const MOCK_JOBCODES = [
+  { id: 10, name: 'Bessemeter' },
+  { id: 11, name: 'Foreign contractors' },
+  { id: 12, name: 'i7 Marketing' },
+  { id: 13, name: 'MME' },
+  { id: 14, name: 'WM All' },
+]
+const MOCK_HOURS: Record<number, Record<number, number>> = {
+  10: { 1: 12, 3: 8, 5: 20 },
+  11: { 2: 4, 6: 16 },
+  12: { 1: 40, 2: 32, 3: 24, 4: 38, 5: 10, 6: 20 },
+  13: { 1: 8, 3: 16, 4: 24, 6: 8 },
+  14: { 2: 20, 4: 12, 5: 28, 6: 4 },
+}
+const MOCK_MATRIX: TimeReportMatrix = {
+  month: '2026-06',
+  startDate: '2026-06-01',
+  endDate: '2026-06-30',
+  employees: MOCK_EMPLOYEES,
+  jobcodes: MOCK_JOBCODES,
+  hours: MOCK_HOURS,
+  rowTotals: Object.fromEntries(
+    MOCK_JOBCODES.map(jc => [jc.id, Object.values(MOCK_HOURS[jc.id] ?? {}).reduce((a, b) => a + b, 0)])
+  ),
+  colTotals: Object.fromEntries(
+    MOCK_EMPLOYEES.map(emp => [emp.id, MOCK_JOBCODES.reduce((sum, jc) => sum + (MOCK_HOURS[jc.id]?.[emp.id] ?? 0), 0)])
+  ),
+  grandTotal: MOCK_JOBCODES.reduce((sum, jc) => sum + Object.values(MOCK_HOURS[jc.id] ?? {}).reduce((a, b) => a + b, 0), 0),
+}
 
 // Generate the last 24 months as YYYY-MM strings (newest first)
 function recentMonths(): string[] {
@@ -53,7 +94,12 @@ export default async function TimeReportPage({ searchParams }: Props) {
       </div>
 
       {!token ? (
-        <NoTokenState />
+        <TimeReportMatrixView
+          data={MOCK_MATRIX}
+          selectedMonth={selectedMonth}
+          availableMonths={availableMonths}
+          preview
+        />
       ) : (
         <ReportView token={token} selectedMonth={selectedMonth} availableMonths={availableMonths} />
       )}
@@ -118,25 +164,3 @@ async function ReportView({
   )
 }
 
-function NoTokenState() {
-  return (
-    <div className="rounded-xl border-2 border-dashed border-slate-200 bg-white p-8 text-center space-y-4 max-w-lg mx-auto">
-      <div className="text-3xl" aria-hidden="true">⏱</div>
-      <div>
-        <p className="font-semibold text-slate-800">QuickBooks Time token not configured</p>
-        <p className="text-sm text-slate-500 mt-1">
-          Add your TSheets API token in Settings to start pulling hours automatically.
-        </p>
-      </div>
-      <a
-        href="/settings"
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900 transition-colors"
-      >
-        Go to Settings →
-      </a>
-      <div className="text-xs text-slate-400 pt-2">
-        In TSheets: company menu → Company Settings → Add-ons → API Access → generate token
-      </div>
-    </div>
-  )
-}

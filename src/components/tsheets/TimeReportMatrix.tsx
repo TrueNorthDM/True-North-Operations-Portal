@@ -11,9 +11,10 @@ interface Props {
   data: TimeReportMatrix
   selectedMonth: string  // "YYYY-MM"
   availableMonths: string[]  // ["2026-06", "2026-05", ...] — last 24 months
+  preview?: boolean
 }
 
-export function TimeReportMatrixView({ data, selectedMonth, availableMonths }: Props) {
+export function TimeReportMatrixView({ data, selectedMonth, availableMonths, preview }: Props) {
   const router = useRouter()
 
   function onMonthChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -29,6 +30,18 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths }: P
 
   return (
     <div className="space-y-6">
+      {/* Preview banner */}
+      {preview && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="text-base">&#x26A0;&#xFE0F;</span>
+          <span>
+            <strong>Sample data</strong> — structure preview only. Add your TSheets API token in{' '}
+            <a href="/settings" className="underline font-medium hover:text-amber-900">Settings</a>{' '}
+            to pull real hours.
+          </span>
+        </div>
+      )}
+
       {/* Month selector */}
       <div className="flex items-center gap-4 flex-wrap">
         <label htmlFor="month-select" className="text-sm font-medium text-slate-700">
