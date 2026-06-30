@@ -18,17 +18,11 @@ export default function ToolsPage() {
           title="Href Link Management"
           description="Manage hreflang tags for a project's WordPress pages. Open a project (AAAF or HFA) to use it."
         />
-
-        {/* Placeholder — signals the section is extensible without a dead link. */}
-        <div
-          className="rounded-xl border-2 border-dashed border-slate-200 bg-transparent p-6 opacity-60"
-          aria-hidden="true"
-        >
-          <h2 className="text-xl font-bold text-slate-400">More tools coming</h2>
-          <p className="mt-1.5 text-sm text-slate-400">
-            New capabilities will appear here as the portal grows.
-          </p>
-        </div>
+        <NavCard
+          href="/tools/time-report"
+          title="Time Report"
+          description="Hours per employee per job code, pulled live from QuickBooks Time — the pivot the admin assistant used to build by hand."
+        />
       </div>
     </div>
   )

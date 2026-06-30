@@ -116,6 +116,16 @@ export const TEST_AREAS: TestArea[] = [
     ],
   },
   {
+    area: 'Tools · Time Report',
+    cases: [
+      { id: 'TR-1', check: 'Open Tools → Time Report without a TSheets token configured in Settings.', expect: 'A “token not configured” empty state with a link to Settings — no error, no crash.' },
+      { id: 'TR-2', check: 'Add a valid TSheets API token in Settings → QuickBooks Time section, save.', expect: 'Token saves and shows masked ···XXXX. Time Report page no longer shows the empty state.', needs: 'valid TSheets API token + migration 019 applied' },
+      { id: 'TR-3', check: 'Open Time Report; note the default month.', expect: 'Month selector defaults to the current month; the pivot table shows hours from TSheets.', needs: 'TSheets token configured' },
+      { id: 'TR-4', check: 'Switch to a past month in the selector.', expect: 'URL updates to ?month=YYYY-MM and the table reloads with the correct data for that month.', needs: 'TSheets token configured' },
+      { id: 'TR-5', check: 'Inspect the pivot table structure.', expect: 'Rows = job codes, columns = employee first names, rightmost column = Total. Each cell shows hours or —. Row totals and column totals both sum correctly to the grand total.', needs: 'TSheets token configured' },
+    ],
+  },
+  {
     area: 'Dashboards',
     cases: [
       { id: 'DSH-1', check: 'Open Dashboards.', expect: 'Two cards: “Publishing Goals” and “Workload — IN CONSTRUCTION”.' },

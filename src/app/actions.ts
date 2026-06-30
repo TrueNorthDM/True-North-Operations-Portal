@@ -264,6 +264,26 @@ export async function saveMondayApiToken(input: { token: string }): Promise<{ ok
 }
 
 /**
+ * Saves the TSheets (QuickBooks Time) API token to app_settings.
+ * Same security model as monday_api_token — full value stays server-side,
+ * client only sees { exists, last4 }.
+ */
+export async function saveTsheetsApiToken(input: { token: string }): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const trimmed = input.token.trim()
+
+  const { error } = await supabase
+    .from('app_settings')
+    .update({ tsheets_api_token: trimmed === '' ? null : trimmed, updated_at: new Date().toISOString() })
+    .eq('singleton_id', 1)
+
+  if (error) return { ok: false, error: error.message }
+  revalidatePath('/settings')
+  revalidatePath('/tools/time-report')
+  return { ok: true }
+}
+
+/**
  * Saves the URLs for a page, one per language.
  *
  * - A non-empty URL is upserted into page_urls (keyed by page_id + language_code).
