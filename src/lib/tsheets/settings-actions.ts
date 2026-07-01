@@ -3,10 +3,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { fetchUsers, fetchJobcodes } from '@/lib/tsheets/client'
+import { isCurrentUserAdmin } from '@/lib/auth/role'
+
+// Writes to people / tr_* go through the signed-in user's session and are
+// gated by RLS (is_admin). Guard here too so a non-admin gets a clear message
+// instead of a silent RLS rejection that the UI would otherwise report as
+// success.
+async function requireAdmin(): Promise<string | null> {
+  return (await isCurrentUserAdmin()) ? null : 'You must be an admin to run this.'
+}
 
 // ─── Sync job codes from TSheets into tr_clients ────────────────────────────
 
 export async function syncTrClients(token: string): Promise<{ ok: boolean; count: number; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, count: 0, error: notAdmin }
+
   const supabase = await createClient()
   try {
     const jobcodes = await fetchJobcodes(token)
@@ -23,6 +35,7 @@ export async function syncTrClients(token: string): Promise<{ ok: boolean; count
       .upsert(rows, { onConflict: 'tsheets_jobcode_id', ignoreDuplicates: false })
     if (error) return { ok: false, count: 0, error: error.message }
 
+    revalidatePath('/tools/time-report/settings')
     return { ok: true, count: rows.length }
   } catch (e) {
     return { ok: false, count: 0, error: e instanceof Error ? e.message : 'Unknown error' }
@@ -37,6 +50,9 @@ export async function syncPeopleFromTsheets(token: string): Promise<{
   imported: number
   error?: string
 }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, linked: 0, imported: 0, error: notAdmin }
+
   const supabase = await createClient()
   try {
     const users = await fetchUsers(token)
@@ -58,31 +74,37 @@ export async function syncPeopleFromTsheets(token: string): Promise<{
 
       if (byId) continue // already linked
 
-      // Try to match by first name
-      const { data: byName } = await supabase
+      // Try to match by first name. limit(1) (not maybeSingle) so two people
+      // sharing a first name don't error the whole match out.
+      const { data: byNameRows } = await supabase
         .from('people')
         .select('id, full_name')
         .ilike('full_name', `${firstName}%`)
         .is('tsheets_user_id', null)
-        .maybeSingle()
+        .limit(1)
+      const byName = byNameRows?.[0]
 
       if (byName) {
-        await supabase
+        const { error } = await supabase
           .from('people')
           .update({ tsheets_user_id: user.id })
           .eq('id', byName.id)
+        // Surface the real error instead of silently counting a failed write.
+        if (error) return { ok: false, linked, imported, error: `Link failed for ${fullName}: ${error.message}` }
         linked++
       } else {
         // Import as tsheets_only person
-        await supabase.from('people').insert({
+        const { error } = await supabase.from('people').insert({
           full_name: fullName,
           tsheets_user_id: user.id,
           tsheets_only: true,
         })
+        if (error) return { ok: false, linked, imported, error: `Import failed for ${fullName}: ${error.message}` }
         imported++
       }
     }
 
+    revalidatePath('/tools/time-report/settings')
     return { ok: true, linked, imported }
   } catch (e) {
     return { ok: false, linked: 0, imported: 0, error: e instanceof Error ? e.message : 'Unknown error' }
@@ -99,6 +121,9 @@ export async function saveTrBudget(input: {
   startDate: string   // YYYY-MM-DD (always first of month)
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -160,6 +185,9 @@ export async function saveTrAssignment(input: {
   effectiveFrom: string  // YYYY-MM-DD
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -253,6 +281,9 @@ export async function deactivateTrAssignment(input: {
   effectiveFrom: string
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
