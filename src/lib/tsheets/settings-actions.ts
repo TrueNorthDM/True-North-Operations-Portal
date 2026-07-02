@@ -42,6 +42,60 @@ export async function syncTrClients(token: string): Promise<{ ok: boolean; count
   }
 }
 
+// ─── Name matching (used by the TSheets people sync) ────────────────────────
+
+/** lowercase, strip accents, collapse whitespace. */
+const COMBINING_MARKS = new RegExp('[\\u0300-\\u036f]', 'g')
+function normalizeName(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(COMBINING_MARKS, '').replace(/\s+/g, ' ').trim()
+}
+
+// Common English nickname ↔ formal-name groups (so Dave ↔ David link on sync).
+const NICKNAME_GROUPS: string[][] = [
+  ['david', 'dave', 'davey'], ['michael', 'mike', 'mikey'], ['robert', 'rob', 'bob', 'bobby'],
+  ['william', 'will', 'bill', 'billy'], ['james', 'jim', 'jimmy'], ['john', 'jack', 'johnny'],
+  ['richard', 'rick', 'rich', 'dick'], ['thomas', 'tom', 'tommy'], ['joseph', 'joe', 'joey'],
+  ['charles', 'charlie', 'chuck'], ['christopher', 'chris'], ['daniel', 'dan', 'danny'],
+  ['matthew', 'matt'], ['anthony', 'tony'], ['nicholas', 'nick'], ['samuel', 'sam'],
+  ['benjamin', 'ben'], ['alexander', 'alex'], ['nathaniel', 'nathan', 'nate'],
+  ['andrew', 'andy', 'drew'], ['stephanie', 'steph'], ['jennifer', 'jen', 'jenny'],
+  ['katherine', 'kate', 'katie', 'kathy'], ['elizabeth', 'liz', 'beth', 'betty'],
+]
+function nicknameMatch(a: string, b: string): boolean {
+  if (a === b) return true
+  return NICKNAME_GROUPS.some(g => g.includes(a) && g.includes(b))
+}
+
+/** Levenshtein distance (tolerates one-character typos like Clarise → Clarisse). */
+function editDistance(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0))
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    }
+  }
+  return dp[a.length][b.length]
+}
+
+/**
+ * A TSheets (first, last) matches a directory full name when the full names are
+ * equal, OR the last names match and the first names are equal / a nickname /
+ * off by a single character. Requiring the last name to match keeps it precise.
+ */
+function namesMatch(tFirst: string, tLast: string, dirFullName: string): boolean {
+  const dir = normalizeName(dirFullName)
+  const tFull = `${tFirst} ${tLast}`.trim()
+  if (dir && dir === tFull) return true
+  const parts = dir.split(' ')
+  if (parts.length < 2 || !tLast) return false
+  const dFirst = parts[0]
+  const dLast = parts[parts.length - 1]
+  if (dLast !== tLast) return false
+  return dFirst === tFirst || nicknameMatch(dFirst, tFirst) || editDistance(dFirst, tFirst) <= 1
+}
+
 // ─── Sync TSheets users into the people directory ───────────────────────────
 
 export async function syncPeopleFromTsheets(token: string): Promise<{
@@ -56,50 +110,45 @@ export async function syncPeopleFromTsheets(token: string): Promise<{
   const supabase = await createClient()
   try {
     const users = await fetchUsers(token)
+
+    // Pull the directory once, then match in memory (fewer round-trips + lets us
+    // fuzzy-match on full name / nicknames / typos, not just a first-name prefix).
+    const { data: allPeople, error: readErr } = await supabase
+      .from('people')
+      .select('id, full_name, tsheets_user_id, tsheets_only')
+    if (readErr) return { ok: false, linked: 0, imported: 0, error: readErr.message }
+
+    const linkedIds = new Set((allPeople ?? []).filter(p => p.tsheets_user_id != null).map(p => p.tsheets_user_id))
+    // Match targets = real directory people (not TSheets-only imports) with no link yet.
+    const pool = (allPeople ?? []).filter(p => p.tsheets_user_id == null && !p.tsheets_only)
+
     let linked = 0
     let imported = 0
 
     for (const user of users) {
-      // TsheetsUser has first_name / last_name, not a combined name field
-      const firstName = (user.first_name ?? '').toLowerCase()
+      if (!user.first_name) continue           // skip admin/system accounts with no name
+      if (linkedIds.has(user.id)) continue     // already linked
+
+      const tFirst = normalizeName(user.first_name)
+      const tLast = normalizeName(user.last_name ?? '')
       const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
-      if (!firstName) continue // skip users with no name (admin/system accounts)
 
-      // Check if already linked by tsheets_user_id
-      const { data: byId } = await supabase
-        .from('people')
-        .select('id, tsheets_user_id')
-        .eq('tsheets_user_id', user.id)
-        .maybeSingle()
-
-      if (byId) continue // already linked
-
-      // Try to match by first name. limit(1) (not maybeSingle) so two people
-      // sharing a first name don't error the whole match out.
-      const { data: byNameRows } = await supabase
-        .from('people')
-        .select('id, full_name')
-        .ilike('full_name', `${firstName}%`)
-        .is('tsheets_user_id', null)
-        .limit(1)
-      const byName = byNameRows?.[0]
-
-      if (byName) {
-        const { error } = await supabase
-          .from('people')
-          .update({ tsheets_user_id: user.id })
-          .eq('id', byName.id)
-        // Surface the real error instead of silently counting a failed write.
+      const matchIdx = pool.findIndex(p => namesMatch(tFirst, tLast, p.full_name))
+      if (matchIdx >= 0) {
+        const match = pool[matchIdx]
+        const { error } = await supabase.from('people').update({ tsheets_user_id: user.id }).eq('id', match.id)
         if (error) return { ok: false, linked, imported, error: `Link failed for ${fullName}: ${error.message}` }
+        pool.splice(matchIdx, 1)               // don't match the same directory person twice
+        linkedIds.add(user.id)
         linked++
       } else {
-        // Import as tsheets_only person
         const { error } = await supabase.from('people').insert({
           full_name: fullName,
           tsheets_user_id: user.id,
           tsheets_only: true,
         })
         if (error) return { ok: false, linked, imported, error: `Import failed for ${fullName}: ${error.message}` }
+        linkedIds.add(user.id)
         imported++
       }
     }
@@ -109,6 +158,43 @@ export async function syncPeopleFromTsheets(token: string): Promise<{
   } catch (e) {
     return { ok: false, linked: 0, imported: 0, error: e instanceof Error ? e.message : 'Unknown error' }
   }
+}
+
+// ─── Manually link a TSheets-only import to an existing directory person ─────
+
+export async function linkTsheetsPersonToDirectory(input: {
+  tsheetsOnlyPersonId: string   // people.id of the imported (tsheets_only) row
+  directoryPersonId: string     // people.id of the real directory person
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+
+  // Read the TSheets link off the imported row.
+  const { data: src, error: srcErr } = await supabase
+    .from('people')
+    .select('id, tsheets_user_id')
+    .eq('id', input.tsheetsOnlyPersonId)
+    .maybeSingle()
+  if (srcErr) return { ok: false, error: srcErr.message }
+  if (!src || src.tsheets_user_id == null) return { ok: false, error: 'That person has no TSheets link to move.' }
+
+  // Delete the import first to free the unique tsheets_user_id, then assign it
+  // to the real person. Rates (keyed by tsheets_user_id) follow automatically.
+  const { error: delErr } = await supabase.from('people').delete().eq('id', input.tsheetsOnlyPersonId)
+  if (delErr) return { ok: false, error: delErr.message }
+
+  const { error: updErr } = await supabase
+    .from('people')
+    .update({ tsheets_user_id: src.tsheets_user_id })
+    .eq('id', input.directoryPersonId)
+  if (updErr) return { ok: false, error: updErr.message }
+
+  revalidatePath('/tools/time-report/settings')
+  revalidatePath('/admin/people')
+  revalidatePath('/')
+  return { ok: true }
 }
 
 // ─── Budget ──────────────────────────────────────────────────────────────────

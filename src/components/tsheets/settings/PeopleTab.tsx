@@ -3,11 +3,13 @@
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
-import { saveTrAssignment, deactivateTrAssignment } from '@/lib/tsheets/settings-actions'
+import { saveTrAssignment, deactivateTrAssignment, linkTsheetsPersonToDirectory } from '@/lib/tsheets/settings-actions'
 
 export interface PersonWithAssignments {
   id: string
   name: string
+  title: string | null
+  teams: string[]
   tsheetsUserId: number
   tsheetsOnly: boolean
   assignments: {
@@ -19,9 +21,16 @@ export interface PersonWithAssignments {
   }[]
 }
 
+export interface DirectoryOption {
+  id: string
+  name: string
+  title: string | null
+}
+
 interface Props {
   people: PersonWithAssignments[]
   allClients: { id: number; name: string }[]
+  directoryOptions: DirectoryOption[]
 }
 
 type Assignment = PersonWithAssignments['assignments'][number]
@@ -49,8 +58,9 @@ const Save = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stro
 const Trash = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0v12a1 1 0 001 1h6a1 1 0 001-1V7" /></svg>
 const XMark = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
 const Plus = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" /></svg>
+const LinkIcon = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
 
-export function PeopleTab({ people, allClients }: Props) {
+export function PeopleTab({ people, allClients, directoryOptions }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
 
@@ -58,6 +68,9 @@ export function PeopleTab({ people, allClients }: Props) {
   const [clientId, setClientId] = useState('')   // for a new rate's project picker
   const [rate, setRate] = useState('')
   const [effectiveFrom, setEffectiveFrom] = useState(today)
+
+  const [linking, setLinking] = useState<string | null>(null)  // tsheets_only person being linked
+  const [linkTarget, setLinkTarget] = useState('')
 
   const [pending, setPending] = useState<Pending | null>(null)
   const [loading, setLoading] = useState(false)
@@ -68,7 +81,18 @@ export function PeopleTab({ people, allClients }: Props) {
     setClientId('')
     setRate('')
     setEffectiveFrom(today)
+    setLinking(null)
+    setLinkTarget('')
     setError(null)
+  }
+
+  async function handleLink(personId: string) {
+    if (!linkTarget) { setError('Select a directory person to link to.'); return }
+    setLoading(true)
+    const result = await linkTsheetsPersonToDirectory({ tsheetsOnlyPersonId: personId, directoryPersonId: linkTarget })
+    setLoading(false)
+    if (result.ok) { setLinking(null); setLinkTarget(''); setError(null); router.refresh() }
+    else setError(result.error ?? 'Link failed.')
   }
 
   function startEdit(p: PersonWithAssignments, a: Assignment) {
@@ -189,11 +213,19 @@ export function PeopleTab({ people, allClients }: Props) {
                 const availableClients = allClients.filter(c => !assignedIds.has(c.id))
                 const rows: Assignment[] = person.assignments.length ? person.assignments : []
                 const addingNew = edit?.mode === 'new' && edit.personId === person.id
+                const subtitle = [person.title, person.teams.join(', ')].filter(Boolean).join(' · ')
                 const nameCell = (show: boolean) => (
                   <td className="px-5 py-2.5 align-middle">
-                    {show && <span className="font-medium text-slate-900">{person.name}</span>}
-                    {show && person.tsheetsOnly && (
-                      <span className="ml-2 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">TSheets only</span>
+                    {show && (
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-slate-900">{person.name}</span>
+                          {person.tsheetsOnly && (
+                            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">TSheets only</span>
+                          )}
+                        </div>
+                        {subtitle && <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>}
+                      </div>
                     )}
                   </td>
                 )
@@ -278,8 +310,40 @@ export function PeopleTab({ people, allClients }: Props) {
                       </tr>
                     )}
 
-                    {/* Inline error under the person being edited */}
-                    {error && edit?.personId === person.id && (
+                    {/* Link a TSheets-only import to a real directory person */}
+                    {person.tsheetsOnly && (
+                      <tr className="border-b border-slate-100 bg-amber-50/40">
+                        <td className="px-5 py-2.5 text-xs text-amber-700 align-middle">Not in the org directory</td>
+                        <td className="px-5 py-2.5 align-middle" colSpan={3}>
+                          {directoryOptions.length === 0 ? (
+                            <span className="text-xs text-slate-400">No unlinked directory people — add them in Admin → People first.</span>
+                          ) : (
+                            <select
+                              value={linking === person.id ? linkTarget : ''}
+                              onChange={e => { setLinking(person.id); setLinkTarget(e.target.value); setError(null) }}
+                              className={`${cellInput} max-w-md`}
+                              aria-label="Link to directory person"
+                            >
+                              <option value="">Link to an existing directory person…</option>
+                              {directoryOptions.map(d => (
+                                <option key={d.id} value={d.id}>{d.name}{d.title ? ` — ${d.title}` : ''}</option>
+                              ))}
+                            </select>
+                          )}
+                        </td>
+                        <td className="px-5 py-2.5 text-right whitespace-nowrap align-middle">
+                          {linking === person.id && linkTarget && (
+                            <>
+                              <button onClick={() => handleLink(person.id)} className={iconBtn} title="Link to directory" aria-label="Link to directory"><LinkIcon /></button>
+                              <button onClick={() => { setLinking(null); setLinkTarget(''); setError(null) }} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Inline error under the person being edited/linked */}
+                    {error && (edit?.personId === person.id || linking === person.id) && (
                       <tr>
                         <td colSpan={5} className="px-5 pb-2 text-xs text-red-600">{error}</td>
                       </tr>

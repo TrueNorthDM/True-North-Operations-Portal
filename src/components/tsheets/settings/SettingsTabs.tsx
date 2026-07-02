@@ -7,7 +7,7 @@ import { PeopleTab } from './PeopleTab'
 import { HistoryTab } from './HistoryTab'
 import { syncClientsFromPortal, syncPeopleFromPortal } from '@/lib/tsheets/settings-actions'
 import type { ClientWithBudget } from './ClientsTab'
-import type { PersonWithAssignments } from './PeopleTab'
+import type { PersonWithAssignments, DirectoryOption } from './PeopleTab'
 import type { AuditEntry } from './HistoryTab'
 
 type Tab = 'clients' | 'people' | 'history'
@@ -16,6 +16,7 @@ interface Props {
   clients: ClientWithBudget[]
   people: PersonWithAssignments[]
   auditLog: AuditEntry[]
+  directoryOptions: DirectoryOption[]
 }
 
 const TABS: { key: Tab; label: string }[] = [
@@ -24,7 +25,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'history', label: 'Change History' },
 ]
 
-export function SettingsTabs({ clients, people, auditLog }: Props) {
+export function SettingsTabs({ clients, people, auditLog, directoryOptions }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('clients')
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
@@ -100,7 +101,7 @@ export function SettingsTabs({ clients, people, auditLog }: Props) {
 
       {/* Tab content */}
       {tab === 'clients' && <ClientsTab clients={clients} />}
-      {tab === 'people' && <PeopleTab people={people} allClients={allClients} />}
+      {tab === 'people' && <PeopleTab people={people} allClients={allClients} directoryOptions={directoryOptions} />}
       {tab === 'history' && <HistoryTab entries={auditLog} />}
     </div>
   )

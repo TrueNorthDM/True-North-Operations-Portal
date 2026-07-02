@@ -13,6 +13,9 @@ export default async function TimeReportSettingsPage() {
     { data: peopleRaw },
     { data: assignments },
     { data: auditRaw },
+    { data: directoryRaw },
+    { data: memberRows },
+    { data: teamRows },
   ] = await Promise.all([
     supabase
       .from('tr_clients')
@@ -24,7 +27,7 @@ export default async function TimeReportSettingsPage() {
       .is('end_date', null),
     supabase
       .from('people')
-      .select('id, full_name, tsheets_user_id, tsheets_only')
+      .select('id, full_name, title, tsheets_user_id, tsheets_only')
       .not('tsheets_user_id', 'is', null)
       .order('full_name'),
     supabase
@@ -37,7 +40,33 @@ export default async function TimeReportSettingsPage() {
       .select('id, entity_type, entity_id, action, before_data, after_data, justification, changed_at')
       .order('changed_at', { ascending: false })
       .limit(100),
+    // Directory people not yet linked to TSheets — offered as merge targets.
+    supabase
+      .from('people')
+      .select('id, full_name, title')
+      .is('tsheets_user_id', null)
+      .eq('tsheets_only', false)
+      .order('full_name'),
+    supabase.from('team_members').select('person_id, team_id'),
+    supabase.from('teams').select('id, name'),
   ])
+
+  // personId → [team names]
+  const teamNameById = new Map((teamRows ?? []).map(t => [t.id, t.name]))
+  const teamsByPerson = new Map<string, string[]>()
+  for (const m of (memberRows ?? [])) {
+    const name = teamNameById.get(m.team_id)
+    if (!name) continue
+    const list = teamsByPerson.get(m.person_id) ?? []
+    list.push(name)
+    teamsByPerson.set(m.person_id, list)
+  }
+
+  const directoryOptions = (directoryRaw ?? []).map(p => ({
+    id: p.id,
+    name: p.full_name,
+    title: p.title ?? null,
+  }))
 
   // Build client list with their active budget
   const budgetMap = new Map(
@@ -78,6 +107,8 @@ export default async function TimeReportSettingsPage() {
   const people: PersonWithAssignments[] = (peopleRaw ?? []).map(p => ({
     id: p.id,
     name: p.full_name,
+    title: p.title ?? null,
+    teams: teamsByPerson.get(p.id) ?? [],
     tsheetsUserId: p.tsheets_user_id as number,
     tsheetsOnly: p.tsheets_only ?? false,
     assignments: (assignmentsByUser.get(p.tsheets_user_id as number) ?? []).map(a => ({
@@ -118,7 +149,7 @@ export default async function TimeReportSettingsPage() {
         </p>
       </div>
 
-      <SettingsTabs clients={clients} people={people} auditLog={auditLog} />
+      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} />
     </div>
   )
 }

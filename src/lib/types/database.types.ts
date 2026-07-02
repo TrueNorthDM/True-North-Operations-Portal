@@ -116,6 +116,22 @@ export type PersonRow = {
   updated_at: string
 }
 
+export type TeamRow = {
+  id: string
+  name: string
+  leader_person_id: string | null
+  color: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type TeamMemberRow = {
+  team_id: string
+  person_id: string
+  created_at: string
+}
+
 // Time Report settings (migration 021) — job codes cached from TSheets,
 // treated as clients/projects.
 export type TrClientRow = {
@@ -283,6 +299,18 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      teams: {
+        Row: TeamRow
+        Insert: Omit<TeamRow, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string }
+        Update: Partial<Omit<TeamRow, 'id' | 'created_at' | 'updated_at'>>
+        Relationships: []
+      }
+      team_members: {
+        Row: TeamMemberRow
+        Insert: Omit<TeamMemberRow, 'created_at'> & { created_at?: string }
+        Update: Partial<TeamMemberRow>
+        Relationships: []
       }
       tr_clients: {
         Row: TrClientRow
