@@ -24,132 +24,99 @@ interface Props {
   allClients: { id: number; name: string }[]
 }
 
-// Which existing rate row is being edited (or removed) inline.
+type Assignment = PersonWithAssignments['assignments'][number]
+
+// Which cell is being edited, and how.
 interface EditState {
+  key: string                 // `${personId}:${clientId}` or `${personId}:new`
   personId: string
   tsheetsUserId: number
   personName: string
-  clientId: number
-  clientName: string
-  mode: 'edit' | 'remove'
-  currentRate: number
+  clientId: number | null     // null while a brand-new rate has no project picked yet
+  clientName: string | null
+  mode: 'edit' | 'remove' | 'new'
+  currentRate: number | null
 }
 
-// Which person is having a brand-new rate added.
-interface AddState {
-  personId: string
-  tsheetsUserId: number
-  personName: string
-}
-
-// The change queued for the justification modal.
 type Pending =
   | { kind: 'save'; tsheetsUserId: number; clientId: number; hourlyRate: number; effectiveFrom: string; title: string; lines: string[] }
   | { kind: 'deactivate'; tsheetsUserId: number; clientId: number; effectiveFrom: string; title: string; lines: string[] }
+
+// ── Icons (stroke, 20px) ────────────────────────────────────────────────────
+const iconCls = 'w-4 h-4'
+const Pencil = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" /></svg>
+const Save = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-8H7v8M7 3v5h8" /></svg>
+const Trash = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0v12a1 1 0 001 1h6a1 1 0 001-1V7" /></svg>
+const XMark = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+const Plus = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" /></svg>
 
 export function PeopleTab({ people, allClients }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
 
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [editing, setEditing] = useState<EditState | null>(null)
-  const [adding, setAdding] = useState<AddState | null>(null)
-
-  // Drafts (shared: only one row edits at a time)
+  const [edit, setEdit] = useState<EditState | null>(null)
+  const [clientId, setClientId] = useState('')   // for a new rate's project picker
   const [rate, setRate] = useState('')
   const [effectiveFrom, setEffectiveFrom] = useState(today)
-  const [addClientId, setAddClientId] = useState('')
 
   const [pending, setPending] = useState<Pending | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function resetDrafts() {
-    setEditing(null)
-    setAdding(null)
+  function cancel() {
+    setEdit(null)
+    setClientId('')
     setRate('')
-    setAddClientId('')
     setEffectiveFrom(today)
     setError(null)
   }
 
-  function startEdit(person: PersonWithAssignments, a: PersonWithAssignments['assignments'][number]) {
-    setAdding(null)
+  function startEdit(p: PersonWithAssignments, a: Assignment) {
     setError(null)
-    setEditing({
-      personId: person.id, tsheetsUserId: person.tsheetsUserId, personName: person.name,
-      clientId: a.clientId, clientName: a.clientName, mode: 'edit', currentRate: a.hourlyRate,
-    })
-    setRate(String(a.hourlyRate))
+    setEdit({ key: `${p.id}:${a.clientId}`, personId: p.id, tsheetsUserId: p.tsheetsUserId, personName: p.name, clientId: a.clientId, clientName: a.clientName, mode: 'edit', currentRate: a.hourlyRate })
+    setRate(String(a.hourlyRate)); setEffectiveFrom(today)
+  }
+  function startRemove(p: PersonWithAssignments, a: Assignment) {
+    setError(null)
+    setEdit({ key: `${p.id}:${a.clientId}`, personId: p.id, tsheetsUserId: p.tsheetsUserId, personName: p.name, clientId: a.clientId, clientName: a.clientName, mode: 'remove', currentRate: a.hourlyRate })
     setEffectiveFrom(today)
   }
-
-  function startRemove(person: PersonWithAssignments, a: PersonWithAssignments['assignments'][number]) {
-    setAdding(null)
+  function startNew(p: PersonWithAssignments) {
     setError(null)
-    setEditing({
-      personId: person.id, tsheetsUserId: person.tsheetsUserId, personName: person.name,
-      clientId: a.clientId, clientName: a.clientName, mode: 'remove', currentRate: a.hourlyRate,
-    })
-    setEffectiveFrom(today)
+    setEdit({ key: `${p.id}:new`, personId: p.id, tsheetsUserId: p.tsheetsUserId, personName: p.name, clientId: null, clientName: null, mode: 'new', currentRate: null })
+    setClientId(''); setRate(''); setEffectiveFrom(today)
   }
 
-  function startAdd(person: PersonWithAssignments) {
-    setEditing(null)
-    setError(null)
-    setAdding({ personId: person.id, tsheetsUserId: person.tsheetsUserId, personName: person.name })
-    setRate('')
-    setAddClientId('')
-    setEffectiveFrom(today)
-  }
-
-  function reviewEdit() {
-    if (!editing) return
-    if (editing.mode === 'edit') {
-      if (!rate || Number(rate) <= 0) { setError('Enter a valid hourly rate.'); return }
+  function review(availableName?: string) {
+    if (!edit) return
+    if (edit.mode === 'remove') {
       if (!effectiveFrom) { setError('Effective date is required.'); return }
-      setError(null)
       setPending({
-        kind: 'save', tsheetsUserId: editing.tsheetsUserId, clientId: editing.clientId,
-        hourlyRate: Number(rate), effectiveFrom,
-        title: 'Confirm rate change',
-        lines: [
-          `Person: ${editing.personName}`,
-          `Client: ${editing.clientName}`,
-          `Rate: $${editing.currentRate}/hr → $${rate}/hr`,
-          `Effective from: ${effectiveFrom}`,
-        ],
-      })
-    } else {
-      if (!effectiveFrom) { setError('Effective date is required.'); return }
-      setError(null)
-      setPending({
-        kind: 'deactivate', tsheetsUserId: editing.tsheetsUserId, clientId: editing.clientId, effectiveFrom,
+        kind: 'deactivate', tsheetsUserId: edit.tsheetsUserId, clientId: edit.clientId!, effectiveFrom,
         title: 'Confirm removal from project',
         lines: [
-          `Person: ${editing.personName}`,
-          `Client: ${editing.clientName}`,
+          `Person: ${edit.personName}`,
+          `Client: ${edit.clientName}`,
           `Action: Remove from project (effective ${effectiveFrom})`,
           'Past reports still show their hours and rate for periods when they were active.',
         ],
       })
+      return
     }
-  }
-
-  function reviewAdd(clientName: string) {
-    if (!adding) return
-    if (!addClientId) { setError('Select a project.'); return }
+    // edit or new
+    const cid = edit.mode === 'new' ? Number(clientId) : edit.clientId!
+    const cname = edit.mode === 'new' ? (availableName ?? '') : (edit.clientName ?? '')
+    if (edit.mode === 'new' && !clientId) { setError('Select a project.'); return }
     if (!rate || Number(rate) <= 0) { setError('Enter a valid hourly rate.'); return }
     if (!effectiveFrom) { setError('Effective date is required.'); return }
     setError(null)
     setPending({
-      kind: 'save', tsheetsUserId: adding.tsheetsUserId, clientId: Number(addClientId),
-      hourlyRate: Number(rate), effectiveFrom,
-      title: 'Confirm rate assignment',
+      kind: 'save', tsheetsUserId: edit.tsheetsUserId, clientId: cid, hourlyRate: Number(rate), effectiveFrom,
+      title: edit.mode === 'new' ? 'Confirm rate assignment' : 'Confirm rate change',
       lines: [
-        `Person: ${adding.personName}`,
-        `Client: ${clientName}`,
-        `Rate: $${rate}/hr (new assignment)`,
+        `Person: ${edit.personName}`,
+        `Client: ${cname}`,
+        edit.mode === 'new' ? `Rate: $${rate}/hr (new assignment)` : `Rate: $${edit.currentRate}/hr → $${rate}/hr`,
         `Effective from: ${effectiveFrom}`,
       ],
     })
@@ -162,17 +129,12 @@ export function PeopleTab({ people, allClients }: Props) {
       ? await deactivateTrAssignment({ tsheetsUserId: pending.tsheetsUserId, clientId: pending.clientId, effectiveFrom: pending.effectiveFrom, justification })
       : await saveTrAssignment({ tsheetsUserId: pending.tsheetsUserId, clientId: pending.clientId, hourlyRate: pending.hourlyRate, effectiveFrom: pending.effectiveFrom, justification })
     setLoading(false)
-    if (result.ok) {
-      setPending(null)
-      resetDrafts()
-      router.refresh()
-    } else {
-      setError(result.error ?? 'Save failed.')
-      setPending(null)
-    }
+    if (result.ok) { setPending(null); cancel(); router.refresh() }
+    else { setError(result.error ?? 'Save failed.'); setPending(null) }
   }
 
-  const cellInput = 'w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const cellInput = 'w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const iconBtn = 'inline-flex items-center justify-center p-1.5 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100'
 
   if (people.length === 0) {
     return (
@@ -183,179 +145,143 @@ export function PeopleTab({ people, allClients }: Props) {
     )
   }
 
+  // Row helpers ---------------------------------------------------------------
+  function editCells(availableClients: { id: number; name: string }[], isNew: boolean, personName: string) {
+    return (
+      <>
+        <td className="px-5 py-2.5">
+          {isNew ? (
+            <select value={clientId} onChange={e => setClientId(e.target.value)} className={cellInput} aria-label="Project">
+              <option value="">Select a project…</option>
+              {availableClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          ) : (
+            <span className="text-slate-400 text-xs">{personName}</span>
+          )}
+        </td>
+        <td className="px-5 py-2.5">
+          <input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g. 45" className={cellInput} aria-label="Hourly rate" />
+        </td>
+        <td className="px-5 py-2.5">
+          <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} aria-label="Effective from" />
+        </td>
+      </>
+    )
+  }
+
   return (
     <>
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-64">Person</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Projects &amp; rates</th>
-                <th className="px-5 py-3 w-10" />
+                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-56">Person</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Project</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-40">Rate ($/hr)</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-48">Effective from</th>
+                <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-32">Actions</th>
               </tr>
             </thead>
             <tbody>
               {people.map(person => {
-                const assignedClientIds = new Set(person.assignments.map(a => a.clientId))
-                const availableClients = allClients.filter(c => !assignedClientIds.has(c.id))
-                const isExpanded = expanded === person.id
-                const isAdding = adding?.personId === person.id
+                const assignedIds = new Set(person.assignments.map(a => a.clientId))
+                const availableClients = allClients.filter(c => !assignedIds.has(c.id))
+                const rows: Assignment[] = person.assignments.length ? person.assignments : []
+                const addingNew = edit?.mode === 'new' && edit.personId === person.id
+                const nameCell = (show: boolean) => (
+                  <td className="px-5 py-2.5 align-middle">
+                    {show && <span className="font-medium text-slate-900">{person.name}</span>}
+                    {show && person.tsheetsOnly && (
+                      <span className="ml-2 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">TSheets only</span>
+                    )}
+                  </td>
+                )
+
+                // total rendered rows for this person = assignment rows (or 1 empty) + maybe a new row
+                const showEmptyRow = rows.length === 0 && !addingNew
 
                 return (
                   <Fragment key={person.id}>
-                    {/* Person row */}
-                    <tr
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 cursor-pointer"
-                      onClick={() => {
-                        setExpanded(isExpanded ? null : person.id)
-                        resetDrafts()
-                      }}
-                    >
-                      <td className="px-5 py-3.5 align-middle">
-                        <span className="font-medium text-slate-900">{person.name}</span>
-                        {person.tsheetsOnly && (
-                          <span className="ml-2 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">TSheets only</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 align-middle">
-                        {person.assignments.length === 0 ? (
-                          <span className="text-xs text-slate-400">No rates assigned</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {person.assignments.map(a => (
-                              <span key={a.id} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full tabular-nums">
-                                {a.clientName} &middot; ${a.hourlyRate}/hr
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right align-middle">
-                        <svg
-                          className={`inline w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </td>
-                    </tr>
+                    {rows.map((a, idx) => {
+                      const isEditing = edit?.key === `${person.id}:${a.clientId}`
+                      const showName = idx === 0
+                      if (isEditing && edit?.mode === 'edit') {
+                        return (
+                          <tr key={a.id} className="border-b border-slate-100 bg-slate-50/60">
+                            {nameCell(showName)}
+                            <td className="px-5 py-2.5 text-slate-900">{a.clientName}</td>
+                            <td className="px-5 py-2.5"><input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} className={cellInput} aria-label="Hourly rate" /></td>
+                            <td className="px-5 py-2.5"><input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} aria-label="Effective from" /></td>
+                            <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                              <button onClick={() => review()} className={iconBtn} title="Save" aria-label="Save"><Save /></button>
+                              <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                            </td>
+                          </tr>
+                        )
+                      }
+                      if (isEditing && edit?.mode === 'remove') {
+                        return (
+                          <tr key={a.id} className="border-b border-slate-100 bg-red-50/50">
+                            {nameCell(showName)}
+                            <td className="px-5 py-2.5 text-slate-900">{a.clientName} <span className="text-red-600 text-xs">(removing)</span></td>
+                            <td className="px-5 py-2.5 text-slate-400">—</td>
+                            <td className="px-5 py-2.5"><input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} aria-label="Effective from" /></td>
+                            <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                              <button onClick={() => review()} className="inline-flex items-center justify-center p-1.5 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50" title="Confirm removal" aria-label="Confirm removal"><Trash /></button>
+                              <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                            </td>
+                          </tr>
+                        )
+                      }
+                      // display row
+                      const isLast = idx === rows.length - 1
+                      return (
+                        <tr key={a.id} className="border-b border-slate-100 hover:bg-slate-50/60">
+                          {nameCell(showName)}
+                          <td className="px-5 py-2.5 text-slate-900">{a.clientName}</td>
+                          <td className="px-5 py-2.5 text-slate-700 tabular-nums">${a.hourlyRate}/hr</td>
+                          <td className="px-5 py-2.5 text-slate-400 tabular-nums">{a.effectiveFrom}</td>
+                          <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                            <button onClick={() => startEdit(person, a)} className={iconBtn} title="Edit rate" aria-label="Edit rate"><Pencil /></button>
+                            <button onClick={() => startRemove(person, a)} className={iconBtn} title="Remove from project" aria-label="Remove from project"><Trash /></button>
+                            {isLast && availableClients.length > 0 && (
+                              <button onClick={() => startNew(person)} className={iconBtn} title="Assign to another project" aria-label="Assign to another project"><Plus /></button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
 
-                    {/* Expanded: inline-editable rates table */}
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan={3} className="bg-slate-50/60 px-5 py-4 border-b border-slate-100">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-slate-500">
-                                <th className="text-left font-medium pb-2 pr-3">Project</th>
-                                <th className="text-left font-medium pb-2 pr-3 w-40">Rate ($/hr)</th>
-                                <th className="text-left font-medium pb-2 pr-3 w-48">Effective from</th>
-                                <th className="text-right font-medium pb-2 w-44">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {person.assignments.map(a => {
-                                const rowEditing = editing?.personId === person.id && editing?.clientId === a.clientId
-                                if (rowEditing && editing?.mode === 'edit') {
-                                  return (
-                                    <tr key={a.id}>
-                                      <td className="py-2 pr-3 text-slate-900">{a.clientName}</td>
-                                      <td className="py-2 pr-3">
-                                        <input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} className={cellInput} placeholder="e.g. 45" />
-                                      </td>
-                                      <td className="py-2 pr-3">
-                                        <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} />
-                                      </td>
-                                      <td className="py-2 text-right whitespace-nowrap">
-                                        <button onClick={resetDrafts} className="text-slate-500 hover:text-slate-800 px-2">Cancel</button>
-                                        <button onClick={reviewEdit} className="text-xs px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Review change</button>
-                                      </td>
-                                    </tr>
-                                  )
-                                }
-                                if (rowEditing && editing?.mode === 'remove') {
-                                  return (
-                                    <tr key={a.id} className="bg-red-50/40">
-                                      <td className="py-2 pr-3 text-slate-900">{a.clientName} <span className="text-red-600">(removing)</span></td>
-                                      <td className="py-2 pr-3 text-slate-400">—</td>
-                                      <td className="py-2 pr-3">
-                                        <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} />
-                                      </td>
-                                      <td className="py-2 text-right whitespace-nowrap">
-                                        <button onClick={resetDrafts} className="text-slate-500 hover:text-slate-800 px-2">Cancel</button>
-                                        <button onClick={reviewEdit} className="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700">Remove</button>
-                                      </td>
-                                    </tr>
-                                  )
-                                }
-                                return (
-                                  <tr key={a.id}>
-                                    <td className="py-2 pr-3 text-slate-900">{a.clientName}</td>
-                                    <td className="py-2 pr-3 text-slate-700 tabular-nums">${a.hourlyRate}/hr</td>
-                                    <td className="py-2 pr-3 text-slate-400 tabular-nums">{a.effectiveFrom}</td>
-                                    <td className="py-2 text-right whitespace-nowrap">
-                                      <button onClick={() => startEdit(person, a)} className="text-slate-500 hover:text-slate-900 underline underline-offset-2 mr-3">Edit rate</button>
-                                      <button onClick={() => startRemove(person, a)} className="text-red-500 hover:text-red-700 underline underline-offset-2">Remove</button>
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-
-                              {/* Add-a-rate row */}
-                              {isAdding && (
-                                <tr className="bg-white">
-                                  <td className="py-2 pr-3">
-                                    <select value={addClientId} onChange={e => setAddClientId(e.target.value)} className={cellInput}>
-                                      <option value="">Select a project…</option>
-                                      {availableClients.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td className="py-2 pr-3">
-                                    <input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} className={cellInput} placeholder="e.g. 45" />
-                                  </td>
-                                  <td className="py-2 pr-3">
-                                    <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} />
-                                  </td>
-                                  <td className="py-2 text-right whitespace-nowrap">
-                                    <button onClick={resetDrafts} className="text-slate-500 hover:text-slate-800 px-2">Cancel</button>
-                                    <button
-                                      onClick={() => reviewAdd(availableClients.find(c => c.id === Number(addClientId))?.name ?? '')}
-                                      className="text-xs px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
-                                    >
-                                      Review change
-                                    </button>
-                                  </td>
-                                </tr>
-                              )}
-
-                              {person.assignments.length === 0 && !isAdding && (
-                                <tr>
-                                  <td colSpan={4} className="py-2 text-slate-400">No rates yet — assign one below.</td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-
-                          {error && (editing?.personId === person.id || isAdding) && (
-                            <p className="text-xs text-red-600 mt-2">{error}</p>
-                          )}
-
-                          {availableClients.length > 0 && !isAdding && !editing && (
-                            <button
-                              onClick={() => startAdd(person)}
-                              className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-white flex items-center gap-1 w-fit"
-                            >
-                              <span className="text-base leading-none">+</span>
-                              <span>Assign to a project</span>
-                            </button>
-                          )}
-                          {person.assignments.length > 0 && availableClients.length === 0 && !editing && (
-                            <p className="mt-3 text-xs text-slate-400">All projects assigned.</p>
-                          )}
+                    {/* Empty person → single row with an assign action (or its inline editor) */}
+                    {showEmptyRow && (
+                      <tr className="border-b border-slate-100 hover:bg-slate-50/60">
+                        {nameCell(true)}
+                        <td className="px-5 py-2.5 text-slate-400 text-xs" colSpan={3}>No rate assigned</td>
+                        <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                          {availableClients.length > 0 ? (
+                            <button onClick={() => startNew(person)} className={iconBtn} title="Assign a rate" aria-label="Assign a rate"><Plus /></button>
+                          ) : <span className="text-xs text-slate-300">no projects</span>}
                         </td>
+                      </tr>
+                    )}
+
+                    {/* New-rate editor row */}
+                    {addingNew && (
+                      <tr className="border-b border-slate-100 bg-slate-50/60">
+                        {nameCell(rows.length === 0)}
+                        {editCells(availableClients, true, person.name)}
+                        <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                          <button onClick={() => review(availableClients.find(c => c.id === Number(clientId))?.name)} className={iconBtn} title="Save" aria-label="Save"><Save /></button>
+                          <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Inline error under the person being edited */}
+                    {error && edit?.personId === person.id && (
+                      <tr>
+                        <td colSpan={5} className="px-5 pb-2 text-xs text-red-600">{error}</td>
                       </tr>
                     )}
                   </Fragment>
