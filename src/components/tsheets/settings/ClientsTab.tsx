@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BudgetForm } from './BudgetForm'
 
@@ -21,10 +21,16 @@ interface Props {
   clients: ClientWithBudget[]
 }
 
-function fmt(n: number | null | undefined, prefix = '') {
-  if (n == null) return <span className="text-slate-400">--</span>
-  return <span>{prefix}{n.toLocaleString()}</span>
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "2026-07-01" -> "Jul 2026" (parsed from the string, so no timezone drift). */
+function monthLabel(date: string): string {
+  const [y, m] = date.split('-')
+  const idx = Number(m) - 1
+  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${y}` : date
 }
+
+const Dash = () => <span className="text-slate-300">&mdash;</span>
 
 export function ClientsTab({ clients }: Props) {
   const router = useRouter()
@@ -45,54 +51,75 @@ export function ClientsTab({ clients }: Props) {
   }
 
   return (
-    <div className="space-y-3">
-      {clients.map(client => (
-        <div key={client.id}>
-          <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-slate-900 text-sm">{client.name}</span>
-                {!client.active && (
-                  <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Inactive</span>
-                )}
-              </div>
-              {client.budget ? (
-                <div className="mt-1 flex flex-wrap gap-4 text-xs text-slate-600">
-                  <span>Hours: {fmt(client.budget.hoursAllocated)}</span>
-                  <span>Budget: {fmt(client.budget.budgetAmount, '$')}</span>
-                  {client.budget.extraBudget > 0 && (
-                    <span>Extra: ${client.budget.extraBudget.toLocaleString()}</span>
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Client</th>
+              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Hours</th>
+              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Budget</th>
+              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Extra</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Effective from</th>
+              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map(client => {
+              const b = client.budget
+              const isEditing = editing === client.id
+              return (
+                <Fragment key={client.id}>
+                  <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                    <td className="px-5 py-3.5">
+                      <span className="font-medium text-slate-900">{client.name}</span>
+                      {!client.active && (
+                        <span className="ml-2 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Inactive</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                      {b?.hoursAllocated != null ? b.hoursAllocated.toLocaleString() : <Dash />}
+                    </td>
+                    <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                      {b?.budgetAmount != null ? `$${b.budgetAmount.toLocaleString()}` : <Dash />}
+                    </td>
+                    <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                      {b && b.extraBudget > 0 ? `$${b.extraBudget.toLocaleString()}` : <Dash />}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-500">
+                      {b ? monthLabel(b.startDate) : <span className="text-slate-400">No budget set</span>}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button
+                        onClick={() => setEditing(isEditing ? null : client.id)}
+                        className={`text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 ${isEditing ? 'bg-slate-100' : ''}`}
+                      >
+                        {isEditing ? 'Editing…' : b ? 'Edit budget' : 'Set budget'}
+                      </button>
+                    </td>
+                  </tr>
+                  {isEditing && (
+                    <tr>
+                      <td colSpan={6} className="bg-slate-50/60 px-5 py-4 border-b border-slate-100">
+                        <BudgetForm
+                          client={{ id: client.id, name: client.name }}
+                          current={b ? {
+                            hoursAllocated: b.hoursAllocated,
+                            budgetAmount: b.budgetAmount,
+                            extraBudget: b.extraBudget,
+                            startDate: b.startDate,
+                          } : null}
+                          onClose={handleClose}
+                        />
+                      </td>
+                    </tr>
                   )}
-                  <span className="text-slate-400">from {client.budget.startDate}</span>
-                </div>
-              ) : (
-                <p className="mt-1 text-xs text-slate-400">No budget set</p>
-              )}
-            </div>
-            <button
-              onClick={() => setEditing(editing === client.id ? null : client.id)}
-              className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-            >
-              {client.budget ? 'Edit budget' : 'Set budget'}
-            </button>
-          </div>
-
-          {editing === client.id && (
-            <div className="mt-2 ml-4">
-              <BudgetForm
-                client={{ id: client.id, name: client.name }}
-                current={client.budget ? {
-                  hoursAllocated: client.budget.hoursAllocated,
-                  budgetAmount: client.budget.budgetAmount,
-                  extraBudget: client.budget.extraBudget,
-                  startDate: client.budget.startDate,
-                } : null}
-                onClose={handleClose}
-              />
-            </div>
-          )}
-        </div>
-      ))}
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
