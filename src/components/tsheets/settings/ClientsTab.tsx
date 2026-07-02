@@ -26,17 +26,17 @@ interface Props {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** "2026-07-01" -> "Jul 2026" (parsed from the string, so no timezone drift). */
-function monthLabel(date: string): string {
-  const [y, m] = date.split('-')
+/** "2026-07-01" -> "Jul 1, 2026" (parsed from the string, so no timezone drift). */
+function dateLabel(date: string): string {
+  const [y, m, d] = date.split('-')
   const idx = Number(m) - 1
-  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${y}` : date
+  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${Number(d)}, ${y}` : date
 }
 
-/** A start/optional-end pair as "Jul 2026 – Sep 2026" or "Jul 2026 – ongoing". */
+/** A start/optional-end pair as "Jul 1, 2026 – Sep 30, 2026" or "Jul 1, 2026 – ongoing". */
 function periodLabel(start: string | null | undefined, end: string | null | undefined): string {
   if (!start) return '—'
-  return end ? `${monthLabel(start)} – ${monthLabel(end)}` : `${monthLabel(start)} – ongoing`
+  return end ? `${dateLabel(start)} – ${dateLabel(end)}` : `${dateLabel(start)} – ongoing`
 }
 
 const Dash = () => <span className="text-slate-300">&mdash;</span>

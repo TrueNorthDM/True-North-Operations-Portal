@@ -25,38 +25,24 @@ function fmtNum(n: number | null | undefined): string {
   return String(n)
 }
 
-function toFirstOfMonth(ym: string): string {
-  return ym ? `${ym}-01` : ''
-}
-
-/** "2026-07" -> "2026-07-31" (last calendar day of that month). */
-function toLastOfMonth(ym: string): string {
-  if (!ym) return ''
-  const [y, m] = ym.split('-').map(Number)
-  const last = new Date(y, m, 0).getDate()
-  return `${ym}-${String(last).padStart(2, '0')}`
-}
-
-function toYearMonth(date: string | null | undefined): string {
-  return date ? date.slice(0, 7) : ''
-}
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-function label(ym: string): string {
-  if (!ym) return ''
-  const [y, m] = ym.split('-')
-  const idx = Number(m) - 1
-  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${y}` : ym
+
+/** "2026-07-01" -> "Jul 1, 2026" (parsed from the string, so no timezone drift). */
+function dateLabel(d: string): string {
+  if (!d) return ''
+  const [y, m, day] = d.split('-').map(Number)
+  const idx = m - 1
+  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${day}, ${y}` : d
 }
 
 export function BudgetForm({ client, current, onClose }: Props) {
   const [hours, setHours] = useState(fmtNum(current?.hoursAllocated))
   const [budget, setBudget] = useState(fmtNum(current?.budgetAmount))
-  const [budgetStart, setBudgetStart] = useState(toYearMonth(current?.startDate))
-  const [budgetEnd, setBudgetEnd] = useState(toYearMonth(current?.budgetEndDate))
+  const [budgetStart, setBudgetStart] = useState(current?.startDate ?? '')
+  const [budgetEnd, setBudgetEnd] = useState(current?.budgetEndDate ?? '')
   const [extra, setExtra] = useState(fmtNum(current?.extraBudget ?? 0))
-  const [extraStart, setExtraStart] = useState(toYearMonth(current?.extraStartDate))
-  const [extraEnd, setExtraEnd] = useState(toYearMonth(current?.extraEndDate))
+  const [extraStart, setExtraStart] = useState(current?.extraStartDate ?? '')
+  const [extraEnd, setExtraEnd] = useState(current?.extraEndDate ?? '')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +52,7 @@ export function BudgetForm({ client, current, onClose }: Props) {
 
   function period(start: string, end: string): string {
     if (!start) return '(not set)'
-    return end ? `${label(start)} – ${label(end)}` : `${label(start)} – ongoing`
+    return end ? `${dateLabel(start)} – ${dateLabel(end)}` : `${dateLabel(start)} – ongoing`
   }
 
   function buildLines(): string[] {
@@ -109,11 +95,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
       clientId: client.id,
       hoursAllocated: hours === '' ? null : Number(hours),
       budgetAmount: budget === '' ? null : Number(budget),
-      budgetStartDate: toFirstOfMonth(budgetStart),
-      budgetEndDate: budgetEnd ? toLastOfMonth(budgetEnd) : null,
+      budgetStartDate: budgetStart,
+      budgetEndDate: budgetEnd || null,
       extraBudget: extraVal,
-      extraStartDate: hasExtra && extraStart ? toFirstOfMonth(extraStart) : null,
-      extraEndDate: hasExtra && extraEnd ? toLastOfMonth(extraEnd) : null,
+      extraStartDate: hasExtra && extraStart ? extraStart : null,
+      extraEndDate: hasExtra && extraEnd ? extraEnd : null,
       justification,
     })
     setLoading(false)
@@ -152,11 +138,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
               </div>
               <div className="space-y-1">
                 <label className={labelCls}>Start date <span className="text-red-500">*</span></label>
-                <input type="month" value={budgetStart} onChange={e => setBudgetStart(e.target.value)} className={inputCls} />
+                <input type="date" value={budgetStart} onChange={e => setBudgetStart(e.target.value)} className={inputCls} />
               </div>
               <div className="space-y-1">
                 <label className={labelCls}>End date <span className="text-slate-400 font-normal">(optional)</span></label>
-                <input type="month" value={budgetEnd} onChange={e => setBudgetEnd(e.target.value)} className={inputCls} />
+                <input type="date" value={budgetEnd} min={budgetStart || undefined} onChange={e => setBudgetEnd(e.target.value)} className={inputCls} />
               </div>
             </div>
           </fieldset>
@@ -174,11 +160,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
                 <label className={labelCls}>
                   Start date {hasExtra ? <span className="text-red-500">*</span> : <span className="text-slate-400 font-normal">(when extra is set)</span>}
                 </label>
-                <input type="month" value={extraStart} onChange={e => setExtraStart(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
+                <input type="date" value={extraStart} onChange={e => setExtraStart(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
               </div>
               <div className="space-y-1">
                 <label className={labelCls}>End date <span className="text-slate-400 font-normal">(optional)</span></label>
-                <input type="month" value={extraEnd} onChange={e => setExtraEnd(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
+                <input type="date" value={extraEnd} min={extraStart || undefined} onChange={e => setExtraEnd(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
               </div>
             </div>
             {!hasExtra && (
