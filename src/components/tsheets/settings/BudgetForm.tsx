@@ -9,6 +9,9 @@ interface CurrentBudget {
   budgetAmount: number | null
   extraBudget: number
   startDate: string
+  budgetEndDate: string | null
+  extraStartDate: string | null
+  extraEndDate: string | null
 }
 
 interface Props {
@@ -26,41 +29,76 @@ function toFirstOfMonth(ym: string): string {
   return ym ? `${ym}-01` : ''
 }
 
-function toYearMonth(date: string): string {
+/** "2026-07" -> "2026-07-31" (last calendar day of that month). */
+function toLastOfMonth(ym: string): string {
+  if (!ym) return ''
+  const [y, m] = ym.split('-').map(Number)
+  const last = new Date(y, m, 0).getDate()
+  return `${ym}-${String(last).padStart(2, '0')}`
+}
+
+function toYearMonth(date: string | null | undefined): string {
   return date ? date.slice(0, 7) : ''
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function label(ym: string): string {
+  if (!ym) return ''
+  const [y, m] = ym.split('-')
+  const idx = Number(m) - 1
+  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${y}` : ym
 }
 
 export function BudgetForm({ client, current, onClose }: Props) {
   const [hours, setHours] = useState(fmtNum(current?.hoursAllocated))
   const [budget, setBudget] = useState(fmtNum(current?.budgetAmount))
+  const [budgetStart, setBudgetStart] = useState(toYearMonth(current?.startDate))
+  const [budgetEnd, setBudgetEnd] = useState(toYearMonth(current?.budgetEndDate))
   const [extra, setExtra] = useState(fmtNum(current?.extraBudget ?? 0))
-  const [startMonth, setStartMonth] = useState(current ? toYearMonth(current.startDate) : '')
+  const [extraStart, setExtraStart] = useState(toYearMonth(current?.extraStartDate))
+  const [extraEnd, setExtraEnd] = useState(toYearMonth(current?.extraEndDate))
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const extraVal = extra === '' ? 0 : Number(extra)
+  const hasExtra = extraVal > 0
+
+  function period(start: string, end: string): string {
+    if (!start) return '(not set)'
+    return end ? `${label(start)} – ${label(end)}` : `${label(start)} – ongoing`
+  }
 
   function buildLines(): string[] {
     const lines: string[] = [`Client: ${client.name}`]
     const newHours = hours === '' ? null : Number(hours)
     const newBudget = budget === '' ? null : Number(budget)
-    const newExtra = extra === '' ? 0 : Number(extra)
 
     if (current?.hoursAllocated !== newHours) {
-      lines.push(`Hours allocated: ${current?.hoursAllocated ?? 'none'} -> ${newHours ?? 'none'}`)
+      lines.push(`Hours allocated: ${current?.hoursAllocated ?? 'none'} → ${newHours ?? 'none'}`)
     }
     if (current?.budgetAmount !== newBudget) {
-      lines.push(`Budget: $${current?.budgetAmount ?? 0} -> $${newBudget ?? 0}`)
+      lines.push(`Budget: $${current?.budgetAmount ?? 0} → $${newBudget ?? 0}`)
     }
-    if ((current?.extraBudget ?? 0) !== newExtra) {
-      lines.push(`Extra budget: $${current?.extraBudget ?? 0} -> $${newExtra}`)
+    lines.push(`Budget period: ${period(budgetStart, budgetEnd)}`)
+
+    if (hasExtra) {
+      if ((current?.extraBudget ?? 0) !== extraVal) {
+        lines.push(`Extra budget: $${current?.extraBudget ?? 0} → $${extraVal}`)
+      }
+      lines.push(`Extra period: ${period(extraStart, extraEnd)}`)
+    } else if ((current?.extraBudget ?? 0) > 0) {
+      lines.push(`Extra budget: $${current?.extraBudget} → $0 (removed)`)
     }
-    lines.push(`Effective from: ${startMonth ? startMonth : '(not set)'}`)
     return lines
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!startMonth) { setError('Start month is required.'); return }
+    if (!budgetStart) { setError('Budget start date is required.'); return }
+    if (budgetEnd && budgetEnd < budgetStart) { setError('Budget end can’t be before its start.'); return }
+    if (hasExtra && !extraStart) { setError('Extra budget start date is required when an extra budget is set.'); return }
+    if (hasExtra && extraEnd && extraEnd < extraStart) { setError('Extra budget end can’t be before its start.'); return }
     setError(null)
     setConfirmOpen(true)
   }
@@ -71,8 +109,11 @@ export function BudgetForm({ client, current, onClose }: Props) {
       clientId: client.id,
       hoursAllocated: hours === '' ? null : Number(hours),
       budgetAmount: budget === '' ? null : Number(budget),
-      extraBudget: extra === '' ? 0 : Number(extra),
-      startDate: toFirstOfMonth(startMonth),
+      budgetStartDate: toFirstOfMonth(budgetStart),
+      budgetEndDate: budgetEnd ? toLastOfMonth(budgetEnd) : null,
+      extraBudget: extraVal,
+      extraStartDate: hasExtra && extraStart ? toFirstOfMonth(extraStart) : null,
+      extraEndDate: hasExtra && extraEnd ? toLastOfMonth(extraEnd) : null,
       justification,
     })
     setLoading(false)
@@ -85,79 +126,71 @@ export function BudgetForm({ client, current, onClose }: Props) {
     }
   }
 
+  const inputCls = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const labelCls = 'block text-xs font-medium text-slate-600'
+
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">
-            Budget for {client.name}
-          </h3>
+          <h3 className="text-sm font-semibold text-slate-900">Budget for {client.name}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-600">Hours allocated</label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={hours}
-                onChange={e => setHours(e.target.value)}
-                placeholder="e.g. 160"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* ── Base budget ── */}
+          <fieldset className="space-y-3">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-slate-400">Budget</legend>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className={labelCls}>Hours allocated</label>
+                <input type="number" min="0" step="0.5" value={hours} onChange={e => setHours(e.target.value)} placeholder="e.g. 160" className={inputCls} />
+              </div>
+              <div className="space-y-1">
+                <label className={labelCls}>Budget ($)</label>
+                <input type="number" min="0" step="0.01" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 8000" className={inputCls} />
+              </div>
+              <div className="space-y-1">
+                <label className={labelCls}>Start date <span className="text-red-500">*</span></label>
+                <input type="month" value={budgetStart} onChange={e => setBudgetStart(e.target.value)} className={inputCls} />
+              </div>
+              <div className="space-y-1">
+                <label className={labelCls}>End date <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input type="month" value={budgetEnd} onChange={e => setBudgetEnd(e.target.value)} className={inputCls} />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-600">Budget ($)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={budget}
-                onChange={e => setBudget(e.target.value)}
-                placeholder="e.g. 8000"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+          </fieldset>
+
+          {/* ── Extra budget ── */}
+          <fieldset className="space-y-3 border-t border-slate-100 pt-4">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-slate-400">Extra budget</legend>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className={labelCls}>Extra budget ($)</label>
+                <input type="number" min="0" step="0.01" value={extra} onChange={e => setExtra(e.target.value)} placeholder="0" className={inputCls} />
+              </div>
+              <div />
+              <div className="space-y-1">
+                <label className={labelCls}>
+                  Start date {hasExtra ? <span className="text-red-500">*</span> : <span className="text-slate-400 font-normal">(when extra is set)</span>}
+                </label>
+                <input type="month" value={extraStart} onChange={e => setExtraStart(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
+              </div>
+              <div className="space-y-1">
+                <label className={labelCls}>End date <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input type="month" value={extraEnd} onChange={e => setExtraEnd(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-600">Extra budget ($)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={extra}
-                onChange={e => setExtra(e.target.value)}
-                placeholder="0"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-600">
-                Effective from <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="month"
-                value={startMonth}
-                onChange={e => setStartMonth(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </div>
-          </div>
+            {!hasExtra && (
+              <p className="text-xs text-slate-400">Enter an extra budget amount to set its own period.</p>
+            )}
+          </fieldset>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
 
           <div className="flex gap-3 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
-            >
-              Review change
-            </button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Cancel</button>
+            <button type="submit" className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">Review change</button>
           </div>
         </form>
       </div>

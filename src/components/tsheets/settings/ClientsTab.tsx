@@ -14,6 +14,9 @@ export interface ClientWithBudget {
     budgetAmount: number | null
     extraBudget: number
     startDate: string
+    budgetEndDate: string | null
+    extraStartDate: string | null
+    extraEndDate: string | null
   } | null
 }
 
@@ -28,6 +31,12 @@ function monthLabel(date: string): string {
   const [y, m] = date.split('-')
   const idx = Number(m) - 1
   return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${y}` : date
+}
+
+/** A start/optional-end pair as "Jul 2026 – Sep 2026" or "Jul 2026 – ongoing". */
+function periodLabel(start: string | null | undefined, end: string | null | undefined): string {
+  if (!start) return '—'
+  return end ? `${monthLabel(start)} – ${monthLabel(end)}` : `${monthLabel(start)} – ongoing`
 }
 
 const Dash = () => <span className="text-slate-300">&mdash;</span>
@@ -60,7 +69,7 @@ export function ClientsTab({ clients }: Props) {
               <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Hours</th>
               <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Budget</th>
               <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Extra</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Effective from</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Budget period</th>
               <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Action</th>
             </tr>
           </thead>
@@ -84,10 +93,17 @@ export function ClientsTab({ clients }: Props) {
                       {b?.budgetAmount != null ? `$${b.budgetAmount.toLocaleString()}` : <Dash />}
                     </td>
                     <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
-                      {b && b.extraBudget > 0 ? `$${b.extraBudget.toLocaleString()}` : <Dash />}
+                      {b && b.extraBudget > 0 ? (
+                        <div>
+                          <div>${b.extraBudget.toLocaleString()}</div>
+                          {b.extraStartDate && (
+                            <div className="text-[11px] text-slate-400 font-normal">{periodLabel(b.extraStartDate, b.extraEndDate)}</div>
+                          )}
+                        </div>
+                      ) : <Dash />}
                     </td>
                     <td className="px-5 py-3.5 text-xs text-slate-500">
-                      {b ? monthLabel(b.startDate) : <span className="text-slate-400">No budget set</span>}
+                      {b ? periodLabel(b.startDate, b.budgetEndDate) : <span className="text-slate-400">No budget set</span>}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <button
@@ -108,6 +124,9 @@ export function ClientsTab({ clients }: Props) {
                             budgetAmount: b.budgetAmount,
                             extraBudget: b.extraBudget,
                             startDate: b.startDate,
+                            budgetEndDate: b.budgetEndDate,
+                            extraStartDate: b.extraStartDate,
+                            extraEndDate: b.extraEndDate,
                           } : null}
                           onClose={handleClose}
                         />

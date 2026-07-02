@@ -133,8 +133,11 @@ export type TrBudgetRow = {
   hours_allocated: number | null
   budget_amount: number | null
   extra_budget: number
-  start_date: string
-  end_date: string | null
+  start_date: string                    // base budget start (required)
+  budget_end_date: string | null        // base budget end (null = ongoing)
+  extra_start_date: string | null       // extra budget start (set when extra > 0)
+  extra_end_date: string | null         // extra budget end (null = ongoing)
+  end_date: string | null               // internal supersession marker
   justification: string
   created_by: string | null
   created_at: string
@@ -289,8 +292,11 @@ export type Database = {
       }
       tr_budgets: {
         Row: TrBudgetRow
-        Insert: Omit<TrBudgetRow, 'id' | 'end_date' | 'created_at' | 'created_by'> & {
+        Insert: Omit<TrBudgetRow, 'id' | 'budget_end_date' | 'extra_start_date' | 'extra_end_date' | 'end_date' | 'created_at' | 'created_by'> & {
           id?: number
+          budget_end_date?: string | null
+          extra_start_date?: string | null
+          extra_end_date?: string | null
           end_date?: string | null
           created_at?: string
           created_by?: string | null

@@ -20,7 +20,7 @@ export default async function TimeReportSettingsPage() {
       .order('name'),
     supabase
       .from('tr_budgets')
-      .select('id, client_id, hours_allocated, budget_amount, extra_budget, start_date')
+      .select('id, client_id, hours_allocated, budget_amount, extra_budget, start_date, budget_end_date, extra_start_date, extra_end_date')
       .is('end_date', null),
     supabase
       .from('people')
@@ -56,6 +56,9 @@ export default async function TimeReportSettingsPage() {
             budgetAmount: b.budget_amount != null ? Number(b.budget_amount) : null,
             extraBudget: Number(b.extra_budget ?? 0),
             startDate: b.start_date,
+            budgetEndDate: b.budget_end_date,
+            extraStartDate: b.extra_start_date,
+            extraEndDate: b.extra_end_date,
           }
         : null,
     }

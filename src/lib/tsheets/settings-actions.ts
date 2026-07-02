@@ -117,12 +117,21 @@ export async function saveTrBudget(input: {
   clientId: number
   hoursAllocated: number | null
   budgetAmount: number | null
+  budgetStartDate: string          // YYYY-MM-DD (first of month) — required
+  budgetEndDate: string | null     // YYYY-MM-DD or null (ongoing)
   extraBudget: number
-  startDate: string   // YYYY-MM-DD (always first of month)
+  extraStartDate: string | null    // required when extraBudget > 0
+  extraEndDate: string | null      // YYYY-MM-DD or null (ongoing)
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
   const notAdmin = await requireAdmin()
   if (notAdmin) return { ok: false, error: notAdmin }
+
+  // Server-side guards (mirror the form rules so a bad payload can't slip through)
+  if (!input.budgetStartDate) return { ok: false, error: 'Budget start date is required.' }
+  if (input.extraBudget > 0 && !input.extraStartDate) {
+    return { ok: false, error: 'Extra budget start date is required when an extra budget is set.' }
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -136,7 +145,7 @@ export async function saveTrBudget(input: {
     .maybeSingle()
 
   if (current) {
-    const endDate = new Date(input.startDate)
+    const endDate = new Date(input.budgetStartDate)
     endDate.setDate(endDate.getDate() - 1)
     const { error } = await supabase
       .from('tr_budgets')
@@ -145,7 +154,8 @@ export async function saveTrBudget(input: {
     if (error) return { ok: false, error: error.message }
   }
 
-  // Insert new budget
+  // Insert new budget. Extra dates are only stored when there's an extra amount.
+  const hasExtra = input.extraBudget > 0
   const { data: inserted, error: insertErr } = await supabase
     .from('tr_budgets')
     .insert({
@@ -153,7 +163,10 @@ export async function saveTrBudget(input: {
       hours_allocated: input.hoursAllocated,
       budget_amount: input.budgetAmount,
       extra_budget: input.extraBudget,
-      start_date: input.startDate,
+      start_date: input.budgetStartDate,
+      budget_end_date: input.budgetEndDate,
+      extra_start_date: hasExtra ? input.extraStartDate : null,
+      extra_end_date: hasExtra ? input.extraEndDate : null,
       justification: input.justification,
       created_by: user?.id,
     })
