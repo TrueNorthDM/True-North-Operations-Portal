@@ -55,6 +55,13 @@ const MOCK_MATRIX: TimeReportMatrix = {
   ),
   grandTotal: MOCK_JOBCODES.reduce((sum, jc) => sum + Object.values(MOCK_HOURS[jc.id] ?? {}).reduce((a, b) => a + b, 0), 0),
 }
+// Sample budgets + rates so the preview shows the budget-vs-actual panel.
+const MOCK_BUDGETS: Record<number, { hours: number | null; amount: number | null }> = {
+  100: { hours: 100, amount: 6000 },
+  101: { hours: 160, amount: 9500 },
+}
+const MOCK_RATE_CARD: Record<number, number> = { 1: 45, 2: 40, 3: 50, 4: 55, 5: 38, 6: 42 }
+const MOCK_RATES: Record<number, Record<number, number>> = { 100: MOCK_RATE_CARD, 101: MOCK_RATE_CARD }
 
 // Generate the last 24 months as YYYY-MM strings (newest first)
 function recentMonths(): string[] {
@@ -111,6 +118,8 @@ export default async function TimeReportPage({ searchParams }: Props) {
           data={MOCK_MATRIX}
           selectedMonth={selectedMonth}
           availableMonths={availableMonths}
+          budgets={MOCK_BUDGETS}
+          rates={MOCK_RATES}
           preview
         />
       ) : (
@@ -168,12 +177,65 @@ async function ReportView({
     )
   }
 
+  const { budgets, rates } = await loadBudgetsAndRates(startDate, endDate)
+
   return (
     <TimeReportMatrixView
       data={data}
       selectedMonth={selectedMonth}
       availableMonths={availableMonths}
+      budgets={budgets}
+      rates={rates}
     />
   )
+}
+
+// Loads per-client budgets and per-person rates from the DB and re-keys them by
+// the TSheets parent-jobcode id (= the matrix's clientId), so the report can
+// show budget-vs-actual and cost. Rates respect history: the rate in effect
+// during the report period is used, not necessarily the current one.
+async function loadBudgetsAndRates(startDate: string, endDate: string): Promise<{
+  budgets: Record<number, { hours: number | null; amount: number | null }>
+  rates: Record<number, Record<number, number>>
+}> {
+  const supabase = await createClient()
+  const [{ data: clientsRaw }, { data: budgetsRaw }, { data: assignRaw }] = await Promise.all([
+    supabase.from('tr_clients').select('id, tsheets_jobcode_id'),
+    supabase.from('tr_budgets').select('client_id, hours_allocated, budget_amount, extra_budget').is('end_date', null),
+    supabase.from('tr_assignments').select('tsheets_user_id, client_id, hourly_rate, effective_from, effective_to'),
+  ])
+
+  const jobcodeIdByDbId = new Map<number, number>()
+  for (const c of clientsRaw ?? []) jobcodeIdByDbId.set(c.id, c.tsheets_jobcode_id)
+
+  const budgets: Record<number, { hours: number | null; amount: number | null }> = {}
+  for (const b of budgetsRaw ?? []) {
+    const jid = jobcodeIdByDbId.get(b.client_id)
+    if (jid == null) continue
+    const extra = b.extra_budget != null ? Number(b.extra_budget) : 0
+    const amount = b.budget_amount != null ? Number(b.budget_amount) + extra : (extra > 0 ? extra : null)
+    budgets[jid] = { hours: b.hours_allocated != null ? Number(b.hours_allocated) : null, amount }
+  }
+
+  // Pick the rate whose effective window overlaps the period; if several, the
+  // latest effective_from wins.
+  const best = new Map<string, { from: string; rate: number }>()
+  for (const a of assignRaw ?? []) {
+    if (a.effective_from > endDate) continue
+    if (a.effective_to && a.effective_to < startDate) continue
+    const key = `${a.client_id}:${a.tsheets_user_id}`
+    const cur = best.get(key)
+    if (!cur || a.effective_from > cur.from) best.set(key, { from: a.effective_from, rate: Number(a.hourly_rate) })
+  }
+  const rates: Record<number, Record<number, number>> = {}
+  for (const [key, v] of best) {
+    const [dbIdStr, userStr] = key.split(':')
+    const jid = jobcodeIdByDbId.get(Number(dbIdStr))
+    if (jid == null) continue
+    if (!rates[jid]) rates[jid] = {}
+    rates[jid][Number(userStr)] = v.rate
+  }
+
+  return { budgets, rates }
 }
 
