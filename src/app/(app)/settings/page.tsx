@@ -10,6 +10,7 @@ import { TargetsEditor } from '@/components/boards/TargetsEditor'
 import { TsheetsTokenField } from '@/components/TsheetsTokenField'
 import { BudgetUsageSettings } from '@/components/tsheets/settings/BudgetUsageSettings'
 import { SettingsShell } from '@/components/SettingsShell'
+import { PullInfo } from '@/components/PullInfo'
 
 interface SiteData {
   id: string
@@ -54,9 +55,20 @@ export default async function SettingsPage() {
   // exposing the raw token to DevTools / Network inspection.
   const { data: appSettings } = await supabase
     .from('app_settings')
-    .select('monday_api_token, tsheets_api_token')
+    .select('monday_api_token, tsheets_api_token, tsheets_synced_at')
     .eq('singleton_id', 1)
     .maybeSingle()
+
+  // Latest Monday ingest time (the cron writes monday_snapshot.ingested_at per
+  // board) — shown as "last pulled X ago" on the Monday API card.
+  const { data: mondaySnap } = await supabase
+    .from('monday_snapshot')
+    .select('ingested_at')
+    .order('ingested_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const mondayPulledAt = (mondaySnap as { ingested_at: string } | null)?.ingested_at ?? null
+  const tsheetsPulledAt = appSettings?.tsheets_synced_at ?? null
   const tokenInfo = {
     exists: !!appSettings?.monday_api_token,
     last4: appSettings?.monday_api_token ? appSettings.monday_api_token.slice(-4) : null,
@@ -101,8 +113,44 @@ export default async function SettingsPage() {
       <SettingsShell
         apiTab={
           <div className="space-y-8">
-            <MondayTokenField tokenInfo={tokenInfo} />
-            <TsheetsTokenField tokenInfo={tsheetsTokenInfo} />
+            <MondayTokenField
+              tokenInfo={tokenInfo}
+              footer={<PullInfo syncedAt={mondayPulledAt} schedule="Boards pulled automatically every 4 hours" />}
+            />
+            <TsheetsTokenField
+              tokenInfo={tsheetsTokenInfo}
+              footer={<PullInfo syncedAt={tsheetsPulledAt} schedule="Clients & people synced every 4 hours · report hours pulled live" />}
+            />
+
+            {/* Projects — per-site config (languages, Monday board ID, WordPress
+                URLs). No section heading; the cards speak for themselves. */}
+            <div className="space-y-6">
+              {enriched.map(site => (
+                // Each project card groups its language config and its Monday
+                // board ID — both are "what this site is" settings and live in
+                // the same visual block to make that mental model obvious.
+                <div key={site.code} className="rounded-xl bg-white border border-slate-200 p-5">
+                  <SettingsForm site={site} embedded />
+                  <MondayBoardField
+                    siteCode={site.code}
+                    initialBoardId={site.monday_board_id}
+                    accent={site.code}
+                  />
+                  <WpUrlsField
+                    siteCode={site.code}
+                    initialDev={site.wp_dev_url}
+                    initialLive={site.wp_live_url}
+                    accent={site.code}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        }
+        toolsTab={
+          <div className="space-y-8">
+            {/* Budget Usage Report — clients & budgets, people & rates, change history. */}
+            <BudgetUsageSettings />
 
             {/* Publishing targets — the weekly goals the Boards Review dashboard
                 measures against. Config belongs here, not on the dashboard. */}
@@ -116,37 +164,6 @@ export default async function SettingsPage() {
                 isAdmin={isAdmin}
                 audit={targetAudit ?? []}
               />
-            </div>
-          </div>
-        }
-        toolsTab={
-          <div className="space-y-8">
-            {/* Budget Usage Report — clients & budgets, people & rates, change history. */}
-            <BudgetUsageSettings />
-
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Projects</h2>
-              <div className="space-y-6">
-                {enriched.map(site => (
-                  // Each project card groups its language config and its Monday
-                  // board ID — both are "what this site is" settings and live in
-                  // the same visual block to make that mental model obvious.
-                  <div key={site.code} className="rounded-xl bg-white border border-slate-200 p-5">
-                    <SettingsForm site={site} embedded />
-                    <MondayBoardField
-                      siteCode={site.code}
-                      initialBoardId={site.monday_board_id}
-                      accent={site.code}
-                    />
-                    <WpUrlsField
-                      siteCode={site.code}
-                      initialDev={site.wp_dev_url}
-                      initialLive={site.wp_live_url}
-                      accent={site.code}
-                    />
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         }

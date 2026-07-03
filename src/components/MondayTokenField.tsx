@@ -16,7 +16,7 @@
  * Supabase Auth + an RLS policy "SELECT only if auth.uid() IS NOT NULL".
  */
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveMondayApiToken } from '@/app/actions'
 
@@ -25,9 +25,10 @@ interface Props {
     exists: boolean
     last4: string | null
   }
+  footer?: ReactNode
 }
 
-export function MondayTokenField({ tokenInfo }: Props) {
+export function MondayTokenField({ tokenInfo, footer }: Props) {
   const router = useRouter()
   // Default to edit mode only when no token is saved. If saved, show masked view.
   const [isEditing, setIsEditing] = useState(!tokenInfo.exists)
@@ -219,6 +220,8 @@ export function MondayTokenField({ tokenInfo }: Props) {
           Don&apos;t treat this as production-grade storage yet.
         </span>
       </div>
+
+      {footer}
     </section>
   )
 }

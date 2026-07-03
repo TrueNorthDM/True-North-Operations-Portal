@@ -3,15 +3,16 @@
 // TSheets API token field on Settings — mirrors MondayTokenField exactly:
 // full token never leaves the server, client only sees { exists, last4 }.
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveTsheetsApiToken } from '@/app/actions'
 
 interface Props {
   tokenInfo: { exists: boolean; last4: string | null }
+  footer?: ReactNode
 }
 
-export function TsheetsTokenField({ tokenInfo }: Props) {
+export function TsheetsTokenField({ tokenInfo, footer }: Props) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(!tokenInfo.exists)
   const [value, setValue] = useState('')
@@ -146,6 +147,8 @@ export function TsheetsTokenField({ tokenInfo }: Props) {
           </div>
         </Modal>
       )}
+
+      {footer}
     </section>
   )
 }
