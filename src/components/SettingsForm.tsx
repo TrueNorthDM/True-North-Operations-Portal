@@ -5,14 +5,12 @@
  *
  * - Removable language chips (English locked because it's the x-default anchor)
  * - "Add language" input (validates BCP-47 shape)
- * - Live hreflang preview using placeholder URLs derived from `language_paths`
  * - Confirmation modal before save (shows # of pages that will be flagged)
  * - Empty state for unchanged config
  */
 
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { renderHreflangHtml } from '@/lib/hreflang'
 import { updateSiteLanguages } from '@/app/actions'
 import { languagePalette } from '@/lib/language-colors'
 
@@ -46,20 +44,6 @@ const accentMap = {
   },
 } as const
 
-function buildPreviewUrls(
-  domain: string,
-  languages: string[],
-  paths: Record<string, string>,
-): { language_code: string; url: string }[] {
-  return languages.map(lang => {
-    // For known langs use the configured path prefix; for unknown ones (newly
-    // added), fall back to using the language code as the prefix.
-    const prefix = paths[lang] ?? lang
-    const segment = prefix ? `${prefix}/` : ''
-    return { language_code: lang, url: `${domain}/${segment}example-page/` }
-  })
-}
-
 export function SettingsForm({ site, embedded = false }: Props) {
   const router = useRouter()
   const a = accentMap[site.code]
@@ -73,15 +57,6 @@ export function SettingsForm({ site, embedded = false }: Props) {
   const added = useMemo(() => langs.filter(l => !original.includes(l)), [langs, original])
   const removed = useMemo(() => original.filter(l => !langs.includes(l)), [original, langs])
   const isDirty = added.length > 0 || removed.length > 0
-
-  const beforeHtml = useMemo(
-    () => renderHreflangHtml(buildPreviewUrls(site.domain, original, site.language_paths)),
-    [site.domain, original, site.language_paths],
-  )
-  const afterHtml = useMemo(
-    () => renderHreflangHtml(buildPreviewUrls(site.domain, langs, site.language_paths)),
-    [site.domain, langs, site.language_paths],
-  )
 
   function addLang() {
     setError(null)
@@ -202,20 +177,6 @@ export function SettingsForm({ site, embedded = false }: Props) {
         )}
       </div>
 
-      {/* Preview */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-slate-700">Hreflang preview</h3>
-        <p className="text-xs text-slate-500">Using a placeholder slug <code className="text-[11px] bg-slate-100 px-1 py-0.5 rounded">/example-page/</code> — your real page URLs follow the same pattern.</p>
-        {isDirty ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <PreviewBlock label="Before" tone="neutral" html={beforeHtml} />
-            <PreviewBlock label="After" tone="primary" html={afterHtml} />
-          </div>
-        ) : (
-          <PreviewBlock label="Current" tone="neutral" html={beforeHtml} />
-        )}
-      </div>
-
       {/* Error */}
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
@@ -294,17 +255,5 @@ export function SettingsForm({ site, embedded = false }: Props) {
         </div>
       )}
     </section>
-  )
-}
-
-function PreviewBlock({ label, tone, html }: { label: string; tone: 'neutral' | 'primary'; html: string }) {
-  const labelCls = tone === 'primary' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500 bg-slate-100'
-  return (
-    <div className="rounded-lg border border-slate-200 overflow-hidden">
-      <div className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider ${labelCls}`}>{label}</div>
-      <pre className="text-[11px] p-3 overflow-x-auto bg-slate-900 text-slate-100 leading-relaxed font-mono whitespace-pre-wrap">
-        {html || '(no tags)'}
-      </pre>
-    </div>
   )
 }
