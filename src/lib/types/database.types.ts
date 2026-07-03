@@ -139,6 +139,7 @@ export type TrClientRow = {
   tsheets_jobcode_id: number
   name: string
   active: boolean
+  parent_id: number | null   // TSheets parent jobcode id; NULL = top-level client
   created_at: string
 }
 
@@ -314,7 +315,7 @@ export type Database = {
       }
       tr_clients: {
         Row: TrClientRow
-        Insert: Omit<TrClientRow, 'id' | 'created_at'> & { id?: number; created_at?: string }
+        Insert: Omit<TrClientRow, 'id' | 'created_at' | 'parent_id'> & { id?: number; created_at?: string; parent_id?: number | null }
         Update: Partial<Omit<TrClientRow, 'id' | 'created_at'>>
         Relationships: []
       }

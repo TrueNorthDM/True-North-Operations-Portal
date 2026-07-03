@@ -31,7 +31,9 @@ export async function BudgetUsageSettings() {
     { data: memberRows },
     { data: teamRows },
   ] = await Promise.all([
-    supabase.from('tr_clients').select('id, name, active').order('name'),
+    // Only real clients (top-level job codes) — children like "Content"/"SEO"
+    // are activities, not clients you budget or bill against.
+    supabase.from('tr_clients').select('id, name, active').is('parent_id', null).order('name'),
     supabase
       .from('tr_budgets')
       .select('id, client_id, hours_allocated, budget_amount, extra_budget, start_date, budget_end_date, extra_start_date, extra_end_date')

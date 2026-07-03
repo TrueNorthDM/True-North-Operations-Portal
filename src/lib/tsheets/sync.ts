@@ -78,7 +78,14 @@ export async function syncClientsCore(supabase: Client, token: string): Promise<
     const jobcodes = await fetchJobcodes(token)
     if (jobcodes.length === 0) return { ok: true, count: 0 }
 
-    const rows = jobcodes.map(jc => ({ tsheets_jobcode_id: jc.id, name: jc.name, active: true }))
+    const rows = jobcodes.map(jc => ({
+      tsheets_jobcode_id: jc.id,
+      name: jc.name,
+      active: true,
+      // TSheets uses parent_id 0 for top-level clients — normalise to NULL so
+      // the settings screens can filter real clients with `parent_id IS NULL`.
+      parent_id: jc.parent_id ? jc.parent_id : null,
+    }))
     const { error } = await supabase
       .from('tr_clients')
       .upsert(rows, { onConflict: 'tsheets_jobcode_id', ignoreDuplicates: false })
