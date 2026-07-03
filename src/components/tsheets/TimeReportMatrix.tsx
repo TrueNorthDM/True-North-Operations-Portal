@@ -17,18 +17,20 @@ interface Props {
 
 export function TimeReportMatrixView({ data, selectedMonth, availableMonths, preview }: Props) {
   const router = useRouter()
-  const [project, setProject] = useState<string>('all')   // 'all' or String(jobcode.id)
+  const [client, setClient] = useState<string>('all')   // 'all' or String(client.id)
 
   function onMonthChange(e: React.ChangeEvent<HTMLSelectElement>) {
     router.push(`/tools/time-report?month=${e.target.value}`)
   }
 
-  const { employees, jobcodes, hours, rowTotals } = data
+  const { employees, jobcodes, clients, hours, rowTotals } = data
+  const clientNameMap = new Map(clients.map(c => [c.id, c.name]))
 
-  // Filter to the picked project. When one is selected, also drop employee
-  // columns with no hours on it so the view stays focused.
-  const activeJobcodes = project === 'all' ? jobcodes : jobcodes.filter(jc => String(jc.id) === project)
-  const activeEmployees = project === 'all'
+  // Filter to the picked client — shows all its job codes and everyone who
+  // logged hours on them. When one is selected, drop employee columns with no
+  // hours so the view stays focused on that client.
+  const activeJobcodes = client === 'all' ? jobcodes : jobcodes.filter(jc => String(jc.clientId) === client)
+  const activeEmployees = client === 'all'
     ? employees
     : employees.filter(emp => activeJobcodes.some(jc => (hours[jc.id]?.[emp.id] ?? 0) > 0))
 
@@ -59,7 +61,7 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
         </div>
       )}
 
-      {/* Month + project selectors */}
+      {/* Month + client selectors */}
       <div className="flex items-center gap-3 flex-wrap">
         <label htmlFor="month-select" className="text-sm font-medium text-slate-700">Pay period</label>
         <select id="month-select" value={selectedMonth} onChange={onMonthChange} className={selectCls}>
@@ -68,11 +70,11 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
           ))}
         </select>
 
-        <label htmlFor="project-select" className="text-sm font-medium text-slate-700 ml-2">Project</label>
-        <select id="project-select" value={project} onChange={e => setProject(e.target.value)} className={selectCls}>
-          <option value="all">All projects</option>
-          {jobcodes.map(jc => (
-            <option key={jc.id} value={String(jc.id)}>{jc.name}</option>
+        <label htmlFor="client-select" className="text-sm font-medium text-slate-700 ml-2">Client</label>
+        <select id="client-select" value={client} onChange={e => setClient(e.target.value)} className={selectCls}>
+          <option value="all">All clients</option>
+          {clients.map(c => (
+            <option key={c.id} value={String(c.id)}>{c.name}</option>
           ))}
         </select>
 
@@ -81,10 +83,11 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
         </span>
       </div>
 
-      {/* Summary chips (reflect the current project filter) */}
+      {/* Summary chips (reflect the current client filter) */}
       <div className="flex flex-wrap gap-3">
+        {client !== 'all' && <Chip label="Client" value={clientNameMap.get(Number(client)) ?? '—'} />}
         <Chip label="Total hours" value={totalHours.toFixed(2)} />
-        <Chip label={project === 'all' ? 'Employees' : 'People with hours'} value={String(activeEmployees.length)} />
+        <Chip label={client === 'all' ? 'Employees' : 'People with hours'} value={String(activeEmployees.length)} />
         <Chip label="Job codes" value={String(activeJobcodes.length)} />
       </div>
 
@@ -110,7 +113,7 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
             {activeJobcodes.length === 0 && (
               <tr>
                 <td colSpan={2} className="px-4 py-6 text-center text-sm text-slate-400">
-                  No hours logged on this project in {formatMonthLabel(selectedMonth)}.
+                  No hours logged for this client in {formatMonthLabel(selectedMonth)}.
                 </td>
               </tr>
             )}
@@ -121,6 +124,9 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
               >
                 <td className="sticky left-0 z-10 px-4 py-2.5 font-medium text-slate-800 whitespace-nowrap bg-inherit border-r border-slate-100">
                   {jc.name}
+                  {client === 'all' && (
+                    <div className="text-xs font-normal text-slate-400">{clientNameMap.get(jc.clientId) ?? ''}</div>
+                  )}
                 </td>
                 {activeEmployees.map(emp => {
                   const h = hours[jc.id]?.[emp.id] ?? 0

@@ -27,9 +27,30 @@ export function buildMatrix(
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const jobcodeMap = new Map(jobcodes.map(j => [j.id, j]))
+
+  // Resolve the top-level ancestor (the "client") of a job code by walking up
+  // parent_id. TSheets marks top-level codes with parent_id 0 (or null).
+  function clientOf(id: number): number {
+    const seen = new Set<number>()
+    let cur = jobcodeMap.get(id)
+    while (cur && cur.parent_id && !seen.has(cur.id)) {
+      seen.add(cur.id)
+      const parent = jobcodeMap.get(cur.parent_id)
+      if (!parent) break
+      cur = parent
+    }
+    return cur?.id ?? id
+  }
+
   const usedJobcodes = jobcodes
     .filter(j => activeJobcodeIds.has(j.id))
-    .map(j => ({ id: j.id, name: j.name }))
+    .map(j => ({ id: j.id, name: j.name, clientId: clientOf(j.id) }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  // Distinct clients (top-level parents) among the used job codes.
+  const clientIds = new Set(usedJobcodes.map(j => j.clientId))
+  const clients = [...clientIds]
+    .map(cid => ({ id: cid, name: jobcodeMap.get(cid)?.name ?? 'Unknown' }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // Accumulate seconds per (jobcode, user), then convert to hours
@@ -63,7 +84,7 @@ export function buildMatrix(
   const month = `${MONTH_NAMES[monthIdx - 1]} ${year}`
   const endDate = new Date(year, monthIdx, 0).toISOString().slice(0, 10) // last day of month
 
-  return { month, startDate, endDate, employees, jobcodes: usedJobcodes, hours, rowTotals, colTotals, grandTotal }
+  return { month, startDate, endDate, employees, jobcodes: usedJobcodes, clients, hours, rowTotals, colTotals, grandTotal }
 }
 
 function round2(n: number): number {

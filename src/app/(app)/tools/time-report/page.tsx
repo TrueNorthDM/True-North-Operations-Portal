@@ -21,12 +21,16 @@ const MOCK_EMPLOYEES = [
   { id: 5, name: 'Samuel' },
   { id: 6, name: 'Stephanie' },
 ]
+const MOCK_CLIENTS = [
+  { id: 100, name: '1 - True North' },
+  { id: 101, name: '2 - i7 Marketing' },
+]
 const MOCK_JOBCODES = [
-  { id: 10, name: 'Bessemeter' },
-  { id: 11, name: 'Foreign contractors' },
-  { id: 12, name: 'i7 Marketing' },
-  { id: 13, name: 'MME' },
-  { id: 14, name: 'WM All' },
+  { id: 10, name: 'Bessemeter', clientId: 100 },
+  { id: 11, name: 'Foreign contractors', clientId: 101 },
+  { id: 12, name: 'i7 Marketing', clientId: 101 },
+  { id: 13, name: 'MME', clientId: 100 },
+  { id: 14, name: 'WM All', clientId: 100 },
 ]
 const MOCK_HOURS: Record<number, Record<number, number>> = {
   10: { 1: 12, 3: 8, 5: 20 },
@@ -41,6 +45,7 @@ const MOCK_MATRIX: TimeReportMatrix = {
   endDate: '2026-06-30',
   employees: MOCK_EMPLOYEES,
   jobcodes: MOCK_JOBCODES,
+  clients: MOCK_CLIENTS,
   hours: MOCK_HOURS,
   rowTotals: Object.fromEntries(
     MOCK_JOBCODES.map(jc => [jc.id, Object.values(MOCK_HOURS[jc.id] ?? {}).reduce((a, b) => a + b, 0)])

@@ -47,7 +47,10 @@ export interface TimeReportMatrix {
   startDate: string          // "2026-06-01"
   endDate: string            // "2026-06-30"
   employees: { id: number; name: string }[]   // sorted alphabetically by first name
-  jobcodes: { id: number; name: string }[]    // sorted alphabetically
+  // Each used job code, tagged with the client (top-level parent) it belongs to.
+  jobcodes: { id: number; name: string; clientId: number }[]    // sorted alphabetically
+  // Distinct top-level clients (parents) among the used job codes.
+  clients: { id: number; name: string }[]
   // hours[jobcodeId][employeeId] = total hours (already rounded to 2dp)
   hours: Record<number, Record<number, number>>
   rowTotals: Record<number, number>   // total hours per jobcode
