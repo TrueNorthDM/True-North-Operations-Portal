@@ -9,6 +9,7 @@ import { WpUrlsField } from '@/components/WpUrlsField'
 import { TargetsEditor } from '@/components/boards/TargetsEditor'
 import { TsheetsTokenField } from '@/components/TsheetsTokenField'
 import { BudgetUsageSettings } from '@/components/tsheets/settings/BudgetUsageSettings'
+import { SettingsShell } from '@/components/SettingsShell'
 
 interface SiteData {
   id: string
@@ -97,51 +98,59 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <MondayTokenField tokenInfo={tokenInfo} />
-      <TsheetsTokenField tokenInfo={tsheetsTokenInfo} />
+      <SettingsShell
+        apiTab={
+          <div className="space-y-8">
+            <MondayTokenField tokenInfo={tokenInfo} />
+            <TsheetsTokenField tokenInfo={tsheetsTokenInfo} />
 
-      {/* Budget Usage Report — clients & budgets, people & rates, change history.
-          Moved here from the tool page so all configuration lives in Settings. */}
-      <BudgetUsageSettings />
-
-      {/* Publishing targets — the weekly goals the Boards Review dashboard
-          measures against. Config belongs here, not on the dashboard. */}
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-1">Publishing targets</h2>
-        <p className="text-xs text-slate-400 mb-3">
-          Weekly pages-published goals per board &amp; language. The Boards Review dashboard tracks progress against these.
-        </p>
-        <TargetsEditor
-          targets={targets ?? []}
-          isAdmin={isAdmin}
-          audit={targetAudit ?? []}
-        />
-      </div>
-
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Projects</h2>
-        <div className="space-y-6">
-          {enriched.map(site => (
-            // Each project card groups its language config and its Monday
-            // board ID — both are "what this site is" settings and live in
-            // the same visual block to make that mental model obvious.
-            <div key={site.code} className="rounded-xl bg-white border border-slate-200 p-5">
-              <SettingsForm site={site} embedded />
-              <MondayBoardField
-                siteCode={site.code}
-                initialBoardId={site.monday_board_id}
-                accent={site.code}
-              />
-              <WpUrlsField
-                siteCode={site.code}
-                initialDev={site.wp_dev_url}
-                initialLive={site.wp_live_url}
-                accent={site.code}
+            {/* Publishing targets — the weekly goals the Boards Review dashboard
+                measures against. Config belongs here, not on the dashboard. */}
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-1">Publishing targets</h2>
+              <p className="text-xs text-slate-400 mb-3">
+                Weekly pages-published goals per board &amp; language. The Boards Review dashboard tracks progress against these.
+              </p>
+              <TargetsEditor
+                targets={targets ?? []}
+                isAdmin={isAdmin}
+                audit={targetAudit ?? []}
               />
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        }
+        toolsTab={
+          <div className="space-y-8">
+            {/* Budget Usage Report — clients & budgets, people & rates, change history. */}
+            <BudgetUsageSettings />
+
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Projects</h2>
+              <div className="space-y-6">
+                {enriched.map(site => (
+                  // Each project card groups its language config and its Monday
+                  // board ID — both are "what this site is" settings and live in
+                  // the same visual block to make that mental model obvious.
+                  <div key={site.code} className="rounded-xl bg-white border border-slate-200 p-5">
+                    <SettingsForm site={site} embedded />
+                    <MondayBoardField
+                      siteCode={site.code}
+                      initialBoardId={site.monday_board_id}
+                      accent={site.code}
+                    />
+                    <WpUrlsField
+                      siteCode={site.code}
+                      initialDev={site.wp_dev_url}
+                      initialLive={site.wp_live_url}
+                      accent={site.code}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        }
+      />
     </div>
   )
 }
