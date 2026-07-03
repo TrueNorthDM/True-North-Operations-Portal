@@ -34,7 +34,7 @@ export default async function HfaPagesPage() {
           </div>
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <a href="/admin/access" className="text-xs font-medium text-slate-500 hover:text-slate-800 whitespace-nowrap">
+              <a href="/admin/directory" className="text-xs font-medium text-slate-500 hover:text-slate-800 whitespace-nowrap">
                 Manage access
               </a>
             )}

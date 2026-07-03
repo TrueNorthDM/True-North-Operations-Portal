@@ -35,6 +35,9 @@ export function TeamDetail({
   addablePeople,
   grantedProjects,
   availableProjects,
+  embedded = false,
+  onBack,
+  onDeleted,
 }: {
   team: Named
   leaderName: string | null
@@ -42,6 +45,9 @@ export function TeamDetail({
   addablePeople: Named[]
   grantedProjects: GrantedProject[]
   availableProjects: Named[]
+  embedded?: boolean
+  onBack?: () => void
+  onDeleted?: () => void
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -67,15 +73,21 @@ export function TeamDetail({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
-          <span>/</span>
-          <a href="/admin" className="hover:text-slate-800">Admin</a>
-          <span>/</span>
-          <a href="/admin/teams" className="hover:text-slate-800">Teams</a>
-          <span>/</span>
-          <span>{team.name}</span>
-        </div>
+        {embedded ? (
+          <button type="button" onClick={() => onBack?.()} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-2">
+            <span aria-hidden="true">←</span> All teams
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+            <a href="/" className="hover:text-slate-800">Dashboard</a>
+            <span>/</span>
+            <a href="/admin" className="hover:text-slate-800">Admin</a>
+            <span>/</span>
+            <a href="/admin/teams" className="hover:text-slate-800">Teams</a>
+            <span>/</span>
+            <span>{team.name}</span>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             {renaming ? (
@@ -95,7 +107,7 @@ export function TeamDetail({
           {confirmDel ? (
             <span className="inline-flex items-center gap-2 text-sm">
               <span className="text-slate-500">Delete team?</span>
-              <button type="button" disabled={pending} onClick={() => run(() => deleteTeam(team.id), () => router.push('/admin/teams'))} className="font-semibold text-red-600 hover:text-red-700 disabled:opacity-50">Yes</button>
+              <button type="button" disabled={pending} onClick={() => run(() => deleteTeam(team.id), () => { if (embedded) onDeleted?.(); else router.push('/admin/teams') })} className="font-semibold text-red-600 hover:text-red-700 disabled:opacity-50">Yes</button>
               <button type="button" onClick={() => setConfirmDel(false)} className="text-slate-400 hover:text-slate-600">Cancel</button>
             </span>
           ) : (

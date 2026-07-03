@@ -20,13 +20,14 @@ export interface PersonView {
   teams: string[]
   accountId: string | null
   accountEmail: string | null
+  hasTsheets: boolean
 }
 
 interface Account { id: string; email: string }
 
 type EditTarget = PersonView | 'new' | null
 
-export function PeopleManager({ people, availableAccounts }: { people: PersonView[]; availableAccounts: Account[] }) {
+export function PeopleManager({ people, availableAccounts, embedded = false }: { people: PersonView[]; availableAccounts: Account[]; embedded?: boolean }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [search, setSearch] = useState('')
@@ -58,27 +59,35 @@ export function PeopleManager({ people, availableAccounts }: { people: PersonVie
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
-          <span>/</span>
-          <a href="/admin" className="hover:text-slate-800">Admin</a>
-          <span>/</span>
-          <span>People</span>
-        </div>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">People</h1>
-            <p className="mt-1 text-sm text-slate-500">The company directory — edits drive the org chart.</p>
+      {!embedded && (
+        <div>
+          <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+            <a href="/" className="hover:text-slate-800">Dashboard</a>
+            <span>/</span>
+            <a href="/admin" className="hover:text-slate-800">Admin</a>
+            <span>/</span>
+            <span>People</span>
           </div>
-          <button
-            type="button"
-            onClick={() => { setEdit('new'); setError(null) }}
-            className="shrink-0 px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
-          >
-            + Add person
-          </button>
+          <h1 className="text-2xl font-bold text-slate-900">People</h1>
+          <p className="mt-1 text-sm text-slate-500">The company directory — edits drive the org chart.</p>
         </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={`Search ${people.length} people…`}
+          className="w-64 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
+        />
+        <button
+          type="button"
+          onClick={() => { setEdit('new'); setError(null) }}
+          className="shrink-0 px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
+        >
+          + Add person
+        </button>
       </div>
 
       {edit !== null && (
@@ -95,14 +104,6 @@ export function PeopleManager({ people, availableAccounts }: { people: PersonVie
         />
       )}
 
-      <input
-        type="text"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder={`Search ${people.length} people…`}
-        className="w-64 rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
-      />
-
       <div className="rounded-xl bg-white border border-slate-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -112,6 +113,7 @@ export function PeopleManager({ people, availableAccounts }: { people: PersonVie
               <th className="px-4 py-3 w-40">Reports to</th>
               <th className="px-4 py-3">Teams</th>
               <th className="px-4 py-3 w-24">Account</th>
+              <th className="px-4 py-3 w-24">TSheets</th>
               <th className="px-4 py-3 w-24">Status</th>
               <th className="px-4 py-3 w-28" />
             </tr>
@@ -137,6 +139,11 @@ export function PeopleManager({ people, availableAccounts }: { people: PersonVie
                     : <span className="text-slate-300 text-xs">—</span>}
                 </td>
                 <td className="px-4 py-3">
+                  {p.hasTsheets
+                    ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title="Linked to a QuickBooks Time (TSheets) user"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Linked</span>
+                    : <span className="text-slate-300 text-xs">—</span>}
+                </td>
+                <td className="px-4 py-3">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${p.status === 'active' ? 'bg-slate-100 text-slate-600' : 'bg-slate-100 text-slate-400'}`}>
                     {p.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
@@ -158,7 +165,7 @@ export function PeopleManager({ people, availableAccounts }: { people: PersonVie
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No people match the search.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">No people match the search.</td></tr>
             )}
           </tbody>
         </table>

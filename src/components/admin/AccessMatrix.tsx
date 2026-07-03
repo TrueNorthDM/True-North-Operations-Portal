@@ -25,10 +25,12 @@ export function AccessMatrix({
   teams,
   projects,
   cells,
+  embedded = false,
 }: {
   teams: Named[]
   projects: Named[]
   cells: AccessCell[]
+  embedded?: boolean
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -56,17 +58,19 @@ export function AccessMatrix({
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
-          <span>/</span>
-          <a href="/admin" className="hover:text-slate-800">Admin</a>
-          <span>/</span>
-          <span>Access</span>
+      {!embedded && (
+        <div>
+          <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+            <a href="/" className="hover:text-slate-800">Dashboard</a>
+            <span>/</span>
+            <a href="/admin" className="hover:text-slate-800">Admin</a>
+            <span>/</span>
+            <span>Access</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Access</h1>
+          <p className="mt-1 text-sm text-slate-500">Which teams can reach which projects. Change a cell to edit the grant.</p>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Access</h1>
-        <p className="mt-1 text-sm text-slate-500">Which teams can reach which projects. Change a cell to edit the grant.</p>
-      </div>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -114,8 +118,7 @@ export function AccessMatrix({
       )}
 
       <p className="text-xs text-slate-400">
-        Showing team grants. Need per-person exceptions or a team’s members? Open it in{' '}
-        <a href="/admin/teams" className="underline hover:text-slate-600">Teams</a>.
+        Showing team grants. Need per-person exceptions or a team’s members? Open the <strong>Teams</strong> tab.
       </p>
     </div>
   )

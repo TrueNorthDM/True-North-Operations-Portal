@@ -8,19 +8,9 @@ import { isCurrentUserAdmin } from '@/lib/auth/role'
 
 const SECTIONS: { title: string; description: string; href?: string }[] = [
   {
-    title: 'People',
-    description: 'The company directory — add/edit people, set titles and reporting lines (drives the org chart).',
-    href: '/admin/people',
-  },
-  {
-    title: 'Teams',
-    description: 'Group people into teams and grant each team access to projects, with a role (Admin / Member / Viewer).',
-    href: '/admin/teams',
-  },
-  {
-    title: 'Access',
-    description: 'A bird’s-eye matrix of which teams can reach which projects, for review and auditing.',
-    href: '/admin/access',
+    title: 'Directory',
+    description: 'People, teams, and access — one place. Add/edit people (with their TSheets link), manage team membership, and grant each team access to projects.',
+    href: '/admin/directory',
   },
 ]
 
@@ -117,7 +107,7 @@ export default async function AdminPage() {
 
       <p className="text-xs text-slate-400">
         Access model: people join <strong>teams</strong>, teams are granted access to{' '}
-        <strong>projects</strong> with a role. Teams &amp; Access land next.
+        <strong>projects</strong> with a role — all managed from the Directory.
       </p>
     </div>
   )
