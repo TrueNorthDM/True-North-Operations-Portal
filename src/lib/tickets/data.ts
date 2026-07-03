@@ -271,7 +271,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-026',
     type: 'feature',
-    title: 'QuickBooks Time (TSheets) integration — Time Report tool',
+    title: 'QuickBooks Time (TSheets) integration — Budget Usage Report tool',
     description:
       'Automates the admin assistant\'s manual process: TSheets → CSV → Excel pivot → copy hours into Google Sheet. Portal now pulls hours directly from the TSheets REST API (3 endpoints: /users, /jobcodes, /timesheets) and renders the employee × job code pivot for any month. Token stored in app_settings. Settings system: clients/budgets (tr_budgets), people rates with history (tr_assignments), immutable audit log (tr_audit_log), all changes require justification. Migrations 019, 020, 021 applied.',
     status: 'done',
@@ -284,7 +284,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-027',
     type: 'feature',
-    title: 'Time Report — Phase D: date range + cost columns',
+    title: 'Budget Usage Report — Phase D: date range + cost columns',
     description:
       'Add day/week/month/custom date range picker (beyond the current month-only selector). Add cost columns to the matrix (hours × hourly rate from tr_assignments), budget vs actual variance per client, and total cost per employee. Requires tr_assignments to be populated first.',
     status: 'backlog',

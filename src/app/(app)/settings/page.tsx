@@ -8,6 +8,7 @@ import { MondayBoardField } from '@/components/MondayBoardField'
 import { WpUrlsField } from '@/components/WpUrlsField'
 import { TargetsEditor } from '@/components/boards/TargetsEditor'
 import { TsheetsTokenField } from '@/components/TsheetsTokenField'
+import { BudgetUsageSettings } from '@/components/tsheets/settings/BudgetUsageSettings'
 
 interface SiteData {
   id: string
@@ -92,12 +93,16 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
         <p className="text-slate-500 mt-1 text-sm">
-          Manage languages per project, publishing targets, and the Monday API token.
+          Manage API tokens, the Budget Usage Report, publishing targets, and languages per project.
         </p>
       </div>
 
       <MondayTokenField tokenInfo={tokenInfo} />
       <TsheetsTokenField tokenInfo={tsheetsTokenInfo} />
+
+      {/* Budget Usage Report — clients & budgets, people & rates, change history.
+          Moved here from the tool page so all configuration lives in Settings. */}
+      <BudgetUsageSettings />
 
       {/* Publishing targets — the weekly goals the Boards Review dashboard
           measures against. Config belongs here, not on the dashboard. */}

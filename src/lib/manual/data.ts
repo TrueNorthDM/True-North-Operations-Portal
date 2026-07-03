@@ -67,7 +67,7 @@ export const MANUAL: ManualSection[] = [
           ['Dashboards → Publishing Goals', 'Publishing pace vs weekly target (Boards Review)', 'Anyone signed in'],
           ['Projects → AAAF / HFA', 'hreflang tag management per WordPress site', 'By grant (super-admins: all)'],
           ['Tools → Href Link Management', 'Manage hreflang tags for AAAF / HFA WordPress pages', 'By project grant'],
-          ['Tools → Time Report', 'Hours per employee per job code from QuickBooks Time — the admin\'s manual pivot, automated', 'Anyone signed in'],
+          ['Tools → Budget Usage Report', 'Hours per employee per job code from QuickBooks Time — the admin\'s manual pivot, automated', 'Anyone signed in'],
           ['Settings', 'Languages per project, Monday + TSheets API tokens, publishing targets', 'Admins edit; others read'],
           ['Admin → People / Teams / Access', 'The directory + RBAC (who can access what)', 'Admins'],
           ['Admin → Tickets / Tests / Manual', 'Dev work tracker, QA checklist, this document', 'Admins'],
@@ -120,7 +120,7 @@ export const MANUAL: ManualSection[] = [
           ['Publishing targets', 'Supabase (publishing_targets) — NOT Monday'],
           ['Dashboard data (Monday snapshot)', 'Supabase store, refreshed nightly from Monday'],
           ['Favourites', 'Supabase (per user)'],
-          ['Time Report (TSheets hours)', 'Live fetch from TSheets REST API — not stored in the portal DB'],
+          ['Budget Usage Report (TSheets hours)', 'Live fetch from TSheets REST API — not stored in the portal DB'],
           ['Tickets, tests, this manual', 'Code (repo), maintained by Claude'],
           ['Editorial / publishing source of truth', 'Monday'],
         ],
@@ -129,9 +129,9 @@ export const MANUAL: ManualSection[] = [
   },
   {
     id: 'tsheets',
-    title: 'QuickBooks Time (TSheets) — Time Report',
+    title: 'QuickBooks Time (TSheets) — Budget Usage Report',
     body: [
-      { kind: 'p', text: 'The Time Report tool at /tools/time-report replaces a manual process: the admin assistant used to export a TSheets CSV, build a pivot table in Excel, and copy hours cell-by-cell into the monthly Google Sheet. The portal does all of that automatically.' },
+      { kind: 'p', text: 'The Budget Usage Report tool at /tools/time-report replaces a manual process: the admin assistant used to export a TSheets CSV, build a pivot table in Excel, and copy hours cell-by-cell into the monthly Google Sheet. The portal does all of that automatically.' },
       { kind: 'subhead', text: 'The token' },
       { kind: 'p', text: 'A static API access token lives in app_settings.tsheets_api_token and is set in Settings → QuickBooks Time API. Like the Monday token, it never leaves the server — the component only receives { exists, last4 }. To generate one: TSheets → company menu → Company Settings → Add-ons → API Access.' },
       { kind: 'subhead', text: 'How it works' },
@@ -151,7 +151,7 @@ export const MANUAL: ManualSection[] = [
     title: 'Not built yet',
     body: [
       { kind: 'list', items: [
-        'Time Report Phase 2 — budget hours + cost variance stored in portal DB (replaces the Google Sheet).',
+        'Budget Usage Report Phase 2 — budget hours + cost variance stored in portal DB (replaces the Google Sheet).',
         'My Work — everything you\'re working on across the whole Monday account (the Home widget + a full view; TN-019 / TN-022). This would be the third Monday use.',
         'My Team — a team-at-a-glance view on Home.',
         'Custom SMTP (Resend) for production login (to lift the email rate limit).',

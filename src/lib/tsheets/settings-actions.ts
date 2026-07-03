@@ -35,7 +35,7 @@ export async function syncTrClients(token: string): Promise<{ ok: boolean; count
       .upsert(rows, { onConflict: 'tsheets_jobcode_id', ignoreDuplicates: false })
     if (error) return { ok: false, count: 0, error: error.message }
 
-    revalidatePath('/tools/time-report/settings')
+    revalidatePath('/settings')
     return { ok: true, count: rows.length }
   } catch (e) {
     return { ok: false, count: 0, error: e instanceof Error ? e.message : 'Unknown error' }
@@ -153,7 +153,7 @@ export async function syncPeopleFromTsheets(token: string): Promise<{
       }
     }
 
-    revalidatePath('/tools/time-report/settings')
+    revalidatePath('/settings')
     return { ok: true, linked, imported }
   } catch (e) {
     return { ok: false, linked: 0, imported: 0, error: e instanceof Error ? e.message : 'Unknown error' }
@@ -191,7 +191,7 @@ export async function linkTsheetsPersonToDirectory(input: {
     .eq('id', input.directoryPersonId)
   if (updErr) return { ok: false, error: updErr.message }
 
-  revalidatePath('/tools/time-report/settings')
+  revalidatePath('/settings')
   revalidatePath('/admin/people')
   revalidatePath('/')
   return { ok: true }
@@ -271,7 +271,7 @@ export async function saveTrBudget(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/tools/time-report/settings')
+  revalidatePath('/settings')
   return { ok: true }
 }
 
@@ -337,7 +337,7 @@ export async function saveTrAssignment(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/tools/time-report/settings')
+  revalidatePath('/settings')
   return { ok: true }
 }
 
@@ -415,6 +415,6 @@ export async function deactivateTrAssignment(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/tools/time-report/settings')
+  revalidatePath('/settings')
   return { ok: true }
 }

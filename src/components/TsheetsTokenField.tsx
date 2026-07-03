@@ -48,7 +48,7 @@ export function TsheetsTokenField({ tokenInfo }: Props) {
       <div>
         <h2 className="text-lg font-bold text-slate-900">QuickBooks Time (TSheets) API</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          Static API token — used by the Time Report tool to pull hours from TSheets.
+          Static API token — used by the Budget Usage Report tool to pull hours from TSheets.
         </p>
       </div>
 
@@ -125,7 +125,7 @@ export function TsheetsTokenField({ tokenInfo }: Props) {
       {warnOpen && (
         <Modal onClose={() => setWarnOpen(false)}>
           <h3 className="text-lg font-bold text-slate-900">Change the TSheets token?</h3>
-          <p className="text-sm text-slate-600">The Time Report tool will stop working until you save a new valid token.</p>
+          <p className="text-sm text-slate-600">The Budget Usage Report tool will stop working until you save a new valid token.</p>
           <div className="flex items-center justify-end gap-3 pt-2">
             <button onClick={() => setWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
             <button onClick={() => { setWarnOpen(false); setValue(''); setIsEditing(true) }}
@@ -139,7 +139,7 @@ export function TsheetsTokenField({ tokenInfo }: Props) {
       {clearWarnOpen && (
         <Modal onClose={() => setClearWarnOpen(false)}>
           <h3 className="text-lg font-bold text-slate-900">Remove the TSheets token?</h3>
-          <p className="text-sm text-slate-600">The Time Report tool won't be able to fetch data until a token is added again.</p>
+          <p className="text-sm text-slate-600">The Budget Usage Report tool won't be able to fetch data until a token is added again.</p>
           <div className="flex items-center justify-end gap-3 pt-2">
             <button onClick={() => setClearWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
             <button onClick={confirmClear} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white">Remove token</button>
