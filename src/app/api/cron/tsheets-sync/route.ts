@@ -41,6 +41,9 @@ export async function GET(request: Request) {
   const clients = await syncClientsCore(supabase, token)
   const people = await syncPeopleCore(supabase, token)
 
+  // Stamp the last-synced time so the UI can show "Last synced X ago".
+  await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
+
   return NextResponse.json({
     ok: clients.ok && people.ok,
     elapsedMs: Date.now() - t0,

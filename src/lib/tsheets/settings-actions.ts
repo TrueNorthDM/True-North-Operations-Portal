@@ -256,6 +256,33 @@ export async function syncPeopleFromPortal(): Promise<{
   return syncPeopleFromTsheets(settings.tsheets_api_token)
 }
 
+// Manual "sync now" behind the last-synced status button: runs both syncs and
+// stamps tsheets_synced_at. The cron does the same on its schedule.
+export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+  const { data: settings } = await supabase
+    .from('app_settings')
+    .select('tsheets_api_token')
+    .eq('singleton_id', 1)
+    .maybeSingle()
+  if (!settings?.tsheets_api_token) return { ok: false, error: 'No TSheets token configured in Settings.' }
+  const token = settings.tsheets_api_token
+
+  const clients = await syncClientsCore(supabase, token)
+  if (!clients.ok) return { ok: false, error: clients.error }
+  const people = await syncPeopleCore(supabase, token)
+  if (!people.ok) return { ok: false, error: people.error }
+
+  await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
+
+  revalidatePath('/settings')
+  revalidatePath('/tools/time-report')
+  return { ok: true }
+}
+
 export async function deactivateTrAssignment(input: {
   tsheetsUserId: number
   clientId: number

@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ClientsTab } from './ClientsTab'
 import { PeopleTab } from './PeopleTab'
 import { HistoryTab } from './HistoryTab'
-import { syncClientsFromPortal, syncPeopleFromPortal } from '@/lib/tsheets/settings-actions'
+import { SyncStatus } from './SyncStatus'
 import type { ClientWithBudget } from './ClientsTab'
 import type { PersonWithAssignments, DirectoryOption } from './PeopleTab'
 import type { AuditEntry } from './HistoryTab'
@@ -17,6 +16,8 @@ interface Props {
   people: PersonWithAssignments[]
   auditLog: AuditEntry[]
   directoryOptions: DirectoryOption[]
+  syncedAt: string | null
+  canSync: boolean
 }
 
 const TABS: { key: Tab; label: string }[] = [
@@ -25,62 +26,15 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'history', label: 'Change History' },
 ]
 
-export function SettingsTabs({ clients, people, auditLog, directoryOptions }: Props) {
-  const router = useRouter()
+export function SettingsTabs({ clients, people, auditLog, directoryOptions, syncedAt, canSync }: Props) {
   const [tab, setTab] = useState<Tab>('clients')
-  const [syncMsg, setSyncMsg] = useState<string | null>(null)
-  const [syncing, setSyncing] = useState<'clients' | 'people' | null>(null)
-
-  async function handleSyncClients() {
-    setSyncing('clients')
-    setSyncMsg(null)
-    const result = await syncClientsFromPortal()
-    setSyncing(null)
-    if (result.ok) {
-      setSyncMsg(`Synced ${result.count} client${result.count !== 1 ? 's' : ''} from TSheets.`)
-      router.refresh()
-    } else {
-      setSyncMsg(`Sync failed: ${result.error}`)
-    }
-  }
-
-  async function handleSyncPeople() {
-    setSyncing('people')
-    setSyncMsg(null)
-    const result = await syncPeopleFromPortal()
-    setSyncing(null)
-    if (result.ok) {
-      setSyncMsg(`Linked ${result.linked}, imported ${result.imported} new people from TSheets.`)
-      router.refresh()
-    } else {
-      setSyncMsg(`Sync failed: ${result.error}`)
-    }
-  }
 
   const allClients = clients.map(c => ({ id: c.id, name: c.name }))
 
   return (
     <div className="space-y-5">
-      {/* Sync bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={handleSyncClients}
-          disabled={syncing !== null}
-          className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
-          {syncing === 'clients' ? 'Syncing...' : 'Sync clients from TSheets'}
-        </button>
-        <button
-          onClick={handleSyncPeople}
-          disabled={syncing !== null}
-          className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
-          {syncing === 'people' ? 'Syncing...' : 'Sync people from TSheets'}
-        </button>
-        {syncMsg && (
-          <span className="text-xs text-slate-600">{syncMsg}</span>
-        )}
-      </div>
+      {/* Sync status — the sync runs automatically every 4 hours (Vercel Cron). */}
+      <SyncStatus syncedAt={syncedAt} interactive={canSync} />
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-slate-200">

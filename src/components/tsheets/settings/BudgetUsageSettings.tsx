@@ -3,6 +3,7 @@
 // to be its own page under the tool).
 
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentProfile } from '@/lib/auth/role'
 import { SettingsTabs } from './SettingsTabs'
 import type { ClientWithBudget } from './ClientsTab'
 import type { PersonWithAssignments } from './PeopleTab'
@@ -10,6 +11,15 @@ import type { AuditEntry } from './HistoryTab'
 
 export async function BudgetUsageSettings() {
   const supabase = await createClient()
+
+  const profile = await getCurrentProfile()
+  const isAdmin = profile?.role === 'admin'
+  const { data: appSettings } = await supabase
+    .from('app_settings')
+    .select('tsheets_synced_at')
+    .eq('singleton_id', 1)
+    .maybeSingle()
+  const syncedAt = appSettings?.tsheets_synced_at ?? null
 
   const [
     { data: clientsRaw },
@@ -135,7 +145,7 @@ export async function BudgetUsageSettings() {
       <p className="text-xs text-slate-400 mb-3">
         Manage clients, hourly rates, and budget allocations. Every change requires a justification and is recorded in the audit log.
       </p>
-      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} />
+      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} syncedAt={syncedAt} canSync={isAdmin} />
     </div>
   )
 }

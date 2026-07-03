@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { fetchUsers, fetchJobcodes, fetchTimesheets } from '@/lib/tsheets/client'
 import { buildMatrix, monthBounds, currentYearMonth } from '@/lib/tsheets/report'
 import { TimeReportMatrixView } from '@/components/tsheets/TimeReportMatrix'
+import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import type { TimeReportMatrix } from '@/lib/tsheets/types'
 
 // Sample data shown when no API token is configured, so the user can see the
@@ -71,11 +72,12 @@ export default async function TimeReportPage({ searchParams }: Props) {
   const supabase = await createClient()
   const { data: settings } = await supabase
     .from('app_settings')
-    .select('tsheets_api_token')
+    .select('tsheets_api_token, tsheets_synced_at')
     .eq('singleton_id', 1)
     .maybeSingle()
 
   const token = settings?.tsheets_api_token ?? null
+  const syncedAt = settings?.tsheets_synced_at ?? null
 
   return (
     <div className="space-y-8">
@@ -94,6 +96,9 @@ export default async function TimeReportPage({ searchParams }: Props) {
             Manage clients, rates &amp; budgets in Settings →
           </a>
         </p>
+        <div className="mt-3">
+          <SyncStatus syncedAt={syncedAt} />
+        </div>
       </div>
 
       {!token ? (

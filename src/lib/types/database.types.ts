@@ -253,9 +253,9 @@ export type Database = {
         ]
       }
       app_settings: {
-        Row: { singleton_id: number; monday_api_token: string | null; tsheets_api_token: string | null; updated_at: string }
-        Insert: { singleton_id?: number; monday_api_token?: string | null; tsheets_api_token?: string | null; updated_at?: string }
-        Update: { monday_api_token?: string | null; tsheets_api_token?: string | null; updated_at?: string }
+        Row: { singleton_id: number; monday_api_token: string | null; tsheets_api_token: string | null; tsheets_synced_at: string | null; updated_at: string }
+        Insert: { singleton_id?: number; monday_api_token?: string | null; tsheets_api_token?: string | null; tsheets_synced_at?: string | null; updated_at?: string }
+        Update: { monday_api_token?: string | null; tsheets_api_token?: string | null; tsheets_synced_at?: string | null; updated_at?: string }
         Relationships: []
       }
       monday_events: {
