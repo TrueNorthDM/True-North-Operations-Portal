@@ -115,11 +115,11 @@ export default async function SettingsPage() {
           <div className="space-y-8">
             <MondayTokenField
               tokenInfo={tokenInfo}
-              footer={<PullInfo syncedAt={mondayPulledAt} schedule="Boards pulled automatically every 4 hours" />}
+              footer={<PullInfo syncedAt={mondayPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={0} label="Boards pulled" pastVerb="pulled" />}
             />
             <TsheetsTokenField
               tokenInfo={tsheetsTokenInfo}
-              footer={<PullInfo syncedAt={tsheetsPulledAt} schedule="Clients & people synced every 4 hours · report hours pulled live" />}
+              footer={<PullInfo syncedAt={tsheetsPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={30} label="Clients & people synced" pastVerb="synced" />}
             />
 
             {/* Projects — per-site config (languages, Monday board ID, WordPress

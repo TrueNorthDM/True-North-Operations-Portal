@@ -126,46 +126,69 @@ export function SettingsForm({ site, embedded = false }: Props) {
             Default: <strong className="font-semibold text-slate-700">en</strong> (locked — drives x-default)
           </span>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {langs.map(lang => {
-            const isEn = lang === 'en'
-            const isNew = added.includes(lang)
-            const langC = languagePalette(lang)
-            return (
-              <span
-                key={lang}
-                className={`inline-flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border font-medium uppercase ${langC.bg} ${langC.text} ${langC.border} ${isNew ? 'ring-2 ring-offset-1 ring-green-400/60' : ''}`}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex flex-wrap gap-2">
+            {langs.map(lang => {
+              const isEn = lang === 'en'
+              const isNew = added.includes(lang)
+              const langC = languagePalette(lang)
+              return (
+                <span
+                  key={lang}
+                  className={`inline-flex items-center gap-1.5 text-sm px-3 py-1 rounded-full border font-medium uppercase ${langC.bg} ${langC.text} ${langC.border} ${isNew ? 'ring-2 ring-offset-1 ring-green-400/60' : ''}`}
+                >
+                  {lang}
+                  {!isEn && (
+                    <button
+                      onClick={() => removeLang(lang)}
+                      aria-label={`Remove ${lang}`}
+                      className="text-slate-400 hover:text-red-600 transition-colors -mr-1 text-base leading-none"
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              )
+            })}
+            {/* Inline add */}
+            <div className="flex items-center gap-1.5 ml-1">
+              <input
+                type="text"
+                value={newLang}
+                onChange={e => setNewLang(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLang())}
+                placeholder="add lang (e.g. fr)"
+                className={`w-28 px-3 py-1 rounded-full border border-slate-200 text-sm focus:outline-none focus:ring-2 ${a.ring}`}
+              />
+              <button
+                type="button"
+                onClick={addLang}
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
               >
-                {lang}
-                {!isEn && (
-                  <button
-                    onClick={() => removeLang(lang)}
-                    aria-label={`Remove ${lang}`}
-                    className="text-slate-400 hover:text-red-600 transition-colors -mr-1 text-base leading-none"
-                    type="button"
-                  >
-                    ×
-                  </button>
-                )}
-              </span>
-            )
-          })}
-          {/* Inline add */}
-          <div className="flex items-center gap-1.5 ml-1">
-            <input
-              type="text"
-              value={newLang}
-              onChange={e => setNewLang(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLang())}
-              placeholder="add lang (e.g. fr)"
-              className={`w-28 px-3 py-1 rounded-full border border-slate-200 text-sm focus:outline-none focus:ring-2 ${a.ring}`}
-            />
+                + Add
+              </button>
+            </div>
+          </div>
+
+          {/* Save / cancel on the same row as the languages */}
+          <div className="flex items-center gap-3 shrink-0">
+            {isDirty && (
+              <button
+                onClick={reset}
+                type="button"
+                className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                Cancel changes
+              </button>
+            )}
             <button
               type="button"
-              onClick={addLang}
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              disabled={!isDirty || saving}
+              onClick={() => setConfirmOpen(true)}
+              className={`px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${a.btn}`}
             >
-              + Add
+              {saving ? 'Saving…' : 'Save changes'}
             </button>
           </div>
         </div>
@@ -183,27 +206,6 @@ export function SettingsForm({ site, embedded = false }: Props) {
           {error}
         </div>
       )}
-
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-        {isDirty && (
-          <button
-            onClick={reset}
-            type="button"
-            className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
-          >
-            Cancel changes
-          </button>
-        )}
-        <button
-          type="button"
-          disabled={!isDirty || saving}
-          onClick={() => setConfirmOpen(true)}
-          className={`px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${a.btn}`}
-        >
-          {saving ? 'Saving…' : 'Save changes'}
-        </button>
-      </div>
 
       {/* Confirmation modal */}
       {confirmOpen && (
