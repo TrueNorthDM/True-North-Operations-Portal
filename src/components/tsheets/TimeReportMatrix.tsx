@@ -1,11 +1,10 @@
 'use client'
 
 // TimeReportMatrix — client component that renders the hours pivot table, the
-// month/client pickers, and (Phase B) the budget-vs-actual + cost layer. No
-// data fetching here: hours come from TSheets and budgets/rates from the DB,
-// both passed as props by the server page.
+// month picker, and the budget-vs-actual + cost layer. This tool is fixed to
+// the i7 Marketing client. No data fetching here: hours come from TSheets and
+// budgets/rates from the DB, both passed as props by the server page.
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { TimeReportMatrix } from '@/lib/tsheets/types'
 
@@ -44,31 +43,29 @@ const PILL: Record<Status, { cls: string; label: string }> = {
 
 export function TimeReportMatrixView({ data, selectedMonth, availableMonths, preview, budgets, rates }: Props) {
   const router = useRouter()
-  const [client, setClient] = useState<string>('all')   // 'all' or String(client.id)
 
   function onMonthChange(e: React.ChangeEvent<HTMLSelectElement>) {
     router.push(`/tools/time-report?month=${e.target.value}`)
   }
 
   const { employees, jobcodes, clients, hours, rowTotals } = data
-  const clientNameMap = new Map(clients.map(c => [c.id, c.name]))
   const B = budgets ?? {}
   const R = rates ?? {}
   const hasRates = Object.values(R).some(m => Object.values(m).some(v => v > 0))
-  const hasBudgets = Object.keys(B).length > 0
+
+  // This tool is fixed to the i7 Marketing client (matched by name).
+  const i7 = clients.find(c => /i7/i.test(c.name))
+  const i7Id = i7?.id ?? null
+  const clientName = i7?.name ?? 'i7 Marketing'
 
   function rowCost(jc: { id: number; clientId: number }): number {
     const rateMap = R[jc.clientId] ?? {}
     return employees.reduce((sum, emp) => sum + (hours[jc.id]?.[emp.id] ?? 0) * (rateMap[emp.id] ?? 0), 0)
   }
 
-  // Filter to the picked client — shows all its job codes and everyone who
-  // logged hours on them. When one is selected, drop employee columns with no
-  // hours so the view stays focused on that client.
-  const activeJobcodes = client === 'all' ? jobcodes : jobcodes.filter(jc => String(jc.clientId) === client)
-  const activeEmployees = client === 'all'
-    ? employees
-    : employees.filter(emp => activeJobcodes.some(jc => (hours[jc.id]?.[emp.id] ?? 0) > 0))
+  // Only i7's job codes, and only the people who logged hours on them.
+  const activeJobcodes = i7Id != null ? jobcodes.filter(jc => jc.clientId === i7Id) : []
+  const activeEmployees = employees.filter(emp => activeJobcodes.some(jc => (hours[jc.id]?.[emp.id] ?? 0) > 0))
 
   const colTotals: Record<number, number> = {}
   for (const emp of activeEmployees) {
@@ -77,11 +74,9 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
   const totalHours = activeJobcodes.reduce((sum, jc) => sum + (rowTotals[jc.id] ?? 0), 0)
   const totalCost = activeJobcodes.reduce((sum, jc) => sum + rowCost(jc), 0)
 
-  const selClientId = client === 'all' ? null : Number(client)
-  const selBudget = selClientId != null ? B[selClientId] : undefined
+  const selBudget = i7Id != null ? B[i7Id] : undefined
   const showCost = hasRates
-  const showPanel = selClientId != null && (selBudget != null || hasRates)
-  const showOverview = client === 'all' && (hasBudgets || hasRates)
+  const showPanel = i7Id != null && (selBudget != null || hasRates)
   const cols = 2 + activeEmployees.length + (showCost ? 1 : 0)
 
   function fmt(n: number): string {
@@ -104,7 +99,7 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
         </div>
       )}
 
-      {/* Month + client selectors */}
+      {/* Month selector — the client is fixed to i7 Marketing */}
       <div className="flex items-center gap-3 flex-wrap">
         <label htmlFor="month-select" className="text-sm font-medium text-slate-700">Pay period</label>
         <select id="month-select" value={selectedMonth} onChange={onMonthChange} className={selectCls}>
@@ -112,22 +107,13 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
             <option key={ym} value={ym}>{formatMonthLabel(ym)}</option>
           ))}
         </select>
-
-        <label htmlFor="client-select" className="text-sm font-medium text-slate-700 ml-2">Client</label>
-        <select id="client-select" value={client} onChange={e => setClient(e.target.value)} className={selectCls}>
-          <option value="all">All clients</option>
-          {clients.map(c => (
-            <option key={c.id} value={String(c.id)}>{c.name}</option>
-          ))}
-        </select>
-
         <span className="text-sm text-slate-400 ml-1">{data.startDate} → {data.endDate}</span>
       </div>
 
-      {/* ── Budget usage panel (a client is selected + there's budget/rate data) ── */}
-      {showPanel && selClientId != null && (
+      {/* Budget-vs-actual panel */}
+      {showPanel && (
         <BudgetPanel
-          clientName={clientNameMap.get(selClientId) ?? '—'}
+          clientName={clientName}
           actualHours={totalHours}
           budgetHours={selBudget?.hours ?? null}
           actualCost={totalCost}
@@ -138,10 +124,9 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
 
       {/* Summary chips */}
       <div className="flex flex-wrap gap-3">
-        {client !== 'all' && <Chip label="Client" value={clientNameMap.get(Number(client)) ?? '—'} />}
         <Chip label="Total hours" value={totalHours.toFixed(2)} />
         {showCost && <Chip label="Total cost" value={money(totalCost)} />}
-        <Chip label={client === 'all' ? 'Employees' : 'People with hours'} value={String(activeEmployees.length)} />
+        <Chip label="People with hours" value={String(activeEmployees.length)} />
         <Chip label="Job codes" value={String(activeJobcodes.length)} />
       </div>
 
@@ -162,7 +147,7 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
             {activeJobcodes.length === 0 && (
               <tr>
                 <td colSpan={cols} className="px-4 py-6 text-center text-sm text-slate-400">
-                  No hours logged for this client in {formatMonthLabel(selectedMonth)}.
+                  No hours logged for {clientName} in {formatMonthLabel(selectedMonth)}.
                 </td>
               </tr>
             )}
@@ -170,9 +155,6 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
               <tr key={jc.id} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
                 <td className="sticky left-0 z-10 px-4 py-2.5 font-medium text-slate-800 whitespace-nowrap bg-inherit border-r border-slate-100">
                   {jc.name}
-                  {client === 'all' && (
-                    <div className="text-xs font-normal text-slate-400">{clientNameMap.get(jc.clientId) ?? ''}</div>
-                  )}
                 </td>
                 {activeEmployees.map(emp => {
                   const h = hours[jc.id]?.[emp.id] ?? 0
@@ -207,18 +189,6 @@ export function TimeReportMatrixView({ data, selectedMonth, availableMonths, pre
           )}
         </table>
       </div>
-
-      {/* ── All-clients budget overview (only on "All clients", once configured) ── */}
-      {showOverview && (
-        <ClientsOverview
-          clients={clients}
-          jobcodes={jobcodes}
-          rowTotals={rowTotals}
-          rowCost={rowCost}
-          budgets={B}
-          onPick={setClient}
-        />
-      )}
 
       <p className="text-xs text-slate-400">
         Hours pulled live from QuickBooks Time · All approved entries · Cost = hours × each person&apos;s rate
@@ -292,79 +262,6 @@ function Meter({ label, actual, budget, fmtVal, fmtBudget }: {
           <span className="text-slate-400">No budget set</span>
         )}
       </div>
-    </div>
-  )
-}
-
-// ── At-a-glance overview across all clients ─────────────────────────────────
-function ClientsOverview({ clients, jobcodes, rowTotals, rowCost, budgets, onPick }: {
-  clients: { id: number; name: string }[]
-  jobcodes: { id: number; clientId: number }[]
-  rowTotals: Record<number, number>
-  rowCost: (jc: { id: number; clientId: number }) => number
-  budgets: Record<number, { hours: number | null; amount: number | null }>
-  onPick: (id: string) => void
-}) {
-  const rows = clients.map(c => {
-    const jcs = jobcodes.filter(jc => jc.clientId === c.id)
-    const ah = jcs.reduce((s, jc) => s + (rowTotals[jc.id] ?? 0), 0)
-    const ac = jcs.reduce((s, jc) => s + rowCost(jc), 0)
-    const b = budgets[c.id]
-    return { c, ah, ac, bh: b?.hours ?? null, ba: b?.amount ?? null }
-  }).sort((a, b) => a.c.name.localeCompare(b.c.name))
-
-  return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">At a glance — all clients</div>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide px-4 py-3">Client</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide px-4 py-3 w-52">Hours used</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide px-4 py-3 w-52">Cost used</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ c, ah, ac, bh, ba }) => {
-              const st = worstStatus([statusOf(ah, bh), statusOf(ac, ba)])
-              return (
-                <tr
-                  key={c.id}
-                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 cursor-pointer"
-                  onClick={() => onPick(String(c.id))}
-                >
-                  <td className="px-4 py-3 font-medium text-slate-900">{c.name}</td>
-                  <td className="px-4 py-3"><UsageCell actual={ah} budget={bh} fmt={n => `${n.toFixed(1)} / ${bh?.toFixed(0) ?? '—'} h`} /></td>
-                  <td className="px-4 py-3"><UsageCell actual={ac} budget={ba} fmt={() => `${money(ac)} / ${ba != null ? money(ba) : '—'}`} /></td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full border ${PILL[st].cls}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />{PILL[st].label}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-slate-400 mt-2">Click a client to drill in. Over-budget bars cap at 100% but the % shows the true figure.</p>
-    </div>
-  )
-}
-
-function UsageCell({ actual, budget, fmt }: { actual: number; budget: number | null; fmt: (n: number) => string }) {
-  const st = statusOf(actual, budget)
-  const has = budget != null && budget > 0
-  const pct = has ? actual / budget! : 0
-  return (
-    <div className="flex items-center gap-2 whitespace-nowrap">
-      <span className="inline-block w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-        <span className={`block h-full rounded-full ${BAR_FILL[st]}`} style={{ width: `${Math.min(100, pct * 100)}%` }} />
-      </span>
-      {has ? <span className="font-bold text-slate-900 tabular-nums text-xs">{Math.round(pct * 100)}%</span> : <span className="text-slate-300 text-xs">—</span>}
-      <span className="text-xs text-slate-400 tabular-nums">{fmt(actual)}</span>
     </div>
   )
 }

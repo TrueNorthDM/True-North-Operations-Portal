@@ -99,9 +99,9 @@ export default async function TimeReportPage({ searchParams }: Props) {
           <span>/</span>
           <a href="/tools" className="hover:text-slate-800">Tools</a>
           <span>/</span>
-          <span>Budget Usage Report</span>
+          <span>i7 Budget Usage Report</span>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Budget Usage Report</h1>
+        <h1 className="text-2xl font-bold text-slate-900">i7 Budget Usage Report</h1>
         <p className="mt-1 text-slate-500">
           Hours per employee per job code — pulled directly from QuickBooks Time.{' '}
           <a href="/settings" className="text-slate-600 underline underline-offset-2 hover:text-slate-900">

@@ -20,8 +20,8 @@ export default function ToolsPage() {
         />
         <NavCard
           href="/tools/time-report"
-          title="Budget Usage Report"
-          description="Hours per employee per job code, pulled live from QuickBooks Time — the pivot the admin assistant used to build by hand."
+          title="i7 Budget Usage Report"
+          description="Hours, cost and budget usage for the i7 Marketing client — pulled live from QuickBooks Time."
         />
       </div>
     </div>
