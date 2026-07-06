@@ -1,69 +1,45 @@
-// Time Report — pulls hours from QuickBooks Time (TSheets) and renders the
-// employee × job code pivot that the admin assistant used to build manually.
-//
-// The TSheets API token is read here (server-side only) and never sent to the
-// client. The matrix component receives already-computed data as props.
+// i7 Budget Usage Report — pulls hours from QuickBooks Time (TSheets) and
+// renders the Project → Job code → Activity tree. The client dimension lives in
+// the timesheet custom fields (see i7report.ts). Cost = hours × each person's
+// i7 rate. The token is read server-side only.
 
 import { createClient } from '@/lib/supabase/server'
 import { fetchUsers, fetchJobcodes, fetchTimesheets } from '@/lib/tsheets/client'
-import { buildMatrix, monthBounds, currentYearMonth } from '@/lib/tsheets/report'
-import { TimeReportMatrixView } from '@/components/tsheets/TimeReportMatrix'
+import { monthBounds, currentYearMonth } from '@/lib/tsheets/report'
+import { buildI7Report, i7JobcodeIds, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
+import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
-import type { TimeReportMatrix } from '@/lib/tsheets/types'
+import type { I7Report } from '@/lib/tsheets/types'
 
-// Sample data shown when no API token is configured, so the user can see the
-// table structure before adding their credentials.
-const MOCK_EMPLOYEES = [
-  { id: 1, name: 'Amy' },
-  { id: 2, name: 'Cheyenne' },
-  { id: 3, name: 'Jeannette' },
-  { id: 4, name: 'Kathleen' },
-  { id: 5, name: 'Samuel' },
-  { id: 6, name: 'Stephanie' },
-]
-const MOCK_CLIENTS = [
-  { id: 100, name: '1 - True North' },
-  { id: 101, name: '2 - i7 Marketing' },
-]
-const MOCK_JOBCODES = [
-  { id: 10, name: 'Bessemeter', clientId: 100 },
-  { id: 11, name: 'Foreign contractors', clientId: 101 },
-  { id: 12, name: 'i7 Marketing', clientId: 101 },
-  { id: 13, name: 'MME', clientId: 100 },
-  { id: 14, name: 'WM All', clientId: 100 },
-]
-const MOCK_HOURS: Record<number, Record<number, number>> = {
-  10: { 1: 12, 3: 8, 5: 20 },
-  11: { 2: 4, 6: 16 },
-  12: { 1: 40, 2: 32, 3: 24, 4: 38, 5: 10, 6: 20 },
-  13: { 1: 8, 3: 16, 4: 24, 6: 8 },
-  14: { 2: 20, 4: 12, 5: 28, 6: 4 },
+// Sample tree shown when no API token is configured, so the structure is visible.
+const MOCK_I7: I7Report = {
+  month: 'June 2026', startDate: '2026-06-01', endDate: '2026-06-30',
+  totalHours: 46.5, totalCost: 4200, hasRates: true,
+  projects: [
+    { project: 'Wagner Meters (WM)', hours: 32, cost: 3040, jobcodes: [
+      { code: 'WM-MKTG', hours: 20, cost: 1900, activities: [
+        { activity: 'Content: Writing', hours: 12, cost: 1140 },
+        { activity: 'SEO: Routine', hours: 8, cost: 760 },
+      ] },
+      { code: 'WM-WEBDVT', hours: 12, cost: 1140, activities: [
+        { activity: 'WebDev', hours: 12, cost: 1140 },
+      ] },
+    ] },
+    { project: 'Bessemeter', hours: 10, cost: 950, jobcodes: [
+      { code: 'BE-MKTG', hours: 10, cost: 950, activities: [
+        { activity: 'SEO: Routine', hours: 7, cost: 665 },
+        { activity: 'Social Media', hours: 3, cost: 285 },
+      ] },
+    ] },
+    { project: 'Moisture Meters (MME)', hours: 4.5, cost: 210, jobcodes: [
+      { code: 'MME-MKTG', hours: 4.5, cost: 210, activities: [
+        { activity: 'Content: Writing', hours: 4.5, cost: 210 },
+      ] },
+    ] },
+  ],
 }
-const MOCK_MATRIX: TimeReportMatrix = {
-  month: '2026-06',
-  startDate: '2026-06-01',
-  endDate: '2026-06-30',
-  employees: MOCK_EMPLOYEES,
-  jobcodes: MOCK_JOBCODES,
-  clients: MOCK_CLIENTS,
-  hours: MOCK_HOURS,
-  rowTotals: Object.fromEntries(
-    MOCK_JOBCODES.map(jc => [jc.id, Object.values(MOCK_HOURS[jc.id] ?? {}).reduce((a, b) => a + b, 0)])
-  ),
-  colTotals: Object.fromEntries(
-    MOCK_EMPLOYEES.map(emp => [emp.id, MOCK_JOBCODES.reduce((sum, jc) => sum + (MOCK_HOURS[jc.id]?.[emp.id] ?? 0), 0)])
-  ),
-  grandTotal: MOCK_JOBCODES.reduce((sum, jc) => sum + Object.values(MOCK_HOURS[jc.id] ?? {}).reduce((a, b) => a + b, 0), 0),
-}
-// Sample budgets + rates so the preview shows the budget-vs-actual panel.
-const MOCK_BUDGETS: Record<number, { hours: number | null; amount: number | null }> = {
-  100: { hours: 100, amount: 6000 },
-  101: { hours: 160, amount: 9500 },
-}
-const MOCK_RATE_CARD: Record<number, number> = { 1: 45, 2: 40, 3: 50, 4: 55, 5: 38, 6: 42 }
-const MOCK_RATES: Record<number, Record<number, number>> = { 100: MOCK_RATE_CARD, 101: MOCK_RATE_CARD }
 
-// Generate the last 24 months as YYYY-MM strings (newest first)
+// Last 24 months as YYYY-MM (newest first)
 function recentMonths(): string[] {
   const now = new Date()
   return Array.from({ length: 24 }, (_, i) => {
@@ -103,9 +79,9 @@ export default async function TimeReportPage({ searchParams }: Props) {
         </div>
         <h1 className="text-2xl font-bold text-slate-900">i7 Budget Usage Report</h1>
         <p className="mt-1 text-slate-500">
-          Hours per employee per job code — pulled directly from QuickBooks Time.{' '}
+          Hours, cost and budget usage for the i7 Marketing client — pulled directly from QuickBooks Time.{' '}
           <a href="/settings" className="text-slate-600 underline underline-offset-2 hover:text-slate-900">
-            Manage clients, rates &amp; budgets in Settings →
+            Manage rates &amp; budgets in Settings →
           </a>
         </p>
         <div className="mt-3">
@@ -114,14 +90,7 @@ export default async function TimeReportPage({ searchParams }: Props) {
       </div>
 
       {!token ? (
-        <TimeReportMatrixView
-          data={MOCK_MATRIX}
-          selectedMonth={selectedMonth}
-          availableMonths={availableMonths}
-          budgets={MOCK_BUDGETS}
-          rates={MOCK_RATES}
-          preview
-        />
+        <I7ReportView data={MOCK_I7} selectedMonth={selectedMonth} availableMonths={availableMonths} preview />
       ) : (
         <ReportView token={token} selectedMonth={selectedMonth} availableMonths={availableMonths} />
       )}
@@ -129,27 +98,26 @@ export default async function TimeReportPage({ searchParams }: Props) {
   )
 }
 
-async function ReportView({
-  token,
-  selectedMonth,
-  availableMonths,
-}: {
+async function ReportView({ token, selectedMonth, availableMonths }: {
   token: string
   selectedMonth: string
   availableMonths: string[]
 }) {
   const { startDate, endDate } = monthBounds(selectedMonth)
 
-  let data = null
+  let report: I7Report | null = null
   let fetchError: string | null = null
 
   try {
-    const [users, jobcodes, timesheets] = await Promise.all([
+    const [, jobcodes, timesheets] = await Promise.all([
       fetchUsers(token),
       fetchJobcodes(token),
       fetchTimesheets(token, startDate, endDate),
     ])
-    data = buildMatrix(users, jobcodes, timesheets, startDate)
+    const i7Ids = i7JobcodeIds(jobcodes)
+    const i7Timesheets = timesheets.filter(t => i7Ids.has(t.jobcode_id))
+    const rates = await loadI7Rates(startDate, endDate)
+    report = buildI7Report(i7Timesheets, rates, startDate)
   } catch (e) {
     fetchError = e instanceof Error ? e.message : 'Unknown error fetching from TSheets.'
   }
@@ -166,76 +134,43 @@ async function ReportView({
     )
   }
 
-  if (!data || data.grandTotal === 0) {
+  if (!report || report.totalHours === 0) {
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
-        <p className="font-semibold text-slate-700">No approved time entries found</p>
+        <p className="font-semibold text-slate-700">No approved i7 time entries found</p>
         <p className="text-sm text-slate-500">
-          There are no approved timesheets for {selectedMonth}. Try a different month or check that entries have been approved in TSheets.
+          There are no approved i7 timesheets for {selectedMonth}. Try a different month or check that entries have been approved in TSheets.
         </p>
       </div>
     )
   }
 
-  const { budgets, rates } = await loadBudgetsAndRates(startDate, endDate)
-
-  return (
-    <TimeReportMatrixView
-      data={data}
-      selectedMonth={selectedMonth}
-      availableMonths={availableMonths}
-      budgets={budgets}
-      rates={rates}
-    />
-  )
+  return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} />
 }
 
-// Loads per-client budgets and per-person rates from the DB and re-keys them by
-// the TSheets parent-jobcode id (= the matrix's clientId), so the report can
-// show budget-vs-actual and cost. Rates respect history: the rate in effect
-// during the report period is used, not necessarily the current one.
-async function loadBudgetsAndRates(startDate: string, endDate: string): Promise<{
-  budgets: Record<number, { hours: number | null; amount: number | null }>
-  rates: Record<number, Record<number, number>>
-}> {
+// Per-person i7 hourly rate in effect during the period (respects rate history).
+async function loadI7Rates(startDate: string, endDate: string): Promise<Record<number, number>> {
   const supabase = await createClient()
-  const [{ data: clientsRaw }, { data: budgetsRaw }, { data: assignRaw }] = await Promise.all([
-    supabase.from('tr_clients').select('id, tsheets_jobcode_id'),
-    supabase.from('tr_budgets').select('client_id, hours_allocated, budget_amount, extra_budget').is('end_date', null),
-    supabase.from('tr_assignments').select('tsheets_user_id, client_id, hourly_rate, effective_from, effective_to'),
-  ])
+  const { data: i7 } = await supabase
+    .from('tr_clients')
+    .select('id')
+    .eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID)
+    .maybeSingle()
+  if (!i7) return {}
 
-  const jobcodeIdByDbId = new Map<number, number>()
-  for (const c of clientsRaw ?? []) jobcodeIdByDbId.set(c.id, c.tsheets_jobcode_id)
+  const { data: rows } = await supabase
+    .from('tr_assignments')
+    .select('tsheets_user_id, hourly_rate, effective_from, effective_to')
+    .eq('client_id', i7.id)
 
-  const budgets: Record<number, { hours: number | null; amount: number | null }> = {}
-  for (const b of budgetsRaw ?? []) {
-    const jid = jobcodeIdByDbId.get(b.client_id)
-    if (jid == null) continue
-    const extra = b.extra_budget != null ? Number(b.extra_budget) : 0
-    const amount = b.budget_amount != null ? Number(b.budget_amount) + extra : (extra > 0 ? extra : null)
-    budgets[jid] = { hours: b.hours_allocated != null ? Number(b.hours_allocated) : null, amount }
-  }
-
-  // Pick the rate whose effective window overlaps the period; if several, the
-  // latest effective_from wins.
-  const best = new Map<string, { from: string; rate: number }>()
-  for (const a of assignRaw ?? []) {
+  const best = new Map<number, { from: string; rate: number }>()
+  for (const a of rows ?? []) {
     if (a.effective_from > endDate) continue
     if (a.effective_to && a.effective_to < startDate) continue
-    const key = `${a.client_id}:${a.tsheets_user_id}`
-    const cur = best.get(key)
-    if (!cur || a.effective_from > cur.from) best.set(key, { from: a.effective_from, rate: Number(a.hourly_rate) })
+    const cur = best.get(a.tsheets_user_id)
+    if (!cur || a.effective_from > cur.from) best.set(a.tsheets_user_id, { from: a.effective_from, rate: Number(a.hourly_rate) })
   }
-  const rates: Record<number, Record<number, number>> = {}
-  for (const [key, v] of best) {
-    const [dbIdStr, userStr] = key.split(':')
-    const jid = jobcodeIdByDbId.get(Number(dbIdStr))
-    if (jid == null) continue
-    if (!rates[jid]) rates[jid] = {}
-    rates[jid][Number(userStr)] = v.rate
-  }
-
-  return { budgets, rates }
+  const out: Record<number, number> = {}
+  for (const [u, v] of best) out[u] = v.rate
+  return out
 }
-

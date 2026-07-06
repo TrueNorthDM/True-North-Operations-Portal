@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 i7 — Sheet vs PDF Cost Comparison</title>
+<style>
+  :root { --ok:#1a7f37; --bad:#c1121f; --ink:#1a1a1a; --muted:#5c5c5c; --line:#e2e2e2; --head:#2f5233; --band:#f4f7f4; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); margin: 0; padding: 40px; background:#fff; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: var(--head); color:#fff; font-weight:600; border-bottom:none; }
+  tbody tr:nth-child(even) { background: var(--band); }
+  .num { font-variant-numeric: tabular-nums; }
+  .ok { color: var(--ok); font-weight:600; }
+  .bad { color: var(--bad); font-weight:600; }
+  tfoot td { font-weight:700; border-top:2px solid var(--head); background:#fafafa; }
+  .note { margin-top: 22px; font-size: 13px; color: var(--muted); line-height:1.55; }
+  .note b { color: var(--ink); }
+  .callout { margin-top:18px; padding:14px 16px; background:#fff7e6; border-left:4px solid #d99400; border-radius:4px; font-size:13px; line-height:1.55; }
+  @media print { body { padding:0; } .wrap{max-width:none;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>2026 i7 — "Total costs this month": Sheet vs. PDF</h1>
+  <p class="sub">Source sheet: <b>2026 i7 Daily.xlsx</b> (cell B15 per month tab) &nbsp;·&nbsp; PDFs: monthly i7 Work Reports, "Project Summary → Total" line &nbsp;·&nbsp; Generated Jul 6, 2026</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Month</th>
+        <th>Sheet (B15)</th>
+        <th>PDF Summary Total</th>
+        <th>Difference</th>
+        <th>Match</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Jan 2026</td><td class="num">$60,453.40</td><td class="num">$60,453.40</td><td class="num">$0.00</td><td class="ok">✓ Match</td></tr>
+      <tr><td>Feb 2026</td><td class="num">$34,503.70</td><td class="num">$34,076.20</td><td class="num">$427.50</td><td class="bad">✗ Off</td></tr>
+      <tr><td>Mar 2026</td><td class="num">$38,360.00</td><td class="num">$37,932.50</td><td class="num">$427.50</td><td class="bad">✗ Off</td></tr>
+      <tr><td>Apr 2026</td><td class="num">$54,335.85</td><td class="num">$50,868.35</td><td class="num">$3,467.50</td><td class="bad">✗ Off</td></tr>
+      <tr><td>May 2026</td><td class="num">$44,461.25</td><td class="num">$42,323.75</td><td class="num">$2,137.50</td><td class="bad">✗ Off</td></tr>
+      <tr><td>Jun 2026</td><td class="num">$48,791.25</td><td class="num">$47,128.75</td><td class="num">$1,662.50</td><td class="bad">✗ Off</td></tr>
+    </tbody>
+    <tfoot>
+      <tr><td>Total (Jan–Jun)</td><td class="num">$280,905.45</td><td class="num">$272,782.65</td><td class="num">$8,122.80</td><td></td></tr>
+    </tfoot>
+  </table>
+
+  <div class="callout">
+    <b>Key pattern:</b> Only January matches exactly. Each month's difference equals that month's <b>MME project total</b> shown in the same PDF (Feb $427.50, Mar $427.50, Apr $3,467.50, May $2,137.50, Jun $1,662.50). The sheet's "Total costs this month" <b>includes</b> MME work; the PDF's Project Summary "Total" line <b>excludes</b> it (MME is broken out separately below the summary). January had no MME activity, so the two agree.
+  </div>
+
+  <p class="note">
+    <b>Reconciliation:</b> To make the two tie out, add each month's MME total back to the PDF summary total — or exclude MME from the sheet — depending on which is the source of truth.<br><br>
+    <b>Scope:</b> Only Jan–Jun 2026 PDFs exist in the folder; the sheet has tabs through Dec 2026. Sheet values were read from a text representation of the workbook; the exact match of every difference to the MME totals strongly confirms them.
+  </p>
+</div>
+</body>
+</html>

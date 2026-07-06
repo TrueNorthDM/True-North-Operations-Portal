@@ -32,6 +32,24 @@ export interface TsheetsTimesheet {
   type: string
   on_the_clock: boolean
   locked: number
+  // Per-entry custom fields keyed by customfield id (as string). For i7:
+  //   '129628' = "1 - i7 Code"  (e.g. "WM-MKTG" → project + job code)
+  //   '19156'  = "3 Activity"   (e.g. "Content: Writing")
+  customfields?: Record<string, string>
+}
+
+// ── i7 Budget Usage Report — Project → Job code → Activity tree ──────────────
+export interface I7Activity { activity: string; hours: number; cost: number }
+export interface I7Jobcode { code: string; hours: number; cost: number; activities: I7Activity[] }
+export interface I7Project { project: string; hours: number; cost: number; jobcodes: I7Jobcode[] }
+export interface I7Report {
+  month: string
+  startDate: string
+  endDate: string
+  projects: I7Project[]
+  totalHours: number
+  totalCost: number
+  hasRates: boolean
 }
 
 // Generic paginated response wrapper
@@ -39,21 +57,4 @@ export interface TsheetsPage<T> {
   results: T
   more: boolean
   error?: { code: number; message: string }
-}
-
-// The pivot matrix built from raw data
-export interface TimeReportMatrix {
-  month: string              // "June 2026"
-  startDate: string          // "2026-06-01"
-  endDate: string            // "2026-06-30"
-  employees: { id: number; name: string }[]   // sorted alphabetically by first name
-  // Each used job code, tagged with the client (top-level parent) it belongs to.
-  jobcodes: { id: number; name: string; clientId: number }[]    // sorted alphabetically
-  // Distinct top-level clients (parents) among the used job codes.
-  clients: { id: number; name: string }[]
-  // hours[jobcodeId][employeeId] = total hours (already rounded to 2dp)
-  hours: Record<number, Record<number, number>>
-  rowTotals: Record<number, number>   // total hours per jobcode
-  colTotals: Record<number, number>   // total hours per employee
-  grandTotal: number
 }
