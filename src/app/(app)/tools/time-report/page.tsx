@@ -18,22 +18,22 @@ const MOCK_I7: I7Report = {
   projects: [
     { project: 'Wagner Meters (WM)', hours: 32, cost: 3040, jobcodes: [
       { code: 'WM-MKTG', hours: 20, cost: 1900, activities: [
-        { activity: 'Content: Writing', hours: 12, cost: 1140 },
-        { activity: 'SEO: Routine', hours: 8, cost: 760 },
+        { activity: 'Content: Writing', hours: 12, cost: 1140, people: [{ name: 'Amy', hours: 7, cost: 665 }, { name: 'Wendy', hours: 5, cost: 475 }] },
+        { activity: 'SEO: Routine', hours: 8, cost: 760, people: [{ name: 'Cheyenne', hours: 8, cost: 760 }] },
       ] },
       { code: 'WM-WEBDVT', hours: 12, cost: 1140, activities: [
-        { activity: 'WebDev', hours: 12, cost: 1140 },
+        { activity: 'WebDev', hours: 12, cost: 1140, people: [{ name: 'Wendy', hours: 12, cost: 1140 }] },
       ] },
     ] },
     { project: 'Bessemeter', hours: 10, cost: 950, jobcodes: [
       { code: 'BE-MKTG', hours: 10, cost: 950, activities: [
-        { activity: 'SEO: Routine', hours: 7, cost: 665 },
-        { activity: 'Social Media', hours: 3, cost: 285 },
+        { activity: 'SEO: Routine', hours: 7, cost: 665, people: [{ name: 'Jeannette', hours: 7, cost: 665 }] },
+        { activity: 'Social Media', hours: 3, cost: 285, people: [{ name: 'Kevin', hours: 3, cost: 285 }] },
       ] },
     ] },
     { project: 'Moisture Meters (MME)', hours: 4.5, cost: 210, jobcodes: [
       { code: 'MME-MKTG', hours: 4.5, cost: 210, activities: [
-        { activity: 'Content: Writing', hours: 4.5, cost: 210 },
+        { activity: 'Content: Writing', hours: 4.5, cost: 210, people: [{ name: 'Lana', hours: 4.5, cost: 210 }] },
       ] },
     ] },
   ],
@@ -109,15 +109,16 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
   let fetchError: string | null = null
 
   try {
-    const [, jobcodes, timesheets] = await Promise.all([
+    const [users, jobcodes, timesheets] = await Promise.all([
       fetchUsers(token),
       fetchJobcodes(token),
       fetchTimesheets(token, startDate, endDate),
     ])
     const i7Ids = i7JobcodeIds(jobcodes)
     const i7Timesheets = timesheets.filter(t => i7Ids.has(t.jobcode_id))
+    const namesByUser = Object.fromEntries(users.map(u => [u.id, u.first_name]))
     const rates = await loadI7Rates(startDate, endDate)
-    report = buildI7Report(i7Timesheets, rates, startDate)
+    report = buildI7Report(i7Timesheets, rates, namesByUser, startDate)
   } catch (e) {
     fetchError = e instanceof Error ? e.message : 'Unknown error fetching from TSheets.'
   }

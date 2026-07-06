@@ -40,6 +40,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
   const router = useRouter()
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
   const [openCodes, setOpenCodes] = useState<Set<string>>(new Set())
+  const [openActs, setOpenActs] = useState<Set<string>>(new Set())
 
   function toggle(set: Set<string>, key: string, setter: (s: Set<string>) => void) {
     const next = new Set(set)
@@ -50,10 +51,12 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
   function expandAll() {
     setOpenProjects(new Set(data.projects.map(p => p.project)))
     setOpenCodes(new Set(data.projects.flatMap(p => p.jobcodes.map(j => `${p.project}|${j.code}`))))
+    setOpenActs(new Set(data.projects.flatMap(p => p.jobcodes.flatMap(j => j.activities.map(a => `${p.project}|${j.code}|${a.activity}`)))))
   }
   function collapseAll() {
     setOpenProjects(new Set())
     setOpenCodes(new Set())
+    setOpenActs(new Set())
   }
 
   const showCost = data.hasRates
@@ -107,9 +110,11 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
                   project={p}
                   pOpen={pOpen}
                   openCodes={openCodes}
+                  openActs={openActs}
                   showCost={showCost}
                   onToggleProject={() => toggle(openProjects, p.project, setOpenProjects)}
                   onToggleCode={(code) => toggle(openCodes, `${p.project}|${code}`, setOpenCodes)}
+                  onToggleAct={(code, act) => toggle(openActs, `${p.project}|${code}|${act}`, setOpenActs)}
                 />
               )
             })}
@@ -138,13 +143,15 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
   )
 }
 
-function ProjectRows({ project, pOpen, openCodes, showCost, onToggleProject, onToggleCode }: {
+function ProjectRows({ project, pOpen, openCodes, openActs, showCost, onToggleProject, onToggleCode, onToggleAct }: {
   project: I7Report['projects'][number]
   pOpen: boolean
   openCodes: Set<string>
+  openActs: Set<string>
   showCost: boolean
   onToggleProject: () => void
   onToggleCode: (code: string) => void
+  onToggleAct: (code: string, act: string) => void
 }) {
   return (
     <>
@@ -178,16 +185,38 @@ function ProjectRows({ project, pOpen, openCodes, showCost, onToggleProject, onT
               {showCost && <td className="px-4 py-2.5 text-right text-slate-700 tabular-nums">{jc.cost > 0 ? money(jc.cost) : <span className="text-slate-300">—</span>}</td>}
             </tr>
 
-            {/* Level 3 — Activities */}
-            {cOpen && jc.activities.map((a, i) => (
-              <tr key={i} className="border-b border-slate-50">
-                <td className="px-4 py-2 text-slate-600">
-                  <span className="pl-16 block">{a.activity}</span>
-                </td>
-                <td className="px-4 py-2 text-right text-slate-600 tabular-nums">{fmtHours(a.hours)}</td>
-                {showCost && <td className="px-4 py-2 text-right text-slate-500 tabular-nums">{a.cost > 0 ? money(a.cost) : <span className="text-slate-300">—</span>}</td>}
-              </tr>
-            ))}
+            {/* Level 3 — Activities (expandable to people) */}
+            {cOpen && jc.activities.map((a, i) => {
+              const aKey = `${project.project}|${jc.code}|${a.activity}`
+              const aOpen = openActs.has(aKey)
+              const hasPeople = a.people.length > 0
+              return (
+                <Fragment key={i}>
+                  <tr
+                    className={`border-b border-slate-50 ${hasPeople ? 'hover:bg-slate-50/60 cursor-pointer' : ''}`}
+                    onClick={hasPeople ? () => onToggleAct(jc.code, a.activity) : undefined}
+                  >
+                    <td className="px-4 py-2 text-slate-600">
+                      <div className="flex items-center gap-2 pl-12">
+                        {hasPeople ? <Chevron open={aOpen} /> : <span className="w-3.5" />}
+                        <span>{a.activity}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-right text-slate-600 tabular-nums">{fmtHours(a.hours)}</td>
+                    {showCost && <td className="px-4 py-2 text-right text-slate-500 tabular-nums">{a.cost > 0 ? money(a.cost) : <span className="text-slate-300">—</span>}</td>}
+                  </tr>
+
+                  {/* Level 4 — People */}
+                  {aOpen && a.people.map((pp, j) => (
+                    <tr key={j} className="border-b border-slate-50 bg-slate-50/20">
+                      <td className="px-4 py-1.5 text-slate-500 text-[13px]"><span className="pl-24 block">{pp.name}</span></td>
+                      <td className="px-4 py-1.5 text-right text-slate-500 tabular-nums text-[13px]">{fmtHours(pp.hours)}</td>
+                      {showCost && <td className="px-4 py-1.5 text-right text-slate-400 tabular-nums text-[13px]">{pp.cost > 0 ? money(pp.cost) : <span className="text-slate-300">—</span>}</td>}
+                    </tr>
+                  ))}
+                </Fragment>
+              )
+            })}
           </Fragment>
         )
       })}

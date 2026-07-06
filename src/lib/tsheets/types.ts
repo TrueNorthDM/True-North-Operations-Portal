@@ -38,8 +38,9 @@ export interface TsheetsTimesheet {
   customfields?: Record<string, string>
 }
 
-// ── i7 Budget Usage Report — Project → Job code → Activity tree ──────────────
-export interface I7Activity { activity: string; hours: number; cost: number }
+// ── i7 Budget Usage Report — Project → Job code → Activity → Person tree ─────
+export interface I7Person { name: string; hours: number; cost: number }
+export interface I7Activity { activity: string; hours: number; cost: number; people: I7Person[] }
 export interface I7Jobcode { code: string; hours: number; cost: number; activities: I7Activity[] }
 export interface I7Project { project: string; hours: number; cost: number; jobcodes: I7Jobcode[] }
 export interface I7Report {

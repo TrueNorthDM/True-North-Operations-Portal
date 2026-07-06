@@ -56,11 +56,12 @@ const MONTH_NAMES = [
 export function buildI7Report(
   timesheets: TsheetsTimesheet[],       // already filtered to i7 entries
   ratesByUser: Record<number, number>, // tsheets_user_id → i7 hourly rate
+  namesByUser: Record<number, string>, // tsheets_user_id → display name
   startDate: string,
 ): I7Report {
-  // project → code → activity → { hours, cost }
+  // project → code → activity → userId → { hours, cost }
   type Leaf = { hours: number; cost: number }
-  const tree = new Map<string, Map<string, Map<string, Leaf>>>()
+  const tree = new Map<string, Map<string, Map<string, Map<number, Leaf>>>>()
 
   for (const ts of timesheets) {
     const cf = ts.customfields ?? {}
@@ -74,10 +75,12 @@ export function buildI7Report(
     tree.set(project, codes)
     const acts = codes.get(code) ?? new Map()
     codes.set(code, acts)
-    const leaf = acts.get(activity) ?? { hours: 0, cost: 0 }
+    const ppl = acts.get(activity) ?? new Map<number, Leaf>()
+    acts.set(activity, ppl)
+    const leaf = ppl.get(ts.user_id) ?? { hours: 0, cost: 0 }
     leaf.hours += hours
     leaf.cost += cost
-    acts.set(activity, leaf)
+    ppl.set(ts.user_id, leaf)
   }
 
   const projects: I7Project[] = []
@@ -92,12 +95,19 @@ export function buildI7Report(
       const activities = []
       let cHours = 0
       let cCost = 0
-      for (const [activity, leaf] of acts) {
-        const h = round2(leaf.hours)
-        const c = round2(leaf.cost)
-        activities.push({ activity, hours: h, cost: c })
-        cHours += leaf.hours
-        cCost += leaf.cost
+      for (const [activity, ppl] of acts) {
+        const people = []
+        let aHours = 0
+        let aCost = 0
+        for (const [userId, leaf] of ppl) {
+          people.push({ name: namesByUser[userId] ?? `User ${userId}`, hours: round2(leaf.hours), cost: round2(leaf.cost) })
+          aHours += leaf.hours
+          aCost += leaf.cost
+        }
+        people.sort((a, b) => b.hours - a.hours)
+        activities.push({ activity, hours: round2(aHours), cost: round2(aCost), people })
+        cHours += aHours
+        cCost += aCost
       }
       activities.sort((a, b) => b.hours - a.hours)
       jobcodes.push({ code, hours: round2(cHours), cost: round2(cCost), activities })
