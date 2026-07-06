@@ -11,7 +11,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
-import { fetchUsers, fetchJobcodes } from './client'
+import { fetchUsers, fetchJobcodes, fetchTimesheets } from './client'
+import { i7JobcodeIds, I7_CODE_CF, ACTIVITY_CF } from './i7report'
+import { retentionFloorDate } from './retention'
 
 // ─── Name matching ──────────────────────────────────────────────────────────
 
@@ -149,5 +151,67 @@ export async function syncPeopleCore(supabase: Client, token: string): Promise<{
     return { ok: true, linked, imported }
   } catch (e) {
     return { ok: false, linked: 0, imported: 0, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
+
+// ─── Timesheets (i7 report cache) ────────────────────────────────────────────
+
+/** TSheets ISO 'Z' → the offset form the API's modified_since expects. */
+function toTsheetsIso(iso: string): string {
+  return new Date(iso).toISOString().replace(/\.\d+Z$/, '+00:00')
+}
+
+/**
+ * Caches the i7 timesheets the report reads from — so the page never calls the
+ * TSheets API live. Backfills the whole retention window the first time (empty
+ * cache), then pulls only entries modified since the last sync. Prunes anything
+ * that has aged out of the rolling 24-month window.
+ */
+export async function syncTimesheetsCore(
+  supabase: Client,
+  token: string,
+  lastSyncedAt?: string | null,
+): Promise<{ ok: boolean; upserted: number; pruned: number; mode: 'backfill' | 'incremental'; error?: string }> {
+  try {
+    const now = new Date()
+    const floorDate = retentionFloorDate(now)                                   // 'YYYY-MM-01'
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)  // last day of current month
+
+    // Only fetch i7 entries (a fraction of the whole account).
+    const jobcodes = await fetchJobcodes(token)
+    const i7Ids = [...i7JobcodeIds(jobcodes)]
+    if (i7Ids.length === 0) return { ok: true, upserted: 0, pruned: 0, mode: 'incremental' }
+
+    // Empty cache → full backfill; otherwise incremental (just what changed).
+    const { count } = await supabase.from('tsheets_timesheets').select('id', { count: 'exact', head: true })
+    const isEmpty = !count
+    const mode: 'backfill' | 'incremental' = isEmpty ? 'backfill' : 'incremental'
+    const modifiedSince = isEmpty || !lastSyncedAt ? undefined : toTsheetsIso(lastSyncedAt)
+
+    const ts = await fetchTimesheets(token, floorDate, endDate, i7Ids, modifiedSince)
+
+    let upserted = 0
+    if (ts.length > 0) {
+      const stamp = new Date().toISOString()
+      const rows = ts.map(t => ({
+        id: t.id,
+        user_id: t.user_id,
+        jobcode_id: t.jobcode_id,
+        duration: t.duration,
+        date: t.date,
+        i7_code: (t.customfields?.[I7_CODE_CF] ?? '').trim() || null,
+        activity: (t.customfields?.[ACTIVITY_CF] ?? '').trim() || null,
+        synced_at: stamp,
+      }))
+      const { error } = await supabase.from('tsheets_timesheets').upsert(rows, { onConflict: 'id' })
+      if (error) return { ok: false, upserted: 0, pruned: 0, mode, error: error.message }
+      upserted = rows.length
+    }
+
+    // Drop entries that have aged out of the rolling window.
+    const { data: prunedRows } = await supabase.from('tsheets_timesheets').delete().lt('date', floorDate).select('id')
+    return { ok: true, upserted, pruned: prunedRows?.length ?? 0, mode }
+  } catch (e) {
+    return { ok: false, upserted: 0, pruned: 0, mode: 'incremental', error: e instanceof Error ? e.message : 'Unknown error' }
   }
 }

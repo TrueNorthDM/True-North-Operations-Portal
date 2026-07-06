@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
-import { syncClientsCore, syncPeopleCore } from '@/lib/tsheets/sync'
+import { syncClientsCore, syncPeopleCore, syncTimesheetsCore } from '@/lib/tsheets/sync'
 
 // Writes to people / tr_* go through the signed-in user's session and are
 // gated by RLS (is_admin). Guard here too so a non-admin gets a clear message
@@ -327,16 +327,19 @@ export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: strin
   const supabase = await createClient()
   const { data: settings } = await supabase
     .from('app_settings')
-    .select('tsheets_api_token')
+    .select('tsheets_api_token, tsheets_synced_at')
     .eq('singleton_id', 1)
     .maybeSingle()
   if (!settings?.tsheets_api_token) return { ok: false, error: 'No TSheets token configured in Settings.' }
   const token = settings.tsheets_api_token
+  const lastSyncedAt = settings.tsheets_synced_at ?? null
 
   const clients = await syncClientsCore(supabase, token)
   if (!clients.ok) return { ok: false, error: clients.error }
   const people = await syncPeopleCore(supabase, token)
   if (!people.ok) return { ok: false, error: people.error }
+  const timesheets = await syncTimesheetsCore(supabase, token, lastSyncedAt)
+  if (!timesheets.ok) return { ok: false, error: timesheets.error }
 
   await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
 

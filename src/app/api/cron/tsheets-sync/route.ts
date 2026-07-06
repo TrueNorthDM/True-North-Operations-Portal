@@ -10,7 +10,7 @@
 
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { syncClientsCore, syncPeopleCore } from '@/lib/tsheets/sync'
+import { syncClientsCore, syncPeopleCore, syncTimesheetsCore } from '@/lib/tsheets/sync'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -28,26 +28,33 @@ export async function GET(request: Request) {
   const supabase = createAdminClient()
   const { data: settings } = await supabase
     .from('app_settings')
-    .select('tsheets_api_token')
+    .select('tsheets_api_token, tsheets_synced_at')
     .eq('singleton_id', 1)
     .maybeSingle()
 
-  const token = (settings as { tsheets_api_token?: string | null } | null)?.tsheets_api_token
+  const row = settings as { tsheets_api_token?: string | null; tsheets_synced_at?: string | null } | null
+  const token = row?.tsheets_api_token
   if (!token) {
     return NextResponse.json({ error: 'TSheets token not configured (Settings → QuickBooks Time).' }, { status: 500 })
   }
 
+  // The previous sync time is the watermark for the incremental timesheet pull —
+  // read it before we overwrite it below.
+  const lastSyncedAt = row?.tsheets_synced_at ?? null
+
   const t0 = Date.now()
   const clients = await syncClientsCore(supabase, token)
   const people = await syncPeopleCore(supabase, token)
+  const timesheets = await syncTimesheetsCore(supabase, token, lastSyncedAt)
 
   // Stamp the last-synced time so the UI can show "Last synced X ago".
   await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
 
   return NextResponse.json({
-    ok: clients.ok && people.ok,
+    ok: clients.ok && people.ok && timesheets.ok,
     elapsedMs: Date.now() - t0,
     clients,
     people,
+    timesheets,
   })
 }

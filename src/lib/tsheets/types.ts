@@ -38,6 +38,17 @@ export interface TsheetsTimesheet {
   customfields?: Record<string, string>
 }
 
+// A flattened i7 timesheet entry — the shape the report is built from, matching
+// the cache table (tsheets_timesheets). i7Code/activity come from the two custom
+// fields; duration stays in seconds.
+export interface I7Entry {
+  user_id: number
+  duration: number
+  date: string       // YYYY-MM-DD
+  i7Code: string
+  activity: string
+}
+
 // ── i7 Budget Usage Report — Project → Job code → Activity → Person tree ─────
 export interface I7Person { name: string; hours: number; cost: number }
 export interface I7Activity { activity: string; hours: number; cost: number; people: I7Person[] }

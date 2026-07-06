@@ -80,11 +80,15 @@ export async function fetchJobcodes(token: string): Promise<TsheetsJobcode[]> {
 // `on_the_clock=no` excludes currently-running entries (not yet saved).
 // Pass `jobcodeIds` to fetch only those job codes' entries — much smaller than
 // the whole account (essential for the multi-month carryover query).
+// Pass `modifiedSince` (ISO 8601) to fetch only entries changed since then —
+// the background sync uses this to pull just what's new/edited/approved,
+// which also catches retroactive approvals to older days.
 export async function fetchTimesheets(
   token: string,
   startDate: string,
   endDate: string,
   jobcodeIds?: number[],
+  modifiedSince?: string,
 ): Promise<TsheetsTimesheet[]> {
   const params: Record<string, string> = {
     start_date: startDate,
@@ -93,6 +97,7 @@ export async function fetchTimesheets(
     per_page: '200',
   }
   if (jobcodeIds && jobcodeIds.length) params.jobcode_ids = jobcodeIds.join(',')
+  if (modifiedSince) params.modified_since = modifiedSince
   return fetchAll<{ timesheets: Record<string, TsheetsTimesheet> }, TsheetsTimesheet>(
     token,
     '/timesheets',

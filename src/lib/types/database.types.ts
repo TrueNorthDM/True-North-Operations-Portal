@@ -423,6 +423,12 @@ export type Database = {
         Update: Partial<Omit<TrAuditLogRow, 'id' | 'changed_at'>>
         Relationships: []
       }
+      tsheets_timesheets: {
+        Row: { id: number; user_id: number; jobcode_id: number; duration: number; date: string; i7_code: string | null; activity: string | null; synced_at: string }
+        Insert: { id: number; user_id: number; jobcode_id: number; duration: number; date: string; i7_code?: string | null; activity?: string | null; synced_at?: string }
+        Update: Partial<{ id: number; user_id: number; jobcode_id: number; duration: number; date: string; i7_code: string | null; activity: string | null; synced_at: string }>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

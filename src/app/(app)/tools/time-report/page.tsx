@@ -1,18 +1,16 @@
-// i7 Budget Usage Report — pulls hours from QuickBooks Time (TSheets) and
-// renders the Project → Job code → Activity tree. The client dimension lives in
-// the timesheet custom fields (see i7report.ts). Cost = hours × each person's
-// i7 rate. The token is read server-side only.
+// i7 Budget Usage Report — renders the Project → Job code → Activity tree from
+// the LOCAL cache of i7 timesheets (table tsheets_timesheets), which the
+// background sync keeps fresh. The page makes no live TSheets calls, so it
+// renders instantly. The client dimension lives in the timesheet custom fields
+// (see i7report.ts). Cost = hours × each person's i7 rate.
 
 import { createClient } from '@/lib/supabase/server'
-import { fetchUsers, fetchJobcodes, fetchTimesheets } from '@/lib/tsheets/client'
 import { monthBounds, currentYearMonth } from '@/lib/tsheets/report'
-import { buildI7Report, i7JobcodeIds, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
+import { buildI7Report, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
+import { availableMonths } from '@/lib/tsheets/retention'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
-import type { I7Report, I7Carryover } from '@/lib/tsheets/types'
-
-// The carryover fetches Jan → the selected month, so give the route headroom.
-export const maxDuration = 60
+import type { I7Report, I7Carryover, I7Entry } from '@/lib/tsheets/types'
 
 // Sample tree shown when no API token is configured, so the structure is visible.
 const MOCK_I7: I7Report = {
@@ -42,23 +40,16 @@ const MOCK_I7: I7Report = {
   ],
 }
 
-// Last 24 months as YYYY-MM (newest first)
-function recentMonths(): string[] {
-  const now = new Date()
-  return Array.from({ length: 24 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  })
-}
-
 interface Props {
   searchParams: Promise<{ month?: string }>
 }
 
 export default async function TimeReportPage({ searchParams }: Props) {
   const { month } = await searchParams
-  const selectedMonth = month ?? currentYearMonth()
-  const availableMonths = recentMonths()
+  const months = availableMonths(new Date())      // Jan 2026 … current (rolling 24-mo window)
+  // Clamp the selection to a month we actually offer (default = current).
+  const requested = month ?? currentYearMonth()
+  const selectedMonth = months.includes(requested) ? requested : months[0]
 
   const supabase = await createClient()
   const { data: settings } = await supabase
@@ -96,14 +87,14 @@ export default async function TimeReportPage({ searchParams }: Props) {
         <I7ReportView
           data={MOCK_I7}
           selectedMonth={selectedMonth}
-          availableMonths={availableMonths}
+          availableMonths={months}
           projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
           carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300 }}
           stdRate={95}
           preview
         />
       ) : (
-        <ReportView token={token} selectedMonth={selectedMonth} availableMonths={availableMonths} />
+        <ReportView selectedMonth={selectedMonth} availableMonths={months} />
       )}
     </div>
   )
@@ -147,8 +138,7 @@ function standardI7Rate(assignments: Assignment[], ym: string): number {
   return best
 }
 
-async function ReportView({ token, selectedMonth, availableMonths }: {
-  token: string
+async function ReportView({ selectedMonth, availableMonths }: {
   selectedMonth: string
   availableMonths: string[]
 }) {
@@ -164,32 +154,31 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
   let fetchError: string | null = null
 
   try {
-    // Need the i7 job code ids before fetching, so we pull ONLY i7 timesheets
-    // (a fraction of the whole account) across Jan … selected month — one range
-    // fetch that feeds both the tree and the carryover.
-    const [users, jobcodes] = await Promise.all([fetchUsers(token), fetchJobcodes(token)])
-    const i7Ids = i7JobcodeIds(jobcodes)
-    const [i7ts, assignments, monthlyBudgets, projHours] = await Promise.all([
-      fetchTimesheets(token, carryStart, endDate, [...i7Ids]),
+    // Everything reads from the local cache (kept fresh by the background sync) —
+    // no live TSheets calls, so this renders in milliseconds. One range read of
+    // Jan(year) … selected month feeds both the tree and the carryover.
+    const [entries, names, assignments, monthlyBudgets, projHours] = await Promise.all([
+      loadCachedEntries(carryStart, endDate),
+      loadNames(),
       loadI7Assignments(),
       loadMonthlyBudgets(),
       loadProjectHours(),
     ])
     projectHours = projHours
-    const namesByUser = Object.fromEntries(users.map(u => [u.id, u.first_name]))
 
     // Selected month's tree (using that month's rates)
-    const selTs = i7ts.filter(t => t.date.slice(0, 7) === selectedMonth)
-    const ratesSel: Record<number, number> = Object.fromEntries(users.map(u => [u.id, rateFor(assignments, u.id, selectedMonth)]))
-    report = buildI7Report(selTs, ratesSel, namesByUser, startDate)
+    const selEntries = entries.filter(e => e.date.slice(0, 7) === selectedMonth)
+    const ratesSel: Record<number, number> = {}
+    for (const uid of new Set(selEntries.map(e => e.user_id))) ratesSel[uid] = rateFor(assignments, uid, selectedMonth)
+    report = buildI7Report(selEntries, ratesSel, names, startDate)
     stdRate = standardI7Rate(assignments, selectedMonth)
 
     // Carryover: cumulative budget − cost for the months before the selected one
     let cumBudget = 0, cumCost = 0
     for (let m = 1; m < selM; m++) {
       const ym = `${year}-${String(m).padStart(2, '0')}`
-      const cost = i7ts.filter(t => t.date.slice(0, 7) === ym)
-        .reduce((s, t) => s + (t.duration / 3600) * rateFor(assignments, t.user_id, ym), 0)
+      const cost = entries.filter(e => e.date.slice(0, 7) === ym)
+        .reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.user_id, ym), 0)
       cumBudget += monthlyBudgets[ym] ?? 0
       cumCost += cost
     }
@@ -199,16 +188,16 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
     const totalAvailable = round2(opening + monthBudget)
     carryover = { opening, monthBudget, monthUsed, totalAvailable, totalLeft: round2(totalAvailable - monthUsed) }
   } catch (e) {
-    fetchError = e instanceof Error ? e.message : 'Unknown error fetching from TSheets.'
+    fetchError = e instanceof Error ? e.message : 'Unknown error reading the report.'
   }
 
   if (fetchError) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 space-y-2">
-        <p className="font-semibold text-red-700">Failed to fetch from QuickBooks Time</p>
+        <p className="font-semibold text-red-700">Couldn&apos;t load the report</p>
         <p className="text-sm text-red-600 font-mono">{fetchError}</p>
         <p className="text-sm text-red-500">
-          Check that your API token in <a href="/settings" className="underline">Settings</a> is valid and hasn&apos;t expired.
+          The report reads from the synced cache. If this persists, run a sync from <a href="/settings" className="underline">Settings</a>.
         </p>
       </div>
     )
@@ -217,15 +206,51 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
   if (!report || report.totalHours === 0) {
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
-        <p className="font-semibold text-slate-700">No approved i7 time entries found</p>
+        <p className="font-semibold text-slate-700">No i7 hours for {selectedMonth} yet</p>
         <p className="text-sm text-slate-500">
-          There are no approved i7 timesheets for {selectedMonth}. Try a different month or check that entries have been approved in TSheets.
+          Nothing is cached for this month. New data is pulled from QuickBooks Time automatically in the background — or run a sync now from <a href="/settings" className="underline">Settings</a>.
         </p>
       </div>
     )
   }
 
   return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} projectHours={projectHours} carryover={carryover} stdRate={stdRate} />
+}
+
+// Cached i7 timesheet entries for a date range. Paginates because PostgREST caps
+// a single response (usually 1000 rows) — a multi-month range easily exceeds it,
+// and a silent truncation would undercount the totals.
+async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]> {
+  const supabase = await createClient()
+  const out: I7Entry[] = []
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('tsheets_timesheets')
+      .select('user_id, duration, date, i7_code, activity')
+      .gte('date', start)
+      .lte('date', end)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(error.message)
+    const rows = data ?? []
+    for (const r of rows) {
+      out.push({ user_id: r.user_id, duration: r.duration, date: r.date, i7Code: r.i7_code ?? '', activity: r.activity ?? '' })
+    }
+    if (rows.length < PAGE) break
+  }
+  return out
+}
+
+// tsheets_user_id → display (first) name, from the synced directory.
+async function loadNames(): Promise<Record<number, string>> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('people').select('tsheets_user_id, full_name').not('tsheets_user_id', 'is', null)
+  const out: Record<number, string> = {}
+  for (const p of data ?? []) {
+    if (p.tsheets_user_id != null) out[p.tsheets_user_id] = (p.full_name || '').split(' ')[0] || `User ${p.tsheets_user_id}`
+  }
+  return out
 }
 
 // All i7 rate assignments (for month-by-month rate resolution across the year).

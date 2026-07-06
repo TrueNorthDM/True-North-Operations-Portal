@@ -8,11 +8,11 @@
 //   '19156'  = "3 Activity"   → the activity (e.g. "Content: Writing").
 // Cost = hours × the person's i7 hourly rate.
 
-import type { TsheetsJobcode, TsheetsTimesheet, I7Report, I7Project } from './types'
+import type { TsheetsJobcode, I7Entry, I7Report, I7Project } from './types'
 
 export const I7_PARENT_JOBCODE_ID = 21152466
-const I7_CODE_CF = '129628'
-const ACTIVITY_CF = '19156'
+export const I7_CODE_CF = '129628'
+export const ACTIVITY_CF = '19156'
 
 // The four i7 projects (top level of the report + budget-hours guide targets).
 export const I7_PROJECTS = ['i7 Marketing', 'Moisture Meters (MME)', 'Wagner Meters (WM)', 'Bessemeter'] as const
@@ -57,7 +57,7 @@ const MONTH_NAMES = [
 ]
 
 export function buildI7Report(
-  timesheets: TsheetsTimesheet[],       // already filtered to i7 entries
+  entries: I7Entry[],                   // already filtered to i7 entries (from cache)
   ratesByUser: Record<number, number>, // tsheets_user_id → i7 hourly rate
   namesByUser: Record<number, string>, // tsheets_user_id → display name
   startDate: string,
@@ -66,13 +66,12 @@ export function buildI7Report(
   type Leaf = { hours: number; cost: number }
   const tree = new Map<string, Map<string, Map<string, Map<number, Leaf>>>>()
 
-  for (const ts of timesheets) {
-    const cf = ts.customfields ?? {}
-    const code = (cf[I7_CODE_CF] || NO_CODE).trim() || NO_CODE
-    const activity = (cf[ACTIVITY_CF] || NO_ACTIVITY).trim() || NO_ACTIVITY
+  for (const e of entries) {
+    const code = (e.i7Code || NO_CODE).trim() || NO_CODE
+    const activity = (e.activity || NO_ACTIVITY).trim() || NO_ACTIVITY
     const project = mapCodeToProject(code)
-    const hours = ts.duration / 3600
-    const cost = hours * (ratesByUser[ts.user_id] ?? 0)
+    const hours = e.duration / 3600
+    const cost = hours * (ratesByUser[e.user_id] ?? 0)
 
     const codes = tree.get(project) ?? new Map()
     tree.set(project, codes)
@@ -80,10 +79,10 @@ export function buildI7Report(
     codes.set(code, acts)
     const ppl = acts.get(activity) ?? new Map<number, Leaf>()
     acts.set(activity, ppl)
-    const leaf = ppl.get(ts.user_id) ?? { hours: 0, cost: 0 }
+    const leaf = ppl.get(e.user_id) ?? { hours: 0, cost: 0 }
     leaf.hours += hours
     leaf.cost += cost
-    ppl.set(ts.user_id, leaf)
+    ppl.set(e.user_id, leaf)
   }
 
   const projects: I7Project[] = []
