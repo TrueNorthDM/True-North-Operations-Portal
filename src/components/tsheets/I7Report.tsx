@@ -286,9 +286,6 @@ function statusOf(actual: number, budget: number | null | undefined): Status {
   if (p >= 0.75) return 'warn'
   return 'good'
 }
-const BAR_FILL: Record<Status, string> = {
-  good: 'bg-emerald-500', warn: 'bg-amber-500', bad: 'bg-red-500', none: 'bg-slate-300',
-}
 const PILL: Record<Status, { cls: string; label: string }> = {
   good: { cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: 'On track' },
   warn: { cls: 'text-amber-700 bg-amber-50 border-amber-200', label: 'Watch' },
@@ -317,12 +314,12 @@ function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: string 
             <span className="w-1.5 h-1.5 rounded-full bg-current" />{pill.label}
           </span>
         </div>
-        <div className="flex flex-wrap gap-x-10 gap-y-3 mb-4">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Budget total this month</div>
             <div className="text-2xl font-bold tabular-nums text-slate-900">{moneySigned(c.totalAvailable)}</div>
           </div>
-          <div>
+          <div className="text-right">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Balance left</div>
             <div className={`text-2xl font-bold tabular-nums ${neg ? 'text-red-600' : 'text-emerald-600'}`}>{moneySigned(c.totalLeft)}</div>
           </div>
@@ -333,23 +330,42 @@ function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: string 
   )
 }
 
-// Usage progress bar — the one from the earlier budget panel.
+// Usage progress bar. The fill is a green→amber→red gradient whose colours map
+// to fixed budget-% positions (yellowing past ~50%, red toward/over 100%), and
+// the used $ rides the bar as a marker at the fill's end.
 function Meter({ label, actual, budget }: { label: string; actual: number; budget: number | null }) {
-  const st = statusOf(actual, budget)
   const has = budget != null && budget > 0
   const pct = has ? actual / budget! : 0
+  const fillPct = Math.min(100, Math.max(0, pct * 100))
   const remaining = has ? budget! - actual : 0
+  // Size the gradient so it always spans the FULL track (not just the fill), so
+  // a given colour sits at a fixed % of budget regardless of how full the bar is.
+  const gradientSize = fillPct > 0 ? (100 / fillPct) * 100 : 100
+  // Keep the marker label inside the track at the extremes.
+  const markerShift = fillPct < 12 ? 'translateX(0)' : fillPct > 88 ? 'translateX(-100%)' : 'translateX(-50%)'
+
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-2">
-        <span className="text-xs font-semibold text-slate-500">{label}</span>
-        <span className="text-sm text-slate-500">
-          <b className="text-xl font-extrabold text-slate-900 tabular-nums">{money(actual)}</b>
-          {has ? <> <span className="text-slate-400">of {money(budget!)}</span></> : ''}
-        </span>
-      </div>
-      <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
-        <div className={`h-full rounded-full ${BAR_FILL[st]}`} style={{ width: `${Math.min(100, pct * 100)}%` }} />
+      <div className="mb-2 text-xs font-semibold text-slate-500">{label}</div>
+      <div className="relative pt-7">
+        {has && (
+          <div className="absolute top-0" style={{ left: `${fillPct}%`, transform: markerShift }}>
+            <span className="text-lg font-extrabold text-slate-900 tabular-nums whitespace-nowrap">{money(actual)}</span>
+          </div>
+        )}
+        <div className="relative h-3 rounded-full bg-slate-100 overflow-hidden">
+          {has && (
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${fillPct}%`,
+                backgroundImage: 'linear-gradient(90deg, #10b981 0%, #10b981 50%, #f59e0b 75%, #ef4444 100%)',
+                backgroundSize: `${gradientSize}% 100%`,
+                backgroundPosition: 'left center',
+              }}
+            />
+          )}
+        </div>
       </div>
       <div className="flex justify-between mt-1.5 text-xs">
         {has ? (
