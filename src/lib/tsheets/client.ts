@@ -78,20 +78,25 @@ export async function fetchJobcodes(token: string): Promise<TsheetsJobcode[]> {
 
 // Fetches all approved/submitted timesheets for a date range.
 // `on_the_clock=no` excludes currently-running entries (not yet saved).
+// Pass `jobcodeIds` to fetch only those job codes' entries — much smaller than
+// the whole account (essential for the multi-month carryover query).
 export async function fetchTimesheets(
   token: string,
   startDate: string,
   endDate: string,
+  jobcodeIds?: number[],
 ): Promise<TsheetsTimesheet[]> {
+  const params: Record<string, string> = {
+    start_date: startDate,
+    end_date: endDate,
+    on_the_clock: 'no',
+    per_page: '200',
+  }
+  if (jobcodeIds && jobcodeIds.length) params.jobcode_ids = jobcodeIds.join(',')
   return fetchAll<{ timesheets: Record<string, TsheetsTimesheet> }, TsheetsTimesheet>(
     token,
     '/timesheets',
-    {
-      start_date: startDate,
-      end_date: endDate,
-      on_the_clock: 'no',
-      per_page: '200',
-    },
+    params,
     r => Object.values(r.timesheets),
   )
 }

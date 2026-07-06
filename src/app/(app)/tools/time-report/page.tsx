@@ -141,21 +141,18 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
   let fetchError: string | null = null
 
   try {
-    // One range fetch (Jan … selected month) covers both the tree and the carryover.
-    const [users, jobcodes, timesheets] = await Promise.all([
-      fetchUsers(token),
-      fetchJobcodes(token),
-      fetchTimesheets(token, carryStart, endDate),
-    ])
-    const [assignments, monthlyBudgets, projHours] = await Promise.all([
+    // Need the i7 job code ids before fetching, so we pull ONLY i7 timesheets
+    // (a fraction of the whole account) across Jan … selected month — one range
+    // fetch that feeds both the tree and the carryover.
+    const [users, jobcodes] = await Promise.all([fetchUsers(token), fetchJobcodes(token)])
+    const i7Ids = i7JobcodeIds(jobcodes)
+    const [i7ts, assignments, monthlyBudgets, projHours] = await Promise.all([
+      fetchTimesheets(token, carryStart, endDate, [...i7Ids]),
       loadI7Assignments(),
       loadMonthlyBudgets(),
       loadProjectHours(),
     ])
     projectHours = projHours
-
-    const i7Ids = i7JobcodeIds(jobcodes)
-    const i7ts = timesheets.filter(t => i7Ids.has(t.jobcode_id))
     const namesByUser = Object.fromEntries(users.map(u => [u.id, u.first_name]))
 
     // Selected month's tree (using that month's rates)
