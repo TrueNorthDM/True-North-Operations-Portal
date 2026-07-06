@@ -15,10 +15,15 @@ interface Props {
   preview?: boolean
   projectHours?: Record<string, number>   // project → budgeted hours (guide)
   carryover?: I7Carryover | null
+  stdRate?: number                        // standard i7 rate for the month ($/h)
 }
 
 function money(n: number): string {
   return '$' + Math.round(n).toLocaleString('en-US')
+}
+// Signed dollars (can go negative when a project is over its budgeted hours).
+function moneySigned(n: number): string {
+  return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US')
 }
 function fmtHours(n: number): string {
   if (n === 0) return '—'
@@ -38,7 +43,7 @@ function Chevron({ open }: { open: boolean }) {
   )
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0 }: Props) {
   const router = useRouter()
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
   const [openCodes, setOpenCodes] = useState<Set<string>>(new Set())
@@ -63,8 +68,11 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
 
   const showCost = data.hasRates
   const showBudget = Object.keys(projectHours).length > 0
+  const showBudgetAvail = showBudget && showCost && stdRate > 0   // $ available needs a rate
   const totalBudgetHours = Object.values(projectHours).reduce((s, h) => s + h, 0)
-  const cols = 2 + (showBudget ? 2 : 0) + (showCost ? 1 : 0)
+  const totalHrsAvail = totalBudgetHours - data.totalHours
+  const projectOnlyCols = (showBudget ? 2 : 0) + (showBudgetAvail ? 1 : 0)
+  const cols = 2 + projectOnlyCols + (showCost ? 1 : 0)
   const selectCls = 'px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
 
   return (
@@ -105,6 +113,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
               <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-28">Hours used</th>
               {showBudget && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-28">Budget hrs</th>}
               {showBudget && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-28">Hrs avail.</th>}
+              {showBudgetAvail && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-32">Budget avail.</th>}
               {showCost && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-32">Budget used</th>}
             </tr>
           </thead>
@@ -123,6 +132,8 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
                   openActs={openActs}
                   showCost={showCost}
                   showBudget={showBudget}
+                  showBudgetAvail={showBudgetAvail}
+                  stdRate={stdRate}
                   budgetHours={projectHours[p.project] ?? null}
                   onToggleProject={() => toggle(openProjects, p.project, setOpenProjects)}
                   onToggleCode={(code) => toggle(openCodes, `${p.project}|${code}`, setOpenCodes)}
@@ -136,7 +147,8 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
               <td className="px-4 py-3 font-bold text-slate-900">Total</td>
               <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums">{data.totalHours.toFixed(2)}</td>
               {showBudget && <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '—'}</td>}
-              {showBudget && <td className={`px-4 py-3 text-right font-bold tabular-nums ${totalBudgetHours - data.totalHours < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? (totalBudgetHours - data.totalHours).toFixed(2) : '—'}</td>}
+              {showBudget && <td className={`px-4 py-3 text-right font-bold tabular-nums ${totalHrsAvail < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '—'}</td>}
+              {showBudgetAvail && <td className={`px-4 py-3 text-right font-bold tabular-nums ${totalHrsAvail < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '—'}</td>}
               {showCost && <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums">{money(data.totalCost)}</td>}
             </tr>
           </tfoot>
@@ -146,6 +158,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-xs text-slate-400">
           Hours pulled live from QuickBooks Time · grouped by the “1 - i7 Code” &amp; “3 Activity” fields · Budget used = hours × each person&apos;s rate
+          {showBudgetAvail && <> · Budget avail. = hours available × the i7 rate (${stdRate}/h)</>}
         </p>
         <div className="flex gap-2 text-xs">
           <button onClick={expandAll} className="text-slate-500 hover:text-slate-900 underline underline-offset-2">Expand all</button>
@@ -157,21 +170,26 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
   )
 }
 
-function ProjectRows({ project, pOpen, openCodes, openActs, showCost, showBudget, budgetHours, onToggleProject, onToggleCode, onToggleAct }: {
+function ProjectRows({ project, pOpen, openCodes, openActs, showCost, showBudget, showBudgetAvail, stdRate, budgetHours, onToggleProject, onToggleCode, onToggleAct }: {
   project: I7Report['projects'][number]
   pOpen: boolean
   openCodes: Set<string>
   openActs: Set<string>
   showCost: boolean
   showBudget: boolean
+  showBudgetAvail: boolean
+  stdRate: number
   budgetHours: number | null
   onToggleProject: () => void
   onToggleCode: (code: string) => void
   onToggleAct: (code: string, act: string) => void
 }) {
   const avail = budgetHours != null ? budgetHours - project.hours : null
-  // Empty budget cells to keep alignment on job-code / activity / person rows.
-  const emptyBudget = showBudget ? <><td /><td /></> : null
+  const dollarAvail = avail != null && showBudgetAvail ? avail * stdRate : null
+  // Empty cells to keep alignment on job-code / activity / person rows — one per
+  // project-only column (Budget hrs, Hrs avail., and optionally Budget avail.).
+  const emptyCount = (showBudget ? 2 : 0) + (showBudgetAvail ? 1 : 0)
+  const emptyBudget = emptyCount > 0 ? Array.from({ length: emptyCount }, (_, i) => <td key={i} />) : null
   return (
     <>
       {/* Level 1 — Project (budget hrs + hrs available live here) */}
@@ -186,6 +204,7 @@ function ProjectRows({ project, pOpen, openCodes, openActs, showCost, showBudget
         <td className="px-4 py-3 text-right font-semibold text-slate-900 tabular-nums">{fmtHours(project.hours)}</td>
         {showBudget && <td className="px-4 py-3 text-right text-slate-700 tabular-nums">{budgetHours != null ? budgetHours.toLocaleString() : <span className="text-slate-300">—</span>}</td>}
         {showBudget && <td className={`px-4 py-3 text-right font-medium tabular-nums ${avail != null && avail < 0 ? 'text-red-600' : 'text-slate-700'}`}>{avail != null ? avail.toFixed(2) : <span className="text-slate-300">—</span>}</td>}
+        {showBudgetAvail && <td className={`px-4 py-3 text-right font-medium tabular-nums ${dollarAvail != null && dollarAvail < 0 ? 'text-red-600' : 'text-slate-700'}`}>{dollarAvail != null ? moneySigned(dollarAvail) : <span className="text-slate-300">—</span>}</td>}
         {showCost && <td className="px-4 py-3 text-right font-semibold text-slate-900 tabular-nums">{project.cost > 0 ? money(project.cost) : <span className="text-slate-300">—</span>}</td>}
       </tr>
 

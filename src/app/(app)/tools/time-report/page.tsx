@@ -99,6 +99,7 @@ export default async function TimeReportPage({ searchParams }: Props) {
           availableMonths={availableMonths}
           projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
           carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300 }}
+          stdRate={95}
           preview
         />
       ) : (
@@ -125,6 +126,27 @@ function rateFor(assignments: Assignment[], userId: number, ym: string): number 
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/**
+ * The "standard" i7 hourly rate for a month — the most common rate across the
+ * people who have an i7 assignment active that month (ties break to the higher
+ * rate). Auto-adapts to rate history: $120 in Jan 2026, $95 from Feb on, with
+ * the handful of foreign rates ($60) staying the minority. Used to value the
+ * per-project "Budget avail." column = hours available × this rate.
+ */
+function standardI7Rate(assignments: Assignment[], ym: string): number {
+  const userIds = [...new Set(assignments.map(a => a.userId))]
+  const counts = new Map<number, number>()
+  for (const uid of userIds) {
+    const r = rateFor(assignments, uid, ym)
+    if (r > 0) counts.set(r, (counts.get(r) ?? 0) + 1)
+  }
+  let best = 0, bestCount = -1
+  for (const [rate, c] of counts) {
+    if (c > bestCount || (c === bestCount && rate > best)) { best = rate; bestCount = c }
+  }
+  return best
+}
+
 async function ReportView({ token, selectedMonth, availableMonths }: {
   token: string
   selectedMonth: string
@@ -138,6 +160,7 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
   let report: I7Report | null = null
   let projectHours: Record<string, number> = {}
   let carryover: I7Carryover | null = null
+  let stdRate = 0
   let fetchError: string | null = null
 
   try {
@@ -159,6 +182,7 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
     const selTs = i7ts.filter(t => t.date.slice(0, 7) === selectedMonth)
     const ratesSel: Record<number, number> = Object.fromEntries(users.map(u => [u.id, rateFor(assignments, u.id, selectedMonth)]))
     report = buildI7Report(selTs, ratesSel, namesByUser, startDate)
+    stdRate = standardI7Rate(assignments, selectedMonth)
 
     // Carryover: cumulative budget − cost for the months before the selected one
     let cumBudget = 0, cumCost = 0
@@ -201,7 +225,7 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
     )
   }
 
-  return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} projectHours={projectHours} carryover={carryover} />
+  return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} projectHours={projectHours} carryover={carryover} stdRate={stdRate} />
 }
 
 // All i7 rate assignments (for month-by-month rate resolution across the year).
