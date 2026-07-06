@@ -8,7 +8,7 @@
 //   '19156'  = "3 Activity"   → the activity (e.g. "Content: Writing").
 // Cost = hours × the person's i7 hourly rate.
 
-import type { TsheetsJobcode, I7Entry, I7Report, I7Project } from './types'
+import type { TsheetsJobcode, I7Entry, I7Report, I7Project, I7Jobcode, I7Activity, PersonHours } from './types'
 
 export const I7_PARENT_JOBCODE_ID = 21152466
 export const I7_CODE_CF = '129628'
@@ -86,47 +86,58 @@ export function buildI7Report(
   }
 
   const projects: I7Project[] = []
+  const allPeople = new Set<string>()
   let totalHours = 0
   let totalCost = 0
 
+  // name→hours accumulator → rounded plain object for output.
+  const roundMap = (m: Map<string, number>): PersonHours => {
+    const out: PersonHours = {}
+    for (const [name, h] of m) out[name] = round2(h)
+    return out
+  }
+
   for (const [project, codes] of tree) {
-    const jobcodes = []
-    let pHours = 0
-    let pCost = 0
+    const jobcodes: I7Jobcode[] = []
+    let pHours = 0, pCost = 0
+    const pByPerson = new Map<string, number>()   // rolls up all people under the project
     for (const [code, acts] of codes) {
-      const activities = []
-      let cHours = 0
-      let cCost = 0
+      const activities: I7Activity[] = []
+      let cHours = 0, cCost = 0
+      const cByPerson = new Map<string, number>()
       for (const [activity, ppl] of acts) {
-        const people = []
-        let aHours = 0
-        let aCost = 0
+        let aHours = 0, aCost = 0
+        const aByPerson = new Map<string, number>()
         for (const [userId, leaf] of ppl) {
-          people.push({ name: namesByUser[userId] ?? `User ${userId}`, hours: round2(leaf.hours), cost: round2(leaf.cost) })
+          const name = namesByUser[userId] ?? `User ${userId}`
+          allPeople.add(name)
+          aByPerson.set(name, (aByPerson.get(name) ?? 0) + leaf.hours)
+          cByPerson.set(name, (cByPerson.get(name) ?? 0) + leaf.hours)
+          pByPerson.set(name, (pByPerson.get(name) ?? 0) + leaf.hours)
           aHours += leaf.hours
           aCost += leaf.cost
         }
-        people.sort((a, b) => b.hours - a.hours)
-        activities.push({ activity, hours: round2(aHours), cost: round2(aCost), people })
+        activities.push({ activity, hours: round2(aHours), cost: round2(aCost), byPerson: roundMap(aByPerson) })
         cHours += aHours
         cCost += aCost
       }
       activities.sort((a, b) => b.hours - a.hours)
-      jobcodes.push({ code, hours: round2(cHours), cost: round2(cCost), activities })
+      jobcodes.push({ code, hours: round2(cHours), cost: round2(cCost), activities, byPerson: roundMap(cByPerson) })
       pHours += cHours
       pCost += cCost
     }
     jobcodes.sort((a, b) => a.code.localeCompare(b.code))
-    projects.push({ project, hours: round2(pHours), cost: round2(pCost), jobcodes })
+    projects.push({ project, hours: round2(pHours), cost: round2(pCost), jobcodes, byPerson: roundMap(pByPerson) })
     totalHours += pHours
     totalCost += pCost
   }
   projects.sort((a, b) => a.project.localeCompare(b.project))
+  const people = [...allPeople].sort((a, b) => a.localeCompare(b))
 
   const [year, monthIdx] = startDate.split('-').map(Number)
   const month = `${MONTH_NAMES[monthIdx - 1]} ${year}`
   const endDate = new Date(year, monthIdx, 0).toISOString().slice(0, 10)
   const hasRates = Object.values(ratesByUser).some(r => r > 0)
 
-  return { month, startDate, endDate, projects, totalHours: round2(totalHours), totalCost: round2(totalCost), hasRates }
+  return { month, startDate, endDate, projects, people, totalHours: round2(totalHours), totalCost: round2(totalCost), hasRates }
 }

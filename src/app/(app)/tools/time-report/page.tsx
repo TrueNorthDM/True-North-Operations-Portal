@@ -16,25 +16,26 @@ import type { I7Report, I7Carryover, I7Entry } from '@/lib/tsheets/types'
 const MOCK_I7: I7Report = {
   month: 'June 2026', startDate: '2026-06-01', endDate: '2026-06-30',
   totalHours: 46.5, totalCost: 4200, hasRates: true,
+  people: ['Amy', 'Cheyenne', 'Jeannette', 'Kevin', 'Lana', 'Wendy'],
   projects: [
-    { project: 'Wagner Meters (WM)', hours: 32, cost: 3040, jobcodes: [
-      { code: 'WM-MKTG', hours: 20, cost: 1900, activities: [
-        { activity: 'Content: Writing', hours: 12, cost: 1140, people: [{ name: 'Amy', hours: 7, cost: 665 }, { name: 'Wendy', hours: 5, cost: 475 }] },
-        { activity: 'SEO: Routine', hours: 8, cost: 760, people: [{ name: 'Cheyenne', hours: 8, cost: 760 }] },
-      ] },
-      { code: 'WM-WEBDVT', hours: 12, cost: 1140, activities: [
-        { activity: 'WebDev', hours: 12, cost: 1140, people: [{ name: 'Wendy', hours: 12, cost: 1140 }] },
+    { project: 'Bessemeter', hours: 10, cost: 950, byPerson: { Jeannette: 7, Kevin: 3 }, jobcodes: [
+      { code: 'BE-MKTG', hours: 10, cost: 950, byPerson: { Jeannette: 7, Kevin: 3 }, activities: [
+        { activity: 'SEO: Routine', hours: 7, cost: 665, byPerson: { Jeannette: 7 } },
+        { activity: 'Social Media', hours: 3, cost: 285, byPerson: { Kevin: 3 } },
       ] },
     ] },
-    { project: 'Bessemeter', hours: 10, cost: 950, jobcodes: [
-      { code: 'BE-MKTG', hours: 10, cost: 950, activities: [
-        { activity: 'SEO: Routine', hours: 7, cost: 665, people: [{ name: 'Jeannette', hours: 7, cost: 665 }] },
-        { activity: 'Social Media', hours: 3, cost: 285, people: [{ name: 'Kevin', hours: 3, cost: 285 }] },
+    { project: 'Moisture Meters (MME)', hours: 4.5, cost: 210, byPerson: { Lana: 4.5 }, jobcodes: [
+      { code: 'MME-MKTG', hours: 4.5, cost: 210, byPerson: { Lana: 4.5 }, activities: [
+        { activity: 'Content: Writing', hours: 4.5, cost: 210, byPerson: { Lana: 4.5 } },
       ] },
     ] },
-    { project: 'Moisture Meters (MME)', hours: 4.5, cost: 210, jobcodes: [
-      { code: 'MME-MKTG', hours: 4.5, cost: 210, activities: [
-        { activity: 'Content: Writing', hours: 4.5, cost: 210, people: [{ name: 'Lana', hours: 4.5, cost: 210 }] },
+    { project: 'Wagner Meters (WM)', hours: 32, cost: 3040, byPerson: { Amy: 7, Wendy: 17, Cheyenne: 8 }, jobcodes: [
+      { code: 'WM-MKTG', hours: 20, cost: 1900, byPerson: { Amy: 7, Wendy: 5, Cheyenne: 8 }, activities: [
+        { activity: 'Content: Writing', hours: 12, cost: 1140, byPerson: { Amy: 7, Wendy: 5 } },
+        { activity: 'SEO: Routine', hours: 8, cost: 760, byPerson: { Cheyenne: 8 } },
+      ] },
+      { code: 'WM-WEBDVT', hours: 12, cost: 1140, byPerson: { Wendy: 12 }, activities: [
+        { activity: 'WebDev', hours: 12, cost: 1140, byPerson: { Wendy: 12 } },
       ] },
     ] },
   ],

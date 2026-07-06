@@ -49,16 +49,20 @@ export interface I7Entry {
   activity: string
 }
 
-// ── i7 Budget Usage Report — Project → Job code → Activity → Person tree ─────
-export interface I7Person { name: string; hours: number; cost: number }
-export interface I7Activity { activity: string; hours: number; cost: number; people: I7Person[] }
-export interface I7Jobcode { code: string; hours: number; cost: number; activities: I7Activity[] }
-export interface I7Project { project: string; hours: number; cost: number; jobcodes: I7Jobcode[] }
+// ── i7 Budget Usage Report — Project → Job code → Activity tree ──────────────
+// People are no longer a row level: each node carries a name→hours map so the
+// table can show one HOURS column per person. `people` on the report is the
+// ordered union of everyone with hours in the period (the column headers).
+export type PersonHours = Record<string, number>   // display name → hours
+export interface I7Activity { activity: string; hours: number; cost: number; byPerson: PersonHours }
+export interface I7Jobcode { code: string; hours: number; cost: number; activities: I7Activity[]; byPerson: PersonHours }
+export interface I7Project { project: string; hours: number; cost: number; jobcodes: I7Jobcode[]; byPerson: PersonHours }
 export interface I7Report {
   month: string
   startDate: string
   endDate: string
   projects: I7Project[]
+  people: string[]           // person columns (union of everyone with hours), sorted
   totalHours: number
   totalCost: number
   hasRates: boolean
