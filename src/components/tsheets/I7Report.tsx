@@ -273,31 +273,96 @@ function ProjectRows({ project, people, pOpen, openCodes, showCost, showBudget, 
   )
 }
 
-// ── Carryover panel — bank-account running balance ──────────────────────────
+// ── Budget balance ──────────────────────────────────────────────────────────
+// Left block (20%): the carried-in balance. Right block (80%): this month's
+// total budget, the closing balance, and a usage progress bar (Used of Budget
+// total). "Budget total" = carried-in + this month's budget, so Balance left =
+// Budget total − Used stays consistent with the bar.
+type Status = 'good' | 'warn' | 'bad' | 'none'
+function statusOf(actual: number, budget: number | null | undefined): Status {
+  if (budget == null || budget <= 0) return 'none'
+  const p = actual / budget
+  if (p > 1) return 'bad'
+  if (p >= 0.75) return 'warn'
+  return 'good'
+}
+const BAR_FILL: Record<Status, string> = {
+  good: 'bg-emerald-500', warn: 'bg-amber-500', bad: 'bg-red-500', none: 'bg-slate-300',
+}
+const PILL: Record<Status, { cls: string; label: string }> = {
+  good: { cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: 'On track' },
+  warn: { cls: 'text-amber-700 bg-amber-50 border-amber-200', label: 'Watch' },
+  bad: { cls: 'text-red-700 bg-red-50 border-red-200', label: 'Over budget' },
+  none: { cls: 'text-slate-500 bg-slate-100 border-slate-200', label: 'No budget' },
+}
+
 function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: string }) {
   const neg = c.totalLeft < 0
-  const money0 = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US')
-  const Item = ({ label, value, tone }: { label: string; value: string; tone?: 'muted' | 'strong' | 'bad' | 'good' }) => (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</div>
-      <div className={`text-lg font-bold tabular-nums ${tone === 'bad' ? 'text-red-600' : tone === 'good' ? 'text-emerald-600' : tone === 'muted' ? 'text-slate-500' : 'text-slate-900'}`}>{value}</div>
+  const st = statusOf(c.monthUsed, c.totalAvailable)
+  const pill = PILL[st]
+  return (
+    <div className="flex flex-col lg:flex-row gap-4">
+      {/* Left 20% — Carried in */}
+      <div className="lg:w-1/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Carried in</div>
+        <div className={`text-2xl font-bold tabular-nums mt-1 ${c.opening < 0 ? 'text-red-600' : 'text-slate-900'}`}>{moneySigned(c.opening)}</div>
+        <div className="text-xs text-slate-400 mt-1">Balance brought from last month</div>
+      </div>
+
+      {/* Right 80% — Budget balance + usage bar */}
+      <div className="lg:w-4/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Budget balance · {monthLabel}</div>
+          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${pill.cls}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />{pill.label}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-x-10 gap-y-3 mb-4">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Budget total this month</div>
+            <div className="text-2xl font-bold tabular-nums text-slate-900">{moneySigned(c.totalAvailable)}</div>
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Balance left</div>
+            <div className={`text-2xl font-bold tabular-nums ${neg ? 'text-red-600' : 'text-emerald-600'}`}>{moneySigned(c.totalLeft)}</div>
+          </div>
+        </div>
+        <Meter label="Budget used" actual={c.monthUsed} budget={c.totalAvailable} />
+      </div>
     </div>
   )
+}
+
+// Usage progress bar — the one from the earlier budget panel.
+function Meter({ label, actual, budget }: { label: string; actual: number; budget: number | null }) {
+  const st = statusOf(actual, budget)
+  const has = budget != null && budget > 0
+  const pct = has ? actual / budget! : 0
+  const remaining = has ? budget! - actual : 0
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Budget balance · {monthLabel}</div>
-      <div className="flex items-center gap-3 flex-wrap text-slate-400">
-        <Item label="Carried in" value={money0(c.opening)} tone={c.opening < 0 ? 'bad' : 'muted'} />
-        <span className="text-xl font-light">+</span>
-        <Item label="This month" value={money0(c.monthBudget)} />
-        <span className="text-xl font-light">=</span>
-        <Item label="Available" value={money0(c.totalAvailable)} tone="strong" />
-        <span className="text-xl font-light">−</span>
-        <Item label="Used" value={money0(c.monthUsed)} />
-        <span className="text-xl font-light">=</span>
-        <Item label="Balance left" value={money0(c.totalLeft)} tone={neg ? 'bad' : 'good'} />
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-xs font-semibold text-slate-500">{label}</span>
+        <span className="text-sm text-slate-500">
+          <b className="text-xl font-extrabold text-slate-900 tabular-nums">{money(actual)}</b>
+          {has ? <> <span className="text-slate-400">of {money(budget!)}</span></> : ''}
+        </span>
       </div>
-      {neg && <p className="text-xs text-red-500 mt-3">Over budget — this closing balance carries into next month.</p>}
+      <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+        <div className={`h-full rounded-full ${BAR_FILL[st]}`} style={{ width: `${Math.min(100, pct * 100)}%` }} />
+      </div>
+      <div className="flex justify-between mt-1.5 text-xs">
+        {has ? (
+          <>
+            <span className="font-bold text-slate-900 tabular-nums">{Math.round(pct * 100)}% used</span>
+            <span className={remaining < 0 ? 'text-red-600 font-medium' : 'text-slate-400'}>
+              {remaining < 0 ? `${money(-remaining)} over` : `${money(remaining)} remaining`}
+            </span>
+          </>
+        ) : (
+          <span className="text-slate-400">No budget set</span>
+        )}
+      </div>
     </div>
   )
 }
