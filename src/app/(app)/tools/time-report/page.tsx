@@ -6,7 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { monthBounds, currentYearMonth } from '@/lib/tsheets/report'
-import { buildI7Report, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
+import { buildI7Report, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
@@ -158,20 +158,38 @@ async function ReportView({ selectedMonth, availableMonths }: {
     // Everything reads from the local cache (kept fresh by the background sync) —
     // no live TSheets calls, so this renders in milliseconds. One range read of
     // Jan(year) … selected month feeds both the tree and the carryover.
-    const [entries, names, assignments, monthlyBudgets, projHours] = await Promise.all([
+    const [entries, names, assignments, monthlyBudgets, projHours, universe] = await Promise.all([
       loadCachedEntries(carryStart, endDate),
       loadNames(),
       loadI7Assignments(),
       loadMonthlyBudgets(),
       loadProjectHours(),
+      loadUniverse(),
     ])
     projectHours = projHours
+
+    // The always-shown scaffold: all projects, all job codes, and the full
+    // person roster (anyone with an i7 assignment or any cached hours) — so the
+    // structure is identical every month; only activities are entry-driven.
+    const rosterIds = new Set<number>([...universe.userIds, ...assignments.map(a => a.userId)])
+    const jobcodesByProject: Record<string, string[]> = {}
+    const projSet = new Set<string>(I7_PROJECTS)
+    for (const code of universe.jobcodes) {
+      const proj = mapCodeToProject(code)
+      projSet.add(proj)
+      ;(jobcodesByProject[proj] ??= []).push(code)
+    }
+    const universeArg = {
+      projects: [...projSet],
+      jobcodesByProject,
+      people: [...new Set([...rosterIds].map(id => names[id] ?? `User ${id}`))],
+    }
 
     // Selected month's tree (using that month's rates)
     const selEntries = entries.filter(e => e.date.slice(0, 7) === selectedMonth)
     const ratesSel: Record<number, number> = {}
     for (const uid of new Set(selEntries.map(e => e.user_id))) ratesSel[uid] = rateFor(assignments, uid, selectedMonth)
-    report = buildI7Report(selEntries, ratesSel, names, startDate)
+    report = buildI7Report(selEntries, ratesSel, names, startDate, universeArg)
     stdRate = standardI7Rate(assignments, selectedMonth)
 
     // Carryover: cumulative budget − cost for the months before the selected one
@@ -241,6 +259,33 @@ async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]>
     if (rows.length < PAGE) break
   }
   return out
+}
+
+// The full universe of i7 job codes + people ever seen in the cache. Used to
+// scaffold the report so every project / job code / person shows every month
+// (only activities stay conditional). Paginated distinct over the whole table
+// (just two small columns, so it's cheap).
+async function loadUniverse(): Promise<{ jobcodes: string[]; userIds: number[] }> {
+  const supabase = await createClient()
+  const codes = new Set<string>()
+  const userIds = new Set<number>()
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('tsheets_timesheets')
+      .select('user_id, i7_code')
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(error.message)
+    const rows = data ?? []
+    for (const r of rows) {
+      if (r.user_id != null) userIds.add(r.user_id)
+      const c = (r.i7_code ?? '').trim()
+      if (c) codes.add(c)
+    }
+    if (rows.length < PAGE) break
+  }
+  return { jobcodes: [...codes], userIds: [...userIds] }
 }
 
 // tsheets_user_id → display (first) name, from the synced directory.

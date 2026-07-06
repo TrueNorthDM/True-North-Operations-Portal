@@ -56,11 +56,20 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+// The fixed structure to always render, so every project / job code / person
+// shows every month even with zero hours (only activities stay conditional).
+export interface I7Universe {
+  projects: string[]                          // all projects, always shown
+  jobcodesByProject: Record<string, string[]> // project → its job codes, always shown
+  people: string[]                            // full person roster (column headers)
+}
+
 export function buildI7Report(
   entries: I7Entry[],                   // already filtered to i7 entries (from cache)
   ratesByUser: Record<number, number>, // tsheets_user_id → i7 hourly rate
   namesByUser: Record<number, string>, // tsheets_user_id → display name
   startDate: string,
+  universe?: I7Universe,                // the always-shown scaffold (projects/codes/people)
 ): I7Report {
   // project → code → activity → userId → { hours, cost }
   type Leaf = { hours: number; cost: number }
@@ -83,6 +92,18 @@ export function buildI7Report(
     leaf.hours += hours
     leaf.cost += cost
     ppl.set(e.user_id, leaf)
+  }
+
+  // Scaffold every project + job code from the universe (empty activity maps),
+  // so 0-hour projects/codes still render. Activities stay entry-driven.
+  if (universe) {
+    for (const proj of universe.projects) {
+      const codes = tree.get(proj) ?? new Map()
+      tree.set(proj, codes)
+      for (const code of universe.jobcodesByProject[proj] ?? []) {
+        if (!codes.has(code)) codes.set(code, new Map())
+      }
+    }
   }
 
   const projects: I7Project[] = []
@@ -132,7 +153,8 @@ export function buildI7Report(
     totalCost += pCost
   }
   projects.sort((a, b) => a.project.localeCompare(b.project))
-  const people = [...allPeople].sort((a, b) => a.localeCompare(b))
+  // Column set = the full roster (universe) ∪ anyone who logged hours this month.
+  const people = [...new Set([...(universe?.people ?? []), ...allPeople])].sort((a, b) => a.localeCompare(b))
 
   const [year, monthIdx] = startDate.split('-').map(Number)
   const month = `${MONTH_NAMES[monthIdx - 1]} ${year}`

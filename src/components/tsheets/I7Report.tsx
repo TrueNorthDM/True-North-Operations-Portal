@@ -219,8 +219,8 @@ function ProjectRows({ project, people, pOpen, openCodes, showCost, showBudget, 
         <td className="px-4 py-3 sticky left-0 bg-white z-10">
           <div className="flex items-center gap-2">
             <Chevron open={pOpen} />
-            <span className="font-semibold text-slate-900">{project.project}</span>
-            <span className="text-xs text-slate-400">{project.jobcodes.length} job code{project.jobcodes.length !== 1 ? 's' : ''}</span>
+            <span className="font-semibold text-slate-900 whitespace-nowrap">{project.project}</span>
+            <span className="text-xs text-slate-400 whitespace-nowrap">{project.jobcodes.length} job code{project.jobcodes.length !== 1 ? 's' : ''}</span>
           </div>
         </td>
         <PersonCells people={people} byPerson={project.byPerson} />
@@ -234,14 +234,15 @@ function ProjectRows({ project, people, pOpen, openCodes, showCost, showBudget, 
       {/* Level 2 — Job codes */}
       {pOpen && project.jobcodes.map(jc => {
         const key = `${project.project}|${jc.code}`
-        const cOpen = openCodes.has(key)
+        const hasActs = jc.activities.length > 0
+        const cOpen = hasActs && openCodes.has(key)
         return (
           <Fragment key={jc.code}>
-            <tr className="border-b border-slate-100 hover:bg-slate-50/60 cursor-pointer bg-slate-50/30" onClick={() => onToggleCode(jc.code)}>
+            <tr className={`border-b border-slate-100 bg-slate-50/30 ${hasActs ? 'hover:bg-slate-50/60 cursor-pointer' : ''}`} onClick={hasActs ? () => onToggleCode(jc.code) : undefined}>
               <td className="px-4 py-2.5 sticky left-0 bg-slate-50 z-10">
                 <div className="flex items-center gap-2 pl-6">
-                  <Chevron open={cOpen} />
-                  <span className="font-medium text-slate-800 tabular-nums">{jc.code}</span>
+                  {hasActs ? <Chevron open={cOpen} /> : <span className="w-3.5" />}
+                  <span className="font-medium text-slate-800 tabular-nums whitespace-nowrap">{jc.code}</span>
                 </div>
               </td>
               <PersonCells people={people} byPerson={jc.byPerson} />
@@ -256,7 +257,7 @@ function ProjectRows({ project, people, pOpen, openCodes, showCost, showBudget, 
                 <td className="px-4 py-2 text-slate-600 sticky left-0 bg-white z-10">
                   <div className="flex items-center gap-2 pl-12">
                     <span className="w-3.5" />
-                    <span>{a.activity}</span>
+                    <span className="whitespace-nowrap">{a.activity}</span>
                   </div>
                 </td>
                 <PersonCells people={people} byPerson={a.byPerson} muted />
