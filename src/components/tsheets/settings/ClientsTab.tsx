@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { BudgetForm } from './BudgetForm'
 import { ProjectBudgets, type ProjectBudget } from './ProjectBudgets'
@@ -45,13 +45,10 @@ function periodLabel(start: string | null | undefined, end: string | null | unde
 const Dash = () => <span className="text-slate-300">&mdash;</span>
 
 export function ClientsTab({ clients }: Props) {
-  const router = useRouter()
-  const [editing, setEditing] = useState<number | null>(null)
-
-  function handleClose() {
-    setEditing(null)
-    router.refresh()
-  }
+  // Only the selected id is state — the client object is derived from `clients`,
+  // so after a save + router.refresh() the modal shows the fresh values.
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const selected = clients.find(c => c.id === selectedId) ?? null
 
   if (clients.length === 0) {
     return (
@@ -79,71 +76,162 @@ export function ClientsTab({ clients }: Props) {
           <tbody>
             {clients.map(client => {
               const b = client.budget
-              const isEditing = editing === client.id
               return (
-                <Fragment key={client.id}>
-                  <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                    <td className="px-5 py-3.5">
-                      <span className="font-medium text-slate-900">{client.name}</span>
-                      {!client.active && (
-                        <span className="ml-2 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Inactive</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
-                      {b?.hoursAllocated != null ? b.hoursAllocated.toLocaleString() : <Dash />}
-                    </td>
-                    <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
-                      {b?.budgetAmount != null ? `$${b.budgetAmount.toLocaleString()}` : <Dash />}
-                    </td>
-                    <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
-                      {b && b.extraBudget > 0 ? (
-                        <div>
-                          <div>${b.extraBudget.toLocaleString()}</div>
-                          {b.extraStartDate && (
-                            <div className="text-[11px] text-slate-400 font-normal">{periodLabel(b.extraStartDate, b.extraEndDate)}</div>
-                          )}
-                        </div>
-                      ) : <Dash />}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500">
-                      {b ? periodLabel(b.startDate, b.budgetEndDate) : <span className="text-slate-400">No budget set</span>}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={() => setEditing(isEditing ? null : client.id)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 ${isEditing ? 'bg-slate-100' : ''}`}
-                      >
-                        {isEditing ? 'Editing…' : b ? 'Edit budget' : 'Set budget'}
-                      </button>
-                    </td>
-                  </tr>
-                  {isEditing && (
-                    <tr>
-                      <td colSpan={6} className="bg-slate-50/60 px-5 py-4 border-b border-slate-100">
-                        <BudgetForm
-                          client={{ id: client.id, name: client.name }}
-                          current={b ? {
-                            hoursAllocated: b.hoursAllocated,
-                            budgetAmount: b.budgetAmount,
-                            extraBudget: b.extraBudget,
-                            startDate: b.startDate,
-                            budgetEndDate: b.budgetEndDate,
-                            extraStartDate: b.extraStartDate,
-                            extraEndDate: b.extraEndDate,
-                          } : null}
-                          onClose={handleClose}
-                        />
-                        {client.projectBudgets.length > 0 && (
-                          <ProjectBudgets clientId={client.id} projects={client.projectBudgets} onSaved={handleClose} />
+                <tr
+                  key={client.id}
+                  onClick={() => setSelectedId(client.id)}
+                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 cursor-pointer"
+                >
+                  <td className="px-5 py-3.5">
+                    <span className="font-medium text-slate-900">{client.name}</span>
+                    {!client.active && (
+                      <span className="ml-2 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Inactive</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                    {b?.hoursAllocated != null ? b.hoursAllocated.toLocaleString() : <Dash />}
+                  </td>
+                  <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                    {b?.budgetAmount != null ? `$${b.budgetAmount.toLocaleString()}` : <Dash />}
+                  </td>
+                  <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                    {b && b.extraBudget > 0 ? (
+                      <div>
+                        <div>${b.extraBudget.toLocaleString()}</div>
+                        {b.extraStartDate && (
+                          <div className="text-[11px] text-slate-400 font-normal">{periodLabel(b.extraStartDate, b.extraEndDate)}</div>
                         )}
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                      </div>
+                    ) : <Dash />}
+                  </td>
+                  <td className="px-5 py-3.5 text-xs text-slate-500">
+                    {b ? periodLabel(b.startDate, b.budgetEndDate) : <span className="text-slate-400">No budget set</span>}
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    <button
+                      onClick={e => { e.stopPropagation(); setSelectedId(client.id) }}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      {b ? 'View / edit' : 'Set budget'}
+                    </button>
+                  </td>
+                </tr>
               )
             })}
           </tbody>
         </table>
+      </div>
+
+      {selected && <ClientBudgetModal client={selected} onClose={() => setSelectedId(null)} />}
+    </div>
+  )
+}
+
+// ── Modal: view what's set, or switch to the full edit form ──────────────────
+function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onClose: () => void }) {
+  const router = useRouter()
+  const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const b = client.budget
+
+  // After a save (or cancel) inside the form, return to the view and pull the
+  // fresh values so the popup reflects the change without closing.
+  function backToView() {
+    setMode('view')
+    router.refresh()
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+          <h2 className="text-base font-semibold text-slate-900">{client.name}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div className="p-6">
+          {mode === 'view' ? (
+            <ViewBudget client={client} onEdit={() => setMode('edit')} />
+          ) : (
+            <div className="space-y-4">
+              <BudgetForm
+                client={{ id: client.id, name: client.name }}
+                current={b ? {
+                  hoursAllocated: b.hoursAllocated,
+                  budgetAmount: b.budgetAmount,
+                  extraBudget: b.extraBudget,
+                  startDate: b.startDate,
+                  budgetEndDate: b.budgetEndDate,
+                  extraStartDate: b.extraStartDate,
+                  extraEndDate: b.extraEndDate,
+                } : null}
+                onClose={backToView}
+              />
+              {client.projectBudgets.length > 0 && (
+                <ProjectBudgets clientId={client.id} projects={client.projectBudgets} onSaved={() => router.refresh()} />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Read-only summary — shows ONLY the fields this client actually has set.
+function ViewBudget({ client, onEdit }: { client: ClientWithBudget; onEdit: () => void }) {
+  const b = client.budget
+  const projectHours = client.projectBudgets.filter(p => p.hours != null)
+
+  if (!b) {
+    return (
+      <div className="space-y-5">
+        <p className="text-sm text-slate-500">No budget set for this client yet.</p>
+        <div className="flex justify-end">
+          <button onClick={onEdit} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">Set budget</button>
+        </div>
+      </div>
+    )
+  }
+
+  const rows: { label: string; value: ReactNode }[] = []
+  if (b.hoursAllocated != null) rows.push({ label: 'Hours allocated', value: b.hoursAllocated.toLocaleString() })
+  if (b.budgetAmount != null) rows.push({ label: 'Budget', value: `$${b.budgetAmount.toLocaleString()}` })
+  rows.push({ label: 'Budget period', value: periodLabel(b.startDate, b.budgetEndDate) })
+  if (b.extraBudget > 0) {
+    rows.push({ label: 'Extra budget', value: `$${b.extraBudget.toLocaleString()}` })
+    if (b.extraStartDate) rows.push({ label: 'Extra period', value: periodLabel(b.extraStartDate, b.extraEndDate) })
+  }
+
+  return (
+    <div className="space-y-6">
+      <dl className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center justify-between gap-4 px-4 py-3">
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{r.label}</dt>
+            <dd className="text-sm font-semibold text-slate-800 tabular-nums text-right">{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {projectHours.length > 0 && (
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Budget hours per project</div>
+          <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+            {projectHours.map(p => (
+              <div key={p.project} className="flex items-center justify-between gap-4 px-4 py-2.5">
+                <span className="text-sm text-slate-700">{p.project}</span>
+                <span className="text-sm font-semibold tabular-nums text-slate-800">{p.hours!.toLocaleString()} h</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <button onClick={onEdit} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">Edit</button>
       </div>
     </div>
   )
