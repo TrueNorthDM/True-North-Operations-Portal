@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BudgetForm } from './BudgetForm'
+import { ProjectBudgets, type ProjectBudget } from './ProjectBudgets'
 
 export interface ClientWithBudget {
   id: number
@@ -18,6 +19,8 @@ export interface ClientWithBudget {
     extraStartDate: string | null
     extraEndDate: string | null
   } | null
+  // Per-project budget-hours guide (populated for i7; empty for other clients).
+  projectBudgets: ProjectBudget[]
 }
 
 interface Props {
@@ -130,6 +133,9 @@ export function ClientsTab({ clients }: Props) {
                           } : null}
                           onClose={handleClose}
                         />
+                        {client.projectBudgets.length > 0 && (
+                          <ProjectBudgets clientId={client.id} projects={client.projectBudgets} onSaved={handleClose} />
+                        )}
                       </td>
                     </tr>
                   )}

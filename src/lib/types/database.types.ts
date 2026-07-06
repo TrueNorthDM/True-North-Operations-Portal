@@ -175,6 +175,19 @@ export type TrAssignmentRow = {
   created_at: string
 }
 
+// Per-project budgeted HOURS (a guide under the client-level $ budget).
+export type TrProjectBudgetRow = {
+  id: number
+  client_id: number
+  project: string
+  hours_allocated: number
+  effective_from: string
+  effective_to: string | null
+  justification: string
+  created_by: string | null
+  created_at: string
+}
+
 // Immutable audit trail for every change to tr_budgets / tr_assignments.
 export type TrAuditLogRow = {
   id: number
@@ -353,6 +366,25 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'tr_assignments_client_id_fkey'
+            columns: ['client_id']
+            isOneToOne: false
+            referencedRelation: 'tr_clients'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tr_project_budgets: {
+        Row: TrProjectBudgetRow
+        Insert: Omit<TrProjectBudgetRow, 'id' | 'effective_to' | 'created_at' | 'created_by'> & {
+          id?: number
+          effective_to?: string | null
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: Partial<Omit<TrProjectBudgetRow, 'id' | 'created_at'>>
+        Relationships: [
+          {
+            foreignKeyName: 'tr_project_budgets_client_id_fkey'
             columns: ['client_id']
             isOneToOne: false
             referencedRelation: 'tr_clients'

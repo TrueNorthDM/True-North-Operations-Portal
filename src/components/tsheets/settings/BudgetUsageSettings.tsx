@@ -4,6 +4,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/role'
+import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import { SettingsTabs } from './SettingsTabs'
 import type { ClientWithBudget } from './ClientsTab'
 import type { PersonWithAssignments } from './PeopleTab'
@@ -30,6 +31,7 @@ export async function BudgetUsageSettings() {
     { data: directoryRaw },
     { data: memberRows },
     { data: teamRows },
+    { data: projBudgetsRaw },
   ] = await Promise.all([
     // Only real clients (top-level job codes) — children like "Content"/"SEO"
     // are activities, not clients you budget or bill against.
@@ -62,7 +64,16 @@ export async function BudgetUsageSettings() {
       .order('full_name'),
     supabase.from('team_members').select('person_id, team_id'),
     supabase.from('teams').select('id, name'),
+    supabase.from('tr_project_budgets').select('client_id, project, hours_allocated').is('effective_to', null),
   ])
+
+  // clientId → project → budgeted hours
+  const projHoursByClient = new Map<number, Map<string, number>>()
+  for (const pb of (projBudgetsRaw ?? [])) {
+    const m = projHoursByClient.get(pb.client_id) ?? new Map<string, number>()
+    m.set(pb.project, Number(pb.hours_allocated))
+    projHoursByClient.set(pb.client_id, m)
+  }
 
   // personId → [team names]
   const teamNameById = new Map((teamRows ?? []).map(t => [t.id, t.name]))
@@ -85,6 +96,12 @@ export async function BudgetUsageSettings() {
   const budgetMap = new Map((budgets ?? []).map(b => [b.client_id, b]))
   const clients: ClientWithBudget[] = (clientsRaw ?? []).map(c => {
     const b = budgetMap.get(c.id)
+    // Only the i7 client is broken into projects (matched by name).
+    const isI7 = /i7/i.test(c.name)
+    const saved = projHoursByClient.get(c.id)
+    const projectBudgets = isI7
+      ? I7_PROJECTS.map(p => ({ project: p, hours: saved?.get(p) ?? null }))
+      : []
     return {
       id: c.id,
       name: c.name,
@@ -101,6 +118,7 @@ export async function BudgetUsageSettings() {
             extraEndDate: b.extra_end_date,
           }
         : null,
+      projectBudgets,
     }
   })
 

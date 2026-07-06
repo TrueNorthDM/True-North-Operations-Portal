@@ -157,6 +157,68 @@ export async function saveTrBudget(input: {
   return { ok: true }
 }
 
+// ─── Project budget hours (the guide, one level below the client $ budget) ────
+
+export async function saveProjectBudget(input: {
+  clientId: number
+  project: string
+  hoursAllocated: number
+  effectiveFrom: string   // YYYY-MM-DD (first of month)
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Close the current active hours for this project
+  const { data: current } = await supabase
+    .from('tr_project_budgets')
+    .select('*')
+    .eq('client_id', input.clientId)
+    .eq('project', input.project)
+    .is('effective_to', null)
+    .maybeSingle()
+
+  if (current) {
+    const closeDate = new Date(input.effectiveFrom)
+    closeDate.setDate(closeDate.getDate() - 1)
+    const { error } = await supabase
+      .from('tr_project_budgets')
+      .update({ effective_to: closeDate.toISOString().slice(0, 10) })
+      .eq('id', current.id)
+    if (error) return { ok: false, error: error.message }
+  }
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from('tr_project_budgets')
+    .insert({
+      client_id: input.clientId,
+      project: input.project,
+      hours_allocated: input.hoursAllocated,
+      effective_from: input.effectiveFrom,
+      justification: input.justification,
+      created_by: user?.id,
+    })
+    .select()
+    .single()
+  if (insertErr) return { ok: false, error: insertErr.message }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'project_budget',
+    entity_id: inserted.id,
+    action: current ? 'update' : 'create',
+    before_data: current ?? null,
+    after_data: inserted,
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/settings')
+  return { ok: true }
+}
+
 // ─── Assignment (rate history) ────────────────────────────────────────────────
 
 export async function saveTrAssignment(input: {

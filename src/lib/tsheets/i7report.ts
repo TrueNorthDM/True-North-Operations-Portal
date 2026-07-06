@@ -14,6 +14,9 @@ export const I7_PARENT_JOBCODE_ID = 21152466
 const I7_CODE_CF = '129628'
 const ACTIVITY_CF = '19156'
 
+// The four i7 projects (top level of the report + budget-hours guide targets).
+export const I7_PROJECTS = ['i7 Marketing', 'Moisture Meters (MME)', 'Wagner Meters (WM)', 'Bessemeter'] as const
+
 const NO_CODE = '(no code)'
 const NO_ACTIVITY = '(no activity)'
 
