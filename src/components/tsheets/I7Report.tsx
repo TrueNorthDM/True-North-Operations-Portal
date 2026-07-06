@@ -347,10 +347,10 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
   return (
     <div>
       <div className="mb-2 text-xs font-semibold text-slate-500">{label}</div>
-      <div className="relative pt-7">
+      <div className="relative pt-9">
         {has && (
           <div className="absolute top-0" style={{ left: `${fillPct}%`, transform: markerShift }}>
-            <span className="text-lg font-extrabold text-slate-900 tabular-nums whitespace-nowrap">{money(actual)}</span>
+            <span className="text-2xl font-bold text-slate-900 tabular-nums whitespace-nowrap">{money(actual)}</span>
           </div>
         )}
         <div className="relative h-3 rounded-full bg-slate-100 overflow-hidden">
