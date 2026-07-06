@@ -5,7 +5,7 @@
 // column, filled at every level. Hours/cost/budget roll up at each level. Data
 // is computed server-side and passed in.
 
-import { useState, Fragment } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import type { I7Report, I7Carryover, PersonHours } from '@/lib/tsheets/types'
 
@@ -330,18 +330,41 @@ function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: string 
   )
 }
 
-// Usage progress bar. The fill is a green→amber→red gradient whose colours map
-// to fixed budget-% positions (yellowing past ~50%, red toward/over 100%), and
-// the used $ rides the bar as a marker at the fill's end.
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+
+// Usage progress bar. The track holds a fixed green→amber→red gradient (colours
+// map to real budget-% positions — yellowing past ~50%, red toward/over 100%);
+// a grey mask reveals it up to the used %. On mount it fills from 0 → used while
+// the $ counts up (ease-out), and a soft shimmer sweeps the filled part. All of
+// it is skipped under prefers-reduced-motion.
 function Meter({ label, actual, budget }: { label: string; actual: number; budget: number | null }) {
   const has = budget != null && budget > 0
-  const pct = has ? actual / budget! : 0
-  const fillPct = Math.min(100, Math.max(0, pct * 100))
-  const remaining = has ? budget! - actual : 0
-  // Size the gradient so it always spans the FULL track (not just the fill), so
-  // a given colour sits at a fixed % of budget regardless of how full the bar is.
-  const gradientSize = fillPct > 0 ? (100 / fillPct) * 100 : 100
-  // Keep the marker label inside the track at the extremes.
+  const finalPct = has ? actual / budget! : 0
+  const finalFill = Math.min(100, Math.max(0, finalPct * 100))
+
+  const [t, setT] = useState(0)       // 0 → 1 entrance progress
+  const [motion, setMotion] = useState(true)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setMotion(false); setT(1); return
+    }
+    let raf = 0, start = 0
+    const dur = 1000
+    const tick = (now: number) => {
+      if (!start) start = now
+      const p = Math.min(1, (now - start) / dur)
+      setT(easeOutCubic(p))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [actual, budget])                // re-fill when the month/data changes
+
+  const fillPct = finalFill * t
+  const shownActual = actual * t
+  const shownRemaining = has ? budget! - shownActual : 0
+  const shownPct = has ? shownActual / budget! : 0
   const markerShift = fillPct < 12 ? 'translateX(0)' : fillPct > 88 ? 'translateX(-100%)' : 'translateX(-50%)'
 
   return (
@@ -350,29 +373,31 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
       <div className="relative pt-5">
         {has && (
           <div className="absolute top-0" style={{ left: `${fillPct}%`, transform: markerShift }}>
-            <span className="text-xs font-bold text-slate-900 tabular-nums whitespace-nowrap">{money(actual)}</span>
+            <span className="text-xs font-bold text-slate-900 tabular-nums whitespace-nowrap">{money(shownActual)}</span>
           </div>
         )}
-        <div className="relative h-3 rounded-full bg-slate-100 overflow-hidden">
-          {has && (
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${fillPct}%`,
-                backgroundImage: 'linear-gradient(90deg, #10b981 0%, #10b981 50%, #f59e0b 75%, #ef4444 100%)',
-                backgroundSize: `${gradientSize}% 100%`,
-                backgroundPosition: 'left center',
-              }}
-            />
+        <div
+          className="relative h-3 rounded-full overflow-hidden"
+          style={has
+            ? { backgroundImage: 'linear-gradient(90deg, #10b981 0%, #10b981 50%, #f59e0b 75%, #ef4444 100%)' }
+            : { backgroundColor: '#f1f5f9' }}
+        >
+          {/* grey mask over the not-yet-used portion */}
+          {has && <div className="absolute inset-y-0 right-0 bg-slate-100" style={{ left: `${fillPct}%` }} />}
+          {/* shimmer, clipped to the filled portion */}
+          {has && motion && fillPct > 0 && (
+            <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: `${fillPct}%` }}>
+              <span className="tr-shimmer" aria-hidden="true" />
+            </div>
           )}
         </div>
       </div>
       <div className="flex justify-between mt-1.5 text-xs">
         {has ? (
           <>
-            <span className="font-bold text-slate-900 tabular-nums">{Math.round(pct * 100)}% used</span>
-            <span className={remaining < 0 ? 'text-red-600 font-medium' : 'text-slate-400'}>
-              {remaining < 0 ? `${money(-remaining)} over` : `${money(remaining)} remaining`}
+            <span className="font-bold text-slate-900 tabular-nums">{Math.round(shownPct * 100)}% used</span>
+            <span className={shownRemaining < 0 ? 'text-red-600 font-medium' : 'text-slate-400'}>
+              {shownRemaining < 0 ? `${money(-shownRemaining)} over` : `${money(shownRemaining)} remaining`}
             </span>
           </>
         ) : (

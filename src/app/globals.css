@@ -220,3 +220,26 @@ h1, h2, h3 {
   height: 18px;
   border-left: 2px solid var(--thread, var(--org-thread));
 }
+
+/* ── Budget usage bar — soft sheen sweeping across the filled portion ─────────
+   Confined to its clipped parent (the filled area), transform-only so it stays
+   on the compositor. Disabled under reduced-motion. */
+.tr-shimmer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+  transform: translateX(-120%);
+  animation: tr-shimmer-sweep 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes tr-shimmer-sweep {
+  0% { transform: translateX(-120%); }
+  55% { transform: translateX(340%); }
+  100% { transform: translateX(340%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tr-shimmer { animation: none; display: none; }
+}
