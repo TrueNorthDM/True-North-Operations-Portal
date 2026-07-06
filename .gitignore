@@ -51,3 +51,6 @@ supabase/.temp/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Reference material (client PDFs) — keep local, not in the repo
+Monthly i7 pdfs/
