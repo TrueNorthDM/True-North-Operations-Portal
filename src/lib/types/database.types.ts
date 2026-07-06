@@ -175,6 +175,17 @@ export type TrAssignmentRow = {
   created_at: string
 }
 
+// i7 monthly $ budget (base + extra) — the bank-account ledger's inflows.
+export type I7MonthlyBudgetRow = {
+  id: number
+  month: string
+  budget_amount: number
+  extra_amount: number
+  justification: string
+  created_by: string | null
+  created_at: string
+}
+
 // Per-project budgeted HOURS (a guide under the client-level $ budget).
 export type TrProjectBudgetRow = {
   id: number
@@ -372,6 +383,16 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      i7_monthly_budget: {
+        Row: I7MonthlyBudgetRow
+        Insert: Omit<I7MonthlyBudgetRow, 'id' | 'created_at' | 'created_by'> & {
+          id?: number
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: Partial<Omit<I7MonthlyBudgetRow, 'id' | 'created_at'>>
+        Relationships: []
       }
       tr_project_budgets: {
         Row: TrProjectBudgetRow

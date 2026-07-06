@@ -9,7 +9,10 @@ import { monthBounds, currentYearMonth } from '@/lib/tsheets/report'
 import { buildI7Report, i7JobcodeIds, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
-import type { I7Report } from '@/lib/tsheets/types'
+import type { I7Report, I7Carryover } from '@/lib/tsheets/types'
+
+// The carryover fetches Jan → the selected month, so give the route headroom.
+export const maxDuration = 60
 
 // Sample tree shown when no API token is configured, so the structure is visible.
 const MOCK_I7: I7Report = {
@@ -90,7 +93,14 @@ export default async function TimeReportPage({ searchParams }: Props) {
       </div>
 
       {!token ? (
-        <I7ReportView data={MOCK_I7} selectedMonth={selectedMonth} availableMonths={availableMonths} preview />
+        <I7ReportView
+          data={MOCK_I7}
+          selectedMonth={selectedMonth}
+          availableMonths={availableMonths}
+          projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
+          carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300 }}
+          preview
+        />
       ) : (
         <ReportView token={token} selectedMonth={selectedMonth} availableMonths={availableMonths} />
       )}
@@ -98,27 +108,75 @@ export default async function TimeReportPage({ searchParams }: Props) {
   )
 }
 
+interface Assignment { userId: number; rate: number; from: string; to: string | null }
+
+/** The rate for a user during a given month (YYYY-MM), honoring rate history. */
+function rateFor(assignments: Assignment[], userId: number, ym: string): number {
+  const ms = `${ym}-01`, me = `${ym}-31`
+  let best: Assignment | null = null
+  for (const a of assignments) {
+    if (a.userId !== userId) continue
+    if (a.from > me) continue
+    if (a.to && a.to < ms) continue
+    if (!best || a.from > best.from) best = a
+  }
+  return best ? best.rate : 0
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+
 async function ReportView({ token, selectedMonth, availableMonths }: {
   token: string
   selectedMonth: string
   availableMonths: string[]
 }) {
   const { startDate, endDate } = monthBounds(selectedMonth)
+  const year = selectedMonth.slice(0, 4)
+  const selM = Number(selectedMonth.slice(5, 7))
+  const carryStart = `${year}-01-01`   // carryover runs from January of the selected year
 
   let report: I7Report | null = null
+  let projectHours: Record<string, number> = {}
+  let carryover: I7Carryover | null = null
   let fetchError: string | null = null
 
   try {
+    // One range fetch (Jan … selected month) covers both the tree and the carryover.
     const [users, jobcodes, timesheets] = await Promise.all([
       fetchUsers(token),
       fetchJobcodes(token),
-      fetchTimesheets(token, startDate, endDate),
+      fetchTimesheets(token, carryStart, endDate),
     ])
+    const [assignments, monthlyBudgets, projHours] = await Promise.all([
+      loadI7Assignments(),
+      loadMonthlyBudgets(),
+      loadProjectHours(),
+    ])
+    projectHours = projHours
+
     const i7Ids = i7JobcodeIds(jobcodes)
-    const i7Timesheets = timesheets.filter(t => i7Ids.has(t.jobcode_id))
+    const i7ts = timesheets.filter(t => i7Ids.has(t.jobcode_id))
     const namesByUser = Object.fromEntries(users.map(u => [u.id, u.first_name]))
-    const rates = await loadI7Rates(startDate, endDate)
-    report = buildI7Report(i7Timesheets, rates, namesByUser, startDate)
+
+    // Selected month's tree (using that month's rates)
+    const selTs = i7ts.filter(t => t.date.slice(0, 7) === selectedMonth)
+    const ratesSel: Record<number, number> = Object.fromEntries(users.map(u => [u.id, rateFor(assignments, u.id, selectedMonth)]))
+    report = buildI7Report(selTs, ratesSel, namesByUser, startDate)
+
+    // Carryover: cumulative budget − cost for the months before the selected one
+    let cumBudget = 0, cumCost = 0
+    for (let m = 1; m < selM; m++) {
+      const ym = `${year}-${String(m).padStart(2, '0')}`
+      const cost = i7ts.filter(t => t.date.slice(0, 7) === ym)
+        .reduce((s, t) => s + (t.duration / 3600) * rateFor(assignments, t.user_id, ym), 0)
+      cumBudget += monthlyBudgets[ym] ?? 0
+      cumCost += cost
+    }
+    const opening = round2(cumBudget - cumCost)
+    const monthBudget = monthlyBudgets[selectedMonth] ?? 0
+    const monthUsed = report.totalCost
+    const totalAvailable = round2(opening + monthBudget)
+    carryover = { opening, monthBudget, monthUsed, totalAvailable, totalLeft: round2(totalAvailable - monthUsed) }
   } catch (e) {
     fetchError = e instanceof Error ? e.message : 'Unknown error fetching from TSheets.'
   }
@@ -146,32 +204,34 @@ async function ReportView({ token, selectedMonth, availableMonths }: {
     )
   }
 
-  return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} />
+  return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} projectHours={projectHours} carryover={carryover} />
 }
 
-// Per-person i7 hourly rate in effect during the period (respects rate history).
-async function loadI7Rates(startDate: string, endDate: string): Promise<Record<number, number>> {
+// All i7 rate assignments (for month-by-month rate resolution across the year).
+async function loadI7Assignments(): Promise<Assignment[]> {
   const supabase = await createClient()
-  const { data: i7 } = await supabase
-    .from('tr_clients')
-    .select('id')
-    .eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID)
-    .maybeSingle()
+  const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
+  if (!i7) return []
+  const { data } = await supabase.from('tr_assignments').select('tsheets_user_id, hourly_rate, effective_from, effective_to').eq('client_id', i7.id)
+  return (data ?? []).map(a => ({ userId: a.tsheets_user_id, rate: Number(a.hourly_rate), from: a.effective_from, to: a.effective_to }))
+}
+
+// ym → this month's total $ budget (base + extra).
+async function loadMonthlyBudgets(): Promise<Record<string, number>> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount')
+  const out: Record<string, number> = {}
+  for (const b of data ?? []) out[String(b.month).slice(0, 7)] = Number(b.budget_amount) + Number(b.extra_amount)
+  return out
+}
+
+// project → active budgeted hours (the guide).
+async function loadProjectHours(): Promise<Record<string, number>> {
+  const supabase = await createClient()
+  const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
   if (!i7) return {}
-
-  const { data: rows } = await supabase
-    .from('tr_assignments')
-    .select('tsheets_user_id, hourly_rate, effective_from, effective_to')
-    .eq('client_id', i7.id)
-
-  const best = new Map<number, { from: string; rate: number }>()
-  for (const a of rows ?? []) {
-    if (a.effective_from > endDate) continue
-    if (a.effective_to && a.effective_to < startDate) continue
-    const cur = best.get(a.tsheets_user_id)
-    if (!cur || a.effective_from > cur.from) best.set(a.tsheets_user_id, { from: a.effective_from, rate: Number(a.hourly_rate) })
-  }
-  const out: Record<number, number> = {}
-  for (const [u, v] of best) out[u] = v.rate
+  const { data } = await supabase.from('tr_project_budgets').select('project, hours_allocated').eq('client_id', i7.id).is('effective_to', null)
+  const out: Record<string, number> = {}
+  for (const p of data ?? []) out[p.project] = Number(p.hours_allocated)
   return out
 }

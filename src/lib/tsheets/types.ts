@@ -53,6 +53,15 @@ export interface I7Report {
   hasRates: boolean
 }
 
+// Bank-account style running balance for the i7 $ budget.
+export interface I7Carryover {
+  opening: number         // balance carried in (Σ budget − Σ cost, Jan … prev month)
+  monthBudget: number     // this month's budget ($ base + extra)
+  monthUsed: number       // this month's cost
+  totalAvailable: number  // opening + monthBudget
+  totalLeft: number       // totalAvailable − monthUsed (this month's closing balance)
+}
+
 // Generic paginated response wrapper
 export interface TsheetsPage<T> {
   results: T

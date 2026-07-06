@@ -6,13 +6,15 @@
 
 import { useState, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
-import type { I7Report } from '@/lib/tsheets/types'
+import type { I7Report, I7Carryover } from '@/lib/tsheets/types'
 
 interface Props {
   data: I7Report
   selectedMonth: string
   availableMonths: string[]
   preview?: boolean
+  projectHours?: Record<string, number>   // project → budgeted hours (guide)
+  carryover?: I7Carryover | null
 }
 
 function money(n: number): string {
@@ -36,7 +38,7 @@ function Chevron({ open }: { open: boolean }) {
   )
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover }: Props) {
   const router = useRouter()
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
   const [openCodes, setOpenCodes] = useState<Set<string>>(new Set())
@@ -60,6 +62,9 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
   }
 
   const showCost = data.hasRates
+  const showBudget = Object.keys(projectHours).length > 0
+  const totalBudgetHours = Object.values(projectHours).reduce((s, h) => s + h, 0)
+  const cols = 2 + (showBudget ? 2 : 0) + (showCost ? 1 : 0)
   const selectCls = 'px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
 
   return (
@@ -81,6 +86,9 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
         <span className="text-sm text-slate-400 ml-1">{data.startDate} → {data.endDate}</span>
       </div>
 
+      {/* Carryover — bank-account running balance */}
+      {carryover && <CarryoverPanel c={carryover} monthLabel={monthLabel(selectedMonth)} />}
+
       {/* Summary chips */}
       <div className="flex flex-wrap gap-3">
         <Chip label="Total hours" value={data.totalHours.toFixed(2)} />
@@ -94,13 +102,15 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3">Project · Job code · Activity</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-32">Hours used</th>
-              {showCost && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-36">Budget used</th>}
+              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-28">Hours used</th>
+              {showBudget && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-28">Budget hrs</th>}
+              {showBudget && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-28">Hrs avail.</th>}
+              {showCost && <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 w-32">Budget used</th>}
             </tr>
           </thead>
           <tbody>
             {data.projects.length === 0 && (
-              <tr><td colSpan={showCost ? 3 : 2} className="px-4 py-6 text-center text-sm text-slate-400">No i7 hours logged in {monthLabel(selectedMonth)}.</td></tr>
+              <tr><td colSpan={cols} className="px-4 py-6 text-center text-sm text-slate-400">No i7 hours logged in {monthLabel(selectedMonth)}.</td></tr>
             )}
             {data.projects.map(p => {
               const pOpen = openProjects.has(p.project)
@@ -112,6 +122,8 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
                   openCodes={openCodes}
                   openActs={openActs}
                   showCost={showCost}
+                  showBudget={showBudget}
+                  budgetHours={projectHours[p.project] ?? null}
                   onToggleProject={() => toggle(openProjects, p.project, setOpenProjects)}
                   onToggleCode={(code) => toggle(openCodes, `${p.project}|${code}`, setOpenCodes)}
                   onToggleAct={(code, act) => toggle(openActs, `${p.project}|${code}|${act}`, setOpenActs)}
@@ -123,6 +135,8 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
             <tr className="border-t-2 border-slate-300 bg-slate-100">
               <td className="px-4 py-3 font-bold text-slate-900">Total</td>
               <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums">{data.totalHours.toFixed(2)}</td>
+              {showBudget && <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '—'}</td>}
+              {showBudget && <td className={`px-4 py-3 text-right font-bold tabular-nums ${totalBudgetHours - data.totalHours < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? (totalBudgetHours - data.totalHours).toFixed(2) : '—'}</td>}
               {showCost && <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums">{money(data.totalCost)}</td>}
             </tr>
           </tfoot>
@@ -143,19 +157,24 @@ export function I7Report({ data, selectedMonth, availableMonths, preview }: Prop
   )
 }
 
-function ProjectRows({ project, pOpen, openCodes, openActs, showCost, onToggleProject, onToggleCode, onToggleAct }: {
+function ProjectRows({ project, pOpen, openCodes, openActs, showCost, showBudget, budgetHours, onToggleProject, onToggleCode, onToggleAct }: {
   project: I7Report['projects'][number]
   pOpen: boolean
   openCodes: Set<string>
   openActs: Set<string>
   showCost: boolean
+  showBudget: boolean
+  budgetHours: number | null
   onToggleProject: () => void
   onToggleCode: (code: string) => void
   onToggleAct: (code: string, act: string) => void
 }) {
+  const avail = budgetHours != null ? budgetHours - project.hours : null
+  // Empty budget cells to keep alignment on job-code / activity / person rows.
+  const emptyBudget = showBudget ? <><td /><td /></> : null
   return (
     <>
-      {/* Level 1 — Project */}
+      {/* Level 1 — Project (budget hrs + hrs available live here) */}
       <tr className="border-b border-slate-100 hover:bg-slate-50/60 cursor-pointer" onClick={onToggleProject}>
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
@@ -165,6 +184,8 @@ function ProjectRows({ project, pOpen, openCodes, openActs, showCost, onTogglePr
           </div>
         </td>
         <td className="px-4 py-3 text-right font-semibold text-slate-900 tabular-nums">{fmtHours(project.hours)}</td>
+        {showBudget && <td className="px-4 py-3 text-right text-slate-700 tabular-nums">{budgetHours != null ? budgetHours.toLocaleString() : <span className="text-slate-300">—</span>}</td>}
+        {showBudget && <td className={`px-4 py-3 text-right font-medium tabular-nums ${avail != null && avail < 0 ? 'text-red-600' : 'text-slate-700'}`}>{avail != null ? avail.toFixed(2) : <span className="text-slate-300">—</span>}</td>}
         {showCost && <td className="px-4 py-3 text-right font-semibold text-slate-900 tabular-nums">{project.cost > 0 ? money(project.cost) : <span className="text-slate-300">—</span>}</td>}
       </tr>
 
@@ -182,6 +203,7 @@ function ProjectRows({ project, pOpen, openCodes, openActs, showCost, onTogglePr
                 </div>
               </td>
               <td className="px-4 py-2.5 text-right text-slate-800 tabular-nums">{fmtHours(jc.hours)}</td>
+              {emptyBudget}
               {showCost && <td className="px-4 py-2.5 text-right text-slate-700 tabular-nums">{jc.cost > 0 ? money(jc.cost) : <span className="text-slate-300">—</span>}</td>}
             </tr>
 
@@ -203,6 +225,7 @@ function ProjectRows({ project, pOpen, openCodes, openActs, showCost, onTogglePr
                       </div>
                     </td>
                     <td className="px-4 py-2 text-right text-slate-600 tabular-nums">{fmtHours(a.hours)}</td>
+                    {emptyBudget}
                     {showCost && <td className="px-4 py-2 text-right text-slate-500 tabular-nums">{a.cost > 0 ? money(a.cost) : <span className="text-slate-300">—</span>}</td>}
                   </tr>
 
@@ -211,6 +234,7 @@ function ProjectRows({ project, pOpen, openCodes, openActs, showCost, onTogglePr
                     <tr key={j} className="border-b border-slate-50 bg-slate-50/20">
                       <td className="px-4 py-1.5 text-slate-500 text-[13px]"><span className="pl-24 block">{pp.name}</span></td>
                       <td className="px-4 py-1.5 text-right text-slate-500 tabular-nums text-[13px]">{fmtHours(pp.hours)}</td>
+                      {emptyBudget}
                       {showCost && <td className="px-4 py-1.5 text-right text-slate-400 tabular-nums text-[13px]">{pp.cost > 0 ? money(pp.cost) : <span className="text-slate-300">—</span>}</td>}
                     </tr>
                   ))}
@@ -221,6 +245,35 @@ function ProjectRows({ project, pOpen, openCodes, openActs, showCost, onTogglePr
         )
       })}
     </>
+  )
+}
+
+// ── Carryover panel — bank-account running balance ──────────────────────────
+function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: string }) {
+  const neg = c.totalLeft < 0
+  const money0 = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US')
+  const Item = ({ label, value, tone }: { label: string; value: string; tone?: 'muted' | 'strong' | 'bad' | 'good' }) => (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</div>
+      <div className={`text-lg font-bold tabular-nums ${tone === 'bad' ? 'text-red-600' : tone === 'good' ? 'text-emerald-600' : tone === 'muted' ? 'text-slate-500' : 'text-slate-900'}`}>{value}</div>
+    </div>
+  )
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Budget balance · {monthLabel}</div>
+      <div className="flex items-center gap-3 flex-wrap text-slate-400">
+        <Item label="Carried in" value={money0(c.opening)} tone={c.opening < 0 ? 'bad' : 'muted'} />
+        <span className="text-xl font-light">+</span>
+        <Item label="This month" value={money0(c.monthBudget)} />
+        <span className="text-xl font-light">=</span>
+        <Item label="Available" value={money0(c.totalAvailable)} tone="strong" />
+        <span className="text-xl font-light">−</span>
+        <Item label="Used" value={money0(c.monthUsed)} />
+        <span className="text-xl font-light">=</span>
+        <Item label="Balance left" value={money0(c.totalLeft)} tone={neg ? 'bad' : 'good'} />
+      </div>
+      {neg && <p className="text-xs text-red-500 mt-3">Over budget — this closing balance carries into next month.</p>}
+    </div>
   )
 }
 
