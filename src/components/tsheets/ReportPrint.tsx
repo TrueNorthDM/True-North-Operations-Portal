@@ -34,6 +34,11 @@ function Star() {
 
 export function ReportPrint({ report, projectHours, carryover, stdRate, trend, type, monthLabel, generatedOn, note }: Props) {
   useEffect(() => {
+    // Force light: a client PDF must never render in the portal's dark theme
+    // (dark bg + light text prints blank once the browser drops backgrounds).
+    // theme-init.js already skips dark here; this covers cached scripts / SPA nav.
+    document.documentElement.classList.remove('dark')
+    document.documentElement.style.colorScheme = 'light'
     const t = setTimeout(() => window.print(), 700) // let the SVG charts paint first
     return () => clearTimeout(t)
   }, [])
