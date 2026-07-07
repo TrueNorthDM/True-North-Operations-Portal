@@ -8,7 +8,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { I7Charts } from './I7Charts'
-import type { I7Report, I7Carryover, PersonHours } from '@/lib/tsheets/types'
+import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
 
 interface Props {
   data: I7Report
@@ -18,6 +18,7 @@ interface Props {
   projectHours?: Record<string, number>   // project → budgeted hours (guide)
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
+  trend?: I7TrendPoint[]                  // Jan → selected month, for the charts
 }
 
 function money(n: number): string {
@@ -61,7 +62,7 @@ function PersonCells({ people, byPerson, muted }: { people: string[]; byPerson: 
   )
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0 }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [] }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -131,7 +132,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       </div>
 
       {view === 'graphics' ? (
-        <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} />
+        <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} trend={trend} />
       ) : (
       <>
       {/* Carryover — bank-account running balance */}

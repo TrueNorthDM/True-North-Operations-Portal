@@ -68,6 +68,15 @@ export interface I7Report {
   hasRates: boolean
 }
 
+// One month of the trend series (January → selected month), for the charts.
+export interface I7TrendPoint {
+  month: string      // YYYY-MM
+  hours: number      // i7 hours used that month
+  cost: number       // actual $ cost that month
+  budget: number     // that month's $ budget (base + extra)
+  balance: number    // running balance through that month (Σ budget − Σ cost)
+}
+
 // Bank-account style running balance for the i7 $ budget.
 export interface I7Carryover {
   opening: number         // balance carried in (Σ budget − Σ cost, Jan … prev month)

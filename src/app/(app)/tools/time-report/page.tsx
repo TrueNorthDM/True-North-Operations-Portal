@@ -10,7 +10,7 @@ import { buildI7Report, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } fr
 import { availableMonths } from '@/lib/tsheets/retention'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
-import type { I7Report, I7Carryover, I7Entry } from '@/lib/tsheets/types'
+import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
 
 // Sample tree shown when no API token is configured, so the structure is visible.
 const MOCK_I7: I7Report = {
@@ -92,6 +92,14 @@ export default async function TimeReportPage({ searchParams }: Props) {
           projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
           carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300 }}
           stdRate={95}
+          trend={[
+            { month: '2026-01', hours: 300, cost: 34000, budget: 50000, balance: 16000 },
+            { month: '2026-02', hours: 280, cost: 31000, budget: 45000, balance: 30000 },
+            { month: '2026-03', hours: 320, cost: 38000, budget: 45000, balance: 37000 },
+            { month: '2026-04', hours: 360, cost: 42000, budget: 45000, balance: 40000 },
+            { month: '2026-05', hours: 300, cost: 36000, budget: 45000, balance: 49000 },
+            { month: '2026-06', hours: 340, cost: 41000, budget: 45000, balance: 53000 },
+          ]}
           preview
         />
       ) : (
@@ -151,6 +159,7 @@ async function ReportView({ selectedMonth, availableMonths }: {
   let report: I7Report | null = null
   let projectHours: Record<string, number> = {}
   let carryover: I7Carryover | null = null
+  let trend: I7TrendPoint[] = []
   let stdRate = 0
   let fetchError: string | null = null
 
@@ -206,6 +215,19 @@ async function ReportView({ selectedMonth, availableMonths }: {
     const monthUsed = report.totalCost
     const totalAvailable = round2(opening + monthBudget)
     carryover = { opening, monthBudget, monthUsed, totalAvailable, totalLeft: round2(totalAvailable - monthUsed) }
+
+    // Trend series — January → selected month, from the same cached entries (for
+    // the "In Graphics" line chart). Balance is the running Σ budget − Σ cost.
+    let tB = 0, tC = 0
+    for (let m = 1; m <= selM; m++) {
+      const ym = `${year}-${String(m).padStart(2, '0')}`
+      const me = entries.filter(e => e.date.slice(0, 7) === ym)
+      const h = me.reduce((s, e) => s + e.duration / 3600, 0)
+      const c = me.reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.user_id, ym), 0)
+      const b = monthlyBudgets[ym] ?? 0
+      tB += b; tC += c
+      trend.push({ month: ym, hours: round2(h), cost: round2(c), budget: b, balance: round2(tB - tC) })
+    }
   } catch (e) {
     fetchError = e instanceof Error ? e.message : 'Unknown error reading the report.'
   }
@@ -233,7 +255,7 @@ async function ReportView({ selectedMonth, availableMonths }: {
     )
   }
 
-  return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} projectHours={projectHours} carryover={carryover} stdRate={stdRate} />
+  return <I7ReportView data={report} selectedMonth={selectedMonth} availableMonths={availableMonths} projectHours={projectHours} carryover={carryover} stdRate={stdRate} trend={trend} />
 }
 
 // Cached i7 timesheet entries for a date range. Paginates because PostgREST caps
