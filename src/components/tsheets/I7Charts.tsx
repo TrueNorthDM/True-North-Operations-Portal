@@ -30,13 +30,13 @@ interface Props {
   variant?: 'full' | 'client'
 }
 
-function Card({ title, subtitle, className = '', legend, children }: { title: string; subtitle?: string; className?: string; legend?: ReactNode; children: ReactNode }) {
+function Card({ title, subtitle, className = '', legend, children, dense = false }: { title: string; subtitle?: string; className?: string; legend?: ReactNode; children: ReactNode; dense?: boolean }) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-5 ${className}`}>
-      <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
+    <div className={`rounded-2xl border border-slate-200 bg-white ${dense ? 'p-4' : 'p-5'} ${className}`}>
+      <div className={`${dense ? 'mb-3' : 'mb-4'} flex items-start justify-between gap-3 flex-wrap`}>
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-          {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+          <h3 className={`${dense ? 'text-[11px]' : 'text-sm'} font-semibold text-slate-800`}>{title}</h3>
+          {subtitle && <p className={`${dense ? 'text-[10px]' : 'text-xs'} text-slate-400 mt-0.5`}>{subtitle}</p>}
         </div>
         {legend}
       </div>
@@ -45,12 +45,12 @@ function Card({ title, subtitle, className = '', legend, children }: { title: st
   )
 }
 
-function Legend({ items }: { items: { label: string; color: string; value?: string }[] }) {
+function Legend({ items, dense = false }: { items: { label: string; color: string; value?: string }[]; dense?: boolean }) {
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-600">
+    <div className={`flex flex-wrap gap-x-4 gap-y-1.5 ${dense ? 'text-[10px]' : 'text-xs'} text-slate-600`}>
       {items.map(i => (
         <span key={i.label} className="inline-flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: i.color }} />
+          <span className={`${dense ? 'w-2 h-2' : 'w-2.5 h-2.5'} rounded-sm shrink-0`} style={{ background: i.color }} />
           <span className="whitespace-nowrap">{i.label}{i.value != null && <span className="text-slate-400"> · {i.value}</span>}</span>
         </span>
       ))}
@@ -112,13 +112,13 @@ function Rings({ rows }: { rows: { label: string; pct: number | null }[] }) {
 
 // ── Vertical bars — % of budget used per project (client PDF) ────────────────
 function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours: number; budget: number }[] }) {
-  const H = 132   // px height of the plot area (= 100% of budget)
+  const H = 106   // px height of the plot area (= 100% of budget)
   return (
     <div>
       <div className="relative flex items-end justify-around gap-3" style={{ height: H }}>
         {/* 100%-of-budget reference line */}
         <div className="absolute inset-x-0 top-0 border-t border-dashed border-slate-200" />
-        <span className="absolute right-0 -top-1.5 text-[10px] text-slate-300 bg-white px-1">100%</span>
+        <span className="absolute right-0 -top-1.5 text-[8px] text-slate-300 bg-white px-1">100%</span>
         {rows.map(row => {
           const p = row.pct
           const has = p != null
@@ -126,8 +126,8 @@ function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours
           const color = !has ? '#cbd5e1' : p > 1 ? '#ef4444' : p >= 0.9 ? '#f59e0b' : '#10b981'
           return (
             <div key={row.label} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full">
-              <span className="text-xs tabular-nums mb-1" style={{ color: has ? color : '#94a3b8' }}>{has ? `${Math.round(p * 100)}%` : '—'}</span>
-              <div className="w-full max-w-[52px] rounded-t-md" style={{ height: `${Math.max(fill * H, has ? 3 : 0)}px`, background: color }} />
+              <span className="text-[10px] tabular-nums mb-1" style={{ color: has ? color : '#94a3b8' }}>{has ? `${Math.round(p * 100)}%` : '—'}</span>
+              <div className="w-full max-w-[44px] rounded-t-md" style={{ height: `${Math.max(fill * H, has ? 3 : 0)}px`, background: color }} />
             </div>
           )
         })}
@@ -135,8 +135,8 @@ function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours
       <div className="flex items-start justify-around gap-3 mt-2 border-t border-slate-100 pt-2">
         {rows.map(row => (
           <div key={row.label} className="flex-1 min-w-0 text-center">
-            <div className="text-xs text-slate-500 leading-tight">{row.label}</div>
-            {row.budget > 0 && <div className="text-[10px] tabular-nums text-slate-400 mt-0.5">{fmtHours(row.hours)} / {fmtHours(row.budget)} h</div>}
+            <div className="text-[10px] text-slate-500 leading-tight">{row.label}</div>
+            {row.budget > 0 && <div className="text-[8px] tabular-nums text-slate-400 mt-0.5">{fmtHours(row.hours)} / {fmtHours(row.budget)} h</div>}
           </div>
         ))}
       </div>
@@ -145,16 +145,16 @@ function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours
 }
 
 // ── 100% stacked bar — activity mix per project ─────────────────────────────
-function StackedBars({ rows, colorOf }: { rows: { label: string; total: number; parts: { activity: string; hours: number }[] }[]; colorOf: (a: string) => string }) {
+function StackedBars({ rows, colorOf, dense = false }: { rows: { label: string; total: number; parts: { activity: string; hours: number }[] }[]; colorOf: (a: string) => string; dense?: boolean }) {
   return (
-    <div className="space-y-3">
+    <div className={dense ? 'space-y-2.5' : 'space-y-3'}>
       {rows.filter(r => r.total > 0).map(r => (
         <div key={r.label}>
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-sm text-slate-700">{r.label}</span>
-            <span className="text-xs tabular-nums text-slate-400">{fmtHours(r.total)} h</span>
+            <span className={`${dense ? 'text-[11px]' : 'text-sm'} text-slate-700`}>{r.label}</span>
+            <span className={`${dense ? 'text-[10px]' : 'text-xs'} tabular-nums text-slate-400`}>{fmtHours(r.total)} h</span>
           </div>
-          <div className="flex h-3.5 rounded-full overflow-hidden bg-slate-100">
+          <div className={`flex ${dense ? 'h-3' : 'h-3.5'} rounded-full overflow-hidden bg-slate-100`}>
             {r.parts.map(p => (
               <div key={p.activity} title={`${p.activity}: ${fmtHours(p.hours)} h`} style={{ width: `${(p.hours / r.total) * 100}%`, background: colorOf(p.activity) }} />
             ))}
@@ -216,15 +216,16 @@ export function I7Charts({ data, projectHours, showCost, trend, variant = 'full'
   // Client PDF — just the two charts i7 asked for, stacked full-width.
   if (variant === 'client') {
     return (
-      <div className="space-y-5">
+      <div className="space-y-4">
         <Card
+          dense
           title="Activity mix per project"
           subtitle="How each project’s hours split by activity"
-          legend={<Legend items={actLegend} />}
+          legend={<Legend dense items={actLegend} />}
         >
-          <StackedBars rows={stackedRows} colorOf={colorOf} />
+          <StackedBars dense rows={stackedRows} colorOf={colorOf} />
         </Card>
-        <Card title="% of budget used" subtitle="Hours used ÷ budgeted, per project">
+        <Card dense title="% of budget used" subtitle="Hours used ÷ budgeted, per project">
           <BudgetBars rows={rings} />
         </Card>
       </div>

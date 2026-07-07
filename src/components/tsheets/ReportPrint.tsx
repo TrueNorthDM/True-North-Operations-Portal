@@ -29,7 +29,7 @@ interface Props {
 }
 
 function Star() {
-  return <svg className="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1l2.4 8.6L23 12l-8.6 2.4L12 23l-2.4-8.6L1 12l8.6-2.4z" /></svg>
+  return <svg className="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1l2.4 8.6L23 12l-8.6 2.4L12 23l-2.4-8.6L1 12l8.6-2.4z" /></svg>
 }
 
 export function ReportPrint({ report, projectHours, carryover, stdRate, trend, type, monthLabel, generatedOn, note }: Props) {
@@ -60,7 +60,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
   // point in the trend, so exclude it) — the actual "last 3 months".
   const last3 = trend.slice(-4, -1)
 
-  const th = 'text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2'
+  const th = 'text-right text-[8px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2'
 
   return (
     <div className="min-h-dvh bg-slate-100 py-8 print:bg-white print:py-0">
@@ -76,14 +76,14 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
           <div>
             <div className="flex items-center gap-2">
               <Star />
-              <span className="text-lg font-bold text-slate-900">True North</span>
+              <span className="text-[15px] font-bold text-slate-900">True North</span>
               <span className="text-slate-300">/</span>
-              <span className="text-sm text-slate-500">Operations</span>
+              <span className="text-[11px] text-slate-500">Operations</span>
             </div>
-            <h1 className="mt-3 text-2xl font-bold text-slate-900">i7 Budget Usage Report</h1>
-            <p className="text-slate-500">{monthLabel}{type === 'client' ? ' · Prepared for i7 Marketing' : ' · Internal'}</p>
+            <h1 className="mt-3 text-[19px] font-bold text-slate-900">i7 Budget Usage Report</h1>
+            <p className="text-[13px] text-slate-500">{monthLabel}{type === 'client' ? ' · Prepared for i7 Marketing' : ' · Internal'}</p>
           </div>
-          <div className="text-right text-xs text-slate-400 shrink-0">
+          <div className="text-right text-[10px] text-slate-400 shrink-0">
             <div className="uppercase tracking-wide font-semibold">{type === 'client' ? 'Client report' : 'Internal report'}</div>
             <div className="mt-1">Generated {generatedOn}</div>
           </div>
@@ -92,15 +92,15 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
         {/* Month narrative */}
         {note && (
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 print:break-inside-avoid">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Summary</div>
-            <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{note}</p>
+            <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Summary</div>
+            <p className="text-[11px] text-slate-700 whitespace-pre-line leading-relaxed">{note}</p>
           </div>
         )}
 
         {/* Budget balance */}
         {carryover && (
           <div className="rounded-xl border border-slate-200 p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Budget balance · {monthLabel}</div>
+            <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Budget balance · {monthLabel}</div>
             <div className="flex items-start justify-between gap-4">
               {[
                 { l: 'Carried in', v: moneySigned(carryover.opening), c: carryover.opening < 0 ? 'text-red-600' : 'text-slate-900' },
@@ -109,8 +109,8 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
                 { l: 'Balance left', v: moneySigned(carryover.totalLeft), c: carryover.totalLeft < 0 ? 'text-red-600' : 'text-emerald-600' },
               ].map(x => (
                 <div key={x.l}>
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{x.l}</div>
-                  <div className={`text-xl font-bold tabular-nums ${x.c}`}>{x.v}</div>
+                  <div className="text-[8px] font-semibold uppercase tracking-wide text-slate-400">{x.l}</div>
+                  <div className={`text-[16px] font-bold tabular-nums ${x.c}`}>{x.v}</div>
                 </div>
               ))}
             </div>
@@ -119,12 +119,12 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
 
         {/* Project → job code table */}
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">By project &amp; job code</div>
+          <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-2">By project &amp; job code</div>
           <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-[11px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2">Project · Job code</th>
+                  <th className="text-left text-[8px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2">Project · Job code</th>
                   <th className={th}>Budget hrs</th>
                   <th className={th}>Hrs avail.</th>
                   {showBudgetAvail && <th className={th}>Budget avail.</th>}
@@ -169,12 +169,12 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
         {/* 3-month summary */}
         {last3.length > 0 && (
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Last {last3.length} month{last3.length !== 1 ? 's' : ''}</div>
+            <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Last {last3.length} month{last3.length !== 1 ? 's' : ''}</div>
             <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2">Month</th>
+                    <th className="text-left text-[8px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2">Month</th>
                     <th className={th}>Hours</th>
                     <th className={th}>Cost</th>
                     <th className={th}>Budget</th>
@@ -199,16 +199,16 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
 
         {/* Graphics */}
         <div className="print:break-inside-avoid">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Graphics</div>
+          <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Graphics</div>
           <I7Charts data={report} projectHours={projectHours} totalByPerson={byPerson} showCost={showCost} trend={trend} variant={type === 'client' ? 'client' : 'full'} />
         </div>
 
         {/* Internal-only: hours by person */}
         {type === 'internal' && persons.length > 0 && (
           <div className="print:break-inside-avoid">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Hours by person</div>
+            <div className="text-[8px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Hours by person</div>
             <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full text-[11px]">
                 <tbody>
                   {persons.map(p => (
                     <tr key={p.name} className="border-b border-slate-100 last:border-0">
@@ -222,7 +222,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
           </div>
         )}
 
-        <div className="pt-4 border-t border-slate-200 text-xs text-slate-400">
+        <div className="pt-4 border-t border-slate-200 text-[10px] text-slate-400">
           Hours pulled from QuickBooks Time · budget &amp; rates managed in the True North Operations Portal · generated {generatedOn}
         </div>
       </div>
