@@ -81,7 +81,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
     else { setError(res.error ?? 'Save failed.'); setPending(null) }
   }
 
-  const cellInput = 'w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const cellInput = 'num-cell w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-400'
   const th = 'text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 whitespace-nowrap'
   const rowLabel = 'text-left text-xs font-semibold text-slate-600 px-3 py-2 sticky left-0 whitespace-nowrap'
   const changeCount = diff().changes.length

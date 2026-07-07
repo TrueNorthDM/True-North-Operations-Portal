@@ -243,3 +243,10 @@ h1, h2, h3 {
 @media (prefers-reduced-motion: reduce) {
   .tr-shimmer { animation: none; display: none; }
 }
+
+/* Half-a-digit of breathing room between a right-aligned number and its
+   up/down spinner, so the last digit isn't tucked under the arrows. */
+.num-cell::-webkit-outer-spin-button,
+.num-cell::-webkit-inner-spin-button {
+  margin-left: 0.4em;
+}
