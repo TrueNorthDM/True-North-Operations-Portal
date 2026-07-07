@@ -6,14 +6,13 @@ _Audience: product owner. Last verified: 2026-07-06._
 
 The report's monthly budget and the "Budget balance" carryover come from the
 **`i7_monthly_budget`** table — the per-month schedule (Jan $50k, Feb–Jun $45k,
-Jul–Nov $55k, Dec $50k). That schedule is correct and is what you see driving the
-report.
+Jul–Nov $55k, Dec $50k).
 
-The **Settings → Clients & Budgets** budget modal (the pop-up with "Budget ($)"
-and "Extra budget ($)") edits a **different, legacy** table (`tr_budgets`). The
-report does **not** read it for the monthly budget. That's why it looks out of
-date — it's a leftover from an earlier design and editing it changes nothing in
-the report today.
+**As of 2026-07-06, the Settings → Clients & Budgets → i7 modal edits that same
+`i7_monthly_budget` table** — a month-by-month grid where past months are locked
+and the current month and later are editable. So the screen you edit and the
+numbers the report shows are now the same source of truth. The old single-budget
+form (`tr_budgets`) is no longer used for i7 (other clients still use it).
 
 ## The two budget sources
 
@@ -21,9 +20,9 @@ the report today.
 |---|---|---|
 | **What it is** | One row **per month** with a base amount + optional extra | **One** record per client with a single date range |
 | **Shape** | Jan → $50k, Feb → $45k, … Dec → $50k | $50k base + $5k extra, with start/end dates |
-| **Who reads it** | The report — `loadMonthlyBudgets()` in `src/app/(app)/tools/time-report/page.tsx`, used for each month's budget and the carryover | Nothing in the report. Only shown/edited in Settings |
-| **Where it's edited** | **No UI yet** — seeded directly in the database | Settings → Clients & Budgets → click a client → "Edit" |
-| **Audit trail** | None (DB change) | Yes — justification + `tr_audit_log` |
+| **Who reads it** | The report — `loadMonthlyBudgets()` in `src/app/(app)/tools/time-report/page.tsx`, used for each month's budget and the carryover | Nothing in the report. Only the legacy modal for non-i7 clients |
+| **Where it's edited** | Settings → Clients & Budgets → **i7** → month grid (`MonthlyBudgetGrid`, past months locked) | Settings → Clients & Budgets → a **non-i7** client → "Edit" |
+| **Audit trail** | Yes — justification + `tr_audit_log` (`entity_type='monthly_budget'`) | Yes — justification + `tr_audit_log` |
 
 ## Why the two exist
 
@@ -48,20 +47,26 @@ appears in the Settings modal and now reads as stale.
 `tr_budgets` (legacy, shown in the modal — **not used by the report**):
 $50,000 base (Jul 1 – Dec 31, 2026) + $5,000 extra (Jul 1 – Oct 31, 2026).
 
-## The gap (and the recommended fix)
+## How to change the i7 budget (2026-07-06 onwards)
 
-Right now the **only** budget UI (the Settings modal) edits the **wrong** table,
-and the table the report actually uses has **no UI** — it can only be changed in
-the database. That's the confusion.
+Settings → Tools & Projects → Clients & Budgets → click **2 - i7 Marketing**.
+The modal shows the month grid:
 
-Recommended fix (not yet done): replace the i7 budget modal so it edits the
-**monthly schedule** (`i7_monthly_budget`) — a small month-by-month editor with
-the same justification + audit trail — and retire the legacy `tr_budgets` editor
-for i7. Then the screen you edit and the numbers the report shows are the same
-thing.
+- **Past months are locked** (read-only) — they can't be changed.
+- The **current month and later** are editable. Type the new base and/or extra,
+  click **Review changes**, add a justification, and confirm.
+- Only the months you changed are written, and one entry is added to Change
+  History (see below). The report reflects it immediately.
 
-Until that's built, monthly budget changes are applied directly to
-`i7_monthly_budget` in the database.
+## Change History
+
+Every budget/rate change is recorded in Change History (Settings → … → Change
+History) with a typed label — **Budget updated**, **Extra budget**, **Hourly
+rate updated**, **Budget hours updated** — and a one-line summary; click a row to
+see the before → after per month and the justification.
+
+The history was reset on 2026-07-06 to a single seed entry ("Budget history")
+summarising the year so far; new changes accumulate on top of it.
 
 ## Related
 
