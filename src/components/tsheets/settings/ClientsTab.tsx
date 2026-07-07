@@ -156,7 +156,7 @@ function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onCl
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className={`w-full ${isI7 ? 'max-w-3xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl`}
+        className={`w-full ${isI7 ? 'max-w-5xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl`}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
