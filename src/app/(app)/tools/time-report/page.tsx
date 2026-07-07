@@ -5,6 +5,7 @@
 // the print/PDF page).
 
 import { createClient } from '@/lib/supabase/server'
+import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
@@ -140,6 +141,8 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
     )
   }
 
+  const canEditNote = await isCurrentUserAdmin()
+
   return (
     <I7ReportView
       data={data.report}
@@ -149,6 +152,8 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
       carryover={data.carryover}
       stdRate={data.stdRate}
       trend={data.trend}
+      note={data.note}
+      canEditNote={canEditNote}
     />
   )
 }

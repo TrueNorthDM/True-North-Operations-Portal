@@ -46,6 +46,7 @@ export default async function ReportPrintPage({ searchParams }: Props) {
       type={kind}
       monthLabel={monthLabel(selectedMonth)}
       generatedOn={generatedOn}
+      note={data.note}
     />
   )
 }

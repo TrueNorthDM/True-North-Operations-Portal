@@ -435,6 +435,12 @@ export type Database = {
         Update: Partial<{ id: number; client_id: number; project: string; month: string; hours_allocated: number; justification: string; created_by: string | null; created_at: string }>
         Relationships: []
       }
+      i7_report_notes: {
+        Row: { month: string; note: string; updated_by: string | null; updated_at: string }
+        Insert: { month: string; note?: string; updated_by?: string | null; updated_at?: string }
+        Update: Partial<{ month: string; note: string; updated_by: string | null; updated_at: string }>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

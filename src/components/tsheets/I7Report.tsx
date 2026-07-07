@@ -8,6 +8,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { I7Charts } from './I7Charts'
+import { saveReportNote } from '@/lib/tsheets/settings-actions'
 import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
   trend?: I7TrendPoint[]                  // Jan → selected month, for the charts
+  note?: string                           // per-month narrative (shown + in the PDF)
+  canEditNote?: boolean                   // admin can edit the note
 }
 
 function money(n: number): string {
@@ -87,7 +90,49 @@ function ExportMenu({ month }: { month: string }) {
   )
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [] }: Props) {
+// Month narrative — shown on the report and included in the PDF. Admins edit.
+function NoteCard({ month, note, canEdit }: { month: string; note: string; canEdit: boolean }) {
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(note)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!note && !canEdit) return null
+
+  async function save() {
+    setSaving(true); setError(null)
+    const res = await saveReportNote({ month, note: val.trim() })
+    setSaving(false)
+    if (res.ok) { setEditing(false); router.refresh() }
+    else setError(res.error ?? 'Save failed.')
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h3 className="text-sm font-semibold text-slate-700">Month note <span className="text-xs font-normal text-slate-400">· shown on the client report</span></h3>
+        {canEdit && !editing && <button onClick={() => { setVal(note); setEditing(true) }} className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Edit</button>}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <textarea value={val} onChange={e => setVal(e.target.value)} rows={3} placeholder="A short summary for the client (optional)…" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none" />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900">Cancel</button>
+            <button onClick={save} disabled={saving} className="px-4 py-1.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-40">{saving ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      ) : note ? (
+        <p className="text-sm text-slate-700 whitespace-pre-line">{note}</p>
+      ) : (
+        <p className="text-sm text-slate-400 italic">No note for this month{canEdit ? ' — click Edit to add one.' : '.'}</p>
+      )}
+    </div>
+  )
+}
+
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], note = '', canEditNote = false }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -163,6 +208,9 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       <>
       {/* Carryover — bank-account running balance */}
       {carryover && <CarryoverPanel c={carryover} monthLabel={monthLabel(selectedMonth)} />}
+
+      {/* Month narrative (also printed on the client report) */}
+      {!preview && <NoteCard month={selectedMonth} note={note} canEdit={canEditNote} />}
 
       {/* Summary chips */}
       <div className="flex flex-wrap gap-3">

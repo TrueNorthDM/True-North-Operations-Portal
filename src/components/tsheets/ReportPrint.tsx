@@ -25,13 +25,14 @@ interface Props {
   type: 'client' | 'internal'
   monthLabel: string
   generatedOn: string
+  note: string
 }
 
 function Star() {
   return <svg className="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1l2.4 8.6L23 12l-8.6 2.4L12 23l-2.4-8.6L1 12l8.6-2.4z" /></svg>
 }
 
-export function ReportPrint({ report, projectHours, carryover, stdRate, trend, type, monthLabel, generatedOn }: Props) {
+export function ReportPrint({ report, projectHours, carryover, stdRate, trend, type, monthLabel, generatedOn, note }: Props) {
   useEffect(() => {
     const t = setTimeout(() => window.print(), 700) // let the SVG charts paint first
     return () => clearTimeout(t)
@@ -91,6 +92,14 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
             <div className="mt-1">Generated {generatedOn}</div>
           </div>
         </div>
+
+        {/* Month narrative */}
+        {note && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 print:break-inside-avoid">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Summary</div>
+            <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{note}</p>
+          </div>
+        )}
 
         {/* Budget balance */}
         {carryover && (

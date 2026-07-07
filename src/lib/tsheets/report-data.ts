@@ -15,6 +15,7 @@ export interface I7ReportData {
   carryover: I7Carryover | null
   stdRate: number
   trend: I7TrendPoint[]
+  note: string                            // optional per-month narrative
 }
 
 interface Assignment { userId: number; rate: number; from: string; to: string | null }
@@ -132,13 +133,14 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   const selM = Number(selectedMonth.slice(5, 7))
   const carryStart = `${year}-01-01`
 
-  const [entries, names, assignments, monthlyBudgets, projectHours, universe] = await Promise.all([
+  const [entries, names, assignments, monthlyBudgets, projectHours, universe, note] = await Promise.all([
     loadCachedEntries(carryStart, endDate),
     loadNames(),
     loadI7Assignments(),
     loadMonthlyBudgets(),
     loadProjectHours(selectedMonth),
     loadUniverse(),
+    loadReportNote(selectedMonth),
   ])
 
   const rosterIds = new Set<number>([...universe.userIds, ...assignments.map(a => a.userId)])
@@ -186,5 +188,12 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     trend.push({ month: ym, hours: round2(h), cost: round2(c), budget: b, balance: round2(tB - tC) })
   }
 
-  return { report: report.totalHours > 0 ? report : null, projectHours, carryover, stdRate, trend }
+  return { report: report.totalHours > 0 ? report : null, projectHours, carryover, stdRate, trend, note }
+}
+
+// The optional narrative for a month (empty string when none).
+async function loadReportNote(month: string): Promise<string> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('i7_report_notes').select('note').eq('month', `${month}-01`).maybeSingle()
+  return data?.note ?? ''
 }

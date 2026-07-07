@@ -219,6 +219,20 @@ export async function saveMonthlyBudgets(input: {
   return { ok: true }
 }
 
+// ─── Per-month report narrative (shown on the report + in the PDF) ───────────
+export async function saveReportNote(input: { month: string; note: string }): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('i7_report_notes')
+    .upsert({ month: `${input.month}-01`, note: input.note, updated_by: user?.id, updated_at: new Date().toISOString() }, { onConflict: 'month' })
+  if (error) return { ok: false, error: error.message }
+  revalidatePath('/tools/time-report')
+  return { ok: true }
+}
+
 // ─── Per-month project hours (the report's Budget-hrs guide, per month) ──────
 // Writes the project × month hours the report reads (i7_project_month_hours).
 // Same rules as the monthly budget: past months are locked, one audit entry.
