@@ -252,12 +252,19 @@ h1, h2, h3 {
 }
 
 /* Report → PDF: force chart/badge colours to print, and isolate the document
-   from the app chrome (sidebar/top bar) when the browser prints. */
+   from the app chrome (sidebar/top bar) when the browser prints.
+
+   The document stays in NORMAL FLOW — we simply hide the app chrome. The old
+   approach (visibility:hidden everything + reposition .print-doc as absolute)
+   printed blank in Safari and some Chrome cases, because absolutely-positioned
+   content doesn't paginate reliably. Hiding the chrome and letting the doc flow
+   is the robust cross-browser way. */
 .print-doc { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 @media print {
-  body * { visibility: hidden; }
-  .print-doc, .print-doc * { visibility: visible; }
-  .print-doc { position: absolute; left: 0; top: 0; width: 100%; }
-  .no-print { display: none !important; }
+  /* App chrome — the top bar (<header>) and the sidebar (<aside>). The report
+     document itself uses only <div>s, so these tags are safe to drop. */
+  header, aside, .no-print { display: none !important; }
+  html, body { background: #fff !important; height: auto !important; }
+  .print-doc { box-shadow: none !important; }
   @page { margin: 14mm; }
 }
