@@ -50,13 +50,20 @@ $50,000 base (Jul 1 – Dec 31, 2026) + $5,000 extra (Jul 1 – Oct 31, 2026).
 ## How to change the i7 budget (2026-07-06 onwards)
 
 Settings → Tools & Projects → Clients & Budgets → click **2 - i7 Marketing**.
-The modal shows the month grid:
+The modal shows two transposed grids (months across the top), each a **6-month
+window** — the current month and the next 5:
 
-- **Past months are locked** (read-only) — they can't be changed.
-- The **current month and later** are editable. Type the new base and/or extra,
-  click **Review changes**, add a justification, and confirm.
-- Only the months you changed are written, and one entry is added to Change
-  History (see below). The report reflects it immediately.
+- **Monthly budget** — rows are Budget / Extra / Total. Type the new base and/or
+  extra, click **Review changes**, add a justification, confirm.
+- **Budget hours per project** — a projects × months matrix. Each cell is the
+  budgeted hours for that project in that month; the report's "Budget hrs / Hrs
+  avail." column reads the selected month's value (`i7_project_month_hours`).
+- Only the cells you changed are written, and one entry is added to Change
+  History. The report reflects it immediately.
+
+Older months (before the current one) are read-only under **Change History →
+View past schedule**, bounded by the same 24-month retention window as the
+reports.
 
 ## Change History
 
