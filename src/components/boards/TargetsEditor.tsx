@@ -18,10 +18,12 @@ export function TargetsEditor({
   targets,
   isAdmin,
   audit,
+  grid = false,
 }: {
   targets: PublishingTargetRow[]
   isAdmin: boolean
   audit: AuditLogRow[]
+  grid?: boolean          // when true, lay the board cards out side by side
 }) {
   const byBoard = new Map<string, PublishingTargetRow[]>()
   for (const t of targets) {
@@ -39,9 +41,11 @@ export function TargetsEditor({
         </div>
       )}
 
-      {boardIds.map((bid) => (
-        <BoardTargets key={bid} boardId={bid} rows={byBoard.get(bid) ?? []} isAdmin={isAdmin} />
-      ))}
+      <div className={grid ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 items-start' : 'space-y-6'}>
+        {boardIds.map((bid) => (
+          <BoardTargets key={bid} boardId={bid} rows={byBoard.get(bid) ?? []} isAdmin={isAdmin} />
+        ))}
+      </div>
 
       {boardIds.length === 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">

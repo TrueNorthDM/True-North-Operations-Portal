@@ -163,6 +163,7 @@ export default async function SettingsPage() {
                 targets={targets ?? []}
                 isAdmin={isAdmin}
                 audit={targetAudit ?? []}
+                grid
               />
             </div>
           </div>
