@@ -46,10 +46,10 @@ export function PastScheduleTables({ budgets, hours, projects }: {
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Monthly budget</div>
             <div className="rounded-xl border border-slate-200 overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm table-fixed">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 sticky left-0 bg-slate-50">Month →</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 sticky left-0 bg-slate-50 w-52">Month →</th>
                     {months.map(ym => <th key={ym} className={th}>{monthLabel(ym)}</th>)}
                   </tr>
                 </thead>
@@ -79,10 +79,10 @@ export function PastScheduleTables({ budgets, hours, projects }: {
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Budget hours per project</div>
             <div className="rounded-xl border border-slate-200 overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm table-fixed">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 sticky left-0 bg-slate-50">Project</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 sticky left-0 bg-slate-50 w-52">Project</th>
                     {months.map(ym => <th key={ym} className={th}>{monthLabel(ym)}</th>)}
                   </tr>
                 </thead>
