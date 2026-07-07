@@ -41,8 +41,22 @@ export function SettingsTabs({ clients, people, auditLog, directoryOptions, sync
 
   return (
     <div className="space-y-5">
-      {/* Sync status — the sync runs automatically every 4 hours (Vercel Cron). */}
-      <SyncStatus syncedAt={syncedAt} interactive={canSync} />
+      {/* Sync status — the sync runs automatically every 4 hours (Vercel Cron).
+          The info icon opens the plain-language "how the report works" guide. */}
+      <div className="flex items-center gap-2">
+        <a
+          href="/tools/time-report/guide"
+          aria-label="How the report works"
+          title="How the report works"
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-900 text-white hover:bg-slate-800 shrink-0"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+            <circle cx="12" cy="7.2" r="1.5" />
+            <rect x="10.6" y="10.4" width="2.8" height="7.4" rx="1.4" />
+          </svg>
+        </a>
+        <SyncStatus syncedAt={syncedAt} interactive={canSync} />
+      </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-slate-200">
