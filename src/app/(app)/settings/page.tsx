@@ -1,12 +1,10 @@
 // Settings — language configuration for both projects.
 
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentProfile } from '@/lib/auth/role'
 import { SettingsForm } from '@/components/SettingsForm'
 import { MondayTokenField } from '@/components/MondayTokenField'
 import { MondayBoardField } from '@/components/MondayBoardField'
 import { WpUrlsField } from '@/components/WpUrlsField'
-import { TargetsEditor } from '@/components/boards/TargetsEditor'
 import { TsheetsTokenField } from '@/components/TsheetsTokenField'
 import { BudgetUsageSettings } from '@/components/tsheets/settings/BudgetUsageSettings'
 import { SettingsShell } from '@/components/SettingsShell'
@@ -32,23 +30,6 @@ export default async function SettingsPage() {
     .from('sites')
     .select('id, code, name, domain, languages, language_paths, monday_board_id, wp_dev_url, wp_live_url')
     .order('code')
-
-  // Publishing targets — configuration, so it lives in Settings (the dashboard
-  // only *shows* progress vs these). Admins edit; viewers read-only (RLS on
-  // publishing_targets/audit_log enforces the same in the DB).
-  const profile = await getCurrentProfile()
-  const isAdmin = profile?.role === 'admin'
-  const { data: targets } = await supabase
-    .from('publishing_targets')
-    .select('*')
-    .eq('period_type', 'weekly')
-    .order('board_short', { ascending: true })
-    .order('language', { ascending: true })
-  const { data: targetAudit } = await supabase
-    .from('audit_log')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(30)
 
   // API tokens (singleton row) — full values read server-side only;
   // client receives { exists, last4 } to show a masked preview without
@@ -151,21 +132,6 @@ export default async function SettingsPage() {
           <div className="space-y-8">
             {/* Budget Usage Report — clients & budgets, people & rates, change history. */}
             <BudgetUsageSettings />
-
-            {/* Publishing targets — the weekly goals the Boards Review dashboard
-                measures against. Config belongs here, not on the dashboard. */}
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-1">Publishing targets</h2>
-              <p className="text-xs text-slate-400 mb-3">
-                Weekly pages-published goals per board &amp; language. The Boards Review dashboard tracks progress against these.
-              </p>
-              <TargetsEditor
-                targets={targets ?? []}
-                isAdmin={isAdmin}
-                audit={targetAudit ?? []}
-                grid
-              />
-            </div>
           </div>
         }
       />

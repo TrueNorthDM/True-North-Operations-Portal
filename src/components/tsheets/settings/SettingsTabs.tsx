@@ -5,11 +5,13 @@ import { ClientsTab } from './ClientsTab'
 import { PeopleTab } from './PeopleTab'
 import { HistoryTab } from './HistoryTab'
 import { SyncStatus } from './SyncStatus'
+import { TargetsEditor } from '@/components/boards/TargetsEditor'
 import type { ClientWithBudget } from './ClientsTab'
 import type { PersonWithAssignments, DirectoryOption } from './PeopleTab'
 import type { AuditEntry } from './HistoryTab'
 import type { MonthlyBudget } from './MonthlyBudgetGrid'
 import type { ProjectMonthHours } from './ProjectHoursGrid'
+import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
 
 type Tab = 'clients' | 'people' | 'history'
 
@@ -22,6 +24,8 @@ interface Props {
   canSync: boolean
   pastBudgets: MonthlyBudget[]
   pastProjectHours: ProjectMonthHours[]
+  publishingTargets: PublishingTargetRow[]
+  publishingAudit: AuditLogRow[]
 }
 
 const TABS: { key: Tab; label: string }[] = [
@@ -30,7 +34,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'history', label: 'Change History' },
 ]
 
-export function SettingsTabs({ clients, people, auditLog, directoryOptions, syncedAt, canSync, pastBudgets, pastProjectHours }: Props) {
+export function SettingsTabs({ clients, people, auditLog, directoryOptions, syncedAt, canSync, pastBudgets, pastProjectHours, publishingTargets, publishingAudit }: Props) {
   const [tab, setTab] = useState<Tab>('clients')
 
   const allClients = clients.map(c => ({ id: c.id, name: c.name }))
@@ -58,7 +62,18 @@ export function SettingsTabs({ clients, people, auditLog, directoryOptions, sync
       </div>
 
       {/* Tab content */}
-      {tab === 'clients' && <ClientsTab clients={clients} />}
+      {tab === 'clients' && (
+        <div className="space-y-8">
+          <ClientsTab clients={clients} />
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-1">Publishing targets</h2>
+            <p className="text-xs text-slate-400 mb-3">
+              Weekly pages-published goals per board &amp; language. The Boards Review dashboard tracks progress against these.
+            </p>
+            <TargetsEditor targets={publishingTargets} isAdmin={canSync} audit={publishingAudit} grid />
+          </div>
+        </div>
+      )}
       {tab === 'people' && <PeopleTab people={people} allClients={allClients} directoryOptions={directoryOptions} />}
       {tab === 'history' && <HistoryTab entries={auditLog} pastBudgets={pastBudgets} pastProjectHours={pastProjectHours} />}
     </div>

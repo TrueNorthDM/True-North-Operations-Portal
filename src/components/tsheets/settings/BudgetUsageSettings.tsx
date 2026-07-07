@@ -34,6 +34,8 @@ export async function BudgetUsageSettings() {
     { data: projBudgetsRaw },
     { data: monthlyRaw },
     { data: projMonthRaw },
+    { data: pubTargetsRaw },
+    { data: pubAuditRaw },
   ] = await Promise.all([
     // Only real clients (top-level job codes) — children like "Content"/"SEO"
     // are activities, not clients you budget or bill against.
@@ -72,6 +74,9 @@ export async function BudgetUsageSettings() {
     supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount').order('month'),
     // Per-month project hours (i7) — the matrix editor + the report's guide.
     supabase.from('i7_project_month_hours').select('project, month, hours_allocated').order('month'),
+    // Publishing targets — shown inside the Clients & Budgets tab.
+    supabase.from('publishing_targets').select('*').eq('period_type', 'weekly').order('board_short', { ascending: true }).order('language', { ascending: true }),
+    supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(30),
   ])
 
   const monthlyBudgets = (monthlyRaw ?? []).map(r => ({
@@ -185,7 +190,7 @@ export async function BudgetUsageSettings() {
       <p className="text-xs text-slate-400 mb-3">
         Manage clients, hourly rates, and budget allocations. Every change requires a justification and is recorded in the audit log.
       </p>
-      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} syncedAt={syncedAt} canSync={isAdmin} pastBudgets={monthlyBudgets} pastProjectHours={projectMonthHours} />
+      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} syncedAt={syncedAt} canSync={isAdmin} pastBudgets={monthlyBudgets} pastProjectHours={projectMonthHours} publishingTargets={pubTargetsRaw ?? []} publishingAudit={pubAuditRaw ?? []} />
     </div>
   )
 }
