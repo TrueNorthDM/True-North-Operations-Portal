@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
-import { HistoricalScheduleModal } from './HistoricalScheduleModal'
+import { PastScheduleTables } from './PastSchedule'
 import type { MonthlyBudget } from './MonthlyBudgetGrid'
 import type { ProjectMonthHours } from './ProjectHoursGrid'
 
@@ -22,6 +22,8 @@ interface Props {
   pastBudgets: MonthlyBudget[]
   pastProjectHours: ProjectMonthHours[]
 }
+
+const RECENT_LIMIT = 10
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function monthLabel(ym: string): string {
@@ -123,90 +125,109 @@ function changeLines(entry: AuditEntry): string[] {
   return genericDiff(entry)
 }
 
-export function HistoryTab({ entries, pastBudgets, pastProjectHours }: Props) {
+// ── One audit entry card + the list ─────────────────────────────────────────
+function AuditRow({ entry, isOpen, onToggle }: { entry: AuditEntry; isOpen: boolean; onToggle: () => void }) {
+  const lines = changeLines(entry)
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <button className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50" onClick={onToggle}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {typeBadge(changeType(entry))}
+            <span className="text-xs text-slate-400 truncate">{entry.justification}</span>
+          </div>
+        </div>
+        <span className="shrink-0 text-xs text-slate-400">
+          {new Date(entry.changedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </span>
+        <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="border-t border-slate-100 px-5 py-4 space-y-3">
+          <div>
+            <p className="text-xs font-medium text-slate-500 mb-1">Justification</p>
+            <p className="text-sm text-slate-800 whitespace-pre-line">{entry.justification}</p>
+          </div>
+          {lines.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-slate-500 mb-1">Changes</p>
+              <ul className="space-y-0.5">
+                {lines.map((line, i) => (
+                  <li key={i} className="text-xs text-slate-700 flex gap-1.5"><span className="text-slate-400">›</span><span>{line}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="text-xs text-slate-400">{new Date(entry.changedAt).toLocaleString('en-US')}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AuditList({ entries }: { entries: AuditEntry[] }) {
   const [expanded, setExpanded] = useState<number | null>(null)
-  const [showPast, setShowPast] = useState(false)
+  return (
+    <div className="space-y-2">
+      {entries.map(e => (
+        <AuditRow key={e.id} entry={e} isOpen={expanded === e.id} onToggle={() => setExpanded(expanded === e.id ? null : e.id)} />
+      ))}
+    </div>
+  )
+}
+
+function AllHistoryModal({ entries, onClose }: { entries: AuditEntry[]; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">Change history · {entries.length}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+        </div>
+        <div className="p-5 overflow-y-auto">
+          <AuditList entries={entries} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function HistoryTab({ entries, pastBudgets, pastProjectHours }: Props) {
+  const [showAll, setShowAll] = useState(false)
+  const recent = entries.slice(0, RECENT_LIMIT)
+  const hasMore = entries.length > RECENT_LIMIT
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <button
-          onClick={() => setShowPast(true)}
-          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          View past schedule
-        </button>
-      </div>
+    <div className="space-y-8">
+      <PastScheduleTables budgets={pastBudgets} hours={pastProjectHours} projects={I7_PROJECTS} />
 
-      {entries.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
-          <p className="text-sm font-medium text-slate-700">No changes recorded yet</p>
-          <p className="text-xs text-slate-500">Every budget and rate change will appear here with its justification.</p>
-        </div>
-      ) : (
-      <div className="space-y-2">
-      {entries.map(entry => {
-        const lines = changeLines(entry)
-        const isOpen = expanded === entry.id
-        return (
-          <div key={entry.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-            <button
-              className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50"
-              onClick={() => setExpanded(isOpen ? null : entry.id)}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {typeBadge(changeType(entry))}
-                  <span className="text-xs text-slate-400 truncate">{entry.justification}</span>
-                </div>
-              </div>
-              <span className="shrink-0 text-xs text-slate-400">
-                {new Date(entry.changedAt).toLocaleDateString('en-US', {
-                  month: 'short', day: 'numeric', year: 'numeric',
-                })}
-              </span>
-              <svg
-                className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {isOpen && (
-              <div className="border-t border-slate-100 px-5 py-4 space-y-3">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 mb-1">Justification</p>
-                  <p className="text-sm text-slate-800 whitespace-pre-line">{entry.justification}</p>
-                </div>
-                {lines.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 mb-1">Changes</p>
-                    <ul className="space-y-0.5">
-                      {lines.map((line, i) => (
-                        <li key={i} className="text-xs text-slate-700 flex gap-1.5">
-                          <span className="text-slate-400">›</span>
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <p className="text-xs text-slate-400">
-                  {new Date(entry.changedAt).toLocaleString('en-US')}
-                </p>
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-slate-700">Change history</h3>
+        {entries.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
+            <p className="text-sm font-medium text-slate-700">No changes recorded yet</p>
+            <p className="text-xs text-slate-500">Every budget and rate change will appear here with its justification.</p>
+          </div>
+        ) : (
+          <>
+            <AuditList entries={recent} />
+            {hasMore && (
+              <div className="flex justify-center pt-1">
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="text-xs px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                >
+                  View more ({entries.length - RECENT_LIMIT} older)
+                </button>
               </div>
             )}
-          </div>
-        )
-      })}
+          </>
+        )}
       </div>
-      )}
 
-      {showPast && (
-        <HistoricalScheduleModal budgets={pastBudgets} hours={pastProjectHours} projects={I7_PROJECTS} onClose={() => setShowPast(false)} />
-      )}
+      {showAll && <AllHistoryModal entries={entries} onClose={() => setShowAll(false)} />}
     </div>
   )
 }
