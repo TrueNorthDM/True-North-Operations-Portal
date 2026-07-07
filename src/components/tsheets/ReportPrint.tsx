@@ -41,18 +41,12 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
   const showCost = report.hasRates
   const showBudgetAvail = showCost && stdRate > 0
 
-  // Per-project rows with activities aggregated across job codes.
+  // Per-project rows broken down by job code (project code) — no activity level.
   const rows = report.projects.map(p => {
-    const acts = new Map<string, { hours: number; cost: number }>()
-    for (const jc of p.jobcodes) for (const a of jc.activities) {
-      const cur = acts.get(a.activity) ?? { hours: 0, cost: 0 }
-      cur.hours += a.hours; cur.cost += a.cost
-      acts.set(a.activity, cur)
-    }
     const budgeted = projectHours[p.project] ?? 0
     return {
       name: p.project, hours: p.hours, cost: p.cost, budgeted, avail: budgeted - p.hours,
-      activities: [...acts.entries()].map(([activity, v]) => ({ activity, ...v })).sort((a, b) => b.hours - a.hours),
+      codes: p.jobcodes.filter(jc => jc.hours > 0).map(jc => ({ code: jc.code, hours: jc.hours, cost: jc.cost })).sort((a, b) => b.hours - a.hours),
     }
   })
   const totBudget = rows.reduce((s, r) => s + r.budgeted, 0)
@@ -62,7 +56,9 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
   for (const p of report.projects) for (const [name, h] of Object.entries(p.byPerson)) byPerson[name] = (byPerson[name] ?? 0) + h
   const persons = Object.entries(byPerson).map(([name, hours]) => ({ name, hours: Math.round(hours * 100) / 100 })).sort((a, b) => b.hours - a.hours)
 
-  const last3 = trend.slice(-3)
+  // The three months *before* the selected one (the selected month is the last
+  // point in the trend, so exclude it) — the actual "last 3 months".
+  const last3 = trend.slice(-4, -1)
 
   const th = 'text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2'
 
@@ -105,7 +101,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
         {carryover && (
           <div className="rounded-xl border border-slate-200 p-4">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Budget balance · {monthLabel}</div>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="flex items-start justify-between gap-4">
               {[
                 { l: 'Carried in', v: moneySigned(carryover.opening), c: carryover.opening < 0 ? 'text-red-600' : 'text-slate-900' },
                 { l: 'Budget this month', v: moneySigned(carryover.totalAvailable), c: 'text-slate-900' },
@@ -121,21 +117,14 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
           </div>
         )}
 
-        {/* Chips */}
-        <div className="flex flex-wrap gap-2 text-sm">
-          <span className="px-3 py-1 rounded-full bg-slate-100"><span className="text-slate-500">Total hours</span> <b className="text-slate-800">{report.totalHours.toFixed(2)}</b></span>
-          {showCost && <span className="px-3 py-1 rounded-full bg-slate-100"><span className="text-slate-500">Total cost</span> <b className="text-slate-800">{money(report.totalCost)}</b></span>}
-          <span className="px-3 py-1 rounded-full bg-slate-100"><span className="text-slate-500">Projects</span> <b className="text-slate-800">{report.projects.length}</b></span>
-        </div>
-
-        {/* Project → activity table */}
+        {/* Project → job code table */}
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">By project &amp; activity</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">By project &amp; job code</div>
           <div className="rounded-xl border border-slate-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2">Project · Activity</th>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2">Project · Job code</th>
                   <th className={th}>Budget hrs</th>
                   <th className={th}>Hrs avail.</th>
                   {showBudgetAvail && <th className={th}>Budget avail.</th>}
@@ -154,12 +143,12 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
                       {showCost && <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-900">{r.cost > 0 ? money(r.cost) : '—'}</td>}
                       <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-900">{fmtHours(r.hours)}</td>
                     </tr>
-                    {r.activities.map((a, i) => (
+                    {r.codes.map((c, i) => (
                       <tr key={`${r.name}-${i}`} className="border-b border-slate-50">
-                        <td className="px-3 py-1.5 pl-8 text-slate-600">{a.activity}</td>
+                        <td className="px-3 py-1.5 pl-8 text-slate-600">{c.code}</td>
                         <td /><td />{showBudgetAvail && <td />}
-                        {showCost && <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">{a.cost > 0 ? money(a.cost) : '—'}</td>}
-                        <td className="px-3 py-1.5 text-right tabular-nums text-slate-600">{fmtHours(a.hours)}</td>
+                        {showCost && <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">{c.cost > 0 ? money(c.cost) : '—'}</td>}
+                        <td className="px-3 py-1.5 text-right tabular-nums text-slate-600">{fmtHours(c.hours)}</td>
                       </tr>
                     ))}
                   </Fragment>
@@ -211,7 +200,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
         {/* Graphics */}
         <div className="print:break-inside-avoid">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Graphics</div>
-          <I7Charts data={report} projectHours={projectHours} totalByPerson={byPerson} showCost={showCost} trend={trend} />
+          <I7Charts data={report} projectHours={projectHours} totalByPerson={byPerson} showCost={showCost} trend={trend} variant={type === 'client' ? 'client' : 'full'} />
         </div>
 
         {/* Internal-only: hours by person */}

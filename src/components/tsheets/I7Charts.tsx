@@ -25,6 +25,9 @@ interface Props {
   totalByPerson: Record<string, number>
   showCost: boolean
   trend: I7TrendPoint[]
+  // 'full' = the on-screen In Graphics tab (all four charts).
+  // 'client' = the client PDF — only activity mix + % of budget used (as bars).
+  variant?: 'full' | 'client'
 }
 
 function Card({ title, subtitle, className = '', legend, children }: { title: string; subtitle?: string; className?: string; legend?: ReactNode; children: ReactNode }) {
@@ -107,6 +110,40 @@ function Rings({ rows }: { rows: { label: string; pct: number | null }[] }) {
   )
 }
 
+// ── Vertical bars — % of budget used per project (client PDF) ────────────────
+function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours: number; budget: number }[] }) {
+  const H = 132   // px height of the plot area (= 100% of budget)
+  return (
+    <div>
+      <div className="relative flex items-end justify-around gap-3" style={{ height: H }}>
+        {/* 100%-of-budget reference line */}
+        <div className="absolute inset-x-0 top-0 border-t border-dashed border-slate-200" />
+        <span className="absolute right-0 -top-1.5 text-[10px] text-slate-300 bg-white px-1">100%</span>
+        {rows.map(row => {
+          const p = row.pct
+          const has = p != null
+          const fill = has ? Math.min(1, p) : 0
+          const color = !has ? '#cbd5e1' : p > 1 ? '#ef4444' : p >= 0.9 ? '#f59e0b' : '#10b981'
+          return (
+            <div key={row.label} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full">
+              <span className="text-xs tabular-nums mb-1" style={{ color: has ? color : '#94a3b8' }}>{has ? `${Math.round(p * 100)}%` : '—'}</span>
+              <div className="w-full max-w-[52px] rounded-t-md" style={{ height: `${Math.max(fill * H, has ? 3 : 0)}px`, background: color }} />
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex items-start justify-around gap-3 mt-2 border-t border-slate-100 pt-2">
+        {rows.map(row => (
+          <div key={row.label} className="flex-1 min-w-0 text-center">
+            <div className="text-xs text-slate-500 leading-tight">{row.label}</div>
+            {row.budget > 0 && <div className="text-[10px] tabular-nums text-slate-400 mt-0.5">{fmtHours(row.hours)} / {fmtHours(row.budget)} h</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── 100% stacked bar — activity mix per project ─────────────────────────────
 function StackedBars({ rows, colorOf }: { rows: { label: string; total: number; parts: { activity: string; hours: number }[] }[]; colorOf: (a: string) => string }) {
   return (
@@ -154,12 +191,12 @@ function TrendChart({ trend }: { trend: I7TrendPoint[] }) {
   )
 }
 
-export function I7Charts({ data, projectHours, showCost, trend }: Props) {
+export function I7Charts({ data, projectHours, showCost, trend, variant = 'full' }: Props) {
   // Donut + rings — per project
   const projectSegments = data.projects.map((p, i) => ({ label: p.project, value: p.hours, color: PROJ[i % PROJ.length] }))
   const rings = data.projects.map(p => {
     const budget = projectHours[p.project] ?? 0
-    return { label: p.project, pct: budget > 0 ? p.hours / budget : null }
+    return { label: p.project, pct: budget > 0 ? p.hours / budget : null, hours: p.hours, budget }
   })
 
   // Activity mix per project + a shared colour map (top activities coloured, rest grey).
@@ -175,6 +212,24 @@ export function I7Charts({ data, projectHours, showCost, trend }: Props) {
     return { label: p.project, total: p.hours, parts }
   })
   const actLegend = [...topActs.map((a, i) => ({ label: a, color: ACT[i] })), ...(globalAct.size > topActs.length ? [{ label: 'Other', color: OTHER }] : [])]
+
+  // Client PDF — just the two charts i7 asked for, stacked full-width.
+  if (variant === 'client') {
+    return (
+      <div className="space-y-5">
+        <Card
+          title="Activity mix per project"
+          subtitle="How each project’s hours split by activity"
+          legend={<Legend items={actLegend} />}
+        >
+          <StackedBars rows={stackedRows} colorOf={colorOf} />
+        </Card>
+        <Card title="% of budget used" subtitle="Hours used ÷ budgeted, per project">
+          <BudgetBars rows={rings} />
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">

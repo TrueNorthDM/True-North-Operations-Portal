@@ -82,7 +82,6 @@ function ExportMenu({ month }: { month: string }) {
           <div className="absolute right-0 mt-1 z-20 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1">
             <div className="px-3 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Save as PDF</div>
             <a href={`/tools/time-report/print?month=${month}&type=client`} target="_blank" rel="noopener" className={item}>Client report</a>
-            <a href={`/tools/time-report/print?month=${month}&type=internal`} target="_blank" rel="noopener" className={item}>Internal report</a>
           </div>
         </>
       )}
