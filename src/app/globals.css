@@ -250,3 +250,14 @@ h1, h2, h3 {
 .num-cell::-webkit-inner-spin-button {
   margin-left: 0.4em;
 }
+
+/* Report → PDF: force chart/badge colours to print, and isolate the document
+   from the app chrome (sidebar/top bar) when the browser prints. */
+.print-doc { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+@media print {
+  body * { visibility: hidden; }
+  .print-doc, .print-doc * { visibility: visible; }
+  .print-doc { position: absolute; left: 0; top: 0; width: 100%; }
+  .no-print { display: none !important; }
+  @page { margin: 14mm; }
+}
