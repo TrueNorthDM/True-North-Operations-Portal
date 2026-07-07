@@ -7,6 +7,7 @@
 
 import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
+import { I7Charts } from './I7Charts'
 import type { I7Report, I7Carryover, PersonHours } from '@/lib/tsheets/types'
 
 interface Props {
@@ -62,6 +63,7 @@ function PersonCells({ people, byPerson, muted }: { people: string[]; byPerson: 
 
 export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0 }: Props) {
   const router = useRouter()
+  const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
   const [openCodes, setOpenCodes] = useState<Set<string>>(new Set())
 
@@ -115,6 +117,23 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         <span className="text-sm text-slate-400 ml-1">{data.startDate} → {data.endDate}</span>
       </div>
 
+      {/* View tabs — the same month's data as a table (In Numbers) or charts (In Graphics) */}
+      <div className="flex gap-1 border-b border-slate-200">
+        {(['numbers', 'graphics'] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${view === v ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          >
+            {v === 'numbers' ? 'In Numbers' : 'In Graphics'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'graphics' ? (
+        <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} />
+      ) : (
+      <>
       {/* Carryover — bank-account running balance */}
       {carryover && <CarryoverPanel c={carryover} monthLabel={monthLabel(selectedMonth)} />}
 
@@ -188,6 +207,8 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           <button onClick={collapseAll} className="text-slate-500 hover:text-slate-900 underline underline-offset-2">Collapse all</button>
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }
