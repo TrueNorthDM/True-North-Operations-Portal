@@ -132,12 +132,12 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 sticky left-0 bg-slate-50 z-10">Project · Job code · Activity</th>
-              {people.map(name => <th key={name} className={thNum}>{name}</th>)}
-              <th className={thNum}>Hours used</th>
               {showBudget && <th className={thNum}>Budget hrs</th>}
               {showBudget && <th className={thNum}>Hrs avail.</th>}
               {showBudgetAvail && <th className={thNum}>Budget avail.</th>}
               {showCost && <th className={thNum}>Budget used</th>}
+              {people.map(name => <th key={name} className={thNum}>{name}</th>)}
+              <th className={thNum}>Hours used</th>
             </tr>
           </thead>
           <tbody>
@@ -164,14 +164,14 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           <tfoot>
             <tr className="border-t-2 border-slate-300 bg-slate-100">
               <td className="px-4 py-3 font-bold text-slate-900 sticky left-0 bg-slate-100 z-10">Total</td>
-              {people.map(name => (
-                <td key={name} className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">—</span>}</td>
-              ))}
-              <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">{data.totalHours.toFixed(2)}</td>
               {showBudget && <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '—'}</td>}
               {showBudget && <td className={`px-3 py-3 text-right font-bold tabular-nums ${totalHrsAvail < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '—'}</td>}
               {showBudgetAvail && <td className={`px-3 py-3 text-right font-bold tabular-nums ${totalHrsAvail < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '—'}</td>}
               {showCost && <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">{money(data.totalCost)}</td>}
+              {people.map(name => (
+                <td key={name} className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">—</span>}</td>
+              ))}
+              <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">{data.totalHours.toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>
@@ -223,12 +223,12 @@ function ProjectRows({ project, people, pOpen, openCodes, showCost, showBudget, 
             <span className="text-xs text-slate-400 whitespace-nowrap">{project.jobcodes.length} job code{project.jobcodes.length !== 1 ? 's' : ''}</span>
           </div>
         </td>
-        <PersonCells people={people} byPerson={project.byPerson} />
-        <td className="px-3 py-3 text-right font-semibold text-slate-900 tabular-nums">{fmtHours(project.hours)}</td>
         {showBudget && <td className="px-3 py-3 text-right text-slate-700 tabular-nums">{budgetHours != null ? budgetHours.toLocaleString() : <span className="text-slate-300">—</span>}</td>}
         {showBudget && <td className={`px-3 py-3 text-right font-medium tabular-nums ${avail != null && avail < 0 ? 'text-red-600' : 'text-slate-700'}`}>{avail != null ? avail.toFixed(2) : <span className="text-slate-300">—</span>}</td>}
         {showBudgetAvail && <td className={`px-3 py-3 text-right font-medium tabular-nums ${dollarAvail != null && dollarAvail < 0 ? 'text-red-600' : 'text-slate-700'}`}>{dollarAvail != null ? moneySigned(dollarAvail) : <span className="text-slate-300">—</span>}</td>}
         {showCost && <td className="px-3 py-3 text-right font-semibold text-slate-900 tabular-nums">{project.cost > 0 ? money(project.cost) : <span className="text-slate-300">—</span>}</td>}
+        <PersonCells people={people} byPerson={project.byPerson} />
+        <td className="px-3 py-3 text-right font-semibold text-slate-900 tabular-nums">{fmtHours(project.hours)}</td>
       </tr>
 
       {/* Level 2 — Job codes */}
@@ -245,10 +245,10 @@ function ProjectRows({ project, people, pOpen, openCodes, showCost, showBudget, 
                   <span className="font-medium text-slate-800 tabular-nums whitespace-nowrap">{jc.code}</span>
                 </div>
               </td>
-              <PersonCells people={people} byPerson={jc.byPerson} />
-              <td className="px-3 py-2.5 text-right text-slate-800 tabular-nums">{fmtHours(jc.hours)}</td>
               {emptyBudget}
               {showCost && <td className="px-3 py-2.5 text-right text-slate-700 tabular-nums">{jc.cost > 0 ? money(jc.cost) : <span className="text-slate-300">—</span>}</td>}
+              <PersonCells people={people} byPerson={jc.byPerson} />
+              <td className="px-3 py-2.5 text-right text-slate-800 tabular-nums">{fmtHours(jc.hours)}</td>
             </tr>
 
             {/* Level 3 — Activities (leaf rows) */}
@@ -260,10 +260,10 @@ function ProjectRows({ project, people, pOpen, openCodes, showCost, showBudget, 
                     <span className="whitespace-nowrap">{a.activity}</span>
                   </div>
                 </td>
-                <PersonCells people={people} byPerson={a.byPerson} muted />
-                <td className="px-3 py-2 text-right text-slate-600 tabular-nums">{fmtHours(a.hours)}</td>
                 {emptyBudget}
                 {showCost && <td className="px-3 py-2 text-right text-slate-500 tabular-nums">{a.cost > 0 ? money(a.cost) : <span className="text-slate-300">—</span>}</td>}
+                <PersonCells people={people} byPerson={a.byPerson} muted />
+                <td className="px-3 py-2 text-right text-slate-600 tabular-nums">{fmtHours(a.hours)}</td>
               </tr>
             ))}
           </Fragment>
