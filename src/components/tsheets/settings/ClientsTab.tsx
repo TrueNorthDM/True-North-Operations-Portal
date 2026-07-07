@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { BudgetForm } from './BudgetForm'
 import { ProjectBudgets, type ProjectBudget } from './ProjectBudgets'
+import { MonthlyBudgetGrid, type MonthlyBudget } from './MonthlyBudgetGrid'
 
 export interface ClientWithBudget {
   id: number
@@ -21,6 +22,10 @@ export interface ClientWithBudget {
   } | null
   // Per-project budget-hours guide (populated for i7; empty for other clients).
   projectBudgets: ProjectBudget[]
+  // The per-month budget schedule the report reads — set for i7 only. When
+  // present, the modal shows the month grid (source of truth) instead of the
+  // legacy single-budget form.
+  monthlyBudgets?: MonthlyBudget[]
 }
 
 interface Props {
@@ -140,10 +145,14 @@ function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onCl
     router.refresh()
   }
 
+  // i7 uses the monthly schedule grid (source of truth); other clients keep the
+  // legacy single-budget view/edit flow.
+  const isI7 = !!client.monthlyBudgets
+
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl"
+        className={`w-full ${isI7 ? 'max-w-3xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl`}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
@@ -152,7 +161,16 @@ function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onCl
         </div>
 
         <div className="p-6">
-          {mode === 'view' ? (
+          {isI7 ? (
+            <div className="space-y-6">
+              <MonthlyBudgetGrid budgets={client.monthlyBudgets!} />
+              {client.projectBudgets.length > 0 && (
+                <div className="border-t border-slate-100 pt-6">
+                  <ProjectBudgets clientId={client.id} projects={client.projectBudgets} onSaved={() => router.refresh()} />
+                </div>
+              )}
+            </div>
+          ) : mode === 'view' ? (
             <ViewBudget client={client} onEdit={() => setMode('edit')} />
           ) : (
             <div className="space-y-4">

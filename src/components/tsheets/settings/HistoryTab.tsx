@@ -17,24 +17,64 @@ interface Props {
   entries: AuditEntry[]
 }
 
-function actionBadge(action: string) {
-  const styles: Record<string, string> = {
-    create: 'bg-green-50 text-green-700 border-green-200',
-    update: 'bg-blue-50 text-blue-700 border-blue-200',
-    deactivate: 'bg-red-50 text-red-700 border-red-200',
-  }
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full border ${styles[action] ?? 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-      {action}
-    </span>
-  )
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  return m >= 1 && m <= 12 ? `${MONTHS[m - 1]} ${y}` : ym
+}
+function money(n: number | null | undefined): string {
+  return n == null ? 'none' : '$' + Number(n).toLocaleString('en-US')
 }
 
-function dateDiff(entry: AuditEntry): string[] {
+// ── Change type (the badge) ─────────────────────────────────────────────────
+const TYPE_STYLES: Record<string, string> = {
+  'Budget updated': 'bg-blue-50 text-blue-700 border-blue-200',
+  'Extra budget': 'bg-amber-50 text-amber-700 border-amber-200',
+  'Hourly rate updated': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'Budget hours updated': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Budget history': 'bg-slate-100 text-slate-600 border-slate-200',
+}
+
+type MonthRow = { month: string; budget_amount: number | null; extra_amount: number | null }
+
+function changeType(e: AuditEntry): string {
+  switch (e.entityType) {
+    case 'assignment': return 'Hourly rate updated'
+    case 'project_budget': return 'Budget hours updated'
+    case 'budget_history': return 'Budget history'
+    case 'monthly_budget': {
+      const before = (e.beforeData?.months as MonthRow[]) ?? []
+      const after = (e.afterData?.months as MonthRow[]) ?? []
+      const bMap = new Map(before.map(m => [m.month, m.budget_amount]))
+      const baseChanged = after.some(m => (bMap.get(m.month) ?? null) !== m.budget_amount)
+      return baseChanged ? 'Budget updated' : 'Extra budget'
+    }
+    case 'budget': return 'Budget updated'
+    default: return e.action
+  }
+}
+
+function typeBadge(label: string) {
+  const cls = TYPE_STYLES[label] ?? 'bg-slate-50 text-slate-600 border-slate-200'
+  return <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${cls}`}>{label}</span>
+}
+
+// ── Change details (expanded) ───────────────────────────────────────────────
+function monthlyDiff(e: AuditEntry): string[] {
+  const before = (e.beforeData?.months as MonthRow[]) ?? []
+  const after = (e.afterData?.months as MonthRow[]) ?? []
+  const bMap = new Map(before.map(m => [m.month, m]))
+  const fmt = (base: number | null | undefined, ex: number | null | undefined) => money(base) + (ex ? ` +${money(ex)}` : '')
+  return after.map(a => {
+    const bm = bMap.get(a.month)
+    return `${monthLabel(a.month)}: ${fmt(bm?.budget_amount, bm?.extra_amount)} → ${fmt(a.budget_amount, a.extra_amount)}`
+  })
+}
+
+function genericDiff(entry: AuditEntry): string[] {
   const before = entry.beforeData
   const after = entry.afterData
   const lines: string[] = []
-
   const fields: { key: string; label: string; prefix?: string }[] = [
     { key: 'hourly_rate', label: 'Rate', prefix: '$' },
     { key: 'hours_allocated', label: 'Hours' },
@@ -48,7 +88,6 @@ function dateDiff(entry: AuditEntry): string[] {
     { key: 'effective_to', label: 'Effective to' },
     { key: 'active', label: 'Active' },
   ]
-
   for (const f of fields) {
     const bv = before?.[f.key]
     const av = after[f.key]
@@ -58,8 +97,13 @@ function dateDiff(entry: AuditEntry): string[] {
       lines.push(`${f.label}: ${fmt(bv)} → ${fmt(av)}`)
     }
   }
-
   return lines
+}
+
+function changeLines(entry: AuditEntry): string[] {
+  if (entry.entityType === 'monthly_budget') return monthlyDiff(entry)
+  if (entry.entityType === 'budget_history') return []   // narrative-only seed
+  return genericDiff(entry)
 }
 
 export function HistoryTab({ entries }: Props) {
@@ -77,7 +121,7 @@ export function HistoryTab({ entries }: Props) {
   return (
     <div className="space-y-2">
       {entries.map(entry => {
-        const diff = dateDiff(entry)
+        const lines = changeLines(entry)
         const isOpen = expanded === entry.id
         return (
           <div key={entry.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -87,8 +131,7 @@ export function HistoryTab({ entries }: Props) {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {actionBadge(entry.action)}
-                  <span className="text-xs font-medium text-slate-700">{entry.entityType}</span>
+                  {typeBadge(changeType(entry))}
                   <span className="text-xs text-slate-400 truncate">{entry.justification}</span>
                 </div>
               </div>
@@ -109,13 +152,13 @@ export function HistoryTab({ entries }: Props) {
               <div className="border-t border-slate-100 px-5 py-4 space-y-3">
                 <div>
                   <p className="text-xs font-medium text-slate-500 mb-1">Justification</p>
-                  <p className="text-sm text-slate-800">{entry.justification}</p>
+                  <p className="text-sm text-slate-800 whitespace-pre-line">{entry.justification}</p>
                 </div>
-                {diff.length > 0 && (
+                {lines.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-slate-500 mb-1">Changes</p>
                     <ul className="space-y-0.5">
-                      {diff.map((line, i) => (
+                      {lines.map((line, i) => (
                         <li key={i} className="text-xs text-slate-700 flex gap-1.5">
                           <span className="text-slate-400">›</span>
                           <span>{line}</span>

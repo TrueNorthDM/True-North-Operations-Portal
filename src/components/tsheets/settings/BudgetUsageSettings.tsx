@@ -32,6 +32,7 @@ export async function BudgetUsageSettings() {
     { data: memberRows },
     { data: teamRows },
     { data: projBudgetsRaw },
+    { data: monthlyRaw },
   ] = await Promise.all([
     // Only real clients (top-level job codes) — children like "Content"/"SEO"
     // are activities, not clients you budget or bill against.
@@ -65,7 +66,16 @@ export async function BudgetUsageSettings() {
     supabase.from('team_members').select('person_id, team_id'),
     supabase.from('teams').select('id, name'),
     supabase.from('tr_project_budgets').select('client_id, project, hours_allocated').is('effective_to', null),
+    // The per-month budget schedule the report reads — attached to the i7 client
+    // so its modal edits the same source of truth.
+    supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount').order('month'),
   ])
+
+  const monthlyBudgets = (monthlyRaw ?? []).map(r => ({
+    month: String(r.month).slice(0, 7),
+    budget: Number(r.budget_amount),
+    extra: Number(r.extra_amount),
+  }))
 
   // clientId → project → budgeted hours
   const projHoursByClient = new Map<number, Map<string, number>>()
@@ -119,6 +129,7 @@ export async function BudgetUsageSettings() {
           }
         : null,
       projectBudgets,
+      monthlyBudgets: isI7 ? monthlyBudgets : undefined,
     }
   })
 

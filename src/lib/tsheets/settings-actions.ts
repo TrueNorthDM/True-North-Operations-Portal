@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { syncClientsCore, syncPeopleCore, syncTimesheetsCore } from '@/lib/tsheets/sync'
+import { currentYearMonth } from '@/lib/tsheets/report'
 
 // Writes to people / tr_* go through the signed-in user's session and are
 // gated by RLS (is_admin). Guard here too so a non-admin gets a clear message
@@ -154,6 +155,67 @@ export async function saveTrBudget(input: {
   })
 
   revalidatePath('/settings')
+  return { ok: true }
+}
+
+// ─── Monthly budget schedule (the report's source of truth) ──────────────────
+// Writes the per-month $ budget the i7 report reads (i7_monthly_budget). Past
+// months are locked — only the current month and future can change — and every
+// save records one audit entry summarising the months it touched.
+export async function saveMonthlyBudgets(input: {
+  changes: { month: string; budgetAmount: number; extraAmount: number }[]  // month = 'YYYY-MM'
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+  if (!input.changes.length) return { ok: false, error: 'No changes to save.' }
+  if (input.justification.trim().length < 10) return { ok: false, error: 'A justification (10+ chars) is required.' }
+
+  const nowYm = currentYearMonth()
+  for (const c of input.changes) {
+    if (c.month < nowYm) return { ok: false, error: `Past months can't be changed (${c.month}).` }
+    if (c.budgetAmount < 0 || c.extraAmount < 0) return { ok: false, error: 'Amounts must be 0 or more.' }
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Previous values (for the audit before/after)
+  const monthKeys = input.changes.map(c => `${c.month}-01`)
+  const { data: existing } = await supabase
+    .from('i7_monthly_budget')
+    .select('month, budget_amount, extra_amount')
+    .in('month', monthKeys)
+  const prev = new Map((existing ?? []).map(r => [String(r.month).slice(0, 7), r]))
+
+  const before: { month: string; budget_amount: number | null; extra_amount: number | null }[] = []
+  const after: { month: string; budget_amount: number; extra_amount: number }[] = []
+
+  for (const c of input.changes) {
+    const p = prev.get(c.month)
+    before.push({ month: c.month, budget_amount: p ? Number(p.budget_amount) : null, extra_amount: p ? Number(p.extra_amount) : null })
+    after.push({ month: c.month, budget_amount: c.budgetAmount, extra_amount: c.extraAmount })
+    const { error } = await supabase
+      .from('i7_monthly_budget')
+      .upsert(
+        { month: `${c.month}-01`, budget_amount: c.budgetAmount, extra_amount: c.extraAmount, justification: input.justification, created_by: user?.id },
+        { onConflict: 'month' },
+      )
+    if (error) return { ok: false, error: error.message }
+  }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'monthly_budget',
+    entity_id: 0,
+    action: 'update',
+    before_data: { months: before },
+    after_data: { months: after },
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/settings')
+  revalidatePath('/tools/time-report')
   return { ok: true }
 }
 
