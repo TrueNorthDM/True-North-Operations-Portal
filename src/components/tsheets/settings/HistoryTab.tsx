@@ -1,6 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { I7_PROJECTS } from '@/lib/tsheets/i7report'
+import { HistoricalScheduleModal } from './HistoricalScheduleModal'
+import type { MonthlyBudget } from './MonthlyBudgetGrid'
+import type { ProjectMonthHours } from './ProjectHoursGrid'
 
 export interface AuditEntry {
   id: number
@@ -15,6 +19,8 @@ export interface AuditEntry {
 
 interface Props {
   entries: AuditEntry[]
+  pastBudgets: MonthlyBudget[]
+  pastProjectHours: ProjectMonthHours[]
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -41,6 +47,7 @@ function changeType(e: AuditEntry): string {
   switch (e.entityType) {
     case 'assignment': return 'Hourly rate updated'
     case 'project_budget': return 'Budget hours updated'
+    case 'project_month_hours': return 'Budget hours updated'
     case 'budget_history': return 'Budget history'
     case 'monthly_budget': {
       const before = (e.beforeData?.months as MonthRow[]) ?? []
@@ -69,6 +76,15 @@ function monthlyDiff(e: AuditEntry): string[] {
     const bm = bMap.get(a.month)
     return `${monthLabel(a.month)}: ${fmt(bm?.budget_amount, bm?.extra_amount)} → ${fmt(a.budget_amount, a.extra_amount)}`
   })
+}
+
+type HourRow = { project: string; month: string; hours: number | null }
+function projectHoursDiff(e: AuditEntry): string[] {
+  const before = (e.beforeData?.hours as HourRow[]) ?? []
+  const after = (e.afterData?.hours as HourRow[]) ?? []
+  const bMap = new Map(before.map(h => [`${h.project}|${h.month}`, h.hours]))
+  const fmt = (h: number | null | undefined) => (h ? `${h} h` : '—')
+  return after.map(a => `${a.project} · ${monthLabel(a.month)}: ${fmt(bMap.get(`${a.project}|${a.month}`))} → ${fmt(a.hours)}`)
 }
 
 function genericDiff(entry: AuditEntry): string[] {
@@ -102,24 +118,34 @@ function genericDiff(entry: AuditEntry): string[] {
 
 function changeLines(entry: AuditEntry): string[] {
   if (entry.entityType === 'monthly_budget') return monthlyDiff(entry)
+  if (entry.entityType === 'project_month_hours') return projectHoursDiff(entry)
   if (entry.entityType === 'budget_history') return []   // narrative-only seed
   return genericDiff(entry)
 }
 
-export function HistoryTab({ entries }: Props) {
+export function HistoryTab({ entries, pastBudgets, pastProjectHours }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null)
-
-  if (entries.length === 0) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
-        <p className="text-sm font-medium text-slate-700">No changes recorded yet</p>
-        <p className="text-xs text-slate-500">Every budget and rate change will appear here with its justification.</p>
-      </div>
-    )
-  }
+  const [showPast, setShowPast] = useState(false)
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowPast(true)}
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          View past schedule
+        </button>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
+          <p className="text-sm font-medium text-slate-700">No changes recorded yet</p>
+          <p className="text-xs text-slate-500">Every budget and rate change will appear here with its justification.</p>
+        </div>
+      ) : (
+      <div className="space-y-2">
       {entries.map(entry => {
         const lines = changeLines(entry)
         const isOpen = expanded === entry.id
@@ -175,6 +201,12 @@ export function HistoryTab({ entries }: Props) {
           </div>
         )
       })}
+      </div>
+      )}
+
+      {showPast && (
+        <HistoricalScheduleModal budgets={pastBudgets} hours={pastProjectHours} projects={I7_PROJECTS} onClose={() => setShowPast(false)} />
+      )}
     </div>
   )
 }

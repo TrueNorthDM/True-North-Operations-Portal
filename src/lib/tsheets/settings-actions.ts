@@ -219,6 +219,64 @@ export async function saveMonthlyBudgets(input: {
   return { ok: true }
 }
 
+// ─── Per-month project hours (the report's Budget-hrs guide, per month) ──────
+// Writes the project × month hours the report reads (i7_project_month_hours).
+// Same rules as the monthly budget: past months are locked, one audit entry.
+export async function saveProjectMonthHours(input: {
+  clientId: number
+  changes: { project: string; month: string; hours: number }[]  // month = 'YYYY-MM'
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+  if (!input.changes.length) return { ok: false, error: 'No changes to save.' }
+  if (input.justification.trim().length < 10) return { ok: false, error: 'A justification (10+ chars) is required.' }
+
+  const nowYm = currentYearMonth()
+  for (const c of input.changes) {
+    if (c.month < nowYm) return { ok: false, error: `Past months can't be changed (${c.month}).` }
+    if (c.hours < 0) return { ok: false, error: 'Hours must be 0 or more.' }
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: existing } = await supabase
+    .from('i7_project_month_hours')
+    .select('project, month, hours_allocated')
+    .eq('client_id', input.clientId)
+    .in('month', input.changes.map(c => `${c.month}-01`))
+  const prev = new Map((existing ?? []).map(r => [`${r.project}|${String(r.month).slice(0, 7)}`, Number(r.hours_allocated)]))
+
+  const before: { project: string; month: string; hours: number | null }[] = []
+  const after: { project: string; month: string; hours: number }[] = []
+  for (const c of input.changes) {
+    before.push({ project: c.project, month: c.month, hours: prev.get(`${c.project}|${c.month}`) ?? null })
+    after.push({ project: c.project, month: c.month, hours: c.hours })
+    const { error } = await supabase
+      .from('i7_project_month_hours')
+      .upsert(
+        { client_id: input.clientId, project: c.project, month: `${c.month}-01`, hours_allocated: c.hours, justification: input.justification, created_by: user?.id },
+        { onConflict: 'client_id,project,month' },
+      )
+    if (error) return { ok: false, error: error.message }
+  }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'project_month_hours',
+    entity_id: input.clientId,
+    action: 'update',
+    before_data: { hours: before },
+    after_data: { hours: after },
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/settings')
+  revalidatePath('/tools/time-report')
+  return { ok: true }
+}
+
 // ─── Project budget hours (the guide, one level below the client $ budget) ────
 
 export async function saveProjectBudget(input: {

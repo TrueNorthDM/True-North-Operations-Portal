@@ -163,7 +163,7 @@ async function ReportView({ selectedMonth, availableMonths }: {
       loadNames(),
       loadI7Assignments(),
       loadMonthlyBudgets(),
-      loadProjectHours(),
+      loadProjectHours(selectedMonth),
       loadUniverse(),
     ])
     projectHours = projHours
@@ -317,12 +317,13 @@ async function loadMonthlyBudgets(): Promise<Record<string, number>> {
   return out
 }
 
-// project → active budgeted hours (the guide).
-async function loadProjectHours(): Promise<Record<string, number>> {
+// project → budgeted hours for a given month (the guide), from the per-month
+// matrix edited in Settings. Empty for months with nothing set.
+async function loadProjectHours(month: string): Promise<Record<string, number>> {
   const supabase = await createClient()
   const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
   if (!i7) return {}
-  const { data } = await supabase.from('tr_project_budgets').select('project, hours_allocated').eq('client_id', i7.id).is('effective_to', null)
+  const { data } = await supabase.from('i7_project_month_hours').select('project, hours_allocated').eq('client_id', i7.id).eq('month', `${month}-01`)
   const out: Record<string, number> = {}
   for (const p of data ?? []) out[p.project] = Number(p.hours_allocated)
   return out

@@ -33,6 +33,7 @@ export async function BudgetUsageSettings() {
     { data: teamRows },
     { data: projBudgetsRaw },
     { data: monthlyRaw },
+    { data: projMonthRaw },
   ] = await Promise.all([
     // Only real clients (top-level job codes) — children like "Content"/"SEO"
     // are activities, not clients you budget or bill against.
@@ -69,12 +70,19 @@ export async function BudgetUsageSettings() {
     // The per-month budget schedule the report reads — attached to the i7 client
     // so its modal edits the same source of truth.
     supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount').order('month'),
+    // Per-month project hours (i7) — the matrix editor + the report's guide.
+    supabase.from('i7_project_month_hours').select('project, month, hours_allocated').order('month'),
   ])
 
   const monthlyBudgets = (monthlyRaw ?? []).map(r => ({
     month: String(r.month).slice(0, 7),
     budget: Number(r.budget_amount),
     extra: Number(r.extra_amount),
+  }))
+  const projectMonthHours = (projMonthRaw ?? []).map(r => ({
+    project: r.project,
+    month: String(r.month).slice(0, 7),
+    hours: Number(r.hours_allocated),
   }))
 
   // clientId → project → budgeted hours
@@ -130,6 +138,7 @@ export async function BudgetUsageSettings() {
         : null,
       projectBudgets,
       monthlyBudgets: isI7 ? monthlyBudgets : undefined,
+      projectMonthHours: isI7 ? projectMonthHours : undefined,
     }
   })
 
@@ -176,7 +185,7 @@ export async function BudgetUsageSettings() {
       <p className="text-xs text-slate-400 mb-3">
         Manage clients, hourly rates, and budget allocations. Every change requires a justification and is recorded in the audit log.
       </p>
-      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} syncedAt={syncedAt} canSync={isAdmin} />
+      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} syncedAt={syncedAt} canSync={isAdmin} pastBudgets={monthlyBudgets} pastProjectHours={projectMonthHours} />
     </div>
   )
 }

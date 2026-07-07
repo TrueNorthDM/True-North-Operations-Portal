@@ -1,13 +1,14 @@
 'use client'
 
 // The i7 monthly budget schedule — THE source of truth the report reads
-// (i7_monthly_budget). Past months are read-only; the current month and later
-// are editable inline. "Review changes" diffs against what's saved, asks for a
-// justification, and writes only the changed months.
+// (i7_monthly_budget). Transposed: rows are Budget / Extra / Total, columns are
+// months. The popup shows a 6-month window (current month + next 5); older
+// months live in the read-only "past schedule" modal under Change History.
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
+import { editableMonths } from '@/lib/tsheets/retention'
 import { saveMonthlyBudgets } from '@/lib/tsheets/settings-actions'
 
 export interface MonthlyBudget { month: string; budget: number; extra: number }  // month = 'YYYY-MM'
@@ -17,27 +18,11 @@ function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
   return `${MONTHS[m - 1]} ${y}`
 }
-function nowYm(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-// Jan 2026 → Dec of next year, so there's always room to plan ahead.
-function windowMonths(): string[] {
-  const endYear = new Date().getFullYear() + 1
-  const out: string[] = []
-  let y = 2026, m = 1
-  while (y < endYear || (y === endYear && m <= 12)) {
-    out.push(`${y}-${String(m).padStart(2, '0')}`)
-    m++; if (m > 12) { m = 1; y++ }
-  }
-  return out
-}
 const money = (n: number) => '$' + n.toLocaleString('en-US')
 
 export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
   const router = useRouter()
-  const cur = nowYm()
-  const months = windowMonths()
+  const months = editableMonths(new Date())     // current + next 5, all editable
   const existing = new Map(budgets.map(b => [b.month, b]))
 
   const [vals, setVals] = useState<Record<string, { budget: string; extra: string }>>(() => {
@@ -60,7 +45,6 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
     const changes: { month: string; budgetAmount: number; extraAmount: number }[] = []
     const lines: string[] = []
     for (const ym of months) {
-      if (ym < cur) continue          // past is locked
       const b = existing.get(ym)
       const nb = vals[ym].budget === '' ? 0 : Number(vals[ym].budget)
       const ne = vals[ym].extra === '' ? 0 : Number(vals[ym].extra)
@@ -91,51 +75,49 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
   }
 
   const cellInput = 'w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const th = 'text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 whitespace-nowrap'
+  const rowLabel = 'text-left text-xs font-semibold text-slate-600 px-3 py-2 sticky left-0 bg-white whitespace-nowrap'
   const changeCount = diff().changes.length
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-500">
-        This is the schedule the report reads. Past months are locked — only the current month and later can change.
+        Monthly budget the report reads — current month and the next 5. Older months are in <span className="font-medium">Change History → Past schedule</span>.
       </p>
-      <div className="rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="min-w-full text-sm">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide px-4 py-2.5">Month</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide px-4 py-2.5 w-40">Budget ($)</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide px-4 py-2.5 w-40">Extra ($)</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide px-4 py-2.5 w-32">Total</th>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 sticky left-0 bg-slate-50">Month →</th>
+              {months.map(ym => <th key={ym} className={th}>{monthLabel(ym)}</th>)}
             </tr>
           </thead>
           <tbody>
-            {months.map(ym => {
-              const locked = ym < cur
-              const b = existing.get(ym)
-              const nb = vals[ym].budget === '' ? 0 : Number(vals[ym].budget)
-              const ne = vals[ym].extra === '' ? 0 : Number(vals[ym].extra)
-              const total = locked ? ((b ? b.budget : 0) + (b ? b.extra : 0)) : nb + ne
-              return (
-                <tr key={ym} className={`border-b border-slate-100 last:border-0 ${locked ? 'bg-slate-50/40' : ''}`}>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <span className={locked ? 'text-slate-400' : 'text-slate-800 font-medium'}>{monthLabel(ym)}</span>
-                    {ym === cur && <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-600 font-semibold">current</span>}
-                    {locked && <span className="ml-2 text-[10px] uppercase tracking-wide text-slate-400">locked</span>}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {locked
-                      ? <span className="tabular-nums text-slate-400">{b ? money(b.budget) : '—'}</span>
-                      : <input type="number" min="0" step="100" value={vals[ym].budget} onChange={e => set(ym, 'budget', e.target.value)} placeholder="0" className={cellInput} />}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {locked
-                      ? <span className="tabular-nums text-slate-400">{b && b.extra ? money(b.extra) : '—'}</span>
-                      : <input type="number" min="0" step="100" value={vals[ym].extra} onChange={e => set(ym, 'extra', e.target.value)} placeholder="0" className={cellInput} />}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums font-semibold text-slate-800">{total ? money(total) : '—'}</td>
-                </tr>
-              )
-            })}
+            <tr className="border-b border-slate-100">
+              <td className={rowLabel}>Budget ($)</td>
+              {months.map(ym => (
+                <td key={ym} className="px-3 py-2">
+                  <input type="number" min="0" step="100" value={vals[ym].budget} onChange={e => set(ym, 'budget', e.target.value)} placeholder="0" className={cellInput} />
+                </td>
+              ))}
+            </tr>
+            <tr className="border-b border-slate-100">
+              <td className={rowLabel}>Extra ($)</td>
+              {months.map(ym => (
+                <td key={ym} className="px-3 py-2">
+                  <input type="number" min="0" step="100" value={vals[ym].extra} onChange={e => set(ym, 'extra', e.target.value)} placeholder="0" className={cellInput} />
+                </td>
+              ))}
+            </tr>
+            <tr className="bg-slate-50/60">
+              <td className={`${rowLabel} bg-slate-50`}>Total</td>
+              {months.map(ym => {
+                const nb = vals[ym].budget === '' ? 0 : Number(vals[ym].budget)
+                const ne = vals[ym].extra === '' ? 0 : Number(vals[ym].extra)
+                const total = nb + ne
+                return <td key={ym} className="px-3 py-2 text-right tabular-nums font-bold text-slate-900">{total ? money(total) : '—'}</td>
+              })}
+            </tr>
           </tbody>
         </table>
       </div>

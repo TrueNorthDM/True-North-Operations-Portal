@@ -47,3 +47,30 @@ export function availableMonths(now: Date): string[] {
   }
   return out
 }
+
+/** The editable window for the budget/hours grids — current month + next 5. */
+export function editableMonths(now: Date, count = 6): string[] {
+  const out: string[] = []
+  const d = new Date(now.getFullYear(), now.getMonth(), 1)
+  for (let i = 0; i < count; i++) {
+    out.push(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}`)
+    d.setMonth(d.getMonth() + 1)
+  }
+  return out
+}
+
+/** Past months within the retention window — floor … previous month, oldest first. */
+export function pastMonths(now: Date): string[] {
+  const floor = retentionFloor(now)
+  const cur = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`
+  const out: string[] = []
+  const d = new Date(now.getFullYear(), now.getMonth(), 1)
+  d.setMonth(d.getMonth() - 1)                       // start at previous month
+  while (true) {
+    const ym = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`
+    if (ym < floor || ym >= cur) break
+    out.unshift(ym)                                  // oldest first
+    d.setMonth(d.getMonth() - 1)
+  }
+  return out
+}

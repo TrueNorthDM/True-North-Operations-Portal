@@ -8,6 +8,8 @@ import { SyncStatus } from './SyncStatus'
 import type { ClientWithBudget } from './ClientsTab'
 import type { PersonWithAssignments, DirectoryOption } from './PeopleTab'
 import type { AuditEntry } from './HistoryTab'
+import type { MonthlyBudget } from './MonthlyBudgetGrid'
+import type { ProjectMonthHours } from './ProjectHoursGrid'
 
 type Tab = 'clients' | 'people' | 'history'
 
@@ -18,6 +20,8 @@ interface Props {
   directoryOptions: DirectoryOption[]
   syncedAt: string | null
   canSync: boolean
+  pastBudgets: MonthlyBudget[]
+  pastProjectHours: ProjectMonthHours[]
 }
 
 const TABS: { key: Tab; label: string }[] = [
@@ -26,7 +30,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'history', label: 'Change History' },
 ]
 
-export function SettingsTabs({ clients, people, auditLog, directoryOptions, syncedAt, canSync }: Props) {
+export function SettingsTabs({ clients, people, auditLog, directoryOptions, syncedAt, canSync, pastBudgets, pastProjectHours }: Props) {
   const [tab, setTab] = useState<Tab>('clients')
 
   const allClients = clients.map(c => ({ id: c.id, name: c.name }))
@@ -56,7 +60,7 @@ export function SettingsTabs({ clients, people, auditLog, directoryOptions, sync
       {/* Tab content */}
       {tab === 'clients' && <ClientsTab clients={clients} />}
       {tab === 'people' && <PeopleTab people={people} allClients={allClients} directoryOptions={directoryOptions} />}
-      {tab === 'history' && <HistoryTab entries={auditLog} />}
+      {tab === 'history' && <HistoryTab entries={auditLog} pastBudgets={pastBudgets} pastProjectHours={pastProjectHours} />}
     </div>
   )
 }

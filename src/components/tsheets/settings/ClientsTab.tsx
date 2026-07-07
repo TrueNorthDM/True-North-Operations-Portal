@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { BudgetForm } from './BudgetForm'
 import { ProjectBudgets, type ProjectBudget } from './ProjectBudgets'
 import { MonthlyBudgetGrid, type MonthlyBudget } from './MonthlyBudgetGrid'
+import { ProjectHoursGrid, type ProjectMonthHours } from './ProjectHoursGrid'
+import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 
 export interface ClientWithBudget {
   id: number
@@ -26,6 +28,8 @@ export interface ClientWithBudget {
   // present, the modal shows the month grid (source of truth) instead of the
   // legacy single-budget form.
   monthlyBudgets?: MonthlyBudget[]
+  // Per-month budgeted hours per project (i7 only) — the matrix editor.
+  projectMonthHours?: ProjectMonthHours[]
 }
 
 interface Props {
@@ -164,11 +168,9 @@ function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onCl
           {isI7 ? (
             <div className="space-y-6">
               <MonthlyBudgetGrid budgets={client.monthlyBudgets!} />
-              {client.projectBudgets.length > 0 && (
-                <div className="border-t border-slate-100 pt-6">
-                  <ProjectBudgets clientId={client.id} projects={client.projectBudgets} onSaved={() => router.refresh()} />
-                </div>
-              )}
+              <div className="border-t border-slate-100 pt-6">
+                <ProjectHoursGrid clientId={client.id} projects={I7_PROJECTS} hours={client.projectMonthHours ?? []} />
+              </div>
             </div>
           ) : mode === 'view' ? (
             <ViewBudget client={client} onEdit={() => setMode('edit')} />

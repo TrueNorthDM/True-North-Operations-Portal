@@ -429,6 +429,12 @@ export type Database = {
         Update: Partial<{ id: number; user_id: number; jobcode_id: number; duration: number; date: string; i7_code: string | null; activity: string | null; synced_at: string }>
         Relationships: []
       }
+      i7_project_month_hours: {
+        Row: { id: number; client_id: number; project: string; month: string; hours_allocated: number; justification: string; created_by: string | null; created_at: string }
+        Insert: { id?: number; client_id: number; project: string; month: string; hours_allocated: number; justification: string; created_by?: string | null; created_at?: string }
+        Update: Partial<{ id: number; client_id: number; project: string; month: string; hours_allocated: number; justification: string; created_by: string | null; created_at: string }>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
