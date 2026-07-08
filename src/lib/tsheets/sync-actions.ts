@@ -1,49 +1,21 @@
 'use server'
 
 /**
- * TSheets sync server actions — split out of settings-actions.ts (audit M5-2).
+ * TSheets sync server actions (split out of settings-actions.ts, audit M5-2):
+ *   - linkTsheetsPersonToDirectory — manual link of a TSheets-only import to a
+ *     real directory person (People tab).
+ *   - syncAllFromTsheets — the "Sync now" button: clients + people + timesheets,
+ *     then stamp tsheets_synced_at. The cron runs the same cores on schedule.
  *
- * Two layers:
- *   - token-in actions (syncTrClients / syncPeopleFromTsheets) + the manual
- *     link helper, used by the Settings UI;
- *   - portal-level wrappers that read the stored token from app_settings so the
- *     token never reaches the browser (syncClientsFromPortal / … People… /
- *     syncAllFromTsheets — the "Sync now" button and the cron parity path).
+ * (Four granular wrappers — syncTrClients / syncPeopleFromTsheets /
+ * syncClientsFromPortal / syncPeopleFromPortal — were removed in the audit:
+ * dead code, no callers.)
  */
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { syncClientsCore, syncPeopleCore, syncTimesheetsCore } from '@/lib/tsheets/sync'
 import { requireAdmin } from '@/lib/tsheets/require-admin'
-
-// ─── Sync job codes from TSheets into tr_clients ────────────────────────────
-
-export async function syncTrClients(token: string): Promise<{ ok: boolean; count: number; error?: string }> {
-  const notAdmin = await requireAdmin()
-  if (notAdmin) return { ok: false, count: 0, error: notAdmin }
-
-  const supabase = await createClient()
-  const result = await syncClientsCore(supabase, token)
-  if (result.ok) revalidatePath('/settings')
-  return result
-}
-
-// ─── Sync TSheets users into the people directory ───────────────────────────
-
-export async function syncPeopleFromTsheets(token: string): Promise<{
-  ok: boolean
-  linked: number
-  imported: number
-  error?: string
-}> {
-  const notAdmin = await requireAdmin()
-  if (notAdmin) return { ok: false, linked: 0, imported: 0, error: notAdmin }
-
-  const supabase = await createClient()
-  const result = await syncPeopleCore(supabase, token)
-  if (result.ok) revalidatePath('/settings')
-  return result
-}
 
 // ─── Manually link a TSheets-only import to an existing directory person ─────
 
@@ -82,41 +54,8 @@ export async function linkTsheetsPersonToDirectory(input: {
   return { ok: true }
 }
 
-// ─── Portal-level sync wrappers (read token from DB — never exposed to browser) ─
+// ─── Manual "sync now" — clients + people + timesheets, then stamp the time ──
 
-export async function syncClientsFromPortal(): Promise<{ ok: boolean; count: number; error?: string }> {
-  const supabase = await createClient()
-  const { data: settings } = await supabase
-    .from('app_settings')
-    .select('tsheets_api_token')
-    .eq('singleton_id', 1)
-    .maybeSingle()
-  if (!settings?.tsheets_api_token) {
-    return { ok: false, count: 0, error: 'No TSheets token configured in Settings.' }
-  }
-  return syncTrClients(settings.tsheets_api_token)
-}
-
-export async function syncPeopleFromPortal(): Promise<{
-  ok: boolean
-  linked: number
-  imported: number
-  error?: string
-}> {
-  const supabase = await createClient()
-  const { data: settings } = await supabase
-    .from('app_settings')
-    .select('tsheets_api_token')
-    .eq('singleton_id', 1)
-    .maybeSingle()
-  if (!settings?.tsheets_api_token) {
-    return { ok: false, linked: 0, imported: 0, error: 'No TSheets token configured in Settings.' }
-  }
-  return syncPeopleFromTsheets(settings.tsheets_api_token)
-}
-
-// Manual "sync now" behind the last-synced status button: runs both syncs and
-// stamps tsheets_synced_at. The cron does the same on its schedule.
 export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: string }> {
   const notAdmin = await requireAdmin()
   if (notAdmin) return { ok: false, error: notAdmin }
