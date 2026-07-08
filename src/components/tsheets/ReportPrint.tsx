@@ -10,10 +10,8 @@ import Link from 'next/link'
 import { useEffect, Fragment } from 'react'
 import { I7Charts } from './I7Charts'
 import type { I7Report, I7Carryover, I7TrendPoint } from '@/lib/tsheets/types'
+import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 
-const money = (n: number) => '$' + Math.round(n).toLocaleString('en-US')
-const moneySigned = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US')
-const fmtHours = (n: number) => (n === 0 ? '—' : n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''))
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const monShort = (ym: string) => `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 

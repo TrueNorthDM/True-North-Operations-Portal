@@ -3,7 +3,8 @@
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
-import { saveTrAssignment, deactivateTrAssignment, linkTsheetsPersonToDirectory } from '@/lib/tsheets/settings-actions'
+import { saveTrAssignment, deactivateTrAssignment } from '@/lib/tsheets/settings-actions'
+import { linkTsheetsPersonToDirectory } from '@/lib/tsheets/sync-actions'
 
 export interface PersonWithAssignments {
   id: string

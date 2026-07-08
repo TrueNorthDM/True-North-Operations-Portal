@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { syncAllFromTsheets } from '@/lib/tsheets/settings-actions'
+import { syncAllFromTsheets } from '@/lib/tsheets/sync-actions'
 
 interface Props {
   syncedAt: string | null

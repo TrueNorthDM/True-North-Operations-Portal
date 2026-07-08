@@ -5,6 +5,7 @@
 // 24-month retention window the reports use. Transposed like the editable grids.
 
 import { pastMonths } from '@/lib/tsheets/retention'
+import { money } from '@/lib/tsheets/format'
 import type { MonthlyBudget } from './MonthlyBudgetGrid'
 import type { ProjectMonthHours } from './ProjectHoursGrid'
 
@@ -13,7 +14,6 @@ function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
   return `${MONTHS[m - 1]} ${y}`
 }
-const money = (n: number) => '$' + n.toLocaleString('en-US')
 const fmtHrs = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''))
 
 export function PastScheduleTables({ budgets, hours, projects }: {

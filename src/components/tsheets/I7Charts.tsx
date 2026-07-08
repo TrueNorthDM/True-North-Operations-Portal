@@ -8,9 +8,8 @@
 
 import type { ReactNode } from 'react'
 import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
+import { fmtHours } from '@/lib/tsheets/format'
 
-const fmtHours = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''))
-const money = (n: number) => '$' + Math.round(n).toLocaleString('en-US')
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const monShort = (ym: string) => MON[Number(ym.slice(5, 7)) - 1] ?? ym
 

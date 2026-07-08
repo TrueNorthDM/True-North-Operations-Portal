@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
+import { money as fmtMoney } from '@/lib/tsheets/format'
 import { PastScheduleTables } from './PastSchedule'
 import type { MonthlyBudget } from './MonthlyBudgetGrid'
 import type { ProjectMonthHours } from './ProjectHoursGrid'
@@ -30,8 +31,10 @@ function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
   return m >= 1 && m <= 12 ? `${MONTHS[m - 1]} ${y}` : ym
 }
+// Null-safe wrapper over the canonical money formatter (history amounts can be
+// absent → "none").
 function money(n: number | null | undefined): string {
-  return n == null ? 'none' : '$' + Number(n).toLocaleString('en-US')
+  return n == null ? 'none' : fmtMoney(n)
 }
 
 // ── Change type (the badge) ─────────────────────────────────────────────────
