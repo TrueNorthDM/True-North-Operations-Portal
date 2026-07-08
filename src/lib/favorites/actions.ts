@@ -25,9 +25,7 @@ export async function saveFavorites(hrefs: string[]) {
   const byHref = new Map(FAVORITE_TARGETS.map(t => [t.href, t]))
   const valid = [...new Set(hrefs)].filter(h => byHref.has(h)).slice(0, MAX_FAVORITES)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { error: delErr } = await db.from('favorites').delete().eq('profile_id', user.id)
+  const { error: delErr } = await supabase.from('favorites').delete().eq('profile_id', user.id)
   if (delErr) throw new Error(delErr.message)
 
   if (valid.length > 0) {
@@ -37,7 +35,7 @@ export async function saveFavorites(hrefs: string[]) {
       label: byHref.get(href)!.label,
       position,
     }))
-    const { error: insErr } = await db.from('favorites').insert(rows)
+    const { error: insErr } = await supabase.from('favorites').insert(rows)
     if (insErr) throw new Error(insErr.message)
   }
 

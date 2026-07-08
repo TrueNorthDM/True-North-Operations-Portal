@@ -20,13 +20,12 @@ export async function getAccessibleSiteIds(): Promise<Set<string> | null> {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return new Set()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc('accessible_site_ids', { uid: user.id })
+  const { data, error } = await supabase.rpc('accessible_site_ids', { uid: user.id })
   if (error) {
     console.error('[access] accessible_site_ids failed (migration 016 applied?):', error.message)
     return null
   }
-  return new Set(((data ?? []) as { site_id: string }[]).map(r => r.site_id))
+  return new Set((data ?? []).map(r => r.site_id))
 }
 
 export async function canAccessSite(siteId: string): Promise<boolean> {

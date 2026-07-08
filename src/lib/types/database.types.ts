@@ -441,9 +441,23 @@ export type Database = {
         Update: Partial<{ month: string; note: string; updated_by: string | null; updated_at: string }>
         Relationships: []
       }
+      // Per-user Home favourites (migration 018). RLS: owner-only.
+      favorites: {
+        Row: { profile_id: string; href: string; label: string; position: number; created_at: string }
+        Insert: { profile_id: string; href: string; label: string; position?: number; created_at?: string }
+        Update: Partial<{ profile_id: string; href: string; label: string; position: number; created_at: string }>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      // accessible_site_ids(uid) — SECURITY DEFINER helper (migration 016).
+      // Returns the set of project (site) ids the user can reach.
+      accessible_site_ids: {
+        Args: { uid: string }
+        Returns: { site_id: string }[]
+      }
+    }
     Enums: Record<string, never>
   }
 }
