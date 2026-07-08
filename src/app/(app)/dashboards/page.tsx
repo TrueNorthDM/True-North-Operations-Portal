@@ -2,20 +2,18 @@
 
 import { NavCard } from '@/components/NavCard'
 
+// Line-chart icon (Publishing Goals) — pulses. Matches the handoff.
 const ChartIcon = (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+  <svg className="tn-anim w-5 h-5" style={{ animation: 'tn-ico-pulse 3s ease-in-out infinite' }} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M3 3v18h18" />
-    <rect x="7" y="11" width="3" height="6" rx="0.5" />
-    <rect x="12" y="7" width="3" height="10" rx="0.5" />
-    <rect x="17" y="13" width="3" height="4" rx="0.5" />
+    <path d="m7 14 3-3 3 2 4-5" />
   </svg>
 )
-const GridIcon = (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="7" height="7" rx="1" />
-    <rect x="14" y="3" width="7" height="7" rx="1" />
-    <rect x="3" y="14" width="7" height="7" rx="1" />
-    <rect x="14" y="14" width="7" height="7" rx="1" />
+// Kanban/columns icon (Workload) — wiggles. Matches the handoff.
+const ColumnsIcon = (
+  <svg className="tn-anim w-5 h-5" style={{ animation: 'tn-ico-wiggle 3.2s ease-in-out infinite' }} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 3v18M15 3v18" />
   </svg>
 )
 
@@ -37,7 +35,7 @@ export default function DashboardsPage() {
           href="/boards-beta"
           title="Workload — IN CONSTRUCTION"
           description="Native rewrite (Goals, Translation, Targets). Work in progress."
-          icon={GridIcon}
+          icon={ColumnsIcon}
         />
       </div>
     </div>
