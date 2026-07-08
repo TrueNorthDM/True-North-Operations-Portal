@@ -23,11 +23,24 @@ const ToolsIcon = (
     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
   </svg>
 )
+// People icon that plays a "2 → 3" split: the two figures slide apart while a
+// third fades in between. The three groups render together (same commit) so
+// they stay in phase. Motion guarded by .tn-anim (prefers-reduced-motion).
 const TeamIcon = (
-  <svg className={icon} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+  <svg className={icon} style={{ overflow: 'visible' }} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+    <g className="tn-anim" style={{ animation: 'tn-split-left 3s ease-in-out infinite' }}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+    </g>
+    <g className="tn-anim" style={{ animation: 'tn-split-right 3s ease-in-out infinite' }}>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </g>
+    <g style={{ transform: 'translateX(3px)' }}>
+      <g className="tn-anim" style={{ transformBox: 'fill-box', transformOrigin: 'center', animation: 'tn-appear 3s ease-in-out infinite' }}>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+      </g>
+    </g>
   </svg>
 )
 const WorkIcon = (
@@ -46,15 +59,16 @@ interface Widget {
 }
 
 const WIDGETS: Widget[] = [
-  { title: 'Dashboards', description: 'Boards Review — pipeline & publishing goals.', icon: DashboardsIcon, href: '/dashboards', anim: 'tn-icon-pulse 3.2s ease-in-out infinite' },
-  { title: 'Tools', description: 'Capabilities used inside a project.', icon: ToolsIcon, href: '/tools', anim: 'tn-icon-wiggle 3s ease-in-out infinite' },
-  { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon, anim: 'tn-icon-pulse 3.4s ease-in-out infinite' },
-  { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon, anim: 'tn-icon-sway 3.2s ease-in-out infinite' },
+  { title: 'Dashboards', description: 'Boards Review — pipeline & publishing goals.', icon: DashboardsIcon, href: '/dashboards', anim: 'tn-ico-pulse 3s ease-in-out infinite' },
+  { title: 'Tools', description: 'Capabilities used inside a project.', icon: ToolsIcon, href: '/tools', anim: 'tn-ico-wiggle 3.2s ease-in-out infinite' },
+  { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon, anim: '' }, // split animation lives inside TeamIcon
+  { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon, anim: 'tn-ico-swing 3.4s ease-in-out infinite' },
 ]
 
-// The looping icon (wrapped so the transform animates the glyph, not the chip).
+// Wraps the icon so the transform animates the glyph, not the chip. An empty
+// `anim` (My Team) means the animation lives inside the icon's own SVG groups.
 function AnimIcon({ anim, children }: { anim: string; children: React.ReactNode }) {
-  return <span className="tn-anim inline-flex" style={{ animation: anim }}>{children}</span>
+  return anim ? <span className="tn-anim inline-flex" style={{ animation: anim }}>{children}</span> : <>{children}</>
 }
 
 export function HomeWidgets() {

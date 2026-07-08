@@ -98,10 +98,14 @@ h1, h2, h3 {
   0%   { transform: scale(.28); opacity: .55; }
   100% { transform: scale(1);   opacity: 0; }
 }
-/* Home widget icon micro-motions (subtle, looping). */
-@keyframes tn-icon-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
-@keyframes tn-icon-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
-@keyframes tn-icon-sway { 0%, 100% { transform: rotate(0) translateY(0); } 50% { transform: rotate(7deg) translateY(-1px); } }
+/* Home widget icon motions — amplitudes match the design prototype. */
+@keyframes tn-ico-pulse  { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.28); } 60% { transform: scale(.94); } }
+@keyframes tn-ico-wiggle { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-16deg); } 55% { transform: rotate(16deg); } 80% { transform: rotate(-6deg); } }
+@keyframes tn-ico-swing  { 0%, 100% { transform: rotate(-11deg); } 50% { transform: rotate(11deg); } }
+/* "My Team" — two figures split apart while a third fades in between (2 → 3). */
+@keyframes tn-split-left  { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+@keyframes tn-split-right { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+@keyframes tn-appear     { 0%, 32% { opacity: 0; transform: scale(.2); } 50% { opacity: 1; transform: scale(1); } 68%, 100% { opacity: 0; transform: scale(.2); } }
 
 @media (prefers-reduced-motion: reduce) {
   .tn-anim { animation: none !important; }

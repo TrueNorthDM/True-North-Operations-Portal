@@ -24,10 +24,10 @@ const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : use
 function PersonCard({ p }: { p: OrgPerson }) {
   const color = p.color ?? NEUTRAL
   return (
-    <div className="inline-block min-w-[148px] max-w-[210px] rounded-lg border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-0.5 hover:border-tn-teal hover:shadow-md">
+    <div className="inline-block min-w-[148px] max-w-[210px] rounded-[10px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
       <div className="h-1.5" style={{ backgroundColor: color }} />
       <div className="px-3 py-2">
-        <div className="text-sm font-semibold text-tn-ink leading-tight">{p.name}</div>
+        <div className="font-(family-name:--font-display) text-[13.5px] font-bold text-tn-ink leading-tight">{p.name}</div>
         {p.title && <div className="mt-0.5 text-[11px] text-muted leading-tight">{p.title}</div>}
         {p.teams.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
@@ -50,10 +50,10 @@ function TeamBox({ team }: { team: OrgTeamGroup }) {
   const threadStyle = { ['--thread']: color } as React.CSSProperties
   return (
     <li style={threadStyle}>
-      <div className="inline-block align-top min-w-[150px] max-w-[230px] rounded-lg border border-slate-200 bg-white text-left shadow-sm overflow-hidden">
+      <div className="inline-block align-top min-w-[150px] max-w-[230px] rounded-[10px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
         {/* Team band colours are fixed light pastels, so the header text is a
             fixed dark ink — not a themed token — to keep contrast in dark mode. */}
-        <div className="px-3 py-2 text-sm font-bold text-[#26261f]" style={{ backgroundColor: color }}>{team.name}</div>
+        <div className="px-3 py-2 font-(family-name:--font-display) text-[12.5px] font-extrabold text-[#26261f]" style={{ backgroundColor: color }}>{team.name}</div>
         {team.members.length === 0 ? (
           <div className="px-3 py-2 text-xs text-slate-400">No members</div>
         ) : (
@@ -286,7 +286,7 @@ export function OrgChart({ roots }: { roots: OrgPerson[] }) {
         <button
           type="button"
           onClick={() => setFull(true)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5 bg-white"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-tn-ink border border-slate-200 hover:border-tn-teal rounded-[9px] px-[13px] py-1.5 bg-white transition-colors"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />

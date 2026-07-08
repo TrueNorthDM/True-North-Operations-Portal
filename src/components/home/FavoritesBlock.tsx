@@ -74,7 +74,7 @@ export function FavoritesBlock({ favorites, catalog }: { favorites: Favorite[]; 
           <button
             type="button"
             onClick={openEditor}
-            className="text-xs font-medium text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5 bg-white"
+            className="text-xs font-semibold text-muted hover:text-tn-ink border border-slate-200 hover:border-tn-teal rounded-[9px] px-[13px] py-1.5 bg-white transition-colors"
           >
             Edit
           </button>
