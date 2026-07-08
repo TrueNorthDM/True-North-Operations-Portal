@@ -66,7 +66,7 @@ export default function LoginPage() {
               Operations Portal
             </h1>
             <p className="mt-5 max-w-[300px] text-[15.5px] leading-relaxed text-[#ffffff]/70">
-              One place to find the tools, dashboards, and to-do lists that keep your day-to-day work efficient.
+              One home for the tools, dashboards, and tasks that keep your team moving every day.
             </p>
           </div>
         </div>

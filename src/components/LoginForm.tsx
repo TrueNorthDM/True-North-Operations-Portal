@@ -65,7 +65,7 @@ export function LoginForm() {
       <div>
         <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-2xl text-tn-ink">Welcome back</h1>
         <p className="mt-2 text-sm text-foreground">
-          Use your True North — Good News Advocates email <b className="text-tn-ink font-semibold">@{ALLOWED_EMAIL_DOMAINS[0]}</b>.
+          Use your True North — Good News Advocates email.
         </p>
       </div>
 
@@ -100,7 +100,7 @@ export function LoginForm() {
         type="submit"
         disabled={!canSubmit}
         style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
-        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-white transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed"
       >
         {sending ? 'Sending…' : 'Send magic link'}
       </button>
