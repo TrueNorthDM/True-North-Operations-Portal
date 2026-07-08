@@ -8,19 +8,26 @@ export function NavCard({
   href,
   title,
   description,
+  icon,
 }: {
   href: string
   title: string
   description: string
+  icon?: React.ReactNode
 }) {
   const isInApp = href.startsWith('/') && !href.endsWith('.html')
-  const className = 'group rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md'
+  const className = 'group rounded-2xl border-2 border-slate-200 bg-white p-6 transition-all hover:-translate-y-0.5 hover:border-tn-teal hover:shadow-md'
   const inner = (
     <>
-      <h2 className="text-xl font-bold text-slate-900 transition-colors group-hover:text-slate-700">{title}</h2>
-      <p className="mt-1.5 text-sm text-slate-500">{description}</p>
-      <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-slate-700">
-        Open <span aria-hidden="true">→</span>
+      {icon && (
+        <span className="mb-4 inline-flex w-11 h-11 items-center justify-center rounded-xl bg-tn-teal-soft text-tn-teal">
+          {icon}
+        </span>
+      )}
+      <h2 className="text-xl font-extrabold text-tn-ink">{title}</h2>
+      <p className="mt-1.5 text-sm text-muted">{description}</p>
+      <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-tn-teal">
+        Open <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
       </span>
     </>
   )
