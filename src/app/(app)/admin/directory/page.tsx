@@ -31,8 +31,7 @@ export default async function DirectoryPage() {
     supabase.from('profiles').select('id, email'),
   ])
 
-  // grants isn't in the generated types → cast (same pattern as the old pages).
-  const grants = (gData ?? []) as unknown as { subject_type: string; subject_id: string; project_id: string; role: string }[]
+  const grants = gData ?? []
 
   const people = pData ?? []
   const teams = tData ?? []

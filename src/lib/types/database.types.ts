@@ -327,7 +327,8 @@ export type Database = {
       }
       teams: {
         Row: TeamRow
-        Insert: Omit<TeamRow, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string }
+        // Only `name` is required at insert; the rest have DB defaults / are nullable.
+        Insert: Partial<Omit<TeamRow, 'id' | 'created_at' | 'updated_at'>> & { name: string }
         Update: Partial<Omit<TeamRow, 'id' | 'created_at' | 'updated_at'>>
         Relationships: []
       }
@@ -335,6 +336,13 @@ export type Database = {
         Row: TeamMemberRow
         Insert: Omit<TeamMemberRow, 'created_at'> & { created_at?: string }
         Update: Partial<TeamMemberRow>
+        Relationships: []
+      }
+      // Access grants (migration 014). One role per subject per project.
+      grants: {
+        Row: { id: string; subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'admin' | 'member' | 'viewer'; created_at: string; updated_at: string }
+        Insert: { id?: string; subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'admin' | 'member' | 'viewer'; created_at?: string; updated_at?: string }
+        Update: Partial<{ subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'admin' | 'member' | 'viewer' }>
         Relationships: []
       }
       tr_clients: {
