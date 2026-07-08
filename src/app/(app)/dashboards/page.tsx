@@ -33,9 +33,10 @@ export default function DashboardsPage() {
         />
         <NavCard
           href="/boards-beta"
-          title="Workload — IN CONSTRUCTION"
+          title="Workload"
           description="Native rewrite (Goals, Translation, Targets). Work in progress."
           icon={ColumnsIcon}
+          soon
         />
       </div>
     </div>
