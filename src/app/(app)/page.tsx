@@ -13,14 +13,12 @@ import { catalogFor } from '@/lib/favorites/catalog'
 
 async function getFavorites(): Promise<Favorite[]> {
   const supabase = await createClient()
-  // RLS (favorites_owner) scopes the read to the signed-in user's rows. The
-  // table isn't in the generated types yet, hence the cast.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
+  // RLS (favorites_owner) scopes the read to the signed-in user's rows.
+  const { data } = await supabase
     .from('favorites')
     .select('href, label, position')
     .order('position')
-  return ((data ?? []) as { href: string; label: string }[]).map(f => ({ href: f.href, label: f.label }))
+  return (data ?? []).map(f => ({ href: f.href, label: f.label }))
 }
 
 export default async function HomePage() {

@@ -372,17 +372,16 @@ export async function toggleConfirmation(input: {
 
   // Build upsert payload (Rule 2 — timestamps).
   const nowIso = new Date().toISOString()
-  const payload: Record<string, unknown> = {
+  const payload = {
     page_id: pageId,
-    language_code: languageCode,
+    language_code: languageCode as LanguageCode,
     confirmed_on_live: value,
     confirmed_at: value ? nowIso : null,
   }
 
   const { error } = await supabase
     .from('confirmations')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .upsert(payload as any, { onConflict: 'page_id,language_code' })
+    .upsert(payload, { onConflict: 'page_id,language_code' })
   if (error) return { ok: false, error: error.message }
 
   // ──────────────────────────────────────────────────────────────
