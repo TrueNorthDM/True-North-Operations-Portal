@@ -19,6 +19,9 @@ export function LoginForm() {
   const [sending, startSend] = useTransition()
   // Pre-populate with any ?error= the auth callback may have set.
   const [error, setError] = useState<string | null>(searchParams.get('error'))
+  // Where to land after login — captured by the proxy as ?next=… (validated
+  // server-side and again in the callback before it's used for a redirect).
+  const next = searchParams.get('next') ?? undefined
 
   const trimmed = email.trim().toLowerCase()
   const looksLikeEmail = /\S+@\S+\.\S+/.test(trimmed)
@@ -30,7 +33,7 @@ export function LoginForm() {
     if (!canSubmit) return
     setError(null)
     startSend(async () => {
-      const res = await sendMagicLink({ email: trimmed })
+      const res = await sendMagicLink({ email: trimmed, next })
       if (!res.ok) {
         setError(res.error ?? 'Failed to send link.')
         return
@@ -41,7 +44,7 @@ export function LoginForm() {
 
   if (sent) {
     return (
-      <div className="rounded-xl bg-white border border-slate-200 p-6 space-y-3 text-center">
+      <div role="status" className="rounded-xl bg-white border border-slate-200 p-6 space-y-3 text-center">
         <div className="text-4xl">📬</div>
         <h2 className="font-semibold text-slate-900">Check your inbox</h2>
         <p className="text-sm text-slate-600">
@@ -82,7 +85,7 @@ export function LoginForm() {
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
           {error}
         </div>
       )}

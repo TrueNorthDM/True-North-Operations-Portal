@@ -12,6 +12,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { isAllowedEmail } from '@/lib/auth-constants'
+import { safeNext } from '@/lib/auth/safe-next'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
@@ -37,7 +38,7 @@ async function getCallbackUrl(): Promise<string> {
   return `${proto}://${host}/auth/callback`
 }
 
-export async function sendMagicLink(input: { email: string }): Promise<{ ok: boolean; error?: string }> {
+export async function sendMagicLink(input: { email: string; next?: string }): Promise<{ ok: boolean; error?: string }> {
   const email = input.email.trim().toLowerCase()
 
   if (!email) return { ok: false, error: 'Enter your email.' }
@@ -51,6 +52,13 @@ export async function sendMagicLink(input: { email: string }): Promise<{ ok: boo
     }
   }
 
+  // Carry the intended destination through the magic link so the user lands
+  // back where they started. Validated here too (defense-in-depth) since it
+  // round-trips through the email; the callback re-sanitizes on the way in.
+  const callback = await getCallbackUrl()
+  const next = safeNext(input.next)
+  const emailRedirectTo = next === '/' ? callback : `${callback}?next=${encodeURIComponent(next)}`
+
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -58,7 +66,9 @@ export async function sendMagicLink(input: { email: string }): Promise<{ ok: boo
       // Where Supabase sends the user after they click the email link.
       // Must be on the Allow-List in Supabase Auth → URL Configuration —
       // any URL not on that list gets silently replaced by the Site URL.
-      emailRedirectTo: await getCallbackUrl(),
+      // (Extra query params like ?next= are preserved as long as the callback
+      // PATH is allow-listed, which it already is for the base flow.)
+      emailRedirectTo,
       shouldCreateUser: true,
     },
   })

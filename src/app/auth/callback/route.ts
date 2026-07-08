@@ -7,14 +7,14 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import { safeNext } from '@/lib/auth/safe-next'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
-  // Sanitize `next` to prevent open-redirect attacks: only allow relative paths.
-  const rawNext = url.searchParams.get('next') ?? '/'
-  const next = rawNext.startsWith('/') ? rawNext : '/'
+  // Sanitize `next` to prevent open-redirect attacks (see safeNext).
+  const next = safeNext(url.searchParams.get('next'))
 
   if (code) {
     const supabase = await createClient()
