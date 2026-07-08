@@ -38,7 +38,8 @@
 @theme {
   /* True North portal identity — deep navy + north-star gold. Used for the
      chrome (active nav, avatar, accents); project pages keep their brands. */
-  --color-tn-primary: #012358;      /* navy — headings, primary, avatar, logo text */
+  --color-tn-primary: #012358;      /* navy — primary buttons, avatar */
+  --color-tn-ink: #012358;          /* heading ink (dark: light — see .dark) */
   --color-tn-accent: #F2C40A;       /* gold — logo star, small accents, top rule */
   --color-tn-teal: #1E7D7F;         /* teal — active nav, links, focus ring */
   --color-tn-teal-soft: #eaf4f4;    /* soft teal fills (icon chips) */
@@ -77,6 +78,26 @@ h1, h2, h3 {
   letter-spacing: -0.015em;
 }
 
+/* ── Login "sunrise" motif (pure CSS; see LoginPage left panel) ──────────────
+   All looping motion is disabled under prefers-reduced-motion. */
+@keyframes tn-spin { to { transform: rotate(360deg); } }
+@keyframes tn-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes tn-breathe {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.09); }
+}
+@keyframes tn-core {
+  0%, 100% { box-shadow: 0 0 22px 5px rgba(242,196,10,.5);  transform: translate(-50%,-50%) scale(1); }
+  50%      { box-shadow: 0 0 44px 13px rgba(242,196,10,.85); transform: translate(-50%,-50%) scale(1.18); }
+}
+@keyframes tn-ripple {
+  0%   { transform: scale(.28); opacity: .55; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tn-anim { animation: none !important; }
+}
+
 /* ── Dark mode — one palette remap, not per-component dark: classes ─────────
    Tailwind v4 utilities resolve through CSS variables (bg-slate-100 →
    var(--color-slate-100)), so flipping the palette here re-skins the whole
@@ -100,6 +121,7 @@ h1, h2, h3 {
 
   /* Portal identity — navy lightened so it reads on dark */
   --color-tn-primary: #4b8fe0;
+  --color-tn-ink: #eaf1fb;          /* heading ink on dark */
   --color-tn-teal: #5ac2bf;
   --color-tn-teal-soft: #10262e;
   --color-tn-lightteal: #4d8a8b;

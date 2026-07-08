@@ -44,15 +44,15 @@ export function LoginForm() {
 
   if (sent) {
     return (
-      <div role="status" className="rounded-xl bg-white border border-slate-200 p-6 space-y-3 text-center">
+      <div role="status" className="space-y-3 text-center">
         <div className="text-4xl">📬</div>
-        <h2 className="font-semibold text-slate-900">Check your inbox</h2>
+        <h2 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-xl text-tn-ink">Check your inbox</h2>
         <p className="text-sm text-slate-600">
-          We sent a magic link to <strong>{trimmed}</strong>. Click it to sign in.
+          We sent a magic link to <strong className="text-tn-ink">{trimmed}</strong>. Click it to sign in.
         </p>
         <p className="text-xs text-slate-400">
           Didn&apos;t arrive? Check spam, or{' '}
-          <button onClick={() => { setSent(false); setEmail('') }} className="text-slate-700 underline hover:text-slate-900">
+          <button onClick={() => { setSent(false); setEmail('') }} className="text-tn-teal underline hover:text-tn-primary">
             try a different email
           </button>.
         </p>
@@ -61,9 +61,16 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl bg-white border border-slate-200 p-6 space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 text-center">
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
+        <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-2xl text-tn-ink">Welcome back</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Use your True North — Good News Advocates email <b className="text-tn-ink font-semibold">@{ALLOWED_EMAIL_DOMAINS[0]}</b>.
+        </p>
+      </div>
+
+      <div className="pt-3 text-left">
+        <label htmlFor="email" style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800, letterSpacing: '.06em' }} className="mb-2 block text-center text-xs uppercase text-slate-500">
           Work email
         </label>
         <input
@@ -74,11 +81,10 @@ export function LoginForm() {
           placeholder={`you@${ALLOWED_EMAIL_DOMAINS[0]}`}
           autoComplete="email"
           autoFocus
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="w-full rounded-xl border-[1.5px] border-slate-300 bg-card px-4 py-3 text-center text-[15px] text-tn-ink transition-colors focus:border-tn-teal focus:outline-none focus:ring-[3px] focus:ring-tn-teal/20"
         />
-        {/* Inline hint about domain restriction */}
         {looksLikeEmail && !domainOk && (
-          <p className="text-xs text-amber-700 mt-2">
+          <p className="mt-2 text-center text-xs text-amber-700">
             Only @{ALLOWED_EMAIL_DOMAINS[0]} addresses can sign in.
           </p>
         )}
@@ -93,12 +99,13 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={!canSubmit}
-        className="w-full px-4 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-semibold hover:bg-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
+        className="w-full rounded-xl bg-tn-primary px-4 py-3.5 text-[15px] text-white transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40"
       >
         {sending ? 'Sending…' : 'Send magic link'}
       </button>
 
-      <p className="text-xs text-slate-400 text-center">
+      <p className="text-xs text-slate-400">
         We&apos;ll email you a link that signs you in — no password needed.
       </p>
     </form>

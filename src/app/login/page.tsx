@@ -1,25 +1,81 @@
-// Login page — Server Component shell, Client Component for the form.
-// Skips the sidebar/main layout (uses its own minimal layout via the route group).
+// Login — split brand panel (handoff option 1a). Server Component shell; the
+// form (client) is LoginForm. Left panel = navy gradient + animated "sunrise"
+// (pure CSS, guarded by prefers-reduced-motion); right = logo + magic-link form.
 
 import { Suspense } from 'react'
+import Image from 'next/image'
 import { LoginForm } from '@/components/LoginForm'
+
+// The animated north-star / sunrise: counter-rotating gold ray layers, expanding
+// rings, a breathing glow, and a pulsing gold core — all centered on one point.
+function Sunrise() {
+  return (
+    <>
+      {/* concentric elements anchored on the sun's centre (top-centre of panel) */}
+      <div className="pointer-events-none absolute left-1/2 top-[60px] h-0 w-0">
+        <div
+          className="tn-anim"
+          style={{ position: 'absolute', left: -330, top: -330, width: 660, height: 660, borderRadius: '50%', background: 'repeating-conic-gradient(from 0deg, rgba(242,196,10,.13) 0deg 1.6deg, transparent 1.6deg 15deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', maskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', animation: 'tn-spin 80s linear infinite' }}
+        />
+        <div
+          className="tn-anim"
+          style={{ position: 'absolute', left: -260, top: -260, width: 520, height: 520, borderRadius: '50%', background: 'repeating-conic-gradient(from 4deg, rgba(148,196,197,.10) 0deg 1deg, transparent 1deg 9deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', maskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', animation: 'tn-spin-rev 120s linear infinite' }}
+        />
+        {[0, 1.8, 3.6].map((delay, i) => (
+          <div
+            key={i}
+            className="tn-anim"
+            style={{ position: 'absolute', left: -270, top: -270, width: 540, height: 540, borderRadius: '50%', border: `1px solid ${i === 1 ? 'rgba(242,196,10,.4)' : 'rgba(148,196,197,.5)'}`, animation: `tn-ripple 5.4s ease-out infinite`, animationDelay: `${delay}s` }}
+          />
+        ))}
+        <div
+          className="tn-anim"
+          style={{ position: 'absolute', left: 0, top: 0, width: 12, height: 12, transform: 'translate(-50%,-50%)', borderRadius: '50%', background: '#F2C40A', boxShadow: '0 0 26px 6px rgba(242,196,10,.55)', animation: 'tn-core 6.5s ease-in-out infinite' }}
+        />
+      </div>
+      <div
+        className="tn-anim pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(circle at 50% 8%, rgba(242,196,10,.26), transparent 46%)', transformOrigin: '50% 8%', animation: 'tn-breathe 6.5s ease-in-out infinite' }}
+      />
+    </>
+  )
+}
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-900">
-            True North <span className="text-slate-400 font-medium">/ Operations Portal</span>
-          </h1>
-          <p className="text-sm text-slate-500 mt-2">
-            Sign in with your <strong className="text-slate-700">@goodnewsadvocates.org</strong> email.
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
+      <div className="flex w-full max-w-[1120px] overflow-hidden rounded-[22px] bg-card shadow-[0_24px_60px_-24px_rgba(1,35,88,.30)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,.65)]">
+        {/* Left brand panel — hidden on small screens */}
+        <div
+          className="relative hidden w-[454px] shrink-0 flex-col justify-end overflow-hidden p-11 text-white md:flex"
+          style={{ background: 'linear-gradient(160deg, #012358, #0a2f63)' }}
+        >
+          <Sunrise />
+          {/* Panel is navy in both themes → fixed literal colors, not tokens. */}
+          <div className="relative">
+            <div style={{ fontFamily: 'var(--font-raleway)', fontWeight: 900, letterSpacing: '.34em' }} className="text-[13px] text-[#94C4C5]">
+              TRUE NORTH
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 900, fontSize: '52px', lineHeight: 1.04 }} className="mt-3 text-[#ffffff]">
+              Operations Portal
+            </h1>
+            <p className="mt-5 max-w-[300px] text-[15.5px] leading-relaxed text-[#ffffff]/70">
+              One place to find the tools, dashboards, and to-do lists that keep your day-to-day work efficient.
+            </p>
+          </div>
         </div>
-        {/* Suspense is required because LoginForm calls useSearchParams() */}
-        <Suspense fallback={null}>
-          <LoginForm />
-        </Suspense>
+
+        {/* Right panel — logo + form */}
+        <div className="flex flex-1 flex-col items-center justify-center px-8 py-14 sm:px-14">
+          <div className="w-full max-w-sm text-center">
+            <span className="mb-9 inline-block rounded-lg dark:bg-[#ffffff] dark:p-2">
+              <Image src="/logos/true-north.png" alt="True North Digital Marketing" width={1352} height={705} priority className="h-12 w-auto" />
+            </span>
+            <Suspense fallback={null}>
+              <LoginForm />
+            </Suspense>
+          </div>
+        </div>
       </div>
     </div>
   )

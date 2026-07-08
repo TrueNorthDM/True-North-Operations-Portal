@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* True North lockup. On dark the navy wordmark sits on a white chip so
             it stays legible; on the white light bar the chip is invisible. */}
         <Link href="/" className="flex items-end gap-2.5 group" aria-label="Go to dashboard">
-          <span className="rounded-lg dark:bg-white dark:px-2 dark:py-1">
+          <span className="rounded-lg dark:bg-[#ffffff] dark:px-2 dark:py-1">
             <Image
               src="/logos/true-north.png"
               alt="True North Digital Marketing"
