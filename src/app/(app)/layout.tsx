@@ -3,6 +3,7 @@
 // All protected pages live inside this layout.
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -20,16 +21,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Top bar — brand on the left; theme toggle + avatar on the right
           (avatar is always the rightmost element). */}
       <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">
-        <Link href="/" className="flex items-center gap-2 group" aria-label="Go to dashboard">
-          {/* North star — the portal's identity mark. */}
-          <svg className="w-4 h-4 text-tn-accent shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 1l2.4 8.6L23 12l-8.6 2.4L12 23l-2.4-8.6L1 12l8.6-2.4z" />
-          </svg>
-          <span className="text-lg font-bold text-slate-900 group-hover:text-tn-primary transition-colors font-(family-name:--font-display)">
-            True North
+        {/* True North lockup. On dark the navy wordmark sits on a white chip so
+            it stays legible; on the white light bar the chip is invisible. */}
+        <Link href="/" className="flex items-end gap-2.5 group" aria-label="Go to dashboard">
+          <span className="rounded-lg dark:bg-white dark:px-2 dark:py-1">
+            <Image
+              src="/logos/true-north.png"
+              alt="True North Digital Marketing"
+              width={1352}
+              height={705}
+              priority
+              className="h-9 w-auto"
+            />
           </span>
-          <span className="text-slate-300">/</span>
-          <span className="text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors">
+          <span className="text-sm font-semibold text-slate-500 pb-0.5 group-hover:text-slate-700 transition-colors">
             Operations Portal
           </span>
         </Link>

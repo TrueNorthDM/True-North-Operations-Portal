@@ -117,10 +117,10 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       href={item.href}
       aria-label={item.label}
       aria-current={active ? 'page' : undefined}
-      className={`group relative mx-auto flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-primary/40 ${
+      className={`group relative mx-auto flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${
         active
-          ? 'bg-tn-primary/10 text-tn-primary'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'bg-tn-teal/10 text-tn-teal'
+          : 'text-slate-400 hover:bg-slate-100 hover:text-tn-primary'
       }`}
     >
       {item.icon}
