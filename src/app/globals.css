@@ -28,6 +28,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Semantic text/surface utilities (theme-exact in both light and dark):
+     text-foreground (body), text-muted, bg-primary / text-primary (navy). */
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
   --font-sans: var(--font-open-sans), var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

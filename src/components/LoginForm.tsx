@@ -47,10 +47,10 @@ export function LoginForm() {
       <div role="status" className="space-y-3 text-center">
         <div className="text-4xl">📬</div>
         <h2 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-xl text-tn-ink">Check your inbox</h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-foreground">
           We sent a magic link to <strong className="text-tn-ink">{trimmed}</strong>. Click it to sign in.
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted">
           Didn&apos;t arrive? Check spam, or{' '}
           <button onClick={() => { setSent(false); setEmail('') }} className="text-tn-teal underline hover:text-tn-primary">
             try a different email
@@ -64,13 +64,13 @@ export function LoginForm() {
     <form onSubmit={handleSubmit} className="space-y-4 text-center">
       <div>
         <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-2xl text-tn-ink">Welcome back</h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-foreground">
           Use your True North — Good News Advocates email <b className="text-tn-ink font-semibold">@{ALLOWED_EMAIL_DOMAINS[0]}</b>.
         </p>
       </div>
 
       <div className="pt-3 text-left">
-        <label htmlFor="email" style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800, letterSpacing: '.06em' }} className="mb-2 block text-center text-xs uppercase text-slate-500">
+        <label htmlFor="email" style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800, letterSpacing: '.06em' }} className="mb-2 block text-center text-xs uppercase text-muted">
           Work email
         </label>
         <input
@@ -100,12 +100,12 @@ export function LoginForm() {
         type="submit"
         disabled={!canSubmit}
         style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
-        className="w-full rounded-xl bg-tn-primary px-4 py-3.5 text-[15px] text-white transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-white transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40"
       >
         {sending ? 'Sending…' : 'Send magic link'}
       </button>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-muted">
         We&apos;ll email you a link that signs you in — no password needed.
       </p>
     </form>
