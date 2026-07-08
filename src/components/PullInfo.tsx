@@ -50,6 +50,9 @@ export function PullInfo({ syncedAt, utcHours, utcMinute = 0, label, pastVerb }:
   const [mounted, setMounted] = useState(false)
   const [, setTick] = useState(0)
   useEffect(() => {
+    // Intentional: flip to client-computed text only after mount (avoids the
+    // UTC-server vs local-client hydration mismatch).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
     const id = setInterval(() => setTick(t => t + 1), 60_000)
     return () => clearInterval(id)

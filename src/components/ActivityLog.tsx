@@ -12,7 +12,7 @@
  * client. Refreshes naturally when the project page revalidates.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { summarizeResult, relativeTime, type ActivityTag } from '@/lib/activity'
 
 export interface ActivityRow {
@@ -48,10 +48,14 @@ const tagStyle: Record<ActivityTag, { label: string; className: string }> = {
 export function ActivityLog({ rows }: Props) {
   const [open, setOpen] = useState(false)
 
-  // "Fresh activity" = anything in the last 5 minutes. Used to draw the
-  // user's attention to the (collapsed) section so they know it's worth
-  // opening without the section having to be open by default.
-  const hasFresh = rows.length > 0 && (Date.now() - new Date(rows[0].received_at).getTime()) < 5 * 60 * 1000
+  // "Fresh activity" = the newest row is < 5 minutes old. Draws attention to the
+  // (collapsed) section. Computed in an effect because it reads the clock
+  // (Date.now is impure in render, and it'd differ from the server on hydrate).
+  const [hasFresh, setHasFresh] = useState(false)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHasFresh(rows.length > 0 && Date.now() - new Date(rows[0].received_at).getTime() < 5 * 60 * 1000)
+  }, [rows])
 
   return (
     <section className="rounded-xl bg-white border border-slate-200 overflow-hidden">

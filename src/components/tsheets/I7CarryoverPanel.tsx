@@ -81,6 +81,9 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Intentional: honour reduced-motion by jumping straight to the final
+      // state (no entrance animation) instead of running the rAF loop.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMotion(false); setT(1); return
     }
     let raf = 0, start = 0

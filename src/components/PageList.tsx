@@ -9,7 +9,7 @@
  */
 
 import Link from 'next/link'
-import { Fragment, useState, useMemo, useEffect } from 'react'
+import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { languageStatusPalette } from '@/lib/language-colors'
 import { Tooltip, Popover, PopoverItem, SortHeader } from './PageListParts'
@@ -59,6 +59,25 @@ function formatDoneDate(iso: string | null | undefined): string | null {
   })
 }
 
+// ── Row groups ────────────────────────────────────────────────────
+// Three buckets based on the user's mental model:
+//   - On-going    : active work — neither completed nor opted out
+//   - Completed   : strict definition — confirmed_done_at is stamped
+//   - Not relevant: explicitly opted out of the workflow
+// Module-level (pure) so the grouping useMemo can depend on `groupOf` safely.
+type GroupKey = 'ongoing' | 'completed' | 'not_relevant'
+const GROUP_ORDER: GroupKey[] = ['ongoing', 'completed', 'not_relevant']
+const GROUP_LABEL: Record<GroupKey, string> = {
+  ongoing: 'On-going',
+  completed: 'Completed',
+  not_relevant: 'Not relevant',
+}
+function groupOf(r: PageListRow): GroupKey {
+  if (r.notRelevant) return 'not_relevant'
+  if (r.confirmedDoneAt) return 'completed'
+  return 'ongoing'
+}
+
 interface Props {
   rows: PageListRow[]
   languages: string[]                       // ordered, e.g. ['en','pt','es','sw']
@@ -98,10 +117,11 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     (['incomplete', 'done', 'needs_update', 'not_relevant'] as const).find(
       v => v === searchParams.get('status'),
     ) ?? 'all'
-  const hasLangs = (searchParams.get('lang') ?? '')
-    .split(',')
-    .map(s => s.trim())
-    .filter(s => languages.includes(s))
+  const langParam = searchParams.get('lang') ?? ''
+  const hasLangs = useMemo(
+    () => langParam.split(',').map(s => s.trim()).filter(s => languages.includes(s)),
+    [langParam, languages],
+  )
   const sortKey: SortKey =
     (['hreflang_status', 'all_live'] as const).find(
       v => v === searchParams.get('sort'),
@@ -147,16 +167,18 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     [],
   )
 
-  function isDone(r: PageListRow) {
-    // "Not relevant" pages are explicitly opted out — they count as done
-    // for progress, filtering, and the "Done" status pill.
+  // "Not relevant" pages are explicitly opted out — they count as done for
+  // progress, filtering, and the "Done" status pill. Memoized (deps: languages)
+  // so the filtering useMemos can list them without re-running every render.
+  const isDone = useCallback((r: PageListRow) => {
     if (r.notRelevant) return true
     return languages.every(l => r.langStatus[l]?.confirmed)
-  }
+  }, [languages])
 
-  function urlCount(r: PageListRow) {
-    return languages.filter(l => r.langStatus[l]?.hasUrl).length
-  }
+  const urlCount = useCallback(
+    (r: PageListRow) => languages.filter(l => r.langStatus[l]?.hasUrl).length,
+    [languages],
+  )
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -197,33 +219,12 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
       return cmp
     })
     return base
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, search, status, hasLangs.join(','), sortKey, sortDir, collator])
+  }, [rows, search, status, hasLangs, sortKey, sortDir, collator, isDone, urlCount])
 
-  const doneCount = useMemo(() => rows.filter(isDone).length, [rows])
+  const doneCount = useMemo(() => rows.filter(isDone).length, [rows, isDone])
   const incompleteCount = rows.length - doneCount
   const needsUpdateCount = useMemo(() => rows.filter(r => r.needsUpdate).length, [rows])
   const notRelevantCount = useMemo(() => rows.filter(r => r.notRelevant).length, [rows])
-
-  // ── Row groups ────────────────────────────────────────────────────
-  // Three buckets based on the user's mental model:
-  //   - On-going    : active work — neither completed nor opted out
-  //   - Completed   : strict definition — confirmed_done_at is stamped
-  //   - Not relevant: explicitly opted out of the workflow
-  // The order in the array is the order they render in the table.
-  type GroupKey = 'ongoing' | 'completed' | 'not_relevant'
-  const GROUP_ORDER: GroupKey[] = ['ongoing', 'completed', 'not_relevant']
-  const GROUP_LABEL: Record<GroupKey, string> = {
-    ongoing: 'On-going',
-    completed: 'Completed',
-    not_relevant: 'Not relevant',
-  }
-
-  function groupOf(r: PageListRow): GroupKey {
-    if (r.notRelevant) return 'not_relevant'
-    if (r.confirmedDoneAt) return 'completed'
-    return 'ongoing'
-  }
 
   const grouped = useMemo(() => {
     const out: Record<GroupKey, PageListRow[]> = {
@@ -247,6 +248,8 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
       const raw = typeof window !== 'undefined' ? window.localStorage.getItem(COLLAPSE_KEY) : null
       if (raw) {
         const parsed = JSON.parse(raw)
+        // Intentional one-shot hydration from localStorage on mount.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (parsed && typeof parsed === 'object') setCollapsed(c => ({ ...c, ...parsed }))
       }
     } catch { /* localStorage unavailable — keep defaults */ }
