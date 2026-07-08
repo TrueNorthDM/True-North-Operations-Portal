@@ -1,3 +1,4 @@
+import Link from 'next/link'
 // How the i7 Budget Usage Report is built — a plain-language explainer linked
 // from the info icon in Settings. Static content (the July 2026 numbers are an
 // illustrative worked example).
@@ -44,7 +45,7 @@ export default function ReportGuidePage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-3">
-          <a href="/settings" className="hover:text-slate-800">Settings</a>
+          <Link href="/settings" className="hover:text-slate-800">Settings</Link>
           <span>/</span>
           <span>How the report works</span>
         </div>
@@ -170,7 +171,7 @@ export default function ReportGuidePage() {
       </section>
 
       <div className="pt-2">
-        <a href="/tools/time-report" className="text-sm text-slate-600 underline underline-offset-2 hover:text-slate-900">Open the i7 Budget Usage Report →</a>
+        <Link href="/tools/time-report" className="text-sm text-slate-600 underline underline-offset-2 hover:text-slate-900">Open the i7 Budget Usage Report →</Link>
       </div>
     </div>
   )

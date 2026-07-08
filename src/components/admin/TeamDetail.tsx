@@ -6,6 +6,7 @@
  * through admin-guarded server actions; membership changes redraw the org chart.
  */
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -79,11 +80,11 @@ export function TeamDetail({
           </button>
         ) : (
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-            <a href="/" className="hover:text-slate-800">Dashboard</a>
+            <Link href="/" className="hover:text-slate-800">Dashboard</Link>
             <span>/</span>
-            <a href="/admin" className="hover:text-slate-800">Admin</a>
+            <Link href="/admin" className="hover:text-slate-800">Admin</Link>
             <span>/</span>
-            <a href="/admin/teams" className="hover:text-slate-800">Teams</a>
+            <Link href="/admin/teams" className="hover:text-slate-800">Teams</Link>
             <span>/</span>
             <span>{team.name}</span>
           </div>

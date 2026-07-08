@@ -1,6 +1,7 @@
 // Dashboard: overview of both AAAF and HFA sites
 // This is a Server Component — data is fetched at request time.
 
+import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { languagePalette } from '@/lib/language-colors'
@@ -138,16 +139,16 @@ export default async function ProjectsPage() {
                 <div key={code} className="bg-white border border-amber-200 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">{code}</span>
-                    <a href={`/${code}`} className="text-xs text-amber-700 hover:text-amber-900 font-medium">
+                    <Link href={`/${code}`} className="text-xs text-amber-700 hover:text-amber-900 font-medium">
                       View all ({list.length}) →
-                    </a>
+                    </Link>
                   </div>
                   <ul className="space-y-1">
                     {list.slice(0, 5).map(p => (
                       <li key={p.id}>
-                        <a href={`/${code}/${p.id}`} className="text-sm text-slate-700 hover:text-slate-900 hover:underline truncate block">
+                        <Link href={`/${code}/${p.id}`} className="text-sm text-slate-700 hover:text-slate-900 hover:underline truncate block">
                           {p.name}
-                        </a>
+                        </Link>
                       </li>
                     ))}
                     {list.length > 5 && (
@@ -190,12 +191,12 @@ export default async function ProjectsPage() {
                   {/* Title link — its ::before spans the whole <article>,
                       so any click on the card (outside other links) goes here. */}
                   <h2 className={`text-2xl leading-tight ${site.titleCls}`}>
-                    <a
+                    <Link
                       href={site.href}
                       className="before:content-[''] before:absolute before:inset-0 before:rounded-xl outline-none focus-visible:before:ring-2 focus-visible:before:ring-offset-2 focus-visible:before:ring-slate-400"
                     >
                       {site.name}
-                    </a>
+                    </Link>
                   </h2>
                   {/* Domain link — `relative z-10` lifts it above the ::before,
                       so clicks here open the external site instead of the title link. */}

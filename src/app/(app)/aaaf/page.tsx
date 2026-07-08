@@ -1,5 +1,6 @@
 // AAAF — page list (Server Component)
 
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSitePageData } from '@/lib/pages-data'
 import { PageList } from '@/components/PageList'
@@ -21,7 +22,7 @@ export default async function AaafPagesPage() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
+          <Link href="/" className="hover:text-slate-800">Dashboard</Link>
           <span>/</span>
           <span>AAAF</span>
         </div>
@@ -34,9 +35,9 @@ export default async function AaafPagesPage() {
           </div>
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <a href="/admin/directory" className="text-xs font-medium text-slate-500 hover:text-slate-800 whitespace-nowrap">
+              <Link href="/admin/directory" className="text-xs font-medium text-slate-500 hover:text-slate-800 whitespace-nowrap">
                 Manage access
-              </a>
+              </Link>
             )}
             <WpLinks dev={site?.wp_dev_url as string | null} live={site?.wp_live_url as string | null} accent="aaaf" />
           </div>

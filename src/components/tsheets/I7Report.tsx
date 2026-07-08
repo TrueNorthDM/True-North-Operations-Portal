@@ -5,6 +5,7 @@
 // column, filled at every level. Hours/cost/budget roll up at each level. Data
 // is computed server-side and passed in.
 
+import Link from 'next/link'
 import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { I7Charts } from './I7Charts'
@@ -174,7 +175,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <span className="text-base">&#x26A0;&#xFE0F;</span>
           <span><strong>Sample data</strong> — structure preview only. Add your TSheets API token in{' '}
-            <a href="/settings" className="underline font-medium hover:text-amber-900">Settings</a> to pull real hours.</span>
+            <Link href="/settings" className="underline font-medium hover:text-amber-900">Settings</Link> to pull real hours.</span>
         </div>
       )}
 

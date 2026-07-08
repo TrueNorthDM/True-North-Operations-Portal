@@ -3,6 +3,7 @@
 // are previewed here but land in a later phase (F2/F3) — this page documents
 // the structure so the direction is visible in-product.
 
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 
@@ -21,7 +22,7 @@ export default async function AdminPage() {
     <div className="space-y-8">
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
+          <Link href="/" className="hover:text-slate-800">Dashboard</Link>
           <span>/</span>
           <span>Admin</span>
         </div>
@@ -31,7 +32,7 @@ export default async function AdminPage() {
 
       {/* Live admin tools. */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <a
+        <Link
           href="/admin/tickets"
           className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
         >
@@ -44,8 +45,8 @@ export default async function AdminPage() {
           <p className="mt-1.5 text-sm text-slate-500">
             The dev work tracker — everything we need to resolve, so nothing gets lost.
           </p>
-        </a>
-        <a
+        </Link>
+        <Link
           href="/admin/tests"
           className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
         >
@@ -58,8 +59,8 @@ export default async function AdminPage() {
           <p className="mt-1.5 text-sm text-slate-500">
             A checklist to verify the whole system end-to-end — tick off what works.
           </p>
-        </a>
-        <a
+        </Link>
+        <Link
           href="/admin/manual"
           className="group block rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
         >
@@ -72,13 +73,13 @@ export default async function AdminPage() {
           <p className="mt-1.5 text-sm text-slate-500">
             How the portal works — pages, access, and how Monday feeds it.
           </p>
-        </a>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {SECTIONS.map(s =>
           s.href ? (
-            <a
+            <Link
               key={s.title}
               href={s.href}
               className="group rounded-xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md"
@@ -90,7 +91,7 @@ export default async function AdminPage() {
                 </span>
               </div>
               <p className="mt-1.5 text-sm text-slate-500">{s.description}</p>
-            </a>
+            </Link>
           ) : (
             <div key={s.title} className="rounded-xl border-2 border-slate-200 bg-white p-6">
               <div className="flex items-center justify-between gap-3">

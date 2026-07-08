@@ -21,14 +21,21 @@ function initialsOf(email: string | null): string {
 export function UserMenu({ userEmail }: { userEmail: string | null }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
+    // Move focus into the menu so keyboard users land on the first item.
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
     function onDown(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        setOpen(false)
+        btnRef.current?.focus() // return focus to the trigger
+      }
     }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
@@ -41,6 +48,7 @@ export function UserMenu({ userEmail }: { userEmail: string | null }) {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-haspopup="menu"
@@ -54,6 +62,7 @@ export function UserMenu({ userEmail }: { userEmail: string | null }) {
 
       {open && (
         <div
+          ref={menuRef}
           role="menu"
           className="absolute right-0 mt-2 w-60 z-30 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden"
         >

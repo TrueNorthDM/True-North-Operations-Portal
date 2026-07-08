@@ -8,6 +8,7 @@
  * roundtrips, so it's instant even on 100+ pages.
  */
 
+import Link from 'next/link'
 import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { languageStatusPalette } from '@/lib/language-colors'
@@ -578,7 +579,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                     {/* ACTIONS — View only. Copy lives on the detail card. */}
                     <td className="px-3 py-4 text-right">
                       <Tooltip label="View page">
-                        <a
+                        <Link
                           href={`/${siteCode}/${r.id}`}
                           aria-label={`View ${r.name}`}
                           className={`${a.text} inline-flex items-center justify-center p-1.5 rounded transition-colors hover:bg-slate-100`}
@@ -587,7 +588,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
                             <circle cx="12" cy="12" r="3" />
                           </svg>
-                        </a>
+                        </Link>
                       </Tooltip>
                     </td>
                   </tr>

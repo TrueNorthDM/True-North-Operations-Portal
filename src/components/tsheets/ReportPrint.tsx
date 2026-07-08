@@ -6,6 +6,7 @@
 // Reuses I7Charts for the graphics. On screen it looks like a document; the
 // browser's "Save as PDF" produces the file (print CSS hides the app chrome).
 
+import Link from 'next/link'
 import { useEffect, Fragment } from 'react'
 import { I7Charts } from './I7Charts'
 import type { I7Report, I7Carryover, I7TrendPoint } from '@/lib/tsheets/types'
@@ -71,7 +72,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, trend, t
     <div className="min-h-dvh bg-slate-100 py-8 print:bg-white print:py-0">
       {/* Screen-only toolbar */}
       <div className="no-print mx-auto max-w-[820px] mb-4 flex items-center justify-between px-2">
-        <a href={`/tools/time-report?month=${report.startDate.slice(0, 7)}`} className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to report</a>
+        <Link href={`/tools/time-report?month=${report.startDate.slice(0, 7)}`} className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to report</Link>
         <button onClick={() => window.print()} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">Save as PDF</button>
       </div>
 

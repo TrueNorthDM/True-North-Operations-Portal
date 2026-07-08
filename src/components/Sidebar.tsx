@@ -8,6 +8,7 @@
  * The signed-in block moved to the top-bar avatar (UserMenu).
  */
 
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const iconClass = 'w-6 h-6 shrink-0'
@@ -112,7 +113,7 @@ const adminNav: Item = {
 
 function NavLink({ item, active }: { item: Item; active: boolean }) {
   return (
-    <a
+    <Link
       href={item.href}
       aria-label={item.label}
       aria-current={active ? 'page' : undefined}
@@ -131,7 +132,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       >
         {item.label}
       </span>
-    </a>
+    </Link>
   )
 }
 

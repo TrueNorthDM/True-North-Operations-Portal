@@ -6,6 +6,7 @@
  * data is maintained in the repo by Claude; this view is read-only.
  */
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
   TICKETS,
@@ -49,9 +50,9 @@ export function TicketsClient() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
+          <Link href="/" className="hover:text-slate-800">Dashboard</Link>
           <span>/</span>
-          <a href="/admin" className="hover:text-slate-800">Admin</a>
+          <Link href="/admin" className="hover:text-slate-800">Admin</Link>
           <span>/</span>
           <span>Tickets</span>
         </div>

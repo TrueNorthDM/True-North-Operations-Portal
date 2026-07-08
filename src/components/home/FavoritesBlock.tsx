@@ -7,6 +7,7 @@
  * Saved per user in the DB via saveFavorites; empty state offers the action.
  */
 
+import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveFavorites } from '@/lib/favorites/actions'
@@ -148,14 +149,14 @@ export function FavoritesBlock({ favorites, catalog }: { favorites: Favorite[]; 
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
           {favorites.map(f => (
-            <a
+            <Link
               key={f.href}
               href={f.href}
               className="group flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-all hover:border-slate-300 hover:shadow-md"
             >
               <span className="text-amber-400 shrink-0">{StarIcon}</span>
               <span className="text-sm font-semibold text-slate-800 group-hover:text-slate-600 truncate">{f.label}</span>
-            </a>
+            </Link>
           ))}
         </div>
       )}

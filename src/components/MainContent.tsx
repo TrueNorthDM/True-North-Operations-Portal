@@ -12,13 +12,18 @@
 
 import { usePathname } from 'next/navigation'
 
+// Routes that opt out of the centered box and fill the whole content area
+// (e.g. a legacy dashboard wrapped in an iframe). Add routes here rather than
+// hard-coding a single path in the component body.
+const FULL_BLEED_ROUTES = new Set<string>(['/dashboards/publishing'])
+
 export function MainContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // Framed pages opt out of the centered max-width box and fill the whole area.
   // `<main>` is a stretched flex item with a definite height, so `h-full` here
   // resolves and the iframe fills it — no padding, no viewport math.
-  const fullBleed = pathname === '/dashboards/publishing'
+  const fullBleed = FULL_BLEED_ROUTES.has(pathname)
 
   return (
     // min-w-0: as a flex item next to the sidebar, <main> defaults to

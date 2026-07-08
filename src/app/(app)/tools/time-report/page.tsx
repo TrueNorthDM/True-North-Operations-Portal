@@ -4,6 +4,7 @@
 // renders instantly. All the data loading lives in report-data.ts (shared with
 // the print/PDF page).
 
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -66,18 +67,18 @@ export default async function TimeReportPage({ searchParams }: Props) {
     <div className="space-y-8">
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
+          <Link href="/" className="hover:text-slate-800">Dashboard</Link>
           <span>/</span>
-          <a href="/tools" className="hover:text-slate-800">Tools</a>
+          <Link href="/tools" className="hover:text-slate-800">Tools</Link>
           <span>/</span>
           <span>i7 Budget Usage Report</span>
         </div>
         <h1 className="text-2xl font-bold text-slate-900">i7 Budget Usage Report</h1>
         <p className="mt-1 text-slate-500">
           Hours, cost and budget usage for the i7 Marketing client — pulled directly from QuickBooks Time.{' '}
-          <a href="/settings" className="text-slate-600 underline underline-offset-2 hover:text-slate-900">
+          <Link href="/settings" className="text-slate-600 underline underline-offset-2 hover:text-slate-900">
             Manage rates &amp; budgets in Settings →
-          </a>
+          </Link>
         </p>
         <div className="mt-3">
           <SyncStatus syncedAt={syncedAt} />
@@ -124,7 +125,7 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
         <p className="font-semibold text-red-700">Couldn&apos;t load the report</p>
         <p className="text-sm text-red-600 font-mono">{fetchError}</p>
         <p className="text-sm text-red-500">
-          The report reads from the synced cache. If this persists, run a sync from <a href="/settings" className="underline">Settings</a>.
+          The report reads from the synced cache. If this persists, run a sync from <Link href="/settings" className="underline">Settings</Link>.
         </p>
       </div>
     )
@@ -135,7 +136,7 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
         <p className="font-semibold text-slate-700">No i7 hours for {selectedMonth} yet</p>
         <p className="text-sm text-slate-500">
-          Nothing is cached for this month. New data is pulled from QuickBooks Time automatically in the background — or run a sync now from <a href="/settings" className="underline">Settings</a>.
+          Nothing is cached for this month. New data is pulled from QuickBooks Time automatically in the background — or run a sync now from <Link href="/settings" className="underline">Settings</Link>.
         </p>
       </div>
     )

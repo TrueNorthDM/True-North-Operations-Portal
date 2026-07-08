@@ -6,6 +6,8 @@
  * Server-rendered, no state.
  */
 
+import Link from 'next/link'
+
 const icon = 'w-5 h-5'
 
 const DashboardsIcon = (
@@ -56,7 +58,7 @@ export function HomeWidgets() {
     <div className="flex flex-wrap justify-center gap-4">
       {WIDGETS.map(w =>
         w.href ? (
-          <a
+          <Link
             key={w.title}
             href={w.href}
             className="group w-full sm:w-72 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-md"
@@ -66,7 +68,7 @@ export function HomeWidgets() {
             </span>
             <h2 className="mt-3 text-sm font-bold text-slate-900">{w.title}</h2>
             <p className="mt-0.5 text-xs text-slate-500 leading-snug">{w.description}</p>
-          </a>
+          </Link>
         ) : (
           <div
             key={w.title}

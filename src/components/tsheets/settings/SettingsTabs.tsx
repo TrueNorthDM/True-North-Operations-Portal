@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { ClientsTab } from './ClientsTab'
 import { PeopleTab } from './PeopleTab'
@@ -44,7 +45,7 @@ export function SettingsTabs({ clients, people, auditLog, directoryOptions, sync
       {/* Sync status — the sync runs automatically every 4 hours (Vercel Cron).
           The info icon opens the plain-language "how the report works" guide. */}
       <div className="flex items-center gap-2">
-        <a
+        <Link
           href="/tools/time-report/guide"
           aria-label="How the report works"
           title="How the report works"
@@ -54,7 +55,7 @@ export function SettingsTabs({ clients, people, auditLog, directoryOptions, sync
             <circle cx="12" cy="7.2" r="1.5" />
             <rect x="10.6" y="10.4" width="2.8" height="7.4" rx="1.4" />
           </svg>
-        </a>
+        </Link>
         <SyncStatus syncedAt={syncedAt} interactive={canSync} />
       </div>
 

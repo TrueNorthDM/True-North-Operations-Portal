@@ -12,6 +12,7 @@
  *   - 'confirmed live' is disabled until a URL is saved for that language
  */
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { HreflangCodeBlock } from '@/components/HreflangCodeBlock'
@@ -147,9 +148,9 @@ export function PageDetail({
       {/* Header + at-a-glance status */}
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <a href="/" className="hover:text-slate-800">Dashboard</a>
+          <Link href="/" className="hover:text-slate-800">Dashboard</Link>
           <span>/</span>
-          <a href={`/${siteCode}`} className="hover:text-slate-800 uppercase">{siteCode}</a>
+          <Link href={`/${siteCode}`} className="hover:text-slate-800 uppercase">{siteCode}</Link>
           <span>/</span>
           <span>{pageName}</span>
         </div>
