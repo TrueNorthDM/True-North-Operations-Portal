@@ -69,7 +69,7 @@ export function FavoritesBlock({ favorites, catalog }: { favorites: Favorite[]; 
   return (
     <section>
       <div className="flex items-baseline justify-between gap-3 mb-3">
-        <h2 className="text-lg font-bold text-slate-900">My favourites</h2>
+        <h2 className="text-lg font-bold text-tn-ink">My favourites</h2>
         {!editing && (
           <button
             type="button"
@@ -122,7 +122,7 @@ export function FavoritesBlock({ favorites, catalog }: { favorites: Favorite[]; 
               type="button"
               disabled={pending}
               onClick={save}
-              className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium bg-primary hover:opacity-90 text-[#ffffff] rounded-lg transition-colors disabled:opacity-50"
             >
               {pending ? 'Saving…' : 'Save'}
             </button>
@@ -141,7 +141,7 @@ export function FavoritesBlock({ favorites, catalog }: { favorites: Favorite[]; 
           <button
             type="button"
             onClick={openEditor}
-            className="mt-3 px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
+            className="mt-3 px-4 py-2 text-sm font-medium bg-primary hover:opacity-90 text-[#ffffff] rounded-lg transition-colors"
           >
             Choose favourites
           </button>
@@ -152,10 +152,10 @@ export function FavoritesBlock({ favorites, catalog }: { favorites: Favorite[]; 
             <Link
               key={f.href}
               href={f.href}
-              className="group flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-all hover:border-slate-300 hover:shadow-md"
+              className="group flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-tn-teal hover:shadow-md"
             >
-              <span className="text-amber-400 shrink-0">{StarIcon}</span>
-              <span className="text-sm font-semibold text-slate-800 group-hover:text-slate-600 truncate">{f.label}</span>
+              <span className="text-tn-accent shrink-0">{StarIcon}</span>
+              <span className="text-sm font-semibold text-tn-ink truncate">{f.label}</span>
             </Link>
           ))}
         </div>

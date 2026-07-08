@@ -27,8 +27,8 @@ export default async function HomePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">True North Operations Portal</h1>
-        <p className="mt-1 text-slate-500">Where would you like to go?</p>
+        <h1 className="text-2xl font-extrabold text-tn-ink">True North Operations Portal</h1>
+        <p className="mt-1 text-muted">Where would you like to go?</p>
       </div>
 
       {/* Block 1 — destination widgets (My Team / My Work are placeholders). */}
@@ -40,9 +40,9 @@ export default async function HomePage() {
       {/* Block 3 — company org chart, permanent fixture of the home page. */}
       <section>
         <div className="flex items-baseline justify-between gap-3 mb-3">
-          <h2 className="text-lg font-bold text-slate-900">Organization</h2>
+          <h2 className="text-lg font-bold text-tn-ink">Organization</h2>
           {org.total > 0 && (
-            <span className="text-xs text-slate-400">{org.total} people</span>
+            <span className="text-xs text-muted">{org.total} people</span>
           )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white/60 p-4">

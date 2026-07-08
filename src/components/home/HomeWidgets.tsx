@@ -42,48 +42,52 @@ interface Widget {
   description: string
   icon: React.ReactNode
   href?: string //  absent = placeholder ("Soon")
+  anim: string  //  looping icon micro-motion (guarded by prefers-reduced-motion)
 }
 
 const WIDGETS: Widget[] = [
-  { title: 'Dashboards', description: 'Boards Review — pipeline & publishing goals.', icon: DashboardsIcon, href: '/dashboards' },
-  { title: 'Tools', description: 'Capabilities used inside a project.', icon: ToolsIcon, href: '/tools' },
-  { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon },
-  { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon },
+  { title: 'Dashboards', description: 'Boards Review — pipeline & publishing goals.', icon: DashboardsIcon, href: '/dashboards', anim: 'tn-icon-pulse 3.2s ease-in-out infinite' },
+  { title: 'Tools', description: 'Capabilities used inside a project.', icon: ToolsIcon, href: '/tools', anim: 'tn-icon-wiggle 3s ease-in-out infinite' },
+  { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon, anim: 'tn-icon-pulse 3.4s ease-in-out infinite' },
+  { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon, anim: 'tn-icon-sway 3.2s ease-in-out infinite' },
 ]
+
+// The looping icon (wrapped so the transform animates the glyph, not the chip).
+function AnimIcon({ anim, children }: { anim: string; children: React.ReactNode }) {
+  return <span className="tn-anim inline-flex" style={{ animation: anim }}>{children}</span>
+}
 
 export function HomeWidgets() {
   return (
-    // Fixed-width cards centred as a group → equal space at both ends, the
-    // cards keep their natural size instead of stretching to fill the row.
-    <div className="flex flex-wrap justify-center gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {WIDGETS.map(w =>
         w.href ? (
           <Link
             key={w.title}
             href={w.href}
-            className="group w-full sm:w-72 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-md"
+            className="group rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-tn-teal hover:shadow-md"
           >
-            <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-colors">
-              {w.icon}
+            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-tn-teal-soft text-tn-teal">
+              <AnimIcon anim={w.anim}>{w.icon}</AnimIcon>
             </span>
-            <h2 className="mt-3 text-sm font-bold text-slate-900">{w.title}</h2>
-            <p className="mt-0.5 text-xs text-slate-500 leading-snug">{w.description}</p>
+            <h2 className="mt-3 text-sm font-extrabold text-tn-ink">{w.title}</h2>
+            <p className="mt-0.5 text-xs text-muted leading-snug">{w.description}</p>
           </Link>
         ) : (
           <div
             key={w.title}
-            className="w-full sm:w-72 rounded-xl border border-dashed border-slate-300 bg-white/50 p-4"
+            className="rounded-2xl border border-dashed border-slate-300 bg-white/50 p-5"
             aria-disabled="true"
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
-                {w.icon}
+              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                <AnimIcon anim={w.anim}>{w.icon}</AnimIcon>
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200">
                 Soon
               </span>
             </div>
-            <h2 className="mt-3 text-sm font-bold text-slate-400">{w.title}</h2>
+            <h2 className="mt-3 text-sm font-extrabold text-slate-400">{w.title}</h2>
             <p className="mt-0.5 text-xs text-slate-400 leading-snug">{w.description}</p>
           </div>
         ),

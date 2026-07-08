@@ -24,11 +24,11 @@ const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : use
 function PersonCard({ p }: { p: OrgPerson }) {
   const color = p.color ?? NEUTRAL
   return (
-    <div className="inline-block min-w-[148px] max-w-[210px] rounded-lg border border-slate-200 bg-white text-left shadow-sm overflow-hidden">
+    <div className="inline-block min-w-[148px] max-w-[210px] rounded-lg border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-0.5 hover:border-tn-teal hover:shadow-md">
       <div className="h-1.5" style={{ backgroundColor: color }} />
       <div className="px-3 py-2">
-        <div className="text-sm font-semibold text-slate-800 leading-tight">{p.name}</div>
-        {p.title && <div className="mt-0.5 text-[11px] text-slate-500 leading-tight">{p.title}</div>}
+        <div className="text-sm font-semibold text-tn-ink leading-tight">{p.name}</div>
+        {p.title && <div className="mt-0.5 text-[11px] text-muted leading-tight">{p.title}</div>}
         {p.teams.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {p.teams.map(t => (
