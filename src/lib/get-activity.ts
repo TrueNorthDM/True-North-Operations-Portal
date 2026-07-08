@@ -55,6 +55,9 @@ export async function getRecentActivity(
       .from('page_urls')
       .select('monday_item_id, pages(name)')
       .in('monday_item_id', itemIds)
+    // Supabase types a to-one embed without `!inner` as an array ({name}[]),
+    // but page_urls→pages is a single FK, so at runtime it's one object. The
+    // cast corrects that mis-inference to the real shape.
     for (const j of (joins ?? []) as unknown as PageUrlJoinRow[]) {
       if (j.monday_item_id && j.pages?.name) {
         nameByItem.set(j.monday_item_id, j.pages.name)

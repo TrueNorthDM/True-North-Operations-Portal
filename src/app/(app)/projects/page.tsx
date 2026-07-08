@@ -3,9 +3,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/server'
 import { languagePalette } from '@/lib/language-colors'
-import { getAccessibleSiteIds } from '@/lib/auth/access'
+import { getProjectsOverview } from '@/lib/projects-data'
 
 // Each card carries its project's brand identity — colors + display font + real logo.
 const SITES = [
@@ -39,74 +38,9 @@ const SITES = [
   },
 ] as const
 
-interface ProjectStats {
-  /** Pages shipped in the trailing 14 days (confirmed_done_at within window). */
-  recentCompletions: number
-  /** Pages we consider "done" overall — fully live OR explicitly set aside. */
-  totalDone: number
-  /** Pages still pending work. */
-  remaining: number
-}
-
 export default async function ProjectsPage() {
-  // Pages flagged after a language config change, grouped by site
-  const supabase = await createClient()
-
-  // Access enforcement: only show project cards the user can reach. Admins and
-  // ungranted (unrestricted) projects pass; nothing is hidden until granted.
-  // accessibleIds === null means access couldn't be evaluated (e.g. migration
-  // 016 not applied) → fail open and show everything, per the design rule.
-  const [{ data: siteRows }, accessibleIds] = await Promise.all([
-    supabase.from('sites').select('id, code'),
-    getAccessibleSiteIds(),
-  ])
-  const accessibleCodes =
-    accessibleIds === null
-      ? null
-      : new Set(
-          ((siteRows ?? []) as { id: string; code: string }[])
-            .filter(s => accessibleIds.has(s.id))
-            .map(s => s.code),
-        )
+  const { accessibleCodes, staleBySite, totalStale, statsBySite } = await getProjectsOverview()
   const visibleSites = accessibleCodes === null ? [...SITES] : SITES.filter(s => accessibleCodes.has(s.code))
-  const { data: stalePages } = await supabase
-    .from('pages')
-    .select('id, name, site_id, sites!inner(code, name)')
-    .eq('needs_hreflang_update', true)
-  const staleBySite: Record<string, { id: string; name: string }[]> = { aaaf: [], hfa: [] }
-  for (const p of stalePages ?? []) {
-    const code = (p.sites as unknown as { code: string }).code
-    if (staleBySite[code]) staleBySite[code].push({ id: p.id, name: p.name })
-  }
-  const totalStale = (stalePages ?? []).length
-
-  // Project-level stats for the cards below each project widget.
-  // One query, computed in JS — cheaper than 6 separate COUNT(*) calls.
-  const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000
-  // This is an async Server Component (renders once per request), so reading the
-  // clock at request time is fine despite the render-purity lint rule.
-  // eslint-disable-next-line react-hooks/purity
-  const twoWeeksAgo = new Date(Date.now() - TWO_WEEKS_MS)
-  const { data: allPages } = await supabase
-    .from('pages')
-    .select('confirmed_done_at, not_relevant, sites!inner(code)')
-  const statsBySite: Record<string, ProjectStats> = {
-    aaaf: { recentCompletions: 0, totalDone: 0, remaining: 0 },
-    hfa:  { recentCompletions: 0, totalDone: 0, remaining: 0 },
-  }
-  for (const p of allPages ?? []) {
-    const code = (p.sites as unknown as { code: string }).code
-    const s = statsBySite[code]
-    if (!s) continue
-    const isDone = p.confirmed_done_at != null || p.not_relevant === true
-    if (isDone) s.totalDone++
-    else s.remaining++
-    // "Recent" = confirmed live in last 14 days. Not-relevant pages don't
-    // count here — they were set aside, not shipped.
-    if (p.confirmed_done_at && new Date(p.confirmed_done_at) >= twoWeeksAgo) {
-      s.recentCompletions++
-    }
-  }
 
   return (
     <div className="space-y-8">
