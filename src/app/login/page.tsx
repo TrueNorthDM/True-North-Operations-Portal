@@ -59,8 +59,8 @@ export default function LoginPage() {
           <Sunrise />
           {/* Panel is navy in both themes → fixed literal colors, not tokens. */}
           <div className="relative">
-            <div style={{ fontFamily: 'var(--font-raleway)', fontWeight: 900, letterSpacing: '.34em' }} className="text-[13px] text-[#94C4C5]">
-              TRUE NORTH
+            <div style={{ fontFamily: 'var(--font-raleway)', fontWeight: 900, letterSpacing: '.2em' }} className="text-[12px] text-[#94C4C5]">
+              TRUE NORTH DIGITAL MARKETING
             </div>
             <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 900, fontSize: '52px', lineHeight: 1.04 }} className="mt-3 text-[#ffffff]">
               Operations Portal
