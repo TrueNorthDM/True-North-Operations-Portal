@@ -70,7 +70,7 @@ export function LoginForm() {
       </div>
 
       <div className="pt-3 text-left">
-        <label htmlFor="email" style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800, letterSpacing: '.06em' }} className="mb-2 block text-center text-xs uppercase text-muted">
+        <label htmlFor="email" style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800, letterSpacing: '.06em' }} className="mb-2 block text-center text-xs uppercase text-tn-ink">
           Work email
         </label>
         <input
@@ -100,7 +100,7 @@ export function LoginForm() {
         type="submit"
         disabled={!canSubmit}
         style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
-        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-white transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-white transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed"
       >
         {sending ? 'Sending…' : 'Send magic link'}
       </button>
