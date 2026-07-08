@@ -1,13 +1,9 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Supabase responses come back as `never` until we generate schema types via
-  // `supabase gen types typescript`. Runtime is correct — TS just can't prove
-  // it. Don't block production builds on this for now.
-  // TODO: generate Supabase types and remove this escape hatch.
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-};
+// TypeScript errors now block the production build again. The old
+// `typescript.ignoreBuildErrors` escape hatch (added when Supabase queries
+// resolved to `never`) was removed during the 2026-07 audit once the
+// hand-written database types were completed and every module passed `tsc`.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

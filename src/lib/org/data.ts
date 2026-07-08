@@ -3,9 +3,6 @@
  * tree (by manager_id). Read-only; the chart redraws whenever the directory
  * changes. RLS lets any signed-in user read people/teams, so this works for
  * everyone (the chart is public to logged-in users).
- *
- * The directory tables (people/teams/team_members) aren't in the generated
- * Supabase types yet, so rows are typed + cast explicitly.
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -56,9 +53,9 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
     supabase.from('team_members').select('team_id, person_id'),
   ])
 
-  const people = (pData ?? []) as unknown as PersonRow[]
-  const teams = (tData ?? []) as unknown as TeamRow[]
-  const members = (mData ?? []) as unknown as MemberRow[]
+  const people: PersonRow[] = pData ?? []
+  const teams: TeamRow[] = tData ?? []
+  const members: MemberRow[] = mData ?? []
 
   if (people.length === 0) return { roots: [], total: 0 }
 
