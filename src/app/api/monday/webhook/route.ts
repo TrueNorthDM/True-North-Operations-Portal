@@ -83,7 +83,6 @@ export async function POST(req: NextRequest) {
 
   // 5. Verify HMAC if we have a secret. If not, log and continue (initial
   //    setup window). Once you save a secret, every payload is enforced.
-  let verifiedClaims: Record<string, unknown> | undefined
   if (signingSecret) {
     const result = await verifyMondayAuthHeader(
       req.headers.get('authorization'),
@@ -95,7 +94,6 @@ export async function POST(req: NextRequest) {
         { status: 401 },
       )
     }
-    verifiedClaims = result.claims
   }
 
   // 6. Persist audit row early. If our processing crashes after this

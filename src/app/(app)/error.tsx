@@ -4,10 +4,10 @@
  * Error boundary for the protected app routes. If a page throws while loading
  * its data (Supabase / Monday / TSheets), this renders inside the app chrome
  * instead of Next's raw error screen. `reset()` re-renders the segment (retries
- * the load). "Go home" is a hard <a> nav on purpose — a full reload is the most
- * reliable way to recover from a broken client state.
+ * the load); "Go home" navigates away from the errored route.
  */
 
+import Link from 'next/link'
 import { useEffect } from 'react'
 
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -35,12 +35,12 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
           >
             Try again
           </button>
-          <a
+          <Link
             href="/"
             className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
           >
             Go home
-          </a>
+          </Link>
         </div>
       </div>
     </div>

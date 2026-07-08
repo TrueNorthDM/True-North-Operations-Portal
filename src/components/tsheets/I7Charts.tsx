@@ -61,13 +61,14 @@ function Legend({ items, dense = false }: { items: { label: string; color: strin
 function Donut({ segments, centerTop, centerBottom }: { segments: { label: string; value: number; color: string }[]; centerTop: string; centerBottom: string }) {
   const total = segments.reduce((s, x) => s + x.value, 0)
   const r = 46, C = 2 * Math.PI * r
-  let cum = 0
-  const arcs = segments.filter(s => s.value > 0).map(s => {
-    const frac = total > 0 ? s.value / total : 0
-    const arc = { ...s, dash: frac * C, offset: -cum * C }
-    cum += frac
-    return arc
-  })
+  const visible = segments.filter(s => s.value > 0)
+  const fracs = visible.map(s => (total > 0 ? s.value / total : 0))
+  // offset = prefix sum of the prior fractions (no render-time mutation).
+  const arcs = visible.map((s, i) => ({
+    ...s,
+    dash: fracs[i] * C,
+    offset: -fracs.slice(0, i).reduce((a, b) => a + b, 0) * C,
+  }))
   return (
     <div className="flex items-center justify-center py-2">
       <svg viewBox="0 0 130 130" width="150" height="150" role="img">

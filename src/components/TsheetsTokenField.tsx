@@ -140,7 +140,7 @@ export function TsheetsTokenField({ tokenInfo, footer }: Props) {
       {clearWarnOpen && (
         <Modal onClose={() => setClearWarnOpen(false)}>
           <h3 className="text-lg font-bold text-slate-900">Remove the TSheets token?</h3>
-          <p className="text-sm text-slate-600">The Budget Usage Report tool won't be able to fetch data until a token is added again.</p>
+          <p className="text-sm text-slate-600">The Budget Usage Report tool won&apos;t be able to fetch data until a token is added again.</p>
           <div className="flex items-center justify-end gap-3 pt-2">
             <button onClick={() => setClearWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
             <button onClick={confirmClear} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white">Remove token</button>
