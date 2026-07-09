@@ -17,7 +17,7 @@ const SITES = [
     logo: '/logos/aaaf.jpg',
     logoW: 148,
     logoH: 78,
-    cardCls: 'bg-aaaf-soft border-aaaf-primary/30 hover:border-aaaf-primary',
+    cardCls: 'bg-aaaf-soft border-aaaf-primary/30 hover:border-tn-teal',
     titleCls: 'text-aaaf-ink font-(family-name:--font-aaaf-display)',
     linkCls: 'text-aaaf-primary',
     badgeCls: 'bg-white/70 text-aaaf-secondary border border-aaaf-primary/20',
@@ -31,7 +31,7 @@ const SITES = [
     logo: '/logos/hfa.png',
     logoW: 300,
     logoH: 83,
-    cardCls: 'bg-hfa-soft border-hfa-primary/40 hover:border-hfa-primary',
+    cardCls: 'bg-hfa-soft border-hfa-primary/40 hover:border-tn-teal',
     titleCls: 'text-hfa-ink font-(family-name:--font-hfa-display) tracking-wide uppercase',
     linkCls: 'text-hfa-secondary',
     badgeCls: 'bg-white/70 text-hfa-secondary border border-hfa-primary/30',
@@ -46,8 +46,8 @@ export default async function ProjectsPage() {
     <div className="space-y-8">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Projects</h1>
-        <p className="text-slate-500 mt-1">
+        <h1 className="text-2xl font-extrabold text-tn-ink">Projects</h1>
+        <p className="text-muted mt-1">
           Manage hreflang tag workflows for AAAF and HFA WordPress sites.
         </p>
       </div>
@@ -105,7 +105,7 @@ export default async function ProjectsPage() {
         {visibleSites.map(site => (
           <div key={site.code} className="flex flex-col gap-3">
           <article
-            className={`relative rounded-xl border-2 p-6 transition-all hover:shadow-md ${site.cardCls}`}
+            className={`relative rounded-xl border-2 p-6 transition-all hover:-translate-y-1 hover:shadow-md ${site.cardCls}`}
           >
             <div className="flex items-stretch gap-5">
               {/* Logo plate stays literally white in both themes — the logo
@@ -199,7 +199,7 @@ export default async function ProjectsPage() {
           masters: human instructions, Monday workflow design, and the
           contract for what the API integration must do. */}
       <div className="rounded-lg bg-white border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-3">How to do this</h3>
+        <h3 className="font-semibold text-tn-ink mb-3">How to do this</h3>
 
         {/* Legend chips. Two orthogonal axes per step:
               - mode (Auto vs Manual) = WHO does it (system vs human)
