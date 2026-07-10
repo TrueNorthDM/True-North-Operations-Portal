@@ -116,10 +116,15 @@ h1, h2, h3 {
 .tn-bar-fill  { transform-origin: left; animation: tn-bar-grow 1.2s cubic-bezier(.22, 1, .36, 1); }
 .tn-bar-sheen { animation: tn-bar-sheen 2.6s ease-in-out infinite; }
 
+/* Login "check your inbox" — the confirmation envelope floats gently. */
+@keyframes tn-mail-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.tn-mail { animation: tn-mail-bob 2.8s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .tn-anim { animation: none !important; }
   .tn-bar-fill  { animation: none !important; }
   .tn-bar-sheen { display: none !important; }
+  .tn-mail      { animation: none !important; }
 }
 
 /* ── Dark mode — one palette remap, not per-component dark: classes ─────────

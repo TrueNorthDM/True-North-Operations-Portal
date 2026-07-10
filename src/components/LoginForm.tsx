@@ -45,7 +45,16 @@ export function LoginForm() {
   if (sent) {
     return (
       <div role="status" className="space-y-3 text-center">
-        <div className="text-4xl">📬</div>
+        {/* Custom line-icon (system style) in a teal-soft chip; floats gently
+            — the animation is disabled under prefers-reduced-motion. */}
+        <div className="flex justify-center">
+          <span className="tn-mail inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-tn-teal-soft text-tn-teal">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2.5" />
+              <path d="m3.5 7.5 8.5 5.5 8.5-5.5" />
+            </svg>
+          </span>
+        </div>
         <h2 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-xl text-tn-ink">Check your inbox</h2>
         <p className="text-sm text-foreground">
           We sent a magic link to <strong className="text-tn-ink">{trimmed}</strong>. Click it to sign in.
