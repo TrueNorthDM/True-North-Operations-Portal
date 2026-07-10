@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { isAllowedEmail } from './auth-constants'
 
 describe('isAllowedEmail', () => {
-  it('allows the configured domain', () => {
+  it('allows the configured domains', () => {
     expect(isAllowedEmail('someone@goodnewsadvocates.org')).toBe(true)
+    expect(isAllowedEmail('someone@truenorthdigitalmarketing.com')).toBe(true)
   })
 
   it('allows a named exception regardless of domain', () => {

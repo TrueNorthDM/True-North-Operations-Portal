@@ -65,7 +65,7 @@ export function LoginForm() {
       <div>
         <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-2xl text-tn-ink">Welcome back</h1>
         <p className="mt-2 text-sm text-foreground">
-          Use your True North — Good News Advocates email.
+          Use your True North or Good News Advocates email.
         </p>
       </div>
 
@@ -85,7 +85,7 @@ export function LoginForm() {
         />
         {looksLikeEmail && !domainOk && (
           <p className="mt-2 text-center text-xs text-amber-700">
-            Only @{ALLOWED_EMAIL_DOMAINS[0]} addresses can sign in.
+            Only {ALLOWED_EMAIL_DOMAINS.map(d => `@${d}`).join(' and ')} addresses can sign in.
           </p>
         )}
       </div>

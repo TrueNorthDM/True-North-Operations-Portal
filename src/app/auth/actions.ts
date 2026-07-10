@@ -48,7 +48,7 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
   if (!isAllowedEmail(email)) {
     return {
       ok: false,
-      error: 'Only @goodnewsadvocates.org emails can sign in to this app.',
+      error: 'Only @goodnewsadvocates.org and @truenorthdigitalmarketing.com emails can sign in to this app.',
     }
   }
 
