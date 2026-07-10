@@ -108,6 +108,10 @@ h1, h2, h3 {
 @keyframes tn-split-left  { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
 @keyframes tn-split-right { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
 @keyframes tn-appear     { 0%, 32% { opacity: 0; transform: scale(.2); } 50% { opacity: 1; transform: scale(1); } 68%, 100% { opacity: 0; transform: scale(.2); } }
+/* Admin hub card icons — a gentle bob, a pulsing dot, a self-drawing check. */
+@keyframes tn-ico-bob    { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes tn-dot-pulse  { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .55; } }
+@keyframes tn-check-draw { 0%, 12% { stroke-dashoffset: 26; } 45%, 85% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 26; } }
 
 /* Project-page "Overall progress" bar — grows in on load (scaleX works for any
    width), with a slow sheen sweeping across. Matches the handoff prototype. */
