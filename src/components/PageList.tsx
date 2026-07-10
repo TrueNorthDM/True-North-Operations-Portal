@@ -11,8 +11,17 @@
 import Link from 'next/link'
 import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { languageStatusPalette } from '@/lib/language-colors'
 import { Tooltip, Popover, PopoverItem, SortHeader } from './PageListParts'
+
+// Language chips use flag colours (matches the handoff): filled when the system
+// holds the URL for that language, a muted track when not. Literal hex, so they
+// read identically in light and dark — same as the prototype.
+const LANG_FLAG: Record<string, { bg: string; text: string }> = {
+  en: { bg: '#111111', text: '#ffffff' },
+  pt: { bg: '#009C3B', text: '#ffffff' },
+  es: { bg: '#F5B800', text: '#012358' },
+  sw: { bg: '#00A3DD', text: '#ffffff' },
+}
 
 // All filter + sort state lives in URL query params, so the view is
 // shareable and the browser Back button rewinds filter changes.
@@ -97,7 +106,7 @@ const accentMap = {
   },
   hfa: {
     ring: 'focus:ring-hfa-primary',
-    text: 'text-hfa-secondary hover:text-hfa-primary-hover',
+    text: 'text-hfa-primary hover:text-hfa-primary-hover',
     chip: 'bg-hfa-soft text-hfa-secondary',
   },
 }
@@ -271,7 +280,12 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
       {/* Toolbar — search + filter dropdowns + counts. */}
       <div className="rounded-xl bg-white border border-slate-200 p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">⌕</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </span>
           <input
             type="text"
             value={search}
@@ -397,8 +411,8 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
           )}
         </Popover>
 
-        <div className="text-xs text-slate-500 ml-auto">
-          Showing <strong className="text-slate-700">{filtered.length}</strong> of {rows.length}
+        <div className="text-xs text-muted ml-auto">
+          Showing <strong className="text-foreground">{filtered.length}</strong> of {rows.length}
         </div>
       </div>
 
@@ -426,15 +440,11 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
               <col className="w-12" />
             </colgroup>
             <thead>
-              {/* Two-row header: group label on top (Hreflang system),
-                  individual column headers underneath. */}
-              <tr className="border-b border-slate-100 bg-slate-50 text-left text-[10px] uppercase tracking-wider text-slate-500">
-                <th rowSpan={2} className="px-5 pt-3 pb-2 font-semibold text-slate-600 text-xs normal-case tracking-normal align-bottom">Page name</th>
-                <th colSpan={3} className="px-5 pt-2 pb-1 font-semibold border-l border-slate-200 text-center">Hreflang (system)</th>
-                <th rowSpan={2} className="px-3 align-bottom" />
-              </tr>
-              <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-500">
-                <th className="px-5 pb-3 font-medium border-l border-slate-200">Langs</th>
+              {/* Single-row header (matches the handoff): Raleway 800, navy ink,
+                  warm bg. Status + All Live stay sortable via SortHeader. */}
+              <tr className="border-b border-slate-200 bg-subtle text-left">
+                <th className="px-5 py-3 font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink">Page name</th>
+                <th className="px-5 py-3 font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink border-l border-slate-200">Langs</th>
                 <SortHeader
                   label="Status"
                   active={sortKey === 'hreflang_status'}
@@ -447,6 +457,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                   dir={sortDir}
                   onClick={() => toggleSort('all_live')}
                 />
+                <th className="px-3" />
               </tr>
             </thead>
             <tbody>
@@ -459,7 +470,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                 const isOpen = !collapsed[groupKey]
                 return (
                   <Fragment key={groupKey}>
-                    <tr className="bg-slate-50/80 border-y border-slate-200">
+                    <tr className="bg-subtle border-y border-slate-200">
                       <th
                         colSpan={5}
                         scope="colgroup"
@@ -469,19 +480,19 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                           type="button"
                           onClick={() => toggleGroup(groupKey)}
                           aria-expanded={isOpen}
-                          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-900 transition-colors"
+                          className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[11px] uppercase tracking-wide text-foreground hover:text-tn-ink transition-colors"
                         >
                           <svg
-                            width="12" height="12" viewBox="0 0 24 24"
+                            width="11" height="11" viewBox="0 0 24 24"
                             fill="none" stroke="currentColor"
-                            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                            strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
                             aria-hidden="true"
                             className={`transition-transform ${isOpen ? 'rotate-90' : ''}`}
                           >
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
                           <span>{GROUP_LABEL[groupKey]}</span>
-                          <span className="text-slate-400 font-normal normal-case tracking-normal">
+                          <span className="text-muted font-semibold normal-case tracking-normal">
                             {groupRows.length}
                           </span>
                         </button>
@@ -505,19 +516,23 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       i === filtered.length - 1 ? 'border-0' : ''
                     } ${r.notRelevant ? 'opacity-50' : ''}`}
                   >
-                    <td className="px-5 py-4 font-medium text-slate-800">
+                    <td className="px-5 py-4">
                       <div className="flex items-center gap-2 min-w-0">
                         {r.needsUpdate && (
-                          <span
-                            title="Language config changed — this page needs URLs reviewed"
-                            className="inline-flex items-center justify-center w-4 h-4 shrink-0 text-amber-600"
+                          <svg
+                            width="14" height="14" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" strokeWidth="2"
+                            strokeLinecap="round" strokeLinejoin="round"
+                            className="shrink-0 text-amber-700"
                             aria-label="Needs update"
                           >
-                            ⚠
-                          </span>
+                            <title>Language config changed — this page needs URLs reviewed</title>
+                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <path d="M12 9v4M12 17h.01" />
+                          </svg>
                         )}
                         <span
-                          className={`truncate ${r.notRelevant ? 'line-through decoration-slate-400' : ''}`}
+                          className={`truncate font-semibold text-tn-ink ${r.notRelevant ? 'line-through decoration-slate-400' : ''}`}
                           title={r.name}
                         >
                           {r.name}
@@ -538,10 +553,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       <div className="flex gap-1">
                         {languages.map(lang => {
                           const s = r.langStatus[lang] ?? { hasUrl: false, confirmed: false }
-                          // Coloured when the system holds the URL for this
-                          // language. "Confirmed live" status surfaces in
-                          // the MONDAY (WORDPRESS) block on the right.
-                          const { bg, text } = languageStatusPalette(lang, s.hasUrl)
+                          // Coloured (flag colour) when the system holds the URL
+                          // for this language; muted track when it doesn't.
+                          const flag = s.hasUrl ? LANG_FLAG[lang] : null
                           const title = s.confirmed
                             ? `${lang.toUpperCase()}: URL received, confirmed live`
                             : s.hasUrl
@@ -551,7 +565,8 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                             <span
                               key={lang}
                               title={title}
-                              className={`inline-flex items-center justify-center w-7 h-6 rounded text-xs font-semibold uppercase ${bg} ${text}`}
+                              className={`inline-flex items-center justify-center w-[26px] h-[22px] rounded-[5px] text-[11px] font-bold uppercase ${flag ? '' : 'bg-slate-100 text-slate-400'}`}
+                              style={flag ? { backgroundColor: flag.bg, color: flag.text } : undefined}
                             >
                               {lang}
                             </span>
@@ -563,13 +578,16 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                     {/* HREFLANG (system) — status */}
                     <td className="px-5 py-4">
                       <span
-                        className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                          done
-                            ? 'bg-green-100 text-green-700'
-                            : urlCount > 0
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-slate-100 text-slate-500'
+                        className={`inline-flex items-center text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                          done || urlCount > 0 ? '' : 'bg-slate-100 text-slate-500'
                         }`}
+                        style={
+                          done
+                            ? { backgroundColor: '#1E9E6A1f', color: '#1E9E6A' }
+                            : urlCount > 0
+                              ? { backgroundColor: '#E0940E1f', color: '#c67f0c' }
+                              : undefined
+                        }
                       >
                         {done ? '✓ Done' : `${urlCount} of ${languages.length}`}
                       </span>

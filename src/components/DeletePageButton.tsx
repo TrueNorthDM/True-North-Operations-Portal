@@ -48,16 +48,15 @@ export function DeletePageButton({ pageId, pageName, siteCode }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+        className="inline-flex items-center justify-center w-[34px] h-[34px] rounded-[9px] border border-[#dc262644] text-[#dc2626] hover:bg-[#dc26260f] transition-colors"
         aria-label={`Delete page ${pageName}`}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <polyline points="3 6 5 6 21 6" />
           <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" />
           <path d="M10 11v6M14 11v6" />
           <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
         </svg>
-        Delete
       </button>
 
       {open && (
@@ -69,7 +68,7 @@ export function DeletePageButton({ pageId, pageName, siteCode }: Props) {
           onClick={() => !pending && setOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-white border border-slate-200 shadow-xl p-6"
+            className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-xl p-6"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
@@ -81,11 +80,11 @@ export function DeletePageButton({ pageId, pageName, siteCode }: Props) {
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <h2 id="delete-page-title" className="text-lg font-semibold text-slate-900">
+                <h2 id="delete-page-title" className="text-xl font-(family-name:--font-display) font-extrabold text-tn-ink">
                   Delete this page?
                 </h2>
-                <p className="text-sm text-slate-600 mt-1 break-words">
-                  <span className="font-medium text-slate-800">{pageName}</span> will be removed from True North along with all its URLs and confirmations.
+                <p className="text-sm text-foreground mt-1 break-words">
+                  <span className="font-bold text-tn-ink">{pageName}</span> will be removed from True North along with all its URLs and confirmations.
                 </p>
                 <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
                   <p className="font-semibold mb-0.5">Heads up</p>

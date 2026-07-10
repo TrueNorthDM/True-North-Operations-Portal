@@ -152,13 +152,13 @@ export function SortHeader({
     <th
       scope="col"
       aria-sort={ariaSort}
-      className={`px-5 pb-3 font-medium ${className}`}
+      className={`px-5 py-3 ${className}`}
     >
       <button
         type="button"
         onClick={onClick}
-        className={`inline-flex items-center gap-1 group hover:text-slate-700 transition-colors ${
-          active ? 'text-slate-700' : 'text-slate-500'
+        className={`inline-flex items-center gap-1 group font-(family-name:--font-display) font-extrabold text-[11px] transition-colors ${
+          active ? 'text-tn-ink' : 'text-tn-ink/70 hover:text-tn-ink'
         }`}
       >
         {label}

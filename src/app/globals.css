@@ -9,6 +9,7 @@
      dashboard, applied everywhere for consistency (no per-brand tint). */
   /* True North Digital Marketing brand — warm off-white canvas, navy ink. */
   --background: #f1efe8;
+  --subtle: #f4f2ec;       /* warm subtle fill — table headers, group rows */
   --foreground: #435066;   /* body text (headings use navy via --color-tn-primary) */
   --card: #ffffff;
   --border: #e4e7ec;
@@ -28,6 +29,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-subtle: var(--subtle);
   /* Semantic text/surface utilities (theme-exact in both light and dark):
      text-foreground (body), text-muted, bg-primary / text-primary (navy). */
   --color-muted: var(--muted);
@@ -107,8 +109,17 @@ h1, h2, h3 {
 @keyframes tn-split-right { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
 @keyframes tn-appear     { 0%, 32% { opacity: 0; transform: scale(.2); } 50% { opacity: 1; transform: scale(1); } 68%, 100% { opacity: 0; transform: scale(.2); } }
 
+/* Project-page "Overall progress" bar — grows in on load (scaleX works for any
+   width), with a slow sheen sweeping across. Matches the handoff prototype. */
+@keyframes tn-bar-grow  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes tn-bar-sheen { 0% { transform: translateX(-140%); } 60%, 100% { transform: translateX(360%); } }
+.tn-bar-fill  { transform-origin: left; animation: tn-bar-grow 1.2s cubic-bezier(.22, 1, .36, 1); }
+.tn-bar-sheen { animation: tn-bar-sheen 2.6s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .tn-anim { animation: none !important; }
+  .tn-bar-fill  { animation: none !important; }
+  .tn-bar-sheen { display: none !important; }
 }
 
 /* ── Dark mode — one palette remap, not per-component dark: classes ─────────
@@ -123,6 +134,7 @@ h1, h2, h3 {
   color-scheme: dark;
 
   --background: #070f1d;   /* navy-black canvas */
+  --subtle: #0c1a30;       /* warm-equivalent subtle fill for dark */
   --foreground: #aebfd4;
   --card: #101f37;
   --border: #20355a;

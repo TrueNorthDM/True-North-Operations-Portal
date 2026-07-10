@@ -55,16 +55,12 @@ export function NotRelevantButton({ pageId, siteCode, initialValue }: Props) {
         onClick={handleClick}
         disabled={pending}
         aria-pressed={value}
-        className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+        className={`inline-flex items-center text-sm font-semibold px-3 py-1.5 rounded-[9px] transition-colors disabled:opacity-50 ${
           value
-            ? 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
-            : 'border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+            ? 'bg-subtle text-foreground border border-slate-300 hover:opacity-80'
+            : 'border border-slate-200 text-muted hover:bg-subtle hover:text-tn-ink'
         }`}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-        </svg>
         {value ? 'Marked not relevant' : 'Not relevant'}
       </button>
       {error && <span className="mt-1 text-xs text-red-600">{error}</span>}

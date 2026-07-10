@@ -31,26 +31,29 @@ export function HreflangCodeBlock({ urls, defaultLang = 'en' }: Props) {
 
   if (!hasAllUrls) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-sm text-slate-400">
+      <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-sm text-muted">
         Add URLs for all languages to generate the hreflang code.
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-800 text-slate-300">
-        <span className="text-xs font-mono">hreflang tags</span>
+    <div className="rounded-xl overflow-hidden border border-[#1f2d3d]">
+      {/* Toolbar — fixed dark chrome (same in light & dark, like the handoff). */}
+      <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#152030]">
+        <span className="text-[11.5px] font-mono text-[#8ba0b8]">
+          hreflang tags · {urls.length} {urls.length === 1 ? 'language' : 'languages'}
+        </span>
         <button
           onClick={handleCopy}
-          className="text-xs font-medium px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 transition-colors"
+          className="text-[11.5px] font-semibold px-3 py-1 rounded-md text-[#e7eef7] transition-colors"
+          style={{ backgroundColor: copied ? '#1E9E6A' : '#2a3d55' }}
         >
           {copied ? '✓ Copied!' : 'Copy'}
         </button>
       </div>
       {/* Code */}
-      <pre className="text-xs p-4 overflow-x-auto bg-slate-900 text-slate-100 leading-relaxed font-mono whitespace-pre-wrap">
+      <pre className="text-xs p-4 overflow-x-auto bg-[#0c1622] text-[#cfe0f2] leading-[1.7] font-mono whitespace-pre-wrap">
         {code}
       </pre>
     </div>

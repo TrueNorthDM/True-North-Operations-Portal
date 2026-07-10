@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { languagePalette } from '@/lib/language-colors'
 import { getProjectsOverview } from '@/lib/projects-data'
+import { StatCell } from '@/components/ProjectStatCell'
 
 // Each card carries its project's brand identity — colors + display font + real logo.
 const SITES = [
@@ -17,7 +18,8 @@ const SITES = [
     logo: '/logos/aaaf.jpg',
     logoW: 148,
     logoH: 78,
-    cardCls: 'bg-aaaf-soft border-aaaf-primary/30 hover:border-tn-teal',
+    brand: '#44ad85', // AAAF green — top accent bar + brand-tinted numbers/links
+    cardCls: 'bg-white border-slate-200 hover:border-tn-teal',
     titleCls: 'text-aaaf-ink font-(family-name:--font-aaaf-display)',
     linkCls: 'text-aaaf-primary',
     badgeCls: 'bg-white/70 text-aaaf-secondary border border-aaaf-primary/20',
@@ -31,15 +33,29 @@ const SITES = [
     logo: '/logos/hfa.png',
     logoW: 300,
     logoH: 83,
-    cardCls: 'bg-hfa-soft border-hfa-primary/40 hover:border-tn-teal',
+    brand: '#fe9d2d', // HFA orange — top accent bar + brand-tinted numbers/links
+    cardCls: 'bg-white border-slate-200 hover:border-tn-teal',
     titleCls: 'text-hfa-ink font-(family-name:--font-hfa-display) tracking-wide uppercase',
     linkCls: 'text-hfa-secondary',
     badgeCls: 'bg-white/70 text-hfa-secondary border border-hfa-primary/30',
   },
 ] as const
 
+// Workflow tag palette — copied verbatim from the handoff: a soft translucent
+// fill (colour at ~12% alpha, the `1f` suffix) + saturated text, NO border.
+// Literal hex so the chips read identically in light and dark.
+const TAG_BASE =
+  'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
+const TAG_COLOR = {
+  auto: 'bg-[#059f6b1f] text-[#059f6b]',
+  manual: 'bg-[#d979061f] text-[#c67f0c]',
+  monday: 'bg-[#7c3aed1f] text-[#7c3aed]',
+  system: 'bg-[#0284c71f] text-[#0284c7]',
+  wordpress: 'bg-[#2563eb1f] text-[#2563eb]',
+} as const
+
 export default async function ProjectsPage() {
-  const { accessibleCodes, staleBySite, totalStale, statsBySite } = await getProjectsOverview()
+  const { accessibleCodes, readyBySite, totalReady, statsBySite } = await getProjectsOverview()
   const visibleSites = accessibleCodes === null ? [...SITES] : SITES.filter(s => accessibleCodes.has(s.code))
 
   return (
@@ -52,46 +68,40 @@ export default async function ProjectsPage() {
         </p>
       </div>
 
-      {totalStale > 0 && (
-        <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-5 space-y-3">
-          <div className="flex items-start gap-3">
-            <span aria-hidden="true" className="text-xl leading-none">⚠</span>
-            <div className="flex-1">
-              <h3 className="font-semibold text-amber-900">
-                {totalStale} {totalStale === 1 ? 'page needs' : 'pages need'} hreflang review
-              </h3>
-              <p className="text-sm text-amber-800 mt-0.5">
-                Language settings changed — re-save URLs on each page (and re-paste the generated hreflang in WordPress) to clear the flag.
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Compact "ready to apply" banner (handoff 2): one line + per-site jump
+          pills. A page is ready when every language has a URL but it isn't live
+          yet — SEO 2 can apply the hreflang now. The pill links to the site's
+          page list. bg-white on the pills maps to the dark surface via the mirror. */}
+      {totalReady > 0 && (
+        <div className="flex items-center gap-3 flex-wrap rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <svg
+            aria-hidden="true"
+            className="shrink-0 w-[17px] h-[17px] text-amber-700"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <path d="M12 9v4M12 17h.01" />
+          </svg>
+          <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">
+            {totalReady} {totalReady === 1 ? 'page is' : 'pages are'} ready to apply
+          </span>
+          <div className="ml-auto flex gap-2">
             {(['aaaf', 'hfa'] as const).map(code => {
-              const list = staleBySite[code]
+              const list = readyBySite[code]
               if (list.length === 0) return null
               return (
-                <div key={code} className="bg-white border border-amber-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">{code}</span>
-                    <Link href={`/${code}`} className="text-xs text-amber-700 hover:text-amber-900 font-medium">
-                      View all ({list.length}) →
-                    </Link>
-                  </div>
-                  <ul className="space-y-1">
-                    {list.slice(0, 5).map(p => (
-                      <li key={p.id}>
-                        <Link href={`/${code}/${p.id}`} className="text-sm text-slate-700 hover:text-slate-900 hover:underline truncate block">
-                          {p.name}
-                        </Link>
-                      </li>
-                    ))}
-                    {list.length > 5 && (
-                      <li className="text-xs text-slate-500 pt-1">
-                        + {list.length - 5} more
-                      </li>
-                    )}
-                  </ul>
-                </div>
+                <Link
+                  key={code}
+                  href={`/${code}`}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white border border-amber-200 px-2.5 py-1 text-[11.5px] font-bold text-amber-700 whitespace-nowrap transition-colors hover:bg-amber-100"
+                >
+                  <span className="uppercase tracking-wide">{code}</span> · {list.length} →
+                </Link>
               )
             })}
           </div>
@@ -103,14 +113,18 @@ export default async function ProjectsPage() {
           (→ external site). Valid HTML, no JS, fully keyboard accessible. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {visibleSites.map(site => (
-          <div key={site.code} className="flex flex-col gap-3">
           <article
-            className={`relative rounded-xl border-2 p-6 transition-all hover:-translate-y-1 hover:shadow-md ${site.cardCls}`}
+            key={site.code}
+            className={`relative overflow-hidden rounded-xl border transition-all hover:-translate-y-1 hover:shadow-md ${site.cardCls}`}
           >
+            {/* Brand accent bar (handoff 2): AAAF green / HFA orange, flush to
+                the top edge, clipped to the rounded corners by overflow-hidden. */}
+            <div className="h-1" style={{ backgroundColor: site.brand }} aria-hidden="true" />
+            <div className="p-6">
             <div className="flex items-stretch gap-5">
               {/* Logo plate stays literally white in both themes — the logo
                   files have white backgrounds, so a themed surface would clash. */}
-              <div className="shrink-0 self-center rounded-lg bg-[#fff] border border-slate-200 p-3 w-36 aspect-[3/2] flex items-center justify-center">
+              <div className="shrink-0 self-center rounded-lg bg-[#fff] p-3 w-36 aspect-[3/2] flex items-center justify-center">
                 <Image
                   src={site.logo}
                   alt={`${site.name} logo`}
@@ -146,10 +160,7 @@ export default async function ProjectsPage() {
                   </a>
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
-                  <span className={`text-sm font-semibold ${site.linkCls}`}>
-                    View pages →
-                  </span>
+                <div className="flex items-center justify-end gap-3">
                   <div className="flex gap-1.5 flex-wrap justify-end">
                     {site.languages.map(lang => {
                       const langC = languagePalette(lang.toLowerCase())
@@ -166,30 +177,30 @@ export default async function ProjectsPage() {
                 </div>
               </div>
             </div>
-          </article>
+            </div>
 
-          {/* Stats strip — three at-a-glance numbers per project. Lives
-              outside the <article> so its clicks aren't swallowed by the
-              card-wide ::before link. */}
-          <div className="rounded-xl bg-white border border-slate-200 p-4 grid grid-cols-3 divide-x divide-slate-100">
-            <StatCell
-              value={statsBySite[site.code]?.recentCompletions ?? 0}
-              label="Last 2 weeks"
-              hint="Pages confirmed live in the last 14 days"
-            />
-            <StatCell
-              value={statsBySite[site.code]?.totalDone ?? 0}
-              label="Total done"
-              hint="Pages fully live or marked Not relevant"
-            />
-            <StatCell
-              value={statsBySite[site.code]?.remaining ?? 0}
-              label="Remaining"
-              hint="Pages still requiring work"
-              tone="active"
-            />
-          </div>
-          </div>
+            {/* Stats — three at-a-glance numbers, unified into the card with a
+                top-border divider (matches the handoff). Non-interactive, so
+                sitting under the card-wide ::before link is harmless. */}
+            <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-200">
+              <StatCell
+                value={statsBySite[site.code]?.recentCompletions ?? 0}
+                label="Last 2 weeks"
+                hint="Pages confirmed live in the last 14 days"
+              />
+              <StatCell
+                value={statsBySite[site.code]?.totalDone ?? 0}
+                label="Total done"
+                hint="Pages fully live or marked Not relevant"
+              />
+              <StatCell
+                value={statsBySite[site.code]?.remaining ?? 0}
+                label="Remaining"
+                hint="Pages still requiring work"
+                color={site.brand}
+              />
+            </div>
+          </article>
         ))}
       </div>
 
@@ -199,7 +210,7 @@ export default async function ProjectsPage() {
           masters: human instructions, Monday workflow design, and the
           contract for what the API integration must do. */}
       <div className="rounded-lg bg-white border border-slate-200 p-5">
-        <h3 className="font-semibold text-tn-ink mb-3">How to do this</h3>
+        <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink mb-3">How to do this</h3>
 
         {/* Legend chips. Two orthogonal axes per step:
               - mode (Auto vs Manual) = WHO does it (system vs human)
@@ -208,12 +219,12 @@ export default async function ProjectsPage() {
             need to open WordPress, check Monday, or watch our dashboard. */}
         <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-slate-100 text-[10px] uppercase tracking-wider">
           <span className="text-slate-400 font-semibold">Legend:</span>
-          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Auto</span>
-          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Manual</span>
+          <span className={`${TAG_BASE} ${TAG_COLOR.auto}`}>Auto</span>
+          <span className={`${TAG_BASE} ${TAG_COLOR.manual}`}>Manual</span>
           <span className="text-slate-300">·</span>
-          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">Monday</span>
-          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">System</span>
-          <span className="inline-flex items-center font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">WordPress</span>
+          <span className={`${TAG_BASE} ${TAG_COLOR.monday}`}>Monday</span>
+          <span className={`${TAG_BASE} ${TAG_COLOR.system}`}>System</span>
+          <span className={`${TAG_BASE} ${TAG_COLOR.wordpress}`}>WordPress</span>
         </div>
 
         <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">General workflow</div>
@@ -236,32 +247,20 @@ export default async function ProjectsPage() {
             { m: 'auto',   w: 'system',    t: 'Monday webhook fires; system ticks "Confirmed live" for each language and stamps the All Live date' },
           ] as { m: 'auto' | 'manual'; w: 'monday' | 'system' | 'wordpress'; t: string; d?: string }[]).map((step, i) => (
             <li key={i} className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-(family-name:--font-display) font-extrabold">
                 {i + 1}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2 flex-wrap">
-                  <span
-                    className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                      step.m === 'auto'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}
-                  >
+                  <span className={`${TAG_BASE} ${TAG_COLOR[step.m]}`}>
                     {step.m}
                   </span>
-                  <span
-                    className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                      step.w === 'monday'    ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                      step.w === 'system'    ? 'bg-sky-50 text-sky-700 border-sky-200' :
-                                               'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}
-                  >
+                  <span className={`${TAG_BASE} ${TAG_COLOR[step.w]}`}>
                     {step.w === 'wordpress' ? 'WordPress' : step.w}
                   </span>
-                  <span className="font-medium text-slate-800">{step.t}</span>
+                  <span className="font-bold text-tn-ink">{step.t}</span>
                 </div>
-                {step.d && <div className="text-slate-500 text-xs mt-1">{step.d}</div>}
+                {step.d && <div className="text-muted text-xs mt-1">{step.d}</div>}
               </div>
             </li>
           ))}
@@ -275,11 +274,11 @@ export default async function ProjectsPage() {
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-aaaf-soft text-aaaf-secondary flex items-center justify-center text-[10px] font-bold">A</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">manual</span>
-                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">WordPress</span>
-                <span className="font-medium text-slate-800">Remove any canonical tags and allow indexing (Yoast Advanced)</span>
+                <span className={`${TAG_BASE} ${TAG_COLOR.manual}`}>manual</span>
+                <span className={`${TAG_BASE} ${TAG_COLOR.wordpress}`}>WordPress</span>
+                <span className="font-bold text-tn-ink">Remove any canonical tags and allow indexing (Yoast Advanced)</span>
               </div>
-              <div className="text-slate-500 text-xs mt-1">Make sure each language version is set to allow indexing.</div>
+              <div className="text-muted text-xs mt-1">Make sure each language version is set to allow indexing.</div>
             </div>
           </li>
         </ul>
@@ -287,7 +286,7 @@ export default async function ProjectsPage() {
 
       {/* Resources — links from the original Sheets Instructions tab */}
       <div className="rounded-lg bg-white border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-3">Resources</h3>
+        <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink mb-3">Resources</h3>
         <ul className="space-y-2 text-sm">
           {[
             {
@@ -313,47 +312,15 @@ export default async function ProjectsPage() {
                 href={r.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 font-medium"
+                className="text-tn-teal font-bold hover:underline"
               >
                 {r.label} ↗
               </a>
-              {r.note && <span className="text-slate-500 text-xs"> — {r.note}</span>}
+              {r.note && <span className="text-muted"> — {r.note}</span>}
             </li>
           ))}
         </ul>
       </div>
-    </div>
-  )
-}
-
-/**
- * Single-metric block used in the project stats strip on the dashboard.
- *
- * `tone="active"` is a subtle slate-on-slate look that pulls a tiny bit of
- * attention to the "Remaining" number — it's the one the team actually
- * needs to act on. The other two numbers are diagnostic, not actionable.
- */
-function StatCell({
-  value,
-  label,
-  hint,
-  tone = 'default',
-}: {
-  value: number
-  label: string
-  hint?: string
-  tone?: 'default' | 'active'
-}) {
-  return (
-    <div className="px-4 first:pl-2 last:pr-2 flex flex-col" title={hint}>
-      <span className={`text-3xl font-extrabold tabular-nums ${
-        tone === 'active' ? 'text-slate-900' : 'text-slate-700'
-      }`}>
-        {value}
-      </span>
-      <span className="text-xs text-slate-500 mt-1 font-medium">
-        {label}
-      </span>
     </div>
   )
 }
