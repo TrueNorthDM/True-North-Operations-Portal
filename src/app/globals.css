@@ -10,6 +10,21 @@
   /* True North Digital Marketing brand — warm off-white canvas, navy ink. */
   --background: #f1efe8;
   --subtle: #f4f2ec;       /* warm subtle fill — table headers, group rows */
+  --stat-total: #0f2036;   /* Tickets "Total" stat card (lightened in dark) */
+
+  /* Ticket status/priority/type badge palette (see TicketsClient). Literal in
+     light; brightened in .dark so the tinted pills stay vivid on the dark bg. */
+  --bdg-bar-muted: rgba(120,135,160,.30);
+  --bdg-green-bg: rgba(63,143,110,.13);   --bdg-green-fg: #2f7d5e;  --bdg-green-active: #3f8f6e;
+  --bdg-orange-bg: rgba(232,133,12,.13);  --bdg-orange-fg: #b8650a; --bdg-orange-active: #E8850C;
+  --bdg-red-bg: rgba(225,29,42,.12);      --bdg-red-fg: #c8323d;    --bdg-red-active: #E11D2A;
+  --bdg-slate-bg: rgba(120,135,160,.16);  --bdg-slate-fg: #5b6b82;  --bdg-slate-active: #7d8da5;
+  --bdg-gslate-bg: rgba(148,161,178,.17); --bdg-gslate-fg: #6b7788; --bdg-gslate-active: #94a1b2;
+  --bdg-dgreen-bg: rgba(18,122,62,.13);   --bdg-dgreen-fg: #127A3E; --bdg-dgreen-active: #127A3E;
+  --bdg-tslate-bg: #eef1f4;               --bdg-tslate-fg: #5b6b82; --bdg-tslate-active: #5b6b82;
+  --bdg-purple-bg: #eae7fb;               --bdg-purple-fg: #5b4bd6; --bdg-purple-active: #5b4bd6;
+  --bdg-gold-bg: #fbf1cf;                 --bdg-gold-fg: #a67c04;   --bdg-gold-active: #a67c04;
+  --bdg-bug-bg: #fce8e9;                  --bdg-bug-fg: #c8323d;    --bdg-bug-active: #c8323d;
   --foreground: #435066;   /* body text (headings use navy via --color-tn-primary) */
   --card: #ffffff;
   --border: #e4e7ec;
@@ -30,6 +45,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-subtle: var(--subtle);
+  --color-stat-total: var(--stat-total);
   /* Semantic text/surface utilities (theme-exact in both light and dark):
      text-foreground (body), text-muted, bg-primary / text-primary (navy). */
   --color-muted: var(--muted);
@@ -144,6 +160,20 @@ h1, h2, h3 {
 
   --background: #070f1d;   /* navy-black canvas */
   --subtle: #0c1a30;       /* warm-equivalent subtle fill for dark */
+  --stat-total: #1a2f4d;   /* lightened Total card so it reads on the dark canvas */
+
+  /* Brighter badge palette for dark — vivid text/dots + a touch more fill. */
+  --bdg-bar-muted: rgba(170,182,201,.28);
+  --bdg-green-bg: rgba(95,206,156,.15);   --bdg-green-fg: #6fd9a5;  --bdg-green-active: #6fd9a5;
+  --bdg-orange-bg: rgba(242,165,74,.16);  --bdg-orange-fg: #f2a54a; --bdg-orange-active: #f2a54a;
+  --bdg-red-bg: rgba(242,112,122,.16);    --bdg-red-fg: #f2707a;    --bdg-red-active: #f2707a;
+  --bdg-slate-bg: rgba(170,182,201,.18);  --bdg-slate-fg: #aab6c9;  --bdg-slate-active: #aab6c9;
+  --bdg-gslate-bg: rgba(179,189,203,.18); --bdg-gslate-fg: #b3bdcb; --bdg-gslate-active: #b3bdcb;
+  --bdg-dgreen-bg: rgba(79,191,130,.16);  --bdg-dgreen-fg: #58c98a; --bdg-dgreen-active: #58c98a;
+  --bdg-tslate-bg: rgba(170,182,201,.15); --bdg-tslate-fg: #aab6c9; --bdg-tslate-active: #aab6c9;
+  --bdg-purple-bg: rgba(169,155,245,.18); --bdg-purple-fg: #a99bf5; --bdg-purple-active: #a99bf5;
+  --bdg-gold-bg: rgba(229,193,90,.18);    --bdg-gold-fg: #e5c15a;   --bdg-gold-active: #e5c15a;
+  --bdg-bug-bg: rgba(242,112,122,.16);    --bdg-bug-fg: #f2707a;    --bdg-bug-active: #f2707a;
   --foreground: #aebfd4;
   --card: #101f37;
   --border: #20355a;
