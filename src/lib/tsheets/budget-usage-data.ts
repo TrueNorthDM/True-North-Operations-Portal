@@ -70,7 +70,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       .eq('active', true),
     supabase
       .from('tr_audit_log')
-      .select('id, entity_type, entity_id, action, before_data, after_data, justification, changed_at')
+      .select('id, entity_type, entity_id, action, before_data, after_data, justification, changed_at, changed_by')
       .order('changed_at', { ascending: false })
       .limit(100),
     supabase
@@ -171,16 +171,30 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     })),
   }))
 
-  const auditLog: AuditEntry[] = (auditRaw ?? []).map(e => ({
-    id: e.id,
-    entityType: e.entity_type,
-    entityId: e.entity_id,
-    action: e.action,
-    beforeData: e.before_data as Record<string, unknown> | null,
-    afterData: e.after_data as Record<string, unknown>,
-    justification: e.justification,
-    changedAt: e.changed_at,
-  }))
+  // Resolve who changed each row (changed_by → profiles.full_name) and which
+  // client it was (entity_id → client name for budget-family entities).
+  const actorIds = [...new Set((auditRaw ?? []).map(e => (e as { changed_by?: string | null }).changed_by).filter(Boolean))] as string[]
+  const { data: actorProfiles } = actorIds.length
+    ? await supabase.from('profiles').select('id, full_name').in('id', actorIds)
+    : { data: [] as { id: string; full_name: string | null }[] }
+  const actorNameById = new Map((actorProfiles ?? []).map(p => [p.id, p.full_name]))
+  const BUDGET_ENTITIES = new Set(['budget', 'monthly_budget', 'project_budget', 'project_month_hours', 'budget_history'])
+
+  const auditLog: AuditEntry[] = (auditRaw ?? []).map(e => {
+    const changedBy = (e as { changed_by?: string | null }).changed_by ?? null
+    return {
+      id: e.id,
+      entityType: e.entity_type,
+      entityId: e.entity_id,
+      action: e.action,
+      beforeData: e.before_data as Record<string, unknown> | null,
+      afterData: e.after_data as Record<string, unknown>,
+      justification: e.justification,
+      changedAt: e.changed_at,
+      actorName: changedBy ? actorNameById.get(changedBy) ?? null : null,
+      entityLabel: BUDGET_ENTITIES.has(e.entity_type) ? clientNameMap.get(e.entity_id) ?? null : null,
+    }
+  })
 
   return {
     clients,

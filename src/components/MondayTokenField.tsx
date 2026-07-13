@@ -19,6 +19,7 @@
 import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveMondayApiToken } from '@/app/actions'
+import { useEditing } from './settings/editing-context'
 
 interface Props {
   tokenInfo: {
@@ -30,8 +31,14 @@ interface Props {
 
 export function MondayTokenField({ tokenInfo, footer }: Props) {
   const router = useRouter()
+  const editing = useEditing() // page-level Settings edit mode
   // Default to edit mode only when no token is saved. If saved, show masked view.
   const [isEditing, setIsEditing] = useState(!tokenInfo.exists)
+
+  // View gating: only the page Edit mode reveals Change/Remove and the input.
+  const showMask = tokenInfo.exists && !(editing && isEditing)
+  const showInput = editing && (isEditing || !tokenInfo.exists)
+  const showEmpty = !editing && !tokenInfo.exists
   const [value, setValue] = useState('')
   const [reveal, setReveal] = useState(false)
   const [saving, startSave] = useTransition()
@@ -85,8 +92,9 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
         </p>
       </div>
 
-      {/* Saved state — blurred mask, no copy, no select */}
-      {!isEditing && tokenInfo.exists && (
+      {/* Saved state — blurred mask, no copy, no select. Change/Remove appear
+          only in the page Edit mode. */}
+      {showMask && (
         <div className="flex items-center gap-3 flex-wrap">
           <div
             className="flex-1 min-w-[240px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-700 flex items-center gap-2"
@@ -103,25 +111,36 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
             </span>
             <span className="text-xs text-slate-400 ml-auto select-none">···{tokenInfo.last4}</span>
           </div>
-          <button
-            onClick={() => setWarnOpen(true)}
-            disabled={saving}
-            className="text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            Change
-          </button>
-          <button
-            onClick={() => setClearWarnOpen(true)}
-            disabled={saving}
-            className="text-sm font-medium px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-          >
-            Remove
-          </button>
+          {editing && (
+            <>
+              <button
+                onClick={() => setWarnOpen(true)}
+                disabled={saving}
+                className="text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Change
+              </button>
+              <button
+                onClick={() => setClearWarnOpen(true)}
+                disabled={saving}
+                className="text-sm font-medium px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Remove
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* No token yet, view mode — nudge to Edit */}
+      {showEmpty && (
+        <div className="px-3 py-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 italic">
+          No token set — click <span className="font-semibold not-italic text-slate-500">Edit</span> to add one.
         </div>
       )}
 
       {/* Edit state — enter a new token */}
-      {isEditing && (
+      {showInput && (
         <div className="space-y-3">
           {tokenInfo.exists && (
             <div className="text-xs text-slate-500">

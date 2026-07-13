@@ -52,6 +52,7 @@ function periodLabel(start: string | null | undefined, end: string | null | unde
 }
 
 const Dash = () => <span className="text-slate-300">&mdash;</span>
+const TH = 'text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3.5'
 
 export function ClientsTab({ clients }: Props) {
   // Only the selected id is state — the client object is derived from `clients`,
@@ -61,25 +62,25 @@ export function ClientsTab({ clients }: Props) {
 
   if (clients.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
-        <p className="text-sm font-medium text-slate-700">No clients yet</p>
-        <p className="text-xs text-slate-500">Click &ldquo;Sync clients&rdquo; above to pull job codes from TSheets.</p>
+      <div className="rounded-[16px] border border-slate-200 bg-white p-8 text-center space-y-2">
+        <p className="text-sm font-medium text-tn-ink">No clients yet</p>
+        <p className="text-xs text-muted">Sync clients from the top of the page to pull job codes from TSheets.</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div className="rounded-[16px] border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Client</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Hours</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Budget</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Extra</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Budget period</th>
-              <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Action</th>
+            <tr className="bg-subtle border-b border-slate-200">
+              <th className={`text-left ${TH}`}>Client</th>
+              <th className={`text-right ${TH}`}>Hours</th>
+              <th className={`text-right ${TH}`}>Budget</th>
+              <th className={`text-right ${TH}`}>Extra</th>
+              <th className={`text-left ${TH}`}>Budget period</th>
+              <th className={`text-right ${TH}`}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -89,37 +90,37 @@ export function ClientsTab({ clients }: Props) {
                 <tr
                   key={client.id}
                   onClick={() => setSelectedId(client.id)}
-                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 cursor-pointer"
+                  className="border-b border-slate-100 last:border-0 hover:bg-subtle cursor-pointer"
                 >
-                  <td className="px-5 py-3.5">
-                    <span className="font-medium text-slate-900">{client.name}</span>
+                  <td className="px-5 py-4">
+                    <span className="font-(family-name:--font-display) font-bold text-tn-ink">{client.name}</span>
                     {!client.active && (
-                      <span className="ml-2 text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Inactive</span>
+                      <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--bdg-slate-fg)] bg-[var(--bdg-slate-bg)] px-2 py-0.5 rounded-full">Inactive</span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                  <td className="px-5 py-4 text-right tabular-nums text-foreground">
                     {b?.hoursAllocated != null ? b.hoursAllocated.toLocaleString() : <Dash />}
                   </td>
-                  <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                  <td className="px-5 py-4 text-right tabular-nums font-semibold text-tn-ink">
                     {b?.budgetAmount != null ? `$${b.budgetAmount.toLocaleString()}` : <Dash />}
                   </td>
-                  <td className="px-5 py-3.5 text-right tabular-nums text-slate-700">
+                  <td className="px-5 py-4 text-right tabular-nums text-foreground">
                     {b && b.extraBudget > 0 ? (
                       <div>
-                        <div>${b.extraBudget.toLocaleString()}</div>
+                        <div className="font-semibold text-tn-ink">${b.extraBudget.toLocaleString()}</div>
                         {b.extraStartDate && (
-                          <div className="text-[11px] text-slate-400 font-normal">{periodLabel(b.extraStartDate, b.extraEndDate)}</div>
+                          <div className="text-[11px] text-muted font-normal">{periodLabel(b.extraStartDate, b.extraEndDate)}</div>
                         )}
                       </div>
                     ) : <Dash />}
                   </td>
-                  <td className="px-5 py-3.5 text-xs text-slate-500">
-                    {b ? periodLabel(b.startDate, b.budgetEndDate) : <span className="text-slate-400">No budget set</span>}
+                  <td className="px-5 py-4 text-xs text-muted">
+                    {b ? periodLabel(b.startDate, b.budgetEndDate) : <span className="text-muted italic">No budget set</span>}
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-5 py-4 text-right">
                     <button
                       onClick={e => { e.stopPropagation(); setSelectedId(client.id) }}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                      className="text-[12px] font-(family-name:--font-display) font-extrabold px-3.5 py-2 rounded-[9px] border border-slate-200 text-foreground hover:border-tn-teal hover:text-tn-teal transition-colors whitespace-nowrap"
                     >
                       {b ? 'View / edit' : 'Set budget'}
                     </button>
@@ -154,14 +155,21 @@ function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onCl
   const isI7 = !!client.monthlyBudgets
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4 py-10 overflow-y-auto" onClick={onClose}>
       <div
-        className={`w-full ${isI7 ? 'max-w-5xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl`}
+        className={`w-full ${isI7 ? 'max-w-5xl' : 'max-w-2xl'} rounded-[18px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] overflow-hidden tn-modal animate-[tn-modal-in_.2s_ease]`}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
-          <h2 className="text-base font-semibold text-slate-900">{client.name}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200">
+          <div className="flex items-center gap-3 min-w-0">
+            {isI7 && (
+              <span className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] bg-tn-teal text-white">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 1v22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+              </span>
+            )}
+            <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink truncate">{client.name}</h2>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted hover:bg-subtle hover:text-tn-ink transition-colors text-xl leading-none">&times;</button>
         </div>
 
         <div className="p-6">
@@ -208,9 +216,9 @@ function ViewBudget({ client, onEdit }: { client: ClientWithBudget; onEdit: () =
   if (!b) {
     return (
       <div className="space-y-5">
-        <p className="text-sm text-slate-500">No budget set for this client yet.</p>
+        <p className="text-sm text-muted">No budget set for this client yet.</p>
         <div className="flex justify-end">
-          <button onClick={onEdit} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">Set budget</button>
+          <button onClick={onEdit} className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all">Set budget</button>
         </div>
       </div>
     )
@@ -227,23 +235,23 @@ function ViewBudget({ client, onEdit }: { client: ClientWithBudget; onEdit: () =
 
   return (
     <div className="space-y-6">
-      <dl className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+      <dl className="rounded-[12px] border border-slate-200 divide-y divide-slate-100 overflow-hidden">
         {rows.map((r, i) => (
           <div key={i} className="flex items-center justify-between gap-4 px-4 py-3">
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{r.label}</dt>
-            <dd className="text-sm font-semibold text-slate-800 tabular-nums text-right">{r.value}</dd>
+            <dt className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">{r.label}</dt>
+            <dd className="text-sm font-bold text-tn-ink tabular-nums text-right">{r.value}</dd>
           </div>
         ))}
       </dl>
 
       {projectHours.length > 0 && (
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Budget hours per project</div>
-          <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+          <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted mb-2">Budget hours per project</div>
+          <div className="rounded-[12px] border border-slate-200 divide-y divide-slate-100 overflow-hidden">
             {projectHours.map(p => (
               <div key={p.project} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                <span className="text-sm text-slate-700">{p.project}</span>
-                <span className="text-sm font-semibold tabular-nums text-slate-800">{p.hours!.toLocaleString()} h</span>
+                <span className="text-sm text-foreground">{p.project}</span>
+                <span className="text-sm font-bold tabular-nums text-tn-ink">{p.hours!.toLocaleString()} h</span>
               </div>
             ))}
           </div>
@@ -251,7 +259,7 @@ function ViewBudget({ client, onEdit }: { client: ClientWithBudget; onEdit: () =
       )}
 
       <div className="flex justify-end">
-        <button onClick={onEdit} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">Edit</button>
+        <button onClick={onEdit} className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all">Edit</button>
       </div>
     </div>
   )

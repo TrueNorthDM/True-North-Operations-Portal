@@ -15,7 +15,7 @@ import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
 import { PeopleTab } from '@/components/tsheets/settings/PeopleTab'
-import { HistoryTab } from '@/components/tsheets/settings/HistoryTab'
+import { HistoryTab, ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import { TargetsEditor } from '@/components/boards/TargetsEditor'
 
@@ -33,11 +33,19 @@ interface SiteData {
 }
 
 const iconProps = { width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
-const ApisIcon = <svg {...iconProps} aria-hidden="true"><path d="M15 7a5 5 0 0 1 0 10h-1" /><path d="M9 17a5 5 0 0 1 0-10h1" /><path d="M8 12h8" /></svg>
-const ClientsIcon = <svg {...iconProps} aria-hidden="true"><path d="M12 1v22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-const PeopleIcon = <svg {...iconProps} aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-const TargetsIcon = <svg {...iconProps} aria-hidden="true"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
-const SitesIcon = <svg {...iconProps} aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z" /></svg>
+// Each SVG child is keyed: these elements are created at module scope (outside a
+// render), so React would otherwise flag the child paths as a keyless list.
+const Icon = ({ paths, circles = [] }: { paths?: string[]; circles?: [number, number, number][] }) => (
+  <svg {...iconProps} aria-hidden="true">
+    {circles.map(([cx, cy, r], i) => <circle key={`c${i}`} cx={cx} cy={cy} r={r} />)}
+    {paths?.map((d, i) => <path key={`p${i}`} d={d} />)}
+  </svg>
+)
+const ApisIcon = <Icon paths={['M15 7a5 5 0 0 1 0 10h-1', 'M9 17a5 5 0 0 1 0-10h1', 'M8 12h8']} />
+const ClientsIcon = <Icon paths={['M12 1v22', 'M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6']} />
+const PeopleIcon = <Icon paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75']} />
+const TargetsIcon = <Icon circles={[[12, 12, 10], [12, 12, 6], [12, 12, 2]]} />
+const SitesIcon = <Icon circles={[[12, 12, 10]]} paths={['M2 12h20', 'M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z']} />
 
 function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
@@ -128,10 +136,14 @@ export default async function SettingsPage() {
       id: 'clients',
       label: 'Clients & budgets',
       icon: ClientsIcon,
+      editable: false,
       content: (
-        <div className="space-y-5">
-          <SectionHead title="Clients & budgets" desc="Manage clients and their budget allocations. Every change requires a justification and is recorded in the audit log." />
-          <ClientsTab clients={budget.clients} />
+        <div className="space-y-12">
+          <div className="space-y-5">
+            <SectionHead title="Clients & budgets" desc="The dollar budget and budget period for each client. “Extra” is an approved top-up covering part of the period. Hours are read live from QuickBooks Time and power the i7 Budget Usage Report." />
+            <ClientsTab clients={budget.clients} />
+          </div>
+          <ChangeHistory entries={budget.auditLog} />
         </div>
       ),
     },
@@ -139,6 +151,7 @@ export default async function SettingsPage() {
       id: 'people',
       label: 'People & rates',
       icon: PeopleIcon,
+      editable: false,
       content: (
         <div className="space-y-5">
           <SectionHead title="People & rates" desc="Hourly rates per person and their client assignments. Changes are justified and audited." />
@@ -150,6 +163,7 @@ export default async function SettingsPage() {
       id: 'targets',
       label: 'Publishing targets',
       icon: TargetsIcon,
+      editable: false,
       content: (
         <div className="space-y-5">
           <SectionHead title="Publishing targets" desc="Weekly pages-published goals per board & language. The Boards Review dashboard tracks progress against these." />
@@ -161,6 +175,7 @@ export default async function SettingsPage() {
       id: 'sites',
       label: 'Sites & languages',
       icon: SitesIcon,
+      editable: false,
       content: (
         <div>
           <SectionHead title="Sites & languages" desc="Per-project configuration — publishing languages, the Monday board ID, and the WordPress URLs." />
@@ -180,7 +195,7 @@ export default async function SettingsPage() {
 
   const historyContent = (
     <div className="space-y-5">
-      <SectionHead title="Change history" desc="Every budget, rate, and target change — who changed what, when, and why." />
+      <SectionHead title="Full history" desc="Every budget, rate, and target change — who changed what, when, and why — plus the past budget schedule." />
       <HistoryTab entries={budget.auditLog} pastBudgets={budget.pastBudgets} pastProjectHours={budget.pastProjectHours} />
     </div>
   )

@@ -112,72 +112,72 @@ export function BudgetForm({ client, current, onClose }: Props) {
     }
   }
 
-  const inputCls = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400'
-  const labelCls = 'block text-xs font-medium text-slate-600'
+  const inputCls = 'w-full rounded-[10px] border border-slate-200 bg-subtle px-3.5 py-2.5 text-sm text-tn-ink focus:outline-none focus:border-tn-teal transition-colors'
+  const labelCls = 'block text-[13px] font-(family-name:--font-display) font-bold text-tn-ink mb-1.5'
+  const legendCls = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted mb-3'
 
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Budget for {client.name}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+      <div className="rounded-[14px] border border-slate-200 bg-white p-5">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Budget for {client.name}</h3>
+          <button type="button" onClick={onClose} aria-label="Close" className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-subtle hover:text-tn-ink transition-colors text-lg leading-none">&times;</button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* ── Base budget ── */}
-          <fieldset className="space-y-3">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-slate-400">Budget</legend>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className={labelCls}>Hours allocated</label>
-                <input type="number" min="0" step="0.5" value={hours} onChange={e => setHours(e.target.value)} placeholder="e.g. 160" className={inputCls} />
-              </div>
-              <div className="space-y-1">
-                <label className={labelCls}>Budget ($)</label>
-                <input type="number" min="0" step="0.01" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 8000" className={inputCls} />
-              </div>
-              <div className="space-y-1">
-                <label className={labelCls}>Start date <span className="text-red-500">*</span></label>
-                <input type="date" value={budgetStart} onChange={e => setBudgetStart(e.target.value)} className={inputCls} />
-              </div>
-              <div className="space-y-1">
-                <label className={labelCls}>End date <span className="text-slate-400 font-normal">(optional)</span></label>
-                <input type="date" value={budgetEnd} min={budgetStart || undefined} onChange={e => setBudgetEnd(e.target.value)} className={inputCls} />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* ── Base budget ── */}
+        <fieldset>
+          <legend className={legendCls}>Budget</legend>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Hours allocated</label>
+              <input type="number" min="0" step="0.5" value={hours} onChange={e => setHours(e.target.value)} placeholder="e.g. 160" className={inputCls} />
             </div>
-          </fieldset>
-
-          {/* ── Extra budget ── */}
-          <fieldset className="space-y-3 border-t border-slate-100 pt-4">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-slate-400">Extra budget</legend>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className={labelCls}>Extra budget ($)</label>
-                <input type="number" min="0" step="0.01" value={extra} onChange={e => setExtra(e.target.value)} placeholder="0" className={inputCls} />
-              </div>
-              <div />
-              <div className="space-y-1">
-                <label className={labelCls}>
-                  Start date {hasExtra ? <span className="text-red-500">*</span> : <span className="text-slate-400 font-normal">(when extra is set)</span>}
-                </label>
-                <input type="date" value={extraStart} onChange={e => setExtraStart(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
-              </div>
-              <div className="space-y-1">
-                <label className={labelCls}>End date <span className="text-slate-400 font-normal">(optional)</span></label>
-                <input type="date" value={extraEnd} min={extraStart || undefined} onChange={e => setExtraEnd(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`} />
-              </div>
+            <div>
+              <label className={labelCls}>Budget ($)</label>
+              <input type="number" min="0" step="0.01" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 8000" className={inputCls} />
             </div>
-            {!hasExtra && (
-              <p className="text-xs text-slate-400">Enter an extra budget amount to set its own period.</p>
-            )}
-          </fieldset>
-
-          {error && <p className="text-xs text-red-600">{error}</p>}
-
-          <div className="flex gap-3 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Cancel</button>
-            <button type="submit" className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">Review change</button>
+            <div>
+              <label className={labelCls}>Start date <span className="text-red-500">*</span></label>
+              <input type="date" value={budgetStart} onChange={e => setBudgetStart(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>End date <span className="text-muted font-normal">(optional)</span></label>
+              <input type="date" value={budgetEnd} min={budgetStart || undefined} onChange={e => setBudgetEnd(e.target.value)} className={inputCls} />
+            </div>
           </div>
+        </fieldset>
+
+        {/* ── Extra budget ── */}
+        <fieldset className="border-t border-slate-200 pt-5">
+          <legend className={legendCls}>Extra budget</legend>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Extra budget ($)</label>
+              <input type="number" min="0" step="0.01" value={extra} onChange={e => setExtra(e.target.value)} placeholder="0" className={inputCls} />
+            </div>
+            <div />
+            <div>
+              <label className={labelCls}>
+                Start date {hasExtra ? <span className="text-red-500">*</span> : <span className="text-muted font-normal">(when extra is set)</span>}
+              </label>
+              <input type="date" value={extraStart} onChange={e => setExtraStart(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} />
+            </div>
+            <div>
+              <label className={labelCls}>End date <span className="text-muted font-normal">(optional)</span></label>
+              <input type="date" value={extraEnd} min={extraStart || undefined} onChange={e => setExtraEnd(e.target.value)} disabled={!hasExtra} className={`${inputCls} disabled:opacity-60`} />
+            </div>
+          </div>
+          {!hasExtra && (
+            <p className="text-xs text-muted mt-2">Enter an extra budget amount to set its own period.</p>
+          )}
+        </fieldset>
+
+        {error && <p className="text-xs text-red-600">{error}</p>}
+
+        <div className="flex gap-3 justify-end pt-1">
+          <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-(family-name:--font-display) font-extrabold text-foreground border border-slate-200 rounded-[10px] hover:border-tn-ink hover:text-tn-ink transition-colors">Cancel</button>
+          <button type="submit" className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] hover:brightness-110 transition-all">Review change</button>
+        </div>
         </form>
       </div>
 

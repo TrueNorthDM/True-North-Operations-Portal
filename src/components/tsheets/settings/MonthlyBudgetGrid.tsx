@@ -81,9 +81,9 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
     else { setError(res.error ?? 'Save failed.'); setPending(null) }
   }
 
-  const cellInput = 'num-cell w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-400'
-  const th = 'text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 whitespace-nowrap'
-  const rowLabel = 'text-left text-xs font-semibold text-slate-600 px-3 py-2 sticky left-0 whitespace-nowrap'
+  const cellInput = 'num-cell w-full rounded-[8px] border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-right tabular-nums text-tn-ink focus:outline-none focus:border-tn-teal'
+  const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal px-3 py-3 whitespace-nowrap'
+  const rowLabel = 'text-left text-[12px] font-(family-name:--font-display) font-bold text-tn-ink px-3 py-2.5 sticky left-0 whitespace-nowrap'
   const changeCount = diff().changes.length
 
   const view = (ym: string, field: 'budget' | 'extra') => {
@@ -104,19 +104,22 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700">Monthly budget</h3>
-          <p className="text-xs text-slate-400">The schedule the report reads — current month and the next 5. Older months live in Change History → Past schedule.</p>
+        <div className="border-l-[3px] border-tn-teal pl-3">
+          <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Monthly budget</h3>
+          <p className="text-xs text-muted mt-0.5">The schedule the report reads — current month and the next 5. Older months live in Full history → Past schedule.</p>
         </div>
         {!editing && (
-          <button onClick={startEdit} className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Edit</button>
+          <button onClick={startEdit} className="shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-(family-name:--font-display) font-extrabold px-3.5 py-2 rounded-[9px] bg-tn-teal text-white hover:brightness-110 transition-all">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            Edit
+          </button>
         )}
       </div>
-      <div className="rounded-xl border border-slate-200 overflow-x-auto">
+      <div className="rounded-[12px] border border-slate-200 overflow-x-auto">
         <table className="min-w-full text-sm table-fixed">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className={`text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 sticky left-0 bg-slate-50 ${COL0}`}>Month →</th>
+            <tr className="bg-tn-teal-soft border-b border-slate-200">
+              <th className={`text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal px-3 py-3 sticky left-0 bg-tn-teal-soft ${COL0}`}>Month →</th>
               {months.map(ym => <th key={ym} className={th}>{monthLabel(ym)}</th>)}
             </tr>
           </thead>
@@ -127,7 +130,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
                 <td key={ym} className="px-3 py-2 text-right">
                   {editing
                     ? <input type="number" min="0" step="100" value={vals[ym].budget} onChange={e => set(ym, 'budget', e.target.value)} placeholder="0" className={cellInput} />
-                    : <span className="tabular-nums text-slate-700">{view(ym, 'budget')}</span>}
+                    : <span className="tabular-nums font-semibold text-tn-ink">{view(ym, 'budget')}</span>}
                 </td>
               ))}
             </tr>
@@ -137,15 +140,15 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
                 <td key={ym} className="px-3 py-2 text-right">
                   {editing
                     ? <input type="number" min="0" step="100" value={vals[ym].extra} onChange={e => set(ym, 'extra', e.target.value)} placeholder="0" className={cellInput} />
-                    : <span className="tabular-nums text-slate-700">{view(ym, 'extra')}</span>}
+                    : <span className="tabular-nums font-semibold text-tn-ink">{view(ym, 'extra')}</span>}
                 </td>
               ))}
             </tr>
-            <tr className="bg-slate-50/60">
-              <td className={`${rowLabel} bg-slate-50 font-bold`}>Total</td>
+            <tr className="bg-tn-teal-soft">
+              <td className={`${rowLabel} bg-tn-teal-soft !text-tn-teal`}>Total</td>
               {months.map(ym => {
                 const t = total(ym)
-                return <td key={ym} className="px-3 py-2 text-right tabular-nums font-bold text-slate-900">{t ? money(t) : '—'}</td>
+                return <td key={ym} className="px-3 py-2.5 text-right tabular-nums font-bold text-tn-teal">{t ? money(t) : '—'}</td>
               })}
             </tr>
           </tbody>
@@ -159,7 +162,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
           <button
             onClick={review}
             disabled={changeCount === 0}
-            className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Review changes
           </button>

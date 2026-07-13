@@ -78,40 +78,43 @@ export function ProjectHoursGrid({ clientId, projects, hours }: { clientId: numb
     else { setError(res.error ?? 'Save failed.'); setPending(null) }
   }
 
-  const cellInput = 'num-cell w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-400'
-  const th = 'text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 whitespace-nowrap'
+  const cellInput = 'num-cell w-full rounded-[8px] border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-right tabular-nums text-tn-ink focus:outline-none focus:border-[#e08a1e]'
+  const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 whitespace-nowrap'
   const changeCount = diff().changes.length
 
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700">Budget hours per project</h3>
-          <p className="text-xs text-slate-400">Budgeted hours the report shows per project, per month. Empty months show no guide.</p>
+        <div className="border-l-[3px] border-[#e08a1e] pl-3">
+          <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Budget hours per project</h3>
+          <p className="text-xs text-muted mt-0.5">Budgeted hours the report shows per project, per month. Empty months show no guide.</p>
         </div>
         {!editing && (
-          <button onClick={startEdit} className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Edit</button>
+          <button onClick={startEdit} className="shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-(family-name:--font-display) font-extrabold px-3.5 py-2 rounded-[9px] bg-[#e08a1e] text-white hover:brightness-110 transition-all">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            Edit
+          </button>
         )}
       </div>
-      <div className="rounded-xl border border-slate-200 overflow-x-auto">
+      <div className="rounded-[12px] border border-slate-200 overflow-x-auto">
         <table className="min-w-full text-sm table-fixed">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className={`text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-2.5 sticky left-0 bg-slate-50 ${COL0}`}>Project</th>
+            <tr className="bg-hfa-soft border-b border-slate-200">
+              <th className={`text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 sticky left-0 bg-hfa-soft ${COL0}`}>Project</th>
               {months.map(ym => <th key={ym} className={th}>{monthLabel(ym)}</th>)}
             </tr>
           </thead>
           <tbody>
             {projects.map(p => (
               <tr key={p} className="border-b border-slate-100 last:border-0">
-                <td className="text-left text-xs font-medium text-slate-700 px-3 py-2 sticky left-0 bg-white whitespace-nowrap">{p}</td>
+                <td className="text-left text-[12px] font-(family-name:--font-display) font-bold text-tn-ink px-3 py-2.5 sticky left-0 bg-white whitespace-nowrap">{p}</td>
                 {months.map(ym => {
                   const h = existing.get(key(p, ym)) ?? 0
                   return (
                     <td key={ym} className="px-3 py-2 text-right">
                       {editing
                         ? <input type="number" min="0" step="0.5" value={vals[key(p, ym)]} onChange={e => set(key(p, ym), e.target.value)} placeholder="0" className={cellInput} />
-                        : <span className="tabular-nums text-slate-700">{h > 0 ? fmtHrs(h) : <span className="text-slate-300">—</span>}</span>}
+                        : <span className="tabular-nums font-semibold text-tn-ink">{h > 0 ? fmtHrs(h) : <span className="text-slate-300">—</span>}</span>}
                     </td>
                   )
                 })}
@@ -128,7 +131,7 @@ export function ProjectHoursGrid({ clientId, projects, hours }: { clientId: numb
           <button
             onClick={review}
             disabled={changeCount === 0}
-            className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Review changes
           </button>

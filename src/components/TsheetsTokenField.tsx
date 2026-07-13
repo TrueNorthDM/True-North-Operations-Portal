@@ -6,6 +6,7 @@
 import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveTsheetsApiToken } from '@/app/actions'
+import { useEditing } from './settings/editing-context'
 
 interface Props {
   tokenInfo: { exists: boolean; last4: string | null }
@@ -14,7 +15,11 @@ interface Props {
 
 export function TsheetsTokenField({ tokenInfo, footer }: Props) {
   const router = useRouter()
+  const editing = useEditing() // page-level Settings edit mode
   const [isEditing, setIsEditing] = useState(!tokenInfo.exists)
+  const showMask = tokenInfo.exists && !(editing && isEditing)
+  const showInput = editing && (isEditing || !tokenInfo.exists)
+  const showEmpty = !editing && !tokenInfo.exists
   const [value, setValue] = useState('')
   const [reveal, setReveal] = useState(false)
   const [saving, startSave] = useTransition()
@@ -53,7 +58,7 @@ export function TsheetsTokenField({ tokenInfo, footer }: Props) {
         </p>
       </div>
 
-      {!isEditing && tokenInfo.exists && (
+      {showMask && (
         <div className="flex items-center gap-3 flex-wrap">
           <div
             className="flex-1 min-w-[240px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-700 flex items-center gap-2"
@@ -69,18 +74,28 @@ export function TsheetsTokenField({ tokenInfo, footer }: Props) {
             </span>
             <span className="text-xs text-slate-400 ml-auto select-none">···{tokenInfo.last4}</span>
           </div>
-          <button onClick={() => setWarnOpen(true)} disabled={saving}
-            className="text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors">
-            Change
-          </button>
-          <button onClick={() => setClearWarnOpen(true)} disabled={saving}
-            className="text-sm font-medium px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
-            Remove
-          </button>
+          {editing && (
+            <>
+              <button onClick={() => setWarnOpen(true)} disabled={saving}
+                className="text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors">
+                Change
+              </button>
+              <button onClick={() => setClearWarnOpen(true)} disabled={saving}
+                className="text-sm font-medium px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                Remove
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {isEditing && (
+      {showEmpty && (
+        <div className="px-3 py-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 italic">
+          No token set — click <span className="font-semibold not-italic text-slate-500">Edit</span> to add one.
+        </div>
+      )}
+
+      {showInput && (
         <div className="space-y-3">
           {tokenInfo.exists && (
             <div className="text-xs text-slate-500">Replacing the existing token. Paste the new one below.</div>
