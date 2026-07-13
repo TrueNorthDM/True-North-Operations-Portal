@@ -140,11 +140,15 @@ h1, h2, h3 {
 @keyframes tn-mail-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .tn-mail { animation: tn-mail-bob 2.8s ease-in-out infinite; }
 
+/* Directory person modal — a one-shot rise-in on open. */
+@keyframes tn-modal-in { from { transform: translateY(12px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
   .tn-anim { animation: none !important; }
   .tn-bar-fill  { animation: none !important; }
   .tn-bar-sheen { display: none !important; }
   .tn-mail      { animation: none !important; }
+  .tn-modal     { animation: none !important; }
 }
 
 /* ── Dark mode — one palette remap, not per-component dark: classes ─────────

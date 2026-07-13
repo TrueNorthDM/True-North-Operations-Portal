@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
 
-export type GrantRole = 'admin' | 'member' | 'viewer'
+export type GrantRole = 'manager' | 'publisher' | 'editor' | 'viewer'
 
 async function requireAdmin() {
   if (!(await isCurrentUserAdmin())) throw new Error('Not authorized')

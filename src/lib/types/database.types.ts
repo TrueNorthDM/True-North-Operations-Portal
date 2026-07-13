@@ -114,6 +114,25 @@ export type PersonRow = {
   tsheets_only: boolean
   created_at: string
   updated_at: string
+  // Directory person fields (migration 029)
+  employment_type: string | null
+  schedule: string | null
+  weekly_hours: number | null
+  internal_rate: number | null
+  reports_to_manager: string | null
+  also_reports_to_id: string | null
+  email_true_north: string | null
+  email_goodnews: string | null
+  email_coe: string | null
+  email_personal: string | null
+  phone: string | null
+  location: string | null
+  company_email: string | null
+  uses_system: string | null
+  date_of_birth: string | null
+  hire_date: string | null
+  left_on: string | null
+  employment_history: string | null
 }
 
 export type TeamRow = {
@@ -340,9 +359,9 @@ export type Database = {
       }
       // Access grants (migration 014). One role per subject per project.
       grants: {
-        Row: { id: string; subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'admin' | 'member' | 'viewer'; created_at: string; updated_at: string }
-        Insert: { id?: string; subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'admin' | 'member' | 'viewer'; created_at?: string; updated_at?: string }
-        Update: Partial<{ subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'admin' | 'member' | 'viewer' }>
+        Row: { id: string; subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'manager' | 'publisher' | 'editor' | 'viewer'; created_at: string; updated_at: string }
+        Insert: { id?: string; subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'manager' | 'publisher' | 'editor' | 'viewer'; created_at?: string; updated_at?: string }
+        Update: Partial<{ subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'manager' | 'publisher' | 'editor' | 'viewer' }>
         Relationships: []
       }
       tr_clients: {

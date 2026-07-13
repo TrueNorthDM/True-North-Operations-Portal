@@ -1,29 +1,39 @@
-// Admin → Directory. The single surface for People · Teams · Access, all
-// controlled from one page (with a TSheets-link indicator on People). Gated.
+// Admin → Directory. The single surface for People · Emails · Teams · Access,
+// all controlled from one page. Gated to admins.
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
-import type { PersonView } from '@/components/admin/PeopleManager'
-import type { TeamManagerTeam } from '@/components/admin/TeamsManager'
-import type { AccessCell } from '@/components/admin/AccessMatrix'
+import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type TeamKey } from '@/components/admin/people-types'
+import type { TeamCard } from '@/components/admin/TeamsManager'
+import type { AccessRow } from '@/components/admin/AccessMatrix'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
+
+// Full people select (needs migration 029). Falls back to base columns if the
+// migration hasn't run yet, so the page never 500s on a pre-migration deploy.
+const PEOPLE_FULL =
+  'id, full_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
+  'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, ' +
+  'email_true_north, email_goodnews, email_coe, email_personal, phone, location, ' +
+  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history'
+const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
+
+const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
+
+/** Loosely-typed people row — columns depend on whether migration 029 ran. */
+type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export default async function DirectoryPage() {
   if (!(await isCurrentUserAdmin())) redirect('/')
   const supabase = await createClient()
 
-  const [
-    { data: pData },
-    { data: tData },
-    { data: mData },
-    { data: gData },
-    { data: sData },
-    { data: prData },
-  ] = await Promise.all([
-    supabase.from('people').select('id, full_name, title, manager_id, status, profile_id, tsheets_user_id'),
+  // People with graceful degradation, then the rest in parallel.
+  let pRes = await supabase.from('people').select(PEOPLE_FULL)
+  if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
+
+  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }] = await Promise.all([
     supabase.from('teams').select('id, name, leader_person_id'),
     supabase.from('team_members').select('team_id, person_id'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
@@ -31,116 +41,163 @@ export default async function DirectoryPage() {
     supabase.from('profiles').select('id, email'),
   ])
 
-  const grants = gData ?? []
-
-  const people = pData ?? []
+  const people = (pRes.data ?? []) as unknown as PRow[]
   const teams = tData ?? []
   const members = mData ?? []
+  const grants = gData ?? []
   const sites = sData ?? []
   const profiles = prData ?? []
 
-  const nameById = new Map(people.map(p => [p.id, p.full_name]))
-  const siteById = new Map(sites.map(s => [s.id, s.name]))
-  const teamNameById = new Map(teams.map(t => [t.id, t.name]))
+  const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
+  const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
 
-  // ── Accounts (for the People tab's account picker) ──
+  const teamById = new Map(teams.map(t => [t.id, t]))
+  const siteById = new Map(sites.map(s => [s.id, s]))
+
+  // ── Primary team per person (first membership, name-sorted for determinism) ──
+  const teamIdsByPerson = new Map<string, string[]>()
+  for (const m of members) {
+    const arr = teamIdsByPerson.get(m.person_id) ?? []
+    arr.push(m.team_id)
+    teamIdsByPerson.set(m.person_id, arr)
+  }
+  function primaryTeam(personId: string): { id: string; name: string } | null {
+    const ids = teamIdsByPerson.get(personId) ?? []
+    const named = ids.map(id => teamById.get(id)).filter((t): t is NonNullable<typeof t> => !!t)
+    named.sort((a, b) => a.name.localeCompare(b.name))
+    return named[0] ? { id: named[0].id, name: named[0].name } : null
+  }
+  const teamKeyByPerson = new Map<string, TeamKey>()
+  for (const p of people) teamKeyByPerson.set(p.id, teamKeyFromName(primaryTeam(p.id)?.name))
+
+  // ── Accounts (for the account picker) ──
   const emailByProfile = new Map(profiles.map(pr => [pr.id, pr.email ?? '(no email)']))
-  const linkedProfileIds = new Set(people.map(p => p.profile_id).filter((x): x is string => !!x))
+  const linkedProfileIds = new Set(people.map(p => (typeof p.profile_id === 'string' ? p.profile_id : null)).filter(Boolean) as string[])
   const availableAccounts = profiles
     .filter(pr => !linkedProfileIds.has(pr.id))
     .map(pr => ({ id: pr.id, email: pr.email ?? '(no email)' }))
     .sort((a, b) => a.email.localeCompare(b.email))
 
-  // ── People view (with team chips + TSheets indicator) ──
-  const teamsByPerson = new Map<string, string[]>()
-  for (const m of members) {
-    const tn = teamNameById.get(m.team_id)
-    if (!tn) continue
-    const arr = teamsByPerson.get(m.person_id) ?? []
-    arr.push(tn)
-    teamsByPerson.set(m.person_id, arr)
-  }
+  const nameById = new Map(people.map(p => [p.id, p.full_name]))
+
+  // ── People view models ──
   const peopleView: PersonView[] = people
-    .map(p => ({
-      id: p.id,
-      full_name: p.full_name,
-      title: p.title,
-      manager_id: p.manager_id,
-      managerName: p.manager_id ? nameById.get(p.manager_id) ?? null : null,
-      status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
-      teams: teamsByPerson.get(p.id) ?? [],
-      accountId: p.profile_id,
-      accountEmail: p.profile_id ? emailByProfile.get(p.profile_id) ?? null : null,
-      hasTsheets: p.tsheets_user_id != null,
-    }))
+    .map((p): PersonView => {
+      const pt = primaryTeam(p.id)
+      const mgrId = str(p.manager_id)
+      const alsoId = str(p.also_reports_to_id)
+      return {
+        id: p.id,
+        full_name: p.full_name,
+        title: str(p.title),
+        teamId: pt?.id ?? null,
+        teamName: pt?.name ?? null,
+        teamKey: teamKeyFromName(pt?.name),
+        manager_id: mgrId,
+        managerName: mgrId ? nameById.get(mgrId) ?? null : null,
+        managerTeamKey: mgrId ? teamKeyByPerson.get(mgrId) ?? 'other' : null,
+        alsoReportsToId: alsoId,
+        alsoReportsToName: alsoId ? nameById.get(alsoId) ?? null : null,
+        alsoReportsToTeamKey: alsoId ? teamKeyByPerson.get(alsoId) ?? 'other' : null,
+        reportsToManager: str(p.reports_to_manager),
+        employmentType: str(p.employment_type),
+        schedule: str(p.schedule),
+        weeklyHours: num(p.weekly_hours),
+        internalRate: num(p.internal_rate),
+        status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
+        phone: str(p.phone),
+        location: str(p.location),
+        companyEmail: str(p.company_email),
+        usesSystem: str(p.uses_system),
+        dateOfBirth: str(p.date_of_birth),
+        hireDate: str(p.hire_date),
+        leftOn: str(p.left_on),
+        emails: {
+          trueNorth: str(p.email_true_north),
+          goodnews: str(p.email_goodnews),
+          coe: str(p.email_coe),
+          personal: str(p.email_personal),
+        },
+        accountId: str(p.profile_id),
+        accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
+        hasTsheets: p.tsheets_user_id != null,
+        history: str(p.employment_history),
+      }
+    })
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
 
-  // ── Teams view (full detail per team, for inline management) ──
-  const membersByTeam = new Map<string, { id: string; name: string }[]>()
-  for (const m of members) {
-    const nm = nameById.get(m.person_id)
-    if (!nm) continue
-    const arr = membersByTeam.get(m.team_id) ?? []
-    arr.push({ id: m.person_id, name: nm })
-    membersByTeam.set(m.team_id, arr)
-  }
-  const grantsByTeam = new Map<string, { projectId: string; name: string; role: GrantRole }[]>()
+  // ── Teams (filter pills + Team select options) ──
+  const teamOptions = teams
+    .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: TEAM_COLOR[teamKeyFromName(t.name)] }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  // ── Team cards (members with LEAD flag + project access) ──
+  const grantsByTeam = new Map<string, { projectId: string; name: string; logo: string | null; role: GrantRole }[]>()
   for (const g of grants) {
     if (g.subject_type !== 'team') continue
+    const site = siteById.get(g.project_id)
     const arr = grantsByTeam.get(g.subject_id) ?? []
-    arr.push({ projectId: g.project_id, name: siteById.get(g.project_id) ?? '—', role: g.role as GrantRole })
+    arr.push({ projectId: g.project_id, name: site?.name ?? '—', logo: site ? LOGO_BY_CODE[site.code] ?? null : null, role: g.role as GrantRole })
     grantsByTeam.set(g.subject_id, arr)
   }
-  const allPeopleNamed = people.map(p => ({ id: p.id, name: p.full_name })).sort((a, b) => a.name.localeCompare(b.name))
-
-  const teamsView: TeamManagerTeam[] = teams
-    .map(t => {
-      const teamMembers = (membersByTeam.get(t.id) ?? []).sort((a, b) => a.name.localeCompare(b.name))
-      const memberIds = new Set(teamMembers.map(m => m.id))
-      const granted = grantsByTeam.get(t.id) ?? []
-      const grantedIds = new Set(granted.map(g => g.projectId))
+  const membersByTeam = new Map<string, string[]>()
+  for (const m of members) {
+    const arr = membersByTeam.get(m.team_id) ?? []
+    arr.push(m.person_id)
+    membersByTeam.set(m.team_id, arr)
+  }
+  const teamCards: TeamCard[] = teams
+    .map((t): TeamCard => {
+      const key = teamKeyFromName(t.name)
+      const memberIds = (membersByTeam.get(t.id) ?? [])
+      const mem = memberIds
+        .map(id => people.find(p => p.id === id))
+        .filter((p): p is PRow => !!p)
+        .map(p => ({
+          id: p.id,
+          name: p.full_name,
+          initials: initialsOf(p.full_name),
+          teamKey: teamKeyByPerson.get(p.id) ?? key,
+          isLead: t.leader_person_id === p.id,
+        }))
+        .sort((a, b) => Number(b.isLead) - Number(a.isLead) || a.name.localeCompare(b.name))
       return {
         id: t.id,
         name: t.name,
-        leaderName: t.leader_person_id ? nameById.get(t.leader_person_id) ?? null : null,
-        members: teamMembers,
-        addablePeople: allPeopleNamed.filter(p => !memberIds.has(p.id)),
-        grantedProjects: granted,
-        availableProjects: sites.filter(s => !grantedIds.has(s.id)).map(s => ({ id: s.id, name: s.name })),
+        teamKey: key,
+        color: TEAM_COLOR[key],
+        memberCount: mem.length,
+        members: mem,
+        access: (grantsByTeam.get(t.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  // ── Access matrix ──
-  const accessTeams = teams.map(t => ({ id: t.id, name: t.name })).sort((a, b) => a.name.localeCompare(b.name))
-  const accessProjects = sites.map(s => ({ id: s.id, name: s.name })).sort((a, b) => a.name.localeCompare(b.name))
-  const accessCells: AccessCell[] = grants
+  // ── Access rows (one per team grant) ──
+  const accessRows: AccessRow[] = grants
     .filter(g => g.subject_type === 'team')
-    .map(g => ({ teamId: g.subject_id, projectId: g.project_id, role: g.role as GrantRole }))
+    .map(g => ({ id: `${g.subject_id}|${g.project_id}`, teamId: g.subject_id, projectId: g.project_id, role: g.role as GrantRole }))
+  const projectOptions = sites
+    .map(s => ({ id: s.id, name: s.name, logo: LOGO_BY_CODE[s.code] ?? null }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <Link href="/" className="hover:text-slate-800">Dashboard</Link>
-          <span>/</span>
-          <Link href="/admin" className="hover:text-slate-800">Admin</Link>
-          <span>/</span>
-          <span>Directory</span>
-        </div>
-        <h1 className="text-2xl font-bold text-slate-900">Directory</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          People, teams, and who can access what — all in one place. Edits drive the org chart and access control.
-        </p>
+      <div className="flex items-center gap-2 text-[13px] text-muted">
+        <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
+        <span className="text-slate-300">/</span>
+        <Link href="/admin" className="font-semibold hover:text-tn-ink">Admin</Link>
+        <span className="text-slate-300">/</span>
+        <span className="font-semibold text-tn-ink">Directory</span>
       </div>
 
       <DirectoryTabs
         people={peopleView}
+        teamOptions={teamOptions}
+        teamCards={teamCards}
+        accessRows={accessRows}
+        projectOptions={projectOptions}
         availableAccounts={availableAccounts}
-        teams={teamsView}
-        accessTeams={accessTeams}
-        accessProjects={accessProjects}
-        accessCells={accessCells}
       />
     </div>
   )
