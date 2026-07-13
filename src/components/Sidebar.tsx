@@ -47,6 +47,14 @@ const ToolsIcon = (
   </svg>
 )
 
+// My Work — briefcase outline (everything assigned to you across Monday).
+const WorkIcon = (
+  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <rect x="2" y="7" width="20" height="14" rx="2" />
+    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+  </svg>
+)
+
 // Admin — shield with check (access control: people, teams, permissions).
 const AdminIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -102,6 +110,14 @@ const toolsNav: Item = {
   match: p => p === '/tools' || p.startsWith('/tools/'),
 }
 
+// My Work — the signed-in person's tasks across Monday (board + list).
+const myWorkNav: Item = {
+  href: '/my-work',
+  label: 'My Work',
+  icon: WorkIcon,
+  match: p => p === '/my-work',
+}
+
 // Admin — people, teams, and access control. Only shown to portal admins; the
 // /admin route also guards server-side, so hiding the link is convenience only.
 const adminNav: Item = {
@@ -148,6 +164,7 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         <NavLink item={dashboards} active={dashboards.match(pathname)} />
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
         <NavLink item={toolsNav} active={toolsNav.match(pathname)} />
+        <NavLink item={myWorkNav} active={myWorkNav.match(pathname)} />
       </nav>
 
       <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">

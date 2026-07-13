@@ -62,7 +62,7 @@ const WIDGETS: Widget[] = [
   { title: 'Dashboards', description: 'Boards Review — pipeline & publishing goals.', icon: DashboardsIcon, href: '/dashboards', anim: 'tn-ico-pulse 3s ease-in-out infinite' },
   { title: 'Tools', description: 'Capabilities used inside a project.', icon: ToolsIcon, href: '/tools', anim: 'tn-ico-wiggle 3.2s ease-in-out infinite' },
   { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon, anim: '' }, // split animation lives inside TeamIcon
-  { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon, anim: 'tn-ico-swing 3.4s ease-in-out infinite' },
+  { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon, href: '/my-work', anim: 'tn-ico-swing 3.4s ease-in-out infinite' },
 ]
 
 // Wraps the icon so the transform animates the glyph, not the chip. An empty
