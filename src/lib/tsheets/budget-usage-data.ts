@@ -1,16 +1,32 @@
-// Budget Usage Report settings — clients & budgets, people & rates, and the
-// change history. Rendered as a section of the general Settings page (it used
-// to be its own page under the tool).
+// Data loader for the Budget Usage Report settings (clients & budgets, people &
+// rates, change history, publishing targets). Extracted from the old
+// BudgetUsageSettings component so the Settings page can compose these into its
+// own left-nav sections.
 
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/role'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
-import { SettingsTabs } from './SettingsTabs'
-import type { ClientWithBudget } from './ClientsTab'
-import type { PersonWithAssignments } from './PeopleTab'
-import type { AuditEntry } from './HistoryTab'
+import type { ClientWithBudget } from '@/components/tsheets/settings/ClientsTab'
+import type { PersonWithAssignments, DirectoryOption } from '@/components/tsheets/settings/PeopleTab'
+import type { AuditEntry } from '@/components/tsheets/settings/HistoryTab'
+import type { MonthlyBudget } from '@/components/tsheets/settings/MonthlyBudgetGrid'
+import type { ProjectMonthHours } from '@/components/tsheets/settings/ProjectHoursGrid'
+import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
 
-export async function BudgetUsageSettings() {
+export interface BudgetUsageData {
+  clients: ClientWithBudget[]
+  people: PersonWithAssignments[]
+  auditLog: AuditEntry[]
+  directoryOptions: DirectoryOption[]
+  syncedAt: string | null
+  canSync: boolean
+  pastBudgets: MonthlyBudget[]
+  pastProjectHours: ProjectMonthHours[]
+  publishingTargets: PublishingTargetRow[]
+  publishingAudit: AuditLogRow[]
+}
+
+export async function getBudgetUsageData(): Promise<BudgetUsageData> {
   const supabase = await createClient()
 
   const profile = await getCurrentProfile()
@@ -37,8 +53,6 @@ export async function BudgetUsageSettings() {
     { data: pubTargetsRaw },
     { data: pubAuditRaw },
   ] = await Promise.all([
-    // Only real clients (top-level job codes) — children like "Content"/"SEO"
-    // are activities, not clients you budget or bill against.
     supabase.from('tr_clients').select('id, name, active').is('parent_id', null).order('name'),
     supabase
       .from('tr_budgets')
@@ -59,7 +73,6 @@ export async function BudgetUsageSettings() {
       .select('id, entity_type, entity_id, action, before_data, after_data, justification, changed_at')
       .order('changed_at', { ascending: false })
       .limit(100),
-    // Directory people not yet linked to TSheets — offered as merge targets.
     supabase
       .from('people')
       .select('id, full_name, title')
@@ -69,12 +82,8 @@ export async function BudgetUsageSettings() {
     supabase.from('team_members').select('person_id, team_id'),
     supabase.from('teams').select('id, name'),
     supabase.from('tr_project_budgets').select('client_id, project, hours_allocated').is('effective_to', null),
-    // The per-month budget schedule the report reads — attached to the i7 client
-    // so its modal edits the same source of truth.
     supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount').order('month'),
-    // Per-month project hours (i7) — the matrix editor + the report's guide.
     supabase.from('i7_project_month_hours').select('project, month, hours_allocated').order('month'),
-    // Publishing targets — shown inside the Clients & Budgets tab.
     supabase.from('publishing_targets').select('*').eq('period_type', 'weekly').order('board_short', { ascending: true }).order('language', { ascending: true }),
     supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(30),
   ])
@@ -90,7 +99,6 @@ export async function BudgetUsageSettings() {
     hours: Number(r.hours_allocated),
   }))
 
-  // clientId → project → budgeted hours
   const projHoursByClient = new Map<number, Map<string, number>>()
   for (const pb of (projBudgetsRaw ?? [])) {
     const m = projHoursByClient.get(pb.client_id) ?? new Map<string, number>()
@@ -98,7 +106,6 @@ export async function BudgetUsageSettings() {
     projHoursByClient.set(pb.client_id, m)
   }
 
-  // personId → [team names]
   const teamNameById = new Map((teamRows ?? []).map(t => [t.id, t.name]))
   const teamsByPerson = new Map<string, string[]>()
   for (const m of (memberRows ?? [])) {
@@ -109,22 +116,14 @@ export async function BudgetUsageSettings() {
     teamsByPerson.set(m.person_id, list)
   }
 
-  const directoryOptions = (directoryRaw ?? []).map(p => ({
-    id: p.id,
-    name: p.full_name,
-    title: p.title ?? null,
-  }))
+  const directoryOptions = (directoryRaw ?? []).map(p => ({ id: p.id, name: p.full_name, title: p.title ?? null }))
 
-  // Build client list with their active budget
   const budgetMap = new Map((budgets ?? []).map(b => [b.client_id, b]))
   const clients: ClientWithBudget[] = (clientsRaw ?? []).map(c => {
     const b = budgetMap.get(c.id)
-    // Only the i7 client is broken into projects (matched by name).
     const isI7 = /i7/i.test(c.name)
     const saved = projHoursByClient.get(c.id)
-    const projectBudgets = isI7
-      ? I7_PROJECTS.map(p => ({ project: p, hours: saved?.get(p) ?? null }))
-      : []
+    const projectBudgets = isI7 ? I7_PROJECTS.map(p => ({ project: p, hours: saved?.get(p) ?? null })) : []
     return {
       id: c.id,
       name: c.name,
@@ -149,7 +148,6 @@ export async function BudgetUsageSettings() {
 
   const clientNameMap = new Map(clients.map(c => [c.id, c.name]))
 
-  // Group assignments by tsheets_user_id
   const assignmentsByUser = new Map<number, NonNullable<typeof assignments>[number][]>()
   for (const a of (assignments ?? [])) {
     const list = assignmentsByUser.get(a.tsheets_user_id) ?? []
@@ -184,13 +182,16 @@ export async function BudgetUsageSettings() {
     changedAt: e.changed_at,
   }))
 
-  return (
-    <div>
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-1">Budget Usage Report</h2>
-      <p className="text-xs text-slate-400 mb-3">
-        Manage clients, hourly rates, and budget allocations. Every change requires a justification and is recorded in the audit log.
-      </p>
-      <SettingsTabs clients={clients} people={people} auditLog={auditLog} directoryOptions={directoryOptions} syncedAt={syncedAt} canSync={isAdmin} pastBudgets={monthlyBudgets} pastProjectHours={projectMonthHours} publishingTargets={pubTargetsRaw ?? []} publishingAudit={pubAuditRaw ?? []} />
-    </div>
-  )
+  return {
+    clients,
+    people,
+    auditLog,
+    directoryOptions: directoryOptions as DirectoryOption[],
+    syncedAt,
+    canSync: isAdmin,
+    pastBudgets: monthlyBudgets,
+    pastProjectHours: projectMonthHours,
+    publishingTargets: pubTargetsRaw ?? [],
+    publishingAudit: pubAuditRaw ?? [],
+  }
 }
