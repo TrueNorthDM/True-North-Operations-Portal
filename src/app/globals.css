@@ -274,13 +274,13 @@ h1, h2, h3 {
 .org-tree ul {
   display: flex;
   justify-content: center;
-  padding-top: 18px;
+  padding-top: 26px;
   position: relative;
 }
 .org-tree li {
   list-style: none;
   position: relative;
-  padding: 18px 10px 0;
+  padding: 26px 16px 0;
   text-align: center;
 }
 .org-tree li::before,
@@ -290,7 +290,7 @@ h1, h2, h3 {
   top: 0;
   right: 50%;
   width: 50%;
-  height: 18px;
+  height: 26px;
   border-top: 2px solid var(--thread, var(--org-thread));
 }
 .org-tree li::after {
@@ -300,7 +300,7 @@ h1, h2, h3 {
 }
 .org-tree li:only-child::before,
 .org-tree li:only-child::after { display: none; }
-.org-tree li:only-child { padding-top: 18px; }
+.org-tree li:only-child { padding-top: 26px; }
 .org-tree li:first-child::before,
 .org-tree li:last-child::after { border: 0 none; }
 .org-tree li:last-child::before {
@@ -314,7 +314,7 @@ h1, h2, h3 {
   top: 0;
   left: 50%;
   width: 0;
-  height: 18px;
+  height: 26px;
   border-left: 2px solid var(--thread, var(--org-thread));
 }
 

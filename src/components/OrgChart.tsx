@@ -24,16 +24,16 @@ const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : use
 function PersonCard({ p }: { p: OrgPerson }) {
   const color = p.color ?? NEUTRAL
   return (
-    <div className="inline-block min-w-[148px] max-w-[210px] rounded-[10px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
-      <div className="h-1.5" style={{ backgroundColor: color }} />
-      <div className="px-3 py-2">
-        <div className="font-(family-name:--font-display) text-[13.5px] font-bold text-tn-ink leading-tight">{p.name}</div>
-        {p.title && <div className="mt-0.5 text-[11px] text-muted leading-tight">{p.title}</div>}
+    <div className="inline-block min-w-[280px] max-w-[380px] rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
+      <div className="h-3" style={{ backgroundColor: color }} />
+      <div className="px-5 py-3.5">
+        <div className="font-(family-name:--font-display) text-[19px] font-bold text-tn-ink leading-tight">{p.name}</div>
+        {p.title && <div className="mt-1 text-[14px] text-muted leading-tight">{p.title}</div>}
         {p.teams.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
             {p.teams.map(t => (
-              <span key={t.name} className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-500" title={t.name}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.color ?? NEUTRAL }} />
+              <span key={t.name} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500" title={t.name}>
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color ?? NEUTRAL }} />
                 {t.name}
               </span>
             ))}
@@ -50,15 +50,15 @@ function TeamBox({ team }: { team: OrgTeamGroup }) {
   const threadStyle = { ['--thread']: color } as React.CSSProperties
   return (
     <li style={threadStyle}>
-      <div className="inline-block align-top min-w-[150px] max-w-[230px] rounded-[10px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
+      <div className="inline-block align-top min-w-[280px] max-w-[400px] rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
         {/* Team band colours are fixed light pastels, so the header text is a
             fixed dark ink — not a themed token — to keep contrast in dark mode. */}
-        <div className="px-3 py-2 font-(family-name:--font-display) text-[12.5px] font-extrabold text-[#26261f]" style={{ backgroundColor: color }}>{team.name}</div>
+        <div className="px-5 py-3.5 font-(family-name:--font-display) text-[16px] font-extrabold text-[#26261f]" style={{ backgroundColor: color }}>{team.name}</div>
         {team.members.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-slate-400">No members</div>
+          <div className="px-5 py-3.5 text-sm text-slate-400">No members</div>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {team.members.map(m => <li key={m.id} className="px-3 py-1.5 text-xs text-slate-700">{m.name}</li>)}
+            {team.members.map(m => <li key={m.id} className="px-5 py-2.5 text-[15px] text-slate-700">{m.name}</li>)}
           </ul>
         )}
       </div>
@@ -112,38 +112,12 @@ function ScaledTree({ roots, scale, innerRef }: { roots: OrgPerson[]; scale: num
   )
 }
 
-/** Inline: auto-fit the tree to the block width (downscale only). */
-function FitTree({ roots }: { roots: OrgPerson[] }) {
-  const boxRef = useRef<HTMLDivElement>(null)
-  const treeRef = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState({ scale: 1, height: 0, ready: false })
-
-  useIsoLayoutEffect(() => {
-    const box = boxRef.current
-    const tree = treeRef.current
-    if (!box || !tree) return
-    const measure = () => {
-      const natW = tree.scrollWidth || 1 //  transform doesn't affect scrollWidth
-      const natH = tree.scrollHeight || 0
-      const avail = box.clientWidth || natW
-      const scale = Math.min(1, avail / natW)
-      const height = Math.ceil(natH * scale)
-      setFit(prev => (prev.scale === scale && prev.height === height && prev.ready ? prev : { scale, height, ready: true }))
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(box)
-    const t = setTimeout(measure, 250) // re-measure once fonts settle
-    return () => { ro.disconnect(); clearTimeout(t) }
-  }, [roots])
-
+/** Inline: full-size tree in a scroll area (horizontal + capped-height vertical),
+ *  so cards stay readable and you pan a large org instead of shrinking it. */
+function ScrollTree({ roots }: { roots: OrgPerson[] }) {
   return (
-    <div
-      ref={boxRef}
-      className="overflow-hidden transition-opacity"
-      style={{ height: fit.ready ? fit.height : undefined, opacity: fit.ready ? 1 : 0 }}
-    >
-      <ScaledTree roots={roots} scale={fit.scale} innerRef={treeRef} />
+    <div className="overflow-auto max-h-[78vh] pt-1 pb-2">
+      <Tree roots={roots} />
     </div>
   )
 }
@@ -295,7 +269,7 @@ export function OrgChart({ roots }: { roots: OrgPerson[] }) {
         </button>
       </div>
 
-      <FitTree roots={roots} />
+      <ScrollTree roots={roots} />
 
       {full && <FullScreen roots={roots} onClose={() => setFull(false)} />}
     </>
