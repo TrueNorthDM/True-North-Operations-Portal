@@ -113,10 +113,20 @@ function ScaledTree({ roots, scale, innerRef }: { roots: OrgPerson[]; scale: num
 }
 
 /** Inline: full-size tree in a scroll area (horizontal + capped-height vertical),
- *  so cards stay readable and you pan a large org instead of shrinking it. */
+ *  so cards stay readable and you pan a large org instead of shrinking it. Opens
+ *  centred on the diagram (the root sits above the middle of the tree). */
 function ScrollTree({ roots }: { roots: OrgPerson[] }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useIsoLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const center = () => { el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2) }
+    center()
+    const t = setTimeout(center, 250) // re-centre once fonts/layout settle
+    return () => clearTimeout(t)
+  }, [roots])
   return (
-    <div className="overflow-auto max-h-[78vh] pt-1 pb-2">
+    <div ref={ref} className="overflow-auto max-h-[78vh] pt-1 pb-2">
       <Tree roots={roots} />
     </div>
   )
@@ -158,6 +168,13 @@ function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => voi
     const t = setTimeout(m, 250)
     return () => clearTimeout(t)
   }, [])
+
+  // Open centred on the diagram (runs once the natural size is known).
+  useIsoLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el || !nat.w) return
+    el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2)
+  }, [nat.w])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
