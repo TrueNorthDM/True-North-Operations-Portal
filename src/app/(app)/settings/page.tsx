@@ -38,7 +38,6 @@ const ClientsIcon = <svg {...iconProps} aria-hidden="true"><path d="M12 1v22" />
 const PeopleIcon = <svg {...iconProps} aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
 const TargetsIcon = <svg {...iconProps} aria-hidden="true"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
 const SitesIcon = <svg {...iconProps} aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z" /></svg>
-const HistoryIcon = <svg {...iconProps} aria-hidden="true"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
 
 function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
@@ -110,7 +109,7 @@ export default async function SettingsPage() {
     ? await supabase.from('people').select('full_name').eq('profile_id', profile.id).maybeSingle()
     : { data: null }
   const roleLabel = profile?.role ? profile.role[0].toUpperCase() + profile.role.slice(1) : 'Member'
-  const signedIn = { name: me?.full_name ?? profile?.email ?? 'You', role: `${roleLabel} · True North` }
+  const signedIn = { name: profile?.full_name ?? me?.full_name ?? profile?.email ?? 'You', role: `${roleLabel} · True North` }
 
   const sections: SettingsSection[] = [
     {
@@ -132,12 +131,6 @@ export default async function SettingsPage() {
       content: (
         <div className="space-y-5">
           <SectionHead title="Clients & budgets" desc="Manage clients and their budget allocations. Every change requires a justification and is recorded in the audit log." />
-          <div className="flex items-center gap-2">
-            <Link href="/tools/time-report/guide" aria-label="How the report works" title="How the report works" className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-tn-primary text-white hover:brightness-110 shrink-0">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true"><circle cx="12" cy="7.2" r="1.5" /><rect x="10.6" y="10.4" width="2.8" height="7.4" rx="1.4" /></svg>
-            </Link>
-            <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
-          </div>
           <ClientsTab clients={budget.clients} />
         </div>
       ),
@@ -183,27 +176,39 @@ export default async function SettingsPage() {
         </div>
       ),
     },
-    {
-      id: 'history',
-      label: 'Change history',
-      icon: HistoryIcon,
-      content: (
-        <div className="space-y-5">
-          <SectionHead title="Change history" desc="Every budget, rate, and target change — who changed what, when, and why." />
-          <HistoryTab entries={budget.auditLog} pastBudgets={budget.pastBudgets} pastProjectHours={budget.pastProjectHours} />
-        </div>
-      ),
-    },
   ]
+
+  const historyContent = (
+    <div className="space-y-5">
+      <SectionHead title="Change history" desc="Every budget, rate, and target change — who changed what, when, and why." />
+      <HistoryTab entries={budget.auditLog} pastBudgets={budget.pastBudgets} pastProjectHours={budget.pastProjectHours} />
+    </div>
+  )
+
+  const topLeft = (
+    <div className="flex items-center gap-3.5">
+      <Link
+        href="/tools/time-report/guide"
+        title="How the report works"
+        aria-label="How the report works"
+        className="shrink-0 w-11 h-11 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+      </Link>
+      <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
+    </div>
+  )
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="max-w-[760px]">
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Settings</h1>
-        <p className="mt-1.5 text-[15px] text-muted">Manage API tokens, the Budget Usage Report, publishing targets, and languages per project.</p>
+        <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
+          Sites &amp; languages, publishing targets, clients &amp; budgets, people &amp; rates, and API tokens — the shared settings the whole portal runs on. Changes apply everywhere.
+        </p>
       </div>
 
-      <SettingsNav signedIn={signedIn} sections={sections} />
+      <SettingsNav signedIn={signedIn} sections={sections} topLeft={topLeft} historyContent={historyContent} />
     </div>
   )
 }

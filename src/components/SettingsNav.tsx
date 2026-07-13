@@ -1,9 +1,10 @@
 'use client'
 
 /**
- * SettingsNav — the Settings surface as a sticky left sub-nav + content panel,
- * matching the handoff. Each section's content stays mounted (toggled with
- * `hidden`) so open edit forms / inner tab state survive switching sections.
+ * SettingsNav — the Settings surface as a top action row (help + sync + change
+ * history) over a sticky left sub-nav + content panel, matching the handoff.
+ * Only the active section mounts. "Change history" is a top-right toggle, not a
+ * nav item.
  */
 
 import { useState, type ReactNode } from 'react'
@@ -15,42 +16,72 @@ export interface SettingsSection {
   content: ReactNode
 }
 
-export function SettingsNav({ signedIn, sections }: { signedIn: { name: string; role: string }; sections: SettingsSection[] }) {
+const HISTORY = '__history__'
+
+export function SettingsNav({
+  signedIn,
+  sections,
+  topLeft,
+  historyContent,
+}: {
+  signedIn: { name: string; role: string }
+  sections: SettingsSection[]
+  topLeft?: ReactNode
+  historyContent?: ReactNode
+}) {
   const [active, setActive] = useState(sections[0]?.id)
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[232px_1fr] gap-6 items-start">
-      {/* sub-nav */}
-      <nav className="flex flex-col gap-[3px] lg:sticky lg:top-[81px]">
-        <div className="mb-5 px-[15px] py-3.5 border border-slate-200 rounded-[12px] bg-white">
-          <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.09em] uppercase text-muted">Signed in as</div>
-          <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mt-1.5 truncate">{signedIn.name}</div>
-          <div className="text-[11.5px] text-muted mt-px">{signedIn.role}</div>
-        </div>
-        {sections.map(s => {
-          const on = active === s.id
-          return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setActive(s.id)}
-              className={`flex items-center gap-[11px] w-full text-left rounded-[11px] px-[13px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13.5px] transition-all ${
-                on ? 'bg-tn-teal-soft text-tn-teal' : 'text-foreground hover:bg-subtle'
-              }`}
-            >
-              <span className="inline-flex w-5 h-5 items-center justify-center shrink-0">{s.icon}</span>
-              <span className="flex-1">{s.label}</span>
-            </button>
-          )
-        })}
-      </nav>
+    <div className="space-y-6">
+      {/* top action row */}
+      <div className="flex items-center gap-3.5 flex-wrap">
+        {topLeft}
+        {historyContent && (
+          <button
+            type="button"
+            onClick={() => setActive(HISTORY)}
+            className={`ml-auto inline-flex items-center gap-2 rounded-full px-[17px] py-2.5 font-(family-name:--font-display) font-extrabold text-[12.5px] border transition-all shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] hover:-translate-y-px ${
+              active === HISTORY ? 'bg-tn-teal border-tn-teal text-white' : 'bg-tn-primary border-tn-primary text-white'
+            }`}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
+            <span className="text-[#ffffff]">Change history</span>
+          </button>
+        )}
+      </div>
 
-      {/* panel */}
-      <section className="min-w-0">
-        {sections.map(s => (
-          <div key={s.id} className={active === s.id ? '' : 'hidden'}>{s.content}</div>
-        ))}
-      </section>
+      <div className="grid grid-cols-1 lg:grid-cols-[232px_1fr] gap-6 items-start">
+        {/* sub-nav */}
+        <nav className="flex flex-col gap-[3px] lg:sticky lg:top-[81px]">
+          <div className="mb-5 px-[15px] py-3.5 border border-slate-200 rounded-[12px] bg-white">
+            <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.09em] uppercase text-muted">Signed in as</div>
+            <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mt-1.5 truncate">{signedIn.name}</div>
+            <div className="text-[11.5px] text-muted mt-px">{signedIn.role}</div>
+          </div>
+          {sections.map(s => {
+            const on = active === s.id
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setActive(s.id)}
+                className={`flex items-center gap-[11px] w-full text-left rounded-[11px] px-[13px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13.5px] transition-all ${
+                  on ? 'bg-tn-teal-soft text-tn-teal' : 'text-foreground hover:bg-subtle'
+                }`}
+              >
+                <span className="inline-flex w-5 h-5 items-center justify-center shrink-0">{s.icon}</span>
+                <span className="flex-1">{s.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* panel — only the active section mounts (like the previous tabbed
+            settings), so inactive editors' heavy grids don't render up front. */}
+        <section className="min-w-0">
+          {active === HISTORY ? historyContent : sections.find(s => s.id === active)?.content}
+        </section>
+      </div>
     </div>
   )
 }
