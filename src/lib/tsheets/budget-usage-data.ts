@@ -52,6 +52,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     { data: projMonthRaw },
     { data: pubTargetsRaw },
     { data: pubAuditRaw },
+    { data: allPeopleRaw },
   ] = await Promise.all([
     supabase.from('tr_clients').select('id, name, active').is('parent_id', null).order('name'),
     supabase
@@ -60,7 +61,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       .is('end_date', null),
     supabase
       .from('people')
-      .select('id, full_name, title, tsheets_user_id, tsheets_only')
+      .select('id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate')
       .not('tsheets_user_id', 'is', null)
       .order('full_name'),
     supabase
@@ -86,7 +87,11 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     supabase.from('i7_project_month_hours').select('project, month, hours_allocated').order('month'),
     supabase.from('publishing_targets').select('*').eq('period_type', 'weekly').order('board_short', { ascending: true }).order('language', { ascending: true }),
     supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(30),
+    supabase.from('people').select('id, full_name'),
   ])
+
+  // Name lookup for "report to" (managers may not be TSheets-linked).
+  const nameById = new Map((allPeopleRaw ?? []).map(p => [p.id, p.full_name]))
 
   const monthlyBudgets = (monthlyRaw ?? []).map(r => ({
     month: String(r.month).slice(0, 7),
@@ -155,21 +160,31 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     assignmentsByUser.set(a.tsheets_user_id, list)
   }
 
-  const people: PersonWithAssignments[] = (peopleRaw ?? []).map(p => ({
-    id: p.id,
-    name: p.full_name,
-    title: p.title ?? null,
-    teams: teamsByPerson.get(p.id) ?? [],
-    tsheetsUserId: p.tsheets_user_id as number,
-    tsheetsOnly: p.tsheets_only ?? false,
-    assignments: (assignmentsByUser.get(p.tsheets_user_id as number) ?? []).map(a => ({
-      id: a.id,
-      clientId: a.client_id,
-      clientName: clientNameMap.get(a.client_id) ?? 'Unknown',
-      hourlyRate: Number(a.hourly_rate),
-      effectiveFrom: a.effective_from,
-    })),
-  }))
+  const people: PersonWithAssignments[] = (peopleRaw ?? []).map(p => {
+    const managerId = (p as { manager_id?: string | null }).manager_id ?? null
+    const teams = teamsByPerson.get(p.id) ?? []
+    const internalRate = (p as { internal_rate?: number | null }).internal_rate
+    return {
+      id: p.id,
+      name: p.full_name,
+      title: p.title ?? null,
+      teams,
+      teamName: teams[0] ?? null,
+      managerName: managerId ? nameById.get(managerId) ?? null : null,
+      managerTeam: managerId ? teamsByPerson.get(managerId)?.[0] ?? null : null,
+      hireDate: (p as { hire_date?: string | null }).hire_date ?? null,
+      costRate: internalRate != null ? Number(internalRate) : null,
+      tsheetsUserId: p.tsheets_user_id as number,
+      tsheetsOnly: p.tsheets_only ?? false,
+      assignments: (assignmentsByUser.get(p.tsheets_user_id as number) ?? []).map(a => ({
+        id: a.id,
+        clientId: a.client_id,
+        clientName: clientNameMap.get(a.client_id) ?? 'Unknown',
+        hourlyRate: Number(a.hourly_rate),
+        effectiveFrom: a.effective_from,
+      })),
+    }
+  })
 
   // Resolve who changed each row (changed_by → profiles.full_name) and which
   // client it was (entity_id → client name for budget-family entities).
@@ -192,7 +207,9 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       justification: e.justification,
       changedAt: e.changed_at,
       actorName: changedBy ? actorNameById.get(changedBy) ?? null : null,
-      entityLabel: BUDGET_ENTITIES.has(e.entity_type) ? clientNameMap.get(e.entity_id) ?? null : null,
+      entityLabel: e.entity_type === 'person_cost'
+        ? ((e.after_data as { person_name?: string })?.person_name ?? null)
+        : BUDGET_ENTITIES.has(e.entity_type) ? clientNameMap.get(e.entity_id) ?? null : null,
     }
   })
 

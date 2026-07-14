@@ -3,14 +3,51 @@
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
-import { saveTrAssignment, deactivateTrAssignment } from '@/lib/tsheets/settings-actions'
+import { saveTrAssignment, deactivateTrAssignment, savePersonCostRate } from '@/lib/tsheets/settings-actions'
 import { linkTsheetsPersonToDirectory } from '@/lib/tsheets/sync-actions'
+import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/components/admin/people-types'
+
+// Team-coloured initials avatar. Colour keys off the person's primary team.
+function Avatar({ name, team, size = 32 }: { name: string; team: string | null; size?: number }) {
+  const color = TEAM_COLOR[teamKeyFromName(team)]
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold shrink-0"
+      style={{ width: size, height: size, background: color, fontSize: Math.round(size * 0.36) }}
+    >
+      {initialsOf(name)}
+    </span>
+  )
+}
+
+// Team pill, tinted from the same team-colour system as the avatar.
+function TeamBadge({ team }: { team: string | null }) {
+  if (!team) return <span className="text-slate-300">—</span>
+  const color = TEAM_COLOR[teamKeyFromName(team)]
+  return (
+    <span
+      className="inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 whitespace-nowrap"
+      style={{ color, background: `${color}1a` }}
+    >
+      {team}
+    </span>
+  )
+}
 
 export interface PersonWithAssignments {
   id: string
   name: string
   title: string | null
   teams: string[]
+  /** Primary team (first membership) — drives the team badge + avatar colour. */
+  teamName: string | null
+  /** Report-to (manager) name + their team colour, resolved server-side. */
+  managerName: string | null
+  managerTeam: string | null
+  /** Joined-on (hire_date, ISO). */
+  hireDate: string | null
+  /** Internal cost per hour (people.internal_rate) — one per person. */
+  costRate: number | null
   tsheetsUserId: number
   tsheetsOnly: boolean
   assignments: {
@@ -44,13 +81,14 @@ interface EditState {
   personName: string
   clientId: number | null     // null while a brand-new rate has no project picked yet
   clientName: string | null
-  mode: 'edit' | 'remove' | 'new'
+  mode: 'edit' | 'remove' | 'new' | 'cost'
   currentRate: number | null
 }
 
 type Pending =
   | { kind: 'save'; tsheetsUserId: number; clientId: number; hourlyRate: number; effectiveFrom: string; title: string; lines: string[] }
   | { kind: 'deactivate'; tsheetsUserId: number; clientId: number; effectiveFrom: string; title: string; lines: string[] }
+  | { kind: 'cost'; personId: string; costRate: number; title: string; lines: string[] }
 
 // ── Icons (stroke, 20px) ────────────────────────────────────────────────────
 const iconCls = 'w-4 h-4'
@@ -111,9 +149,28 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
     setEdit({ key: `${p.id}:new`, personId: p.id, tsheetsUserId: p.tsheetsUserId, personName: p.name, clientId: null, clientName: null, mode: 'new', currentRate: null })
     setClientId(''); setRate(''); setEffectiveFrom(today)
   }
+  function startCost(p: PersonWithAssignments) {
+    setError(null)
+    setEdit({ key: `${p.id}:cost`, personId: p.id, tsheetsUserId: p.tsheetsUserId, personName: p.name, clientId: null, clientName: null, mode: 'cost', currentRate: p.costRate })
+    setRate(p.costRate != null ? String(p.costRate) : '')
+  }
 
   function review(availableName?: string) {
     if (!edit) return
+    if (edit.mode === 'cost') {
+      if (!rate || Number(rate) <= 0) { setError('Enter a valid cost rate.'); return }
+      setError(null)
+      setPending({
+        kind: 'cost', personId: edit.personId, costRate: Number(rate),
+        title: 'Confirm internal cost change',
+        lines: [
+          `Person: ${edit.personName}`,
+          edit.currentRate != null ? `Cost: $${edit.currentRate}/hr → $${rate}/hr` : `Cost: $${rate}/hr (first set)`,
+          'This is the internal cost per hour — shared with the Directory.',
+        ],
+      })
+      return
+    }
     if (edit.mode === 'remove') {
       if (!effectiveFrom) { setError('Effective date is required.'); return }
       setPending({
@@ -152,60 +209,48 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
     setLoading(true)
     const result = pending.kind === 'deactivate'
       ? await deactivateTrAssignment({ tsheetsUserId: pending.tsheetsUserId, clientId: pending.clientId, effectiveFrom: pending.effectiveFrom, justification })
+      : pending.kind === 'cost'
+      ? await savePersonCostRate({ personId: pending.personId, costRate: pending.costRate, justification })
       : await saveTrAssignment({ tsheetsUserId: pending.tsheetsUserId, clientId: pending.clientId, hourlyRate: pending.hourlyRate, effectiveFrom: pending.effectiveFrom, justification })
     setLoading(false)
     if (result.ok) { setPending(null); cancel(); router.refresh() }
     else { setError(result.error ?? 'Save failed.'); setPending(null) }
   }
 
-  const cellInput = 'w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400'
-  const iconBtn = 'inline-flex items-center justify-center p-1.5 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100'
+  const cellInput = 'w-full rounded-md border border-slate-200 bg-subtle px-2 py-1.5 text-sm focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/25'
+  const inputSm = 'w-20 rounded-md border border-slate-200 bg-subtle px-2 py-1.5 text-sm focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/25'
+  const dateInput = 'rounded-md border border-slate-200 bg-subtle px-2 py-1.5 text-sm focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/25'
+  const iconBtn = 'inline-flex items-center justify-center p-1.5 rounded-md text-muted hover:text-tn-ink hover:bg-subtle transition-colors'
+  const th = 'text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 whitespace-nowrap'
+  const money = (n: number) => (
+    <span className="tabular-nums font-semibold text-tn-ink">${n}<span className="text-muted font-normal text-xs">/hr</span></span>
+  )
 
   if (people.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
-        <p className="text-sm font-medium text-slate-700">No people linked yet</p>
-        <p className="text-xs text-slate-500">Click &ldquo;Sync people&rdquo; above to import TSheets users.</p>
+      <div className="rounded-[14px] border border-slate-200 bg-subtle p-8 text-center space-y-2">
+        <p className="text-sm font-(family-name:--font-display) font-bold text-tn-ink">No people linked yet</p>
+        <p className="text-xs text-muted">Click &ldquo;Sync people&rdquo; above to import TSheets users.</p>
       </div>
-    )
-  }
-
-  // Row helpers ---------------------------------------------------------------
-  function editCells(availableClients: { id: number; name: string }[], isNew: boolean, personName: string) {
-    return (
-      <>
-        <td className="px-5 py-2.5">
-          {isNew ? (
-            <select value={clientId} onChange={e => setClientId(e.target.value)} className={cellInput} aria-label="Project">
-              <option value="">Select a project…</option>
-              {availableClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          ) : (
-            <span className="text-slate-400 text-xs">{personName}</span>
-          )}
-        </td>
-        <td className="px-5 py-2.5">
-          <input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} placeholder="e.g. 45" className={cellInput} aria-label="Hourly rate" />
-        </td>
-        <td className="px-5 py-2.5">
-          <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} aria-label="Effective from" />
-        </td>
-      </>
     )
   }
 
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="rounded-[14px] border border-slate-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[760px]">
+          <table className="w-full text-sm min-w-[1180px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-56">Person</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3">Project</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-40">Rate ($/hr)</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-48">Effective from</th>
-                <th className="text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-5 py-3 w-32">Actions</th>
+              <tr className="bg-subtle border-b border-slate-200">
+                <th className={`${th} w-64`}>Person</th>
+                <th className={th}>Team</th>
+                <th className={th}>Report to</th>
+                <th className={th}>Joined on</th>
+                <th className={th}>Project</th>
+                <th className={th}>Rate / client</th>
+                <th className={th}>Rate / cost</th>
+                <th className={th}>Effective from</th>
+                <th className={`${th} text-right`}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -214,84 +259,126 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
                 const availableClients = allClients.filter(c => !assignedIds.has(c.id))
                 const rows: Assignment[] = person.assignments.length ? person.assignments : []
                 const addingNew = edit?.mode === 'new' && edit.personId === person.id
-                const subtitle = [person.title, person.teams.join(', ')].filter(Boolean).join(' · ')
-                const nameCell = (show: boolean) => (
-                  <td className="px-5 py-2.5 align-middle">
-                    {show && (
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-slate-900">{person.name}</span>
-                          {person.tsheetsOnly && (
-                            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">TSheets only</span>
-                          )}
+                const editingCost = edit?.key === `${person.id}:cost`
+                const showEmptyRow = rows.length === 0 && !addingNew
+
+                // Person-level columns (avatar, team, report-to, joined-on) —
+                // rendered once, on the person's first row.
+                const personLead = (show: boolean) => (
+                  <>
+                    <td className="px-4 py-3 align-middle">
+                      {show && (
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={person.name} team={person.teamName} />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-(family-name:--font-display) font-bold text-tn-ink">{person.name}</span>
+                              {person.tsheetsOnly && (
+                                <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-gold-fg)] bg-[var(--bdg-gold-bg)] px-1.5 py-0.5 rounded-[5px]">TSheets only</span>
+                              )}
+                            </div>
+                            {person.title && <div className="text-xs text-muted mt-0.5">{person.title}</div>}
+                          </div>
                         </div>
-                        {subtitle && <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>}
-                      </div>
-                    )}
-                  </td>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-middle">{show ? <TeamBadge team={person.teamName} /> : null}</td>
+                    <td className="px-4 py-3 align-middle">
+                      {show ? (person.managerName ? (
+                        <div className="flex items-center gap-2">
+                          <Avatar name={person.managerName} team={person.managerTeam} size={26} />
+                          <span className="text-[13px] text-foreground whitespace-nowrap">{person.managerName}</span>
+                        </div>
+                      ) : <span className="text-slate-300">—</span>) : null}
+                    </td>
+                    <td className="px-4 py-3 align-middle whitespace-nowrap text-[13px] text-muted tabular-nums">
+                      {show ? (formatDate(person.hireDate) ?? <span className="text-slate-300">—</span>) : null}
+                    </td>
+                  </>
                 )
 
-                // total rendered rows for this person = assignment rows (or 1 empty) + maybe a new row
-                const showEmptyRow = rows.length === 0 && !addingNew
+                // Rate / cost (internal, per person) — editor or value, once.
+                const costCell = (show: boolean) => (
+                  <td className="px-4 py-3 align-middle whitespace-nowrap">
+                    {editingCost ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted text-sm">$</span>
+                        <input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} className={inputSm} aria-label="Cost rate" />
+                        <button onClick={() => review()} className={iconBtn} title="Save" aria-label="Save"><Save /></button>
+                        <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                      </div>
+                    ) : show ? (
+                      person.costRate != null ? (
+                        <span className="inline-flex items-center gap-1">
+                          {money(person.costRate)}
+                          <button onClick={() => startCost(person)} className={iconBtn} title="Edit cost" aria-label="Edit cost"><Pencil /></button>
+                        </span>
+                      ) : (
+                        <button onClick={() => startCost(person)} className="text-xs font-(family-name:--font-display) font-bold text-tn-teal hover:underline">Set cost</button>
+                      )
+                    ) : null}
+                  </td>
+                )
 
                 return (
                   <Fragment key={person.id}>
                     {rows.map((a, idx) => {
                       const isEditing = edit?.key === `${person.id}:${a.clientId}`
-                      const showName = idx === 0
-                      if (isEditing && edit?.mode === 'edit') {
-                        return (
-                          <tr key={a.id} className="border-b border-slate-100 bg-slate-50/60">
-                            {nameCell(showName)}
-                            <td className="px-5 py-2.5 text-slate-900">{a.clientName}</td>
-                            <td className="px-5 py-2.5"><input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} className={cellInput} aria-label="Hourly rate" /></td>
-                            <td className="px-5 py-2.5"><input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} aria-label="Effective from" /></td>
-                            <td className="px-5 py-2.5 text-right whitespace-nowrap">
-                              <button onClick={() => review()} className={iconBtn} title="Save" aria-label="Save"><Save /></button>
-                              <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
-                            </td>
-                          </tr>
-                        )
-                      }
-                      if (isEditing && edit?.mode === 'remove') {
-                        return (
-                          <tr key={a.id} className="border-b border-slate-100 bg-red-50/50">
-                            {nameCell(showName)}
-                            <td className="px-5 py-2.5 text-slate-900">{a.clientName} <span className="text-red-600 text-xs">(removing)</span></td>
-                            <td className="px-5 py-2.5 text-slate-400">—</td>
-                            <td className="px-5 py-2.5"><input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={cellInput} aria-label="Effective from" /></td>
-                            <td className="px-5 py-2.5 text-right whitespace-nowrap">
-                              <button onClick={() => review()} className="inline-flex items-center justify-center p-1.5 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50" title="Confirm removal" aria-label="Confirm removal"><Trash /></button>
-                              <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
-                            </td>
-                          </tr>
-                        )
-                      }
-                      // display row
+                      const editing = isEditing && edit?.mode === 'edit'
+                      const removing = isEditing && edit?.mode === 'remove'
+                      const show = idx === 0
                       const isLast = idx === rows.length - 1
                       return (
-                        <tr key={a.id} className="border-b border-slate-100 hover:bg-slate-50/60">
-                          {nameCell(showName)}
-                          <td className="px-5 py-2.5 text-slate-900">{a.clientName}</td>
-                          <td className="px-5 py-2.5 text-slate-700 tabular-nums">${a.hourlyRate}/hr</td>
-                          <td className="px-5 py-2.5 text-slate-400 tabular-nums">{a.effectiveFrom}</td>
-                          <td className="px-5 py-2.5 text-right whitespace-nowrap">
-                            <button onClick={() => startEdit(person, a)} className={iconBtn} title="Edit rate" aria-label="Edit rate"><Pencil /></button>
-                            <button onClick={() => startRemove(person, a)} className={iconBtn} title="Remove from project" aria-label="Remove from project"><Trash /></button>
-                            {isLast && availableClients.length > 0 && (
-                              <button onClick={() => startNew(person)} className={iconBtn} title="Assign to another project" aria-label="Assign to another project"><Plus /></button>
+                        <tr key={a.id} className={`border-b border-slate-100 ${editing ? 'bg-subtle' : removing ? 'bg-[var(--bdg-red-bg)]/40' : 'hover:bg-subtle/60'}`}>
+                          {personLead(show)}
+                          <td className="px-4 py-3 align-middle text-tn-ink whitespace-nowrap">
+                            {a.clientName}{removing && <span className="text-[var(--bdg-red-fg)] text-xs ml-1">(removing)</span>}
+                          </td>
+                          <td className="px-4 py-3 align-middle whitespace-nowrap">
+                            {editing ? (
+                              <div className="flex items-center gap-1"><span className="text-muted text-sm">$</span><input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} className={inputSm} aria-label="Client rate" /></div>
+                            ) : removing ? <span className="text-slate-300">—</span> : money(a.hourlyRate)}
+                          </td>
+                          {costCell(show)}
+                          <td className="px-4 py-3 align-middle whitespace-nowrap">
+                            {(editing || removing) ? (
+                              <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={dateInput} aria-label="Effective from" />
+                            ) : <span className="text-muted tabular-nums text-[13px]">{a.effectiveFrom}</span>}
+                          </td>
+                          <td className="px-4 py-3 align-middle text-right whitespace-nowrap">
+                            {editing ? (
+                              <>
+                                <button onClick={() => review()} className={iconBtn} title="Save" aria-label="Save"><Save /></button>
+                                <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                              </>
+                            ) : removing ? (
+                              <>
+                                <button onClick={() => review()} className="inline-flex items-center justify-center p-1.5 rounded-md text-[var(--bdg-red-fg)] hover:bg-[var(--bdg-red-bg)]" title="Confirm removal" aria-label="Confirm removal"><Trash /></button>
+                                <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => startEdit(person, a)} className={iconBtn} title="Edit rate" aria-label="Edit rate"><Pencil /></button>
+                                <button onClick={() => startRemove(person, a)} className={iconBtn} title="Remove from project" aria-label="Remove from project"><Trash /></button>
+                                {isLast && availableClients.length > 0 && (
+                                  <button onClick={() => startNew(person)} className={iconBtn} title="Assign to another project" aria-label="Assign to another project"><Plus /></button>
+                                )}
+                              </>
                             )}
                           </td>
                         </tr>
                       )
                     })}
 
-                    {/* Empty person → single row with an assign action (or its inline editor) */}
+                    {/* Empty person → single row with an assign action */}
                     {showEmptyRow && (
-                      <tr className="border-b border-slate-100 hover:bg-slate-50/60">
-                        {nameCell(true)}
-                        <td className="px-5 py-2.5 text-slate-400 text-xs" colSpan={3}>No rate assigned</td>
-                        <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                      <tr className="border-b border-slate-100 hover:bg-subtle/60">
+                        {personLead(true)}
+                        <td className="px-4 py-3 align-middle text-muted text-xs">No rate assigned</td>
+                        <td className="px-4 py-3 align-middle text-slate-300">—</td>
+                        {costCell(true)}
+                        <td className="px-4 py-3 align-middle text-slate-300">—</td>
+                        <td className="px-4 py-3 align-middle text-right whitespace-nowrap">
                           {availableClients.length > 0 ? (
                             <button onClick={() => startNew(person)} className={iconBtn} title="Assign a rate" aria-label="Assign a rate"><Plus /></button>
                           ) : <span className="text-xs text-slate-300">no projects</span>}
@@ -301,10 +388,22 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
 
                     {/* New-rate editor row */}
                     {addingNew && (
-                      <tr className="border-b border-slate-100 bg-slate-50/60">
-                        {nameCell(rows.length === 0)}
-                        {editCells(availableClients, true, person.name)}
-                        <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                      <tr className="border-b border-slate-100 bg-subtle">
+                        {personLead(rows.length === 0)}
+                        <td className="px-4 py-3 align-middle">
+                          <select value={clientId} onChange={e => setClientId(e.target.value)} className={cellInput} aria-label="Project">
+                            <option value="">Select a project…</option>
+                            {availableClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 align-middle whitespace-nowrap">
+                          <div className="flex items-center gap-1"><span className="text-muted text-sm">$</span><input type="number" min="0" step="0.01" value={rate} onChange={e => setRate(e.target.value)} placeholder="45" className={inputSm} aria-label="Client rate" /></div>
+                        </td>
+                        {costCell(rows.length === 0)}
+                        <td className="px-4 py-3 align-middle">
+                          <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)} className={dateInput} aria-label="Effective from" />
+                        </td>
+                        <td className="px-4 py-3 align-middle text-right whitespace-nowrap">
                           <button onClick={() => review(availableClients.find(c => c.id === Number(clientId))?.name)} className={iconBtn} title="Save" aria-label="Save"><Save /></button>
                           <button onClick={cancel} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
                         </td>
@@ -313,11 +412,11 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
 
                     {/* Link a TSheets-only import to a real directory person */}
                     {person.tsheetsOnly && (
-                      <tr className="border-b border-slate-100 bg-amber-50/40">
-                        <td className="px-5 py-2.5 text-xs text-amber-700 align-middle">Not in the org directory</td>
-                        <td className="px-5 py-2.5 align-middle" colSpan={3}>
+                      <tr className="border-b border-slate-100 bg-[var(--bdg-gold-bg)]/40">
+                        <td className="px-4 py-3 text-xs text-[var(--bdg-gold-fg)] align-middle whitespace-nowrap" colSpan={4}>Not in the org directory</td>
+                        <td className="px-4 py-3 align-middle" colSpan={4}>
                           {directoryOptions.length === 0 ? (
-                            <span className="text-xs text-slate-400">No unlinked directory people — add them in Admin → People first.</span>
+                            <span className="text-xs text-muted">No unlinked directory people — add them in Admin → People first.</span>
                           ) : (
                             <select
                               value={linking === person.id ? linkTarget : ''}
@@ -332,7 +431,7 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
                             </select>
                           )}
                         </td>
-                        <td className="px-5 py-2.5 text-right whitespace-nowrap align-middle">
+                        <td className="px-4 py-3 text-right whitespace-nowrap align-middle">
                           {linking === person.id && linkTarget && (
                             <>
                               <button onClick={() => handleLink(person.id)} className={iconBtn} title="Link to directory" aria-label="Link to directory"><LinkIcon /></button>
@@ -346,7 +445,7 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
                     {/* Inline error under the person being edited/linked */}
                     {error && (edit?.personId === person.id || linking === person.id) && (
                       <tr>
-                        <td colSpan={5} className="px-5 pb-2 text-xs text-red-600">{error}</td>
+                        <td colSpan={9} className="px-4 pb-2 text-xs text-[var(--bdg-red-fg)]">{error}</td>
                       </tr>
                     )}
                   </Fragment>

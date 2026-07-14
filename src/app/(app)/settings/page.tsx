@@ -154,7 +154,7 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div className="space-y-5">
-          <SectionHead title="People & rates" desc="Hourly rates per person and their client assignments. Changes are justified and audited." />
+          <SectionHead title="People & rates" desc="Everyone who logs time on i7. Rate / client is what the client is billed per hour; Rate / cost is what the hour costs internally. Changes are justified and audited." />
           <PeopleTab people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} directoryOptions={budget.directoryOptions} />
         </div>
       ),

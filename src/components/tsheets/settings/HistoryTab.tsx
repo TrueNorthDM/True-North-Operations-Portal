@@ -44,6 +44,8 @@ function describe(e: AuditEntry): Change {
   switch (e.entityType) {
     case 'assignment':
       return { badge: 'Hourly rate', kind: 'violet', summary: arrow(b.hourly_rate, a.hourly_rate) }
+    case 'person_cost':
+      return { badge: 'Cost rate', kind: 'violet', summary: arrow(b.cost_rate, a.cost_rate) }
     case 'project_budget':
     case 'project_month_hours':
       return { badge: 'Budget hours', kind: 'green', summary: 'updated per project' }

@@ -346,6 +346,46 @@ export async function saveTrAssignment(input: {
   return { ok: true }
 }
 
+// Internal cost per hour (people.internal_rate) — one value per person, shared
+// with the Directory. Justified + audited, like the client rate.
+export async function savePersonCostRate(input: {
+  personId: string
+  costRate: number
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: before } = await supabase
+    .from('people')
+    .select('id, full_name, internal_rate')
+    .eq('id', input.personId)
+    .maybeSingle()
+  if (!before) return { ok: false, error: 'Person not found.' }
+
+  const { error: updErr } = await supabase
+    .from('people')
+    .update({ internal_rate: input.costRate })
+    .eq('id', input.personId)
+  if (updErr) return { ok: false, error: updErr.message }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'person_cost',
+    entity_id: 0, // person is keyed by UUID; the name lives in after_data
+    action: 'update',
+    before_data: { person_name: before.full_name, cost_rate: before.internal_rate },
+    after_data: { person_name: before.full_name, cost_rate: input.costRate },
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/settings')
+  return { ok: true }
+}
+
 export async function deactivateTrAssignment(input: {
   tsheetsUserId: number
   clientId: number
