@@ -462,8 +462,47 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           </div>
         )}
 
-        {/* charts row */}
-        <div className="grid grid-cols-[1fr_0.85fr_1.05fr] gap-4 mt-5">
+        {/* invoice-grouped per-person table */}
+        <div className="mt-5 rounded-[12px] overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
+          <table className="w-full text-[11.5px]" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: WARM, borderBottom: `1px solid ${BORDER}` }}>
+                <th className="text-left font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase p-[8px_16px] min-w-[200px]" style={{ color: MUTED }}>Project · Job code · Activity</th>
+                <th className={thF} style={{ ...tealTh, color: MUTED, borderLeft: '1px solid rgba(1,35,88,.12)' }}>Budget hrs</th>
+                <th className={thF} style={{ ...tealTh, color: MUTED }}>Hrs avail.</th>
+                {showBudgetAvail && <th className={thF} style={{ ...tealTh, color: MUTED }}>Budget avail.</th>}
+                {showCost && <th className={thF} style={{ ...tealTh, color: MUTED, borderRight: '1px solid rgba(1,35,88,.12)' }}>Budget used</th>}
+                {report.people.map(n => <th key={n} className={thF} style={{ color: MUTED }}>{n}</th>)}
+                <th className={thF} style={{ background: 'rgba(242,196,10,.2)', color: MUTED, borderLeft: '1px solid rgba(1,35,88,.12)' }}>Hours used</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupRow('i7 invoice', TEAL)}
+              {i7Projects.map(renderProject)}
+              {showCost && subtotalRow('Subtotal · i7 invoice', i7Projects, TEAL)}
+              {mmeProjects.length > 0 && groupRow('Moisture Meters (MME) invoice', MMEC)}
+              {mmeProjects.map(renderProject)}
+              {showCost && mmeProjects.length > 0 && subtotalRow('Subtotal · MME invoice', mmeProjects, MMEC)}
+              <tr style={{ borderTop: '2px solid #cfd6de', background: WARM }}>
+                <td className="p-[9px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: INK }}>Total</td>
+                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderLeft: '1px solid rgba(1,35,88,.12)' }}>{totBudget ? totBudget.toLocaleString() : '—'}</td>
+                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '—'}</td>
+                {showBudgetAvail && <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '—'}</td>}
+                {showCost && <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderRight: '1px solid rgba(1,35,88,.12)' }}>{money(totalCost)}</td>}
+                {report.people.map(n => <td key={n} className="p-[9px_9px] text-right tabular-nums font-bold text-[11px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
+                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{report.totalHours.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-[10.5px] leading-relaxed mt-3" style={{ color: MUTED }}>
+          Hours pulled from QuickBooks Time, grouped by the “1 · i7 Code” and “3 · Activity” fields; one hours column per person. <b style={{ color: BODY }}>Budget used</b> = hours × each person’s rate.
+          {showBudgetAvail && <> <b style={{ color: BODY }}>Budget avail.</b> = hours available × the i7 rate (${stdRate}/h).</>} Carried-in balance reflects last month’s over/under.
+        </p>
+
+        {/* charts row — at the end of the internal report */}
+        <div className="grid grid-cols-[1fr_0.85fr_1.05fr] gap-4 mt-6">
           <div className="rounded-[12px] p-[16px_18px]" style={{ border: `1px solid ${BORDER}` }}>
             <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Team workload</div>
             <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Hours logged per person</div>
@@ -511,46 +550,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           </div>
         </div>
 
-        {/* invoice-grouped per-person table */}
-        <div className="mt-5 rounded-[12px] overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
-          <table className="w-full text-[11.5px]" style={{ borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: WARM, borderBottom: `1px solid ${BORDER}` }}>
-                <th className="text-left font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase p-[8px_16px] min-w-[200px]" style={{ color: MUTED }}>Project · Job code · Activity</th>
-                <th className={thF} style={{ ...tealTh, color: MUTED, borderLeft: '1px solid rgba(1,35,88,.12)' }}>Budget hrs</th>
-                <th className={thF} style={{ ...tealTh, color: MUTED }}>Hrs avail.</th>
-                {showBudgetAvail && <th className={thF} style={{ ...tealTh, color: MUTED }}>Budget avail.</th>}
-                {showCost && <th className={thF} style={{ ...tealTh, color: MUTED, borderRight: '1px solid rgba(1,35,88,.12)' }}>Budget used</th>}
-                {report.people.map(n => <th key={n} className={thF} style={{ color: MUTED }}>{n}</th>)}
-                <th className={thF} style={{ background: 'rgba(242,196,10,.2)', color: MUTED, borderLeft: '1px solid rgba(1,35,88,.12)' }}>Hours used</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groupRow('i7 invoice', TEAL)}
-              {i7Projects.map(renderProject)}
-              {showCost && subtotalRow('Subtotal · i7 invoice', i7Projects, TEAL)}
-              {mmeProjects.length > 0 && groupRow('Moisture Meters (MME) invoice', MMEC)}
-              {mmeProjects.map(renderProject)}
-              {showCost && mmeProjects.length > 0 && subtotalRow('Subtotal · MME invoice', mmeProjects, MMEC)}
-              <tr style={{ borderTop: '2px solid #cfd6de', background: WARM }}>
-                <td className="p-[9px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: INK }}>Total</td>
-                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderLeft: '1px solid rgba(1,35,88,.12)' }}>{totBudget ? totBudget.toLocaleString() : '—'}</td>
-                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '—'}</td>
-                {showBudgetAvail && <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '—'}</td>}
-                {showCost && <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderRight: '1px solid rgba(1,35,88,.12)' }}>{money(totalCost)}</td>}
-                {report.people.map(n => <td key={n} className="p-[9px_9px] text-right tabular-nums font-bold text-[11px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
-                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{report.totalHours.toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p className="text-[10.5px] leading-relaxed mt-3" style={{ color: MUTED }}>
-          Hours pulled from QuickBooks Time, grouped by the “1 · i7 Code” and “3 · Activity” fields; one hours column per person. <b style={{ color: BODY }}>Budget used</b> = hours × each person’s rate.
-          {showBudgetAvail && <> <b style={{ color: BODY }}>Budget avail.</b> = hours available × the i7 rate (${stdRate}/h).</>} Carried-in balance reflects last month’s over/under.
-        </p>
-
-        <div className="mt-auto pt-4 flex items-center justify-between text-[10px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
+        <div className="mt-6 pt-4 flex items-center justify-between text-[10px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
           <span>True North Digital Marketing · Operations Portal</span>
           <span>Confidential · For internal use only</span>
           <span>Page 1 of 1</span>
