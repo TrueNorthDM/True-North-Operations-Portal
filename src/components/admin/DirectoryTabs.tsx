@@ -71,7 +71,7 @@ export function DirectoryTabs({
           {addMenu && (
             <>
               <div onClick={() => setAddMenu(false)} className="fixed inset-0 z-40" />
-              <div className="absolute top-[calc(100%+8px)] left-0 z-[41] w-80 bg-white border border-slate-200 rounded-[14px] shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)] p-2">
+              <div className="absolute top-[calc(100%+8px)] right-0 z-[41] w-80 bg-white border border-slate-200 rounded-[14px] shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)] p-2">
                 <div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.1em] uppercase text-muted px-2.5 pt-2 pb-1.5">Add someone</div>
                 <button
                   type="button"
