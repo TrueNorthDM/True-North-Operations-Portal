@@ -28,8 +28,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const label = monthLabel(resolveMonth(month))
   return {
     title: type === 'internal'
-      ? `i7 Budget Usage Report — ${label} (Internal)`
-      : `i7 Marketing — Monthly Report — ${label}`,
+      ? `i7 Budget Internal Report — ${label}`
+      : `i7 Budget Month Report — ${label}`,
   }
 }
 
