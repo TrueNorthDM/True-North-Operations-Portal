@@ -6,10 +6,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/role'
 import { SettingsNav, type SettingsSection } from '@/components/SettingsNav'
-import { SettingsForm } from '@/components/SettingsForm'
+import { SiteCard } from '@/components/settings/SiteCard'
 import { MondayTokenField } from '@/components/MondayTokenField'
-import { MondayBoardField } from '@/components/MondayBoardField'
-import { WpUrlsField } from '@/components/WpUrlsField'
 import { TsheetsTokenField } from '@/components/TsheetsTokenField'
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
@@ -26,6 +24,7 @@ interface SiteData {
   name: string
   domain: string
   languages: string[]
+  paused_languages: string[]
   language_paths: Record<string, string>
   pagesWithUrlsCount: number
   monday_board_id: string | null
@@ -65,6 +64,12 @@ export default async function SettingsPage() {
     .select('id, code, name, domain, languages, language_paths, monday_board_id, wp_dev_url, wp_live_url')
     .order('code')
 
+  // paused_languages is fetched separately and tolerantly, so a not-yet-migrated
+  // column doesn't break the whole Settings page (returns null → treated empty).
+  const pausedByCode = new Map<string, string[]>()
+  const { data: pausedRows } = await supabase.from('sites').select('code, paused_languages')
+  for (const r of pausedRows ?? []) pausedByCode.set(r.code, ((r as { paused_languages?: string[] | null }).paused_languages) ?? [])
+
   const { data: appSettings } = await supabase
     .from('app_settings')
     .select('monday_api_token, tsheets_api_token, tsheets_synced_at')
@@ -101,6 +106,7 @@ export default async function SettingsPage() {
       name: s.name,
       domain: s.domain,
       languages: s.languages as string[],
+      paused_languages: pausedByCode.get(s.code) ?? [],
       language_paths: s.language_paths as Record<string, string>,
       pagesWithUrlsCount: pageIds.size,
       monday_board_id: (s.monday_board_id as string | null) ?? null,
@@ -190,15 +196,11 @@ export default async function SettingsPage() {
       icon: SitesIcon,
       editable: false,
       content: (
-        <div>
-          <SectionHead title="Sites & languages" desc="Per-project configuration — publishing languages, the Monday board ID, and the WordPress URLs." />
-          <div className="space-y-6">
+        <div className="space-y-5">
+          <SectionHead title="Sites & languages" desc="The publishing languages tracked for each site. Pause a language to hide it from dashboards and reports without deleting its history." />
+          <div className="space-y-[18px]">
             {enriched.map(site => (
-              <div key={site.code} className="rounded-[16px] bg-white border border-slate-200 p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-                <SettingsForm site={site} embedded />
-                <MondayBoardField siteCode={site.code} initialBoardId={site.monday_board_id} accent={site.code} />
-                <WpUrlsField siteCode={site.code} initialDev={site.wp_dev_url} initialLive={site.wp_live_url} accent={site.code} />
-              </div>
+              <SiteCard key={site.code} site={site} />
             ))}
           </div>
         </div>

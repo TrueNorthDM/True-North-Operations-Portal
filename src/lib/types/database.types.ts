@@ -20,6 +20,7 @@ export type SiteRow = {
   name: string
   domain: string
   languages: LanguageCode[]
+  paused_languages: LanguageCode[]
   language_paths: Record<LanguageCode, string>
   monday_board_id: string | null
   monday_column_ids: Record<string, unknown> | null

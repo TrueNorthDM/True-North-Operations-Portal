@@ -145,6 +145,55 @@ export async function updateSiteLanguages(input: {
 }
 
 /**
+ * Pause or resume a publishing language for a site. Pausing parks the code in
+ * `sites.paused_languages` and drops it from `sites.languages`, so it disappears
+ * from dashboards and reports while its history (URLs, confirmations) stays put
+ * — and, unlike a removal, no pages get flagged for an hreflang update. Resuming
+ * moves it back. English can't be paused (it anchors x-default).
+ */
+export async function setLanguagePaused(input: {
+  siteCode: SiteCode
+  language: string
+  paused: boolean
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const lang = input.language.trim().toLowerCase()
+  if (lang === 'en') return { ok: false, error: 'English anchors x-default and cannot be paused.' }
+
+  const { data: site, error: siteErr } = await supabase
+    .from('sites')
+    .select('id, languages, paused_languages')
+    .eq('code', input.siteCode)
+    .single()
+  if (siteErr || !site) return { ok: false, error: siteErr?.message ?? 'Site not found' }
+
+  const active = new Set((site.languages as string[] | null) ?? [])
+  const paused = new Set((site.paused_languages as string[] | null) ?? [])
+
+  if (input.paused) {
+    if (!active.has(lang)) return { ok: false, error: `"${lang}" is not an active language.` }
+    active.delete(lang)
+    paused.add(lang)
+  } else {
+    if (!paused.has(lang)) return { ok: false, error: `"${lang}" is not paused.` }
+    paused.delete(lang)
+    active.add(lang)
+  }
+
+  const { error: updErr } = await supabase
+    .from('sites')
+    .update({ languages: [...active] as LanguageCode[], paused_languages: [...paused] as LanguageCode[] })
+    .eq('id', site.id)
+  if (updErr) return { ok: false, error: updErr.message }
+
+  revalidatePath('/settings')
+  revalidatePath('/')
+  revalidatePath(`/${input.siteCode}`)
+  return { ok: true }
+}
+
+/**
  * Clears the needs_hreflang_update flag on a page — called automatically when
  * the user re-saves URLs or toggles confirmation after a config change.
  */
