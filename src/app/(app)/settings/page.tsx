@@ -15,6 +15,7 @@ import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
 import { PeopleTab } from '@/components/tsheets/settings/PeopleTab'
+import { FullHistoryButton } from '@/components/settings/FullHistoryButton'
 import { HistoryTab, ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import { TargetsEditor } from '@/components/boards/TargetsEditor'
@@ -51,7 +52,7 @@ function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="mb-[18px]">
       <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">{title}</h2>
-      <p className="text-[13.5px] text-muted mt-1.5 leading-relaxed max-w-[640px]">{desc}</p>
+      <p className="text-[13.5px] text-muted mt-1.5 leading-relaxed">{desc}</p>
     </div>
   )
 }
@@ -141,6 +142,18 @@ export default async function SettingsPage() {
         <div className="space-y-12">
           <div className="space-y-5">
             <SectionHead title="Clients & budgets" desc="The dollar budget and budget period for each client. “Extra” is an approved top-up covering part of the period. Hours are read live from QuickBooks Time and power the i7 Budget Usage Report." />
+            <div className="flex items-center gap-3.5 flex-wrap">
+              <Link
+                href="/tools/time-report/guide"
+                title="How the report works"
+                aria-label="How the report works"
+                className="shrink-0 w-11 h-11 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+              </Link>
+              <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
+              <FullHistoryButton />
+            </div>
             <ClientsTab clients={budget.clients} />
           </div>
           <ChangeHistory entries={budget.auditLog} />
@@ -166,7 +179,7 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div className="space-y-5">
-          <SectionHead title="Publishing targets" desc="Weekly pages-published goals per board & language. The Boards Review dashboard tracks progress against these." />
+          <SectionHead title="Publishing targets" desc="The weekly pace goal per site & language. These drive the Publishing Goals dashboard." />
           <TargetsEditor targets={budget.publishingTargets} isAdmin={budget.canSync} audit={budget.publishingAudit} grid />
         </div>
       ),
@@ -195,35 +208,24 @@ export default async function SettingsPage() {
 
   const historyContent = (
     <div className="space-y-5">
-      <SectionHead title="Full history" desc="Every budget, rate, and target change — who changed what, when, and why — plus the past budget schedule." />
+      <div className="flex items-start justify-between gap-4">
+        <SectionHead title="Full history" desc="Every budget, rate, and target change — who changed what, when, and why — plus the past budget schedule." />
+        <FullHistoryButton />
+      </div>
       <HistoryTab entries={budget.auditLog} pastBudgets={budget.pastBudgets} pastProjectHours={budget.pastProjectHours} />
-    </div>
-  )
-
-  const topLeft = (
-    <div className="flex items-center gap-3.5">
-      <Link
-        href="/tools/time-report/guide"
-        title="How the report works"
-        aria-label="How the report works"
-        className="shrink-0 w-11 h-11 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-      </Link>
-      <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
     </div>
   )
 
   return (
     <div className="space-y-6">
-      <div className="max-w-[760px]">
+      <div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Settings</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
           Sites &amp; languages, publishing targets, clients &amp; budgets, people &amp; rates, and API tokens — the shared settings the whole portal runs on. Changes apply everywhere.
         </p>
       </div>
 
-      <SettingsNav signedIn={signedIn} sections={sections} topLeft={topLeft} historyContent={historyContent} />
+      <SettingsNav signedIn={signedIn} sections={sections} historyContent={historyContent} />
     </div>
   )
 }

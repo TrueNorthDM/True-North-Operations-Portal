@@ -7,8 +7,9 @@
  * nav item.
  */
 
-import { Fragment, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { EditingContext } from './settings/editing-context'
+import { HistoryContext } from './settings/history-context'
 
 export interface SettingsSection {
   id: string
@@ -24,12 +25,10 @@ const HISTORY = '__history__'
 export function SettingsNav({
   signedIn,
   sections,
-  topLeft,
   historyContent,
 }: {
   signedIn: { name: string; role: string }
   sections: SettingsSection[]
-  topLeft?: ReactNode
   historyContent?: ReactNode
 }) {
   const [active, setActive] = useState(sections[0]?.id)
@@ -46,28 +45,6 @@ export function SettingsNav({
 
   return (
     <div className="space-y-6">
-      {/* top action row */}
-      <div className="flex items-center gap-3.5 flex-wrap">
-        <Fragment key="topLeft">{topLeft}</Fragment>
-        {historyContent && (
-          <button
-            key="history"
-            type="button"
-            onClick={toggleHistory}
-            className={`ml-auto inline-flex items-center gap-2 rounded-full px-[17px] py-2.5 font-(family-name:--font-display) font-extrabold text-[12.5px] border transition-all shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] hover:-translate-y-px ${
-              active === HISTORY ? 'bg-tn-teal border-tn-teal text-white' : 'bg-tn-primary border-tn-primary text-white'
-            }`}
-          >
-            {active === HISTORY ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
-            )}
-            <span className="text-[#ffffff]">{active === HISTORY ? 'Back to settings' : 'Full history'}</span>
-          </button>
-        )}
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-[232px_1fr] gap-6 items-start">
         {/* sub-nav */}
         <nav className="flex flex-col gap-[3px] lg:sticky lg:top-[81px]">
@@ -97,9 +74,11 @@ export function SettingsNav({
         {/* panel — only the active section mounts (like the previous tabbed
             settings), so inactive editors' heavy grids don't render up front. */}
         <section className="min-w-0">
-          <EditingContext.Provider value={editing}>
-            {active === HISTORY ? historyContent : activeSection?.content}
-          </EditingContext.Provider>
+          <HistoryContext.Provider value={{ isHistory: active === HISTORY, toggle: toggleHistory }}>
+            <EditingContext.Provider value={editing}>
+              {active === HISTORY ? historyContent : activeSection?.content}
+            </EditingContext.Provider>
+          </HistoryContext.Provider>
 
           {showEdit && (
             <div className="flex justify-end mt-6 pt-5 border-t border-slate-200">
