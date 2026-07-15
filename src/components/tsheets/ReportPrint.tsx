@@ -49,7 +49,7 @@ function Donut({ segs, size = 110, sw = 18 }: { segs: { value: number; color: st
 
 function LegendRow({ color, label, value, extra }: { color: string; label: string; value: string; extra?: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-[11px] mb-1.5 last:mb-0">
+    <div className="flex items-center gap-1.5 text-[11px] mb-1.5 last:mb-0 break-inside-avoid">
       <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: color }} />
       <span className="flex-1 min-w-0 truncate" style={{ color: BODY }}>{label}</span>
       <strong style={{ color: INK }}>{value}</strong>
@@ -273,12 +273,13 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             </div>
           )}
 
-          {/* charts row — at the end of the client report */}
-          <div className="grid grid-cols-[0.9fr_1.1fr_1.2fr] gap-4 mt-6">
-            <div className="rounded-[12px] p-[16px_18px]" style={{ border: `1px solid ${BORDER}` }}>
+          {/* charts row — at the end of the client report: two donut cards on
+              top, the activity breakdown full-width below (two-column legend). */}
+          <div className="grid grid-cols-2 gap-4 mt-6 items-stretch">
+            <div className="rounded-[12px] p-[16px_18px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
               <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Budget health</div>
               <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Share of monthly budget used</div>
-              <div className="flex justify-center mt-2.5">
+              <div className="flex-1 flex flex-col items-center justify-center mt-2">
                 <div className="relative w-[132px] h-[132px]">
                   <svg width="132" height="132" viewBox="0 0 128 128" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
                     <circle cx="64" cy="64" r="52" fill="none" stroke={TRACK} strokeWidth="16" />
@@ -289,30 +290,30 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                     <div className="text-[10px] uppercase tracking-wide mt-0.5" style={{ color: MUTED }}>used</div>
                   </div>
                 </div>
+                <div className="text-center text-[11px] mt-3" style={{ color: BODY }}>{money(carryover?.monthUsed ?? 0)} used · <b style={{ color: GREEN }}>{money(budgetLeft)} left</b></div>
               </div>
-              <div className="text-center text-[11px] mt-1.5" style={{ color: BODY }}>{money(carryover?.monthUsed ?? 0)} used · <b style={{ color: GREEN }}>{money(budgetLeft)} left</b></div>
             </div>
 
-            <div className="rounded-[12px] p-[16px_18px]" style={{ border: `1px solid ${BORDER}` }}>
+            <div className="rounded-[12px] p-[16px_18px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
               <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Investment by project</div>
               <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Where this month’s work went</div>
-              <div className="flex items-center gap-3.5 mt-2.5">
-                <Donut segs={costSegs} size={110} sw={18} />
+              <div className="flex-1 flex items-center gap-4 mt-2">
+                <Donut segs={costSegs} size={132} sw={18} />
                 <div className="flex-1 min-w-0">
                   {costSegs.map(s => <LegendRow key={s.label} color={s.color} label={s.label} value={money(s.value)} extra={`${pctOf(s.value, totalCost)}%`} />)}
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="rounded-[12px] p-[16px_18px]" style={{ border: `1px solid ${BORDER}` }}>
-              <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Where your hours went</div>
-              <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Effort by type of work</div>
-              <div className="flex h-[26px] rounded-[7px] overflow-hidden mt-3.5">
-                {acts.map(a => <div key={a.activity} style={{ flexBasis: `${(a.hours / actTotal) * 100}%`, background: a.color }} />)}
-              </div>
-              <div className="mt-3.5">
-                {acts.map(a => <LegendRow key={a.activity} color={a.color} label={a.activity} value={`${fmtHours(a.hours)}h`} extra={`${pctOf(a.hours, actTotal)}%`} />)}
-              </div>
+          <div className="rounded-[12px] p-[16px_18px] mt-4" style={{ border: `1px solid ${BORDER}` }}>
+            <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Where your hours went</div>
+            <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Effort by type of work</div>
+            <div className="flex h-[26px] rounded-[7px] overflow-hidden mt-3.5">
+              {acts.map(a => <div key={a.activity} style={{ flexBasis: `${(a.hours / actTotal) * 100}%`, background: a.color }} />)}
+            </div>
+            <div className="columns-2 gap-x-10 mt-3.5">
+              {acts.map(a => <LegendRow key={a.activity} color={a.color} label={a.activity} value={`${fmtHours(a.hours)}h`} extra={`${pctOf(a.hours, actTotal)}%`} />)}
             </div>
           </div>
 
