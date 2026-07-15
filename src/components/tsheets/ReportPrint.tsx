@@ -176,7 +176,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           </div>
 
           {/* how this month is invoiced */}
-          <div className="mt-3 rounded-[12px] p-[12px_16px]" style={{ border: `1px solid ${BORDER}`, background: '#fbfcfd' }}>
+          <div className="mt-3 rounded-[12px] p-[10px_14px] break-inside-avoid" style={{ border: `1px solid ${BORDER}`, background: '#fbfcfd' }}>
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
               <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>How this month is invoiced</div>
               <div className="text-[11.5px] tabular-nums" style={{ color: BODY }}>Total work <b style={{ color: INK }}>{money(totalCost)}</b> &nbsp;=&nbsp; i7 invoice <b style={{ color: TEAL }}>{money(i7Cost)}</b> &nbsp;+&nbsp; MME separate invoice <b style={{ color: MMEC }}>{money(mmeCost)}</b></div>
@@ -195,8 +195,8 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           {blocks.map(blk => {
             const bHours = blk.projects.reduce((s, p) => s + p.hours, 0)
             return (
-              <div key={blk.title} className="mt-3 break-inside-avoid">
-                <div className="flex items-center gap-3 p-[10px_18px] rounded-t-[12px]" style={{ background: blk.headBg, border: `1px solid ${BORDER}`, borderBottom: 'none' }}>
+              <div key={blk.title} className={`mt-3 ${blk.title.includes('MME') ? 'break-inside-avoid' : ''}`}>
+                <div className="flex items-center gap-3 p-[10px_18px] rounded-t-[12px] break-after-avoid" style={{ background: blk.headBg, border: `1px solid ${BORDER}`, borderBottom: 'none' }}>
                   <span className="w-[11px] h-[11px] rounded-[3px] shrink-0" style={{ background: blk.color }} />
                   <div className="flex-1 min-w-0">
                     <div className="font-(family-name:--font-display) font-black text-[13.5px]" style={{ color: INK }}>{blk.title}</div>
@@ -312,8 +312,12 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             <div className="flex h-[22px] rounded-[7px] overflow-hidden mt-3">
               {acts.map(a => <div key={a.activity} style={{ flexBasis: `${(a.hours / actTotal) * 100}%`, background: a.color }} />)}
             </div>
-            <div className="columns-2 gap-x-10 mt-3">
-              {acts.map(a => <LegendRow key={a.activity} color={a.color} label={a.activity} value={`${fmtHours(a.hours)}h`} extra={`${pctOf(a.hours, actTotal)}%`} />)}
+            <div className="grid grid-cols-2 gap-x-10 mt-3">
+              {[acts.slice(0, Math.ceil(acts.length / 2)), acts.slice(Math.ceil(acts.length / 2))].map((col, ci) => (
+                <div key={ci}>
+                  {col.map(a => <LegendRow key={a.activity} color={a.color} label={a.activity} value={`${fmtHours(a.hours)}h`} extra={`${pctOf(a.hours, actTotal)}%`} />)}
+                </div>
+              ))}
             </div>
           </div>
 
