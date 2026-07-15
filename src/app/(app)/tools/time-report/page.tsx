@@ -65,24 +65,31 @@ export default async function TimeReportPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <Link href="/" className="hover:text-slate-800">Dashboard</Link>
-          <span>/</span>
-          <Link href="/tools" className="hover:text-slate-800">Tools</Link>
-          <span>/</span>
-          <span>i7 Budget Usage Report</span>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm text-muted mb-1">
+            <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
+            <span>/</span>
+            <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools</Link>
+            <span>/</span>
+            <span className="text-foreground font-semibold">i7 Budget Usage Report</span>
+          </div>
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">i7 Budget Usage Report</h1>
+          <p className="mt-1.5 text-muted leading-relaxed">
+            Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client — pulled directly from QuickBooks Time.
+          </p>
+          <div className="mt-3">
+            <SyncStatus syncedAt={syncedAt} />
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">i7 Budget Usage Report</h1>
-        <p className="mt-1 text-slate-500">
-          Hours, cost and budget usage for the i7 Marketing client — pulled directly from QuickBooks Time.{' '}
-          <Link href="/settings" className="text-slate-600 underline underline-offset-2 hover:text-slate-900">
-            Manage rates &amp; budgets in Settings →
-          </Link>
-        </p>
-        <div className="mt-3">
-          <SyncStatus syncedAt={syncedAt} />
-        </div>
+        <Link
+          href="/settings"
+          title="Manage rates & budgets in Settings"
+          aria-label="Settings"
+          className="shrink-0 w-11 h-11 rounded-full border border-slate-200 bg-white text-muted flex items-center justify-center transition-colors hover:text-tn-ink hover:border-tn-teal"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+        </Link>
       </div>
 
       {!token ? (

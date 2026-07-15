@@ -21,7 +21,7 @@ function statusOf(actual: number, budget: number | null | undefined): Status {
   return 'good'
 }
 const PILL: Record<Status, { cls: string; label: string }> = {
-  good: { cls: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: 'On track' },
+  good: { cls: 'text-[#1E9E6A] bg-[#eafaf1] border-[#c3ead5]', label: 'On track' },
   warn: { cls: 'text-amber-700 bg-amber-50 border-amber-200', label: 'Watch' },
   bad: { cls: 'text-red-700 bg-red-50 border-red-200', label: 'Over budget' },
   none: { cls: 'text-slate-500 bg-slate-100 border-slate-200', label: 'No budget' },
@@ -34,28 +34,28 @@ export function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: 
   return (
     <div className="flex flex-col lg:flex-row gap-4">
       {/* Left 20% — Carried in */}
-      <div className="lg:w-1/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Carried in</div>
-        <div className={`text-2xl font-bold tabular-nums mt-1 ${c.opening < 0 ? 'text-red-600' : 'text-slate-900'}`}>{moneySigned(c.opening)}</div>
-        <div className="text-xs text-slate-400 mt-1">Balance brought from last month</div>
+      <div className="lg:w-1/5 rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)] flex flex-col justify-center">
+        <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Carried in</div>
+        <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums mt-1 ${c.opening < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{moneySigned(c.opening)}</div>
+        <div className="text-xs text-muted mt-1">Balance brought from last month</div>
       </div>
 
       {/* Right 80% — Budget balance + usage bar */}
-      <div className="lg:w-4/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="lg:w-4/5 rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
         <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Budget balance · {monthLabel}</div>
-          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${pill.cls}`}>
+          <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget balance · {monthLabel}</div>
+          <span className={`inline-flex items-center gap-1.5 text-xs font-(family-name:--font-display) font-bold px-3 py-1 rounded-full border ${pill.cls}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />{pill.label}
           </span>
         </div>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Budget total this month</div>
-            <div className="text-2xl font-bold tabular-nums text-slate-900">{moneySigned(c.totalAvailable)}</div>
+            <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget total this month</div>
+            <div className="text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums text-tn-ink">{moneySigned(c.totalAvailable)}</div>
           </div>
           <div className="text-right">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Balance left</div>
-            <div className={`text-2xl font-bold tabular-nums ${neg ? 'text-red-600' : 'text-emerald-600'}`}>{moneySigned(c.totalLeft)}</div>
+            <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Balance left</div>
+            <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums ${neg ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{moneySigned(c.totalLeft)}</div>
           </div>
         </div>
         <Meter label="Budget used" actual={c.monthUsed} budget={c.totalAvailable} />
@@ -106,21 +106,21 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
 
   return (
     <div>
-      <div className="mb-2 text-xs font-semibold text-slate-500">{label}</div>
+      <div className="mb-2 text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">{label}</div>
       <div className="relative pt-5">
         {has && (
           <div className="absolute top-0" style={{ left: `${fillPct}%`, transform: markerShift }}>
-            <span className="text-xs font-bold text-slate-900 tabular-nums whitespace-nowrap">{money(shownActual)}</span>
+            <span className="text-xs font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums whitespace-nowrap">{money(shownActual)}</span>
           </div>
         )}
         <div
-          className="relative h-3 rounded-full overflow-hidden"
+          className="relative h-2.5 rounded-full overflow-hidden"
           style={has
-            ? { backgroundImage: 'linear-gradient(90deg, #10b981 0%, #10b981 50%, #f59e0b 75%, #ef4444 100%)' }
-            : { backgroundColor: '#f1f5f9' }}
+            ? { backgroundImage: 'linear-gradient(90deg, #1E7D7F 0%, #31a39a 50%, #f59e0b 78%, #ef4444 100%)' }
+            : { backgroundColor: '#eef0f3' }}
         >
           {/* grey mask over the not-yet-used portion */}
-          {has && <div className="absolute inset-y-0 right-0 bg-slate-100" style={{ left: `${fillPct}%` }} />}
+          {has && <div className="absolute inset-y-0 right-0 bg-[#eef0f3]" style={{ left: `${fillPct}%` }} />}
           {/* shimmer, clipped to the filled portion */}
           {has && motion && fillPct > 0 && (
             <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: `${fillPct}%` }}>
@@ -132,13 +132,13 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
       <div className="flex justify-between mt-1.5 text-xs">
         {has ? (
           <>
-            <span className="font-bold text-slate-900 tabular-nums">{Math.round(shownPct * 100)}% used</span>
-            <span className={shownRemaining < 0 ? 'text-red-600 font-medium' : 'text-slate-400'}>
+            <span className="font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">{Math.round(shownPct * 100)}% used</span>
+            <span className={shownRemaining < 0 ? 'text-[#c2410c] font-semibold' : 'text-muted'}>
               {shownRemaining < 0 ? `${money(-shownRemaining)} over` : `${money(shownRemaining)} remaining`}
             </span>
           </>
         ) : (
-          <span className="text-slate-400">No budget set</span>
+          <span className="text-muted">No budget set</span>
         )}
       </div>
     </div>

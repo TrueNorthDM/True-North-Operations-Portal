@@ -68,27 +68,27 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
   const totalByPerson: PersonHours = {}
   for (const p of data.projects) for (const [name, h] of Object.entries(p.byPerson)) totalByPerson[name] = (totalByPerson[name] ?? 0) + h
 
-  const thNum = 'text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-3 py-3 whitespace-nowrap'
-  const selectCls = 'px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-3 whitespace-nowrap'
+  const selectCls = 'px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20'
 
   return (
     <div className="space-y-6">
       {preview && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-center gap-3 rounded-[12px] border border-[#f0d69a] bg-hfa-soft px-4 py-3 text-sm text-[#8a6d1a]">
           <span className="text-base">&#x26A0;&#xFE0F;</span>
-          <span><strong>Sample data</strong> — structure preview only. Add your TSheets API token in{' '}
-            <Link href="/settings" className="underline font-medium hover:text-amber-900">Settings</Link> to pull real hours.</span>
+          <span><strong className="font-(family-name:--font-display) font-extrabold">Sample data</strong> — structure preview only. Add your TSheets API token in{' '}
+            <Link href="/settings" className="underline font-semibold hover:text-[#6d5612]">Settings</Link> to pull real hours.</span>
         </div>
       )}
 
       {/* Month selector */}
       <div className="flex items-center gap-3 flex-wrap">
-        <label htmlFor="month-select" className="text-sm font-medium text-slate-700">Pay period</label>
+        <label htmlFor="month-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</label>
         <select id="month-select" value={selectedMonth} onChange={e => router.push(`/tools/time-report?month=${e.target.value}`)} className={selectCls}>
           {availableMonths.map(ym => <option key={ym} value={ym}>{monthLabel(ym)}</option>)}
         </select>
-        <span className="text-sm text-slate-400 ml-1">{data.startDate} → {data.endDate}</span>
-        {!preview && <div className="ml-auto"><ExportMenu month={selectedMonth} /></div>}
+        <span className="text-sm text-muted ml-1 tabular-nums">{data.startDate} → {data.endDate}</span>
+        <div className="ml-auto"><ExportMenu month={selectedMonth} /></div>
       </div>
 
       {/* View tabs — the same month's data as a table (In Numbers) or charts (In Graphics) */}
@@ -97,7 +97,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           <button
             key={v}
             onClick={() => setView(v)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${view === v ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'}`}
           >
             {v === 'numbers' ? 'In Numbers' : 'In Graphics'}
           </button>
@@ -123,17 +123,17 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       </div>
 
       {/* Pivot table — 3 row levels, one HOURS column per person */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 px-4 py-3 sticky left-0 bg-slate-50 z-10">Project · Job code · Activity</th>
-              {showBudget && <th className={thNum}>Budget hrs</th>}
-              {showBudget && <th className={thNum}>Hrs avail.</th>}
-              {showBudgetAvail && <th className={thNum}>Budget avail.</th>}
-              {showCost && <th className={thNum}>Budget used</th>}
+            <tr className="bg-subtle border-b border-slate-200">
+              <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10">Project · Job code · Activity</th>
+              {showBudget && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget hrs</th>}
+              {showBudget && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Hrs avail.</th>}
+              {showBudgetAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget avail.</th>}
+              {showCost && <th className={`${thNum} bg-[rgba(30,125,127,0.06)] border-r border-[rgba(1,35,88,0.1)]`}>Budget used</th>}
               {people.map(name => <th key={name} className={thNum}>{name}</th>)}
-              <th className={thNum}>Hours used</th>
+              <th className={`${thNum} bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]`}>Hours used</th>
             </tr>
           </thead>
           <tbody>
@@ -158,30 +158,30 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-slate-300 bg-slate-100">
-              <td className="px-4 py-3 font-bold text-slate-900 sticky left-0 bg-slate-100 z-10">Total</td>
-              {showBudget && <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '—'}</td>}
-              {showBudget && <td className={`px-3 py-3 text-right font-bold tabular-nums ${totalHrsAvail < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '—'}</td>}
-              {showBudgetAvail && <td className={`px-3 py-3 text-right font-bold tabular-nums ${totalHrsAvail < 0 ? 'text-red-600' : 'text-slate-900'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '—'}</td>}
-              {showCost && <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">{money(data.totalCost)}</td>}
+            <tr className="border-t-2 border-slate-300 bg-subtle">
+              <td className="px-4 py-3 font-(family-name:--font-display) font-extrabold text-tn-ink sticky left-0 bg-subtle z-10">Total</td>
+              {showBudget && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)]">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '—'}</td>}
+              {showBudget && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '—'}</td>}
+              {showBudgetAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '—'}</td>}
+              {showCost && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)] border-r border-[rgba(1,35,88,0.1)]">{money(data.totalCost)}</td>}
               {people.map(name => (
-                <td key={name} className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">—</span>}</td>
+                <td key={name} className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">—</span>}</td>
               ))}
-              <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">{data.totalHours.toFixed(2)}</td>
+              <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]">{data.totalHours.toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted leading-relaxed">
           Hours pulled from QuickBooks Time · grouped by the “1 - i7 Code” &amp; “3 Activity” fields · one hours column per person · Budget used = hours × each person&apos;s rate
           {showBudgetAvail && <> · Budget avail. = hours available × the i7 rate (${stdRate}/h)</>}
         </p>
-        <div className="flex gap-2 text-xs">
-          <button onClick={expandAll} className="text-slate-500 hover:text-slate-900 underline underline-offset-2">Expand all</button>
+        <div className="flex gap-2 text-xs font-(family-name:--font-display) font-bold">
+          <button onClick={expandAll} className="text-tn-teal hover:underline underline-offset-2">Expand all</button>
           <span className="text-slate-300">·</span>
-          <button onClick={collapseAll} className="text-slate-500 hover:text-slate-900 underline underline-offset-2">Collapse all</button>
+          <button onClick={collapseAll} className="text-tn-teal hover:underline underline-offset-2">Collapse all</button>
         </div>
       </div>
       </>
@@ -192,9 +192,9 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-semibold text-slate-800">{value}</span>
+    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-subtle text-sm">
+      <span className="text-muted">{label}</span>
+      <span className="font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">{value}</span>
     </div>
   )
 }
