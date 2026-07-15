@@ -128,7 +128,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     </div>
   )
 
-  const sheet = 'print-doc mx-auto w-[1056px] max-w-full bg-white rounded-[14px] shadow-sm print:shadow-none print:rounded-none p-[44px_48px_40px] flex flex-col min-h-[816px]'
+  const sheet = 'print-doc mx-auto w-[1056px] max-w-full print:w-full bg-white rounded-[14px] shadow-sm print:shadow-none print:rounded-none p-[44px_48px_40px] print:p-0 flex flex-col print:block min-h-[816px] print:min-h-0'
 
   // ══════════════════════════ CLIENT REPORT ══════════════════════════
   if (type === 'client') {
@@ -137,7 +137,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
       ...(mmeProjects.length ? [{ title: 'Moisture Meters (MME)', note: 'Billed to Wagner Meter separately', color: MMEC, headBg: '#fdf6dc', projects: mmeProjects, invest: mmeCost }] : []),
     ]
     return (
-      <div className="min-h-dvh py-8 print:py-0" style={{ background: '#e9e7df' }}>
+      <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
         {Toolbar}
         <div className={sheet} style={{ color: BODY }}>
           <Header label="Monthly Marketing Report" sub="Prepared for i7 Marketing" />
@@ -403,7 +403,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   const tealTh: React.CSSProperties = { background: 'rgba(30,125,127,.07)' }
 
   return (
-    <div className="min-h-dvh py-8 print:py-0" style={{ background: '#e9e7df' }}>
+    <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
       {Toolbar}
       <div className={sheet} style={{ color: BODY }}>
         <Header label="Budget Usage Report" sub={`Generated ${generatedOn}`} />
