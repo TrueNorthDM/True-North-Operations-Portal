@@ -3,6 +3,7 @@
 // as the report (report-data.ts) and hands it to the print layout, which opens
 // the browser's print dialog so the user can Save as PDF.
 
+import type { Metadata } from 'next'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -15,11 +16,26 @@ interface Props {
   searchParams: Promise<{ month?: string; type?: string }>
 }
 
-export default async function ReportPrintPage({ searchParams }: Props) {
-  const { month, type } = await searchParams
+function resolveMonth(month?: string): string {
   const months = availableMonths(new Date())
   const cur = currentYearMonth()
-  const selectedMonth = month && months.includes(month) ? month : months.includes(cur) ? cur : months[0]
+  return month && months.includes(month) ? month : months.includes(cur) ? cur : months[0]
+}
+
+// The <title> is what the browser suggests as the saved-PDF filename.
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { month, type } = await searchParams
+  const label = monthLabel(resolveMonth(month))
+  return {
+    title: type === 'internal'
+      ? `i7 Budget Usage Report — ${label} (Internal)`
+      : `i7 Marketing — Monthly Report — ${label}`,
+  }
+}
+
+export default async function ReportPrintPage({ searchParams }: Props) {
+  const { month, type } = await searchParams
+  const selectedMonth = resolveMonth(month)
   const kind = type === 'internal' ? 'internal' : 'client'
 
   let data
