@@ -356,7 +356,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     const budget = projectHours[p.project] ?? 0
     const avail = budget - p.hours
     const cells = (bp: Record<string, number>, faint = false) => report.people.map(n => (
-      <td key={n} className={`p-[4px_9px] text-right tabular-nums text-[9.9px] ${faint ? 'opacity-70' : ''}`} style={{ color: faint ? MUTED : BODY }}>{bp[n] ? fmtHours(bp[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>
+      <td key={n} className={`p-[4px_3px] text-right tabular-nums text-[9.9px] ${faint ? 'opacity-70' : ''}`} style={{ color: faint ? MUTED : BODY }}>{bp[n] ? fmtHours(bp[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>
     ))
     return (
       <Fragment key={p.project}>
@@ -408,7 +408,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
         <td className="p-[6px_16px] font-(family-name:--font-display) font-extrabold text-[9px] uppercase tracking-wide" style={{ color }}>{label}</td>
         <td /><td />{showBudgetAvail && <td />}
         {showCost && <td className="p-[6px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color, borderRight: '1px solid rgba(1,35,88,.10)' }}>{money(cost)}</td>}
-        {report.people.map(n => <td key={n} className="p-[6px_9px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{per[n] ? fmtHours(per[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
+        {report.people.map(n => <td key={n} className="p-[6px_3px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{per[n] ? fmtHours(per[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
         <td className="p-[6px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.12)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(hrs)}</td>
       </tr>
     )
@@ -416,10 +416,17 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
 
   const thF = 'text-right font-(family-name:--font-display) font-extrabold text-[8.1px] tracking-wide uppercase p-[6px_9px] whitespace-nowrap'
   const tealTh: React.CSSProperties = { background: 'rgba(30,125,127,.07)' }
+  // There are many narrow per-person columns; rotate their headers vertical so
+  // each column's width follows its short numeric data, not the name length.
+  const personTh = 'font-(family-name:--font-display) font-extrabold text-[8.1px] tracking-wide uppercase p-[6px_3px] align-bottom'
+  const personThStyle: React.CSSProperties = { color: MUTED, writingMode: 'vertical-rl', whiteSpace: 'nowrap' }
 
   return (
     <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
       {Toolbar}
+      {/* Internal only: print A4 in landscape so the wide per-person table fits.
+          Scoped here (not globals.css) so the client report stays portrait. */}
+      <style>{`@media print { @page { size: A4 landscape; } }`}</style>
       <div className={sheet} style={{ color: BODY }}>
        <div className="pdf-page">
         <Header label="Budget Usage Report" sub={`Generated ${generatedOn}`} />
@@ -483,12 +490,12 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           <table className="w-full text-[10.4px]" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: WARM, borderBottom: `1px solid ${BORDER}` }}>
-                <th className="text-left font-(family-name:--font-display) font-extrabold text-[8.1px] tracking-[.06em] uppercase p-[6px_16px] min-w-[200px]" style={{ color: MUTED }}>Project · Job code · Activity</th>
+                <th className="text-left font-(family-name:--font-display) font-extrabold text-[8.1px] tracking-[.06em] uppercase p-[6px_16px] min-w-[135px]" style={{ color: MUTED }}>Project · Job code · Activity</th>
                 <th className={thF} style={{ ...tealTh, color: MUTED, borderLeft: '1px solid rgba(1,35,88,.12)' }}>Budget hrs</th>
                 <th className={thF} style={{ ...tealTh, color: MUTED }}>Hrs avail.</th>
                 {showBudgetAvail && <th className={thF} style={{ ...tealTh, color: MUTED }}>Budget avail.</th>}
                 {showCost && <th className={thF} style={{ ...tealTh, color: MUTED, borderRight: '1px solid rgba(1,35,88,.12)' }}>Budget used</th>}
-                {report.people.map(n => <th key={n} className={thF} style={{ color: MUTED }}>{n}</th>)}
+                {report.people.map(n => <th key={n} className={personTh} style={personThStyle}>{n}</th>)}
                 <th className={thF} style={{ background: 'rgba(242,196,10,.2)', color: MUTED, borderLeft: '1px solid rgba(1,35,88,.12)' }}>Hours used</th>
               </tr>
             </thead>
@@ -505,7 +512,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                 <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '—'}</td>
                 {showBudgetAvail && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '—'}</td>}
                 {showCost && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderRight: '1px solid rgba(1,35,88,.12)' }}>{money(totalCost)}</td>}
-                {report.people.map(n => <td key={n} className="p-[7px_9px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
+                {report.people.map(n => <td key={n} className="p-[7px_3px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
                 <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{report.totalHours.toFixed(2)}</td>
               </tr>
             </tbody>
