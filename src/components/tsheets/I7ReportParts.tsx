@@ -83,6 +83,16 @@ export function ExportMenu({ month }: { month: string }) {
             </button>
             {error && <p className="px-3 pt-2 text-[11px] text-[var(--bdg-red-fg)] break-words">{error} — or use &ldquo;Save current view&rdquo; below.</p>}
             <div className="h-px bg-slate-100 mx-1 my-2" />
+            <div className="px-2.5 pb-1.5 text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted">Download as CSV</div>
+            <a href={`/tools/time-report/csv?month=${month}&type=internal`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-[8px] px-3 py-2 text-tn-ink font-(family-name:--font-display) font-bold text-[12.5px] hover:bg-subtle transition-colors">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
+              <span>Internal <span className="text-muted font-medium">· per-person detail</span></span>
+            </a>
+            <a href={`/tools/time-report/csv?month=${month}&type=client`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-[8px] px-3 py-2 text-tn-ink font-(family-name:--font-display) font-bold text-[12.5px] hover:bg-subtle transition-colors">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
+              <span>Client <span className="text-muted font-medium">· billing lines</span></span>
+            </a>
+            <div className="h-px bg-slate-100 mx-1 my-2" />
             <button onClick={() => { setOpen(false); window.print() }} className="flex items-center gap-2.5 w-full text-left rounded-[8px] px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-subtle transition-colors">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
               Save current view as PDF

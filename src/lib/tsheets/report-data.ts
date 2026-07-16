@@ -14,6 +14,7 @@ export interface I7ReportData {
   projectHours: Record<string, number>
   carryover: I7Carryover | null
   stdRate: number
+  personRates: Record<string, number>     // display name → this month's hourly rate (for per-person cost, e.g. CSV export)
   trend: I7TrendPoint[]
   note: string                            // optional per-month narrative
 }
@@ -162,6 +163,10 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   for (const uid of new Set(selEntries.map(e => e.user_id))) ratesSel[uid] = rateFor(assignments, uid, selectedMonth)
   const report = buildI7Report(selEntries, ratesSel, names, startDate, universeArg)
   const stdRate = standardI7Rate(assignments, selectedMonth)
+  // display name → hourly rate for the month, so per-person cost can be derived
+  // (report.byPerson only carries hours). Keyed the same way as report.people.
+  const personRates: Record<string, number> = {}
+  for (const [uid, r] of Object.entries(ratesSel)) personRates[names[Number(uid)] ?? `User ${uid}`] = r
 
   let cumBudget = 0, cumCost = 0
   for (let m = 1; m < selM; m++) {
@@ -188,7 +193,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     trend.push({ month: ym, hours: round2(h), cost: round2(c), budget: b, balance: round2(tB - tC) })
   }
 
-  return { report: report.totalHours > 0 ? report : null, projectHours, carryover, stdRate, trend, note }
+  return { report: report.totalHours > 0 ? report : null, projectHours, carryover, stdRate, personRates, trend, note }
 }
 
 // The optional narrative for a month (empty string when none).
