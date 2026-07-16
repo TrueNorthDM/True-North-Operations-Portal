@@ -128,7 +128,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     </div>
   )
 
-  const sheet = 'print-doc mx-auto w-[1056px] max-w-full print:w-full bg-white rounded-[14px] shadow-sm print:shadow-none print:rounded-none p-[44px_48px_40px] print:p-[22px] flex flex-col print:block min-h-[816px] print:min-h-0'
+  const sheet = 'print-doc mx-auto w-[1056px] max-w-full print:w-full bg-white rounded-[14px] shadow-sm print:shadow-none print:rounded-none print:p-0 min-h-[816px] print:min-h-0'
 
   // ══════════════════════════ CLIENT REPORT ══════════════════════════
   if (type === 'client') {
@@ -140,6 +140,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
       <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
         {Toolbar}
         <div className={sheet} style={{ color: BODY }}>
+         <div className="pdf-page">
           <Header label="Monthly Marketing Report" sub="Prepared for i7 Marketing" />
 
           <div className="flex items-end justify-between gap-6 mt-4">
@@ -251,8 +252,16 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             )
           })}
 
+          <div className="mt-4 pt-3 flex items-center justify-between text-[9px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
+            <span>Prepared for i7 Marketing by True North Digital Marketing</span>
+            <span>{monthLabel}</span>
+            <span>Page 1 of 2</span>
+          </div>
+         </div>
+
+         <div className="pdf-page">
           {/* grand total */}
-          <div className="mt-3 flex items-center justify-between gap-4 rounded-[12px] p-[8px_20px] text-white break-inside-avoid" style={{ background: INK }}>
+          <div className="flex items-center justify-between gap-4 rounded-[12px] p-[8px_20px] text-white break-inside-avoid" style={{ background: INK }}>
             <span className="font-(family-name:--font-display) font-extrabold text-[11.3px] tracking-[.03em]">Grand total · all work delivered <span className="font-semibold" style={{ color: '#8fa6c6' }}>(i7 {money(i7Cost)}{mmeCost > 0 ? ` + MME ${money(mmeCost)}` : ''})</span></span>
             <span className="flex items-center gap-6 tabular-nums">
               <span className="text-[10.4px]" style={{ color: '#aebfd6' }}>{report.totalHours.toFixed(2)} h</span>
@@ -324,8 +333,9 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           <div className="mt-4 pt-3 flex items-center justify-between text-[9px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
             <span>Prepared for i7 Marketing by True North Digital Marketing</span>
             <span>{monthLabel}</span>
-            <span>Page 1 of 1</span>
+            <span>Page 2 of 2</span>
           </div>
+         </div>
         </div>
       </div>
     )
@@ -411,6 +421,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
       {Toolbar}
       <div className={sheet} style={{ color: BODY }}>
+       <div className="pdf-page">
         <Header label="Budget Usage Report" sub={`Generated ${generatedOn}`} />
 
         <div className="flex items-end justify-between gap-6 mt-5">
@@ -506,8 +517,16 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           {showBudgetAvail && <> <b style={{ color: BODY }}>Budget avail.</b> = hours available × the i7 rate (${stdRate}/h).</>} Carried-in balance reflects last month’s over/under.
         </p>
 
+        <div className="mt-4 pt-3 flex items-center justify-between text-[9px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
+          <span>True North Digital Marketing · Operations Portal</span>
+          <span>Confidential · For internal use only</span>
+          <span>{monthLabel}</span>
+        </div>
+       </div>
+
+       <div className="pdf-page">
         {/* charts row — at the end of the internal report */}
-        <div className="grid grid-cols-[1fr_0.85fr_1.05fr] gap-4 mt-4 break-inside-avoid">
+        <div className="grid grid-cols-[1fr_0.85fr_1.05fr] gap-4 break-inside-avoid">
           <div className="rounded-[12px] p-[10px_16px]" style={{ border: `1px solid ${BORDER}` }}>
             <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Team workload</div>
             <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Hours logged per person</div>
@@ -558,8 +577,9 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
         <div className="mt-4 pt-3 flex items-center justify-between text-[9px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
           <span>True North Digital Marketing · Operations Portal</span>
           <span>Confidential · For internal use only</span>
-          <span>Page 1 of 1</span>
+          <span>{monthLabel}</span>
         </div>
+       </div>
       </div>
     </div>
   )

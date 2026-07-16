@@ -357,6 +357,10 @@ h1, h2, h3 {
    content doesn't paginate reliably. Hiding the chrome and letting the doc flow
    is the robust cross-browser way. */
 .print-doc { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* On screen, each report "page" gets card-like padding; in print it becomes a
+   real paginated page (see @media print below). */
+.pdf-page { padding: 40px 46px; }
+.pdf-page + .pdf-page { border-top: 1px dashed #d9dae0; }
 @media print {
   /* App chrome — the top bar (<header>) and the sidebar (<aside>). The report
      document uses only <div>s, so these tags are safe to drop. The document
@@ -365,8 +369,10 @@ h1, h2, h3 {
   html, body { height: auto !important; background: #fff !important; }
   .print-doc { box-shadow: none !important; }
   /* margin:0 leaves the browser no page-margin to draw its header/footer
-     (title/date/URL/page-number) in, so they disappear. The document's own
-     padding (print:p-… on .print-doc) becomes the visible margin — horizontal
-     padding repeats on every page, so side margins are preserved. */
+     (title/date/URL/page-number) in, so they disappear. Each .pdf-page then
+     supplies its own margin via padding and forces a clean page break, so
+     every printed page — not just the first — gets a real top/side margin. */
   @page { margin: 0; }
+  .pdf-page { padding: 8mm 9mm !important; }
+  .pdf-page + .pdf-page { break-before: page; border-top: none !important; }
 }
