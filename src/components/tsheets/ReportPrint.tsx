@@ -128,7 +128,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     </div>
   )
 
-  const sheet = 'print-doc mx-auto w-[1056px] max-w-full print:w-full bg-white rounded-[14px] shadow-sm print:shadow-none print:rounded-none p-[44px_48px_40px] print:p-0 flex flex-col print:block min-h-[816px] print:min-h-0'
+  const sheet = 'print-doc mx-auto w-[1056px] max-w-full print:w-full bg-white rounded-[14px] shadow-sm print:shadow-none print:rounded-none p-[44px_48px_40px] print:p-[22px] flex flex-col print:block min-h-[816px] print:min-h-0'
 
   // ══════════════════════════ CLIENT REPORT ══════════════════════════
   if (type === 'client') {
