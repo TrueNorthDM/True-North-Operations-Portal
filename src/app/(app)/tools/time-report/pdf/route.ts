@@ -60,17 +60,33 @@ export async function GET(request: Request) {
     // Belt-and-suspenders: make sure the document actually rendered.
     await page.waitForSelector('.print-doc', { timeout: 10_000 })
 
+    const label = monthLabel(month)
+    // Footer + page numbers rendered by Puppeteer on EVERY page, so the count
+    // adapts to the real content. Header/footer templates get no page CSS —
+    // inline styles + system fonts only.
+    const footerLeft = type === 'internal'
+      ? 'True North Digital Marketing · Operations Portal · Confidential'
+      : 'Prepared for i7 Marketing by True North Digital Marketing'
+    const esc = (s: string) => s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!))
+    const footerTemplate =
+      `<div style="width:100%;font-size:7px;color:#8593a4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:0 9mm;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;">`
+      + `<span>${footerLeft}</span><span>${esc(label)}</span>`
+      + `<span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>`
+      + `</div>`
+
     const pdf = await page.pdf({
       format: 'A4',
       landscape: type === 'internal', // wide per-person table needs landscape
       printBackground: true,
-      // A real paper margin here applies to EVERY page — including the pages a
-      // long table flows onto — which CSS on a flowing element can't do. The
-      // .pdf-page padding is zeroed in print so this isn't doubled up.
-      margin: { top: '9mm', right: '9mm', bottom: '9mm', left: '9mm' },
+      // Content flows naturally (no forced section breaks), and Puppeteer applies
+      // a real margin to EVERY page + a footer/page-number line — so the page
+      // count adapts to the data and every page is numbered.
+      displayHeaderFooter: true,
+      headerTemplate: '<div></div>',
+      footerTemplate,
+      margin: { top: '9mm', right: '9mm', bottom: '13mm', left: '9mm' },
     })
 
-    const label = monthLabel(month)
     const name = type === 'internal'
       ? `i7 Budget Internal Report — ${label}.pdf`
       : `i7 Budget Month Report — ${label}.pdf`
