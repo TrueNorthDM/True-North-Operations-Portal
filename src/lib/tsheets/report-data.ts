@@ -108,12 +108,29 @@ async function loadI7Assignments(): Promise<Assignment[]> {
   return (data ?? []).map(a => ({ userId: a.tsheets_user_id, rate: Number(a.hourly_rate), from: a.effective_from, to: a.effective_to }))
 }
 
-// ym → this month's total $ budget (base + extra).
+// ym → this month's total $ budget. Preferred model (matches the client's sheet):
+// the budget is DERIVED from each budget line's hours × its own rate — so the 4
+// projects at the standard i7 rate plus the lower-rate contractors (the sheet's
+// "Foreign contractors" line, ~$60 vs $95) all roll up correctly. Falls back to
+// the legacy flat i7_monthly_budget (base + extra) until i7_project_month_hours
+// has per-line rates populated, so a deploy before the data migration is safe.
 async function loadMonthlyBudgets(): Promise<Record<string, number>> {
   const supabase = await createClient()
-  const { data } = await supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount')
+  const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
+  const [hrsRes, mbRes] = await Promise.all([
+    i7 ? supabase.from('i7_project_month_hours').select('*').eq('client_id', i7.id) : Promise.resolve({ data: [] }),
+    supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount'),
+  ])
+  const hrs = (hrsRes.data ?? []) as { month: string; hours_allocated: number; rate?: number | null }[]
+  const mb = mbRes.data ?? []
   const out: Record<string, number> = {}
-  for (const b of data ?? []) out[String(b.month).slice(0, 7)] = Number(b.budget_amount) + Number(b.extra_amount)
+  if (hrs.some(r => r.rate != null)) {
+    // Derived: Σ(budgeted hours × per-line rate) per month.
+    for (const r of hrs) { const m = String(r.month).slice(0, 7); out[m] = (out[m] ?? 0) + Number(r.hours_allocated) * Number(r.rate ?? 0) }
+  } else {
+    // Legacy flat budget (pre-rate-column).
+    for (const b of mb) out[String(b.month).slice(0, 7)] = Number(b.budget_amount) + Number(b.extra_amount)
+  }
   return out
 }
 
