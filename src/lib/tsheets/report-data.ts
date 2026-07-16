@@ -108,30 +108,52 @@ async function loadI7Assignments(): Promise<Assignment[]> {
   return (data ?? []).map(a => ({ userId: a.tsheets_user_id, rate: Number(a.hourly_rate), from: a.effective_from, to: a.effective_to }))
 }
 
-// ym → this month's total $ budget. Preferred model (matches the client's sheet):
-// the budget is DERIVED from each budget line's hours × its own rate — so the 4
-// projects at the standard i7 rate plus the lower-rate contractors (the sheet's
-// "Foreign contractors" line, ~$60 vs $95) all roll up correctly. Falls back to
-// the legacy flat i7_monthly_budget (base + extra) until i7_project_month_hours
-// has per-line rates populated, so a deploy before the data migration is safe.
-async function loadMonthlyBudgets(): Promise<Record<string, number>> {
+// The budget "roster": which i7 projects each person works on (people.i7_projects)
+// + their tsheets id (to look up the month's rate). Drives each project's AVERAGE
+// billing rate.
+async function loadRoster(): Promise<{ userId: number; projects: string[] }[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('people').select('tsheets_user_id, i7_projects').not('tsheets_user_id', 'is', null)
+  return (data ?? []).map(p => ({ userId: p.tsheets_user_id as number, projects: ((p as { i7_projects?: string[] | null }).i7_projects) ?? [] }))
+}
+
+export interface BudgetInputs {
+  lines: { month: string; project: string; hours: number; storedRate: number | null }[]
+  flat: Record<string, number>   // legacy flat i7_monthly_budget (fallback)
+}
+
+// Raw budget inputs: budgeted hours per project/month (+ any stored per-line rate),
+// and the legacy flat i7_monthly_budget for the fallback. The actual $ budget is
+// computed in loadI7ReportData as Σ(hours × the project's average roster rate).
+async function loadBudgetInputs(): Promise<BudgetInputs> {
   const supabase = await createClient()
   const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
   const [hrsRes, mbRes] = await Promise.all([
     i7 ? supabase.from('i7_project_month_hours').select('*').eq('client_id', i7.id) : Promise.resolve({ data: [] }),
     supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount'),
   ])
-  const hrs = (hrsRes.data ?? []) as { month: string; hours_allocated: number; rate?: number | null }[]
-  const mb = mbRes.data ?? []
-  const out: Record<string, number> = {}
-  if (hrs.some(r => r.rate != null)) {
-    // Derived: Σ(budgeted hours × per-line rate) per month.
-    for (const r of hrs) { const m = String(r.month).slice(0, 7); out[m] = (out[m] ?? 0) + Number(r.hours_allocated) * Number(r.rate ?? 0) }
-  } else {
-    // Legacy flat budget (pre-rate-column).
-    for (const b of mb) out[String(b.month).slice(0, 7)] = Number(b.budget_amount) + Number(b.extra_amount)
-  }
-  return out
+  const lines = (hrsRes.data ?? []).map(r => ({
+    month: String((r as { month: string }).month).slice(0, 7),
+    project: (r as { project: string }).project,
+    hours: Number((r as { hours_allocated: number }).hours_allocated),
+    storedRate: (r as { rate?: number | null }).rate ?? null,
+  }))
+  const flat: Record<string, number> = {}
+  for (const b of mbRes.data ?? []) flat[String(b.month).slice(0, 7)] = Number(b.budget_amount) + Number(b.extra_amount)
+  return { lines, flat }
+}
+
+// Per-project $ rate for a month: the AVERAGE i7 billing rate of the people assigned
+// to the project (roster) — else the stored per-line rate — else the standard rate.
+export function projectRateFor(
+  project: string, ym: string,
+  roster: { userId: number; projects: string[] }[],
+  assignments: Assignment[],
+  lines: BudgetInputs['lines'],
+): number {
+  const rates = roster.filter(r => r.projects.includes(project)).map(r => rateFor(assignments, r.userId, ym)).filter(r => r > 0)
+  if (rates.length) return rates.reduce((s, r) => s + r, 0) / rates.length
+  return lines.find(l => l.project === project && l.month === ym)?.storedRate ?? standardI7Rate(assignments, ym)
 }
 
 // project → budgeted hours for the given month.
@@ -151,15 +173,26 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   const selM = Number(selectedMonth.slice(5, 7))
   const carryStart = `${year}-01-01`
 
-  const [entries, names, assignments, monthlyBudgets, projectHours, universe, note] = await Promise.all([
+  const [entries, names, assignments, budgetInputs, roster, projectHours, universe, note] = await Promise.all([
     loadCachedEntries(carryStart, endDate),
     loadNames(),
     loadI7Assignments(),
-    loadMonthlyBudgets(),
+    loadBudgetInputs(),
+    loadRoster(),
     loadProjectHours(selectedMonth),
     loadUniverse(),
     loadReportNote(selectedMonth),
   ])
+
+  // Monthly $ budget = Σ(project budgeted hours × the project's AVERAGE roster
+  // rate). Falls back to the flat i7_monthly_budget when there are no per-project
+  // hours rows at all.
+  const monthlyBudgets: Record<string, number> = {}
+  if (budgetInputs.lines.length) {
+    for (const l of budgetInputs.lines) monthlyBudgets[l.month] = (monthlyBudgets[l.month] ?? 0) + l.hours * projectRateFor(l.project, l.month, roster, assignments, budgetInputs.lines)
+  } else {
+    Object.assign(monthlyBudgets, budgetInputs.flat)
+  }
 
   const rosterIds = new Set<number>([...universe.userIds, ...assignments.map(a => a.userId)])
   const jobcodesByProject: Record<string, string[]> = {}
