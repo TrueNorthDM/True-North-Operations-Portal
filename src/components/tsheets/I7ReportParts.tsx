@@ -25,7 +25,7 @@ export function ExportMenu({ month }: { month: string }) {
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute right-0 mt-2 z-20 w-[340px] rounded-[14px] border border-slate-200 bg-white shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)] p-2">
             <div className="px-2.5 pt-1.5 pb-1.5 text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted">Choose a version</div>
-            <a href={`/tools/time-report/print?month=${month}&type=internal`} target="_blank" rel="noopener" className="flex items-start gap-3 rounded-[10px] border border-slate-200 px-3 py-[11px] mb-1.5 hover:border-tn-teal hover:bg-subtle transition-all">
+            <a href={`/tools/time-report/print?month=${month}&type=internal`} className="flex items-start gap-3 rounded-[10px] border border-slate-200 px-3 py-[11px] mb-1.5 hover:border-tn-teal hover:bg-subtle transition-all">
               <span className="shrink-0 w-[30px] h-[30px] rounded-[8px] bg-tn-teal-soft inline-flex items-center justify-center">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v1H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4V5a3 3 0 0 0-3-3z" /><path d="M3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" /></svg>
               </span>
@@ -34,7 +34,7 @@ export function ExportMenu({ month }: { month: string }) {
                 <span className="block text-[11.5px] text-muted leading-snug mt-0.5">Full detail — per-person hours, costs &amp; rates. Confidential.</span>
               </span>
             </a>
-            <a href={`/tools/time-report/print?month=${month}&type=client`} target="_blank" rel="noopener" className="flex items-start gap-3 rounded-[10px] border border-slate-200 px-3 py-[11px] hover:border-tn-teal hover:bg-subtle transition-all">
+            <a href={`/tools/time-report/print?month=${month}&type=client`} className="flex items-start gap-3 rounded-[10px] border border-slate-200 px-3 py-[11px] hover:border-tn-teal hover:bg-subtle transition-all">
               <span className="shrink-0 w-[30px] h-[30px] rounded-[8px] bg-[#fdf6dc] inline-flex items-center justify-center">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" /></svg>
               </span>
