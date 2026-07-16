@@ -64,9 +64,10 @@ export async function GET(request: Request) {
       format: 'A4',
       landscape: type === 'internal', // wide per-person table needs landscape
       printBackground: true,
-      // @page margin is 0 and each .pdf-page supplies its own padding as the
-      // visible margin, so no printer margin here.
-      margin: { top: '0', right: '0', bottom: '0', left: '0' },
+      // A real paper margin here applies to EVERY page — including the pages a
+      // long table flows onto — which CSS on a flowing element can't do. The
+      // .pdf-page padding is zeroed in print so this isn't doubled up.
+      margin: { top: '9mm', right: '9mm', bottom: '9mm', left: '9mm' },
     })
 
     const label = monthLabel(month)
