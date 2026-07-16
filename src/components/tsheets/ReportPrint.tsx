@@ -63,6 +63,9 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   useEffect(() => {
     document.documentElement.classList.remove('dark')
     document.documentElement.style.colorScheme = 'light'
+    // Server-side PDF (Puppeteer, ?pdf=1) prints via page.pdf() itself — don't
+    // pop the browser print dialog in that headless render.
+    if (new URLSearchParams(window.location.search).has('pdf')) return
     const t = setTimeout(() => window.print(), 700) // let the SVG charts paint first
     return () => clearTimeout(t)
   }, [])
