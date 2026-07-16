@@ -26,13 +26,13 @@ function Spinner() {
 export function ExportMenu({ month }: { month: string }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<'internal' | 'client' | null>(null)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function download(type: 'internal' | 'client') {
-    setBusy(type); setError(false)
+    setBusy(type); setError(null)
     try {
       const res = await fetch(`/tools/time-report/pdf?month=${month}&type=${type}`)
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`)
       const blob = await res.blob()
       const cd = res.headers.get('Content-Disposition') ?? ''
       const name = /filename="(.+?)"/.exec(cd)?.[1] ?? `i7-${type}-report.pdf`
@@ -42,8 +42,8 @@ export function ExportMenu({ month }: { month: string }) {
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(u)
       setOpen(false)
-    } catch {
-      setError(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not generate the PDF.')
     } finally {
       setBusy(null)
     }
@@ -81,7 +81,7 @@ export function ExportMenu({ month }: { month: string }) {
               </span>
               {busy === 'client' && <Spinner />}
             </button>
-            {error && <p className="px-3 pt-2 text-[11px] text-[var(--bdg-red-fg)]">Couldn&apos;t generate the PDF — use &ldquo;Save current view&rdquo; below.</p>}
+            {error && <p className="px-3 pt-2 text-[11px] text-[var(--bdg-red-fg)] break-words">{error} — or use &ldquo;Save current view&rdquo; below.</p>}
             <div className="h-px bg-slate-100 mx-1 my-2" />
             <button onClick={() => { setOpen(false); window.print() }} className="flex items-center gap-2.5 w-full text-left rounded-[8px] px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-subtle transition-colors">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>

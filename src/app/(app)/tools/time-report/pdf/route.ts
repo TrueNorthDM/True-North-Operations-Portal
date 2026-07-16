@@ -86,7 +86,8 @@ export async function GET(request: Request) {
     })
   } catch (err) {
     console.error('[time-report/pdf] generation failed:', err)
-    return new Response('Could not generate the PDF. Try the "Save current view as PDF" option instead.', {
+    const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    return new Response(`PDF generation failed — ${detail}`, {
       status: 500,
       headers: { 'Content-Type': 'text/plain' },
     })
