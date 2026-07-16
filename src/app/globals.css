@@ -364,5 +364,5 @@ h1, h2, h3 {
   header, aside, .no-print { display: none !important; }
   html, body { height: auto !important; background: #fff !important; }
   .print-doc { box-shadow: none !important; }
-  @page { margin: 14mm; }
+  @page { margin: 7mm; }
 }

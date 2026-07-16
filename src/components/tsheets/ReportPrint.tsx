@@ -49,7 +49,7 @@ function Donut({ segs, size = 110, sw = 18 }: { segs: { value: number; color: st
 
 function LegendRow({ color, label, value, extra }: { color: string; label: string; value: string; extra?: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-[11px] mb-1 last:mb-0 break-inside-avoid">
+    <div className="flex items-center gap-1.5 text-[9.9px] mb-1 last:mb-0 break-inside-avoid">
       <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: color }} />
       <span className="flex-1 min-w-0 truncate" style={{ color: BODY }}>{label}</span>
       <strong style={{ color: INK }}>{value}</strong>
@@ -110,7 +110,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   const Toolbar = (
     <div className="no-print mx-auto max-w-[1056px] mb-4 flex items-center justify-between px-2">
       <Link href={`/tools/time-report?month=${report.startDate.slice(0, 7)}`} className="text-sm font-(family-name:--font-display) font-bold" style={{ color: BODY }}>&larr; Back to report</Link>
-      <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-[18px] py-2.5 rounded-[10px] text-white font-(family-name:--font-display) font-extrabold text-[13px]" style={{ background: INK }}>
+      <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-[18px] py-2.5 rounded-[10px] text-white font-(family-name:--font-display) font-extrabold text-[11.7px]" style={{ background: INK }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
         Save as PDF
       </button>
@@ -122,8 +122,8 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logos/true-north.png" alt="True North Digital Marketing" style={{ height: 40, display: 'block' }} />
       <div className="text-right shrink-0">
-        <div className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.16em] uppercase" style={{ color: TEAL }}>{label}</div>
-        <div className="text-[11.5px] mt-1" style={{ color: MUTED }}>{sub}</div>
+        <div className="font-(family-name:--font-display) font-extrabold text-[9.9px] tracking-[.16em] uppercase" style={{ color: TEAL }}>{label}</div>
+        <div className="text-[10.4px] mt-1" style={{ color: MUTED }}>{sub}</div>
       </div>
     </div>
   )
@@ -144,13 +144,13 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
 
           <div className="flex items-end justify-between gap-6 mt-4">
             <div>
-              <h1 className="font-(family-name:--font-display) font-black text-[27px] leading-[1.05] m-0" style={{ color: INK }}>Your month at a glance</h1>
-              <p className="text-[13px] mt-1.5" style={{ color: BODY }}>A summary of the work delivered and how your budget was used in <b style={{ color: INK }}>{monthLabel}</b>.</p>
+              <h1 className="font-(family-name:--font-display) font-black text-[24.3px] leading-[1.05] m-0" style={{ color: INK }}>Your month at a glance</h1>
+              <p className="text-[11.7px] mt-1.5" style={{ color: BODY }}>A summary of the work delivered and how your budget was used in <b style={{ color: INK }}>{monthLabel}</b>.</p>
             </div>
             <div className="text-right shrink-0">
-              <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.1em] uppercase" style={{ color: MUTED }}>Reporting period</div>
-              <div className="font-(family-name:--font-display) font-extrabold text-[16px] mt-0.5" style={{ color: INK }}>{monthLabel}</div>
-              <div className="text-[11.5px] mt-px tabular-nums" style={{ color: MUTED }}>{report.startDate} &rarr; {report.endDate}</div>
+              <div className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.1em] uppercase" style={{ color: MUTED }}>Reporting period</div>
+              <div className="font-(family-name:--font-display) font-extrabold text-[14.4px] mt-0.5" style={{ color: INK }}>{monthLabel}</div>
+              <div className="text-[10.4px] mt-px tabular-nums" style={{ color: MUTED }}>{report.startDate} &rarr; {report.endDate}</div>
             </div>
           </div>
 
@@ -161,31 +161,31 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               { l: 'Total work delivered', v: money(totalCost), c: INK },
               { l: 'Hours delivered', v: report.totalHours.toFixed(2), c: INK },
             ].map(x => (
-              <div key={x.l} className="rounded-[12px] p-[11px_14px]" style={{ border: `1px solid ${BORDER}` }}>
-                <div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.09em] uppercase" style={{ color: MUTED }}>{x.l}</div>
-                <div className="font-(family-name:--font-display) font-black text-[21px] mt-1 tabular-nums" style={{ color: x.c }}>{x.v}</div>
+              <div key={x.l} className="rounded-[12px] p-[8px_14px]" style={{ border: `1px solid ${BORDER}` }}>
+                <div className="font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.09em] uppercase" style={{ color: MUTED }}>{x.l}</div>
+                <div className="font-(family-name:--font-display) font-black text-[18.9px] mt-1 tabular-nums" style={{ color: x.c }}>{x.v}</div>
               </div>
             ))}
-            <div className="rounded-[12px] p-[11px_14px]" style={{ border: `1px solid ${onTrack ? '#d6ebe4' : BORDER}`, background: onTrack ? '#f2faf6' : '#fff' }}>
+            <div className="rounded-[12px] p-[8px_14px]" style={{ border: `1px solid ${onTrack ? '#d6ebe4' : BORDER}`, background: onTrack ? '#f2faf6' : '#fff' }}>
               <div className="flex items-center justify-between">
-                <div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.09em] uppercase" style={{ color: onTrack ? GREEN : MUTED }}>Budget remaining</div>
-                {onTrack && <span className="inline-flex items-center gap-1 text-[10px] font-bold" style={{ color: GREEN }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} />On track</span>}
+                <div className="font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.09em] uppercase" style={{ color: onTrack ? GREEN : MUTED }}>Budget remaining</div>
+                {onTrack && <span className="inline-flex items-center gap-1 text-[9px] font-bold" style={{ color: GREEN }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} />On track</span>}
               </div>
-              <div className="font-(family-name:--font-display) font-black text-[22px] mt-1.5 tabular-nums" style={{ color: budgetLeft < 0 ? RED : GREEN }}>{moneySigned(budgetLeft)}</div>
+              <div className="font-(family-name:--font-display) font-black text-[19.8px] mt-1.5 tabular-nums" style={{ color: budgetLeft < 0 ? RED : GREEN }}>{moneySigned(budgetLeft)}</div>
             </div>
           </div>
 
           {/* how this month is invoiced */}
-          <div className="mt-3 rounded-[12px] p-[10px_14px] break-inside-avoid" style={{ border: `1px solid ${BORDER}`, background: '#fbfcfd' }}>
+          <div className="mt-3 rounded-[12px] p-[8px_14px] break-inside-avoid" style={{ border: `1px solid ${BORDER}`, background: '#fbfcfd' }}>
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
-              <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>How this month is invoiced</div>
-              <div className="text-[11.5px] tabular-nums" style={{ color: BODY }}>Total work <b style={{ color: INK }}>{money(totalCost)}</b> &nbsp;=&nbsp; i7 invoice <b style={{ color: TEAL }}>{money(i7Cost)}</b> &nbsp;+&nbsp; MME separate invoice <b style={{ color: MMEC }}>{money(mmeCost)}</b></div>
+              <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>How this month is invoiced</div>
+              <div className="text-[10.4px] tabular-nums" style={{ color: BODY }}>Total work <b style={{ color: INK }}>{money(totalCost)}</b> &nbsp;=&nbsp; i7 invoice <b style={{ color: TEAL }}>{money(i7Cost)}</b> &nbsp;+&nbsp; MME separate invoice <b style={{ color: MMEC }}>{money(mmeCost)}</b></div>
             </div>
             <div className="flex h-[20px] rounded-[7px] overflow-hidden mt-2.5">
-              <div className="flex items-center px-2.5 text-white font-(family-name:--font-display) font-extrabold text-[11px]" style={{ flexBasis: `${i7Pct}%`, background: TEAL }}>i7 · {Math.round(i7Pct)}%</div>
+              <div className="flex items-center px-2.5 text-white font-(family-name:--font-display) font-extrabold text-[9.9px]" style={{ flexBasis: `${i7Pct}%`, background: TEAL }}>i7 · {Math.round(i7Pct)}%</div>
               <div style={{ flexBasis: `${100 - i7Pct}%`, background: MMEC }} />
             </div>
-            <div className="flex gap-[18px] flex-wrap mt-2 text-[11px]">
+            <div className="flex gap-[18px] flex-wrap mt-2 text-[9.9px]">
               <div className="flex items-center gap-[7px]"><span className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={{ background: TEAL }} /><span style={{ color: BODY }}>Included in your i7 invoice — Wagner Meters, Bessemeter</span></div>
               <div className="flex items-center gap-[7px]"><span className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={{ background: MMEC }} /><span style={{ color: BODY }}>Moisture Meters (MME) — billed to Wagner Meter separately</span></div>
             </div>
@@ -196,42 +196,42 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             const bHours = blk.projects.reduce((s, p) => s + p.hours, 0)
             return (
               <div key={blk.title} className={`mt-3 ${blk.title.includes('MME') ? 'break-inside-avoid' : ''}`}>
-                <div className="flex items-center gap-3 p-[10px_18px] rounded-t-[12px]" style={{ background: blk.headBg, border: `1px solid ${BORDER}`, borderBottom: 'none' }}>
+                <div className="flex items-center gap-3 p-[8px_18px] rounded-t-[12px]" style={{ background: blk.headBg, border: `1px solid ${BORDER}`, borderBottom: 'none' }}>
                   <span className="w-[11px] h-[11px] rounded-[3px] shrink-0" style={{ background: blk.color }} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-(family-name:--font-display) font-black text-[13.5px]" style={{ color: INK }}>{blk.title}</div>
-                    <div className="text-[11px] mt-px" style={{ color: MUTED }}>{blk.note}</div>
+                    <div className="font-(family-name:--font-display) font-black text-[12.2px]" style={{ color: INK }}>{blk.title}</div>
+                    <div className="text-[9.9px] mt-px" style={{ color: MUTED }}>{blk.note}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-(family-name:--font-display) font-black text-[19px] tabular-nums leading-none" style={{ color: blk.color }}>{money(blk.invest)}</div>
-                    <div className="text-[10px] mt-[3px]" style={{ color: MUTED }}>{fmtHours(bHours)} h · {pctOf(blk.invest, totalCost)}% of total</div>
+                    <div className="font-(family-name:--font-display) font-black text-[17.1px] tabular-nums leading-none" style={{ color: blk.color }}>{money(blk.invest)}</div>
+                    <div className="text-[9px] mt-[3px]" style={{ color: MUTED }}>{fmtHours(bHours)} h · {pctOf(blk.invest, totalCost)}% of total</div>
                   </div>
                 </div>
                 <div className="rounded-b-[12px] overflow-hidden print:overflow-visible" style={{ border: `1px solid ${BORDER}`, borderTop: 'none' }}>
-                  <table className="w-full text-[12px]" style={{ borderCollapse: 'collapse' }}>
+                  <table className="w-full text-[10.8px]" style={{ borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: WARM, borderBottom: `1px solid ${BORDER}` }}>
-                        <th className="text-left font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase p-[7px_16px]" style={{ color: MUTED }}>Project · Job code</th>
-                        <th className="text-right font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase p-[7px_14px] whitespace-nowrap" style={{ color: MUTED }}>Hours</th>
-                        <th className="text-right font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase p-[7px_14px] whitespace-nowrap" style={{ color: MUTED }}>Investment</th>
-                        <th className="text-right font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase p-[7px_16px] whitespace-nowrap" style={{ color: MUTED, background: 'rgba(30,125,127,.07)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>Share</th>
+                        <th className="text-left font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.06em] uppercase p-[5px_16px]" style={{ color: MUTED }}>Project · Job code</th>
+                        <th className="text-right font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.06em] uppercase p-[5px_14px] whitespace-nowrap" style={{ color: MUTED }}>Hours</th>
+                        <th className="text-right font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.06em] uppercase p-[5px_14px] whitespace-nowrap" style={{ color: MUTED }}>Investment</th>
+                        <th className="text-right font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.06em] uppercase p-[5px_16px] whitespace-nowrap" style={{ color: MUTED, background: 'rgba(30,125,127,.07)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>Share</th>
                       </tr>
                     </thead>
                     <tbody>
                       {blk.projects.map(p => (
                         <Fragment key={p.project}>
                           <tr style={{ borderBottom: `1px solid ${TRACK}` }}>
-                            <td className="p-[6px_16px] font-(family-name:--font-display) font-bold" style={{ color: INK }}>{p.project}</td>
-                            <td className="p-[6px_14px] text-right tabular-nums" style={{ color: BODY }}>{fmtHours(p.hours)}</td>
-                            <td className="p-[6px_14px] text-right tabular-nums font-bold" style={{ color: INK }}>{money(p.cost)}</td>
-                            <td className="p-[6px_16px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{pctOf(p.cost, totalCost)}%</td>
+                            <td className="p-[5px_16px] font-(family-name:--font-display) font-bold" style={{ color: INK }}>{p.project}</td>
+                            <td className="p-[5px_14px] text-right tabular-nums" style={{ color: BODY }}>{fmtHours(p.hours)}</td>
+                            <td className="p-[5px_14px] text-right tabular-nums font-bold" style={{ color: INK }}>{money(p.cost)}</td>
+                            <td className="p-[5px_16px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{pctOf(p.cost, totalCost)}%</td>
                           </tr>
                           {p.jobcodes.filter(jc => jc.hours > 0).map(jc => (
                             <tr key={`${p.project}-${jc.code}`} style={{ borderBottom: `1px solid #f4f5f7` }}>
-                              <td className="p-[4px_16px] pl-9 text-[11.5px]" style={{ color: BODY }}>{jc.code}</td>
-                              <td className="p-[4px_14px] text-right tabular-nums text-[11.5px]" style={{ color: MUTED }}>{fmtHours(jc.hours)}</td>
-                              <td className="p-[4px_14px] text-right tabular-nums text-[11.5px]" style={{ color: BODY }}>{money(jc.cost)}</td>
-                              <td className="p-[4px_16px] text-right tabular-nums text-[11.5px]" style={{ color: MUTED, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{pctOf(jc.cost, totalCost)}%</td>
+                              <td className="p-[3px_16px] pl-9 text-[10.4px]" style={{ color: BODY }}>{jc.code}</td>
+                              <td className="p-[3px_14px] text-right tabular-nums text-[10.4px]" style={{ color: MUTED }}>{fmtHours(jc.hours)}</td>
+                              <td className="p-[3px_14px] text-right tabular-nums text-[10.4px]" style={{ color: BODY }}>{money(jc.cost)}</td>
+                              <td className="p-[3px_16px] text-right tabular-nums text-[10.4px]" style={{ color: MUTED, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{pctOf(jc.cost, totalCost)}%</td>
                             </tr>
                           ))}
                         </Fragment>
@@ -239,10 +239,10 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #cfd6de', background: '#f7f9fb' }}>
-                        <td className="p-[8px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>Subtotal · {blk.title.includes('MME') ? 'MME invoice' : 'i7 invoice'}</td>
-                        <td className="p-[8px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{fmtHours(bHours)}</td>
-                        <td className="p-[8px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{money(blk.invest)}</td>
-                        <td className="p-[8px_16px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color, background: 'rgba(30,125,127,.07)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{pctOf(blk.invest, totalCost)}%</td>
+                        <td className="p-[6px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>Subtotal · {blk.title.includes('MME') ? 'MME invoice' : 'i7 invoice'}</td>
+                        <td className="p-[6px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{fmtHours(bHours)}</td>
+                        <td className="p-[6px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{money(blk.invest)}</td>
+                        <td className="p-[6px_16px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color, background: 'rgba(30,125,127,.07)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{pctOf(blk.invest, totalCost)}%</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -252,23 +252,23 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           })}
 
           {/* grand total */}
-          <div className="mt-3 flex items-center justify-between gap-4 rounded-[12px] p-[11px_20px] text-white break-inside-avoid" style={{ background: INK }}>
-            <span className="font-(family-name:--font-display) font-extrabold text-[12.5px] tracking-[.03em]">Grand total · all work delivered <span className="font-semibold" style={{ color: '#8fa6c6' }}>(i7 {money(i7Cost)}{mmeCost > 0 ? ` + MME ${money(mmeCost)}` : ''})</span></span>
+          <div className="mt-3 flex items-center justify-between gap-4 rounded-[12px] p-[8px_20px] text-white break-inside-avoid" style={{ background: INK }}>
+            <span className="font-(family-name:--font-display) font-extrabold text-[11.3px] tracking-[.03em]">Grand total · all work delivered <span className="font-semibold" style={{ color: '#8fa6c6' }}>(i7 {money(i7Cost)}{mmeCost > 0 ? ` + MME ${money(mmeCost)}` : ''})</span></span>
             <span className="flex items-center gap-6 tabular-nums">
-              <span className="text-[11.5px]" style={{ color: '#aebfd6' }}>{report.totalHours.toFixed(2)} h</span>
-              <span className="font-(family-name:--font-display) font-black text-[19px]" style={{ color: GOLD }}>{money(totalCost)}</span>
+              <span className="text-[10.4px]" style={{ color: '#aebfd6' }}>{report.totalHours.toFixed(2)} h</span>
+              <span className="font-(family-name:--font-display) font-black text-[17.1px]" style={{ color: GOLD }}>{money(totalCost)}</span>
             </span>
           </div>
 
           {/* highlights */}
           {note && (
-            <div className="mt-3 flex gap-3 rounded-[12px] p-[13px_16px] break-inside-avoid" style={{ background: '#f7f9fb', border: `1px solid ${BORDER}` }}>
+            <div className="mt-3 flex gap-3 rounded-[12px] p-[10px_16px] break-inside-avoid" style={{ background: '#f7f9fb', border: `1px solid ${BORDER}` }}>
               <span className="shrink-0 w-8 h-8 rounded-[8px] inline-flex items-center justify-center" style={{ background: INK }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
               </span>
               <div>
-                <div className="font-(family-name:--font-display) font-extrabold text-[12px] mb-1.5" style={{ color: INK }}>Highlights this month</div>
-                <p className="text-[12px] leading-relaxed whitespace-pre-line m-0" style={{ color: BODY }}>{note}</p>
+                <div className="font-(family-name:--font-display) font-extrabold text-[10.8px] mb-1.5" style={{ color: INK }}>Highlights this month</div>
+                <p className="text-[10.8px] leading-relaxed whitespace-pre-line m-0" style={{ color: BODY }}>{note}</p>
               </div>
             </div>
           )}
@@ -276,9 +276,9 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           {/* charts row — at the end of the client report: two donut cards on
               top, the activity breakdown full-width below (two-column legend). */}
           <div className="grid grid-cols-2 gap-3.5 mt-4 items-stretch break-inside-avoid">
-            <div className="rounded-[12px] p-[13px_16px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
-              <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Budget health</div>
-              <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Share of monthly budget used</div>
+            <div className="rounded-[12px] p-[10px_16px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
+              <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Budget health</div>
+              <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Share of monthly budget used</div>
               <div className="flex-1 flex flex-col items-center justify-center mt-1.5">
                 <div className="relative w-[112px] h-[112px]">
                   <svg width="112" height="112" viewBox="0 0 128 128" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
@@ -286,17 +286,17 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                     <circle cx="64" cy="64" r="52" fill="none" stroke={TEAL} strokeWidth="16" strokeLinecap="round" strokeDasharray={`${Math.min(1, usedPct) * 2 * Math.PI * 52} ${2 * Math.PI * 52}`} />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className="font-(family-name:--font-display) font-black text-[23px] leading-none" style={{ color: INK }}>{Math.round(usedPct * 100)}%</div>
-                    <div className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: MUTED }}>used</div>
+                    <div className="font-(family-name:--font-display) font-black text-[20.7px] leading-none" style={{ color: INK }}>{Math.round(usedPct * 100)}%</div>
+                    <div className="text-[8.1px] uppercase tracking-wide mt-0.5" style={{ color: MUTED }}>used</div>
                   </div>
                 </div>
-                <div className="text-center text-[11px] mt-2.5" style={{ color: BODY }}>{money(carryover?.monthUsed ?? 0)} used · <b style={{ color: GREEN }}>{money(budgetLeft)} left</b></div>
+                <div className="text-center text-[9.9px] mt-2.5" style={{ color: BODY }}>{money(carryover?.monthUsed ?? 0)} used · <b style={{ color: GREEN }}>{money(budgetLeft)} left</b></div>
               </div>
             </div>
 
-            <div className="rounded-[12px] p-[13px_16px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
-              <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Investment by project</div>
-              <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Where this month’s work went</div>
+            <div className="rounded-[12px] p-[10px_16px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
+              <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Investment by project</div>
+              <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Where this month’s work went</div>
               <div className="flex-1 flex items-center gap-4 mt-1.5">
                 <Donut segs={costSegs} size={112} sw={18} />
                 <div className="flex-1 min-w-0">
@@ -306,9 +306,9 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             </div>
           </div>
 
-          <div className="rounded-[12px] p-[13px_16px] mt-3.5 break-inside-avoid" style={{ border: `1px solid ${BORDER}` }}>
-            <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Where your hours went</div>
-            <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Effort by type of work</div>
+          <div className="rounded-[12px] p-[10px_16px] mt-3.5 break-inside-avoid" style={{ border: `1px solid ${BORDER}` }}>
+            <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Where your hours went</div>
+            <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Effort by type of work</div>
             <div className="flex h-[22px] rounded-[7px] overflow-hidden mt-3">
               {acts.map(a => <div key={a.activity} style={{ flexBasis: `${(a.hours / actTotal) * 100}%`, background: a.color }} />)}
             </div>
@@ -321,7 +321,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             </div>
           </div>
 
-          <div className="mt-4 pt-3 flex items-center justify-between text-[10px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
+          <div className="mt-4 pt-3 flex items-center justify-between text-[9px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
             <span>Prepared for i7 Marketing by True North Digital Marketing</span>
             <span>{monthLabel}</span>
             <span>Page 1 of 1</span>
@@ -346,35 +346,35 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     const budget = projectHours[p.project] ?? 0
     const avail = budget - p.hours
     const cells = (bp: Record<string, number>, faint = false) => report.people.map(n => (
-      <td key={n} className={`p-[5px_9px] text-right tabular-nums text-[11px] ${faint ? 'opacity-70' : ''}`} style={{ color: faint ? MUTED : BODY }}>{bp[n] ? fmtHours(bp[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>
+      <td key={n} className={`p-[4px_9px] text-right tabular-nums text-[9.9px] ${faint ? 'opacity-70' : ''}`} style={{ color: faint ? MUTED : BODY }}>{bp[n] ? fmtHours(bp[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>
     ))
     return (
       <Fragment key={p.project}>
         <tr style={{ borderBottom: `1px solid ${TRACK}` }}>
-          <td className="p-[8px_16px] font-(family-name:--font-display) font-bold whitespace-nowrap" style={{ color: INK }}>{p.project}</td>
-          <td className="p-[8px_9px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? budget.toLocaleString() : '—'}</td>
-          <td className="p-[8px_9px] text-right tabular-nums" style={{ color: avail < 0 ? RED : BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? avail.toFixed(2) : '—'}</td>
-          {showBudgetAvail && <td className="p-[8px_9px] text-right tabular-nums font-semibold" style={{ color: avail < 0 ? RED : INK, background: 'rgba(30,125,127,.05)' }}>{budget ? moneySigned(avail * stdRate) : '—'}</td>}
-          {showCost && <td className="p-[8px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{p.cost > 0 ? money(p.cost) : '—'}</td>}
+          <td className="p-[6px_16px] font-(family-name:--font-display) font-bold whitespace-nowrap" style={{ color: INK }}>{p.project}</td>
+          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? budget.toLocaleString() : '—'}</td>
+          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: avail < 0 ? RED : BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? avail.toFixed(2) : '—'}</td>
+          {showBudgetAvail && <td className="p-[6px_9px] text-right tabular-nums font-semibold" style={{ color: avail < 0 ? RED : INK, background: 'rgba(30,125,127,.05)' }}>{budget ? moneySigned(avail * stdRate) : '—'}</td>}
+          {showCost && <td className="p-[6px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{p.cost > 0 ? money(p.cost) : '—'}</td>}
           {cells(p.byPerson)}
-          <td className="p-[8px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(242,196,10,.09)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(p.hours)}</td>
+          <td className="p-[6px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(242,196,10,.09)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(p.hours)}</td>
         </tr>
         {p.jobcodes.filter(jc => jc.hours > 0).map(jc => (
           <Fragment key={`${p.project}-${jc.code}`}>
             <tr style={{ borderBottom: `1px solid #f4f5f7` }}>
-              <td className="p-[6px_16px] pl-8 font-medium text-[11.5px]" style={{ color: BODY }}>{jc.code}</td>
+              <td className="p-[5px_16px] pl-8 font-medium text-[10.4px]" style={{ color: BODY }}>{jc.code}</td>
               <td style={{ background: 'rgba(30,125,127,.05)' }} /><td style={{ background: 'rgba(30,125,127,.05)' }} />{showBudgetAvail && <td style={{ background: 'rgba(30,125,127,.05)' }} />}
-              {showCost && <td className="p-[6px_9px] text-right tabular-nums text-[11px]" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{jc.cost > 0 ? money(jc.cost) : '—'}</td>}
+              {showCost && <td className="p-[5px_9px] text-right tabular-nums text-[9.9px]" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{jc.cost > 0 ? money(jc.cost) : '—'}</td>}
               {cells(jc.byPerson)}
-              <td className="p-[6px_9px] text-right tabular-nums text-[11px]" style={{ color: BODY, background: 'rgba(242,196,10,.06)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(jc.hours)}</td>
+              <td className="p-[5px_9px] text-right tabular-nums text-[9.9px]" style={{ color: BODY, background: 'rgba(242,196,10,.06)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(jc.hours)}</td>
             </tr>
             {jc.activities.map((a, i) => (
               <tr key={`${p.project}-${jc.code}-${i}`} style={{ borderBottom: `1px solid #f7f8fa` }}>
-                <td className="p-[5px_16px] pl-[52px] text-[11px]" style={{ color: MUTED }}>{a.activity}</td>
+                <td className="p-[4px_16px] pl-[52px] text-[9.9px]" style={{ color: MUTED }}>{a.activity}</td>
                 <td style={{ background: 'rgba(30,125,127,.04)' }} /><td style={{ background: 'rgba(30,125,127,.04)' }} />{showBudgetAvail && <td style={{ background: 'rgba(30,125,127,.04)' }} />}
-                {showCost && <td className="p-[5px_9px] text-right tabular-nums text-[10.5px]" style={{ color: MUTED, background: 'rgba(30,125,127,.04)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{a.cost > 0 ? money(a.cost) : '—'}</td>}
+                {showCost && <td className="p-[4px_9px] text-right tabular-nums text-[9.5px]" style={{ color: MUTED, background: 'rgba(30,125,127,.04)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{a.cost > 0 ? money(a.cost) : '—'}</td>}
                 {cells(a.byPerson, true)}
-                <td className="p-[5px_9px] text-right tabular-nums text-[10.5px]" style={{ color: MUTED, background: 'rgba(242,196,10,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(a.hours)}</td>
+                <td className="p-[4px_9px] text-right tabular-nums text-[9.5px]" style={{ color: MUTED, background: 'rgba(242,196,10,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(a.hours)}</td>
               </tr>
             ))}
           </Fragment>
@@ -385,7 +385,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
 
   const groupRow = (label: string, color: string) => (
     <tr style={{ background: color === MMEC ? 'rgba(184,121,10,.08)' : 'rgba(30,125,127,.09)' }}>
-      <td colSpan={2 + (showBudgetAvail ? 1 : 0) + (showCost ? 1 : 0) + report.people.length + 2} className="p-[7px_16px] font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.08em] uppercase" style={{ color }}>{label}</td>
+      <td colSpan={2 + (showBudgetAvail ? 1 : 0) + (showCost ? 1 : 0) + report.people.length + 2} className="p-[5px_16px] font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.08em] uppercase" style={{ color }}>{label}</td>
     </tr>
   )
   const subtotalRow = (label: string, projs: I7Report['projects'], color: string) => {
@@ -395,16 +395,16 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     for (const p of projs) for (const [n, h] of Object.entries(p.byPerson)) per[n] = (per[n] ?? 0) + h
     return (
       <tr style={{ background: color === MMEC ? 'rgba(184,121,10,.06)' : 'rgba(30,125,127,.06)', borderTop: `1px solid ${BORDER}` }}>
-        <td className="p-[8px_16px] font-(family-name:--font-display) font-extrabold text-[10px] uppercase tracking-wide" style={{ color }}>{label}</td>
+        <td className="p-[6px_16px] font-(family-name:--font-display) font-extrabold text-[9px] uppercase tracking-wide" style={{ color }}>{label}</td>
         <td /><td />{showBudgetAvail && <td />}
-        {showCost && <td className="p-[8px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color, borderRight: '1px solid rgba(1,35,88,.10)' }}>{money(cost)}</td>}
-        {report.people.map(n => <td key={n} className="p-[8px_9px] text-right tabular-nums font-bold text-[11px]" style={{ color: INK }}>{per[n] ? fmtHours(per[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
-        <td className="p-[8px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.12)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(hrs)}</td>
+        {showCost && <td className="p-[6px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color, borderRight: '1px solid rgba(1,35,88,.10)' }}>{money(cost)}</td>}
+        {report.people.map(n => <td key={n} className="p-[6px_9px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{per[n] ? fmtHours(per[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
+        <td className="p-[6px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.12)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(hrs)}</td>
       </tr>
     )
   }
 
-  const thF = 'text-right font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase p-[8px_9px] whitespace-nowrap'
+  const thF = 'text-right font-(family-name:--font-display) font-extrabold text-[8.1px] tracking-wide uppercase p-[6px_9px] whitespace-nowrap'
   const tealTh: React.CSSProperties = { background: 'rgba(30,125,127,.07)' }
 
   return (
@@ -415,13 +415,13 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
 
         <div className="flex items-end justify-between gap-6 mt-5">
           <div>
-            <h1 className="font-(family-name:--font-display) font-black text-[25px] leading-[1.05] m-0" style={{ color: INK }}>i7 Budget Usage Report</h1>
-            <p className="text-[12.5px] mt-1" style={{ color: BODY }}>Hours, cost and budget usage for the <b style={{ color: INK }}>i7 Marketing</b> client · pulled from QuickBooks Time.</p>
+            <h1 className="font-(family-name:--font-display) font-black text-[22.5px] leading-[1.05] m-0" style={{ color: INK }}>i7 Budget Usage Report</h1>
+            <p className="text-[11.3px] mt-1" style={{ color: BODY }}>Hours, cost and budget usage for the <b style={{ color: INK }}>i7 Marketing</b> client · pulled from QuickBooks Time.</p>
           </div>
           <div className="text-right shrink-0">
-            <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.1em] uppercase" style={{ color: MUTED }}>Pay period</div>
-            <div className="font-(family-name:--font-display) font-extrabold text-[16px] mt-0.5" style={{ color: INK }}>{monthLabel}</div>
-            <div className="text-[11.5px] mt-px tabular-nums" style={{ color: MUTED }}>{report.startDate} &rarr; {report.endDate}</div>
+            <div className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.1em] uppercase" style={{ color: MUTED }}>Pay period</div>
+            <div className="font-(family-name:--font-display) font-extrabold text-[14.4px] mt-0.5" style={{ color: INK }}>{monthLabel}</div>
+            <div className="text-[10.4px] mt-px tabular-nums" style={{ color: MUTED }}>{report.startDate} &rarr; {report.endDate}</div>
           </div>
         </div>
 
@@ -430,49 +430,49 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           <>
             <div className="grid grid-cols-4 gap-3.5 mt-4">
               {cardData.map(x => (
-                <div key={x.l} className="rounded-[12px] p-[11px_14px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
-                  <div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.09em] uppercase" style={{ color: MUTED }}>{x.l}</div>
-                  {x.sub && <div className="text-[10px] italic mt-0.5" style={{ fontFamily: 'Georgia, serif', color: '#a3adba' }}>{x.sub}</div>}
-                  <div className="font-(family-name:--font-display) font-black text-[22px] mt-auto pt-1.5 tabular-nums" style={{ color: x.c }}>{x.v}</div>
+                <div key={x.l} className="rounded-[12px] p-[8px_14px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
+                  <div className="font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.09em] uppercase" style={{ color: MUTED }}>{x.l}</div>
+                  {x.sub && <div className="text-[9px] italic mt-0.5" style={{ fontFamily: 'Georgia, serif', color: '#a3adba' }}>{x.sub}</div>}
+                  <div className="font-(family-name:--font-display) font-black text-[19.8px] mt-auto pt-1.5 tabular-nums" style={{ color: x.c }}>{x.v}</div>
                 </div>
               ))}
-              <div className="rounded-[12px] p-[11px_14px] flex flex-col" style={{ border: `1px solid ${onTrack ? '#d6ebe4' : BORDER}`, background: onTrack ? '#f2faf6' : '#fff' }}>
+              <div className="rounded-[12px] p-[8px_14px] flex flex-col" style={{ border: `1px solid ${onTrack ? '#d6ebe4' : BORDER}`, background: onTrack ? '#f2faf6' : '#fff' }}>
                 <div className="flex items-center justify-between">
-                  <div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.09em] uppercase" style={{ color: onTrack ? GREEN : MUTED }}>Balance left</div>
-                  {onTrack && <span className="inline-flex items-center gap-1 text-[10px] font-bold" style={{ color: GREEN }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} />On track</span>}
+                  <div className="font-(family-name:--font-display) font-extrabold text-[8.6px] tracking-[.09em] uppercase" style={{ color: onTrack ? GREEN : MUTED }}>Balance left</div>
+                  {onTrack && <span className="inline-flex items-center gap-1 text-[9px] font-bold" style={{ color: GREEN }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} />On track</span>}
                 </div>
-                <div className="font-(family-name:--font-display) font-black text-[22px] mt-auto pt-1.5 tabular-nums" style={{ color: budgetLeft < 0 ? RED : GREEN }}>{moneySigned(budgetLeft)}</div>
+                <div className="font-(family-name:--font-display) font-black text-[19.8px] mt-auto pt-1.5 tabular-nums" style={{ color: budgetLeft < 0 ? RED : GREEN }}>{moneySigned(budgetLeft)}</div>
               </div>
             </div>
             <div className="flex items-center gap-3.5 mt-3">
-              <div className="font-(family-name:--font-display) font-extrabold text-[10px] uppercase tracking-wide whitespace-nowrap" style={{ color: MUTED }}>Budget used</div>
+              <div className="font-(family-name:--font-display) font-extrabold text-[9px] uppercase tracking-wide whitespace-nowrap" style={{ color: MUTED }}>Budget used</div>
               <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: TRACK }}><div className="h-full rounded-full" style={{ width: `${Math.min(100, usedPct * 100)}%`, background: 'linear-gradient(90deg,#1E7D7F,#31a39a)' }} /></div>
-              <div className="text-[11px] font-bold whitespace-nowrap tabular-nums" style={{ color: BODY }}>{Math.round(usedPct * 100)}% used · {money(budgetLeft)} remaining</div>
+              <div className="text-[9.9px] font-bold whitespace-nowrap tabular-nums" style={{ color: BODY }}>{Math.round(usedPct * 100)}% used · {money(budgetLeft)} remaining</div>
             </div>
           </>
         )}
 
         {/* invoice reconciliation */}
         {showCost && mmeProjects.length > 0 && (
-          <div className="mt-3 rounded-[12px] p-[11px_16px]" style={{ border: `1px solid ${BORDER}`, background: '#fbfcfd' }}>
+          <div className="mt-3 rounded-[12px] p-[8px_16px]" style={{ border: `1px solid ${BORDER}`, background: '#fbfcfd' }}>
             <div className="flex items-baseline justify-between gap-4 flex-wrap">
-              <div className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.04em] uppercase" style={{ color: INK }}>Invoice reconciliation</div>
-              <div className="text-[11.5px] tabular-nums" style={{ color: BODY }}>Sheet total <b style={{ color: INK }}>{money(totalCost)}</b> &nbsp;=&nbsp; i7 invoice <b style={{ color: TEAL }}>{money(i7Cost)}</b> &nbsp;+&nbsp; MME separate invoice <b style={{ color: MMEC }}>{money(mmeCost)}</b></div>
+              <div className="font-(family-name:--font-display) font-extrabold text-[9.9px] tracking-[.04em] uppercase" style={{ color: INK }}>Invoice reconciliation</div>
+              <div className="text-[10.4px] tabular-nums" style={{ color: BODY }}>Sheet total <b style={{ color: INK }}>{money(totalCost)}</b> &nbsp;=&nbsp; i7 invoice <b style={{ color: TEAL }}>{money(i7Cost)}</b> &nbsp;+&nbsp; MME separate invoice <b style={{ color: MMEC }}>{money(mmeCost)}</b></div>
             </div>
             <div className="flex h-5 rounded-[6px] overflow-hidden mt-2.5">
-              <div className="flex items-center px-2.5 text-white font-(family-name:--font-display) font-extrabold text-[10.5px]" style={{ flexBasis: `${i7Pct}%`, background: TEAL }}>Billed to i7 · {money(i7Cost)}</div>
+              <div className="flex items-center px-2.5 text-white font-(family-name:--font-display) font-extrabold text-[9.5px]" style={{ flexBasis: `${i7Pct}%`, background: TEAL }}>Billed to i7 · {money(i7Cost)}</div>
               <div style={{ flexBasis: `${100 - i7Pct}%`, background: MMEC }} />
             </div>
-            <div className="mt-2 text-[10.5px] leading-relaxed" style={{ color: MUTED }}>Wagner Meters &amp; Bessemeter are billed to i7. <b style={{ color: BODY }}>Moisture Meters (MME)</b> is part of i7’s work report but invoiced separately to Wagner Meter — so the Sheet total is always higher than the i7 invoice by the MME amount.</div>
+            <div className="mt-2 text-[9.5px] leading-relaxed" style={{ color: MUTED }}>Wagner Meters &amp; Bessemeter are billed to i7. <b style={{ color: BODY }}>Moisture Meters (MME)</b> is part of i7’s work report but invoiced separately to Wagner Meter — so the Sheet total is always higher than the i7 invoice by the MME amount.</div>
           </div>
         )}
 
         {/* invoice-grouped per-person table */}
         <div className="mt-4 rounded-[12px] overflow-hidden print:overflow-visible" style={{ border: `1px solid ${BORDER}` }}>
-          <table className="w-full text-[11.5px]" style={{ borderCollapse: 'collapse' }}>
+          <table className="w-full text-[10.4px]" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: WARM, borderBottom: `1px solid ${BORDER}` }}>
-                <th className="text-left font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase p-[8px_16px] min-w-[200px]" style={{ color: MUTED }}>Project · Job code · Activity</th>
+                <th className="text-left font-(family-name:--font-display) font-extrabold text-[8.1px] tracking-[.06em] uppercase p-[6px_16px] min-w-[200px]" style={{ color: MUTED }}>Project · Job code · Activity</th>
                 <th className={thF} style={{ ...tealTh, color: MUTED, borderLeft: '1px solid rgba(1,35,88,.12)' }}>Budget hrs</th>
                 <th className={thF} style={{ ...tealTh, color: MUTED }}>Hrs avail.</th>
                 {showBudgetAvail && <th className={thF} style={{ ...tealTh, color: MUTED }}>Budget avail.</th>}
@@ -489,31 +489,31 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               {mmeProjects.map(renderProject)}
               {showCost && mmeProjects.length > 0 && subtotalRow('Subtotal · MME invoice', mmeProjects, MMEC)}
               <tr style={{ borderTop: '2px solid #cfd6de', background: WARM }}>
-                <td className="p-[9px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: INK }}>Total</td>
-                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderLeft: '1px solid rgba(1,35,88,.12)' }}>{totBudget ? totBudget.toLocaleString() : '—'}</td>
-                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '—'}</td>
-                {showBudgetAvail && <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '—'}</td>}
-                {showCost && <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderRight: '1px solid rgba(1,35,88,.12)' }}>{money(totalCost)}</td>}
-                {report.people.map(n => <td key={n} className="p-[9px_9px] text-right tabular-nums font-bold text-[11px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
-                <td className="p-[9px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{report.totalHours.toFixed(2)}</td>
+                <td className="p-[7px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: INK }}>Total</td>
+                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderLeft: '1px solid rgba(1,35,88,.12)' }}>{totBudget ? totBudget.toLocaleString() : '—'}</td>
+                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '—'}</td>
+                {showBudgetAvail && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '—'}</td>}
+                {showCost && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderRight: '1px solid rgba(1,35,88,.12)' }}>{money(totalCost)}</td>}
+                {report.people.map(n => <td key={n} className="p-[7px_9px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
+                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{report.totalHours.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <p className="text-[10.5px] leading-relaxed mt-2.5" style={{ color: MUTED }}>
+        <p className="text-[9.5px] leading-relaxed mt-2.5" style={{ color: MUTED }}>
           Hours pulled from QuickBooks Time, grouped by the “1 · i7 Code” and “3 · Activity” fields; one hours column per person. <b style={{ color: BODY }}>Budget used</b> = hours × each person’s rate.
           {showBudgetAvail && <> <b style={{ color: BODY }}>Budget avail.</b> = hours available × the i7 rate (${stdRate}/h).</>} Carried-in balance reflects last month’s over/under.
         </p>
 
         {/* charts row — at the end of the internal report */}
         <div className="grid grid-cols-[1fr_0.85fr_1.05fr] gap-4 mt-4 break-inside-avoid">
-          <div className="rounded-[12px] p-[13px_16px]" style={{ border: `1px solid ${BORDER}` }}>
-            <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Team workload</div>
-            <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Hours logged per person</div>
+          <div className="rounded-[12px] p-[10px_16px]" style={{ border: `1px solid ${BORDER}` }}>
+            <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Team workload</div>
+            <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Hours logged per person</div>
             <div className="mt-3 flex flex-col gap-[9px]">
               {persons.map(w => (
-                <div key={w.name} className="flex items-center gap-[9px] text-[11px]">
+                <div key={w.name} className="flex items-center gap-[9px] text-[9.9px]">
                   <span className="w-16 shrink-0 truncate" style={{ color: BODY }}>{w.name}</span>
                   <span className="flex-1 h-[9px] rounded-full overflow-hidden" style={{ background: TRACK }}><span className="block h-full rounded-full" style={{ width: `${(w.hours / maxPerson) * 100}%`, background: TEAL }} /></span>
                   <span className="w-9 text-right font-bold tabular-nums" style={{ color: INK }}>{fmtHours(w.hours)}</span>
@@ -522,20 +522,20 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             </div>
           </div>
 
-          <div className="rounded-[12px] p-[13px_16px]" style={{ border: `1px solid ${BORDER}` }}>
-            <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Cost by project</div>
-            <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Total {money(totalCost)} used</div>
+          <div className="rounded-[12px] p-[10px_16px]" style={{ border: `1px solid ${BORDER}` }}>
+            <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Cost by project</div>
+            <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Total {money(totalCost)} used</div>
             <div className="flex justify-center mt-2.5"><Donut segs={costSegs} size={118} sw={18} /></div>
             <div className="mt-2">{costSegs.map(s => <LegendRow key={s.label} color={s.color} label={s.label} value={money(s.value)} />)}</div>
           </div>
 
-          <div className="rounded-[12px] p-[13px_16px]" style={{ border: `1px solid ${BORDER}` }}>
+          <div className="rounded-[12px] p-[10px_16px]" style={{ border: `1px solid ${BORDER}` }}>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-(family-name:--font-display) font-extrabold text-[12px]" style={{ color: INK }}>Budget utilization</div>
-                <div className="text-[11px] mt-0.5" style={{ color: MUTED }}>Hours used vs. hours budgeted</div>
+                <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Budget utilization</div>
+                <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Hours used vs. hours budgeted</div>
               </div>
-              {nearBudget && <span className="inline-flex items-center gap-1 text-[9.5px] font-bold rounded-full px-[9px] py-1" style={{ color: MMEC, background: '#fdf6dc' }}>MME near budget</span>}
+              {nearBudget && <span className="inline-flex items-center gap-1 text-[8.6px] font-bold rounded-full px-[9px] py-1" style={{ color: MMEC, background: '#fdf6dc' }}>MME near budget</span>}
             </div>
             <div className="mt-3 flex flex-col gap-[11px]">
               {util.map(u => {
@@ -543,7 +543,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                 const color = p > 1 ? '#ef4444' : p >= 0.9 ? AMBER : TEAL
                 return (
                   <div key={u.name}>
-                    <div className="flex items-baseline justify-between text-[11px] mb-1">
+                    <div className="flex items-baseline justify-between text-[9.9px] mb-1">
                       <span className="font-semibold" style={{ color: BODY }}>{u.name}</span>
                       <span className="font-extrabold tabular-nums" style={{ color }}>{fmtHours(u.hours)} / {fmtHours(u.budget)} h · {Math.round(p * 100)}%</span>
                     </div>
@@ -555,7 +555,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           </div>
         </div>
 
-        <div className="mt-4 pt-3 flex items-center justify-between text-[10px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
+        <div className="mt-4 pt-3 flex items-center justify-between text-[9px]" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
           <span>True North Digital Marketing · Operations Portal</span>
           <span>Confidential · For internal use only</span>
           <span>Page 1 of 1</span>
