@@ -59,39 +59,46 @@ export function ExportMenu({ month }: { month: string }) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => { if (!busy) setOpen(false) }} />
-          <div className="absolute right-0 mt-2 z-20 w-[340px] rounded-[14px] border border-slate-200 bg-white shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)] p-2">
-            <div className="px-2.5 pt-1.5 pb-1.5 text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted">Download as PDF</div>
-            <button disabled={!!busy} onClick={() => download('internal')} className="flex items-start gap-3 rounded-[10px] border border-slate-200 px-3 py-[11px] mb-1.5 w-full text-left hover:border-tn-teal hover:bg-subtle transition-all disabled:opacity-60 disabled:cursor-wait">
-              <span className="shrink-0 w-[30px] h-[30px] rounded-[8px] bg-tn-teal-soft inline-flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v1H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4V5a3 3 0 0 0-3-3z" /><path d="M3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" /></svg>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">Internal report</span>
-                <span className="block text-[11.5px] text-muted leading-snug mt-0.5">{busy === 'internal' ? 'Generating landscape PDF…' : 'Full detail — per-person hours, costs & rates. Landscape.'}</span>
-              </span>
-              {busy === 'internal' && <Spinner />}
-            </button>
-            <button disabled={!!busy} onClick={() => download('client')} className="flex items-start gap-3 rounded-[10px] border border-slate-200 px-3 py-[11px] w-full text-left hover:border-tn-teal hover:bg-subtle transition-all disabled:opacity-60 disabled:cursor-wait">
-              <span className="shrink-0 w-[30px] h-[30px] rounded-[8px] bg-[#fdf6dc] inline-flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" /></svg>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">Client report</span>
-                <span className="block text-[11.5px] text-muted leading-snug mt-0.5">{busy === 'client' ? 'Generating PDF…' : 'Summary & charts for i7 — no internal costs or staff names.'}</span>
-              </span>
-              {busy === 'client' && <Spinner />}
-            </button>
-            {error && <p className="px-3 pt-2 text-[11px] text-[var(--bdg-red-fg)] break-words">{error} — or use &ldquo;Save current view&rdquo; below.</p>}
-            <div className="h-px bg-slate-100 mx-1 my-2" />
-            <div className="px-2.5 pb-1.5 text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted">Download as CSV</div>
-            <a href={`/tools/time-report/csv?month=${month}&type=internal`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-[8px] px-3 py-2 text-tn-ink font-(family-name:--font-display) font-bold text-[12.5px] hover:bg-subtle transition-colors">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
-              <span>Internal <span className="text-muted font-medium">· per-person detail</span></span>
-            </a>
-            <a href={`/tools/time-report/csv?month=${month}&type=client`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-[8px] px-3 py-2 text-tn-ink font-(family-name:--font-display) font-bold text-[12.5px] hover:bg-subtle transition-colors">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
-              <span>Client <span className="text-muted font-medium">· billing lines</span></span>
-            </a>
+          <div className="absolute right-0 mt-2 z-20 w-[320px] rounded-[14px] border border-slate-200 bg-white shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)] p-3">
+            {/* Matrix: report (rows) × format (columns). */}
+            <div className="grid grid-cols-[1fr_44px_44px] items-center gap-x-2 gap-y-2.5">
+              <div className="pl-1 text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted">Report</div>
+              <div className="text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] text-muted">PDF</div>
+              <div className="text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] text-muted">CSV</div>
+
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="shrink-0 w-[30px] h-[30px] rounded-[8px] bg-tn-teal-soft inline-flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v1H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4V5a3 3 0 0 0-3-3z" /><path d="M3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" /></svg>
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink leading-tight">Internal</span>
+                  <span className="block text-[10px] text-muted leading-snug">{busy === 'internal' ? 'Generating…' : 'Per-person · costs & rates'}</span>
+                </span>
+              </div>
+              <button disabled={!!busy} onClick={() => download('internal')} aria-label="Download internal report as PDF" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all disabled:opacity-50 disabled:cursor-wait">
+                {busy === 'internal' ? <Spinner /> : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="14 3 14 9 20 9" /><path d="M12 18v-6M9.5 15.5 12 18l2.5-2.5" /></svg>}
+              </button>
+              <a href={`/tools/time-report/csv?month=${month}&type=internal`} onClick={() => setOpen(false)} aria-label="Download internal report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
+              </a>
+
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="shrink-0 w-[30px] h-[30px] rounded-[8px] bg-[#fdf6dc] inline-flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" /></svg>
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink leading-tight">Client</span>
+                  <span className="block text-[10px] text-muted leading-snug">{busy === 'client' ? 'Generating…' : 'Summary · no names'}</span>
+                </span>
+              </div>
+              <button disabled={!!busy} onClick={() => download('client')} aria-label="Download client report as PDF" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all disabled:opacity-50 disabled:cursor-wait">
+                {busy === 'client' ? <Spinner /> : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="14 3 14 9 20 9" /><path d="M12 18v-6M9.5 15.5 12 18l2.5-2.5" /></svg>}
+              </button>
+              <a href={`/tools/time-report/csv?month=${month}&type=client`} onClick={() => setOpen(false)} aria-label="Download client report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
+              </a>
+            </div>
+            {error && <p className="px-1 pt-2.5 text-[11px] text-[var(--bdg-red-fg)] break-words">{error} — or use &ldquo;Save current view&rdquo; below.</p>}
             <div className="h-px bg-slate-100 mx-1 my-2" />
             <button onClick={() => { setOpen(false); window.print() }} className="flex items-center gap-2.5 w-full text-left rounded-[8px] px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-subtle transition-colors">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
