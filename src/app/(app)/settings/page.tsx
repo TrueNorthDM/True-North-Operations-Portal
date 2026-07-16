@@ -11,8 +11,10 @@ import { MondayTokenField } from '@/components/MondayTokenField'
 import { TsheetsTokenField } from '@/components/TsheetsTokenField'
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
+import { loadProjectDirectory } from '@/lib/tsheets/report-data'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
+import { ClientsProjectsTab } from '@/components/tsheets/settings/ClientsProjectsTab'
 import { PeopleTab } from '@/components/tsheets/settings/PeopleTab'
 import { FullHistoryButton } from '@/components/settings/FullHistoryButton'
 import { HistoryTab, ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
@@ -44,6 +46,7 @@ const Icon = ({ paths, circles = [] }: { paths?: string[]; circles?: [number, nu
 )
 const ApisIcon = <Icon paths={['M15 7a5 5 0 0 1 0 10h-1', 'M9 17a5 5 0 0 1 0-10h1', 'M8 12h8']} />
 const ClientsIcon = <Icon paths={['M12 1v22', 'M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6']} />
+const CatalogIcon = <Icon paths={['M3 7V5a2 2 0 0 1 2-2h2', 'M17 3h2a2 2 0 0 1 2 2v2', 'M21 17v2a2 2 0 0 1-2 2h-2', 'M7 21H5a2 2 0 0 1-2-2v-2', 'M7 8h10', 'M7 12h6', 'M7 16h8']} />
 const PeopleIcon = <Icon paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75']} />
 const TargetsIcon = <Icon circles={[[12, 12, 10], [12, 12, 6], [12, 12, 2]]} />
 const SitesIcon = <Icon circles={[[12, 12, 10]]} paths={['M2 12h20', 'M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z']} />
@@ -119,6 +122,9 @@ export default async function SettingsPage() {
   // Budget Usage Report data (clients & budgets, people & rates, history, targets).
   const budget = await getBudgetUsageData()
 
+  // Clients → Projects → Job codes directory + the auto avg rate (current month).
+  const projectDirectory = await loadProjectDirectory(new Date().toISOString().slice(0, 7))
+
   // "Signed in as" — the current user's directory name (fallback to email).
   const profile = await getCurrentProfile()
   const { data: me } = profile
@@ -161,9 +167,21 @@ export default async function SettingsPage() {
               <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
               <FullHistoryButton />
             </div>
-            <ClientsTab clients={budget.clients} />
+            <ClientsTab clients={budget.clients} projectRates={projectDirectory.rows.map(r => ({ project: r.project, avgRate: r.avgRate, usingFallback: r.usingFallback }))} />
           </div>
           <ChangeHistory entries={budget.auditLog} />
+        </div>
+      ),
+    },
+    {
+      id: 'catalog',
+      label: 'Clients, Projects & Job Codes',
+      icon: CatalogIcon,
+      editable: false,
+      content: (
+        <div className="space-y-5">
+          <SectionHead title="Clients, Projects & Job Codes" desc="The client, its projects, and the job codes under each — read live from QuickBooks Time. Each project shows who's assigned and the average billing rate that feeds the Budget Usage Report." />
+          <ClientsProjectsTab directory={projectDirectory} />
         </div>
       ),
     },

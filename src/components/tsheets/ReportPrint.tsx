@@ -516,6 +516,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
         <p className="text-[9.5px] leading-relaxed mt-2.5" style={{ color: MUTED }}>
           Hours pulled from QuickBooks Time, grouped by the “1 · i7 Code” and “3 · Activity” fields; one hours column per person. <b style={{ color: BODY }}>Budget used</b> = hours × each person’s rate.
           {showBudgetAvail && <> <b style={{ color: BODY }}>Budget avail.</b> = hours available × the i7 rate (${stdRate}/h).</>} Carried-in balance reflects last month’s over/under.
+          {' '}The monthly <b style={{ color: BODY }}>budget</b> is built per project from its budgeted hours × the <b style={{ color: BODY }}>average</b> i7 hourly rate of the people assigned to that project.
         </p>
 
         {/* charts — flow after the table (Puppeteer paginates + numbers). */}

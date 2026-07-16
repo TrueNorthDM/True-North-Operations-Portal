@@ -32,8 +32,14 @@ export interface ClientWithBudget {
   projectMonthHours?: ProjectMonthHours[]
 }
 
+export interface ProjectRate { project: string; avgRate: number; usingFallback: boolean }
+
 interface Props {
   clients: ClientWithBudget[]
+  // Auto-calculated average billing rate per i7 project (from the roster). Shown
+  // in the i7 budget modal so "budgeted hours × rate = dollars" is visible where
+  // hours are allocated. Sourced from the Clients, Projects & Job Codes listing.
+  projectRates?: ProjectRate[]
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -54,7 +60,7 @@ function periodLabel(start: string | null | undefined, end: string | null | unde
 const Dash = () => <span className="text-slate-300">&mdash;</span>
 const TH = 'text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3.5'
 
-export function ClientsTab({ clients }: Props) {
+export function ClientsTab({ clients, projectRates }: Props) {
   // Only the selected id is state — the client object is derived from `clients`,
   // so after a save + router.refresh() the modal shows the fresh values.
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -132,13 +138,13 @@ export function ClientsTab({ clients }: Props) {
         </table>
       </div>
 
-      {selected && <ClientBudgetModal client={selected} onClose={() => setSelectedId(null)} />}
+      {selected && <ClientBudgetModal client={selected} projectRates={projectRates} onClose={() => setSelectedId(null)} />}
     </div>
   )
 }
 
 // ── Modal: view what's set, or switch to the full edit form ──────────────────
-function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onClose: () => void }) {
+function ClientBudgetModal({ client, projectRates, onClose }: { client: ClientWithBudget; projectRates?: ProjectRate[]; onClose: () => void }) {
   const router = useRouter()
   const [mode, setMode] = useState<'view' | 'edit'>('view')
   const b = client.budget
@@ -176,7 +182,8 @@ function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onCl
           {isI7 ? (
             <div className="space-y-6">
               <MonthlyBudgetGrid budgets={client.monthlyBudgets!} />
-              <div className="border-t border-slate-100 pt-6">
+              <div className="border-t border-slate-100 pt-6 space-y-4">
+                {projectRates && projectRates.length > 0 && <ProjectRateStrip rates={projectRates} />}
                 <ProjectHoursGrid clientId={client.id} projects={I7_PROJECTS} hours={client.projectMonthHours ?? []} />
               </div>
             </div>
@@ -203,6 +210,37 @@ function ClientBudgetModal({ client, onClose }: { client: ClientWithBudget; onCl
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Average billing rate per project (auto, from the roster) — the multiplier the
+// report applies to each project's budgeted hours. Read-only reference so hours
+// allocation is legible: hours × this rate = dollars. Edit rates via People &
+// rates (assign people to projects); manage the listing in Clients, Projects &
+// Job Codes.
+function ProjectRateStrip({ rates }: { rates: ProjectRate[] }) {
+  const money = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Average rate per project</div>
+        <div className="text-[10.5px] text-muted">budgeted hours × rate = budget</div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {rates.map(r => (
+          <div key={r.project} className="rounded-[10px] border border-slate-200 bg-subtle px-3 py-2.5">
+            <div className="text-[11px] font-semibold text-foreground truncate" title={r.project}>{r.project}</div>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-teal tabular-nums">{money(r.avgRate)}</span>
+              <span className="text-[10px] font-semibold text-muted">/h</span>
+            </div>
+            <div className="text-[9.5px] mt-0.5 font-(family-name:--font-display) font-bold uppercase tracking-wide text-muted">
+              {r.usingFallback ? 'Standard' : 'Average'}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
