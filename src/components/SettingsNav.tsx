@@ -7,7 +7,7 @@
  * nav item.
  */
 
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { EditingContext } from './settings/editing-context'
 import { HistoryContext } from './settings/history-context'
 
@@ -35,6 +35,18 @@ export function SettingsNav({
   const [beforeHistory, setBeforeHistory] = useState<string | undefined>(undefined)
   const [editing, setEditing] = useState(false)
 
+  // Deep-link support: /settings#people opens that section (e.g. from Directory).
+  // Done in an effect (not the initial state) to avoid a hydration mismatch.
+  useEffect(() => {
+    const h = window.location.hash.slice(1)
+    if (h && sections.some(s => s.id === h)) setActive(h)
+  }, [sections])
+
+  function select(id: string) {
+    setActive(id)
+    if (typeof window !== 'undefined') history.replaceState(null, '', `#${id}`)
+  }
+
   function toggleHistory() {
     if (active === HISTORY) setActive(beforeHistory ?? sections[0]?.id)
     else { setBeforeHistory(active); setActive(HISTORY) }
@@ -59,7 +71,7 @@ export function SettingsNav({
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setActive(s.id)}
+                onClick={() => select(s.id)}
                 className={`flex items-center gap-[11px] w-full text-left rounded-[11px] px-[13px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13.5px] transition-all ${
                   on ? 'bg-tn-teal-soft text-tn-teal' : 'text-foreground hover:bg-subtle'
                 }`}

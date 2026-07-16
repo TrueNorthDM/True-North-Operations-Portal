@@ -61,7 +61,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       .is('end_date', null),
     supabase
       .from('people')
-      .select('id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate')
+      .select('id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, i7_projects')
       .not('tsheets_user_id', 'is', null)
       .order('full_name'),
     supabase
@@ -174,6 +174,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       managerTeam: managerId ? teamsByPerson.get(managerId)?.[0] ?? null : null,
       hireDate: (p as { hire_date?: string | null }).hire_date ?? null,
       costRate: internalRate != null ? Number(internalRate) : null,
+      projects: (p as { i7_projects?: string[] | null }).i7_projects ?? [],
       tsheetsUserId: p.tsheets_user_id as number,
       tsheetsOnly: p.tsheets_only ?? false,
       assignments: (assignmentsByUser.get(p.tsheets_user_id as number) ?? []).map(a => ({

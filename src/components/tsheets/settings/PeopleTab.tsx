@@ -3,7 +3,7 @@
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
-import { saveTrAssignment, deactivateTrAssignment, savePersonCostRate } from '@/lib/tsheets/settings-actions'
+import { saveTrAssignment, deactivateTrAssignment, savePersonCostRate, savePersonProjects } from '@/lib/tsheets/settings-actions'
 import { linkTsheetsPersonToDirectory } from '@/lib/tsheets/sync-actions'
 import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/components/admin/people-types'
 
@@ -48,6 +48,8 @@ export interface PersonWithAssignments {
   hireDate: string | null
   /** Internal cost per hour (people.internal_rate) — one per person. */
   costRate: number | null
+  /** i7 projects this person works on (people.i7_projects) — the budget roster. */
+  projects: string[]
   tsheetsUserId: number
   tsheetsOnly: boolean
   assignments: {
@@ -69,6 +71,8 @@ interface Props {
   people: PersonWithAssignments[]
   allClients: { id: number; name: string }[]
   directoryOptions: DirectoryOption[]
+  /** The full i7 project list (for the per-person "works on" multi-select). */
+  allProjects: string[]
 }
 
 type Assignment = PersonWithAssignments['assignments'][number]
@@ -99,10 +103,12 @@ const XMark = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" str
 const Plus = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" /></svg>
 const LinkIcon = () => <svg className={iconCls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
 
-export function PeopleTab({ people, allClients, directoryOptions }: Props) {
+export function PeopleTab({ people, allClients, directoryOptions, allProjects }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
 
+  const [projEdit, setProjEdit] = useState<string | null>(null)   // personId whose project picker is open
+  const [projSaving, setProjSaving] = useState(false)
   const [edit, setEdit] = useState<EditState | null>(null)
   const [clientId, setClientId] = useState('')   // for a new rate's project picker
   const [rate, setRate] = useState('')
@@ -154,6 +160,18 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
     setEdit({ key: `${p.id}:cost`, personId: p.id, tsheetsUserId: p.tsheetsUserId, personName: p.name, clientId: null, clientName: null, mode: 'cost', currentRate: p.costRate })
     setRate(p.costRate != null ? String(p.costRate) : '')
   }
+
+  const [projDraft, setProjDraft] = useState<string[]>([])
+  function startProjEdit(p: PersonWithAssignments) { setError(null); setProjEdit(p.id); setProjDraft(p.projects) }
+  async function saveProjects(personId: string) {
+    setProjSaving(true)
+    const res = await savePersonProjects({ personId, projects: projDraft })
+    setProjSaving(false)
+    if (res.ok) { setProjEdit(null); router.refresh() }
+    else setError(res.error ?? 'Save failed.')
+  }
+  // Compact label for a project badge.
+  const shortProj = (p: string) => p.replace(/\s*\(([^)]+)\)/, ' $1').replace('Moisture Meters', 'MME').replace('Wagner Meters WM', 'WM').replace('i7 Marketing', 'i7 Mktg').replace('Bessemeter', 'Bess')
 
   function review(availableName?: string) {
     if (!edit) return
@@ -246,7 +264,8 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
                 <th className={th}>Team</th>
                 <th className={th}>Report to</th>
                 <th className={th}>Joined on</th>
-                <th className={th}>Project</th>
+                <th className={th}>Projects</th>
+                <th className={th}>Client</th>
                 <th className={th}>Rate / client</th>
                 <th className={th}>Rate / cost</th>
                 <th className={th}>Effective from</th>
@@ -293,6 +312,35 @@ export function PeopleTab({ people, allClients, directoryOptions }: Props) {
                     </td>
                     <td className="px-4 py-3 align-middle whitespace-nowrap text-[13px] text-muted tabular-nums">
                       {show ? (formatDate(person.hireDate) ?? <span className="text-slate-300">—</span>) : null}
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      {!show ? null : projEdit === person.id ? (
+                        <div className="flex flex-col gap-1.5 min-w-[180px]">
+                          <label className="flex items-center gap-1.5 text-[11px] font-(family-name:--font-display) font-bold text-tn-ink cursor-pointer">
+                            <input type="checkbox" className="accent-tn-teal" checked={projDraft.length === allProjects.length && allProjects.length > 0} onChange={e => setProjDraft(e.target.checked ? [...allProjects] : [])} />
+                            All projects
+                          </label>
+                          {allProjects.map(pr => (
+                            <label key={pr} className="flex items-center gap-1.5 text-[11px] text-foreground cursor-pointer">
+                              <input type="checkbox" className="accent-tn-teal" checked={projDraft.includes(pr)} onChange={e => setProjDraft(d => e.target.checked ? [...d, pr] : d.filter(x => x !== pr))} />
+                              {pr}
+                            </label>
+                          ))}
+                          <div className="flex gap-1 mt-0.5">
+                            <button onClick={() => saveProjects(person.id)} disabled={projSaving} className={iconBtn} title="Save" aria-label="Save projects"><Save /></button>
+                            <button onClick={() => setProjEdit(null)} className={iconBtn} title="Cancel" aria-label="Cancel"><XMark /></button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 flex-wrap max-w-[190px]">
+                          {person.projects.length
+                            ? person.projects.map(pr => (
+                                <span key={pr} className="text-[10px] font-(family-name:--font-display) font-bold text-tn-teal bg-tn-teal-soft px-1.5 py-0.5 rounded-[5px] whitespace-nowrap">{shortProj(pr)}</span>
+                              ))
+                            : <span className="text-slate-300">—</span>}
+                          <button onClick={() => startProjEdit(person)} className={iconBtn} title="Edit projects" aria-label="Edit projects"><Pencil /></button>
+                        </div>
+                      )}
                     </td>
                   </>
                 )

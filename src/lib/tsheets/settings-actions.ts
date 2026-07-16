@@ -386,6 +386,46 @@ export async function savePersonCostRate(input: {
   return { ok: true }
 }
 
+// The i7 projects a person works on (the budget roster). Drives each project's
+// average billing rate. Light-touch: no justification modal, but still audited.
+export async function savePersonProjects(input: {
+  personId: string
+  projects: string[]
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: before } = await supabase
+    .from('people')
+    .select('id, full_name, i7_projects')
+    .eq('id', input.personId)
+    .maybeSingle()
+  if (!before) return { ok: false, error: 'Person not found.' }
+
+  const projects = [...new Set(input.projects)].sort()
+  const { error: updErr } = await supabase
+    .from('people')
+    .update({ i7_projects: projects })
+    .eq('id', input.personId)
+  if (updErr) return { ok: false, error: updErr.message }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'person_projects',
+    entity_id: 0,
+    action: 'update',
+    before_data: { person_name: before.full_name, projects: (before as { i7_projects?: string[] }).i7_projects ?? [] },
+    after_data: { person_name: before.full_name, projects },
+    justification: 'Project assignment updated',
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/settings')
+  return { ok: true }
+}
+
 export async function deactivateTrAssignment(input: {
   tsheetsUserId: number
   clientId: number

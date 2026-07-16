@@ -134,6 +134,8 @@ export type PersonRow = {
   hire_date: string | null
   left_on: string | null
   employment_history: string | null
+  // i7 budget roster (migration 032): which i7 projects the person works on.
+  i7_projects: string[] | null
 }
 
 export type TeamRow = {

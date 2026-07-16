@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
@@ -54,6 +55,11 @@ export function DirectoryTabs({
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
             People, teams, and access — one place. Add or edit people, manage team membership, and grant each team access to projects.
           </p>
+          <Link href="/settings#people" className="inline-flex items-center gap-1.5 mt-2.5 text-[13px] font-(family-name:--font-display) font-bold text-tn-teal hover:text-tn-primary transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 1v22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+            Rates &amp; project assignment in Settings
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </Link>
         </div>
 
         {/* Add person split-button */}
