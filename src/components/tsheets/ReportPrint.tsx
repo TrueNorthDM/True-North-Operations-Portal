@@ -424,15 +424,14 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   return (
     <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
       {Toolbar}
-      {/* Internal only: print A4 in landscape so the wide per-person table fits.
-          Scoped here (not globals.css) so the client report stays portrait.
-          NB: Chrome honours this; Safari ignores @page size — there the user must
-          pick Orientation: Landscape in the print dialog (see the on-screen tip). */}
-      <style>{`@media print { @page { size: A4 landscape; } }`}</style>
+      {/* Internal only: the wide per-person table needs landscape paper. We do NOT
+          set @page{size:landscape}: Safari ignores it AND specifying a page size
+          can lock the print dialog's orientation toggle (leaving the user stuck in
+          portrait). Instead we let the dialog own orientation and prompt for it. */}
       <div className="no-print mx-auto max-w-[1056px] -mt-1 mb-4 px-2">
-        <div className="inline-flex items-start gap-2 rounded-[9px] px-3 py-2 text-[12.5px] leading-snug" style={{ background: '#fdf6dc', color: MMEC, border: '1px solid #f0dfa8' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={MMEC} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginTop: 1, flexShrink: 0 }}><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M2 7l0-0M7 3h10M12 12v0" /><path d="M8 12h8M8 16h5" /></svg>
-          <span>Printing from <b>Safari</b>? Set <b>Orientation → Landscape</b> in the print dialog so the whole per-person table fits (Chrome does this automatically).</span>
+        <div className="flex items-start gap-2 rounded-[9px] px-3.5 py-2.5 text-[13px] leading-snug" style={{ background: '#fdf6dc', color: MMEC, border: '1px solid #f0dfa8' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={MMEC} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginTop: 1, flexShrink: 0 }}><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M8 12h8M8 16h5" /></svg>
+          <span>Before you save: in the print dialog set <b>Orientation → Landscape</b> so the whole per-person table fits. (Portrait cuts off the right-hand columns.)</span>
         </div>
       </div>
       <div className={sheet} style={{ color: BODY }}>
