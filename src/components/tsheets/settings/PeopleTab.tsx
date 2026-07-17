@@ -151,24 +151,27 @@ export function PeopleTab({ people, allClients }: Props) {
     )
   }
 
+  // View: plain text (no number-spinner arrows). Edit: an input, spinners hidden
+  // too (appearance:textfield + webkit spin-button off) so the field stays clean.
   const rateInput = (val: string, onChange: (v: string) => void, focusColor: string) => (
     <span className="inline-flex items-center justify-end gap-1">
       <span className="text-[12px] text-muted">$</span>
-      <input
-        type="number"
-        min="0"
-        value={val}
-        readOnly={!editing}
-        onChange={e => onChange(e.target.value)}
-        placeholder={editing ? '—' : ''}
-        className={`w-16 text-right tabular-nums text-[13.5px] font-semibold rounded-md px-2 py-1 outline-none transition-colors ${
-          editing
-            ? 'text-tn-ink bg-white border border-slate-200'
-            : 'text-tn-ink bg-subtle border border-transparent'
-        }`}
-        onFocus={e => { if (editing) e.currentTarget.style.borderColor = focusColor }}
-        onBlur={e => { e.currentTarget.style.borderColor = '' }}
-      />
+      {editing ? (
+        <input
+          type="number"
+          min="0"
+          value={val}
+          onChange={e => onChange(e.target.value)}
+          placeholder="—"
+          className="w-16 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink bg-white border border-slate-200 rounded-md px-2 py-1 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          onFocus={e => { e.currentTarget.style.borderColor = focusColor }}
+          onBlur={e => { e.currentTarget.style.borderColor = '' }}
+        />
+      ) : (
+        <span className="w-16 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink rounded-md px-2 py-1 bg-subtle">
+          {val !== '' ? val : <span className="text-slate-300">—</span>}
+        </span>
+      )}
     </span>
   )
 
