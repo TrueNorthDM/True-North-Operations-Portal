@@ -78,7 +78,15 @@ export default async function TimeReportPage({ searchParams }: Props) {
           <p className="mt-1.5 text-muted leading-relaxed">
             Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client — pulled directly from QuickBooks Time.
           </p>
-          <div className="mt-3">
+          <div className="mt-3 flex items-center gap-2.5 flex-wrap">
+            <Link
+              href="/tools/time-report/guide"
+              title="How the report works"
+              aria-label="How the report works"
+              className="shrink-0 w-9 h-9 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+            </Link>
             <SyncStatus syncedAt={syncedAt} />
           </div>
         </div>

@@ -18,9 +18,9 @@ const SOURCES = [
   { tag: 'Rates', name: 'Hourly rates', cls: 'bg-indigo-50 border-indigo-200 text-indigo-900', dot: 'text-indigo-600',
     body: 'Settings → People & Rates. Each person’s $/hour on i7, with history ($120 through January, $95 from February, foreign contractors $60).' },
   { tag: 'Budget $', name: 'Monthly budget', cls: 'bg-emerald-50 border-emerald-200 text-emerald-900', dot: 'text-emerald-600',
-    body: 'Settings → Clients & Budgets → i7. Each month’s budget in dollars (base + extra).' },
+    body: 'Settings → Clients & Budgets → i7. Each month’s budget in dollars (base + extra). This is the source of truth for the month — the report never back-calculates it from hours.' },
   { tag: 'Budget hrs', name: 'Budget hours per project', cls: 'bg-amber-50 border-amber-200 text-amber-900', dot: 'text-amber-600',
-    body: 'Same i7 modal. The budgeted hours for each project, per month.' },
+    body: 'Same i7 modal. A planning estimate: how the budget splits into hours per project. Editing it never changes the dollar budget — a live “left to allocate” line flags when the hours run past it. Copy a month across to the others in a click.' },
 ]
 
 const FORMULAS = [
@@ -104,6 +104,9 @@ export default function ReportGuidePage() {
             <li><strong className="text-slate-900">Used</strong> = the same &ldquo;Budget used&rdquo; total from the bottom of the table.</li>
             <li><strong className="text-slate-900">Balance left</strong> = Budget total − Used (this carries into next month).</li>
           </ul>
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600 leading-relaxed">
+            On the report, <strong className="text-slate-900">Budget total this month</strong> shows the breakdown in brackets — e.g. <span className="font-mono text-slate-800">$49,094 ($55,000 − $5,906)</span>: this month’s full budget minus what was carried over (or plus, if last month came in under). The <strong className="text-slate-900">Team Update</strong> button (next to Export) turns the same numbers — used, % used, and what’s left — into a shareable image for the team.
+          </div>
         </div>
       </section>
 
