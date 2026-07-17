@@ -51,7 +51,7 @@ export function ExportImageButton({ month }: { month: string }) {
     <div className="relative">
       <button onClick={download} disabled={busy} title="Download a shareable budget image for the team" className="inline-flex items-center gap-2.5 bg-white text-tn-ink border border-slate-200 rounded-[10px] px-[16px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:text-tn-teal disabled:opacity-60 disabled:cursor-wait">
         {busy ? <Spinner /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" /><path d="m21 15-4.5-4.5L7 20" /></svg>}
-        <span>{busy ? 'Generating…' : 'Export image'}</span>
+        <span>{busy ? 'Generating…' : 'Team Update'}</span>
       </button>
       {error && <div className="absolute right-0 mt-2 z-20 w-64 rounded-[10px] border border-red-200 bg-white p-2.5 text-[11px] text-[var(--bdg-red-fg)] shadow-[0_10px_30px_-10px_rgba(1,35,88,.35)]">{error}</div>}
     </div>
