@@ -10,6 +10,7 @@ import { useMemo, useState, useTransition, type ChangeEvent, type ReactNode } fr
 import { useRouter } from 'next/navigation'
 import { createPerson, updatePerson, deletePerson, type PersonInput } from '@/app/(app)/admin/people/actions'
 import { uploadPersonAttachment, deletePersonAttachment, signedAttachmentUrl } from '@/app/(app)/admin/people/attachment-actions'
+import { Avatar } from '@/components/Avatar'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -192,7 +193,7 @@ export function PersonModal({
         <div className="px-8 pt-6 pb-5 border-b border-slate-200 shrink-0">
           <div className="flex items-start justify-between gap-3.5">
             <div className="flex items-center gap-4 min-w-0">
-              <span className={`shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[20px] ${headInactive ? 'opacity-50 grayscale-[.4]' : ''}`} style={{ width: 60, height: 60, background: TEAM_COLOR[headTeamKey] }}>{initialsOf(headName)}</span>
+              <Avatar name={headName} avatarUrl={p?.avatarUrl} size={60} color={TEAM_COLOR[headTeamKey]} dimmed={headInactive} />
               <div className="min-w-0">
                 <h2 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink leading-tight m-0">{headName}</h2>
                 <p className="text-sm text-muted mt-1 font-semibold">{headJob}</p>

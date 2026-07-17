@@ -18,6 +18,7 @@ import {
   type PersonView,
   type Pill,
 } from './people-types'
+import { Avatar } from '@/components/Avatar'
 import type { TeamOption } from './DirectoryTabs'
 
 type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status'
@@ -37,19 +38,6 @@ const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'rate', 'status']
 const LS_COLS = 'tn-directory-cols-v1'
 
 const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews || p.emails.coe || p.emails.personal || ''
-
-function Avatar({ p, size = 38 }: { p: { teamKey: keyof typeof TEAM_COLOR; full_name: string; status?: 'active' | 'inactive' }; size?: number }) {
-  const dim = size <= 26 ? 'text-[10px]' : size >= 56 ? 'text-[20px]' : 'text-[12px]'
-  const dim2 = p.status === 'inactive' ? 'opacity-45 grayscale-[.4]' : ''
-  return (
-    <span
-      className={`shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold ${dim} ${dim2}`}
-      style={{ width: size, height: size, background: TEAM_COLOR[p.teamKey] }}
-    >
-      {initialsOf(p.full_name)}
-    </span>
-  )
-}
 
 function PillBadge({ pill }: { pill: Pill }) {
   return (
@@ -228,7 +216,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
                 style={{ gridTemplateColumns: gridTemplate }}
               >
                 <span className="inline-flex items-center gap-3 min-w-0">
-                  <Avatar p={p} />
+                  <Avatar name={p.full_name} avatarUrl={p.avatarUrl} size={38} color={TEAM_COLOR[p.teamKey]} dimmed={p.status === 'inactive'} />
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5 min-w-0">
                       <span className="font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>

@@ -10,11 +10,12 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { UserMenu } from '@/components/UserMenu'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const isAdmin = await isCurrentUserAdmin()
+  const [isAdmin, me] = await Promise.all([isCurrentUserAdmin(), loadCurrentPerson(supabase, user)])
 
   return (
     <>
@@ -41,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <UserMenu userEmail={user?.email ?? null} />
+          <UserMenu userEmail={user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} />
         </div>
       </header>
 

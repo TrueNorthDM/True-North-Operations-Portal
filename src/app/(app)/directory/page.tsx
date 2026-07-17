@@ -41,9 +41,9 @@ export default async function DirectoryPage() {
     supabase.from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
-    // Separate + graceful: monday_docs (034) / role_type (035) may not exist yet
-    // — a failed query here must NOT drop the whole PEOPLE_FULL select.
-    supabase.from('people').select('id, monday_docs, role_type'),
+    // Separate + graceful: monday_docs (034) / role_type (035) / avatar_url (036)
+    // may not exist yet — a failed query here must NOT drop the PEOPLE_FULL select.
+    supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -65,9 +65,11 @@ export default async function DirectoryPage() {
   // if the migration isn't applied yet.
   const mondayDocsById = new Map<string, string>()
   const roleTypeById = new Map<string, string>()
+  const avatarById = new Map<string, string>()
   for (const d of dRes.data ?? []) {
     if (d.monday_docs) mondayDocsById.set(d.id, d.monday_docs)
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
+    if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
@@ -112,6 +114,7 @@ export default async function DirectoryPage() {
         id: p.id,
         full_name: p.full_name,
         lastName: str(p.last_name),
+        avatarUrl: avatarById.get(p.id) ?? null,
         title: str(p.title),
         teamId: pt?.id ?? null,
         teamName: pt?.name ?? null,

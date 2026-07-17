@@ -144,6 +144,7 @@ export type PersonRow = {
   monday_item_id: string | null       // board item id — importer idempotency
   monday_docs: string | null          // text of the person's "History" Monday Doc (migration 034)
   role_type: string                   // 'user'|'admin'|'admin_assistant'|'team_leader' (migration 035)
+  avatar_url: string | null           // profile photo public URL (migration 036)
 }
 
 // The "History" file attachments on a person, held in the private person-files

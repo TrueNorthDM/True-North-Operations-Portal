@@ -23,6 +23,7 @@ export interface PersonView {
   id: string
   full_name: string
   lastName: string | null
+  avatarUrl: string | null // profile photo (public URL)
   title: string | null // job title
 
   // Primary team (first membership) — drives avatar colour, badge, filter, group.

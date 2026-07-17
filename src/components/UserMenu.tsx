@@ -10,16 +10,11 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { signOut } from '@/app/auth/actions'
+import { Avatar } from '@/components/Avatar'
 
-function initialsOf(email: string | null): string {
-  if (!email) return '?'
-  const name = email.split('@')[0]
-  const parts = name.split(/[._-]+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return name.slice(0, 2).toUpperCase()
-}
-
-export function UserMenu({ userEmail }: { userEmail: string | null }) {
+export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string | null; userName?: string | null; avatarUrl?: string | null }) {
+  // Name for the avatar initials — the person's name, else the email local part.
+  const initialsName = userName ?? (userEmail ? userEmail.split('@')[0].replace(/[._-]+/g, ' ') : null)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -55,10 +50,10 @@ export function UserMenu({ userEmail }: { userEmail: string | null }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        title={userEmail ?? 'Account'}
-        className="inline-flex w-9 h-9 items-center justify-center rounded-full bg-tn-primary text-white text-xs font-bold tracking-wide hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-tn-primary/40"
+        title={userName ?? userEmail ?? 'Account'}
+        className="inline-flex items-center justify-center rounded-full hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-tn-primary/40"
       >
-        {initialsOf(userEmail)}
+        <Avatar name={initialsName} avatarUrl={avatarUrl} size={36} color="#012358" />
       </button>
 
       {open && (
@@ -69,7 +64,8 @@ export function UserMenu({ userEmail }: { userEmail: string | null }) {
         >
           <div className="px-4 py-3 border-b border-slate-100">
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Signed in</div>
-            <div className="text-sm text-slate-800 font-medium truncate" title={userEmail ?? undefined}>
+            {userName && <div className="text-sm text-slate-800 font-semibold truncate" title={userName}>{userName}</div>}
+            <div className={`truncate ${userName ? 'text-[12.5px] text-slate-500' : 'text-sm text-slate-800 font-medium'}`} title={userEmail ?? undefined}>
               {userEmail ?? '—'}
             </div>
           </div>

@@ -11,6 +11,7 @@ import {
   typePill, timePill, ynPill, statusPill, roleTypePill, type Pill,
 } from '@/components/admin/people-types'
 import type { PersonRow } from '@/lib/types/database.types'
+import { ProfileAvatar } from '@/components/ProfileAvatar'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,6 +104,10 @@ export default async function ProfilePage() {
   const reports = reportsRes.data ?? []
   const attachments = attRes.data ?? []
 
+  // Avatar fetched separately + gracefully (avatar_url is migration 036).
+  const { data: avRow } = await supabase.from('people').select('avatar_url').eq('id', me.id).maybeSingle()
+  const avatarUrl = (avRow as { avatar_url: string | null } | null)?.avatar_url ?? null
+
   const active = me.status !== 'inactive'
 
   return (
@@ -117,7 +122,7 @@ export default async function ProfilePage() {
         {/* header */}
         <div className="px-8 pt-6 pb-5 border-b border-slate-200 flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4 min-w-0">
-            <span className={`shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[20px] ${active ? '' : 'opacity-50 grayscale-[.4]'}`} style={{ width: 60, height: 60, background: TEAM_COLOR[teamKey] }}>{initialsOf(me.full_name)}</span>
+            <ProfileAvatar name={me.full_name} avatarUrl={avatarUrl} color={TEAM_COLOR[teamKey]} />
             <div className="min-w-0">
               <h1 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink leading-tight m-0">{me.full_name}</h1>
               <p className="text-sm text-muted mt-1 font-semibold">{me.title || '—'}</p>
