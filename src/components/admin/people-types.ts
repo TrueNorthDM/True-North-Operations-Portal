@@ -9,9 +9,20 @@ export interface PersonEmails {
   personal: string | null
 }
 
+/** A "History" document attached to a person (private person-files bucket). */
+export interface PersonAttachment {
+  id: string
+  fileName: string
+  storagePath: string
+  mime: string | null
+  sizeBytes: number | null
+  uploadedAt: string
+}
+
 export interface PersonView {
   id: string
   full_name: string
+  lastName: string | null
   title: string | null // job title
 
   // Primary team (first membership) — drives avatar colour, badge, filter, group.
@@ -27,17 +38,20 @@ export interface PersonView {
   alsoReportsToName: string | null
   alsoReportsToTeamKey: TeamKey | null
   reportsToManager: string | null // 'yes' | 'no' | 'sometimes'
+  managerNameText: string | null // free-text manager name (board question)
 
   // Employment
   employmentType: string | null // 'us' | 'contractor'
   schedule: string | null // 'full' | 'part'
   weeklyHours: number | null
   internalRate: number | null
+  teamMeeting: boolean // "Team Meeting" checkbox (board)
   status: 'active' | 'inactive'
 
   // Contact
   phone: string | null
   location: string | null
+  whatsappSameNumber: string | null // 'yes' | 'no' — same number on WhatsApp?
 
   // Onboarding (tri-state chips)
   companyEmail: string | null // 'yes' | 'notyet'
@@ -55,6 +69,7 @@ export interface PersonView {
   hasTsheets: boolean
 
   history: string | null
+  attachments: PersonAttachment[] // "History" documents
 }
 
 export interface Account {
@@ -65,18 +80,22 @@ export interface Account {
 /** The payload the modal sends back on save. Mirrors the DB columns. */
 export interface PersonDraft {
   full_name: string
+  lastName: string | null
   title: string | null
   teamId: string | null
   manager_id: string | null
   alsoReportsToId: string | null
   reportsToManager: string | null
+  managerNameText: string | null
   employmentType: string | null
   schedule: string | null
   weeklyHours: number | null
   internalRate: number | null
+  teamMeeting: boolean
   status: 'active' | 'inactive'
   phone: string | null
   location: string | null
+  whatsappSameNumber: string | null
   companyEmail: string | null
   usesSystem: string | null
   dateOfBirth: string | null

@@ -6,9 +6,10 @@
  * same fields. Self-contained: it runs create/update/delete and refreshes.
  */
 
-import { useMemo, useState, useTransition, type ReactNode } from 'react'
+import { useMemo, useState, useTransition, type ChangeEvent, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createPerson, updatePerson, deletePerson, type PersonInput } from '@/app/(app)/admin/people/actions'
+import { uploadPersonAttachment, deletePersonAttachment, signedAttachmentUrl } from '@/app/(app)/admin/people/attachment-actions'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -20,6 +21,7 @@ import {
   ynPill,
   teamKeyFromName,
   type PersonView,
+  type PersonAttachment,
   type Account,
   type Pill,
   type TeamKey,
@@ -31,18 +33,22 @@ export type ModalState = null | { mode: 'view' | 'edit'; person: PersonView | nu
 interface EmailDraft { has: boolean; addr: string }
 interface Draft {
   full_name: string
+  lastName: string
   title: string
   teamId: string
   manager_id: string
   alsoReportsToId: string
   reportsToManager: string
+  managerNameText: string
   employmentType: string
   schedule: string
   weeklyHours: string
   internalRate: string
+  teamMeeting: boolean
   status: 'active' | 'inactive'
   phone: string
   location: string
+  whatsappSameNumber: string
   companyEmail: string
   usesSystem: string
   dateOfBirth: string
@@ -65,20 +71,20 @@ function emailDraft(addr: string | null): EmailDraft { return { has: !!addr, add
 function toDraft(p: PersonView | null, defaultTeamId: string): Draft {
   if (!p) {
     return {
-      full_name: '', title: '', teamId: defaultTeamId, manager_id: '', alsoReportsToId: '',
-      reportsToManager: 'no', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
-      status: 'active', phone: '', location: '', companyEmail: 'notyet', usesSystem: 'notyet',
+      full_name: '', lastName: '', title: '', teamId: defaultTeamId, manager_id: '', alsoReportsToId: '',
+      reportsToManager: 'no', managerNameText: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
+      teamMeeting: false, status: 'active', phone: '', location: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
       dateOfBirth: '', hireDate: '', leftOn: '',
       emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
       hasTsheets: true, history: '',
     }
   }
   return {
-    full_name: p.full_name, title: p.title ?? '', teamId: p.teamId ?? '', manager_id: p.manager_id ?? '',
-    alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '',
+    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teamId: p.teamId ?? '', manager_id: p.manager_id ?? '',
+    alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
-    status: p.status, phone: p.phone ?? '', location: p.location ?? '',
+    teamMeeting: p.teamMeeting, status: p.status, phone: p.phone ?? '', location: p.location ?? '', whatsappSameNumber: p.whatsappSameNumber ?? '',
     companyEmail: p.companyEmail ?? '', usesSystem: p.usesSystem ?? '',
     dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
     emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
@@ -126,18 +132,22 @@ export function PersonModal({
   function save() {
     const input: PersonInput = {
       full_name: draft.full_name,
+      last_name: draft.lastName || null,
       title: draft.title || null,
       team_id: draft.teamId || null,
       manager_id: draft.manager_id || null,
       also_reports_to_id: draft.alsoReportsToId || null,
       reports_to_manager: draft.reportsToManager || null,
+      manager_name_text: draft.managerNameText || null,
       employment_type: draft.employmentType || null,
       schedule: draft.schedule || null,
       weekly_hours: parseNum(draft.weeklyHours),
       internal_rate: parseNum(draft.internalRate),
+      team_meeting: draft.teamMeeting,
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
+      whatsapp_same_number: draft.whatsappSameNumber || null,
       company_email: draft.companyEmail || null,
       uses_system: draft.usesSystem || null,
       date_of_birth: draft.dateOfBirth || null,
@@ -194,7 +204,7 @@ export function PersonModal({
 
         {/* body */}
         <div className="flex-1 overflow-y-auto px-8 pt-6 pb-2">
-          {!isEdit && p ? <ViewBody p={p} people={people} /> : <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={managerOptions} teamOptions={teamOptions} />}
+          {!isEdit && p ? <ViewBody p={p} people={people} /> : <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={managerOptions} teamOptions={teamOptions} personId={state.person?.id ?? null} attachments={state.person?.attachments ?? []} />}
           {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         </div>
 
@@ -273,6 +283,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         <div>
           <SectionTitle>Employment</SectionTitle>
           <div className="flex flex-col gap-[13px]">
+            {item('Last name', txt(p.lastName))}
             {item('Type', pillNode(typePill(p.employmentType)))}
             {item('Team', p.teamName ? <span className="font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px]" style={{ color: TEAM_COLOR[p.teamKey], background: `${TEAM_COLOR[p.teamKey]}1a` }}>{p.teamName}</span> : txt('—'))}
             {item('Time', pillNode(timePill(p.schedule)))}
@@ -287,6 +298,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             {item('Reports to', personNode(p.manager_id, p.managerName, p.managerTeamKey))}
             {item('Do you report to a manager?', pillNode(ynPill(p.reportsToManager)))}
             {item('Also reports to', personNode(p.alsoReportsToId, p.alsoReportsToName, p.alsoReportsToTeamKey))}
+            {item('Manager (as stated)', txt(p.managerNameText))}
           </div>
         </div>
         <div>
@@ -302,6 +314,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
           <SectionTitle>Contact</SectionTitle>
           <div className="flex flex-col gap-[13px]">
             {item('Phone / WhatsApp', txt(p.phone))}
+            {item('WhatsApp — same number', pillNode(ynPill(p.whatsappSameNumber)))}
             {item('Location', txt(p.location))}
           </div>
         </div>
@@ -310,6 +323,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
           <div className="flex flex-col gap-[13px]">
             {item('Company email', pillNode(ynPill(p.companyEmail)))}
             {item('Uses the system', pillNode(ynPill(p.usesSystem)))}
+            {item('Team meeting', pillNode(p.teamMeeting ? { kind: 'green', label: 'Yes' } : { kind: 'grey', label: 'No' }))}
           </div>
         </div>
         <div>
@@ -345,6 +359,13 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
           <p className="text-[13.5px] leading-relaxed text-foreground m-0">{p.history}</p>
         </div>
       )}
+
+      {p.attachments.length > 0 && (
+        <div className="mt-6 mb-2">
+          <SectionTitle right={`${p.attachments.length} ${p.attachments.length === 1 ? 'file' : 'files'}`}>Documents</SectionTitle>
+          <AttachmentsSection personId={p.id} attachments={p.attachments} editable={false} />
+        </div>
+      )}
     </>
   )
 }
@@ -357,13 +378,15 @@ function Wrap({ wide, children }: { wide?: boolean; children: ReactNode }) {
 }
 
 function EditBody({
-  draft, set, setDraft, managerOptions, teamOptions,
+  draft, set, setDraft, managerOptions, teamOptions, personId, attachments,
 }: {
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
   setDraft: (fn: (d: Draft) => Draft) => void
   managerOptions: PersonView[]
   teamOptions: TeamOption[]
+  personId: string | null
+  attachments: PersonAttachment[]
 }) {
   const label = (t: string) => <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">{t}</span>
 
@@ -388,7 +411,8 @@ function EditBody({
       <div className="mb-6">
         <SectionTitle>Identity</SectionTitle>
         <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
-          <Wrap wide>{label('Full name')}<input type="text" value={draft.full_name} onChange={e => set('full_name', e.target.value)} className={fieldCls} placeholder="Jane Doe" /></Wrap>
+          <Wrap>{label('Full name')}<input type="text" value={draft.full_name} onChange={e => set('full_name', e.target.value)} className={fieldCls} placeholder="Jane Doe" /></Wrap>
+          <Wrap>{label('Last name')}<input type="text" value={draft.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} placeholder="Doe" /></Wrap>
           <Wrap wide>{label('Job title')}<input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" /></Wrap>
           <Wrap>{label('Team')}
             <select value={draft.teamId} onChange={e => set('teamId', e.target.value)} className={fieldCls}>
@@ -410,7 +434,8 @@ function EditBody({
         <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
           <Wrap>{label('Reports to')}{managerSelect(draft.manager_id, v => set('manager_id', v))}</Wrap>
           <Wrap>{label('Do you report to a manager?')}{seg(draft.reportsToManager, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }, { v: 'sometimes', l: 'Sometimes' }], v => set('reportsToManager', v))}</Wrap>
-          <Wrap wide>{label('Also reports to')}{managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v))}</Wrap>
+          <Wrap>{label('Also reports to')}{managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v))}</Wrap>
+          <Wrap>{label('Manager (as stated)')}<input type="text" value={draft.managerNameText} onChange={e => set('managerNameText', e.target.value)} className={fieldCls} placeholder="Free-text manager name" /></Wrap>
         </div>
       </div>
 
@@ -420,6 +445,7 @@ function EditBody({
         <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
           <Wrap>{label('Phone / WhatsApp')}<input type="text" value={draft.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+1 555 000 0000" /></Wrap>
           <Wrap>{label('Location')}<input type="text" value={draft.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Wrap>
+          <Wrap wide>{label('WhatsApp — same number?')}{seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v))}</Wrap>
           <Wrap>{label('Date of birth')}<input type="date" value={draft.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} /></Wrap>
           <Wrap>{label('Joined on')}<input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} /></Wrap>
           <Wrap>{label('Left on')}<input type="date" value={draft.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} /></Wrap>
@@ -472,13 +498,22 @@ function EditBody({
         <div className="grid grid-cols-2 gap-3">
           <ToggleCard title="Active" desc="Inactive people keep history but can’t sign in." on={draft.status === 'active'} onToggle={() => set('status', draft.status === 'active' ? 'inactive' : 'active')} />
           <ToggleCard title="QuickBooks Time" desc="Linked for logging hours (TSheets)." on={draft.hasTsheets} onToggle={() => set('hasTsheets', !draft.hasTsheets)} />
+          <ToggleCard title="Team meeting" desc="Included in the team meeting (from the board)." on={draft.teamMeeting} onToggle={() => set('teamMeeting', !draft.teamMeeting)} />
         </div>
       </div>
 
       {/* History */}
-      <div className="mb-2">
+      <div className="mb-6">
         <SectionTitle>Employment history</SectionTitle>
         <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Notes on start date, role changes, milestones…" className={`${fieldCls} min-h-[90px] resize-y leading-relaxed`} />
+      </div>
+
+      {/* Documents */}
+      <div className="mb-2">
+        <SectionTitle>Documents</SectionTitle>
+        {personId
+          ? <AttachmentsSection personId={personId} attachments={attachments} editable />
+          : <p className="text-[13px] text-muted">Save this person first, then you can attach documents.</p>}
       </div>
     </>
   )
@@ -494,6 +529,75 @@ function ToggleCard({ title, desc, on, onToggle }: { title: string; desc: string
       <button type="button" onClick={onToggle} role="switch" aria-checked={on} className="relative w-11 h-[25px] rounded-full shrink-0 transition-colors" style={{ background: on ? '#1E7D7F' : '#c9cfd8' }}>
         <span className="absolute top-[3px] left-[3px] w-[19px] h-[19px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.3)] transition-transform" style={{ transform: on ? 'translateX(19px)' : 'translateX(0)' }} />
       </button>
+    </div>
+  )
+}
+
+function fmtSize(bytes: number | null): string {
+  if (bytes == null) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// The person's "History" documents. View mode = download only; edit mode adds
+// upload + delete. Keeps its own list so uploads/deletes show instantly (the
+// modal snapshots the person, so it wouldn't otherwise refresh in place).
+function AttachmentsSection({ personId, attachments, editable }: { personId: string; attachments: PersonAttachment[]; editable?: boolean }) {
+  const router = useRouter()
+  const [list, setList] = useState<PersonAttachment[]>(attachments)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function open(a: PersonAttachment) {
+    setErr(null)
+    try { const url = await signedAttachmentUrl(a.storagePath); window.open(url, '_blank', 'noopener,noreferrer') }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Could not open the file') }
+  }
+  async function onPick(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBusy(true); setErr(null)
+    try {
+      const fd = new FormData(); fd.set('file', file)
+      const added = await uploadPersonAttachment(personId, fd)
+      setList(l => [added, ...l]); router.refresh()
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Upload failed') }
+    finally { setBusy(false) }
+  }
+  async function remove(a: PersonAttachment) {
+    setBusy(true); setErr(null)
+    try { await deletePersonAttachment(a.id); setList(l => l.filter(x => x.id !== a.id)); router.refresh() }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Delete failed') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {list.length === 0 && <p className="text-[13px] text-muted m-0">No documents yet.</p>}
+      {list.map(a => (
+        <div key={a.id} className="flex items-center gap-3 border border-slate-200 rounded-[10px] px-3.5 py-2.5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+          <button type="button" onClick={() => open(a)} className="min-w-0 flex-1 text-left">
+            <span className="block text-[13.5px] font-semibold text-tn-ink truncate hover:text-tn-teal">{a.fileName}</span>
+            {fmtSize(a.sizeBytes) && <span className="block text-[11px] text-muted">{fmtSize(a.sizeBytes)}</span>}
+          </button>
+          {editable && (
+            <button type="button" disabled={busy} onClick={() => remove(a)} aria-label="Delete document" className="shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-[8px] text-muted transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+            </button>
+          )}
+        </div>
+      ))}
+      {editable && (
+        <label className="inline-flex items-center gap-2 self-start cursor-pointer font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3.5 py-2.5 transition-colors hover:bg-tn-teal-soft">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          {busy ? 'Uploading…' : 'Add document'}
+          <input type="file" className="hidden" onChange={onPick} disabled={busy} />
+        </label>
+      )}
+      {err && <p className="text-[12.5px] text-red-600 m-0">{err}</p>}
     </div>
   )
 }

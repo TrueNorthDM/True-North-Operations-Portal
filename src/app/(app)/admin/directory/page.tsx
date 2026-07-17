@@ -6,7 +6,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
-import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type TeamKey } from '@/components/admin/people-types'
+import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type TeamKey } from '@/components/admin/people-types'
+import { ImportFromMondayButton } from '@/components/admin/ImportFromMondayButton'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { AccessRow } from '@/components/admin/AccessMatrix'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
@@ -14,10 +15,10 @@ import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
 const PEOPLE_FULL =
-  'id, full_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
-  'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, ' +
-  'email_true_north, email_goodnews, email_coe, email_personal, phone, location, ' +
-  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history'
+  'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
+  'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, manager_name_text, ' +
+  'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
+  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history, team_meeting'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
 
 const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
@@ -33,12 +34,13 @@ export default async function DirectoryPage() {
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }] = await Promise.all([
+  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }, aRes] = await Promise.all([
     supabase.from('teams').select('id, name, leader_person_id'),
     supabase.from('team_members').select('team_id, person_id'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
+    supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -47,6 +49,14 @@ export default async function DirectoryPage() {
   const grants = gData ?? []
   const sites = sData ?? []
   const profiles = prData ?? []
+
+  // "History" documents, grouped per person (empty if migration 033 isn't applied).
+  const attachmentsByPerson = new Map<string, PersonAttachment[]>()
+  for (const a of aRes.data ?? []) {
+    const arr = attachmentsByPerson.get(a.person_id) ?? []
+    arr.push({ id: a.id, fileName: a.file_name, storagePath: a.storage_path, mime: a.mime, sizeBytes: a.size_bytes, uploadedAt: a.uploaded_at })
+    attachmentsByPerson.set(a.person_id, arr)
+  }
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -89,6 +99,7 @@ export default async function DirectoryPage() {
       return {
         id: p.id,
         full_name: p.full_name,
+        lastName: str(p.last_name),
         title: str(p.title),
         teamId: pt?.id ?? null,
         teamName: pt?.name ?? null,
@@ -100,13 +111,16 @@ export default async function DirectoryPage() {
         alsoReportsToName: alsoId ? nameById.get(alsoId) ?? null : null,
         alsoReportsToTeamKey: alsoId ? teamKeyByPerson.get(alsoId) ?? 'other' : null,
         reportsToManager: str(p.reports_to_manager),
+        managerNameText: str(p.manager_name_text),
         employmentType: str(p.employment_type),
         schedule: str(p.schedule),
         weeklyHours: num(p.weekly_hours),
         internalRate: num(p.internal_rate),
+        teamMeeting: p.team_meeting === true,
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         phone: str(p.phone),
         location: str(p.location),
+        whatsappSameNumber: str(p.whatsapp_same_number),
         companyEmail: str(p.company_email),
         usesSystem: str(p.uses_system),
         dateOfBirth: str(p.date_of_birth),
@@ -122,6 +136,7 @@ export default async function DirectoryPage() {
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
         history: str(p.employment_history),
+        attachments: attachmentsByPerson.get(p.id) ?? [],
       }
     })
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
@@ -183,12 +198,15 @@ export default async function DirectoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-[13px] text-muted">
-        <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
-        <span className="text-slate-300">/</span>
-        <Link href="/admin" className="font-semibold hover:text-tn-ink">Admin</Link>
-        <span className="text-slate-300">/</span>
-        <span className="font-semibold text-tn-ink">Directory</span>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-[13px] text-muted">
+          <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
+          <span className="text-slate-300">/</span>
+          <Link href="/admin" className="font-semibold hover:text-tn-ink">Admin</Link>
+          <span className="text-slate-300">/</span>
+          <span className="font-semibold text-tn-ink">Directory</span>
+        </div>
+        <ImportFromMondayButton />
       </div>
 
       <DirectoryTabs

@@ -136,6 +136,25 @@ export type PersonRow = {
   employment_history: string | null
   // i7 budget roster (migration 032): which i7 projects the person works on.
   i7_projects: string[] | null
+  // HR fields brought over from the True North Team Monday board (migration 033).
+  last_name: string | null
+  team_meeting: boolean
+  manager_name_text: string | null    // free-text manager (board question)
+  whatsapp_same_number: string | null // 'yes' | 'no'
+  monday_item_id: string | null       // board item id — importer idempotency
+}
+
+// The "History" file attachments on a person, held in the private person-files
+// Storage bucket (migration 033). Imported from the board + uploaded in-portal.
+export type PersonAttachmentRow = {
+  id: string
+  person_id: string
+  file_name: string
+  storage_path: string
+  mime: string | null
+  size_bytes: number | null
+  monday_asset_id: string | null
+  uploaded_at: string
 }
 
 export type TeamRow = {
@@ -341,6 +360,20 @@ export type Database = {
           {
             foreignKeyName: 'people_manager_id_fkey'
             columns: ['manager_id']
+            isOneToOne: false
+            referencedRelation: 'people'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      person_attachments: {
+        Row: PersonAttachmentRow
+        Insert: Partial<Omit<PersonAttachmentRow, 'id' | 'uploaded_at'>> & { person_id: string; file_name: string; storage_path: string }
+        Update: Partial<Omit<PersonAttachmentRow, 'id' | 'uploaded_at'>>
+        Relationships: [
+          {
+            foreignKeyName: 'person_attachments_person_id_fkey'
+            columns: ['person_id']
             isOneToOne: false
             referencedRelation: 'people'
             referencedColumns: ['id']

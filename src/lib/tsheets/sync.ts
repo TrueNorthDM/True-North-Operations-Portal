@@ -19,7 +19,7 @@ import { retentionFloorDate } from './retention'
 
 /** lowercase, strip accents, collapse whitespace. */
 const COMBINING_MARKS = new RegExp('[\\u0300-\\u036f]', 'g')
-function normalizeName(s: string): string {
+export function normalizeName(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(COMBINING_MARKS, '').replace(/\s+/g, ' ').trim()
 }
 
@@ -57,7 +57,7 @@ function editDistance(a: string, b: string): number {
  * equal, OR the last names match and the first names are equal / a nickname /
  * off by a single character. Requiring the last name to match keeps it precise.
  */
-function namesMatch(tFirst: string, tLast: string, dirFullName: string): boolean {
+export function namesMatch(tFirst: string, tLast: string, dirFullName: string): boolean {
   const dir = normalizeName(dirFullName)
   const tFull = `${tFirst} ${tLast}`.trim()
   if (dir && dir === tFull) return true
