@@ -53,12 +53,17 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
 
   function set(k: string, v: string) { setVals(s => ({ ...s, [k]: v })) }
   function startEdit() { setVals(initial()); setError(null); setEditing(true) }
-  function cancel() { setVals(initial()); setError(null); setEditing(false); setToast(null) }
+  function cancel() { setVals(initial()); setError(null); setEditing(false); setToast(null); setCopyFor(null) }
 
   // ── Fill helpers: copy a month across, or a project across — with a flash on the
   // changed cells and an undoable toast. All draft-only (Cancel / Review still gate).
   const [flash, setFlash] = useState<Set<string>>(new Set())
-  const [toast, setToast] = useState<null | { msg: string; undo: () => void; alt?: { label: string; run: () => void } }>(null)
+  const [toast, setToast] = useState<null | { msg: string; undo: () => void }>(null)
+  // Copy-a-month dialog: which month opened it, the chosen scope, and (for the
+  // "select months" scope) which target months are ticked.
+  const [copyFor, setCopyFor] = useState<string | null>(null)
+  const [copyScope, setCopyScope] = useState<'all' | 'future' | 'select'>('all')
+  const [copySel, setCopySel] = useState<Set<string>>(new Set())
 
   function flashKeys(keys: string[]) {
     if (!keys.length) return
@@ -70,9 +75,18 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
     window.setTimeout(() => setToast(cur => (cur === t ? null : cur)), 6000)
   }
 
-  function copyMonth(sourceYm: string, scope: 'all' | 'later') {
+  function openCopy(ym: string) { setCopyFor(ym); setCopyScope('all'); setCopySel(new Set()) }
+  function copyTargets(sourceYm: string): string[] {
+    if (copyScope === 'future') return months.filter(m => m > sourceYm)
+    if (copyScope === 'select') return months.filter(m => m !== sourceYm && copySel.has(m))
+    return months.filter(m => m !== sourceYm)
+  }
+  function applyCopy() {
+    if (!copyFor) return
+    const sourceYm = copyFor
+    const targets = copyTargets(sourceYm)
+    if (!targets.length) return
     const prev = { ...vals }
-    const targets = months.filter(m => m !== sourceYm && (scope === 'all' || m > sourceYm))
     const next = { ...vals }
     const changed: string[] = []
     for (const p of projects) {
@@ -80,15 +94,10 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
       for (const m of targets) { const k = key(p, m); if (next[k] !== v) { next[k] = v; changed.push(k) } }
     }
     setVals(next)
+    setCopyFor(null)
     flashKeys(changed)
     const n = targets.length
-    raiseToast({
-      msg: `Copied ${monthLabel(sourceYm)} to ${n} month${n !== 1 ? 's' : ''}`,
-      undo: () => { setVals(prev); setToast(null) },
-      alt: scope === 'all' && sourceYm < months[months.length - 1]
-        ? { label: 'Later only', run: () => { setVals(prev); copyMonth(sourceYm, 'later') } }
-        : undefined,
-    })
+    raiseToast({ msg: `Copied ${monthLabel(sourceYm)} to ${n} month${n !== 1 ? 's' : ''}`, undo: () => { setVals(prev); setToast(null) } })
   }
 
   function fillProject(project: string, sourceYm: string) {
@@ -177,9 +186,9 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
                     {editing && (
                       <button
                         type="button"
-                        onClick={() => copyMonth(ym, 'all')}
-                        title={`Copy ${monthLabel(ym)} to the other months`}
-                        aria-label={`Copy ${monthLabel(ym)} to the other months`}
+                        onClick={() => openCopy(ym)}
+                        title={`Copy ${monthLabel(ym)} to other months`}
+                        aria-label={`Copy ${monthLabel(ym)} to other months`}
                         className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-[6px] text-[var(--bdg-orange-fg)] hover:bg-[#e08a1e] hover:text-white transition-colors"
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
@@ -262,7 +271,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
       {error && <p className="text-xs text-red-600">{error}</p>}
       {editing && (
         <p className="text-[11px] text-muted px-0.5 leading-relaxed">
-          <b className="text-foreground">Copy a month</b> with the copy icon in its header (fills the other months); <b className="text-foreground">fill one project</b> with the → on a focused cell. Both are undoable and only apply when you save.
+          <b className="text-foreground">Copy a month</b> with the copy icon in its header — then choose which months to apply it to; <b className="text-foreground">fill one project</b> with the → on a focused cell. Both are undoable and only apply when you save.
         </p>
       )}
       {editing && (
@@ -288,14 +297,63 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
         loading={loading}
       />
 
+      {copyFor && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4" onClick={() => setCopyFor(null)}>
+          <div className="w-full max-w-md rounded-[16px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] overflow-hidden tn-modal animate-[tn-modal-in_.2s_ease]" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-200">
+              <h3 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink">Copy {monthLabel(copyFor)} to other months</h3>
+              <p className="text-xs text-muted mt-1">Applies {monthLabel(copyFor)}&rsquo;s hours (all projects) to the months you choose.</p>
+            </div>
+            <div className="p-5 space-y-2">
+              {([
+                { v: 'all', label: 'All other months', desc: `Every month except ${monthLabel(copyFor)}` },
+                { v: 'future', label: 'Future months only', desc: `Months after ${monthLabel(copyFor)}` },
+                { v: 'select', label: 'Select months', desc: 'Pick exactly which months' },
+              ] as const).map(o => {
+                const on = copyScope === o.v
+                return (
+                  <button key={o.v} type="button" onClick={() => setCopyScope(o.v)} className={`flex items-start gap-3 w-full text-left rounded-[11px] border px-3.5 py-3 transition-colors ${on ? 'border-tn-teal bg-tn-teal-soft' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <span className={`shrink-0 mt-0.5 inline-flex w-[18px] h-[18px] rounded-full border-2 items-center justify-center ${on ? 'border-tn-teal' : 'border-slate-300'}`}>
+                      {on && <span className="w-2.5 h-2.5 rounded-full bg-tn-teal" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{o.label}</span>
+                      <span className="block text-[11.5px] text-muted mt-0.5">{o.desc}</span>
+                    </span>
+                  </button>
+                )
+              })}
+              {copyScope === 'select' && (
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {months.filter(m => m !== copyFor).map(m => {
+                    const on = copySel.has(m)
+                    return (
+                      <button key={m} type="button" onClick={() => setCopySel(s => { const n = new Set(s); if (n.has(m)) n.delete(m); else n.add(m); return n })} className={`inline-flex items-center gap-2 rounded-[9px] border px-3 py-2 text-[12.5px] font-medium transition-colors ${on ? 'border-tn-teal bg-tn-teal-soft text-tn-teal' : 'border-slate-200 text-foreground hover:border-slate-300'}`}>
+                        <span className={`inline-flex w-4 h-4 rounded-[5px] border items-center justify-center ${on ? 'bg-tn-teal border-tn-teal text-white' : 'border-slate-300'}`}>
+                          {on && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>}
+                        </span>
+                        {monthLabel(m)}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
+              <button type="button" onClick={() => setCopyFor(null)} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Cancel</button>
+              <button type="button" onClick={applyCopy} disabled={copyTargets(copyFor).length === 0} className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-sm font-(family-name:--font-display) font-extrabold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                <span className="text-[#ffffff]">Apply to {copyTargets(copyFor).length} month{copyTargets(copyFor).length !== 1 ? 's' : ''}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3.5 bg-[#012358] rounded-[12px] px-4 py-2.5 shadow-[0_16px_36px_-10px_rgba(1,20,45,.7)] animate-[tn-modal-in_.2s_ease]">
           <span className="text-[13px] font-medium text-[#ffffff]">{toast.msg}</span>
-          {toast.alt && (
-            <button type="button" onClick={toast.alt.run} className="text-[12.5px] font-(family-name:--font-display) font-extrabold text-[#F2C40A] hover:underline">{toast.alt.label}</button>
-          )}
           <button type="button" onClick={toast.undo} className="text-[12.5px] font-(family-name:--font-display) font-extrabold text-[#ffffff] hover:underline">Undo</button>
-          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss" className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[#ffffff] opacity-60 hover:opacity-100 hover:bg-[rgba(255,255,255,.12)] text-base leading-none">×</button>
+          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss" className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[#ffffff] opacity-60 hover:opacity-100 hover:bg-[rgba(255,255,255,.12)] text-base leading-none">&times;</button>
         </div>
       )}
     </div>
