@@ -63,17 +63,7 @@ const DirectoryIcon = (
   </svg>
 )
 
-// Board — a table whose top row sweeps in, hinting a live-synced grid.
-const TeamBoardIcon = (
-  <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="3" y="4" width="18" height="16" rx="2" />
-    <path d="M9 4v16M3 9.5h18" />
-    <path className="tn-anim" style={{ animation: 'tn-appear 3s ease-in-out infinite' }} d="M3 14.5h18" />
-  </svg>
-)
-
 const CARDS = [
-  { href: '/admin/team', title: 'True North Team', icon: TeamBoardIcon, description: 'The whole team, mirrored live from the Monday board — the same groups, columns and status, always current.' },
   { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker — everything we need to resolve, so nothing gets lost.' },
   { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end — tick off what works.' },
   { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works — pages, access, and how Monday feeds it.' },

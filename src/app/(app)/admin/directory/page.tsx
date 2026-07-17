@@ -18,7 +18,7 @@ const PEOPLE_FULL =
   'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
   'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, manager_name_text, ' +
   'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
-  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history, team_meeting, monday_docs'
+  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history, team_meeting'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
 
 const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
@@ -34,13 +34,16 @@ export default async function DirectoryPage() {
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }, aRes] = await Promise.all([
+  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes] = await Promise.all([
     supabase.from('teams').select('id, name, leader_person_id'),
     supabase.from('team_members').select('team_id, person_id'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
+    // Separate + graceful: monday_docs (migration 034) may not exist yet — a
+    // failed query here must NOT drop the whole PEOPLE_FULL select.
+    supabase.from('people').select('id, monday_docs'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -57,6 +60,10 @@ export default async function DirectoryPage() {
     arr.push({ id: a.id, fileName: a.file_name, storagePath: a.storage_path, mime: a.mime, sizeBytes: a.size_bytes, uploadedAt: a.uploaded_at })
     attachmentsByPerson.set(a.person_id, arr)
   }
+
+  // Monday Docs text per person (empty if migration 034 isn't applied).
+  const mondayDocsById = new Map<string, string>()
+  for (const d of dRes.data ?? []) if (d.monday_docs) mondayDocsById.set(d.id, d.monday_docs)
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -136,7 +143,7 @@ export default async function DirectoryPage() {
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
         history: str(p.employment_history),
-        mondayDocs: str(p.monday_docs),
+        mondayDocs: mondayDocsById.get(p.id) ?? null,
         attachments: attachmentsByPerson.get(p.id) ?? [],
       }
     })
