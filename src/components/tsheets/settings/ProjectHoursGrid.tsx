@@ -24,7 +24,15 @@ const fmtHrs = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\
 // Shared first-column width so this table lines up with the monthly-budget one.
 const COL0 = 'w-52'
 
-export function ProjectHoursGrid({ clientId, projects, hours }: { clientId: number; projects: readonly string[]; hours: ProjectMonthHours[] }) {
+export function ProjectHoursGrid({ clientId, projects, hours, rates, budgets }: {
+  clientId: number
+  projects: readonly string[]
+  hours: ProjectMonthHours[]
+  /** project → its average $/h (from People & rates). Enables the $ allocation footer. */
+  rates?: Record<string, number | null>
+  /** month 'YYYY-MM' → the month's $ ceiling (budget + extra). */
+  budgets?: Record<string, number>
+}) {
   const router = useRouter()
   const months = editableMonths(new Date())
   const existing = new Map(hours.map(h => [key(h.project, h.month), h.hours]))
@@ -82,6 +90,18 @@ export function ProjectHoursGrid({ clientId, projects, hours }: { clientId: numb
   const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 whitespace-nowrap'
   const changeCount = diff().changes.length
 
+  // ── $ allocation (live): allocated = Σ hours × the project's rate; the month's
+  // budget (budget + extra) is the ceiling; left/over = ceiling − allocated.
+  const money = (n: number) => `$${Math.round(n).toLocaleString()}`
+  const curHours = (p: string, ym: string) => {
+    if (editing) { const v = vals[key(p, ym)]; return v === '' ? 0 : Number(v) || 0 }
+    return existing.get(key(p, ym)) ?? 0
+  }
+  const allocatedFor = (ym: string) => projects.reduce((s, p) => s + curHours(p, ym) * (rates?.[p] ?? 0), 0)
+  const ceilingFor = (ym: string) => budgets?.[ym] ?? 0
+  const showAlloc = !!budgets && Object.keys(budgets).some(m => (budgets[m] ?? 0) > 0)
+  const sumCell = 'px-3 py-2 text-right tabular-nums whitespace-nowrap'
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -121,8 +141,38 @@ export function ProjectHoursGrid({ clientId, projects, hours }: { clientId: numb
               </tr>
             ))}
           </tbody>
+          {showAlloc && (
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 bg-subtle">
+                <td className={`text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle ${COL0}`}>Allocated</td>
+                {months.map(ym => <td key={ym} className={`${sumCell} font-semibold text-tn-ink`}>{money(allocatedFor(ym))}</td>)}
+              </tr>
+              <tr className="bg-subtle">
+                <td className={`text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle ${COL0}`}>Budget (ceiling)</td>
+                {months.map(ym => <td key={ym} className={`${sumCell} text-muted`}>{ceilingFor(ym) > 0 ? money(ceilingFor(ym)) : <span className="text-slate-300">—</span>}</td>)}
+              </tr>
+              <tr className="bg-subtle border-t border-slate-200">
+                <td className={`text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle ${COL0}`}>Left to allocate</td>
+                {months.map(ym => {
+                  const left = ceilingFor(ym) - allocatedFor(ym)
+                  if (ceilingFor(ym) <= 0) return <td key={ym} className={`${sumCell} text-slate-300`}>—</td>
+                  const over = left < 0
+                  return (
+                    <td key={ym} className={`${sumCell} font-(family-name:--font-display) font-extrabold ${over ? 'text-[var(--bdg-red-fg)]' : 'text-[var(--bdg-green-fg)]'}`}>
+                      {over ? `${money(-left)} over` : money(left)}
+                    </td>
+                  )
+                })}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
+      {showAlloc && (
+        <p className="text-[11px] text-muted leading-relaxed px-0.5">
+          <b className="text-foreground">Allocated</b> = each project’s hours × its average rate (from People &amp; rates). <b className="text-foreground">Budget</b> = the month’s budget + extra (the ceiling). <b className="text-foreground">Left</b> = ceiling − allocated; red means the month is over budget.
+        </p>
+      )}
       {error && <p className="text-xs text-red-600">{error}</p>}
       {editing && (
         <div className="flex items-center justify-end gap-3">

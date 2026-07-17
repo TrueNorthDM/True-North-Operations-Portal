@@ -184,7 +184,13 @@ function ClientBudgetModal({ client, projectRates, onClose }: { client: ClientWi
               <MonthlyBudgetGrid budgets={client.monthlyBudgets!} />
               <div className="border-t border-slate-100 pt-6 space-y-4">
                 {projectRates && projectRates.length > 0 && <ProjectRateStrip rates={projectRates} />}
-                <ProjectHoursGrid clientId={client.id} projects={I7_PROJECTS} hours={client.projectMonthHours ?? []} />
+                <ProjectHoursGrid
+                  clientId={client.id}
+                  projects={I7_PROJECTS}
+                  hours={client.projectMonthHours ?? []}
+                  rates={projectRates ? Object.fromEntries(projectRates.map(r => [r.project, r.avgRate])) : undefined}
+                  budgets={Object.fromEntries((client.monthlyBudgets ?? []).map(mb => [mb.month, mb.budget + mb.extra]))}
+                />
               </div>
             </div>
           ) : mode === 'view' ? (
