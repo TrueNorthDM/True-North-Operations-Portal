@@ -12,7 +12,6 @@ import { TsheetsTokenField } from '@/components/TsheetsTokenField'
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { loadProjectDirectory } from '@/lib/tsheets/report-data'
-import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
 import { ClientsProjectsTab } from '@/components/tsheets/settings/ClientsProjectsTab'
 import { PeopleTab } from '@/components/tsheets/settings/PeopleTab'
@@ -192,8 +191,8 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div className="space-y-5">
-          <SectionHead title="People & rates" desc="Everyone who logs time on i7. Rate / client is what the client is billed per hour; Rate / cost is what the hour costs internally. Changes are justified and audited." />
-          <PeopleTab people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} directoryOptions={budget.directoryOptions} allProjects={[...I7_PROJECTS]} />
+          <SectionHead title="People & rates" desc="Everyone who logs time on i7. Person, team, report-to and joined-on come from the Directory; here you set Rate / client (what the client is billed per hour) and Rate / cost (what the hour costs internally)." />
+          <PeopleTab people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} />
         </div>
       ),
     },
