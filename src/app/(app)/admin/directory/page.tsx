@@ -41,9 +41,9 @@ export default async function DirectoryPage() {
     supabase.from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
-    // Separate + graceful: monday_docs (migration 034) may not exist yet — a
-    // failed query here must NOT drop the whole PEOPLE_FULL select.
-    supabase.from('people').select('id, monday_docs'),
+    // Separate + graceful: monday_docs (034) / role_type (035) may not exist yet
+    // — a failed query here must NOT drop the whole PEOPLE_FULL select.
+    supabase.from('people').select('id, monday_docs, role_type'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -61,9 +61,14 @@ export default async function DirectoryPage() {
     attachmentsByPerson.set(a.person_id, arr)
   }
 
-  // Monday Docs text per person (empty if migration 034 isn't applied).
+  // Monday Docs text (034) + contact type (035) per person; empty/'user' default
+  // if the migration isn't applied yet.
   const mondayDocsById = new Map<string, string>()
-  for (const d of dRes.data ?? []) if (d.monday_docs) mondayDocsById.set(d.id, d.monday_docs)
+  const roleTypeById = new Map<string, string>()
+  for (const d of dRes.data ?? []) {
+    if (d.monday_docs) mondayDocsById.set(d.id, d.monday_docs)
+    if (d.role_type) roleTypeById.set(d.id, d.role_type)
+  }
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -124,6 +129,7 @@ export default async function DirectoryPage() {
         weeklyHours: num(p.weekly_hours),
         internalRate: num(p.internal_rate),
         teamMeeting: p.team_meeting === true,
+        roleType: roleTypeById.get(p.id) ?? 'user',
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         phone: str(p.phone),
         location: str(p.location),

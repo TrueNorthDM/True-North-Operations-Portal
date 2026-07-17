@@ -19,6 +19,9 @@ import {
   timePill,
   statusPill,
   ynPill,
+  roleTypePill,
+  ROLE_TYPE_OPTIONS,
+  ROLE_TYPE_LABEL,
   teamKeyFromName,
   type PersonView,
   type PersonAttachment,
@@ -45,6 +48,7 @@ interface Draft {
   weeklyHours: string
   internalRate: string
   teamMeeting: boolean
+  roleType: string
   status: 'active' | 'inactive'
   phone: string
   location: string
@@ -74,7 +78,7 @@ function toDraft(p: PersonView | null, defaultTeamId: string): Draft {
     return {
       full_name: '', lastName: '', title: '', teamId: defaultTeamId, manager_id: '', alsoReportsToId: '',
       reportsToManager: 'no', managerNameText: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
-      teamMeeting: false, status: 'active', phone: '', location: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
+      teamMeeting: false, roleType: 'user', status: 'active', phone: '', location: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
       dateOfBirth: '', hireDate: '', leftOn: '',
       emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
       hasTsheets: true, history: '', mondayDocs: '',
@@ -85,7 +89,7 @@ function toDraft(p: PersonView | null, defaultTeamId: string): Draft {
     alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
-    teamMeeting: p.teamMeeting, status: p.status, phone: p.phone ?? '', location: p.location ?? '', whatsappSameNumber: p.whatsappSameNumber ?? '',
+    teamMeeting: p.teamMeeting, roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', whatsappSameNumber: p.whatsappSameNumber ?? '',
     companyEmail: p.companyEmail ?? '', usesSystem: p.usesSystem ?? '',
     dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
     emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
@@ -145,6 +149,7 @@ export function PersonModal({
       weekly_hours: parseNum(draft.weeklyHours),
       internal_rate: parseNum(draft.internalRate),
       team_meeting: draft.teamMeeting,
+      role_type: draft.roleType,
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
@@ -193,6 +198,7 @@ export function PersonModal({
                 <p className="text-sm text-muted mt-1 font-semibold">{headJob}</p>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                   <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[headTeamKey], background: `${TEAM_COLOR[headTeamKey]}1a` }}>{teamNameById.get(isEdit ? draft.teamId : p?.teamId ?? '') ?? 'No team'}</span>
+                  {!isEdit && p && p.roleType !== 'user' && <PillBadge pill={roleTypePill(p.roleType)} />}
                   {!isEdit && p && <PillBadge pill={statusPill(p.status === 'active')} />}
                   {isEdit && <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">Editing</span>}
                 </div>
@@ -285,6 +291,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         <div>
           <SectionTitle>Employment</SectionTitle>
           <div className="flex flex-col gap-[13px]">
+            {item('Contact type', <PillBadge pill={roleTypePill(p.roleType)} />)}
             {item('Last name', txt(p.lastName))}
             {item('Type', pillNode(typePill(p.employmentType)))}
             {item('Team', p.teamName ? <span className="font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px]" style={{ color: TEAM_COLOR[p.teamKey], background: `${TEAM_COLOR[p.teamKey]}1a` }}>{p.teamName}</span> : txt('—'))}
@@ -430,6 +437,11 @@ function EditBody({
             </select>
           </Wrap>
           <Wrap>{label('Status')}{seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive'))}</Wrap>
+          <Wrap>{label('Contact type')}
+            <select value={draft.roleType} onChange={e => set('roleType', e.target.value)} className={fieldCls}>
+              {ROLE_TYPE_OPTIONS.map(r => <option key={r} value={r}>{ROLE_TYPE_LABEL[r]}</option>)}
+            </select>
+          </Wrap>
           <Wrap>{label('Type')}{seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v))}</Wrap>
           <Wrap>{label('Time')}{seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v))}</Wrap>
           <Wrap>{label('Weekly hours')}<input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" /></Wrap>

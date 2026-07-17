@@ -46,6 +46,7 @@ export interface PersonView {
   weeklyHours: number | null
   internalRate: number | null
   teamMeeting: boolean // "Team Meeting" checkbox (board)
+  roleType: string // contact type: 'user'|'admin'|'admin_assistant'|'team_leader'
   status: 'active' | 'inactive'
 
   // Contact
@@ -93,6 +94,7 @@ export interface PersonDraft {
   weeklyHours: number | null
   internalRate: number | null
   teamMeeting: boolean
+  roleType: string
   status: 'active' | 'inactive'
   phone: string | null
   location: string | null
@@ -166,6 +168,18 @@ export const ynPill = (v: string | null): Pill | null => {
   if (v === 'sometimes') return { kind: 'pink', label: 'Sometimes' }
   if (v === 'notyet') return { kind: 'red', label: 'Not yet' }
   return null
+}
+
+// Contact type (migration 035) — a directory label, distinct from RBAC grants.
+export const ROLE_TYPE_OPTIONS = ['user', 'admin', 'admin_assistant', 'team_leader'] as const
+export const ROLE_TYPE_LABEL: Record<string, string> = {
+  user: 'User', admin: 'Admin', admin_assistant: 'Admin Assistant', team_leader: 'Team Leader',
+}
+export const roleTypePill = (v: string): Pill => {
+  if (v === 'admin') return { kind: 'violet', label: 'Admin' }
+  if (v === 'admin_assistant') return { kind: 'blue', label: 'Admin Assistant' }
+  if (v === 'team_leader') return { kind: 'amber', label: 'Team Leader' }
+  return { kind: 'grey', label: 'User' }
 }
 
 // Access-grant roles — the product vocabulary from the design (migration 030).

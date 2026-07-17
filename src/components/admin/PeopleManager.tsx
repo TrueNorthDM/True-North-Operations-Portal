@@ -14,15 +14,17 @@ import {
   formatDate,
   typePill,
   timePill,
+  roleTypePill,
   type PersonView,
   type Pill,
 } from './people-types'
 import type { TeamOption } from './DirectoryTabs'
 
-type ColId = 'team' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status'
+type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status'
 
 const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'team', label: 'Team', fr: '1fr' },
+  { id: 'role', label: 'Contact type', fr: '1.1fr' },
   { id: 'job', label: 'Job title', fr: '1.2fr' },
   { id: 'reports', label: 'Reports to', fr: '1.3fr' },
   { id: 'type', label: 'Type', fr: '0.9fr' },
@@ -53,6 +55,12 @@ function PillBadge({ pill }: { pill: Pill }) {
   return (
     <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
   )
+}
+
+// Compact contact-type tag shown next to the name (only for non-user roles).
+function RoleTag({ roleType }: { roleType: string }) {
+  const pill = roleTypePill(roleType)
+  return <span className={`shrink-0 inline-flex items-center font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-[5px] px-1.5 py-0.5 whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
 }
 
 export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void }) {
@@ -222,7 +230,10 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
                 <span className="inline-flex items-center gap-3 min-w-0">
                   <Avatar p={p} />
                   <span className="min-w-0">
-                    <span className="block font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
+                      {p.roleType !== 'user' && <RoleTag roleType={p.roleType} />}
+                    </span>
                     <span className="block text-xs text-muted truncate">{primaryEmail(p) || '—'}</span>
                   </span>
                 </span>
@@ -250,6 +261,7 @@ function Cell({ col, p }: { col: { id: ColId; align?: 'right' }; p: PersonView }
   const wrap = `inline-flex items-center gap-2 min-w-0 ${col.align === 'right' ? 'justify-end' : ''}`
 
   if (col.id === 'team') return <span className={wrap}><span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[p.teamKey], background: `${TEAM_COLOR[p.teamKey]}1a` }}>{p.teamName ?? '—'}</span></span>
+  if (col.id === 'role') return <span className={wrap}><PillBadge pill={roleTypePill(p.roleType)} /></span>
   if (col.id === 'job') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{p.title ?? '—'}</span></span>
   if (col.id === 'joined') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{formatDate(p.hireDate) ?? '—'}</span></span>
   if (col.id === 'rate') return <span className={wrap}><span className="text-[13.5px] font-bold tabular-nums text-tn-ink">{p.internalRate != null ? `$${p.internalRate}` : '—'}</span></span>

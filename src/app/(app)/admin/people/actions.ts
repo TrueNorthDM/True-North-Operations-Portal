@@ -58,6 +58,7 @@ export interface PersonInput {
   manager_name_text?: string | null
   whatsapp_same_number?: string | null
   monday_docs?: string | null
+  role_type?: string
 
   /**
    * Primary team (teams.id) or null. When passed, the person's team membership
@@ -106,6 +107,7 @@ function personColumns(input: PersonInput): PersonCols {
     manager_name_text: trimOrNull(input.manager_name_text),
     whatsapp_same_number: input.whatsapp_same_number || null,
     monday_docs: trimOrNull(input.monday_docs),
+    role_type: input.role_type || 'user',
   }
   return cols
 }
