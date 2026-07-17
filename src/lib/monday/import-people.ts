@@ -172,22 +172,21 @@ export async function probeBoardDocs(): Promise<unknown> {
   const objIds = docCol
     ? items.slice(0, 3).flatMap(it => docObjectIds(it.column_values.find(c => c.id === docCol.id)?.value ?? null)).slice(0, 2)
     : []
-  let docsByObj: unknown = null
-  try {
-    const data = await gql<{ docs: { object_id: string; blocks: DocBlock[] | null }[] }>(
-      token, `query ($ids: [ID!]) { docs(object_ids: $ids) { object_id blocks { type content } } }`, { ids: objIds })
-    docsByObj = (data.docs ?? []).map(d => ({
-      blockCount: (d.blocks ?? []).length,
-      blockTypes: [...new Set((d.blocks ?? []).map(b => b.type))],
-      markdownLen: docToMarkdown(d.blocks ?? []).length,
-      markdownHead: docToMarkdown(d.blocks ?? []).slice(0, 300),
-    }))
-  } catch (e) { docsByObj = { error: e instanceof Error ? e.message : String(e) } }
+  const tryDocs = async (param: 'object_ids' | 'ids') => {
+    try {
+      const data = await gql<{ docs: { object_id: string; blocks: DocBlock[] | null }[] }>(
+        token, `query ($ids: [ID!]) { docs(${param}: $ids) { object_id blocks { type content } } }`, { ids: objIds })
+      return { param, count: (data.docs ?? []).length, sample: (data.docs ?? []).slice(0, 1).map(d => ({ blocks: (d.blocks ?? []).length, blockTypes: [...new Set((d.blocks ?? []).map(b => b.type))], markdownLen: docToMarkdown(d.blocks ?? []).length })) }
+    } catch (e) { return { param, error: e instanceof Error ? e.message : String(e) } }
+  }
+  const byObjectIds = await tryDocs('object_ids')
+  const byIds = await tryDocs('ids')
   return {
     columns: columns.map(c => ({ id: c.id, title: c.title, type: c.type })),
     docColumn: docCol ? { id: docCol.id, title: docCol.title, type: docCol.type } : null,
     docObjectIdsFound: objIds.length,
-    docsByObj,
+    byObjectIds,
+    byIds,
   }
 }
 
