@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { I7Charts } from './I7Charts'
 import { ProjectRows } from './I7ProjectRows'
-import { ExportMenu, NoteCard } from './I7ReportParts'
+import { ExportMenu, ExportImageButton, NoteCard } from './I7ReportParts'
 import { CarryoverPanel } from './I7CarryoverPanel'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
@@ -88,7 +88,10 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           {availableMonths.map(ym => <option key={ym} value={ym}>{monthLabel(ym)}</option>)}
         </select>
         <span className="text-sm text-muted ml-1 tabular-nums">{data.startDate} → {data.endDate}</span>
-        <div className="ml-auto"><ExportMenu month={selectedMonth} /></div>
+        <div className="ml-auto flex items-center gap-2.5">
+          <ExportImageButton month={selectedMonth} />
+          <ExportMenu month={selectedMonth} />
+        </div>
       </div>
 
       {/* View tabs — the same month's data as a table (In Numbers) or charts (In Graphics) */}

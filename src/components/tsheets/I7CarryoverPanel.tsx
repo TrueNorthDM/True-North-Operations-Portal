@@ -51,7 +51,12 @@ export function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: 
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget total this month</div>
-            <div className="text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums text-tn-ink">{moneySigned(c.totalAvailable)}</div>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums text-tn-ink">{moneySigned(c.totalAvailable)}</span>
+              {c.opening !== 0 && (
+                <span className="text-[13px] font-normal text-muted tabular-nums whitespace-nowrap">({money(c.monthBudget)} {c.opening < 0 ? '−' : '+'} {money(Math.abs(c.opening))})</span>
+              )}
+            </div>
           </div>
           <div className="text-right">
             <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Balance left</div>

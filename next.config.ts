@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
   // tracer can't see, so force it into the PDF route's serverless function.
   outputFileTracingIncludes: {
     '/tools/time-report/pdf': ['./node_modules/@sparticuz/chromium/**'],
+    '/tools/time-report/image': ['./node_modules/@sparticuz/chromium/**'],
   },
 };
 
