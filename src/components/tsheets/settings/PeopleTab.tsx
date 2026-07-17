@@ -5,7 +5,7 @@
  *   Person · Team · Report to · Joined on   → read-only, sourced from the Directory
  *   Rate / client · Rate / cost             → the only two things we set here
  *
- * The Directory (/admin/directory) is the source of truth for who exists and their
+ * The Directory (/directory) is the source of truth for who exists and their
  * identity fields; we never create a person here. "Edit" makes both rate columns
  * editable at once; "Save changes" writes every change — client rate via a dated
  * tr_assignments row (so rate history stays intact for past-month reports) and cost

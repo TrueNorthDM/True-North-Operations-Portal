@@ -45,7 +45,7 @@ export async function uploadPersonAttachment(personId: string, formData: FormDat
     await supabase.storage.from(BUCKET).remove([path]) // don't leave an orphan object
     throw new Error(insErr?.message ?? 'Could not save the document')
   }
-  revalidatePath('/admin/directory')
+  revalidatePath('/directory')
   return { id: data.id, fileName: data.file_name, storagePath: data.storage_path, mime: data.mime, sizeBytes: data.size_bytes, uploadedAt: data.uploaded_at }
 }
 
@@ -57,7 +57,7 @@ export async function deletePersonAttachment(id: string) {
   await supabase.storage.from(BUCKET).remove([data.storage_path])
   const { error: delErr } = await supabase.from('person_attachments').delete().eq('id', id)
   if (delErr) throw new Error(delErr.message)
-  revalidatePath('/admin/directory')
+  revalidatePath('/directory')
 }
 
 /** Short-lived signed URL to view/download a private document. */

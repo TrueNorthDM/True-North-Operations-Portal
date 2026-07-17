@@ -19,7 +19,7 @@ async function requireAdmin() {
 }
 
 function revalidate() {
-  revalidatePath('/admin/directory')
+  revalidatePath('/directory')
   revalidatePath('/admin/people')
   revalidatePath('/') // home org chart reads the same directory
 }

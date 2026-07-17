@@ -55,6 +55,15 @@ const WorkIcon = (
   </svg>
 )
 
+// Directory — two people (the org directory / people & teams).
+const DirectoryIcon = (
+  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+)
+
 // Admin — shield with check (access control: people, teams, permissions).
 const AdminIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -118,6 +127,15 @@ const myWorkNav: Item = {
   match: p => p === '/my-work',
 }
 
+// Directory — the People & Teams directory (its own top-level page). Admin-only,
+// like Admin; the /directory route also guards server-side.
+const directoryNav: Item = {
+  href: '/directory',
+  label: 'Directory',
+  icon: DirectoryIcon,
+  match: p => p === '/directory' || p.startsWith('/directory/'),
+}
+
 // Admin — people, teams, and access control. Only shown to portal admins; the
 // /admin route also guards server-side, so hiding the link is convenience only.
 const adminNav: Item = {
@@ -165,6 +183,7 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
         <NavLink item={toolsNav} active={toolsNav.match(pathname)} />
         <NavLink item={myWorkNav} active={myWorkNav.match(pathname)} />
+        {isAdmin && <NavLink item={directoryNav} active={directoryNav.match(pathname)} />}
       </nav>
 
       <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">

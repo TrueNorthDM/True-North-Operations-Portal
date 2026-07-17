@@ -43,31 +43,10 @@ const ManualIcon = (
   </svg>
 )
 
-// People — two figures split apart while a third fades in between (2 → 3),
-// the same motion as the Home "My Team" widget.
-const DirectoryIcon = (
-  <svg className="w-[22px] h-[22px]" style={{ overflow: 'visible' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <g className="tn-anim" style={{ animation: 'tn-split-left 3s ease-in-out infinite' }}>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-    </g>
-    <g className="tn-anim" style={{ animation: 'tn-split-right 3s ease-in-out infinite' }}>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-    </g>
-    <g style={{ transform: 'translateX(3px)' }}>
-      <g className="tn-anim" style={{ transformBox: 'fill-box', transformOrigin: 'center', animation: 'tn-appear 3s ease-in-out infinite' }}>
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-      </g>
-    </g>
-  </svg>
-)
-
 const CARDS = [
   { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker — everything we need to resolve, so nothing gets lost.' },
   { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end — tick off what works.' },
   { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works — pages, access, and how Monday feeds it.' },
-  { href: '/admin/directory', title: 'Directory', icon: DirectoryIcon, description: 'People, teams, and access — one place. Add/edit people (with their TSheets link), manage team membership, and grant each team access to projects.' },
 ] as const
 
 export default async function AdminPage() {
