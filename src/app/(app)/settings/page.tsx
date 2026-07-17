@@ -166,7 +166,7 @@ export default async function SettingsPage() {
               <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
               <FullHistoryButton />
             </div>
-            <ClientsTab clients={budget.clients} projectRates={projectDirectory.rows.map(r => ({ project: r.project, avgRate: r.avgRate }))} />
+            <ClientsTab clients={budget.clients} estimateRate={projectDirectory.highestRate} />
           </div>
           <ChangeHistory entries={budget.auditLog} />
         </div>

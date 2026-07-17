@@ -24,12 +24,12 @@ const fmtHrs = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\
 // Shared first-column width so this table lines up with the monthly-budget one.
 const COL0 = 'w-52'
 
-export function ProjectHoursGrid({ clientId, projects, hours, rates, budgets }: {
+export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budgets }: {
   clientId: number
   projects: readonly string[]
   hours: ProjectMonthHours[]
-  /** project → its average $/h (from People & rates). Enables the $ allocation footer. */
-  rates?: Record<string, number | null>
+  /** The highest Rate/client (People & rates), applied uniformly to estimate the $ each project's hours cost. */
+  estimateRate?: number
   /** month 'YYYY-MM' → the month's $ ceiling (budget + extra). */
   budgets?: Record<string, number>
 }) {
@@ -90,16 +90,17 @@ export function ProjectHoursGrid({ clientId, projects, hours, rates, budgets }: 
   const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 whitespace-nowrap'
   const changeCount = diff().changes.length
 
-  // ── $ allocation (live): allocated = Σ hours × the project's rate; the month's
-  // budget (budget + extra) is the ceiling; left/over = ceiling − allocated.
+  // ── $ allocation (live): a PLANNING estimate — allocated = total budgeted hours
+  // × the highest Rate/client (the same rate for every project); the month's budget
+  // (budget + extra) is the ceiling; left/over = ceiling − allocated.
   const money = (n: number) => `$${Math.round(n).toLocaleString()}`
   const curHours = (p: string, ym: string) => {
     if (editing) { const v = vals[key(p, ym)]; return v === '' ? 0 : Number(v) || 0 }
     return existing.get(key(p, ym)) ?? 0
   }
-  const allocatedFor = (ym: string) => projects.reduce((s, p) => s + curHours(p, ym) * (rates?.[p] ?? 0), 0)
+  const allocatedFor = (ym: string) => (estimateRate ?? 0) * projects.reduce((s, p) => s + curHours(p, ym), 0)
   const ceilingFor = (ym: string) => budgets?.[ym] ?? 0
-  const showAlloc = !!budgets && Object.keys(budgets).some(m => (budgets[m] ?? 0) > 0)
+  const showAlloc = !!estimateRate && estimateRate > 0 && !!budgets && Object.keys(budgets).some(m => (budgets[m] ?? 0) > 0)
   const sumCell = 'px-3 py-2 text-right tabular-nums whitespace-nowrap'
 
   return (
@@ -170,7 +171,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, rates, budgets }: 
       </div>
       {showAlloc && (
         <p className="text-[11px] text-muted leading-relaxed px-0.5">
-          <b className="text-foreground">Allocated</b> = each project’s hours × its average rate (from People &amp; rates). <b className="text-foreground">Budget</b> = the month’s budget + extra (the ceiling). <b className="text-foreground">Left</b> = ceiling − allocated; red means the month is over budget.
+          Planning estimate: <b className="text-foreground">Allocated</b> = total budgeted hours × the highest Rate/client ({money(estimateRate ?? 0)}/h, from People &amp; rates). <b className="text-foreground">Budget</b> = the month’s budget + extra (the ceiling). <b className="text-foreground">Left</b> = ceiling − allocated; red means the hours don’t fit the budget at that rate.
         </p>
       )}
       {error && <p className="text-xs text-red-600">{error}</p>}
