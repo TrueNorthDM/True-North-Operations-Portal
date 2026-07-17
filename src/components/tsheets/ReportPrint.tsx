@@ -136,8 +136,8 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   // ══════════════════════════ CLIENT REPORT ══════════════════════════
   if (type === 'client') {
     const blocks = [
-      { title: 'Included in your i7 invoice', note: 'Wagner Meters & Bessemeter', color: TEAL, headBg: '#eef6f5', projects: i7Projects, invest: i7Cost },
-      ...(mmeProjects.length ? [{ title: 'Moisture Meters (MME)', note: 'Billed to Wagner Meter separately', color: MMEC, headBg: '#fdf6dc', projects: mmeProjects, invest: mmeCost }] : []),
+      { title: 'i7 Marketing, Bessemeter, Wagner Meter', note: '', color: TEAL, headBg: '#eef6f5', projects: i7Projects, invest: i7Cost },
+      ...(mmeProjects.length ? [{ title: 'Moisture Meters', note: '', color: MMEC, headBg: '#fdf6dc', projects: mmeProjects, invest: mmeCost }] : []),
     ]
     return (
       <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
@@ -189,8 +189,8 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               <div style={{ flexBasis: `${100 - i7Pct}%`, background: MMEC }} />
             </div>
             <div className="flex gap-[18px] flex-wrap mt-2 text-[8.7px]">
-              <div className="flex items-center gap-[7px]"><span className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={{ background: TEAL }} /><span style={{ color: BODY }}>Included in your i7 invoice — Wagner Meters, Bessemeter</span></div>
-              <div className="flex items-center gap-[7px]"><span className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={{ background: MMEC }} /><span style={{ color: BODY }}>Moisture Meters (MME) — billed to Wagner Meter separately</span></div>
+              <div className="flex items-center gap-[7px]"><span className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={{ background: TEAL }} /><span style={{ color: BODY }}>i7 Marketing, Bessemeter, Wagner Meter</span></div>
+              <div className="flex items-center gap-[7px]"><span className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={{ background: MMEC }} /><span style={{ color: BODY }}>Moisture Meters</span></div>
             </div>
           </div>
 
@@ -198,12 +198,12 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           {blocks.map(blk => {
             const bHours = blk.projects.reduce((s, p) => s + p.hours, 0)
             return (
-              <div key={blk.title} className={`mt-3 ${blk.title.includes('MME') ? 'break-inside-avoid' : ''}`}>
+              <div key={blk.title} className={`mt-3 ${blk.color === MMEC ? 'break-inside-avoid' : ''}`}>
                 <div className="flex items-center gap-3 p-[6px_18px] rounded-t-[12px]" style={{ background: blk.headBg, border: `1px solid ${BORDER}`, borderBottom: 'none' }}>
                   <span className="w-[11px] h-[11px] rounded-[3px] shrink-0" style={{ background: blk.color }} />
                   <div className="flex-1 min-w-0">
                     <div className="font-(family-name:--font-display) font-black text-[10.7px]" style={{ color: INK }}>{blk.title}</div>
-                    <div className="text-[8.7px] mt-px" style={{ color: MUTED }}>{blk.note}</div>
+                    {blk.note && <div className="text-[8.7px] mt-px" style={{ color: MUTED }}>{blk.note}</div>}
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-(family-name:--font-display) font-black text-[15px] tabular-nums leading-none" style={{ color: blk.color }}>{money(blk.invest)}</div>
@@ -242,7 +242,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #cfd6de', background: '#f7f9fb' }}>
-                        <td className="p-[4px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>Subtotal · {blk.title.includes('MME') ? 'MME invoice' : 'i7 invoice'}</td>
+                        <td className="p-[4px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>Subtotal · {blk.color === MMEC ? 'MME invoice' : 'i7 invoice'}</td>
                         <td className="p-[4px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{fmtHours(bHours)}</td>
                         <td className="p-[4px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{money(blk.invest)}</td>
                         <td className="p-[4px_16px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color, background: 'rgba(30,125,127,.07)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{pctOf(blk.invest, totalCost)}%</td>
@@ -479,9 +479,14 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           </div>
         )}
 
-        {/* invoice-grouped per-person table */}
-        <div className="mt-4 rounded-[12px] overflow-hidden print:overflow-visible" style={{ border: `1px solid ${BORDER}` }}>
-          <table className="w-full text-[10.4px]" style={{ borderCollapse: 'collapse' }}>
+        {/* invoice-grouped per-person table.
+            The frame border lives on the <table>, NOT this wrapper: the table's
+            min-content can be a hair wider than the wrapper, so in print
+            (overflow-visible) the table overflows and a wrapper border would show
+            through the last column as a phantom vertical line. On the table it
+            always sits exactly at the table's own edge. */}
+        <div className="mt-4 rounded-[12px] overflow-hidden print:overflow-visible">
+          <table className="w-full text-[10.4px]" style={{ borderCollapse: 'collapse', border: `1px solid ${BORDER}` }}>
             <thead>
               <tr style={{ background: WARM, borderBottom: `1px solid ${BORDER}` }}>
                 <th className="text-left font-(family-name:--font-display) font-extrabold text-[8.1px] tracking-[.06em] uppercase p-[6px_16px] min-w-[135px]" style={{ color: MUTED }}>Project · Job code · Activity</th>
