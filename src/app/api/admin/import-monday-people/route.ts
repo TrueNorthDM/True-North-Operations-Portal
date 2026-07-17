@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
-import { importMondayPeople, probeBoardDocs } from '@/lib/monday/import-people'
+import { importMondayPeople } from '@/lib/monday/import-people'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -27,15 +27,4 @@ export async function POST() {
   const t0 = Date.now()
   const result = await importMondayPeople(createAdminClient())
   return NextResponse.json({ ...result, elapsedMs: Date.now() - t0 }, { status: result.ok ? 200 : 500 })
-}
-
-// GET ?probe=docs — diagnostic to inspect the History Monday-Doc column shape.
-export async function GET(request: Request) {
-  if (!(await isCurrentUserAdmin())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  if (new URL(request.url).searchParams.get('probe') === 'docs') {
-    return NextResponse.json(await probeBoardDocs())
-  }
-  return NextResponse.json({ error: 'Unknown request' }, { status: 400 })
 }

@@ -160,36 +160,6 @@ async function fetchDocMarkdown(token: string, objectIds: string[]): Promise<Map
 
 type PersonScalars = Database['public']['Tables']['people']['Update']
 
-// Diagnostic (GET ?probe=docs): Monday's doc-column value shape + the docs API
-// block format aren't consistently documented, so we inspect them live before
-// writing the real extraction. Returns the doc column, a few sample cells, and
-// a docs() sample.
-export async function probeBoardDocs(): Promise<unknown> {
-  const token = await getMondayToken()
-  if (!token) return { error: 'No Monday API token configured.' }
-  const { columns, items } = await fetchBoard(token)
-  const docCol = columns.find(c => c.type === 'doc') ?? columns.find(c => /^history$/i.test(c.title))
-  const objIds = docCol
-    ? items.slice(0, 3).flatMap(it => docObjectIds(it.column_values.find(c => c.id === docCol.id)?.value ?? null)).slice(0, 2)
-    : []
-  const itemIds = items.slice(0, 2).map(it => it.id)
-  const tryDocs = async (param: 'object_ids' | 'ids', ids: string[]) => {
-    try {
-      const data = await gql<{ docs: { object_id: string; blocks: DocBlock[] | null }[] }>(
-        token, `query ($ids: [ID!]) { docs(${param}: $ids) { object_id blocks { type content } } }`, { ids })
-      return { count: (data.docs ?? []).length, sample: (data.docs ?? []).slice(0, 1).map(d => ({ blocks: (d.blocks ?? []).length, blockTypes: [...new Set((d.blocks ?? []).map(b => b.type))], markdownLen: docToMarkdown(d.blocks ?? []).length })) }
-    } catch (e) { return { error: e instanceof Error ? e.message.slice(0, 160) : String(e) } }
-  }
-  return {
-    docColumn: docCol ? docCol.type : null,
-    fileObjIdsFound: objIds.length,
-    obj_fileId: await tryDocs('object_ids', objIds),
-    ids_fileId: await tryDocs('ids', objIds),
-    obj_itemId: await tryDocs('object_ids', itemIds),
-    ids_itemId: await tryDocs('ids', itemIds),
-  }
-}
-
 export async function importMondayPeople(supabase: Client): Promise<ImportResult> {
   const warnings: string[] = []
   const result: ImportResult = { ok: false, created: 0, updated: 0, managersLinked: 0, docsImported: 0, docsFailed: 0, warnings }
