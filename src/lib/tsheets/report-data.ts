@@ -172,14 +172,12 @@ export interface ProjectDirectoryRow {
   project: string
   jobCodes: string[]                                          // live TSheets codes, grouped by prefix
   assignedPeople: { id: string; name: string; rate: number }[] // roster people (people.i7_projects)
-  avgRate: number                                             // mean of assigned rates, else the standard rate
-  usingFallback: boolean                                      // true when nobody rated is on the project → standard rate
+  avgRate: number | null                                      // mean of assigned people's People & rates rate; null when no one is assigned
 }
 
 export interface ProjectDirectory {
   clientName: string
   month: string                                        // the YYYY-MM the rates were resolved for
-  standardRate: number
   rows: ProjectDirectoryRow[]
   allPeople: { id: string; name: string }[]            // roster candidates (for the per-project people picker)
 }
@@ -210,18 +208,19 @@ export async function loadProjectDirectory(ym: string): Promise<ProjectDirectory
     projects: ((p as { i7_projects?: string[] | null }).i7_projects) ?? [],
   }))
 
-  const standardRate = standardI7Rate(assignments, ym)
   const rows: ProjectDirectoryRow[] = I7_PROJECTS.map(project => {
     const assigned = roster
       .filter(r => r.projects.includes(project))
       .map(r => ({ id: r.id, name: r.name, rate: rateFor(assignments, r.userId, ym) }))
       .sort((a, b) => a.name.localeCompare(b.name))
     const rated = assigned.filter(r => r.rate > 0)
-    const avgRate = rated.length ? round2(rated.reduce((s, r) => s + r.rate, 0) / rated.length) : standardRate
-    return { project, jobCodes: codesByProject[project] ?? [], assignedPeople: assigned, avgRate, usingFallback: rated.length === 0 }
+    // Rate comes purely from People & rates: the average of the assigned people's
+    // client rate. No standard-rate fallback — an unassigned project has no rate.
+    const avgRate = rated.length ? round2(rated.reduce((s, r) => s + r.rate, 0) / rated.length) : null
+    return { project, jobCodes: codesByProject[project] ?? [], assignedPeople: assigned, avgRate }
   })
 
-  return { clientName: i7?.name ?? 'i7', month: ym, standardRate, rows, allPeople: roster.map(r => ({ id: r.id, name: r.name })) }
+  return { clientName: i7?.name ?? 'i7', month: ym, rows, allPeople: roster.map(r => ({ id: r.id, name: r.name })) }
 }
 
 export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportData> {

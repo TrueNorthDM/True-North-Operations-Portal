@@ -32,7 +32,7 @@ export interface ClientWithBudget {
   projectMonthHours?: ProjectMonthHours[]
 }
 
-export interface ProjectRate { project: string; avgRate: number; usingFallback: boolean }
+export interface ProjectRate { project: string; avgRate: number | null }
 
 interface Props {
   clients: ClientWithBudget[]
@@ -232,13 +232,17 @@ function ProjectRateStrip({ rates }: { rates: ProjectRate[] }) {
         {rates.map(r => (
           <div key={r.project} className="rounded-[10px] border border-slate-200 bg-subtle px-3 py-2.5">
             <div className="text-[11px] font-semibold text-foreground truncate" title={r.project}>{r.project}</div>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-teal tabular-nums">{money(r.avgRate)}</span>
-              <span className="text-[10px] font-semibold text-muted">/h</span>
-            </div>
-            <div className="text-[9.5px] mt-0.5 font-(family-name:--font-display) font-bold uppercase tracking-wide text-muted">
-              {r.usingFallback ? 'Standard' : 'Average'}
-            </div>
+            {r.avgRate != null ? (
+              <>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-teal tabular-nums">{money(r.avgRate)}</span>
+                  <span className="text-[10px] font-semibold text-muted">/h</span>
+                </div>
+                <div className="text-[9.5px] mt-0.5 font-(family-name:--font-display) font-bold uppercase tracking-wide text-muted">Average</div>
+              </>
+            ) : (
+              <div className="text-[10.5px] mt-1 text-muted italic">Not set</div>
+            )}
           </div>
         ))}
       </div>

@@ -19,7 +19,7 @@ import type { ProjectDirectory } from '@/lib/tsheets/report-data'
 const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 
 export function ClientsProjectsTab({ directory }: { directory: ProjectDirectory }) {
-  const { clientName, rows, month, standardRate, allPeople } = directory
+  const { clientName, rows, month, allPeople } = directory
   const router = useRouter()
   const totalCodes = rows.reduce((s, r) => s + r.jobCodes.length, 0)
 
@@ -73,13 +73,17 @@ export function ClientsProjectsTab({ directory }: { directory: ProjectDirectory 
                     <div className="text-[11.5px] text-muted mt-0.5">{row.jobCodes.length} job code{row.jobCodes.length === 1 ? '' : 's'}</div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="inline-flex items-baseline gap-1 rounded-[10px] bg-tn-teal-soft px-3 py-1.5">
-                      <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-teal tabular-nums">{money(row.avgRate)}</span>
-                      <span className="text-[10.5px] font-semibold text-tn-teal/80">/h</span>
-                    </div>
-                    <div className="text-[10px] text-muted mt-1 font-(family-name:--font-display) font-bold uppercase tracking-wide">
-                      {row.usingFallback ? 'Standard rate' : 'Average rate'}
-                    </div>
+                    {row.avgRate != null ? (
+                      <>
+                        <div className="inline-flex items-baseline gap-1 rounded-[10px] bg-tn-teal-soft px-3 py-1.5">
+                          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-teal tabular-nums">{money(row.avgRate)}</span>
+                          <span className="text-[10.5px] font-semibold text-tn-teal/80">/h</span>
+                        </div>
+                        <div className="text-[10px] text-muted mt-1 font-(family-name:--font-display) font-bold uppercase tracking-wide">Average rate</div>
+                      </>
+                    ) : (
+                      <div className="text-[11px] text-muted italic max-w-[150px]">No rate — assign people to set it</div>
+                    )}
                   </div>
                 </div>
 
@@ -173,10 +177,9 @@ export function ClientsProjectsTab({ directory }: { directory: ProjectDirectory 
 
       <p className="text-[12px] text-muted leading-relaxed">
         Job codes are read live from QuickBooks Time (the “1 · i7 Code” field), grouped into projects by prefix. Assign people to
-        a project with <b className="text-foreground">Edit</b> — the <b className="text-foreground">average rate</b> is then the mean
-        billing rate (from People &amp; rates) of those people, resolved for <b className="text-foreground">{month}</b>, and is what
-        the Budget Usage Report multiplies by each project’s budgeted hours. Projects with no one assigned fall back to the standard
-        rate ({money(standardRate)}/h).
+        a project with <b className="text-foreground">Edit</b> — the project’s rate is then the <b className="text-foreground">average</b> of
+        those people’s <b className="text-foreground">Rate / client</b> from People &amp; rates (resolved for <b className="text-foreground">{month}</b>),
+        and is what the Budget Usage Report multiplies by each project’s budgeted hours. A project with no one assigned has no rate yet.
       </p>
     </div>
   )
