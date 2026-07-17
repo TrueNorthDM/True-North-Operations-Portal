@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type TeamKey } from '@/components/admin/people-types'
-import { ImportFromMondayButton } from '@/components/admin/ImportFromMondayButton'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { AccessRow } from '@/components/admin/AccessMatrix'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
@@ -215,13 +214,10 @@ export default async function DirectoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-[13px] text-muted">
-          <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">Directory</span>
-        </div>
-        <ImportFromMondayButton />
+      <div className="flex items-center gap-2 text-[13px] text-muted">
+        <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
+        <span className="text-slate-300">/</span>
+        <span className="font-semibold text-tn-ink">Directory</span>
       </div>
 
       <DirectoryTabs
