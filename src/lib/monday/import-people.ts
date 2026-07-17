@@ -111,6 +111,53 @@ function mailboxPatch(email: string, cur: { email_true_north: string | null; ema
   return cur.email_personal ? {} : { email_personal: e }
 }
 
+// ── Monday Doc → markdown ───────────────────────────────────────────────────
+interface DocBlock { type: string; content: string }
+function blockToLine(b: DocBlock): string {
+  let text = ''
+  try {
+    const c = JSON.parse(b.content || '{}') as { deltaFormat?: { insert?: unknown }[]; deltas?: { insert?: unknown }[]; text?: string }
+    const delta = c.deltaFormat ?? c.deltas
+    if (Array.isArray(delta)) text = delta.map(d => (typeof d?.insert === 'string' ? d.insert : '')).join('')
+    else if (typeof c.text === 'string') text = c.text
+  } catch { text = '' }
+  text = text.replace(/\s+$/g, '')
+  const t = (b.type || '').toLowerCase()
+  if (!text.trim()) return ''
+  if (/large title|title1|title 1/.test(t)) return `# ${text}`
+  if (/medium title|title2|title 2/.test(t)) return `## ${text}`
+  if (/small title|title3|title 3/.test(t)) return `### ${text}`
+  if (/bulleted|bullet/.test(t)) return `- ${text}`
+  if (/numbered/.test(t)) return `1. ${text}`
+  if (/check/.test(t)) return `- [ ] ${text}`
+  if (/quote/.test(t)) return `> ${text}`
+  return text
+}
+function docToMarkdown(blocks: DocBlock[]): string {
+  return blocks.map(blockToLine).join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** Doc object_ids referenced by a "doc" column value ({"files":[{objectId,…}]}). */
+function docObjectIds(value: string | null): string[] {
+  if (!value) return []
+  try {
+    const files = (JSON.parse(value) as { files?: { objectId?: number | string; fileType?: string }[] }).files ?? []
+    return files.filter(f => f.objectId != null && /doc/i.test(f.fileType ?? '')).map(f => String(f.objectId))
+  } catch { return [] }
+}
+
+/** Fetch + convert each doc, keyed by object_id. */
+async function fetchDocMarkdown(token: string, objectIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  for (let i = 0; i < objectIds.length; i += 20) {
+    const chunk = objectIds.slice(i, i + 20)
+    const data = await gql<{ docs: { object_id: string; blocks: DocBlock[] | null }[] }>(
+      token, `query ($ids: [ID!]) { docs(object_ids: $ids) { object_id blocks { type content } } }`, { ids: chunk })
+    for (const d of data.docs ?? []) out.set(String(d.object_id), docToMarkdown(d.blocks ?? []))
+  }
+  return out
+}
+
 type PersonScalars = Database['public']['Tables']['people']['Update']
 
 // Diagnostic (GET ?probe=docs): Monday's doc-column value shape + the docs API
@@ -122,19 +169,25 @@ export async function probeBoardDocs(): Promise<unknown> {
   if (!token) return { error: 'No Monday API token configured.' }
   const { columns, items } = await fetchBoard(token)
   const docCol = columns.find(c => c.type === 'doc') ?? columns.find(c => /^history$/i.test(c.title))
-  const samples = items.slice(0, 3).map(it => {
-    const cell = docCol ? it.column_values.find(c => c.id === docCol.id) : undefined
-    return { item: it.name, itemId: it.id, cell: cell ? { type: cell.type, text: cell.text, value: cell.value } : null }
-  })
-  let docsApiSample: unknown = null
+  const objIds = docCol
+    ? items.slice(0, 3).flatMap(it => docObjectIds(it.column_values.find(c => c.id === docCol.id)?.value ?? null)).slice(0, 2)
+    : []
+  let docsByObj: unknown = null
   try {
-    docsApiSample = await gql(token, `query { docs(limit: 2) { id object_id name blocks { id type content } } }`, {})
-  } catch (e) { docsApiSample = { error: e instanceof Error ? e.message : String(e) } }
+    const data = await gql<{ docs: { object_id: string; blocks: DocBlock[] | null }[] }>(
+      token, `query ($ids: [ID!]) { docs(object_ids: $ids) { object_id blocks { type content } } }`, { ids: objIds })
+    docsByObj = (data.docs ?? []).map(d => ({
+      blockCount: (d.blocks ?? []).length,
+      blockTypes: [...new Set((d.blocks ?? []).map(b => b.type))],
+      markdownLen: docToMarkdown(d.blocks ?? []).length,
+      markdownHead: docToMarkdown(d.blocks ?? []).slice(0, 300),
+    }))
+  } catch (e) { docsByObj = { error: e instanceof Error ? e.message : String(e) } }
   return {
     columns: columns.map(c => ({ id: c.id, title: c.title, type: c.type })),
     docColumn: docCol ? { id: docCol.id, title: docCol.title, type: docCol.type } : null,
-    samples,
-    docsApiSample,
+    docObjectIdsFound: objIds.length,
+    docsByObj,
   }
 }
 
@@ -169,8 +222,23 @@ export async function importMondayPeople(supabase: Client): Promise<ImportResult
       location: byType('location') ?? byTitle(/location/i),
       dob: byTitle(/\bdob\b|birth/i),
       joined: byTitle(/joined/i),
+      left: byTitle(/left\s*on/i),
       doc: byType('doc') ?? byTitle(/^history$/i), // the "History" Monday-Doc column
     }
+
+    // Pull each person's History Monday Doc as markdown, keyed by board item id.
+    const docByItem = new Map<string, string>()
+    let docRefs = 0
+    if (col.doc) {
+      const itemObjIds = items.map(it => ({ itemId: it.id, objId: docObjectIds(it.column_values.find(c => c.id === col.doc)?.value ?? null)[0] })).filter(x => x.objId)
+      docRefs = itemObjIds.length
+      try {
+        const md = await fetchDocMarkdown(token, [...new Set(itemObjIds.map(x => x.objId!))])
+        for (const { itemId, objId } of itemObjIds) { const m = md.get(objId!); if (m) docByItem.set(itemId, m) }
+      } catch (e) { warnings.push(`Docs fetch failed: ${e instanceof Error ? e.message : 'unknown'}`) }
+    }
+    result.docsImported = docByItem.size
+    result.docsFailed = docRefs - docByItem.size
 
     // Existing directory people (only the columns the import reads/guards).
     const { data: existing, error: readErr } = await supabase
@@ -220,7 +288,9 @@ export async function importMondayPeople(supabase: Client): Promise<ImportResult
         whatsapp_same_number: mapYesNo(txt(col.whatsapp)),
         date_of_birth: isoDate(txt(col.dob), val(col.dob)),
         hire_date: isoDate(txt(col.joined), val(col.joined)),
+        left_on: isoDate(txt(col.left), val(col.left)),
         employment_history: txt(col.empHist) || null,
+        monday_docs: docByItem.get(it.id) ?? null,
         status,
         monday_item_id: it.id,
         ...mailboxPatch(txt(col.email), curEmails ?? { email_true_north: null, email_goodnews: null, email_personal: null }),
