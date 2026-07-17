@@ -172,21 +172,21 @@ export async function probeBoardDocs(): Promise<unknown> {
   const objIds = docCol
     ? items.slice(0, 3).flatMap(it => docObjectIds(it.column_values.find(c => c.id === docCol.id)?.value ?? null)).slice(0, 2)
     : []
-  const tryDocs = async (param: 'object_ids' | 'ids') => {
+  const itemIds = items.slice(0, 2).map(it => it.id)
+  const tryDocs = async (param: 'object_ids' | 'ids', ids: string[]) => {
     try {
       const data = await gql<{ docs: { object_id: string; blocks: DocBlock[] | null }[] }>(
-        token, `query ($ids: [ID!]) { docs(${param}: $ids) { object_id blocks { type content } } }`, { ids: objIds })
-      return { param, count: (data.docs ?? []).length, sample: (data.docs ?? []).slice(0, 1).map(d => ({ blocks: (d.blocks ?? []).length, blockTypes: [...new Set((d.blocks ?? []).map(b => b.type))], markdownLen: docToMarkdown(d.blocks ?? []).length })) }
-    } catch (e) { return { param, error: e instanceof Error ? e.message : String(e) } }
+        token, `query ($ids: [ID!]) { docs(${param}: $ids) { object_id blocks { type content } } }`, { ids })
+      return { count: (data.docs ?? []).length, sample: (data.docs ?? []).slice(0, 1).map(d => ({ blocks: (d.blocks ?? []).length, blockTypes: [...new Set((d.blocks ?? []).map(b => b.type))], markdownLen: docToMarkdown(d.blocks ?? []).length })) }
+    } catch (e) { return { error: e instanceof Error ? e.message.slice(0, 160) : String(e) } }
   }
-  const byObjectIds = await tryDocs('object_ids')
-  const byIds = await tryDocs('ids')
   return {
-    columns: columns.map(c => ({ id: c.id, title: c.title, type: c.type })),
-    docColumn: docCol ? { id: docCol.id, title: docCol.title, type: docCol.type } : null,
-    docObjectIdsFound: objIds.length,
-    byObjectIds,
-    byIds,
+    docColumn: docCol ? docCol.type : null,
+    fileObjIdsFound: objIds.length,
+    obj_fileId: await tryDocs('object_ids', objIds),
+    ids_fileId: await tryDocs('ids', objIds),
+    obj_itemId: await tryDocs('object_ids', itemIds),
+    ids_itemId: await tryDocs('ids', itemIds),
   }
 }
 
