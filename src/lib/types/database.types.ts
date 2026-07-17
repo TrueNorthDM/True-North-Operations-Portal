@@ -142,6 +142,7 @@ export type PersonRow = {
   manager_name_text: string | null    // free-text manager (board question)
   whatsapp_same_number: string | null // 'yes' | 'no'
   monday_item_id: string | null       // board item id — importer idempotency
+  monday_docs: string | null          // text of the person's "History" Monday Doc (migration 034)
 }
 
 // The "History" file attachments on a person, held in the private person-files

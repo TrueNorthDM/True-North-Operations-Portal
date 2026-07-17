@@ -15,8 +15,8 @@ interface Summary {
   created: number
   updated: number
   managersLinked: number
-  attachmentsAdded: number
-  attachmentsSkipped: number
+  docsImported: number
+  docsFailed: number
   warnings: string[]
   elapsedMs: number
 }
@@ -59,7 +59,7 @@ export function ImportFromMondayButton() {
     <div className="flex items-center gap-3 flex-wrap justify-end">
       {summary && (
         <span className="text-[12px] text-muted tabular-nums">
-          {summary.created} added · {summary.updated} updated · {summary.attachmentsAdded} files
+          {summary.created} added · {summary.updated} updated · {summary.docsImported} docs
           {summary.warnings.length > 0 && <> · <span className="text-[#b8790a]">{summary.warnings.length} warnings</span></>}
         </span>
       )}

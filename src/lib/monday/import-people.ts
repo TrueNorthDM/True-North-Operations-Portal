@@ -18,14 +18,12 @@ import { normalizeName, namesMatch } from '@/lib/tsheets/sync'
 
 const MONDAY_URL = 'https://api.monday.com/v2'
 const BOARD_ID = '2547376221'
-const BUCKET = 'person-files'
 
 type Client = SupabaseClient<Database>
 
 interface RawCol { id: string; title: string; type: string }
-interface RawAsset { id: string; name: string; url: string; public_url: string | null }
 interface RawCV { id: string; text: string | null; value: string | null; type: string }
-interface RawItem { id: string; name: string; group: { id: string; title: string }; assets: RawAsset[] | null; column_values: RawCV[] }
+interface RawItem { id: string; name: string; group: { id: string; title: string }; column_values: RawCV[] }
 interface RawPage { cursor: string | null; items: RawItem[] }
 
 export interface ImportResult {
@@ -34,8 +32,8 @@ export interface ImportResult {
   created: number
   updated: number
   managersLinked: number
-  attachmentsAdded: number
-  attachmentsSkipped: number
+  docsImported: number
+  docsFailed: number
   warnings: string[]
 }
 
@@ -59,7 +57,10 @@ async function gql<T>(token: string, query: string, variables: Record<string, un
   return json.data
 }
 
-const ITEM_FIELDS = `id name group { id title } assets { id name url public_url } column_values { id text value type }`
+// NB: item-level `assets` is NOT populated inside items_page, so we read the
+// file column's `value` (→ assetId list) and resolve URLs via a root assets(ids:)
+// query instead (see resolveAssetUrls / the attachments pass).
+const ITEM_FIELDS = `id name group { id title } column_values { id text value type }`
 
 async function fetchBoard(token: string): Promise<{ columns: RawCol[]; items: RawItem[] }> {
   const meta = await gql<{ boards: { columns: RawCol[]; items_page: RawPage }[] }>(
@@ -112,9 +113,34 @@ function mailboxPatch(email: string, cur: { email_true_north: string | null; ema
 
 type PersonScalars = Database['public']['Tables']['people']['Update']
 
+// Diagnostic (GET ?probe=docs): Monday's doc-column value shape + the docs API
+// block format aren't consistently documented, so we inspect them live before
+// writing the real extraction. Returns the doc column, a few sample cells, and
+// a docs() sample.
+export async function probeBoardDocs(): Promise<unknown> {
+  const token = await getMondayToken()
+  if (!token) return { error: 'No Monday API token configured.' }
+  const { columns, items } = await fetchBoard(token)
+  const docCol = columns.find(c => c.type === 'doc') ?? columns.find(c => /^history$/i.test(c.title))
+  const samples = items.slice(0, 3).map(it => {
+    const cell = docCol ? it.column_values.find(c => c.id === docCol.id) : undefined
+    return { item: it.name, itemId: it.id, cell: cell ? { type: cell.type, text: cell.text, value: cell.value } : null }
+  })
+  let docsApiSample: unknown = null
+  try {
+    docsApiSample = await gql(token, `query { docs(limit: 2) { id object_id name blocks { id type content } } }`, {})
+  } catch (e) { docsApiSample = { error: e instanceof Error ? e.message : String(e) } }
+  return {
+    columns: columns.map(c => ({ id: c.id, title: c.title, type: c.type })),
+    docColumn: docCol ? { id: docCol.id, title: docCol.title, type: docCol.type } : null,
+    samples,
+    docsApiSample,
+  }
+}
+
 export async function importMondayPeople(supabase: Client): Promise<ImportResult> {
   const warnings: string[] = []
-  const result: ImportResult = { ok: false, created: 0, updated: 0, managersLinked: 0, attachmentsAdded: 0, attachmentsSkipped: 0, warnings }
+  const result: ImportResult = { ok: false, created: 0, updated: 0, managersLinked: 0, docsImported: 0, docsFailed: 0, warnings }
   try {
     const token = await getMondayToken()
     if (!token) return { ...result, error: 'No Monday API token is configured (Settings → APIs & tokens).' }
@@ -143,6 +169,7 @@ export async function importMondayPeople(supabase: Client): Promise<ImportResult
       location: byType('location') ?? byTitle(/location/i),
       dob: byTitle(/\bdob\b|birth/i),
       joined: byTitle(/joined/i),
+      doc: byType('doc') ?? byTitle(/^history$/i), // the "History" Monday-Doc column
     }
 
     // Existing directory people (only the columns the import reads/guards).
@@ -214,29 +241,6 @@ export async function importMondayPeople(supabase: Client): Promise<ImportResult
       }
       itemToPerson.set(it.id, personId)
       nameToPerson.set(normalizeName(combined), personId)
-
-      // Attachments (History files) → private bucket, idempotent by monday_asset_id.
-      for (const asset of it.assets ?? []) {
-        const { data: seen } = await supabase.from('person_attachments').select('id').eq('monday_asset_id', asset.id).maybeSingle()
-        if (seen) { result.attachmentsSkipped++; continue }
-        try {
-          const src = asset.public_url || asset.url
-          const dl = await fetch(src, asset.public_url ? {} : { headers: { Authorization: token } })
-          if (!dl.ok) { warnings.push(`Download failed for ${asset.name} (${combined}): HTTP ${dl.status}`); continue }
-          const bytes = new Uint8Array(await dl.arrayBuffer())
-          const safe = asset.name.replace(/[^\w.\- ]+/g, '_').slice(0, 120)
-          const path = `${personId}/monday-${asset.id}-${safe}`
-          const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, bytes, { contentType: dl.headers.get('content-type') || 'application/octet-stream', upsert: true })
-          if (upErr) { warnings.push(`Upload failed for ${asset.name} (${combined}): ${upErr.message}`); continue }
-          const { error: insErr } = await supabase.from('person_attachments').insert({
-            person_id: personId, file_name: asset.name, storage_path: path, mime: dl.headers.get('content-type'), size_bytes: bytes.byteLength, monday_asset_id: asset.id,
-          })
-          if (insErr) { warnings.push(`Record failed for ${asset.name} (${combined}): ${insErr.message}`); continue }
-          result.attachmentsAdded++
-        } catch (e) {
-          warnings.push(`Attachment error for ${asset.name} (${combined}): ${e instanceof Error ? e.message : 'unknown'}`)
-        }
-      }
     }
 
     // Pass 2 — resolve Reports To / Also Reports To names → manager_id / also_reports_to_id.

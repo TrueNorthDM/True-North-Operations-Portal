@@ -18,7 +18,7 @@ const PEOPLE_FULL =
   'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
   'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, manager_name_text, ' +
   'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
-  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history, team_meeting'
+  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history, team_meeting, monday_docs'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
 
 const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
@@ -136,6 +136,7 @@ export default async function DirectoryPage() {
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
         history: str(p.employment_history),
+        mondayDocs: str(p.monday_docs),
         attachments: attachmentsByPerson.get(p.id) ?? [],
       }
     })

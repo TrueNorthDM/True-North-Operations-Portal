@@ -57,6 +57,7 @@ interface Draft {
   emails: { trueNorth: EmailDraft; goodnews: EmailDraft; coe: EmailDraft; personal: EmailDraft }
   hasTsheets: boolean
   history: string
+  mondayDocs: string
 }
 
 const EMAIL_META: { key: keyof Draft['emails']; label: string; color: string }[] = [
@@ -76,7 +77,7 @@ function toDraft(p: PersonView | null, defaultTeamId: string): Draft {
       teamMeeting: false, status: 'active', phone: '', location: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
       dateOfBirth: '', hireDate: '', leftOn: '',
       emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
-      hasTsheets: true, history: '',
+      hasTsheets: true, history: '', mondayDocs: '',
     }
   }
   return {
@@ -88,7 +89,7 @@ function toDraft(p: PersonView | null, defaultTeamId: string): Draft {
     companyEmail: p.companyEmail ?? '', usesSystem: p.usesSystem ?? '',
     dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
     emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
-    hasTsheets: p.hasTsheets, history: p.history ?? '',
+    hasTsheets: p.hasTsheets, history: p.history ?? '', mondayDocs: p.mondayDocs ?? '',
   }
 }
 
@@ -158,6 +159,7 @@ export function PersonModal({
       email_coe: emailVal(draft.emails.coe),
       email_personal: emailVal(draft.emails.personal),
       employment_history: draft.history || null,
+      monday_docs: draft.mondayDocs || null,
       tsheets: draft.hasTsheets ? undefined : false,
     }
     run(() => (isExisting ? updatePerson(p!.id, input) : createPerson(input)), () => setState(null))
@@ -360,6 +362,13 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         </div>
       )}
 
+      {p.mondayDocs && p.mondayDocs.trim() && (
+        <div className="mt-6 mb-2">
+          <SectionTitle>Monday Docs</SectionTitle>
+          <div className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap rounded-[10px] border border-slate-200 bg-subtle p-4 max-h-[340px] overflow-y-auto">{p.mondayDocs}</div>
+        </div>
+      )}
+
       {p.attachments.length > 0 && (
         <div className="mt-6 mb-2">
           <SectionTitle right={`${p.attachments.length} ${p.attachments.length === 1 ? 'file' : 'files'}`}>Documents</SectionTitle>
@@ -506,6 +515,12 @@ function EditBody({
       <div className="mb-6">
         <SectionTitle>Employment history</SectionTitle>
         <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Notes on start date, role changes, milestones…" className={`${fieldCls} min-h-[90px] resize-y leading-relaxed`} />
+      </div>
+
+      {/* Monday Docs */}
+      <div className="mb-6">
+        <SectionTitle>Monday Docs</SectionTitle>
+        <textarea value={draft.mondayDocs} onChange={e => set('mondayDocs', e.target.value)} placeholder="Content pulled from the person's History Monday Doc…" className={`${fieldCls} min-h-[140px] resize-y leading-relaxed`} />
       </div>
 
       {/* Documents */}

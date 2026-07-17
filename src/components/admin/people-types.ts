@@ -69,6 +69,7 @@ export interface PersonView {
   hasTsheets: boolean
 
   history: string | null
+  mondayDocs: string | null // text of the person's "History" Monday Doc
   attachments: PersonAttachment[] // "History" documents
 }
 
@@ -104,6 +105,7 @@ export interface PersonDraft {
   emails: PersonEmails
   hasTsheets: boolean
   history: string | null
+  mondayDocs: string | null
 }
 
 // ── Team colour system ──────────────────────────────────────────────────────

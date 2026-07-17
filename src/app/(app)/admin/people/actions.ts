@@ -52,11 +52,12 @@ export interface PersonInput {
   left_on?: string | null
   employment_history?: string | null
 
-  // HR fields brought over from the True North Team board (migration 033)
+  // HR fields brought over from the True North Team board (migration 033/034)
   last_name?: string | null
   team_meeting?: boolean
   manager_name_text?: string | null
   whatsapp_same_number?: string | null
+  monday_docs?: string | null
 
   /**
    * Primary team (teams.id) or null. When passed, the person's team membership
@@ -104,6 +105,7 @@ function personColumns(input: PersonInput): PersonCols {
     team_meeting: input.team_meeting ?? false,
     manager_name_text: trimOrNull(input.manager_name_text),
     whatsapp_same_number: input.whatsapp_same_number || null,
+    monday_docs: trimOrNull(input.monday_docs),
   }
   return cols
 }
