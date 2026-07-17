@@ -59,8 +59,17 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: meRow } = await supabase.from('people').select(PROFILE_COLS).eq('profile_id', user.id).maybeSingle()
-  const me = meRow as unknown as MeRow | null
+  // Prefer the explicit account link; fall back to a person whose mailbox is the
+  // signed-in email (a user can only ever match their own login email).
+  const { data: linked } = await supabase.from('people').select(PROFILE_COLS).eq('profile_id', user.id).maybeSingle()
+  let me = linked as unknown as MeRow | null
+  if (!me && user.email) {
+    const em = user.email
+    const { data: byEmail } = await supabase.from('people').select(PROFILE_COLS)
+      .or(`email_personal.eq.${em},email_true_north.eq.${em},email_goodnews.eq.${em},email_coe.eq.${em}`)
+      .limit(1)
+    me = ((byEmail as unknown as MeRow[] | null)?.[0]) ?? null
+  }
 
   if (!me) {
     return (
