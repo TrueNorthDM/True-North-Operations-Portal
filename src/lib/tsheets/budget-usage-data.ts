@@ -59,11 +59,18 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       .from('tr_budgets')
       .select('id, client_id, hours_allocated, budget_amount, extra_budget, start_date, budget_end_date, extra_start_date, extra_end_date')
       .is('end_date', null),
-    supabase
-      .from('people')
-      .select('id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, i7_projects')
-      .not('tsheets_user_id', 'is', null)
-      .order('full_name'),
+    // Resilient select: `hire_date` + `internal_rate` come from migration 029. If
+    // that migration isn't applied, selecting them errors and PostgREST drops the
+    // WHOLE query → People & rates renders empty ("No people linked yet"). Fall
+    // back to the guaranteed columns (exactly like the Directory's PEOPLE_FULL →
+    // PEOPLE_BASE fallback) so the tab still lists everyone; cost rate + joined-on
+    // just read null until 029 is run. The mapping already null-guards both.
+    (async () => {
+      const FULL = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, i7_projects'
+      const BASE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, i7_projects'
+      const full = await supabase.from('people').select(FULL).not('tsheets_user_id', 'is', null).order('full_name')
+      return full.error ? await supabase.from('people').select(BASE).not('tsheets_user_id', 'is', null).order('full_name') : full
+    })(),
     supabase
       .from('tr_assignments')
       .select('id, tsheets_user_id, client_id, hourly_rate, effective_from')
