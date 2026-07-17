@@ -53,7 +53,55 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
 
   function set(k: string, v: string) { setVals(s => ({ ...s, [k]: v })) }
   function startEdit() { setVals(initial()); setError(null); setEditing(true) }
-  function cancel() { setVals(initial()); setError(null); setEditing(false) }
+  function cancel() { setVals(initial()); setError(null); setEditing(false); setToast(null) }
+
+  // ── Fill helpers: copy a month across, or a project across — with a flash on the
+  // changed cells and an undoable toast. All draft-only (Cancel / Review still gate).
+  const [flash, setFlash] = useState<Set<string>>(new Set())
+  const [toast, setToast] = useState<null | { msg: string; undo: () => void; alt?: { label: string; run: () => void } }>(null)
+
+  function flashKeys(keys: string[]) {
+    if (!keys.length) return
+    setFlash(new Set(keys))
+    window.setTimeout(() => setFlash(new Set()), 600)
+  }
+  function raiseToast(t: NonNullable<typeof toast>) {
+    setToast(t)
+    window.setTimeout(() => setToast(cur => (cur === t ? null : cur)), 6000)
+  }
+
+  function copyMonth(sourceYm: string, scope: 'all' | 'later') {
+    const prev = { ...vals }
+    const targets = months.filter(m => m !== sourceYm && (scope === 'all' || m > sourceYm))
+    const next = { ...vals }
+    const changed: string[] = []
+    for (const p of projects) {
+      const v = vals[key(p, sourceYm)] ?? ''
+      for (const m of targets) { const k = key(p, m); if (next[k] !== v) { next[k] = v; changed.push(k) } }
+    }
+    setVals(next)
+    flashKeys(changed)
+    const n = targets.length
+    raiseToast({
+      msg: `Copied ${monthLabel(sourceYm)} to ${n} month${n !== 1 ? 's' : ''}`,
+      undo: () => { setVals(prev); setToast(null) },
+      alt: scope === 'all' && sourceYm < months[months.length - 1]
+        ? { label: 'Later only', run: () => { setVals(prev); copyMonth(sourceYm, 'later') } }
+        : undefined,
+    })
+  }
+
+  function fillProject(project: string, sourceYm: string) {
+    const prev = { ...vals }
+    const v = vals[key(project, sourceYm)] ?? ''
+    const next = { ...vals }
+    const changed: string[] = []
+    for (const m of months) { if (m === sourceYm) continue; const k = key(project, m); if (next[k] !== v) { next[k] = v; changed.push(k) } }
+    if (!changed.length) return
+    setVals(next)
+    flashKeys(changed)
+    raiseToast({ msg: `Filled ${project} across ${changed.length} month${changed.length !== 1 ? 's' : ''}`, undo: () => { setVals(prev); setToast(null) } })
+  }
 
   function diff() {
     const changes: { project: string; month: string; hours: number }[] = []
@@ -122,7 +170,24 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
           <thead>
             <tr className="bg-hfa-soft border-b border-slate-200">
               <th className={`text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 sticky left-0 bg-hfa-soft ${COL0}`}>Project</th>
-              {months.map(ym => <th key={ym} className={th}>{monthLabel(ym)}</th>)}
+              {months.map(ym => (
+                <th key={ym} className={th}>
+                  <span className="inline-flex items-center justify-end gap-1.5">
+                    {monthLabel(ym)}
+                    {editing && (
+                      <button
+                        type="button"
+                        onClick={() => copyMonth(ym, 'all')}
+                        title={`Copy ${monthLabel(ym)} to the other months`}
+                        aria-label={`Copy ${monthLabel(ym)} to the other months`}
+                        className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-[6px] text-[var(--bdg-orange-fg)] hover:bg-[#e08a1e] hover:text-white transition-colors"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                      </button>
+                    )}
+                  </span>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -133,9 +198,29 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
                   const h = existing.get(key(p, ym)) ?? 0
                   return (
                     <td key={ym} className="px-3 py-2 text-right">
-                      {editing
-                        ? <input type="number" min="0" step="0.5" value={vals[key(p, ym)]} onChange={e => set(key(p, ym), e.target.value)} placeholder="0" className={cellInput} />
-                        : <span className="tabular-nums font-semibold text-tn-ink">{h > 0 ? fmtHrs(h) : <span className="text-slate-300">—</span>}</span>}
+                      {editing ? (
+                        <div className="relative group">
+                          <input
+                            type="number" min="0" step="0.5"
+                            value={vals[key(p, ym)]}
+                            onChange={e => set(key(p, ym), e.target.value)}
+                            placeholder="0"
+                            className={cellInput}
+                            style={{ transition: 'background .5s, border-color .5s', ...(flash.has(key(p, ym)) ? { background: 'rgba(29,158,117,.16)', borderColor: '#1D9E75' } : {}) }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fillProject(p, ym)}
+                            title={`Fill ${p} across every month`}
+                            aria-label={`Fill ${p} across every month`}
+                            className="absolute left-1 top-1/2 -translate-y-1/2 hidden group-hover:inline-flex group-focus-within:inline-flex items-center justify-center w-[18px] h-[18px] rounded-[5px] bg-white border border-slate-200 text-[#e08a1e] hover:bg-[#e08a1e] hover:text-white hover:border-[#e08a1e] transition-colors"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="tabular-nums font-semibold text-tn-ink">{h > 0 ? fmtHrs(h) : <span className="text-slate-300">—</span>}</span>
+                      )}
                     </td>
                   )
                 })}
@@ -176,6 +261,11 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
       )}
       {error && <p className="text-xs text-red-600">{error}</p>}
       {editing && (
+        <p className="text-[11px] text-muted px-0.5 leading-relaxed">
+          <b className="text-foreground">Copy a month</b> with the copy icon in its header (fills the other months); <b className="text-foreground">fill one project</b> with the → on a focused cell. Both are undoable and only apply when you save.
+        </p>
+      )}
+      {editing && (
         <div className="flex items-center justify-end gap-3">
           {changeCount > 0 && <span className="text-xs text-slate-500">{changeCount} cell{changeCount !== 1 ? 's' : ''} changed</span>}
           <button onClick={cancel} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Cancel</button>
@@ -197,6 +287,17 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
         onCancel={() => setPending(null)}
         loading={loading}
       />
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3.5 bg-[#012358] rounded-[12px] px-4 py-2.5 shadow-[0_16px_36px_-10px_rgba(1,20,45,.7)] animate-[tn-modal-in_.2s_ease]">
+          <span className="text-[13px] font-medium text-[#ffffff]">{toast.msg}</span>
+          {toast.alt && (
+            <button type="button" onClick={toast.alt.run} className="text-[12.5px] font-(family-name:--font-display) font-extrabold text-[#F2C40A] hover:underline">{toast.alt.label}</button>
+          )}
+          <button type="button" onClick={toast.undo} className="text-[12.5px] font-(family-name:--font-display) font-extrabold text-[#ffffff] hover:underline">Undo</button>
+          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss" className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[#ffffff] opacity-60 hover:opacity-100 hover:bg-[rgba(255,255,255,.12)] text-base leading-none">×</button>
+        </div>
+      )}
     </div>
   )
 }
