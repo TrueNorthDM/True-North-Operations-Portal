@@ -7,9 +7,11 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Avatar } from '@/components/Avatar'
 import { AvatarEditor } from '@/components/AvatarEditor'
-import { uploadMyAvatar, removeMyAvatar } from '@/app/(app)/profile/avatar-actions'
+import { uploadMyAvatar, removeMyAvatar } from '@/app/(app)/profile/profile-actions'
 
-export function ProfileAvatar({ name, avatarUrl, color }: { name: string; avatarUrl: string | null; color: string }) {
+export function ProfileAvatar({ name, avatarUrl, color, size = 60 }: { name: string; avatarUrl: string | null; color: string; size?: number }) {
+  const cam = size >= 100 ? 36 : 28
+  const camIcon = size >= 100 ? 17 : 13
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -36,16 +38,17 @@ export function ProfileAvatar({ name, avatarUrl, color }: { name: string; avatar
   }
 
   return (
-    <div className="shrink-0">
-      <div className="relative w-[60px] h-[60px]">
-        <Avatar name={name} avatarUrl={avatarUrl} size={60} color={color} />
+    <div className="shrink-0 text-center">
+      <div className="relative" style={{ width: size, height: size }}>
+        <Avatar name={name} avatarUrl={avatarUrl} size={size} color={color} />
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Change photo"
-          className="absolute -bottom-1 -right-1 inline-flex w-7 h-7 items-center justify-center rounded-full bg-tn-primary border-2 border-white shadow-sm hover:brightness-110 transition"
+          className="absolute -bottom-1 -right-1 inline-flex items-center justify-center rounded-full bg-tn-primary border-2 border-white shadow-sm hover:brightness-110 transition"
+          style={{ width: cam, height: cam }}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+          <svg width={camIcon} height={camIcon} viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
         </button>
       </div>
       {avatarUrl && (

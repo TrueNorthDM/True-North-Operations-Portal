@@ -12,6 +12,7 @@ import {
 } from '@/components/admin/people-types'
 import type { PersonRow } from '@/lib/types/database.types'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
+import { PersonalDetails } from '@/components/PersonalDetails'
 
 export const dynamic = 'force-dynamic'
 
@@ -119,14 +120,14 @@ export default async function ProfilePage() {
       </div>
 
       <div className="rounded-[18px] border border-slate-200 bg-white overflow-hidden">
-        {/* header */}
-        <div className="px-8 pt-6 pb-5 border-b border-slate-200 flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4 min-w-0">
-            <ProfileAvatar name={me.full_name} avatarUrl={avatarUrl} color={TEAM_COLOR[teamKey]} />
+        {/* header — larger avatar */}
+        <div className="px-8 pt-8 pb-6 border-b border-slate-200 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-6 min-w-0">
+            <ProfileAvatar name={me.full_name} avatarUrl={avatarUrl} color={TEAM_COLOR[teamKey]} size={120} />
             <div className="min-w-0">
-              <h1 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink leading-tight m-0">{me.full_name}</h1>
-              <p className="text-sm text-muted mt-1 font-semibold">{me.title || '—'}</p>
-              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+              <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink leading-tight m-0">{me.full_name}</h1>
+              <p className="text-[15px] text-muted mt-1 font-semibold">{me.title || '—'}</p>
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: TEAM_COLOR[teamKey], background: `${TEAM_COLOR[teamKey]}1a` }}>{teamName ?? 'No team'}</span>
                 <Badge pill={roleTypePill(me.role_type ?? 'user')} />
                 <Badge pill={statusPill(active)} />
@@ -136,48 +137,59 @@ export default async function ProfilePage() {
           {admin && <Link href="/directory" className="shrink-0 inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">Manage in Directory →</Link>}
         </div>
 
-        {/* body */}
-        <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-          <Section title="Employment">
-            <Row label="Contact type"><Badge pill={roleTypePill(me.role_type ?? 'user')} /></Row>
-            <Row label="Last name">{txt(me.last_name)}</Row>
-            <Row label="Type"><Badge pill={typePill(me.employment_type)} /></Row>
-            <Row label="Time"><Badge pill={timePill(me.schedule)} /></Row>
-            <Row label="Weekly hours">{txt(me.weekly_hours != null ? `${me.weekly_hours} h / week` : null)}</Row>
-            <Row label="Status"><Badge pill={statusPill(active)} /></Row>
-          </Section>
+        {/* Part 1 — the person's own, editable details */}
+        <div className="px-8 pt-6 pb-6 border-b border-slate-200">
+          <PersonalDetails initial={{
+            lastName: me.last_name ?? '',
+            personalEmail: me.email_personal ?? '',
+            phone: me.phone ?? '',
+            whatsappSameNumber: me.whatsapp_same_number ?? '',
+            location: me.location ?? '',
+            dateOfBirth: me.date_of_birth ?? '',
+          }} />
+        </div>
 
-          <Section title="Reporting">
-            <Row label="Reports to">{txt(me.manager_id ? nameById.get(me.manager_id) : null)}</Row>
-            <Row label="Do you report to a manager?"><Badge pill={ynPill(me.reports_to_manager)} /></Row>
-            <Row label="Also reports to">{txt(me.also_reports_to_id ? nameById.get(me.also_reports_to_id) : null)}</Row>
-            <Row label="Manager (as stated)">{txt(me.manager_name_text)}</Row>
-          </Section>
+        {/* Part 2 — HR-managed, read-only for the user (future HR module) */}
+        <div className="px-8 pt-6 pb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8593a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+            <span className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.06em] uppercase text-muted">Managed by your admin · read-only</span>
+          </div>
+          <p className="text-[12.5px] text-muted mb-5">Your employment, team and company details are kept by your admin and will connect to the HR module. Need a change? Ask an admin.</p>
 
-          <Section title="Emails">
-            <Row label="True North">{mail(me.email_true_north)}</Row>
-            <Row label="GoodNews">{mail(me.email_goodnews)}</Row>
-            <Row label="COE">{mail(me.email_coe)}</Row>
-            <Row label="Personal">{mail(me.email_personal)}</Row>
-          </Section>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+            <Section title="Employment">
+              <Row label="Contact type"><Badge pill={roleTypePill(me.role_type ?? 'user')} /></Row>
+              <Row label="Type"><Badge pill={typePill(me.employment_type)} /></Row>
+              <Row label="Time"><Badge pill={timePill(me.schedule)} /></Row>
+              <Row label="Weekly hours">{txt(me.weekly_hours != null ? `${me.weekly_hours} h / week` : null)}</Row>
+              <Row label="Status"><Badge pill={statusPill(active)} /></Row>
+            </Section>
 
-          <Section title="Contact">
-            <Row label="Phone / WhatsApp">{txt(me.phone)}</Row>
-            <Row label="WhatsApp — same number"><Badge pill={ynPill(me.whatsapp_same_number)} /></Row>
-            <Row label="Location">{txt(me.location)}</Row>
-          </Section>
+            <Section title="Reporting">
+              <Row label="Reports to">{txt(me.manager_id ? nameById.get(me.manager_id) : null)}</Row>
+              <Row label="Do you report to a manager?"><Badge pill={ynPill(me.reports_to_manager)} /></Row>
+              <Row label="Also reports to">{txt(me.also_reports_to_id ? nameById.get(me.also_reports_to_id) : null)}</Row>
+              <Row label="Manager (as stated)">{txt(me.manager_name_text)}</Row>
+            </Section>
 
-          <Section title="Onboarding">
-            <Row label="Company email"><Badge pill={ynPill(me.company_email)} /></Row>
-            <Row label="Uses the system"><Badge pill={ynPill(me.uses_system)} /></Row>
-            <Row label="Team meeting"><Badge pill={me.team_meeting ? { kind: 'green', label: 'Yes' } : { kind: 'grey', label: 'No' }} /></Row>
-          </Section>
+            <Section title="Company emails">
+              <Row label="True North">{mail(me.email_true_north)}</Row>
+              <Row label="GoodNews">{mail(me.email_goodnews)}</Row>
+              <Row label="COE">{mail(me.email_coe)}</Row>
+            </Section>
 
-          <Section title="Dates">
-            <Row label="Date of birth">{txt(formatDate(me.date_of_birth))}</Row>
-            <Row label="Joined on">{txt(formatDate(me.hire_date))}</Row>
-            <Row label="Left on">{txt(formatDate(me.left_on))}</Row>
-          </Section>
+            <Section title="Onboarding">
+              <Row label="Company email"><Badge pill={ynPill(me.company_email)} /></Row>
+              <Row label="Uses the system"><Badge pill={ynPill(me.uses_system)} /></Row>
+              <Row label="Team meeting"><Badge pill={me.team_meeting ? { kind: 'green', label: 'Yes' } : { kind: 'grey', label: 'No' }} /></Row>
+            </Section>
+
+            <Section title="Dates">
+              <Row label="Joined on">{txt(formatDate(me.hire_date))}</Row>
+              <Row label="Left on">{txt(formatDate(me.left_on))}</Row>
+            </Section>
+          </div>
         </div>
 
         {reports.length > 0 && (
