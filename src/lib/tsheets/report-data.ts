@@ -170,10 +170,10 @@ async function loadProjectHours(month: string): Promise<Record<string, number>> 
 // ── Clients / Projects / Job codes directory (Settings) ─────────────────────
 export interface ProjectDirectoryRow {
   project: string
-  jobCodes: string[]                                   // live TSheets codes, grouped by prefix
-  assignedPeople: { name: string; rate: number }[]     // roster people (people.i7_projects)
-  avgRate: number                                      // mean of assigned rates, else the standard rate
-  usingFallback: boolean                               // true when nobody rated is on the project → standard rate
+  jobCodes: string[]                                          // live TSheets codes, grouped by prefix
+  assignedPeople: { id: string; name: string; rate: number }[] // roster people (people.i7_projects)
+  avgRate: number                                             // mean of assigned rates, else the standard rate
+  usingFallback: boolean                                      // true when nobody rated is on the project → standard rate
 }
 
 export interface ProjectDirectory {
@@ -181,6 +181,7 @@ export interface ProjectDirectory {
   month: string                                        // the YYYY-MM the rates were resolved for
   standardRate: number
   rows: ProjectDirectoryRow[]
+  allPeople: { id: string; name: string }[]            // roster candidates (for the per-project people picker)
 }
 
 // Per-project directory for Settings: the live job codes grouped by project, the
@@ -195,7 +196,7 @@ export async function loadProjectDirectory(ym: string): Promise<ProjectDirectory
   const [universe, assignments, rosterRes] = await Promise.all([
     loadUniverse(),
     loadI7Assignments(),
-    supabase.from('people').select('full_name, tsheets_user_id, i7_projects').not('tsheets_user_id', 'is', null),
+    supabase.from('people').select('id, full_name, tsheets_user_id, i7_projects').not('tsheets_user_id', 'is', null).order('full_name'),
   ])
 
   const codesByProject: Record<string, string[]> = {}
@@ -203,6 +204,7 @@ export async function loadProjectDirectory(ym: string): Promise<ProjectDirectory
   for (const list of Object.values(codesByProject)) list.sort((a, b) => a.localeCompare(b))
 
   const roster = (rosterRes.data ?? []).map(p => ({
+    id: p.id as string,
     name: (p.full_name as string) || `User ${p.tsheets_user_id}`,
     userId: p.tsheets_user_id as number,
     projects: ((p as { i7_projects?: string[] | null }).i7_projects) ?? [],
@@ -212,14 +214,14 @@ export async function loadProjectDirectory(ym: string): Promise<ProjectDirectory
   const rows: ProjectDirectoryRow[] = I7_PROJECTS.map(project => {
     const assigned = roster
       .filter(r => r.projects.includes(project))
-      .map(r => ({ name: r.name, rate: rateFor(assignments, r.userId, ym) }))
+      .map(r => ({ id: r.id, name: r.name, rate: rateFor(assignments, r.userId, ym) }))
       .sort((a, b) => a.name.localeCompare(b.name))
     const rated = assigned.filter(r => r.rate > 0)
     const avgRate = rated.length ? round2(rated.reduce((s, r) => s + r.rate, 0) / rated.length) : standardRate
     return { project, jobCodes: codesByProject[project] ?? [], assignedPeople: assigned, avgRate, usingFallback: rated.length === 0 }
   })
 
-  return { clientName: i7?.name ?? 'i7', month: ym, standardRate, rows }
+  return { clientName: i7?.name ?? 'i7', month: ym, standardRate, rows, allPeople: roster.map(r => ({ id: r.id, name: r.name })) }
 }
 
 export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportData> {

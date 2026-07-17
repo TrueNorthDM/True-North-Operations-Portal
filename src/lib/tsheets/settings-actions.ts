@@ -426,6 +426,55 @@ export async function savePersonProjects(input: {
   return { ok: true }
 }
 
+// Project-side roster editing (Clients, Projects & Job Codes tab): set exactly
+// which people work on ONE project. Reconciles people.i7_projects across the
+// whole roster — adds the project to the chosen people, removes it from the rest.
+// Same array the budget's average rate reads. Light-touch, still audited.
+export async function saveProjectRoster(input: {
+  project: string
+  personIds: string[]
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: people, error } = await supabase
+    .from('people')
+    .select('id, full_name, i7_projects')
+    .not('tsheets_user_id', 'is', null)
+  if (error) return { ok: false, error: error.message }
+
+  const chosen = new Set(input.personIds)
+  const assignedNames: string[] = []
+  for (const p of people ?? []) {
+    const current = ((p as { i7_projects?: string[] | null }).i7_projects) ?? []
+    const has = current.includes(input.project)
+    const should = chosen.has(p.id as string)
+    if (should) assignedNames.push(p.full_name as string)
+    if (has === should) continue
+    const next = should
+      ? [...new Set([...current, input.project])].sort()
+      : current.filter(x => x !== input.project)
+    const { error: updErr } = await supabase.from('people').update({ i7_projects: next }).eq('id', p.id)
+    if (updErr) return { ok: false, error: updErr.message }
+  }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'project_roster',
+    entity_id: 0,
+    action: 'update',
+    before_data: null,
+    after_data: { project: input.project, people: assignedNames.sort() },
+    justification: 'Project roster updated',
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/settings')
+  return { ok: true }
+}
+
 export async function deactivateTrAssignment(input: {
   tsheetsUserId: number
   clientId: number
