@@ -9,7 +9,6 @@ import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
 import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type TeamKey } from '@/components/admin/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
-import type { AccessRow } from '@/components/admin/AccessMatrix'
 import type { ToolAudience } from '@/lib/access/tools'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { tierOf } from '@/lib/auth/tier'
@@ -231,14 +230,6 @@ export default async function DirectoryPage() {
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  // ── Access rows (one per team grant) ──
-  const accessRows: AccessRow[] = grants
-    .filter(g => g.subject_type === 'team')
-    .map(g => ({ id: `${g.subject_id}|${g.project_id}`, teamId: g.subject_id, projectId: g.project_id, role: g.role as GrantRole }))
-  const projectOptions = sites
-    .map(s => ({ id: s.id, name: s.name, logo: LOGO_BY_CODE[s.code] ?? null }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
   // ── Non-privileged tiers: read-only, scoped list (Part 4) ──
   // The list is visible to all; only self (user) or self + reports/led-team
   // members (lead) carry a detail block, and comp/HR is never sent for anyone.
@@ -311,8 +302,6 @@ export default async function DirectoryPage() {
         people={peopleView}
         teamOptions={teamOptions}
         teamCards={teamCards}
-        accessRows={accessRows}
-        projectOptions={projectOptions}
         availableAccounts={availableAccounts}
         ratesPeople={budget.people}
         ratesClients={budget.clients.map(c => ({ id: c.id, name: c.name }))}

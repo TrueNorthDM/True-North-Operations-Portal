@@ -4,8 +4,8 @@
  * TeamsManager — the Teams tab. Admins create, rename and delete teams, set the
  * team lead, and add/remove members here. Each card lists members with the team
  * lead (then anyone typed Team Leader) at the top and users below alphabetically,
- * each showing their contact-type. Project access is still edited on the Access
- * tab; per-team tool access is edited here (Phase B).
+ * each showing their contact-type. A key at the top explains what each contact
+ * type can see/do; per-team tool access is set on each card.
  */
 
 import { useState, useTransition } from 'react'
@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation'
 import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamTool, removeTeamTool } from '@/app/(app)/admin/teams/actions'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
-import { ROLE_PILL, ROLE_LABEL, roleTypePill, PILL_CLASS, TEAM_COLOR, type PersonView, type TeamKey } from './people-types'
+import { roleTypePill, PILL_CLASS, TEAM_COLOR, type PersonView, type TeamKey } from './people-types'
 import { TOOLS, type ToolAudience } from '@/lib/access/tools'
 
 export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; roleType: string; avatarUrl: string | null }
@@ -29,6 +29,16 @@ export interface TeamCard {
   access: TeamCardAccess[]
   tools: TeamCardTool[]
 }
+
+// The four contact types (people.role_type) and what each can see/do in the
+// portal. role_type is set per person on the People tab; it drives the whole
+// permission model (Part 4 of "People, Teams and Permissions").
+const TIERS: { key: string; desc: string }[] = [
+  { key: 'admin', desc: 'Full access — manage people, teams, tool access, Settings and Admin; sees the i7 budget with export.' },
+  { key: 'admin_assistant', desc: 'Same as Admin — full run of the portal.' },
+  { key: 'team_leader', desc: 'Read-only People directory (their own card and their team’s) and the i7 budget without export. No Admin or Settings.' },
+  { key: 'user', desc: 'Read-only People directory (their own card only). No Admin or Settings.' },
+]
 
 export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: PersonView[] }) {
   const router = useRouter()
@@ -59,13 +69,37 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
     <div>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-[18px]">
         <p className="text-[13.5px] text-muted max-w-[560px] leading-relaxed">
-          Create teams, set a lead, and add members. Team membership also shows on each person’s card (Team field). Project access is on the <b className="text-foreground font-bold">Access</b> tab.
+          Create teams, set a lead, and add members. Team membership also shows on each person’s card (Team field).
         </p>
         <button type="button" onClick={onNewTeam} disabled={pending}
           className="inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[15px] py-[9px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:opacity-50">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           <span className="text-[#ffffff]">New team</span>
         </button>
+      </div>
+
+      {/* Access key — what each contact type can see/do + how tool access works. */}
+      <div className="rounded-[16px] border border-slate-200 bg-white p-5 mb-6 space-y-4">
+        <div>
+          <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-2.5">What each contact type can see &amp; do</div>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {TIERS.map(t => {
+              const pill = roleTypePill(t.key)
+              return (
+                <div key={t.key} className="flex items-start gap-2.5">
+                  <span className={`shrink-0 mt-px font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
+                  <span className="text-[12.5px] text-muted leading-snug">{t.desc}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div className="pt-4 border-t border-slate-100">
+          <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-1.5">How tool access works</div>
+          <p className="text-[12.5px] text-muted leading-relaxed">
+            On each team card below, set who can open each tool — <b className="text-foreground font-semibold">Off</b> (hidden), <b className="text-foreground font-semibold">Lead only</b> (just the team lead), or <b className="text-foreground font-semibold">Whole team</b>. Applied once permissions ship.
+          </p>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
@@ -150,20 +184,6 @@ function TeamCardView({ team, people, pending, run, onRename, onDelete }: {
             {addable.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
           </select>
         )}
-
-        <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mt-[18px] mb-[9px]">Project access</div>
-        <div className="flex flex-col gap-[7px]">
-          {team.access.length === 0 && <span className="text-[12.5px] text-muted italic">No project access yet — set it on the Access tab.</span>}
-          {team.access.map(g => (
-            <div key={g.projectId} className="flex items-center justify-between gap-2.5 border border-slate-200 rounded-[10px] px-[11px] py-[7px]">
-              <span className="inline-flex items-center gap-2.5 min-w-0">
-                {g.logo && <img src={g.logo} alt="" className="w-[22px] h-[22px] rounded-md object-cover shrink-0" />}
-                <span className="text-[12.5px] font-semibold text-foreground truncate">{g.name}</span>
-              </span>
-              <span className={`font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap ${ROLE_PILL[g.role] ?? ROLE_PILL.viewer}`}>{ROLE_LABEL[g.role] ?? g.role}</span>
-            </div>
-          ))}
-        </div>
 
         <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mt-[18px] mb-[3px]">Tool access</div>
         <p className="text-[11px] text-muted leading-snug mb-2.5">Who on this team can open each tool. <b className="text-foreground font-semibold">Off</b> hides it. Applied once permissions ship.</p>

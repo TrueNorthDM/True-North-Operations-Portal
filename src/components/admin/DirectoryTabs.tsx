@@ -10,13 +10,12 @@ import { useState } from 'react'
 import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
-import { AccessMatrix, type AccessRow } from './AccessMatrix'
 import { RatesCostsTab } from './RatesCostsTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, Account } from './people-types'
 import type { PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
-type Tab = 'people' | 'emails' | 'teams' | 'access' | 'rates'
+type Tab = 'people' | 'emails' | 'teams' | 'rates'
 
 export interface TeamOption { id: string; name: string; key: string; color: string }
 export interface ProjectOption { id: string; name: string; logo: string | null }
@@ -25,8 +24,6 @@ export function DirectoryTabs({
   people,
   teamOptions,
   teamCards,
-  accessRows,
-  projectOptions,
   availableAccounts,
   ratesPeople,
   ratesClients,
@@ -34,8 +31,6 @@ export function DirectoryTabs({
   people: PersonView[]
   teamOptions: TeamOption[]
   teamCards: TeamCard[]
-  accessRows: AccessRow[]
-  projectOptions: ProjectOption[]
   availableAccounts: Account[]
   ratesPeople: PersonWithAssignments[]
   ratesClients: { id: number; name: string }[]
@@ -48,7 +43,6 @@ export function DirectoryTabs({
     { key: 'people', label: 'People', count: people.length },
     { key: 'emails', label: 'Emails', count: people.length },
     { key: 'teams', label: 'Teams', count: teamCards.length },
-    { key: 'access', label: 'Access', count: accessRows.length },
     { key: 'rates', label: 'Rates & Costs' },
   ]
 
@@ -156,7 +150,6 @@ export function DirectoryTabs({
         <EmailsTab people={people} onOpen={id => setModal({ mode: 'edit', person: people.find(p => p.id === id) ?? null })} />
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={people} />}
-      {tab === 'access' && <AccessMatrix rows={accessRows} teamOptions={teamOptions} projectOptions={projectOptions} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
 
       {modal && (
