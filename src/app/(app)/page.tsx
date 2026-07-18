@@ -8,8 +8,11 @@ import { HomeWidgets } from '@/components/home/HomeWidgets'
 import { FavoritesBlock, type Favorite } from '@/components/home/FavoritesBlock'
 import { OrgChart } from '@/components/OrgChart'
 import { getOrgChart } from '@/lib/org/data'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isCurrentUserAdmin, getCurrentTier } from '@/lib/auth/role'
 import { catalogFor } from '@/lib/favorites/catalog'
+import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
+import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { currentYearMonth } from '@/lib/tsheets/report'
 
 async function getFavorites(): Promise<Favorite[]> {
   const supabase = await createClient()
@@ -22,7 +25,10 @@ async function getFavorites(): Promise<Favorite[]> {
 }
 
 export default async function HomePage() {
-  const [org, favorites, isAdmin] = await Promise.all([getOrgChart(), getFavorites(), isCurrentUserAdmin()])
+  const [org, favorites, isAdmin, tier] = await Promise.all([getOrgChart(), getFavorites(), isCurrentUserAdmin(), getCurrentTier()])
+  // i7 budget at a glance — privileged only (sensitive $), for the current month.
+  const month = currentYearMonth()
+  const i7Carryover = tier.isPrivileged ? (await loadI7ReportData(month)).carryover : null
 
   return (
     <div className="space-y-8">
@@ -33,6 +39,9 @@ export default async function HomePage() {
 
       {/* Block 1 — destination widgets (My Team / My Work are placeholders). */}
       <HomeWidgets />
+
+      {/* i7 budget at a glance — privileged tiers only. */}
+      {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
       {/* Block 2 — the user's pinned favourites. */}
       <FavoritesBlock favorites={favorites} catalog={catalogFor(isAdmin)} />
