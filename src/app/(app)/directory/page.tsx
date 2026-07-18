@@ -6,10 +6,13 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
+import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
 import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type TeamKey } from '@/components/admin/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { AccessRow } from '@/components/admin/AccessMatrix'
 import type { ToolAudience } from '@/lib/access/tools'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { tierOf } from '@/lib/auth/tier'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 
 // Full people select (needs migration 029). Falls back to base columns if the
@@ -27,8 +30,13 @@ const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/l
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export default async function DirectoryPage() {
-  if (!(await isCurrentUserAdmin())) redirect('/')
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  // Directory is open to everyone now (Part 4); the tier decides the view —
+  // privileged get the full admin tabs, everyone else the read-only list below.
+  const [isAdmin, mePerson] = await Promise.all([isCurrentUserAdmin(), loadCurrentPerson(supabase, user)])
+  const tier = tierOf(isAdmin ? 'admin' : (mePerson?.roleType ?? 'user'))
 
   // People with graceful degradation, then the rest in parallel.
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
@@ -229,6 +237,61 @@ export default async function DirectoryPage() {
   const projectOptions = sites
     .map(s => ({ id: s.id, name: s.name, logo: LOGO_BY_CODE[s.code] ?? null }))
     .sort((a, b) => a.name.localeCompare(b.name))
+
+  // ── Non-privileged tiers: read-only, scoped list (Part 4) ──
+  // The list is visible to all; only self (user) or self + reports/led-team
+  // members (lead) carry a detail block, and comp/HR is never sent for anyone.
+  if (!tier.isPrivileged) {
+    const viewerId = mePerson?.id ?? null
+    const scope = new Set<string>()
+    if (viewerId) {
+      scope.add(viewerId)
+      if (tier.isLead) {
+        for (const p of people) {
+          if (str(p.manager_id) === viewerId || str(p.also_reports_to_id) === viewerId) scope.add(p.id)
+        }
+        const myTeamIds = new Set(teams.filter(t => t.leader_person_id === viewerId).map(t => t.id))
+        for (const m of members) if (myTeamIds.has(m.team_id)) scope.add(m.person_id)
+      }
+    }
+    const dirPeople: RestrictedPerson[] = people
+      .map((p): RestrictedPerson => {
+        const pt = primaryTeam(p.id)
+        const mgrId = str(p.manager_id)
+        return {
+          id: p.id,
+          name: p.full_name,
+          title: str(p.title),
+          teamName: pt?.name ?? null,
+          teamKey: teamKeyFromName(pt?.name),
+          avatarUrl: avatarById.get(p.id) ?? null,
+          roleType: roleTypeById.get(p.id) ?? 'user',
+          status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
+          detail: scope.has(p.id)
+            ? {
+                managerName: mgrId ? nameById.get(mgrId) ?? null : null,
+                workEmail: str(p.email_true_north) ?? str(p.company_email),
+                phone: str(p.phone),
+                location: str(p.location),
+                hireDate: str(p.hire_date),
+                employmentType: str(p.employment_type),
+              }
+            : null,
+        }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 text-[13px] text-muted">
+          <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
+          <span className="text-slate-300">/</span>
+          <span className="font-semibold text-tn-ink">People</span>
+        </div>
+        <RestrictedDirectory people={dirPeople} isLead={tier.isLead} />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

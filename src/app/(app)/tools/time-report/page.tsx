@@ -6,7 +6,7 @@
 
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { getCurrentTier } from '@/lib/auth/role'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
@@ -157,7 +157,7 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
     )
   }
 
-  const canEditNote = await isCurrentUserAdmin()
+  const tier = await getCurrentTier()
 
   return (
     <I7ReportView
@@ -169,7 +169,8 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
       stdRate={data.stdRate}
       trend={data.trend}
       note={data.note}
-      canEditNote={canEditNote}
+      canEditNote={tier.isPrivileged}
+      canExport={tier.isPrivileged}
     />
   )
 }

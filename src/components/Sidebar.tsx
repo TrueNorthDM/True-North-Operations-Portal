@@ -170,7 +170,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
   )
 }
 
-export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function Sidebar({ isPrivileged = false }: { isPrivileged?: boolean }) {
   const pathname = usePathname()
 
   return (
@@ -183,22 +183,26 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
         <NavLink item={toolsNav} active={toolsNav.match(pathname)} />
         <NavLink item={myWorkNav} active={myWorkNav.match(pathname)} />
-        {isAdmin && <NavLink item={directoryNav} active={directoryNav.match(pathname)} />}
+        {/* Directory is visible to everyone (Part 4) — the page itself tiers the
+            view: privileged see all, team leaders their reports, users only self. */}
+        <NavLink item={directoryNav} active={directoryNav.match(pathname)} />
       </nav>
 
       <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">
-        {/* Admin (management) is kept separate from the content pillars above,
-            and only rendered for admins. */}
-        {isAdmin && <NavLink item={adminNav} active={adminNav.match(pathname)} />}
-        <NavLink
-          item={{
-            href: '/settings',
-            label: 'Settings',
-            icon: SettingsIcon,
-            match: p => p === '/settings' || p.startsWith('/settings/'),
-          }}
-          active={pathname === '/settings' || pathname.startsWith('/settings/')}
-        />
+        {/* Admin + Settings are management surfaces — only the privileged tiers
+            (admin, admin_assistant) see them. */}
+        {isPrivileged && <NavLink item={adminNav} active={adminNav.match(pathname)} />}
+        {isPrivileged && (
+          <NavLink
+            item={{
+              href: '/settings',
+              label: 'Settings',
+              icon: SettingsIcon,
+              match: p => p === '/settings' || p.startsWith('/settings/'),
+            }}
+            active={pathname === '/settings' || pathname.startsWith('/settings/')}
+          />
+        )}
       </div>
     </aside>
   )

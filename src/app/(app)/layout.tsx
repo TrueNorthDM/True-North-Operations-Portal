@@ -11,11 +11,15 @@ import { UserMenu } from '@/components/UserMenu'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { tierOf } from '@/lib/auth/tier'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const [isAdmin, me] = await Promise.all([isCurrentUserAdmin(), loadCurrentPerson(supabase, user)])
+  // Tier drives nav visibility (Part 4). profiles.role='admin' is a floor for
+  // privilege, so a real admin is never demoted by a missing/lower role_type.
+  const tier = tierOf(isAdmin ? 'admin' : (me?.roleType ?? 'user'))
 
   return (
     <>
@@ -48,7 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar + main */}
       <div className="flex flex-1">
-        <Sidebar isAdmin={isAdmin} />
+        <Sidebar isPrivileged={tier.isPrivileged} />
         <MainContent>{children}</MainContent>
       </div>
     </>

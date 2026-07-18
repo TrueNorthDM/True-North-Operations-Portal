@@ -26,6 +26,7 @@ interface Props {
   trend?: I7TrendPoint[]                  // Jan → selected month, for the charts
   note?: string                           // per-month narrative (shown + in the PDF)
   canEditNote?: boolean                   // admin can edit the note
+  canExport?: boolean                     // privileged tiers see Export / Team Update (Part 4)
 }
 
 function monthLabel(ym: string): string {
@@ -34,7 +35,7 @@ function monthLabel(ym: string): string {
   return `${months[m - 1]} ${y}`
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], note = '', canEditNote = false }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], note = '', canEditNote = false, canExport = false }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -88,10 +89,12 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           {availableMonths.map(ym => <option key={ym} value={ym}>{monthLabel(ym)}</option>)}
         </select>
         <span className="text-sm text-muted ml-1 tabular-nums">{data.startDate} → {data.endDate}</span>
-        <div className="ml-auto flex items-center gap-2.5">
-          <ExportImageButton month={selectedMonth} />
-          <ExportMenu month={selectedMonth} />
-        </div>
+        {canExport && (
+          <div className="ml-auto flex items-center gap-2.5">
+            <ExportImageButton month={selectedMonth} />
+            <ExportMenu month={selectedMonth} />
+          </div>
+        )}
       </div>
 
       {/* View tabs — the same month's data as a table (In Numbers) or charts (In Graphics) */}

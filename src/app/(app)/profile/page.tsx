@@ -5,7 +5,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { getCurrentTier } from '@/lib/auth/role'
 import {
   TEAM_COLOR, PILL_CLASS, initialsOf, formatDate, teamKeyFromName,
   typePill, timePill, ynPill, statusPill, roleTypePill, type Pill,
@@ -87,7 +87,7 @@ export default async function ProfilePage() {
     )
   }
 
-  const admin = await isCurrentUserAdmin()
+  const { isPrivileged } = await getCurrentTier()
 
   // Resolve related records for a complete card.
   const relIds = [me.manager_id, me.also_reports_to_id].filter(Boolean) as string[]
@@ -134,7 +134,7 @@ export default async function ProfilePage() {
               </div>
             </div>
           </div>
-          {admin && <Link href="/directory" className="shrink-0 inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">Manage in People &amp; Teams →</Link>}
+          {isPrivileged && <Link href="/directory" className="shrink-0 inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">Manage in People &amp; Teams →</Link>}
         </div>
 
         {/* Part 1 — the person's own, editable details */}
