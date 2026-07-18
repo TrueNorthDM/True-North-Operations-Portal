@@ -1,27 +1,30 @@
-// Home — destination widgets, the i7 budget at a glance (privileged tiers), and
-// the company org chart. Admin is reachable from the sidebar. Uses the wide Home
-// container (see MainContent) so the widgets sit side by side.
+// Home — welcome banner, destination widgets, the i7 budget at a glance
+// (privileged tiers), and the company org chart. Admin is reachable from the
+// sidebar. Uses the wide Home container (see MainContent) so widgets sit side
+// by side.
 
+import { createClient } from '@/lib/supabase/server'
 import { HomeWidgets } from '@/components/home/HomeWidgets'
+import { WelcomeBanner } from '@/components/home/WelcomeBanner'
 import { OrgChart } from '@/components/OrgChart'
 import { getOrgChart } from '@/lib/org/data'
 import { getCurrentTier } from '@/lib/auth/role'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 
 export default async function HomePage() {
-  const [org, tier] = await Promise.all([getOrgChart(), getCurrentTier()])
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const [org, tier, me] = await Promise.all([getOrgChart(), getCurrentTier(), loadCurrentPerson(supabase, user)])
   // i7 budget at a glance — privileged only (sensitive $), for the current month.
   const month = currentYearMonth()
   const i7Carryover = tier.isPrivileged ? (await loadI7ReportData(month)).carryover : null
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-extrabold text-tn-ink">True North Operations Portal</h1>
-        <p className="mt-1 text-muted">Where would you like to go?</p>
-      </div>
+      <WelcomeBanner name={me?.full_name ?? null} />
 
       {/* Destination widgets (My Team is a placeholder). */}
       <HomeWidgets />
