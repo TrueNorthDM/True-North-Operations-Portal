@@ -7,7 +7,6 @@
  */
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
@@ -57,16 +56,11 @@ export function DirectoryTabs({
     <div className="space-y-6">
       {/* heading row */}
       <div className="flex items-start justify-between gap-5 flex-wrap">
-        <div className="max-w-[640px]">
+        <div className="max-w-[880px]">
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People, Teams and Permissions</h1>
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-            People, teams, and access — one place. Add or edit people, manage team membership, and grant each team access to projects.
+            Add or edit people, manage team membership, and grant each team’s project access.
           </p>
-          <Link href="/settings#catalog" className="inline-flex items-center gap-1.5 mt-2.5 text-[13px] font-(family-name:--font-display) font-bold text-tn-teal hover:text-tn-primary transition-colors">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" /><path d="M7 8h10M7 12h6M7 16h8" /></svg>
-            Project assignment in Settings
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </Link>
         </div>
 
         {/* Add person split-button */}
@@ -137,7 +131,26 @@ export function DirectoryTabs({
       </div>
 
       {tab === 'people' && (
-        <PeopleManager people={people} teamOptions={teamOptions} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+        <div className="space-y-5">
+          {/* Source-of-truth notice — People feeds every other surface. */}
+          <div className="flex items-start gap-3.5 rounded-[16px] border border-tn-teal/25 bg-tn-teal-soft px-5 py-4">
+            <span className="shrink-0 mt-0.5 inline-flex w-9 h-9 items-center justify-center rounded-[11px] bg-white text-tn-teal shadow-[0_1px_2px_rgba(1,35,88,.08)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+            </span>
+            <div className="min-w-0">
+              <div className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">People is the source of truth</div>
+              <p className="text-[13px] text-foreground leading-relaxed mt-1">
+                Add or edit someone once here — their name, team, reporting line and contact type flow everywhere else. These all read from People:
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {['Emails', 'Teams', 'Access', 'Rates & Costs', 'Org chart', 'Profiles', 'i7 Budget Report', 'My Work'].map(x => (
+                  <span key={x} className="font-(family-name:--font-display) font-bold text-[11px] text-tn-teal bg-white border border-tn-teal/20 rounded-full px-2.5 py-1">{x}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <PeopleManager people={people} teamOptions={teamOptions} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+        </div>
       )}
       {tab === 'emails' && (
         <EmailsTab people={people} onOpen={id => setModal({ mode: 'edit', person: people.find(p => p.id === id) ?? null })} />
