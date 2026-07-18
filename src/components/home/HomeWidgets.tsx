@@ -1,9 +1,8 @@
 /**
- * HomeWidgets — the top block of the Home page: five compact destination
- * widgets side by side (Dashboards, Projects, Tools, My Team, My Work).
- * My Team and My Work are placeholders for now ("Soon" badge, not clickable) —
- * shown rather than hidden so the direction is visible in-product.
- * Server-rendered, no state.
+ * HomeWidgets — the top block of the Home page: compact destination widgets
+ * side by side (Tools & Dashboards, My Team, My Work). My Team is a placeholder
+ * for now ("Soon" badge, not clickable) — shown rather than hidden so the
+ * direction is visible in-product. Server-rendered, no state.
  */
 
 import Link from 'next/link'
@@ -16,11 +15,6 @@ const DashboardsIcon = (
     <rect x="14" y="3" width="7" height="5" rx="1" />
     <rect x="14" y="12" width="7" height="9" rx="1" />
     <rect x="3" y="16" width="7" height="5" rx="1" />
-  </svg>
-)
-const ToolsIcon = (
-  <svg className={icon} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
   </svg>
 )
 // People icon that plays a "2 → 3" split: the two figures slide apart while a
@@ -59,8 +53,7 @@ interface Widget {
 }
 
 const WIDGETS: Widget[] = [
-  { title: 'Dashboards', description: 'Boards Review — pipeline & publishing goals.', icon: DashboardsIcon, href: '/dashboards', anim: 'tn-ico-pulse 3s ease-in-out infinite' },
-  { title: 'Tools', description: 'Capabilities used inside a project.', icon: ToolsIcon, href: '/tools', anim: 'tn-ico-wiggle 3.2s ease-in-out infinite' },
+  { title: 'Tools & Dashboards', description: 'Dashboards and the tools used inside a project.', icon: DashboardsIcon, href: '/tools', anim: 'tn-ico-pulse 3s ease-in-out infinite' },
   { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon, anim: '' }, // split animation lives inside TeamIcon
   { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon, href: '/my-work', anim: 'tn-ico-swing 3.4s ease-in-out infinite' },
 ]
@@ -73,7 +66,7 @@ function AnimIcon({ anim, children }: { anim: string; children: React.ReactNode 
 
 export function HomeWidgets() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {WIDGETS.map(w =>
         w.href ? (
           <Link

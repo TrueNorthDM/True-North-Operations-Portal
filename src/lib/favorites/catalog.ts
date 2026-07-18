@@ -15,15 +15,13 @@ export interface FavoriteTarget {
 }
 
 export const FAVORITE_TARGETS: FavoriteTarget[] = [
-  { href: '/dashboards', label: 'Dashboards', group: 'Dashboards' },
+  { href: '/tools', label: 'Tools & Dashboards', group: 'Dashboards' },
   { href: '/dashboards/publishing', label: 'Publishing Goals', group: 'Dashboards' },
   { href: '/boards-beta', label: 'Workload (beta)', group: 'Dashboards' },
 
   { href: '/projects', label: 'Projects', group: 'Projects' },
   { href: '/aaaf', label: 'AAAF — Href Links', group: 'Projects' },
   { href: '/hfa', label: 'HFA — Href Links', group: 'Projects' },
-
-  { href: '/tools', label: 'Tools', group: 'Tools' },
 
   { href: '/admin', label: 'Admin', group: 'Admin', adminOnly: true },
   { href: '/admin/tickets', label: 'Tickets', group: 'Admin', adminOnly: true },

@@ -40,13 +40,6 @@ const BoardsIcon = (
   </svg>
 )
 
-// Tools — wrench outline (capabilities that run inside a project).
-const ToolsIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-  </svg>
-)
-
 // My Work — briefcase outline (everything assigned to you across Monday).
 const WorkIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -94,13 +87,13 @@ const home: Item = {
   match: p => p === '/',
 }
 
-// Dashboards landing → the Boards Review dashboards. Also highlights while on
-// any /boards-beta route, since those are reached from this section.
-const dashboards: Item = {
-  href: '/dashboards',
-  label: 'Dashboards',
+// Tools & Dashboards — the unified hub (Boards Review dashboards + the tools
+// used inside a project). Highlights across /tools, /dashboards and /boards-beta.
+const toolsDash: Item = {
+  href: '/tools',
+  label: 'Tools & Dashboards',
   icon: DashboardIcon,
-  match: p => p === '/dashboards' || p.startsWith('/boards-beta'),
+  match: p => p === '/tools' || p.startsWith('/tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
 }
 
 // Projects overview (AAAF/HFA hreflang management) — the former root dashboard.
@@ -109,14 +102,6 @@ const projectsNav: Item = {
   label: 'Projects',
   icon: BoardsIcon,
   match: p => p === '/projects',
-}
-
-// Tools — capabilities that run inside a project (Href Link Management, …).
-const toolsNav: Item = {
-  href: '/tools',
-  label: 'Tools',
-  icon: ToolsIcon,
-  match: p => p === '/tools' || p.startsWith('/tools/'),
 }
 
 // My Work — the signed-in person's tasks across Monday (board + list).
@@ -179,9 +164,8 @@ export function Sidebar({ isPrivileged = false }: { isPrivileged?: boolean }) {
     <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] z-30">
       <nav className="py-3 space-y-1.5">
         <NavLink item={home} active={home.match(pathname)} />
-        <NavLink item={dashboards} active={dashboards.match(pathname)} />
+        <NavLink item={toolsDash} active={toolsDash.match(pathname)} />
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
-        <NavLink item={toolsNav} active={toolsNav.match(pathname)} />
         <NavLink item={myWorkNav} active={myWorkNav.match(pathname)} />
         {/* Directory is visible to everyone (Part 4) — the page itself tiers the
             view: privileged see all, team leaders their reports, users only self. */}
