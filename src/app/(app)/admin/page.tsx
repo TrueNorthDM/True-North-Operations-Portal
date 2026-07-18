@@ -43,10 +43,20 @@ const ManualIcon = (
   </svg>
 )
 
+// View Stage — three panels; the middle one pulses (a live preview).
+const StageIcon = (
+  <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="4" width="5" height="16" rx="1" />
+    <rect x="9.5" y="4" width="5" height="16" rx="1" className="tn-anim" style={{ transformBox: 'fill-box', transformOrigin: 'center', animation: 'tn-dot-pulse 2.8s ease-in-out infinite' }} />
+    <rect x="16" y="4" width="5" height="16" rx="1" />
+  </svg>
+)
+
 const CARDS = [
   { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker — everything we need to resolve, so nothing gets lost.' },
   { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end — tick off what works.' },
   { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works — pages, access, and how Monday feeds it.' },
+  { href: '/admin/view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level — admin, team leader, user — side by side.' },
 ] as const
 
 export default async function AdminPage() {
@@ -64,7 +74,7 @@ export default async function AdminPage() {
         <p className="mt-1.5 text-muted">People, teams, and who can access what.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {CARDS.map(card => (
           <Link
             key={card.href}

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { ProfileRow } from '@/lib/types/database.types'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { tierOf, type Tier } from '@/lib/auth/tier'
+import { getViewAs } from '@/lib/auth/view-as-server'
 
 export async function getCurrentProfile(): Promise<ProfileRow | null> {
   const supabase = await createClient()
@@ -21,6 +22,9 @@ export async function getCurrentProfile(): Promise<ProfileRow | null> {
 }
 
 export async function isCurrentUserAdmin(): Promise<boolean> {
+  // View Stage: while impersonating, admin-ness follows the impersonated tier.
+  const vs = await getViewAs()
+  if (vs) return vs.role === 'admin' || vs.role === 'admin_assistant'
   const profile = await getCurrentProfile()
   return profile?.role === 'admin'
 }
@@ -32,6 +36,9 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
  * hard admin gate is ever locked into the restricted UI by a missing link.
  */
 export async function getCurrentTier(): Promise<Tier> {
+  // View Stage: while impersonating, the tier IS the impersonated role.
+  const vs = await getViewAs()
+  if (vs) return tierOf(vs.role)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const [me, { data: profile }] = await Promise.all([

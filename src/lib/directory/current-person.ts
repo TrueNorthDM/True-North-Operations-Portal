@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
 import { asRoleType, type RoleType } from '@/lib/auth/tier'
+import { getViewAs } from '@/lib/auth/view-as-server'
 
 export interface CurrentPerson { id: string; full_name: string; avatar_url: string | null; roleType: RoleType }
 
@@ -15,6 +16,14 @@ type PersonRow = { id: string; full_name: string; avatar_url?: string | null; ro
  * migration isn't applied yet.
  */
 export async function loadCurrentPerson(supabase: Client, user: User | null): Promise<CurrentPerson | null> {
+  // View Stage: while impersonating, resolve the impersonated person directly.
+  const vs = await getViewAs()
+  if (vs) {
+    let r = await supabase.from('people').select('id, full_name, avatar_url, role_type').eq('id', vs.pid).limit(1)
+    if (r.error) r = await supabase.from('people').select('id, full_name').eq('id', vs.pid).limit(1) as typeof r
+    const row = r.data?.[0] as PersonRow | undefined
+    return row ? { id: row.id, full_name: row.full_name, avatar_url: row.avatar_url ?? null, roleType: asRoleType(row.role_type) } : null
+  }
   if (!user) return null
 
   let a = await supabase.from('people').select('id, full_name, avatar_url, role_type').eq('profile_id', user.id).limit(1)

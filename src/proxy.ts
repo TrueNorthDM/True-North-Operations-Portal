@@ -26,7 +26,14 @@ function isPublic(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request })
+  // View Stage: relay the iframe's ?_vs=<token> into the x-vs request header (and
+  // strip any forged incoming x-vs). getViewAs re-verifies the token server-side.
+  const requestHeaders = new Headers(request.headers)
+  const vs = request.nextUrl.searchParams.get('_vs')
+  if (vs) requestHeaders.set('x-vs', vs)
+  else requestHeaders.delete('x-vs')
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,7 +45,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
+          response = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           )
