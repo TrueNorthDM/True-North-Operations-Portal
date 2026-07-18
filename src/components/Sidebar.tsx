@@ -8,8 +8,7 @@
  * The signed-in block moved to the top-bar avatar (UserMenu).
  */
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 const iconClass = 'w-6 h-6 shrink-0'
 
@@ -131,15 +130,20 @@ const adminNav: Item = {
 }
 
 function NavLink({ item, active }: { item: Item; active: boolean }) {
+  const router = useRouter()
   return (
-    <Link
-      href={item.href}
+    // A button (not an <a href>) so the browser never surfaces the destination
+    // URL on hover — the friendly name tooltip below is all we want to show.
+    // router.push keeps SPA navigation. (Trade-off: no cmd/middle-click new tab.)
+    <button
+      type="button"
+      onClick={() => router.push(item.href)}
       aria-label={item.label}
       aria-current={active ? 'page' : undefined}
       className={`group relative mx-auto flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${
         active
           ? 'bg-tn-teal/10 text-tn-teal'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-tn-primary'
+          : 'bg-transparent text-slate-400 hover:bg-slate-100 hover:text-tn-primary'
       }`}
     >
       {item.icon}
@@ -151,7 +155,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       >
         {item.label}
       </span>
-    </Link>
+    </button>
   )
 }
 
