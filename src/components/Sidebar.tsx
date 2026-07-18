@@ -176,7 +176,7 @@ export function Sidebar({ isPrivileged = false }: { isPrivileged?: boolean }) {
   return (
     // Icon-only rail. No overflow clipping, so the hover tooltips can extend
     // past the rail to the right (the few items always fit vertically).
-    <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)]">
+    <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] z-30">
       <nav className="py-3 space-y-1.5">
         <NavLink item={home} active={home.match(pathname)} />
         <NavLink item={dashboards} active={dashboards.match(pathname)} />
