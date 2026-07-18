@@ -16,7 +16,7 @@ const SOURCES = [
   { tag: 'Actuals', name: 'QuickBooks Time (TSheets)', cls: 'bg-blue-50 border-blue-200 text-blue-900', dot: 'text-blue-600',
     body: 'The real hours. Pulled automatically every 4 hours. Each approved entry says who worked, on which i7 code (→ project + job code), on which activity, and how many hours.' },
   { tag: 'Rates', name: 'Hourly rates', cls: 'bg-indigo-50 border-indigo-200 text-indigo-900', dot: 'text-indigo-600',
-    body: 'Settings → People & Rates. Each person’s $/hour on i7, with history ($120 through January, $95 from February, foreign contractors $60).' },
+    body: 'People, Teams and Permissions → Rates & Costs. Each person’s Rate / client ($/hour billed on i7), with history ($120 through January, $95 from February, foreign contractors $60).' },
   { tag: 'Budget $', name: 'Monthly budget', cls: 'bg-emerald-50 border-emerald-200 text-emerald-900', dot: 'text-emerald-600',
     body: 'Settings → Clients & Budgets → i7. Each month’s budget in dollars (base + extra). This is the source of truth for the month — the report never back-calculates it from hours.' },
   { tag: 'Budget hrs', name: 'Budget hours per project', cls: 'bg-amber-50 border-amber-200 text-amber-900', dot: 'text-amber-600',
@@ -57,7 +57,7 @@ export default function ReportGuidePage() {
             <h1 className="text-2xl font-bold text-slate-900">How the i7 Budget Usage Report is built</h1>
             <p className="mt-1 text-slate-500">
               The report never invents a number. It combines <strong className="text-slate-700">one thing pulled from QuickBooks Time</strong> with{' '}
-              <strong className="text-slate-700">three things you set in Settings</strong> — then only adds and subtracts.
+              <strong className="text-slate-700">three things you set</strong> — then only adds and subtracts.
             </p>
           </div>
         </div>
