@@ -66,7 +66,7 @@ const PAGES = [
   { icon: 'tools', name: 'Tools', desc: 'Utilities the team runs day to day, each launched from one list.', src: 'Varies', srcKey: 'none' as const },
   { icon: 'ticket', name: 'Tickets', desc: 'The dev work tracker — everything that needs resolving, so nothing gets lost.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'test', name: 'Tests', desc: 'A pre-launch checklist to verify the whole system end to end — walk each area, tick off what works, flag what doesn’t.', src: 'Portal', srcKey: 'portal' as const },
-  { icon: 'dir', name: 'Directory', desc: 'People, teams and access in one place. Add or edit people, manage team membership, and grant each team access to projects.', src: 'Portal', srcKey: 'portal' as const },
+  { icon: 'dir', name: 'People, Teams and Permissions', desc: 'People, teams and access in one place. Add or edit people, manage team membership, and grant each team access to projects.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'book', name: 'System manual', desc: 'This page — how the portal works, who can see what, and how the data flows in.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'settings', name: 'Settings', desc: 'Sites & languages, publishing targets, clients & budgets, people & rates, and API tokens. This is where connections are configured.', src: 'Config', srcKey: 'config' as const },
 ]
@@ -76,7 +76,7 @@ const FLOWS = [
   { surface: 'My Work', reads: 'Every item assigned to the signed-in person across boards.', both: false },
   { surface: 'Home · My Team', reads: 'Team membership and each person’s open work.', both: false },
   { surface: 'Projects', reads: 'Page & language items for the hreflang workflow.', both: true },
-  { surface: 'Directory', reads: 'People and assignments, cross-checked against portal grants.', both: false },
+  { surface: 'People, Teams and Permissions', reads: 'People and assignments, cross-checked against portal grants.', both: false },
 ]
 
 const Eyebrow = ({ children }: { children: React.ReactNode }) => (

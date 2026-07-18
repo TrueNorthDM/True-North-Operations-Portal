@@ -134,7 +134,7 @@ export default async function ProfilePage() {
               </div>
             </div>
           </div>
-          {admin && <Link href="/directory" className="shrink-0 inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">Manage in Directory →</Link>}
+          {admin && <Link href="/directory" className="shrink-0 inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">Manage in People &amp; Teams →</Link>}
         </div>
 
         {/* Part 1 — the person's own, editable details */}

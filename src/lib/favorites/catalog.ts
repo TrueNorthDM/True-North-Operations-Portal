@@ -28,7 +28,7 @@ export const FAVORITE_TARGETS: FavoriteTarget[] = [
   { href: '/admin', label: 'Admin', group: 'Admin', adminOnly: true },
   { href: '/admin/tickets', label: 'Tickets', group: 'Admin', adminOnly: true },
   { href: '/admin/tests', label: 'Tests', group: 'Admin', adminOnly: true },
-  { href: '/directory', label: 'Directory', group: 'Admin', adminOnly: true },
+  { href: '/directory', label: 'People, Teams and Permissions', group: 'Admin', adminOnly: true },
 ]
 
 export const MAX_FAVORITES = 5

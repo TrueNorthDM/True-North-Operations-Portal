@@ -51,7 +51,7 @@ export function DirectoryTabs({
       {/* heading row */}
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div className="max-w-[640px]">
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">Directory</h1>
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People, Teams and Permissions</h1>
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
             People, teams, and access — one place. Add or edit people, manage team membership, and grant each team access to projects.
           </p>

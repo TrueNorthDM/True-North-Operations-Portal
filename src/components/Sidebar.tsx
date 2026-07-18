@@ -131,7 +131,7 @@ const myWorkNav: Item = {
 // like Admin; the /directory route also guards server-side.
 const directoryNav: Item = {
   href: '/directory',
-  label: 'Directory',
+  label: 'People, Teams and Permissions',
   icon: DirectoryIcon,
   match: p => p === '/directory' || p.startsWith('/directory/'),
 }
