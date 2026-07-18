@@ -39,9 +39,13 @@ export function DirectoryTabs({
   const [modal, setModal] = useState<ModalState>(null)
   const [addMenu, setAddMenu] = useState(false)
 
+  // Inactive people live only on the People tab; every other surface (Emails,
+  // Teams, the person modal's manager picker) sees actives only.
+  const activePeople = people.filter(p => p.status === 'active')
+
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'people', label: 'People', count: people.length },
-    { key: 'emails', label: 'Emails', count: people.length },
+    { key: 'emails', label: 'Emails', count: activePeople.length },
     { key: 'teams', label: 'Teams', count: teamCards.length },
     { key: 'rates', label: 'Rates & Costs' },
   ]
@@ -147,16 +151,16 @@ export function DirectoryTabs({
         </div>
       )}
       {tab === 'emails' && (
-        <EmailsTab people={people} onOpen={id => setModal({ mode: 'edit', person: people.find(p => p.id === id) ?? null })} />
+        <EmailsTab people={activePeople} onOpen={id => setModal({ mode: 'edit', person: people.find(p => p.id === id) ?? null })} />
       )}
-      {tab === 'teams' && <TeamsManager cards={teamCards} people={people} />}
+      {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
 
       {modal && (
         <PersonModal
           state={modal}
           setState={setModal}
-          people={people}
+          people={activePeople}
           teamOptions={teamOptions}
           availableAccounts={availableAccounts}
         />

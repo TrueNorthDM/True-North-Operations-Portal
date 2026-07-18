@@ -201,7 +201,8 @@ export default async function DirectoryPage() {
       const memberIds = (membersByTeam.get(t.id) ?? [])
       const mem = memberIds
         .map(id => people.find(p => p.id === id))
-        .filter((p): p is PRow => !!p)
+        // Inactive people never appear outside the People tab.
+        .filter((p): p is PRow => !!p && p.status !== 'inactive')
         .map(p => ({
           id: p.id,
           name: p.full_name,
@@ -247,6 +248,7 @@ export default async function DirectoryPage() {
       }
     }
     const dirPeople: RestrictedPerson[] = people
+      .filter(p => p.status !== 'inactive')
       .map((p): RestrictedPerson => {
         const pt = primaryTeam(p.id)
         const mgrId = str(p.manager_id)

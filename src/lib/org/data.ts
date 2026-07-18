@@ -53,7 +53,9 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
     supabase.from('team_members').select('team_id, person_id'),
   ])
 
-  const people: PersonRow[] = pData ?? []
+  // Inactive people are hidden everywhere outside the People tab — the org chart
+  // (and its "N people" count) shows actives only.
+  const people: PersonRow[] = (pData ?? []).filter(p => p.status !== 'inactive')
   const teams: TeamRow[] = tData ?? []
   const members: MemberRow[] = mData ?? []
 
@@ -80,6 +82,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   const membersByTeam = new Map<string, { id: string; name: string }[]>()
   for (const m of members) {
     if (!teamById.has(m.team_id)) continue
+    if (!nameById.has(m.person_id)) continue // skip inactive members (filtered out of people)
     const arr = membersByTeam.get(m.team_id) ?? []
     arr.push({ id: m.person_id, name: nameById.get(m.person_id) ?? '?' })
     membersByTeam.set(m.team_id, arr)
