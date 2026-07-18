@@ -10,13 +10,15 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember } from '@/app/(app)/admin/teams/actions'
+import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamTool, removeTeamTool } from '@/app/(app)/admin/teams/actions'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
 import { ROLE_PILL, ROLE_LABEL, roleTypePill, PILL_CLASS, TEAM_COLOR, type PersonView, type TeamKey } from './people-types'
+import { TOOLS, type ToolAudience } from '@/lib/access/tools'
 
 export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; roleType: string; avatarUrl: string | null }
 export interface TeamCardAccess { projectId: string; name: string; logo: string | null; role: GrantRole }
+export interface TeamCardTool { toolKey: string; audience: ToolAudience }
 export interface TeamCard {
   id: string
   name: string
@@ -25,6 +27,7 @@ export interface TeamCard {
   memberCount: number
   members: TeamCardMember[]
   access: TeamCardAccess[]
+  tools: TeamCardTool[]
 }
 
 export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: PersonView[] }) {
@@ -160,6 +163,48 @@ function TeamCardView({ team, people, pending, run, onRename, onDelete }: {
               <span className={`font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap ${ROLE_PILL[g.role] ?? ROLE_PILL.viewer}`}>{ROLE_LABEL[g.role] ?? g.role}</span>
             </div>
           ))}
+        </div>
+
+        <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mt-[18px] mb-[3px]">Tool access</div>
+        <p className="text-[11px] text-muted leading-snug mb-2.5">Who on this team can open each tool. <b className="text-foreground font-semibold">Off</b> hides it. Applied once permissions ship.</p>
+        <div className="flex flex-col gap-1.5">
+          {TOOLS.map(tool => {
+            const current = team.tools.find(t => t.toolKey === tool.key)?.audience ?? null
+            return (
+              <div key={tool.key} className="flex items-center justify-between gap-2.5">
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  <span className="text-[12.5px] font-semibold text-foreground truncate">{tool.label}</span>
+                  {tool.sensitive && (
+                    <span title="Exposes money / PII" aria-label="Sensitive" className="shrink-0 inline-flex text-amber-500">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                    </span>
+                  )}
+                </span>
+                <div className="inline-flex shrink-0 bg-subtle rounded-[9px] p-0.5" role="group" aria-label={`${tool.label} access`}>
+                  {(['off', 'lead', 'all'] as const).map(val => {
+                    const active = val === 'off' ? current === null : current === val
+                    const label = val === 'off' ? 'Off' : val === 'lead' ? 'Lead' : 'Team'
+                    const title = val === 'off' ? 'No access' : val === 'lead' ? 'Team lead only' : 'Whole team'
+                    return (
+                      <button
+                        key={val}
+                        type="button"
+                        disabled={pending}
+                        aria-pressed={active}
+                        title={title}
+                        onClick={() => run(() => (val === 'off' ? removeTeamTool(team.id, tool.key) : setTeamTool(team.id, tool.key, val)))}
+                        className={`font-(family-name:--font-display) font-extrabold text-[10.5px] rounded-[7px] px-[9px] py-1 transition-colors disabled:opacity-50 ${
+                          active ? 'bg-white text-tn-ink shadow-[0_1px_2px_rgba(1,35,88,.12)]' : 'text-muted hover:text-tn-ink'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

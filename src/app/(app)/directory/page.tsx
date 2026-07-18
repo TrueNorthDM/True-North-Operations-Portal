@@ -9,6 +9,7 @@ import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type TeamKey } from '@/components/admin/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { AccessRow } from '@/components/admin/AccessMatrix'
+import type { ToolAudience } from '@/lib/access/tools'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 
 // Full people select (needs migration 029). Falls back to base columns if the
@@ -33,7 +34,7 @@ export default async function DirectoryPage() {
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes] = await Promise.all([
+  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes] = await Promise.all([
     supabase.from('teams').select('id, name, leader_person_id'),
     supabase.from('team_members').select('team_id, person_id'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
@@ -43,6 +44,8 @@ export default async function DirectoryPage() {
     // Separate + graceful: monday_docs (034) / role_type (035) / avatar_url (036)
     // may not exist yet — a failed query here must NOT drop the PEOPLE_FULL select.
     supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
+    // Team → tool access (037). Table may not exist yet — empty on error.
+    supabase.from('team_tool_grants').select('team_id, tool_key, audience'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -177,6 +180,13 @@ export default async function DirectoryPage() {
     arr.push(m.person_id)
     membersByTeam.set(m.team_id, arr)
   }
+  // Tool grants per team (037). Absence of a row = unrestricted (Part 4 enforces).
+  const toolsByTeam = new Map<string, { toolKey: string; audience: ToolAudience }[]>()
+  for (const r of ttRes.data ?? []) {
+    const arr = toolsByTeam.get(r.team_id) ?? []
+    arr.push({ toolKey: r.tool_key, audience: r.audience === 'lead' ? 'lead' : 'all' })
+    toolsByTeam.set(r.team_id, arr)
+  }
   const teamCards: TeamCard[] = teams
     .map((t): TeamCard => {
       const key = teamKeyFromName(t.name)
@@ -207,6 +217,7 @@ export default async function DirectoryPage() {
         memberCount: mem.length,
         members: mem,
         access: (grantsByTeam.get(t.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
+        tools: toolsByTeam.get(t.id) ?? [],
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name))

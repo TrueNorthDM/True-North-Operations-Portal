@@ -403,6 +403,13 @@ export type Database = {
         Update: Partial<{ subject_type: 'team' | 'person'; subject_id: string; project_id: string; role: 'manager' | 'publisher' | 'editor' | 'viewer' }>
         Relationships: []
       }
+      // Team → tool/dashboard access (migration 037). One audience per team per tool.
+      team_tool_grants: {
+        Row: { team_id: string; tool_key: string; audience: 'lead' | 'all'; created_at: string; updated_at: string }
+        Insert: { team_id: string; tool_key: string; audience?: 'lead' | 'all'; created_at?: string; updated_at?: string }
+        Update: Partial<{ team_id: string; tool_key: string; audience: 'lead' | 'all' }>
+        Relationships: []
+      }
       tr_clients: {
         Row: TrClientRow
         Insert: Omit<TrClientRow, 'id' | 'created_at' | 'parent_id'> & { id?: number; created_at?: string; parent_id?: number | null }

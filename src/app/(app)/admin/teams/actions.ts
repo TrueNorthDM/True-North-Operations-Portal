@@ -9,6 +9,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
+import { TOOL_KEYS, type ToolAudience } from '@/lib/access/tools'
 
 export type GrantRole = 'manager' | 'publisher' | 'editor' | 'viewer'
 
@@ -93,6 +94,33 @@ export async function removeTeamGrant(teamId: string, projectId: string) {
     .eq('subject_type', 'team')
     .eq('subject_id', teamId)
     .eq('project_id', projectId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/directory')
+}
+
+// ── Tool/dashboard access (team → tool, with audience) ──────────────────────
+// Which app tools a team can reach and for whom: the lead only ('lead') or all
+// members ('all'). tool_key is validated against the code catalogue, not the DB.
+export async function setTeamTool(teamId: string, toolKey: string, audience: ToolAudience) {
+  await requireAdmin()
+  if (!TOOL_KEYS.has(toolKey)) throw new Error('Unknown tool')
+  if (audience !== 'lead' && audience !== 'all') throw new Error('Invalid audience')
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('team_tool_grants')
+    .upsert({ team_id: teamId, tool_key: toolKey, audience }, { onConflict: 'team_id,tool_key' })
+  if (error) throw new Error(error.message)
+  revalidatePath('/directory')
+}
+
+export async function removeTeamTool(teamId: string, toolKey: string) {
+  await requireAdmin()
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('team_tool_grants')
+    .delete()
+    .eq('team_id', teamId)
+    .eq('tool_key', toolKey)
   if (error) throw new Error(error.message)
   revalidatePath('/directory')
 }
