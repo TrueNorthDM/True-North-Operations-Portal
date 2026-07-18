@@ -53,7 +53,7 @@ export function DirectoryTabs({
         <div className="max-w-[880px]">
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People, Teams and Permissions</h1>
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-            Add or edit people, manage team membership, and grant each team’s project access.
+            Add or edit people, manage team membership, and set each team’s tool access.
           </p>
         </div>
 
