@@ -24,7 +24,7 @@ export async function createTeam(name: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('teams').insert({ name: n })
   if (error) throw new Error(error.message)
-  revalidatePath('/admin/teams')
+  revalidatePath('/directory')
 }
 
 export async function updateTeam(id: string, input: { name?: string; leader_person_id?: string | null }) {
@@ -39,8 +39,7 @@ export async function updateTeam(id: string, input: { name?: string; leader_pers
   const supabase = await createClient()
   const { error } = await supabase.from('teams').update(patch).eq('id', id)
   if (error) throw new Error(error.message)
-  revalidatePath('/admin/teams')
-  revalidatePath(`/admin/teams/${id}`)
+  revalidatePath('/directory')
 }
 
 export async function deleteTeam(id: string) {
@@ -48,7 +47,7 @@ export async function deleteTeam(id: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('teams').delete().eq('id', id)
   if (error) throw new Error(error.message)
-  revalidatePath('/admin/teams')
+  revalidatePath('/directory')
   revalidatePath('/') // org chart team chips
 }
 
@@ -58,7 +57,7 @@ export async function addTeamMember(teamId: string, personId: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('team_members').insert({ team_id: teamId, person_id: personId })
   if (error) throw new Error(error.message)
-  revalidatePath(`/admin/teams/${teamId}`)
+  revalidatePath('/directory')
   revalidatePath('/')
 }
 
@@ -67,7 +66,7 @@ export async function removeTeamMember(teamId: string, personId: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('team_members').delete().eq('team_id', teamId).eq('person_id', personId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/admin/teams/${teamId}`)
+  revalidatePath('/directory')
   revalidatePath('/')
 }
 
@@ -82,7 +81,7 @@ export async function setTeamGrant(teamId: string, projectId: string, role: Gran
       { onConflict: 'subject_type,subject_id,project_id' },
     )
   if (error) throw new Error(error.message)
-  revalidatePath(`/admin/teams/${teamId}`)
+  revalidatePath('/directory')
 }
 
 export async function removeTeamGrant(teamId: string, projectId: string) {
@@ -95,5 +94,5 @@ export async function removeTeamGrant(teamId: string, projectId: string) {
     .eq('subject_id', teamId)
     .eq('project_id', projectId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/admin/teams/${teamId}`)
+  revalidatePath('/directory')
 }

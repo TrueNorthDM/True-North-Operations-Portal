@@ -190,8 +190,15 @@ export default async function DirectoryPage() {
           initials: initialsOf(p.full_name),
           teamKey: teamKeyByPerson.get(p.id) ?? key,
           isLead: t.leader_person_id === p.id,
+          roleType: roleTypeById.get(p.id) ?? 'user',
+          avatarUrl: avatarById.get(p.id) ?? null,
         }))
-        .sort((a, b) => Number(b.isLead) - Number(a.isLead) || a.name.localeCompare(b.name))
+        // Team leaders (the team's lead, then anyone typed Team Leader) at the
+        // top; everyone else alphabetical.
+        .sort((a, b) => {
+          const rank = (m: { isLead: boolean; roleType: string }) => (m.isLead ? 0 : m.roleType === 'team_leader' ? 1 : 2)
+          return rank(a) - rank(b) || a.name.localeCompare(b.name)
+        })
       return {
         id: t.id,
         name: t.name,

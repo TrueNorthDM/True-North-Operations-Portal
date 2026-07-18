@@ -12,10 +12,11 @@ import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
 import { AccessMatrix, type AccessRow } from './AccessMatrix'
+import { RatesCostsTab } from './RatesCostsTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, Account } from './people-types'
 
-type Tab = 'people' | 'emails' | 'teams' | 'access'
+type Tab = 'people' | 'emails' | 'teams' | 'access' | 'rates'
 
 export interface TeamOption { id: string; name: string; key: string; color: string }
 export interface ProjectOption { id: string; name: string; logo: string | null }
@@ -39,11 +40,12 @@ export function DirectoryTabs({
   const [modal, setModal] = useState<ModalState>(null)
   const [addMenu, setAddMenu] = useState(false)
 
-  const tabs: { key: Tab; label: string; count: number }[] = [
+  const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'people', label: 'People', count: people.length },
     { key: 'emails', label: 'Emails', count: people.length },
     { key: 'teams', label: 'Teams', count: teamCards.length },
     { key: 'access', label: 'Access', count: accessRows.length },
+    { key: 'rates', label: 'Rates & Costs' },
   ]
 
   return (
@@ -123,7 +125,7 @@ export function DirectoryTabs({
               }`}
             >
               {t.label}
-              <span className={`font-(family-name:--font-display) font-extrabold text-[11px] rounded-full px-2 py-0.5 ${active ? 'text-tn-teal bg-tn-teal-soft' : 'text-muted bg-subtle'}`}>{t.count}</span>
+              {t.count !== undefined && <span className={`font-(family-name:--font-display) font-extrabold text-[11px] rounded-full px-2 py-0.5 ${active ? 'text-tn-teal bg-tn-teal-soft' : 'text-muted bg-subtle'}`}>{t.count}</span>}
             </button>
           )
         })}
@@ -135,8 +137,9 @@ export function DirectoryTabs({
       {tab === 'emails' && (
         <EmailsTab people={people} onOpen={id => setModal({ mode: 'edit', person: people.find(p => p.id === id) ?? null })} />
       )}
-      {tab === 'teams' && <TeamsManager cards={teamCards} />}
+      {tab === 'teams' && <TeamsManager cards={teamCards} people={people} />}
       {tab === 'access' && <AccessMatrix rows={accessRows} teamOptions={teamOptions} projectOptions={projectOptions} />}
+      {tab === 'rates' && <RatesCostsTab />}
 
       {modal && (
         <PersonModal
