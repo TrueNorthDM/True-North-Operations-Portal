@@ -13,6 +13,7 @@ import type { AccessRow } from '@/components/admin/AccessMatrix'
 import type { ToolAudience } from '@/lib/access/tools'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { tierOf } from '@/lib/auth/tier'
+import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 
 // Full people select (needs migration 029). Falls back to base columns if the
@@ -293,6 +294,11 @@ export default async function DirectoryPage() {
     )
   }
 
+  // Privileged only: the Rates & Costs tab data (moved here from Settings →
+  // People & rates). Loaded after the restricted branch so non-admins never
+  // trigger it.
+  const budget = await getBudgetUsageData()
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-[13px] text-muted">
@@ -308,6 +314,8 @@ export default async function DirectoryPage() {
         accessRows={accessRows}
         projectOptions={projectOptions}
         availableAccounts={availableAccounts}
+        ratesPeople={budget.people}
+        ratesClients={budget.clients.map(c => ({ id: c.id, name: c.name }))}
       />
     </div>
   )

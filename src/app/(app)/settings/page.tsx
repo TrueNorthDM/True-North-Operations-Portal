@@ -14,7 +14,6 @@ import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { loadProjectDirectory } from '@/lib/tsheets/report-data'
 import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
 import { ClientsProjectsTab } from '@/components/tsheets/settings/ClientsProjectsTab'
-import { PeopleTab } from '@/components/tsheets/settings/PeopleTab'
 import { FullHistoryButton } from '@/components/settings/FullHistoryButton'
 import { HistoryTab, ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
@@ -46,7 +45,6 @@ const Icon = ({ paths, circles = [] }: { paths?: string[]; circles?: [number, nu
 const ApisIcon = <Icon paths={['M15 7a5 5 0 0 1 0 10h-1', 'M9 17a5 5 0 0 1 0-10h1', 'M8 12h8']} />
 const ClientsIcon = <Icon paths={['M12 1v22', 'M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6']} />
 const CatalogIcon = <Icon paths={['M3 7V5a2 2 0 0 1 2-2h2', 'M17 3h2a2 2 0 0 1 2 2v2', 'M21 17v2a2 2 0 0 1-2 2h-2', 'M7 21H5a2 2 0 0 1-2-2v-2', 'M7 8h10', 'M7 12h6', 'M7 16h8']} />
-const PeopleIcon = <Icon paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75']} />
 const TargetsIcon = <Icon circles={[[12, 12, 10], [12, 12, 6], [12, 12, 2]]} />
 const SitesIcon = <Icon circles={[[12, 12, 10]]} paths={['M2 12h20', 'M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z']} />
 
@@ -185,18 +183,6 @@ export default async function SettingsPage() {
       ),
     },
     {
-      id: 'people',
-      label: 'People & rates',
-      icon: PeopleIcon,
-      editable: false,
-      content: (
-        <div className="space-y-5">
-          <SectionHead title="People & rates" desc="Everyone who logs time on i7. Person, team, report-to and joined-on come from the Directory; here you set Rate / client (what the client is billed per hour) and Rate / cost (what the hour costs internally)." />
-          <PeopleTab people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} />
-        </div>
-      ),
-    },
-    {
       id: 'targets',
       label: 'Publishing targets',
       icon: TargetsIcon,
@@ -241,7 +227,7 @@ export default async function SettingsPage() {
       <div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Settings</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          Sites &amp; languages, publishing targets, clients &amp; budgets, people &amp; rates, and API tokens — the shared settings the whole portal runs on. Changes apply everywhere.
+          Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens — the shared settings the whole portal runs on. Changes apply everywhere.
         </p>
       </div>
 

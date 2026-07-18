@@ -15,6 +15,7 @@ import { AccessMatrix, type AccessRow } from './AccessMatrix'
 import { RatesCostsTab } from './RatesCostsTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, Account } from './people-types'
+import type { PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
 type Tab = 'people' | 'emails' | 'teams' | 'access' | 'rates'
 
@@ -28,6 +29,8 @@ export function DirectoryTabs({
   accessRows,
   projectOptions,
   availableAccounts,
+  ratesPeople,
+  ratesClients,
 }: {
   people: PersonView[]
   teamOptions: TeamOption[]
@@ -35,6 +38,8 @@ export function DirectoryTabs({
   accessRows: AccessRow[]
   projectOptions: ProjectOption[]
   availableAccounts: Account[]
+  ratesPeople: PersonWithAssignments[]
+  ratesClients: { id: number; name: string }[]
 }) {
   const [tab, setTab] = useState<Tab>('people')
   const [modal, setModal] = useState<ModalState>(null)
@@ -57,9 +62,9 @@ export function DirectoryTabs({
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
             People, teams, and access — one place. Add or edit people, manage team membership, and grant each team access to projects.
           </p>
-          <Link href="/settings#people" className="inline-flex items-center gap-1.5 mt-2.5 text-[13px] font-(family-name:--font-display) font-bold text-tn-teal hover:text-tn-primary transition-colors">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 1v22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-            Rates &amp; project assignment in Settings
+          <Link href="/settings#catalog" className="inline-flex items-center gap-1.5 mt-2.5 text-[13px] font-(family-name:--font-display) font-bold text-tn-teal hover:text-tn-primary transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" /><path d="M7 8h10M7 12h6M7 16h8" /></svg>
+            Project assignment in Settings
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
         </div>
@@ -139,7 +144,7 @@ export function DirectoryTabs({
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={people} />}
       {tab === 'access' && <AccessMatrix rows={accessRows} teamOptions={teamOptions} projectOptions={projectOptions} />}
-      {tab === 'rates' && <RatesCostsTab />}
+      {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
 
       {modal && (
         <PersonModal
