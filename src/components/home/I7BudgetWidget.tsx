@@ -13,9 +13,7 @@ export function I7BudgetWidget({ month, carryover }: { month: string; carryover:
         <h2 className="text-lg font-bold text-tn-ink">i7 Budget</h2>
         <Link href="/tools/time-report" className="text-xs font-semibold text-muted hover:text-tn-teal transition-colors">Open report →</Link>
       </div>
-      <div className="max-w-[720px]">
-        <BudgetBalanceCard c={carryover} month={month} />
-      </div>
+      <BudgetBalanceCard c={carryover} month={month} />
     </section>
   )
 }
