@@ -1,16 +1,21 @@
 'use client'
 
 /**
- * CarryoverPanel — the i7 budget-balance widget. Split out of I7Report (audit
- * M5-2). Left block (20%): carried-in balance. Right block (80%): this month's
- * total budget, closing balance, and an animated usage bar (Used of Budget
- * total). "Budget total" = carried-in + this month's budget, so Balance left =
- * Budget total − Used stays consistent with the bar.
+ * CarryoverPanel — the i7 budget-balance widget. Left block (20%): carried-in
+ * balance. Right block (80%): BudgetBalanceCard — this month's total budget,
+ * closing balance, and an animated usage bar. "Budget total" = carried-in + this
+ * month's budget, so Balance left = Budget total − Used stays consistent.
+ *
+ * BudgetBalanceCard is exported and reused on the Home page (same card, same
+ * navy header, same animation) so the two surfaces mirror each other.
  */
 
 import { useState, useEffect } from 'react'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import type { I7Carryover } from '@/lib/tsheets/types'
+
+const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
 
 type Status = 'good' | 'warn' | 'bad' | 'none'
 function statusOf(actual: number, budget: number | null | undefined): Status {
@@ -27,23 +32,22 @@ const PILL: Record<Status, { cls: string; label: string }> = {
   none: { cls: 'text-slate-500 bg-slate-100 border-slate-200', label: 'No budget' },
 }
 
-export function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: string }) {
+/** The budget-balance card: navy header + this month's total, balance left and
+ *  the animated usage bar. Shared by the i7 report and the Home page. */
+export function BudgetBalanceCard({ c, month }: { c: I7Carryover; month: string }) {
   const neg = c.totalLeft < 0
-  const st = statusOf(c.monthUsed, c.totalAvailable)
-  const pill = PILL[st]
+  const pill = PILL[statusOf(c.monthUsed, c.totalAvailable)]
   return (
-    <div className="flex flex-col lg:flex-row gap-4">
-      {/* Left 20% — Carried in */}
-      <div className="lg:w-1/5 rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)] flex flex-col justify-center">
-        <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Carried in</div>
-        <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums mt-1 ${c.opening < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{moneySigned(c.opening)}</div>
-        <div className="text-xs text-muted mt-1">Balance brought from last month</div>
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      {/* navy header */}
+      <div className="flex items-center justify-between gap-3 bg-tn-primary px-5 py-3.5">
+        <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-white">i7 Marketing budget</span>
+        <span className="font-(family-name:--font-display) font-bold text-[12px] text-white/70">{fmtMonth(month)}</span>
       </div>
 
-      {/* Right 80% — Budget balance + usage bar */}
-      <div className="lg:w-4/5 rounded-[16px] border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-          <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget balance · {monthLabel}</div>
+      <div className="p-5">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget balance</div>
           <span className={`inline-flex items-center gap-1.5 text-xs font-(family-name:--font-display) font-bold px-3 py-1 rounded-full border ${pill.cls}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />{pill.label}
           </span>
@@ -64,6 +68,24 @@ export function CarryoverPanel({ c, monthLabel }: { c: I7Carryover; monthLabel: 
           </div>
         </div>
         <Meter label="Budget used" actual={c.monthUsed} budget={c.totalAvailable} />
+      </div>
+    </div>
+  )
+}
+
+export function CarryoverPanel({ c, month }: { c: I7Carryover; month: string }) {
+  return (
+    <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+      {/* Left 20% — Carried in */}
+      <div className="lg:w-1/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)] flex flex-col justify-center">
+        <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Carried in</div>
+        <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums mt-1 ${c.opening < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{moneySigned(c.opening)}</div>
+        <div className="text-xs text-muted mt-1">Balance brought from last month</div>
+      </div>
+
+      {/* Right 80% — Budget balance card (navy header + animated usage bar) */}
+      <div className="lg:w-4/5">
+        <BudgetBalanceCard c={c} month={month} />
       </div>
     </div>
   )

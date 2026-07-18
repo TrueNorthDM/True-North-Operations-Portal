@@ -115,7 +115,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       ) : (
       <>
       {/* Carryover — bank-account running balance */}
-      {carryover && <CarryoverPanel c={carryover} monthLabel={monthLabel(selectedMonth)} />}
+      {carryover && <CarryoverPanel c={carryover} month={selectedMonth} />}
 
       {/* Month narrative (also printed on the client report) */}
       {!preview && <NoteCard month={selectedMonth} note={note} canEdit={canEditNote} />}
