@@ -66,10 +66,16 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     // PEOPLE_BASE fallback) so the tab still lists everyone; cost rate + joined-on
     // just read null until 029 is run. The mapping already null-guards both.
     (async () => {
-      const FULL = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, i7_projects'
+      // Resilient in tiers so a not-yet-applied migration only drops the columns
+      // it adds: FULL needs 039 (monthly_salary), MID needs 029 (hire_date +
+      // internal_rate), BASE is always safe.
+      const FULL = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, monthly_salary, i7_projects'
+      const MID = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, i7_projects'
       const BASE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, i7_projects'
       const full = await supabase.from('people').select(FULL).not('tsheets_user_id', 'is', null).order('full_name')
-      return full.error ? await supabase.from('people').select(BASE).not('tsheets_user_id', 'is', null).order('full_name') : full
+      if (!full.error) return full
+      const mid = await supabase.from('people').select(MID).not('tsheets_user_id', 'is', null).order('full_name')
+      return mid.error ? await supabase.from('people').select(BASE).not('tsheets_user_id', 'is', null).order('full_name') : mid
     })(),
     supabase
       .from('tr_assignments')
@@ -171,6 +177,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     const managerId = (p as { manager_id?: string | null }).manager_id ?? null
     const teams = teamsByPerson.get(p.id) ?? []
     const internalRate = (p as { internal_rate?: number | null }).internal_rate
+    const monthlySalary = (p as { monthly_salary?: number | null }).monthly_salary
     return {
       id: p.id,
       name: p.full_name,
@@ -181,6 +188,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       managerTeam: managerId ? teamsByPerson.get(managerId)?.[0] ?? null : null,
       hireDate: (p as { hire_date?: string | null }).hire_date ?? null,
       costRate: internalRate != null ? Number(internalRate) : null,
+      monthlySalary: monthlySalary != null ? Number(monthlySalary) : null,
       projects: (p as { i7_projects?: string[] | null }).i7_projects ?? [],
       tsheetsUserId: p.tsheets_user_id as number,
       tsheetsOnly: p.tsheets_only ?? false,
@@ -215,7 +223,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       justification: e.justification,
       changedAt: e.changed_at,
       actorName: changedBy ? actorNameById.get(changedBy) ?? null : null,
-      entityLabel: e.entity_type === 'person_cost'
+      entityLabel: e.entity_type === 'person_cost' || e.entity_type === 'person_salary'
         ? ((e.after_data as { person_name?: string })?.person_name ?? null)
         : BUDGET_ENTITIES.has(e.entity_type) ? clientNameMap.get(e.entity_id) ?? null : null,
     }

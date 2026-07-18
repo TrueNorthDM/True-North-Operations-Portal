@@ -120,6 +120,7 @@ export type PersonRow = {
   schedule: string | null
   weekly_hours: number | null
   internal_rate: number | null
+  monthly_salary: number | null
   reports_to_manager: string | null
   also_reports_to_id: string | null
   email_true_north: string | null

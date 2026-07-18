@@ -14,7 +14,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveTrAssignment, savePersonCostRate } from '@/lib/tsheets/settings-actions'
+import { saveTrAssignment, savePersonCostRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/components/admin/people-types'
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
@@ -30,6 +30,7 @@ export interface PersonWithAssignments {
   managerTeam: string | null
   hireDate: string | null
   costRate: number | null
+  monthlySalary: number | null
   projects: string[]
   tsheetsUserId: number
   tsheetsOnly: boolean
@@ -53,7 +54,7 @@ interface Props {
   allClients: { id: number; name: string }[]
 }
 
-const AUTO_REASON = 'Updated in Settings → People & rates'
+const AUTO_REASON = 'Updated in Rates & Costs'
 
 // Team pill, tinted from the shared team-colour system.
 function TeamBadge({ team }: { team: string | null }) {
@@ -69,7 +70,7 @@ function TeamBadge({ team }: { team: string | null }) {
   )
 }
 
-const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_1fr_1fr] gap-3.5 items-center'
+const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_1fr_1fr_1fr] gap-3.5 items-center'
 const HD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.06em] uppercase text-muted'
 
 export function PeopleTab({ people, allClients }: Props) {
@@ -88,15 +89,15 @@ export function PeopleTab({ people, allClients }: Props) {
   }
 
   const [editing, setEditing] = useState(false)
-  const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string }>>({})
+  const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string; salary: string }>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function enterEdit() {
-    const d: Record<string, { client: string; cost: string }> = {}
+    const d: Record<string, { client: string; cost: string; salary: string }> = {}
     for (const p of people) {
       const cr = rateOf(p)
-      d[p.id] = { client: cr != null ? String(cr) : '', cost: p.costRate != null ? String(p.costRate) : '' }
+      d[p.id] = { client: cr != null ? String(cr) : '', cost: p.costRate != null ? String(p.costRate) : '', salary: p.monthlySalary != null ? String(p.monthlySalary) : '' }
     }
     setDrafts(d)
     setEditing(true)
@@ -109,8 +110,8 @@ export function PeopleTab({ people, allClients }: Props) {
     setError(null)
   }
 
-  function setDraft(id: string, field: 'client' | 'cost', val: string) {
-    setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? { client: '', cost: '' }), [field]: val } }))
+  function setDraft(id: string, field: 'client' | 'cost' | 'salary', val: string) {
+    setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? { client: '', cost: '', salary: '' }), [field]: val } }))
   }
 
   async function save() {
@@ -130,6 +131,11 @@ export function PeopleTab({ people, allClients }: Props) {
       const newCost = d.cost.trim() === '' ? null : Number(d.cost)
       if (newCost != null && newCost > 0 && newCost !== p.costRate) {
         ops.push(savePersonCostRate({ personId: p.id, costRate: newCost, justification: AUTO_REASON }))
+      }
+      // Monthly salary — only when it changed.
+      const newSalary = d.salary.trim() === '' ? null : Number(d.salary)
+      if (newSalary != null && newSalary > 0 && newSalary !== p.monthlySalary) {
+        ops.push(savePersonMonthlySalary({ personId: p.id, monthlySalary: newSalary, justification: AUTO_REASON }))
       }
     }
     if (ops.length === 0) { setEditing(false); setSaving(false); return }
@@ -178,7 +184,7 @@ export function PeopleTab({ people, allClients }: Props) {
   return (
     <div>
       <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-        <div className="min-w-[640px]">
+        <div className="min-w-[760px]">
           {/* header */}
           <div className={`${GRID} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
             <span className={HD}>Person</span>
@@ -187,12 +193,14 @@ export function PeopleTab({ people, allClients }: Props) {
             <span className={HD}>Joined on</span>
             <span className={`${HD} text-right`}>Rate / client</span>
             <span className={`${HD} text-right`}>Rate / cost</span>
+            <span className={`${HD} text-right`}>Month / salary</span>
           </div>
 
           {people.map(p => {
             const d = drafts[p.id]
             const clientVal = editing ? (d?.client ?? '') : (rateOf(p) != null ? String(rateOf(p)) : '')
             const costVal = editing ? (d?.cost ?? '') : (p.costRate != null ? String(p.costRate) : '')
+            const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
             return (
               <div key={p.id} className={`${GRID} px-[22px] py-3 border-b border-slate-100 last:border-0`}>
                 {/* Person — navy avatar + name (from Directory) */}
@@ -228,6 +236,9 @@ export function PeopleTab({ people, allClients }: Props) {
 
                 {/* Rate / cost (violet focus) */}
                 {rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0')}
+
+                {/* Month / salary (green focus) */}
+                {rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}
               </div>
             )
           })}

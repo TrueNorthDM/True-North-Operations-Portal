@@ -386,6 +386,48 @@ export async function savePersonCostRate(input: {
   return { ok: true }
 }
 
+// Fixed monthly cost (people.monthly_salary) — for staff paid a flat amount per
+// month rather than by the hour. One value per person, justified + audited like
+// the cost rate. Edited in the Directory's Rates & Costs tab.
+export async function savePersonMonthlySalary(input: {
+  personId: string
+  monthlySalary: number
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: before } = await supabase
+    .from('people')
+    .select('id, full_name, monthly_salary')
+    .eq('id', input.personId)
+    .maybeSingle()
+  if (!before) return { ok: false, error: 'Person not found.' }
+
+  const { error: updErr } = await supabase
+    .from('people')
+    .update({ monthly_salary: input.monthlySalary })
+    .eq('id', input.personId)
+  if (updErr) return { ok: false, error: updErr.message }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'person_salary',
+    entity_id: 0, // person is keyed by UUID; the name lives in after_data
+    action: 'update',
+    before_data: { person_name: before.full_name, monthly_salary: before.monthly_salary },
+    after_data: { person_name: before.full_name, monthly_salary: input.monthlySalary },
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/directory')
+  revalidatePath('/settings')
+  return { ok: true }
+}
+
 // The i7 projects a person works on (the budget roster). Drives each project's
 // average billing rate. Light-touch: no justification modal, but still audited.
 export async function savePersonProjects(input: {

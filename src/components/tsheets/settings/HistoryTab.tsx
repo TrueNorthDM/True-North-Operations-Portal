@@ -46,6 +46,8 @@ function describe(e: AuditEntry): Change {
       return { badge: 'Hourly rate', kind: 'violet', summary: arrow(b.hourly_rate, a.hourly_rate) }
     case 'person_cost':
       return { badge: 'Cost rate', kind: 'violet', summary: arrow(b.cost_rate, a.cost_rate) }
+    case 'person_salary':
+      return { badge: 'Monthly salary', kind: 'violet', summary: arrow(b.monthly_salary, a.monthly_salary) }
     case 'project_budget':
     case 'project_month_hours':
       return { badge: 'Budget hours', kind: 'green', summary: 'updated per project' }
