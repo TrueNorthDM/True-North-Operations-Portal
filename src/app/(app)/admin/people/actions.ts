@@ -61,11 +61,12 @@ export interface PersonInput {
   role_type?: string
 
   /**
-   * Primary team (teams.id) or null. When passed, the person's team membership
-   * is reconciled to this single team (replacing any existing memberships) —
-   * the Directory models one primary team per person. Omit to leave as-is.
+   * The person's team memberships + POSITION in each (Team Leader / Collaborator,
+   * migration 040). When passed, memberships are reconciled to exactly this list
+   * (a person can belong to several teams with a different position in each).
+   * Omit to leave as-is.
    */
-  team_id?: string | null
+  teams?: { teamId: string; position: string }[]
   /** When false, unlink any TSheets user. Omit / true leaves the link as-is. */
   tsheets?: boolean
 }
@@ -112,14 +113,16 @@ function personColumns(input: PersonInput): PersonCols {
   return cols
 }
 
-/** Reconcile the person's memberships to a single primary team (or none). */
-async function setPrimaryTeam(supabase: Awaited<ReturnType<typeof createClient>>, personId: string, teamId: string | null) {
-  // Drop every current membership, then add the chosen one. The Directory treats
-  // team as single-valued, so this collapses any multi-team rows to one.
+/** Reconcile the person's memberships to exactly the given teams + positions. */
+async function setPersonTeams(supabase: Awaited<ReturnType<typeof createClient>>, personId: string, teams: { teamId: string; position: string }[]) {
   const { error: delErr } = await supabase.from('team_members').delete().eq('person_id', personId)
   if (delErr) throw new Error(delErr.message)
-  if (teamId) {
-    const { error: insErr } = await supabase.from('team_members').insert({ team_id: teamId, person_id: personId })
+  // Dedupe by team (last wins) and normalise the position value.
+  const byTeam = new Map<string, string>()
+  for (const t of teams) if (t.teamId) byTeam.set(t.teamId, t.position === 'team_leader' ? 'team_leader' : 'collaborator')
+  const rows = [...byTeam].map(([team_id, position]) => ({ team_id, person_id: personId, position }))
+  if (rows.length) {
+    const { error: insErr } = await supabase.from('team_members').insert(rows)
     if (insErr) throw new Error(insErr.message)
   }
 }
@@ -136,7 +139,7 @@ export async function createPerson(input: PersonInput) {
 
   const { data, error } = await supabase.from('people').insert(row).select('id').single()
   if (error) throw new Error(mapError(error.message))
-  if (input.team_id !== undefined && data?.id) await setPrimaryTeam(supabase, data.id, input.team_id || null)
+  if (input.teams !== undefined && data?.id) await setPersonTeams(supabase, data.id, input.teams)
   revalidate()
 }
 
@@ -154,7 +157,7 @@ export async function updatePerson(id: string, input: PersonInput) {
 
   const { error } = await supabase.from('people').update(patch).eq('id', id)
   if (error) throw new Error(mapError(error.message))
-  if (input.team_id !== undefined) await setPrimaryTeam(supabase, id, input.team_id || null)
+  if (input.teams !== undefined) await setPersonTeams(supabase, id, input.teams)
   revalidate()
 }
 

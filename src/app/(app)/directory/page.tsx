@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
-import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type TeamKey } from '@/components/admin/people-types'
+import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { ToolAudience } from '@/lib/access/tools'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -42,9 +42,8 @@ export default async function DirectoryPage() {
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes] = await Promise.all([
-    supabase.from('teams').select('id, name, leader_person_id, color'),
-    supabase.from('team_members').select('team_id, person_id'),
+  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes] = await Promise.all([
+    supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
@@ -58,7 +57,15 @@ export default async function DirectoryPage() {
 
   const people = (pRes.data ?? []) as unknown as PRow[]
   const teams = tData ?? []
-  const members = mData ?? []
+  // Team memberships + per-team position (040). Graceful: pre-migration the
+  // position column is absent, so fall back and default everyone to collaborator.
+  let tmRes = await supabase.from('team_members').select('team_id, person_id, position')
+  if (tmRes.error) tmRes = (await supabase.from('team_members').select('team_id, person_id')) as typeof tmRes
+  const members = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
+    team_id: m.team_id,
+    person_id: m.person_id,
+    position: m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+  }))
   const grants = gData ?? []
   const sites = sData ?? []
   const profiles = prData ?? []
@@ -104,6 +111,28 @@ export default async function DirectoryPage() {
   const teamKeyByPerson = new Map<string, TeamKey>()
   for (const p of people) teamKeyByPerson.set(p.id, teamKeyFromName(primaryTeam(p.id)?.name))
 
+  // Per-person memberships with position (drives the People modal's teams editor)
+  // and the set of teams each person LEADS (position=team_leader) for the tier.
+  const teamsByPerson = new Map<string, PersonTeam[]>()
+  const leadTeamIdsByPerson = new Map<string, Set<string>>()
+  for (const m of members) {
+    const t = teamById.get(m.team_id)
+    if (t) {
+      const arr = teamsByPerson.get(m.person_id) ?? []
+      arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position })
+      teamsByPerson.set(m.person_id, arr)
+    }
+    if (m.position === 'team_leader') {
+      const s = leadTeamIdsByPerson.get(m.person_id) ?? new Set<string>()
+      s.add(m.team_id)
+      leadTeamIdsByPerson.set(m.person_id, s)
+    }
+  }
+  // Team Leaders first, then alphabetical by team name.
+  for (const arr of teamsByPerson.values()) {
+    arr.sort((a, b) => (a.position === b.position ? (a.teamName ?? '').localeCompare(b.teamName ?? '') : a.position === 'team_leader' ? -1 : 1))
+  }
+
   // ── Accounts (for the account picker) ──
   const emailByProfile = new Map(profiles.map(pr => [pr.id, pr.email ?? '(no email)']))
   const linkedProfileIds = new Set(people.map(p => (typeof p.profile_id === 'string' ? p.profile_id : null)).filter(Boolean) as string[])
@@ -129,6 +158,7 @@ export default async function DirectoryPage() {
         teamId: pt?.id ?? null,
         teamName: pt?.name ?? null,
         teamKey: teamKeyFromName(pt?.name),
+        teams: teamsByPerson.get(p.id) ?? [],
         manager_id: mgrId,
         managerName: mgrId ? nameById.get(mgrId) ?? null : null,
         managerTeamKey: mgrId ? teamKeyByPerson.get(mgrId) ?? 'other' : null,
@@ -182,10 +212,10 @@ export default async function DirectoryPage() {
     arr.push({ projectId: g.project_id, name: site?.name ?? '—', logo: site ? LOGO_BY_CODE[site.code] ?? null : null, role: g.role as GrantRole })
     grantsByTeam.set(g.subject_id, arr)
   }
-  const membersByTeam = new Map<string, string[]>()
+  const membersByTeam = new Map<string, { personId: string; position: string }[]>()
   for (const m of members) {
     const arr = membersByTeam.get(m.team_id) ?? []
-    arr.push(m.person_id)
+    arr.push({ personId: m.person_id, position: m.position })
     membersByTeam.set(m.team_id, arr)
   }
   // Tool grants per team (037). Absence of a row = unrestricted (Part 4 enforces).
@@ -198,26 +228,22 @@ export default async function DirectoryPage() {
   const teamCards: TeamCard[] = teams
     .map((t): TeamCard => {
       const key = teamKeyFromName(t.name)
-      const memberIds = (membersByTeam.get(t.id) ?? [])
-      const mem = memberIds
-        .map(id => people.find(p => p.id === id))
+      const mem = (membersByTeam.get(t.id) ?? [])
+        .map(mm => { const p = people.find(x => x.id === mm.personId); return p ? { p, position: mm.position } : null })
         // Inactive people never appear outside the People tab.
-        .filter((p): p is PRow => !!p && p.status !== 'inactive')
-        .map(p => ({
+        .filter((x): x is { p: PRow; position: string } => !!x && x.p.status !== 'inactive')
+        .map(({ p, position }) => ({
           id: p.id,
           name: p.full_name,
           initials: initialsOf(p.full_name),
           teamKey: teamKeyByPerson.get(p.id) ?? key,
-          isLead: t.leader_person_id === p.id,
+          position,
+          isLead: position === 'team_leader',
           roleType: roleTypeById.get(p.id) ?? 'user',
           avatarUrl: avatarById.get(p.id) ?? null,
         }))
-        // Team leaders (the team's lead, then anyone typed Team Leader) at the
-        // top; everyone else alphabetical.
-        .sort((a, b) => {
-          const rank = (m: { isLead: boolean; roleType: string }) => (m.isLead ? 0 : m.roleType === 'team_leader' ? 1 : 2)
-          return rank(a) - rank(b) || a.name.localeCompare(b.name)
-        })
+        // Team Leaders (by team position) at the top; everyone else alphabetical.
+        .sort((a, b) => (a.isLead === b.isLead ? a.name.localeCompare(b.name) : a.isLead ? -1 : 1))
       return {
         id: t.id,
         name: t.name,
@@ -243,7 +269,7 @@ export default async function DirectoryPage() {
         for (const p of people) {
           if (str(p.manager_id) === viewerId || str(p.also_reports_to_id) === viewerId) scope.add(p.id)
         }
-        const myTeamIds = new Set(teams.filter(t => t.leader_person_id === viewerId).map(t => t.id))
+        const myTeamIds = leadTeamIdsByPerson.get(viewerId) ?? new Set<string>()
         for (const m of members) if (myTeamIds.has(m.team_id)) scope.add(m.person_id)
       }
     }

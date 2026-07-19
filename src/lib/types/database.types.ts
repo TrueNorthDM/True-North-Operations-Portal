@@ -174,6 +174,7 @@ export type TeamRow = {
 export type TeamMemberRow = {
   team_id: string
   person_id: string
+  position: string // 'team_leader' | 'collaborator' (migration 040)
   created_at: string
 }
 

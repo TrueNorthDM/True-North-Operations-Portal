@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache'
 import { TOOL_KEYS, type ToolAudience } from '@/lib/access/tools'
 
 export type GrantRole = 'manager' | 'publisher' | 'editor' | 'viewer'
+export type TeamPosition = 'team_leader' | 'collaborator'
 
 async function requireAdmin() {
   if (!(await isCurrentUserAdmin())) throw new Error('Not authorized')
@@ -28,15 +29,14 @@ export async function createTeam(name: string, color?: string | null) {
   revalidatePath('/directory')
 }
 
-export async function updateTeam(id: string, input: { name?: string; leader_person_id?: string | null; color?: string | null }) {
+export async function updateTeam(id: string, input: { name?: string; color?: string | null }) {
   await requireAdmin()
-  const patch: { name?: string; leader_person_id?: string | null; color?: string | null } = {}
+  const patch: { name?: string; color?: string | null } = {}
   if (input.name !== undefined) {
     const n = input.name.trim()
     if (!n) throw new Error('Team name is required')
     patch.name = n
   }
-  if (input.leader_person_id !== undefined) patch.leader_person_id = input.leader_person_id || null
   if (input.color !== undefined) patch.color = input.color || null
   const supabase = await createClient()
   const { error } = await supabase.from('teams').update(patch).eq('id', id)
@@ -54,10 +54,30 @@ export async function deleteTeam(id: string) {
 }
 
 // ── Membership ──────────────────────────────────────────────────────────────
-export async function addTeamMember(teamId: string, personId: string) {
+export async function addTeamMember(teamId: string, personId: string, position: TeamPosition = 'collaborator') {
   await requireAdmin()
+  if (position !== 'team_leader' && position !== 'collaborator') throw new Error('Invalid position')
   const supabase = await createClient()
-  const { error } = await supabase.from('team_members').insert({ team_id: teamId, person_id: personId })
+  const { error } = await supabase
+    .from('team_members')
+    .upsert({ team_id: teamId, person_id: personId, position }, { onConflict: 'team_id,person_id' })
+  if (error) throw new Error(error.message)
+  revalidatePath('/directory')
+  revalidatePath('/')
+}
+
+// Set a member's POSITION within a team (Team Leader ↔ Collaborator). The team's
+// lead is whoever holds the team_leader position — there is no separate "make
+// lead" any more.
+export async function setTeamMemberPosition(teamId: string, personId: string, position: TeamPosition) {
+  await requireAdmin()
+  if (position !== 'team_leader' && position !== 'collaborator') throw new Error('Invalid position')
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('team_members')
+    .update({ position })
+    .eq('team_id', teamId)
+    .eq('person_id', personId)
   if (error) throw new Error(error.message)
   revalidatePath('/directory')
   revalidatePath('/')

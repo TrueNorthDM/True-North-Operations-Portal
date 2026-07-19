@@ -10,15 +10,15 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamTool, removeTeamTool } from '@/app/(app)/admin/teams/actions'
+import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition, setTeamTool, removeTeamTool } from '@/app/(app)/admin/teams/actions'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, PILL_CLASS, TEAM_COLOR, type PersonView, type TeamKey } from './people-types'
+import { roleTypePill, teamPositionPill, PILL_CLASS, TEAM_COLOR, type PersonView, type TeamKey } from './people-types'
 import { TOOLS, type ToolAudience } from '@/lib/access/tools'
 import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/color-palette'
 import { Select } from '@/components/ui/Select'
 
-export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; roleType: string; avatarUrl: string | null }
+export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; position: string; roleType: string; avatarUrl: string | null }
 export interface TeamCardAccess { projectId: string; name: string; logo: string | null; role: GrantRole }
 export interface TeamCardTool { toolKey: string; audience: ToolAudience }
 export interface TeamCard {
@@ -82,8 +82,8 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
   return (
     <div>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-[18px]">
-        <p className="text-[13.5px] text-muted max-w-[560px] leading-relaxed">
-          Create teams, set a lead, and add members. Team membership also shows on each person’s card (Team field).
+        <p className="text-[13.5px] text-muted max-w-[600px] leading-relaxed">
+          Create teams and add members. Each member has a <b className="text-foreground font-semibold">Team Position</b> here (Team Leader or Collaborator) — separate from their <b className="text-foreground font-semibold">Contact type</b> (portal access). A person can be in several teams with a different position in each.
         </p>
         <button type="button" onClick={() => setDialog({ mode: 'new' })} disabled={pending}
           className="inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[15px] py-[9px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:opacity-50">
@@ -95,7 +95,8 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
       {/* Access key — what each contact type can see/do + how tool access works. */}
       <div className="rounded-[16px] border border-slate-200 bg-white p-5 mb-6 space-y-4">
         <div>
-          <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-2.5">What each contact type can see &amp; do</div>
+          <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-0.5">Contact type = portal access</div>
+          <p className="text-[12px] text-muted leading-snug mb-2.5">What each access level can see/do — <b className="text-foreground font-semibold">separate</b> from the Team Position (Team&nbsp;Leader / Collaborator) shown on the member cards below.</p>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {TIERS.map(t => {
               const pill = roleTypePill(t.key)
@@ -179,22 +180,28 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
         <div className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
           {team.members.length === 0 && <span className="text-[12.5px] text-muted italic">No members yet.</span>}
           {team.members.map(m => {
-            const pill = roleTypePill(m.roleType)
+            const posPill = teamPositionPill(m.position)
+            const access = roleTypePill(m.roleType)
+            const isLeader = m.position === 'team_leader'
             return (
               <div key={m.id} className="group/mem flex items-center gap-2.5 py-[5px]">
                 <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={TEAM_COLOR[m.teamKey]} />
                 <span className="text-[13.5px] text-foreground font-semibold truncate min-w-0">{m.name}</span>
-                {m.isLead && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase text-tn-teal bg-tn-teal-soft rounded-full px-2 py-0.5 shrink-0">Lead</span>}
-                {/* Right side: the contact-type tag, right-aligned. On hover it gives
-                    way to the row actions (make lead / remove) in the same slot. */}
-                <span className="ml-auto shrink-0 flex items-center justify-end">
-                  <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 group-hover/mem:hidden ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
+                {/* Right cluster: the ACCESS (contact type) shown discreetly only when
+                    it's elevated, then the TEAM POSITION prominently. On hover both
+                    give way to the row actions (toggle position / remove). */}
+                <span className="ml-auto shrink-0 flex items-center gap-1.5 justify-end">
+                  {m.roleType !== 'user' && (
+                    <span title={`Access: ${access.label}`} className="group-hover/mem:hidden inline-flex items-center gap-1 font-(family-name:--font-display) font-bold text-[8.5px] tracking-wide uppercase text-muted">
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                      {access.label}
+                    </span>
+                  )}
+                  <span className={`group-hover/mem:hidden font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
                   <span className="hidden group-hover/mem:flex items-center gap-1">
-                    {!m.isLead && (
-                      <button type="button" title="Make lead" disabled={pending} onClick={() => run(() => updateTeam(team.id, { leader_person_id: m.id }))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                      </button>
-                    )}
+                    <button type="button" title={isLeader ? 'Set as Collaborator' : 'Set as Team Leader'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'collaborator' : 'team_leader'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                    </button>
                     <button type="button" title="Remove from team" disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>

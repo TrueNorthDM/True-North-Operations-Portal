@@ -37,27 +37,33 @@ interface TeamRow {
   id: string
   name: string
   color: string | null
-  leader_person_id: string | null
 }
 interface MemberRow {
   team_id: string
   person_id: string
+  position: string // 'team_leader' | 'collaborator' (migration 040)
 }
 
 export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number }> {
   const supabase = await createClient()
 
-  const [{ data: pData }, { data: tData }, { data: mData }] = await Promise.all([
+  const [{ data: pData }, { data: tData }] = await Promise.all([
     supabase.from('people').select('id, full_name, title, manager_id, status, sort_order'),
-    supabase.from('teams').select('id, name, color, leader_person_id'),
-    supabase.from('team_members').select('team_id, person_id'),
+    supabase.from('teams').select('id, name, color'),
   ])
+  // team_members + per-team position (040); graceful pre-migration.
+  let tmRes = await supabase.from('team_members').select('team_id, person_id, position')
+  if (tmRes.error) tmRes = (await supabase.from('team_members').select('team_id, person_id')) as typeof tmRes
 
   // Inactive people are hidden everywhere outside the People tab — the org chart
   // (and its "N people" count) shows actives only.
   const people: PersonRow[] = (pData ?? []).filter(p => p.status !== 'inactive')
   const teams: TeamRow[] = tData ?? []
-  const members: MemberRow[] = mData ?? []
+  const members: MemberRow[] = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
+    team_id: m.team_id,
+    person_id: m.person_id,
+    position: m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+  }))
 
   if (people.length === 0) return { roots: [], total: 0 }
 
@@ -75,7 +81,11 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // Signature color: the team a person LEADS wins (so leaders carry their team's
   // color even when they aren't listed as a member), else their first team.
   const leaderColor = new Map<string, string | null>()
-  for (const t of teams) if (t.leader_person_id && t.color) leaderColor.set(t.leader_person_id, t.color)
+  for (const m of members) {
+    if (m.position !== 'team_leader') continue
+    const t = teamById.get(m.team_id)
+    if (t?.color) leaderColor.set(m.person_id, t.color)
+  }
 
   // Members per team (for the team box rendered under the leader).
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
@@ -91,11 +101,13 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
 
   // Teams each person leads, with their members.
   const ledTeamsByLeader = new Map<string, OrgTeamGroup[]>()
-  for (const t of teams) {
-    if (!t.leader_person_id) continue
-    const arr = ledTeamsByLeader.get(t.leader_person_id) ?? []
+  for (const m of members) {
+    if (m.position !== 'team_leader') continue
+    const t = teamById.get(m.team_id)
+    if (!t) continue
+    const arr = ledTeamsByLeader.get(m.person_id) ?? []
     arr.push({ name: t.name, color: t.color, members: membersByTeam.get(t.id) ?? [] })
-    ledTeamsByLeader.set(t.leader_person_id, arr)
+    ledTeamsByLeader.set(m.person_id, arr)
   }
 
   // Build nodes, then wire children by manager_id.

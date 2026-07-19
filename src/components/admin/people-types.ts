@@ -19,6 +19,15 @@ export interface PersonAttachment {
   uploadedAt: string
 }
 
+/** One of a person's team memberships + their POSITION in that team (migration
+ *  040). A person can lead one team and be a collaborator in another. */
+export interface PersonTeam {
+  teamId: string
+  teamName: string | null
+  teamKey: TeamKey
+  position: string // 'team_leader' | 'collaborator'
+}
+
 export interface PersonView {
   id: string
   full_name: string
@@ -30,6 +39,8 @@ export interface PersonView {
   teamId: string | null
   teamName: string | null
   teamKey: TeamKey
+  // All memberships with per-team position (Team Position, distinct from access).
+  teams: PersonTeam[]
 
   // Reporting
   manager_id: string | null
@@ -85,7 +96,7 @@ export interface PersonDraft {
   full_name: string
   lastName: string | null
   title: string | null
-  teamId: string | null
+  teams: { teamId: string; position: string }[] // memberships + per-team position
   manager_id: string | null
   alsoReportsToId: string | null
   reportsToManager: string | null
@@ -182,6 +193,16 @@ export const roleTypePill = (v: string): Pill => {
   if (v === 'team_leader') return { kind: 'amber', label: 'Team Leader' }
   return { kind: 'grey', label: 'User' }
 }
+
+// Team Position (migration 040) — a person's role WITHIN a specific team, which
+// is separate from their global Contact Type / access. Team Leaders sort to the
+// top of a team's member list.
+export const TEAM_POSITION_OPTIONS = ['collaborator', 'team_leader'] as const
+export const TEAM_POSITION_LABEL: Record<string, string> = {
+  team_leader: 'Team Leader', collaborator: 'Collaborator',
+}
+export const teamPositionPill = (v: string): Pill =>
+  v === 'team_leader' ? { kind: 'teal', label: 'Team Leader' } : { kind: 'grey', label: 'Collaborator' }
 
 // Access-grant roles — the product vocabulary from the design (migration 030).
 // Legacy keys (admin/member) are mapped too, so grants still read correctly in

@@ -24,6 +24,8 @@ import {
   roleTypePill,
   ROLE_TYPE_OPTIONS,
   ROLE_TYPE_LABEL,
+  TEAM_POSITION_OPTIONS,
+  TEAM_POSITION_LABEL,
   teamKeyFromName,
   type PersonView,
   type PersonAttachment,
@@ -40,7 +42,7 @@ interface Draft {
   full_name: string
   lastName: string
   title: string
-  teamId: string
+  teams: { teamId: string; position: string }[]
   manager_id: string
   alsoReportsToId: string
   reportsToManager: string
@@ -75,10 +77,10 @@ const EMAIL_META: { key: keyof Draft['emails']; label: string; color: string }[]
 
 function emailDraft(addr: string | null): EmailDraft { return { has: !!addr, addr: addr ?? '' } }
 
-function toDraft(p: PersonView | null, defaultTeamId: string): Draft {
+function toDraft(p: PersonView | null): Draft {
   if (!p) {
     return {
-      full_name: '', lastName: '', title: '', teamId: defaultTeamId, manager_id: '', alsoReportsToId: '',
+      full_name: '', lastName: '', title: '', teams: [], manager_id: '', alsoReportsToId: '',
       reportsToManager: 'no', managerNameText: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
       teamMeeting: false, roleType: 'user', status: 'active', phone: '', location: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
       dateOfBirth: '', hireDate: '', leftOn: '',
@@ -87,7 +89,7 @@ function toDraft(p: PersonView | null, defaultTeamId: string): Draft {
     }
   }
   return {
-    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teamId: p.teamId ?? '', manager_id: p.manager_id ?? '',
+    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teams: p.teams.map(t => ({ teamId: t.teamId, position: t.position })), manager_id: p.manager_id ?? '',
     alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
@@ -118,14 +120,14 @@ export function PersonModal({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft>(() => toDraft(state.person, teamOptions[0]?.id ?? ''))
+  const [draft, setDraft] = useState<Draft>(() => toDraft(state.person))
 
   const isEdit = state.mode === 'edit'
   const isExisting = !!state.person
   const p = state.person
 
   const teamNameById = useMemo(() => new Map(teamOptions.map(t => [t.id, t.name])), [teamOptions])
-  const draftTeamKey = teamKeyFromName(teamNameById.get(draft.teamId))
+  const draftTeamKey = teamKeyFromName(teamNameById.get(draft.teams[0]?.teamId ?? ''))
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft(d => ({ ...d, [k]: v }))
 
   function run(fn: () => Promise<void>, after: () => void) {
@@ -141,7 +143,7 @@ export function PersonModal({
       full_name: draft.full_name,
       last_name: draft.lastName || null,
       title: draft.title || null,
-      team_id: draft.teamId || null,
+      teams: draft.teams.filter(t => t.teamId),
       manager_id: draft.manager_id || null,
       also_reports_to_id: draft.alsoReportsToId || null,
       reports_to_manager: draft.reportsToManager || null,
@@ -199,7 +201,7 @@ export function PersonModal({
                 <h2 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink leading-tight m-0">{headName}</h2>
                 <p className="text-sm text-muted mt-1 font-semibold">{headJob}</p>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[headTeamKey], background: `${TEAM_COLOR[headTeamKey]}1a` }}>{teamNameById.get(isEdit ? draft.teamId : p?.teamId ?? '') ?? 'No team'}</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[headTeamKey], background: `${TEAM_COLOR[headTeamKey]}1a` }}>{teamNameById.get(isEdit ? (draft.teams[0]?.teamId ?? '') : (p?.teamId ?? '')) ?? 'No team'}</span>
                   {!isEdit && p && p.roleType !== 'user' && <PillBadge pill={roleTypePill(p.roleType)} />}
                   {!isEdit && p && <PillBadge pill={statusPill(p.status === 'active')} />}
                   {isEdit && <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">Editing</span>}
@@ -228,7 +230,7 @@ export function PersonModal({
                 <span className="font-(family-name:--font-display) font-extrabold text-[8.5px] tracking-wide uppercase text-muted bg-white rounded-full px-[7px] py-0.5">Soon</span>
               </span>
               <button type="button" onClick={() => setState(null)} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink">Close</button>
-              <button type="button" onClick={() => { setDraft(toDraft(p, teamOptions[0]?.id ?? '')); setState({ mode: 'edit', person: p }) }} className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px">
+              <button type="button" onClick={() => { setDraft(toDraft(p)); setState({ mode: 'edit', person: p }) }} className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                 <span className="text-[#ffffff]">Edit person</span>
               </button>
@@ -293,10 +295,19 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         <div>
           <SectionTitle>Employment</SectionTitle>
           <div className="flex flex-col gap-[13px]">
-            {item('Contact type', <PillBadge pill={roleTypePill(p.roleType)} />)}
+            {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
             {item('Last name', txt(p.lastName))}
             {item('Type', pillNode(typePill(p.employmentType)))}
-            {item('Team', p.teamName ? <span className="font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px]" style={{ color: TEAM_COLOR[p.teamKey], background: `${TEAM_COLOR[p.teamKey]}1a` }}>{p.teamName}</span> : txt('—'))}
+            {item('Teams', p.teams.length ? (
+              <span className="flex flex-col gap-1.5">
+                {p.teams.map(t => (
+                  <span key={t.teamId} className="inline-flex items-center gap-2">
+                    <span className="font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px]" style={{ color: TEAM_COLOR[t.teamKey], background: `${TEAM_COLOR[t.teamKey]}1a` }}>{t.teamName}</span>
+                    <span className="text-[11px] font-semibold text-muted">{TEAM_POSITION_LABEL[t.position] ?? 'Collaborator'}</span>
+                  </span>
+                ))}
+              </span>
+            ) : txt('—'))}
             {item('Time', pillNode(timePill(p.schedule)))}
             {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
             {item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
@@ -436,18 +447,49 @@ function EditBody({
           <Wrap>{label('Full name')}<input type="text" value={draft.full_name} onChange={e => set('full_name', e.target.value)} className={fieldCls} placeholder="Jane Doe" /></Wrap>
           <Wrap>{label('Last name')}<input type="text" value={draft.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} placeholder="Doe" /></Wrap>
           <Wrap wide>{label('Job title')}<input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" /></Wrap>
-          <Wrap>{label('Team')}
-            <Select
-              fullWidth
-              value={draft.teamId}
-              onChange={v => set('teamId', v)}
-              options={[{ value: '', label: '— No team —' }, ...teamOptions.map(t => ({ value: t.id, label: t.name }))]}
-              className={fieldCls}
-              ariaLabel="Team"
-            />
+          <Wrap wide>
+            <span className="flex items-center gap-2">
+              {label('Teams & position')}
+              <span className="text-[11px] text-muted normal-case font-normal tracking-normal">— a person can be in several teams, with a different position in each</span>
+            </span>
+            <div className="space-y-2">
+              {draft.teams.length === 0 && <p className="text-[12.5px] text-muted italic">No teams yet — add one below.</p>}
+              {draft.teams.map((row, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Select
+                      fullWidth
+                      value={row.teamId}
+                      onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)) }))}
+                      options={teamOptions.map(t => ({ value: t.id, label: t.name }))}
+                      placeholder="Choose a team…"
+                      className={fieldCls}
+                      ariaLabel="Team"
+                    />
+                  </div>
+                  <div className="shrink-0 w-[160px]">
+                    <Select
+                      fullWidth
+                      value={row.position}
+                      onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))}
+                      options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))}
+                      className={fieldCls}
+                      ariaLabel="Team position"
+                    />
+                  </div>
+                  <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.filter((_, j) => j !== i) }))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={() => setDraft(d => ({ ...d, teams: [...d.teams, { teamId: '', position: 'collaborator' }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                Add team
+              </button>
+            </div>
           </Wrap>
           <Wrap>{label('Status')}{seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive'))}</Wrap>
-          <Wrap>{label('Contact type')}
+          <Wrap>{label('Contact type (access)')}
             <Select
               fullWidth
               value={draft.roleType}
