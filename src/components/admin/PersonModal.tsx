@@ -32,6 +32,9 @@ import {
   TEAM_POSITION_OPTIONS,
   TEAM_POSITION_LABEL,
   teamPositionPill,
+  LIFECYCLE_OPTIONS,
+  LIFECYCLE_LABEL,
+  lifecyclePill,
   teamKeyFromName,
   type PersonView,
   type PersonAttachment,
@@ -57,15 +60,14 @@ interface Draft {
   schedule: string
   weeklyHours: string
   internalRate: string
-  teamMeeting: boolean
   roleType: string
   status: 'active' | 'inactive'
   phone: string
   location: string
   address: AddressForm
   whatsappSameNumber: string
-  companyEmail: string
-  usesSystem: string
+  onboardingStatus: string
+  offboardingStatus: string
   dateOfBirth: string
   hireDate: string
   leftOn: string
@@ -82,7 +84,7 @@ function toDraft(p: PersonView | null): Draft {
     return {
       full_name: '', lastName: '', title: '', teams: [], manager_id: '', alsoReportsToId: '',
       reportsToManager: 'no', managerNameText: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
-      teamMeeting: false, roleType: 'user', status: 'active', phone: '', location: '', address: toAddressForm(null), whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
+      roleType: 'user', status: 'active', phone: '', location: '', address: toAddressForm(null), whatsappSameNumber: '', onboardingStatus: 'not_started', offboardingStatus: 'not_started',
       dateOfBirth: '', hireDate: '', leftOn: '',
       emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
       hasTsheets: true, history: '', mondayDocs: '',
@@ -93,8 +95,8 @@ function toDraft(p: PersonView | null): Draft {
     alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
-    teamMeeting: p.teamMeeting, roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', address: toAddressForm(p.address), whatsappSameNumber: p.whatsappSameNumber ?? '',
-    companyEmail: p.companyEmail ?? '', usesSystem: p.usesSystem ?? '',
+    roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', address: toAddressForm(p.address), whatsappSameNumber: p.whatsappSameNumber ?? '',
+    onboardingStatus: p.onboardingStatus ?? '', offboardingStatus: p.offboardingStatus ?? '',
     dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
     emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
     hasTsheets: p.hasTsheets, history: p.history ?? '', mondayDocs: p.mondayDocs ?? '',
@@ -161,15 +163,14 @@ export function PersonModal({
       schedule: draft.schedule || null,
       weekly_hours: parseNum(draft.weeklyHours),
       internal_rate: parseNum(draft.internalRate),
-      team_meeting: draft.teamMeeting,
       role_type: draft.roleType,
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
       address: normalizeAddress(draft.address),
       whatsapp_same_number: draft.whatsappSameNumber || null,
-      company_email: draft.companyEmail || null,
-      uses_system: draft.usesSystem || null,
+      onboarding_status: draft.onboardingStatus || null,
+      offboarding_status: draft.offboardingStatus || null,
       date_of_birth: draft.dateOfBirth || null,
       hire_date: draft.hireDate || null,
       left_on: draft.leftOn || null,
@@ -382,9 +383,13 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
           <div>
             <SectionTitle>Onboarding</SectionTitle>
             <div className="flex flex-col gap-[13px]">
-              {item('Company email', pillNode(ynPill(p.companyEmail)))}
-              {item('Uses the system', pillNode(ynPill(p.usesSystem)))}
-              {item('Team meeting', pillNode(p.teamMeeting ? { kind: 'green', label: 'Yes' } : { kind: 'grey', label: 'No' }))}
+              {item('Status', <PillBadge pill={lifecyclePill(p.onboardingStatus)} />)}
+            </div>
+          </div>
+          <div>
+            <SectionTitle>Offboarding</SectionTitle>
+            <div className="flex flex-col gap-[13px]">
+              {item('Status', <PillBadge pill={lifecyclePill(p.offboardingStatus)} />)}
             </div>
           </div>
         </div>
@@ -572,9 +577,13 @@ function EditBody({
           <div>
             <SectionTitle>Onboarding</SectionTitle>
             <div className="flex flex-col gap-3.5">
-              {field('Company email', seg(draft.companyEmail, [{ v: 'yes', l: 'Yes' }, { v: 'notyet', l: 'Not yet' }], v => set('companyEmail', v)))}
-              {field('Uses the system', seg(draft.usesSystem, [{ v: 'yes', l: 'Yes' }, { v: 'notyet', l: 'Not yet' }, { v: 'no', l: 'No' }], v => set('usesSystem', v)))}
-              {field('Team meeting', seg(draft.teamMeeting ? 'yes' : 'no', [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('teamMeeting', v === 'yes')))}
+              {field('Status', seg(draft.onboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('onboardingStatus', v)))}
+            </div>
+          </div>
+          <div>
+            <SectionTitle>Offboarding</SectionTitle>
+            <div className="flex flex-col gap-3.5">
+              {field('Status', seg(draft.offboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('offboardingStatus', v)))}
             </div>
           </div>
         </div>

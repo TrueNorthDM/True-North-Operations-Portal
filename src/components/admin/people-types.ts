@@ -59,7 +59,6 @@ export interface PersonView {
   schedule: string | null // 'full' | 'part'
   weeklyHours: number | null
   internalRate: number | null
-  teamMeeting: boolean // "Team Meeting" checkbox (board)
   roleType: string // contact type: 'user'|'admin'|'admin_assistant'|'team_leader'
   status: 'active' | 'inactive'
 
@@ -69,9 +68,9 @@ export interface PersonView {
   address: PersonAddress | null // structured mailing address
   whatsappSameNumber: string | null // 'yes' | 'no', same number on WhatsApp?
 
-  // Onboarding (tri-state chips)
-  companyEmail: string | null // 'yes' | 'notyet'
-  usesSystem: string | null // 'yes' | 'notyet' | 'no'
+  // Onboarding / Offboarding lifecycle status
+  onboardingStatus: string | null // 'not_started' | 'in_progress' | 'completed'
+  offboardingStatus: string | null // 'not_started' | 'in_progress' | 'completed'
 
   // Dates (stored as ISO; formatted for display)
   dateOfBirth: string | null
@@ -108,14 +107,13 @@ export interface PersonDraft {
   schedule: string | null
   weeklyHours: number | null
   internalRate: number | null
-  teamMeeting: boolean
   roleType: string
   status: 'active' | 'inactive'
   phone: string | null
   location: string | null
   whatsappSameNumber: string | null
-  companyEmail: string | null
-  usesSystem: string | null
+  onboardingStatus: string | null
+  offboardingStatus: string | null
   dateOfBirth: string | null
   hireDate: string | null
   leftOn: string | null
@@ -183,6 +181,17 @@ export const ynPill = (v: string | null): Pill | null => {
   if (v === 'sometimes') return { kind: 'pink', label: 'Sometimes' }
   if (v === 'notyet') return { kind: 'red', label: 'Not yet' }
   return null
+}
+
+// Onboarding / Offboarding lifecycle status (migration 043).
+export const LIFECYCLE_OPTIONS = ['not_started', 'in_progress', 'completed'] as const
+export const LIFECYCLE_LABEL: Record<string, string> = {
+  not_started: 'Not started', in_progress: 'In progress', completed: 'Completed',
+}
+export const lifecyclePill = (v: string | null): Pill => {
+  if (v === 'completed') return { kind: 'green', label: 'Completed' }
+  if (v === 'in_progress') return { kind: 'amber', label: 'In progress' }
+  return { kind: 'grey', label: 'Not started' }
 }
 
 // Contact type (migration 035), a directory label, distinct from RBAC grants.

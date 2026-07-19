@@ -22,7 +22,7 @@ const PEOPLE_FULL =
   'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
   'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, manager_name_text, ' +
   'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
-  'company_email, uses_system, date_of_birth, hire_date, left_on, employment_history, team_meeting'
+  'date_of_birth, hire_date, left_on, employment_history'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
 
 type PRow = Record<string, unknown> & { id: string; full_name: string }
@@ -33,7 +33,7 @@ export async function loadDirectoryPeopleView(
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: prData }, aRes, dRes, addrRes] = await Promise.all([
+  const [{ data: tData }, { data: prData }, aRes, dRes, addrRes, lcRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
@@ -41,6 +41,8 @@ export async function loadDirectoryPeopleView(
     // Isolated select: `address` (042) may not exist yet, so a failure here must
     // NOT drop the other columns. Left empty until the migration runs.
     supabase.from('people').select('id, address'),
+    // Isolated select: onboarding/offboarding status (043), same graceful pattern.
+    supabase.from('people').select('id, onboarding_status, offboarding_status'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -72,6 +74,12 @@ export async function loadDirectoryPeopleView(
   }
   const addressById = new Map<string, PersonAddress>()
   if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: PersonAddress | null }[]) if (r.address) addressById.set(r.id, r.address)
+  const onboardingById = new Map<string, string>()
+  const offboardingById = new Map<string, string>()
+  if (!lcRes.error) for (const r of (lcRes.data ?? []) as { id: string; onboarding_status: string | null; offboarding_status: string | null }[]) {
+    if (r.onboarding_status) onboardingById.set(r.id, r.onboarding_status)
+    if (r.offboarding_status) offboardingById.set(r.id, r.offboarding_status)
+  }
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -139,15 +147,14 @@ export async function loadDirectoryPeopleView(
         schedule: str(p.schedule),
         weeklyHours: num(p.weekly_hours),
         internalRate: num(p.internal_rate),
-        teamMeeting: p.team_meeting === true,
         roleType: roleTypeById.get(p.id) ?? 'user',
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         phone: str(p.phone),
         location: str(p.location),
         address: addressById.get(p.id) ?? null,
         whatsappSameNumber: str(p.whatsapp_same_number),
-        companyEmail: str(p.company_email),
-        usesSystem: str(p.uses_system),
+        onboardingStatus: onboardingById.get(p.id) ?? null,
+        offboardingStatus: offboardingById.get(p.id) ?? null,
         dateOfBirth: str(p.date_of_birth),
         hireDate: str(p.hire_date),
         leftOn: str(p.left_on),

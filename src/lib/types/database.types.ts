@@ -131,8 +131,8 @@ export type PersonRow = {
   email_personal: string | null
   phone: string | null
   location: string | null
-  company_email: string | null
-  uses_system: string | null
+  onboarding_status: string | null   // 'not_started' | 'in_progress' | 'completed' (migration 043)
+  offboarding_status: string | null  // 'not_started' | 'in_progress' | 'completed' (migration 043)
   date_of_birth: string | null
   hire_date: string | null
   left_on: string | null
@@ -141,7 +141,6 @@ export type PersonRow = {
   i7_projects: string[] | null
   // HR fields brought over from the True North Team Monday board (migration 033).
   last_name: string | null
-  team_meeting: boolean
   manager_name_text: string | null    // free-text manager (board question)
   whatsapp_same_number: string | null // 'yes' | 'no'
   monday_item_id: string | null       // board item id, importer idempotency

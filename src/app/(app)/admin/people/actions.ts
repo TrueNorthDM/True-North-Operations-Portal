@@ -47,8 +47,8 @@ export interface PersonInput {
   phone?: string | null
   location?: string | null
   address?: PersonAddress | null
-  company_email?: string | null
-  uses_system?: string | null
+  onboarding_status?: string | null
+  offboarding_status?: string | null
   date_of_birth?: string | null
   hire_date?: string | null
   left_on?: string | null
@@ -56,7 +56,6 @@ export interface PersonInput {
 
   // HR fields brought over from the True North Team board (migration 033/034)
   last_name?: string | null
-  team_meeting?: boolean
   manager_name_text?: string | null
   whatsapp_same_number?: string | null
   monday_docs?: string | null
@@ -100,14 +99,13 @@ function personColumns(input: PersonInput): PersonCols {
     phone: trimOrNull(input.phone),
     location: trimOrNull(input.location),
     address: input.address ?? null,
-    company_email: input.company_email || null,
-    uses_system: input.uses_system || null,
+    onboarding_status: input.onboarding_status || null,
+    offboarding_status: input.offboarding_status || null,
     date_of_birth: input.date_of_birth || null,
     hire_date: input.hire_date || null,
     left_on: input.left_on || null,
     employment_history: trimOrNull(input.employment_history),
     last_name: trimOrNull(input.last_name),
-    team_meeting: input.team_meeting ?? false,
     manager_name_text: trimOrNull(input.manager_name_text),
     whatsapp_same_number: input.whatsapp_same_number || null,
     monday_docs: trimOrNull(input.monday_docs),

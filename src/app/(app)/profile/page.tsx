@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentTier } from '@/lib/auth/role'
 import {
   TEAM_COLOR, PILL_CLASS, initialsOf, formatDate, teamKeyFromName,
-  typePill, timePill, ynPill, statusPill, roleTypePill, type Pill,
+  typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill, type Pill,
 } from '@/components/admin/people-types'
 import type { PersonRow } from '@/lib/types/database.types'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
@@ -21,14 +21,14 @@ export const dynamic = 'force-dynamic'
 type MeRow = Pick<PersonRow,
   'id' | 'full_name' | 'last_name' | 'title' | 'manager_id' | 'also_reports_to_id' | 'reports_to_manager'
   | 'manager_name_text' | 'employment_type' | 'schedule' | 'weekly_hours' | 'status' | 'role_type' | 'phone'
-  | 'location' | 'whatsapp_same_number' | 'company_email' | 'uses_system' | 'team_meeting' | 'date_of_birth'
+  | 'location' | 'whatsapp_same_number' | 'date_of_birth'
   | 'hire_date' | 'left_on' | 'email_true_north' | 'email_goodnews' | 'email_coe' | 'email_personal'
   | 'employment_history' | 'monday_docs'>
 
 const PROFILE_COLS =
   'id, full_name, last_name, title, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, ' +
   'employment_type, schedule, weekly_hours, status, role_type, phone, location, whatsapp_same_number, ' +
-  'company_email, uses_system, team_meeting, date_of_birth, hire_date, left_on, ' +
+  'date_of_birth, hire_date, left_on, ' +
   'email_true_north, email_goodnews, email_coe, email_personal, employment_history, monday_docs'
 
 function Badge({ pill }: { pill: Pill | null }) {
@@ -109,6 +109,12 @@ export default async function ProfilePage() {
   const { data: avRow } = await supabase.from('people').select('avatar_url').eq('id', me.id).maybeSingle()
   const avatarUrl = (avRow as { avatar_url: string | null } | null)?.avatar_url ?? null
 
+  // Onboarding / offboarding status fetched separately + gracefully (migration 043).
+  const { data: lcRow } = await supabase.from('people').select('onboarding_status, offboarding_status').eq('id', me.id).maybeSingle()
+  const lifecycle = lcRow as { onboarding_status: string | null; offboarding_status: string | null } | null
+  const onboardingStatus = lifecycle?.onboarding_status ?? null
+  const offboardingStatus = lifecycle?.offboarding_status ?? null
+
   const active = me.status !== 'inactive'
 
   return (
@@ -180,9 +186,11 @@ export default async function ProfilePage() {
             </Section>
 
             <Section title="Onboarding">
-              <Row label="Company email"><Badge pill={ynPill(me.company_email)} /></Row>
-              <Row label="Uses the system"><Badge pill={ynPill(me.uses_system)} /></Row>
-              <Row label="Team meeting"><Badge pill={me.team_meeting ? { kind: 'green', label: 'Yes' } : { kind: 'grey', label: 'No' }} /></Row>
+              <Row label="Status"><Badge pill={lifecyclePill(onboardingStatus)} /></Row>
+            </Section>
+
+            <Section title="Offboarding">
+              <Row label="Status"><Badge pill={lifecyclePill(offboardingStatus)} /></Row>
             </Section>
 
             <Section title="Dates">
