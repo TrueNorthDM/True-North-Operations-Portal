@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import { Select } from '@/components/ui/Select'
 import { BOARDS } from '@/lib/boards/config'
 import { fetchSnapshot } from '@/lib/boards/data'
 import {
@@ -155,14 +156,13 @@ export function TranslationView() {
               placeholder="Search items, people, stage…"
               className="flex-1 min-w-[200px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
             />
-            <select value={boardFilter} onChange={(e) => setBoardFilter(e.target.value)} className={selectCls} aria-label="Board">
-              <option value="all">All boards</option>
-              {TRANSLATION_BOARD_IDS.map((bid) => (
-                <option key={bid} value={bid}>
-                  {BOARDS[bid].short}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={boardFilter}
+              onChange={setBoardFilter}
+              options={[{ value: 'all', label: 'All boards' }, ...TRANSLATION_BOARD_IDS.map((bid) => ({ value: String(bid), label: BOARDS[bid].short }))]}
+              className={selectCls}
+              ariaLabel="Board"
+            />
             <button
               onClick={exportCsv}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

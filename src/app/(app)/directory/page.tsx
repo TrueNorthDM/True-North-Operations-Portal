@@ -43,7 +43,7 @@ export default async function DirectoryPage() {
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
   const [{ data: tData }, { data: mData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes] = await Promise.all([
-    supabase.from('teams').select('id, name, leader_person_id'),
+    supabase.from('teams').select('id, name, leader_person_id, color'),
     supabase.from('team_members').select('team_id, person_id'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
@@ -170,7 +170,7 @@ export default async function DirectoryPage() {
 
   // ── Teams (filter pills + Team select options) ──
   const teamOptions = teams
-    .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: TEAM_COLOR[teamKeyFromName(t.name)] }))
+    .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: t.color ?? TEAM_COLOR[teamKeyFromName(t.name)] }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // ── Team cards (members with LEAD flag + project access) ──
@@ -222,7 +222,7 @@ export default async function DirectoryPage() {
         id: t.id,
         name: t.name,
         teamKey: key,
-        color: TEAM_COLOR[key],
+        color: t.color ?? TEAM_COLOR[key],
         memberCount: mem.length,
         members: mem,
         access: (grantsByTeam.get(t.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),

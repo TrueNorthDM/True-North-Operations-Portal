@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Select } from '@/components/ui/Select'
 import { I7Charts } from './I7Charts'
 import { ProjectRows } from './I7ProjectRows'
 import { ExportMenu, ExportImageButton, NoteCard } from './I7ReportParts'
@@ -85,9 +86,14 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       {/* Month selector */}
       <div className="flex items-center gap-3 flex-wrap">
         <label htmlFor="month-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</label>
-        <select id="month-select" value={selectedMonth} onChange={e => router.push(`/tools/time-report?month=${e.target.value}`)} className={selectCls}>
-          {availableMonths.map(ym => <option key={ym} value={ym}>{monthLabel(ym)}</option>)}
-        </select>
+        <Select
+          id="month-select"
+          value={selectedMonth}
+          onChange={v => router.push(`/tools/time-report?month=${v}`)}
+          options={availableMonths.map(ym => ({ value: ym, label: monthLabel(ym) }))}
+          ariaLabel="Pay period"
+          className={selectCls}
+        />
         <span className="text-sm text-muted ml-1 tabular-nums">{data.startDate} → {data.endDate}</span>
         {canExport && (
           <div className="ml-auto flex items-center gap-2.5">

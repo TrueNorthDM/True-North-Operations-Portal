@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { tokenViewAs } from './actions'
+import { Select } from '@/components/ui/Select'
 import type { ViewAsRole } from '@/lib/auth/view-as'
 
 type Tier = ViewAsRole
@@ -118,13 +119,13 @@ export default function ViewStageClient({ myName }: { myName: string }) {
                   <div className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal">{LABEL[t]}</span>
-                      <select
+                      <Select
                         value={t}
-                        onChange={e => swap(i, e.target.value as Tier)}
+                        onChange={v => swap(i, v as Tier)}
+                        options={TIERS.map(op => ({ value: op, label: LABEL[op] }))}
+                        ariaLabel="Tier"
                         className="bg-subtle border border-slate-200 rounded text-[11px] px-1.5 py-0.5 text-foreground"
-                      >
-                        {TIERS.map(op => <option key={op} value={op}>{LABEL[op]}</option>)}
-                      </select>
+                      />
                     </div>
                     <div className="text-sm font-semibold text-tn-ink truncate mt-0.5">{name}</div>
                   </div>

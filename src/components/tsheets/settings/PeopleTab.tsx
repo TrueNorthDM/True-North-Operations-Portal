@@ -12,10 +12,14 @@
  * via people.internal_rate. Both are still audited (auto reason, no prompt).
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveTrAssignment, savePersonCostRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/components/admin/people-types'
+import { FilterBar } from '@/components/admin/grid/FilterBar'
+import { SortHeader } from '@/components/admin/grid/SortHeader'
+import { applyFilters, applySort, nextSort } from '@/components/admin/grid/utils'
+import type { FilterCond, GridColumn, SortState } from '@/components/admin/grid/types'
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
 // Only `name`, `teamName`, `managerName`, `hireDate`, `costRate`, `assignments`,
@@ -70,8 +74,7 @@ function TeamBadge({ team }: { team: string | null }) {
   )
 }
 
-const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_1fr_1fr_1fr] gap-3.5 items-center'
-const HD = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.06em] uppercase text-muted'
+const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px] gap-3.5 items-center'
 
 export function PeopleTab({ people, allClients }: Props) {
   const router = useRouter()
@@ -93,11 +96,46 @@ export function PeopleTab({ people, allClients }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Sort / filter — shares the Directory grid engine. Editing + saving always act
+  // on the full `people` list (drafts are keyed by id), so filtering only changes
+  // what's visible, never what gets saved.
+  const [q, setQ] = useState('')
+  const [conds, setConds] = useState<FilterCond[]>([])
+  const [sort, setSort] = useState<SortState | null>(null)
+
+  const filterColumns = useMemo<GridColumn<PersonWithAssignments>[]>(() => {
+    const teams = Array.from(new Set(people.map(p => p.teamName).filter((t): t is string => !!t))).sort()
+    const clientRateOf = (p: PersonWithAssignments): number | null => {
+      if (i7ClientId != null) {
+        const a = p.assignments.find(x => x.clientId === i7ClientId)
+        if (a) return a.hourlyRate
+      }
+      return p.assignments[0]?.hourlyRate ?? null
+    }
+    return [
+      { id: 'name', label: 'Name', type: 'text', get: p => p.name },
+      { id: 'team', label: 'Team', type: 'enum', get: p => p.teamName, options: teams.map(t => ({ value: t, label: t })) },
+      { id: 'reports', label: 'Report to', type: 'text', get: p => p.managerName },
+      { id: 'joined', label: 'Joined on', type: 'date', get: p => p.hireDate },
+      { id: 'clientRate', label: 'Rate / client', type: 'number', get: clientRateOf },
+      { id: 'costRate', label: 'Rate / cost', type: 'number', get: p => p.costRate },
+      { id: 'salary', label: 'Month / salary', type: 'number', get: p => p.monthlySalary },
+    ]
+  }, [people, i7ClientId])
+
+  const rows = useMemo(() => {
+    const term = q.trim().toLowerCase()
+    const base = term
+      ? people.filter(p => `${p.name} ${p.teamName ?? ''} ${p.managerName ?? ''}`.toLowerCase().includes(term))
+      : people
+    return applySort(applyFilters(base, filterColumns, conds), filterColumns, sort)
+  }, [people, q, conds, sort, filterColumns])
+
   function enterEdit() {
     const d: Record<string, { client: string; cost: string; salary: string }> = {}
     for (const p of people) {
       const cr = rateOf(p)
-      d[p.id] = { client: cr != null ? String(cr) : '', cost: p.costRate != null ? String(p.costRate) : '', salary: p.monthlySalary != null ? String(p.monthlySalary) : '' }
+      d[p.id] = { client: cr != null ? cr.toFixed(2) : '', cost: p.costRate != null ? p.costRate.toFixed(2) : '', salary: p.monthlySalary != null ? p.monthlySalary.toFixed(2) : '' }
     }
     setDrafts(d)
     setEditing(true)
@@ -157,25 +195,33 @@ export function PeopleTab({ people, allClients }: Props) {
     )
   }
 
-  // View: plain text (no number-spinner arrows). Edit: an input, spinners hidden
-  // too (appearance:textfield + webkit spin-button off) so the field stays clean.
+  // USD display — always a dot and two decimals (95 → "95.00"). Applied only on
+  // the read side; while editing we keep the raw string so the cursor is stable.
+  const money = (v: string): string | null => {
+    if (v.trim() === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n.toFixed(2) : null
+  }
+
+  // Edit uses a text field with inputMode=decimal (not type=number) so the value
+  // always shows a dot — type=number renders the OS locale separator (e.g. 44,78).
   const rateInput = (val: string, onChange: (v: string) => void, focusColor: string) => (
-    <span className="inline-flex items-center justify-end gap-1">
+    <span className="flex w-full items-center justify-end gap-1.5">
       <span className="text-[12px] text-muted">$</span>
       {editing ? (
         <input
-          type="number"
-          min="0"
+          type="text"
+          inputMode="decimal"
           value={val}
           onChange={e => onChange(e.target.value)}
           placeholder="—"
-          className="w-16 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink bg-white border border-slate-200 rounded-md px-2 py-1 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="w-48 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink bg-white border border-slate-200 rounded-md px-3 py-1.5 outline-none"
           onFocus={e => { e.currentTarget.style.borderColor = focusColor }}
           onBlur={e => { e.currentTarget.style.borderColor = '' }}
         />
       ) : (
-        <span className="w-16 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink rounded-md px-2 py-1 bg-subtle">
-          {val !== '' ? val : <span className="text-slate-300">—</span>}
+        <span className="w-48 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink rounded-md px-3 py-1.5 bg-subtle">
+          {money(val) ?? <span className="text-slate-300">—</span>}
         </span>
       )}
     </span>
@@ -183,20 +229,35 @@ export function PeopleTab({ people, allClients }: Props) {
 
   return (
     <div>
+      {/* toolbar */}
+      <div className="flex items-center gap-3.5 flex-wrap mb-[18px]">
+        <div className="relative flex-1 min-w-[230px] max-w-[340px]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="absolute left-[13px] top-1/2 -translate-y-1/2 text-muted"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+          <input
+            type="text"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Search people…"
+            className="w-full text-sm text-tn-ink bg-white border border-slate-200 rounded-[11px] pl-[38px] pr-3.5 py-[11px] focus:outline-none focus:border-tn-teal"
+          />
+        </div>
+        <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
+      </div>
+
       <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-        <div className="min-w-[760px]">
+        <div className="min-w-[1180px]">
           {/* header */}
           <div className={`${GRID} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
-            <span className={HD}>Person</span>
-            <span className={HD}>Team</span>
-            <span className={HD}>Report to</span>
-            <span className={HD}>Joined on</span>
-            <span className={`${HD} text-right`}>Rate / client</span>
-            <span className={`${HD} text-right`}>Rate / cost</span>
-            <span className={`${HD} text-right`}>Month / salary</span>
+            <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
+            <SortHeader label="Team" active={sort?.id === 'team'} dir={sort?.id === 'team' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'team'))} />
+            <SortHeader label="Report to" active={sort?.id === 'reports'} dir={sort?.id === 'reports' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'reports'))} />
+            <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />
+            <SortHeader label="Rate / client" align="right" active={sort?.id === 'clientRate'} dir={sort?.id === 'clientRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'clientRate'))} />
+            <SortHeader label="Rate / cost" align="right" active={sort?.id === 'costRate'} dir={sort?.id === 'costRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'costRate'))} />
+            <SortHeader label="Month / salary" align="right" active={sort?.id === 'salary'} dir={sort?.id === 'salary' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'salary'))} />
           </div>
 
-          {people.map(p => {
+          {rows.map(p => {
             const d = drafts[p.id]
             const clientVal = editing ? (d?.client ?? '') : (rateOf(p) != null ? String(rateOf(p)) : '')
             const costVal = editing ? (d?.cost ?? '') : (p.costRate != null ? String(p.costRate) : '')

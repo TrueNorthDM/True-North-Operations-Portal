@@ -18,25 +18,26 @@ async function requireAdmin() {
 }
 
 // ── Teams ─────────────────────────────────────────────────────────────────
-export async function createTeam(name: string) {
+export async function createTeam(name: string, color?: string | null) {
   await requireAdmin()
   const n = name.trim()
   if (!n) throw new Error('Team name is required')
   const supabase = await createClient()
-  const { error } = await supabase.from('teams').insert({ name: n })
+  const { error } = await supabase.from('teams').insert({ name: n, color: color || null })
   if (error) throw new Error(error.message)
   revalidatePath('/directory')
 }
 
-export async function updateTeam(id: string, input: { name?: string; leader_person_id?: string | null }) {
+export async function updateTeam(id: string, input: { name?: string; leader_person_id?: string | null; color?: string | null }) {
   await requireAdmin()
-  const patch: { name?: string; leader_person_id?: string | null } = {}
+  const patch: { name?: string; leader_person_id?: string | null; color?: string | null } = {}
   if (input.name !== undefined) {
     const n = input.name.trim()
     if (!n) throw new Error('Team name is required')
     patch.name = n
   }
   if (input.leader_person_id !== undefined) patch.leader_person_id = input.leader_person_id || null
+  if (input.color !== undefined) patch.color = input.color || null
   const supabase = await createClient()
   const { error } = await supabase.from('teams').update(patch).eq('id', id)
   if (error) throw new Error(error.message)

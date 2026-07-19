@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import { Select } from '@/components/ui/Select'
 import { BOARDS, PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
 import { fetchSnapshot, fetchTargets } from '@/lib/boards/data'
 import {
@@ -122,21 +123,20 @@ export function GoalsView() {
             <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className={selectCls} aria-label="To" />
           </>
         )}
-        <select value={period} onChange={(e) => setPeriod(e.target.value as Period)} className={selectCls} aria-label="Period">
-          {PERIODS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        <select value={boardFilter} onChange={(e) => setBoardFilter(e.target.value)} className={selectCls} aria-label="Board">
-          <option value="all">All boards</option>
-          {PUBLISHING_BOARD_IDS.map((bid) => (
-            <option key={bid} value={bid}>
-              {BOARDS[bid].short}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={period}
+          onChange={(v) => setPeriod(v as Period)}
+          options={PERIODS.map((p) => ({ value: p.value, label: p.label }))}
+          className={selectCls}
+          ariaLabel="Period"
+        />
+        <Select
+          value={boardFilter}
+          onChange={setBoardFilter}
+          options={[{ value: 'all', label: 'All boards' }, ...PUBLISHING_BOARD_IDS.map((bid) => ({ value: String(bid), label: BOARDS[bid].short }))]}
+          className={selectCls}
+          ariaLabel="Board"
+        />
         <button
           onClick={exportCsv}
           disabled={!metrics}

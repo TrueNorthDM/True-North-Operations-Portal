@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { createPerson, updatePerson, deletePerson, type PersonInput } from '@/app/(app)/admin/people/actions'
 import { uploadPersonAttachment, deletePersonAttachment, signedAttachmentUrl } from '@/app/(app)/admin/people/attachment-actions'
 import { Avatar } from '@/components/Avatar'
+import { Select } from '@/components/ui/Select'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -416,10 +417,14 @@ function EditBody({
   )
 
   const managerSelect = (value: string, onChange: (v: string) => void) => (
-    <select value={value} onChange={e => onChange(e.target.value)} className={fieldCls}>
-      <option value="">— None —</option>
-      {managerOptions.map(o => <option key={o.id} value={o.id}>{o.full_name}{o.teamName ? ` · ${o.teamName}` : ''}</option>)}
-    </select>
+    <Select
+      fullWidth
+      value={value}
+      onChange={onChange}
+      options={[{ value: '', label: '— None —' }, ...managerOptions.map(o => ({ value: o.id, label: `${o.full_name}${o.teamName ? ` · ${o.teamName}` : ''}` }))]}
+      className={fieldCls}
+      ariaLabel="Manager"
+    />
   )
 
   return (
@@ -432,16 +437,25 @@ function EditBody({
           <Wrap>{label('Last name')}<input type="text" value={draft.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} placeholder="Doe" /></Wrap>
           <Wrap wide>{label('Job title')}<input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" /></Wrap>
           <Wrap>{label('Team')}
-            <select value={draft.teamId} onChange={e => set('teamId', e.target.value)} className={fieldCls}>
-              <option value="">— No team —</option>
-              {teamOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            <Select
+              fullWidth
+              value={draft.teamId}
+              onChange={v => set('teamId', v)}
+              options={[{ value: '', label: '— No team —' }, ...teamOptions.map(t => ({ value: t.id, label: t.name }))]}
+              className={fieldCls}
+              ariaLabel="Team"
+            />
           </Wrap>
           <Wrap>{label('Status')}{seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive'))}</Wrap>
           <Wrap>{label('Contact type')}
-            <select value={draft.roleType} onChange={e => set('roleType', e.target.value)} className={fieldCls}>
-              {ROLE_TYPE_OPTIONS.map(r => <option key={r} value={r}>{ROLE_TYPE_LABEL[r]}</option>)}
-            </select>
+            <Select
+              fullWidth
+              value={draft.roleType}
+              onChange={v => set('roleType', v)}
+              options={ROLE_TYPE_OPTIONS.map(r => ({ value: r, label: ROLE_TYPE_LABEL[r] }))}
+              className={fieldCls}
+              ariaLabel="Contact type"
+            />
           </Wrap>
           <Wrap>{label('Type')}{seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v))}</Wrap>
           <Wrap>{label('Time')}{seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v))}</Wrap>

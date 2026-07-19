@@ -9,6 +9,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { Select } from '@/components/ui/Select'
 import {
   TICKETS,
   TYPE_META,
@@ -156,22 +157,20 @@ export function TicketsClient() {
             className="w-full rounded-[10px] border border-slate-200 pl-9 pr-3 py-2.5 text-[13.5px] text-tn-ink placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-tn-teal/30"
           />
         </div>
-        <select
+        <Select
           value={filType}
-          onChange={e => setFilType(e.target.value as TicketType | '')}
+          onChange={v => setFilType(v as TicketType | '')}
+          options={[{ value: '', label: 'All types' }, ...ALL_TYPES.map(t => ({ value: t, label: TYPE_META[t].label }))]}
+          ariaLabel="Filter by type"
           className="rounded-[10px] border border-slate-200 px-3.5 py-2.5 text-[13.5px] text-foreground bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-tn-teal/30"
-        >
-          <option value="">All types</option>
-          {ALL_TYPES.map(t => <option key={t} value={t}>{TYPE_META[t].label}</option>)}
-        </select>
-        <select
+        />
+        <Select
           value={filStatus}
-          onChange={e => setFilStatus(e.target.value as TicketStatus | '')}
+          onChange={v => setFilStatus(v as TicketStatus | '')}
+          options={[{ value: '', label: 'All statuses' }, ...STATUS_ORDER.map(s => ({ value: s, label: STATUS_META[s].label }))]}
+          ariaLabel="Filter by status"
           className="rounded-[10px] border border-slate-200 px-3.5 py-2.5 text-[13.5px] text-foreground bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-tn-teal/30"
-        >
-          <option value="">All statuses</option>
-          {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-        </select>
+        />
         <span className="text-[13px] text-muted ml-auto">Showing {filtered.length} of {TICKETS.length}</span>
       </div>
 

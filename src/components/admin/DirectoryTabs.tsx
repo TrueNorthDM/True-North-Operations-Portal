@@ -61,7 +61,9 @@ export function DirectoryTabs({
           </p>
         </div>
 
-        {/* Add person split-button */}
+        {/* Add person split-button — People is the only tab where a person can be
+            created, so the control only appears there. */}
+        {tab === 'people' && (
         <div className="relative shrink-0">
           <button
             type="button"
@@ -107,6 +109,7 @@ export function DirectoryTabs({
             </>
           )}
         </div>
+        )}
       </div>
 
       {/* tabs */}

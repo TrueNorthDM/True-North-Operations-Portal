@@ -15,11 +15,17 @@ import {
   typePill,
   timePill,
   roleTypePill,
+  ROLE_TYPE_OPTIONS,
+  ROLE_TYPE_LABEL,
   type PersonView,
   type Pill,
 } from './people-types'
 import { Avatar } from '@/components/Avatar'
 import type { TeamOption } from './DirectoryTabs'
+import { FilterBar } from './grid/FilterBar'
+import { SortHeader } from './grid/SortHeader'
+import { applyFilters, applySort, nextSort } from './grid/utils'
+import type { FilterCond, GridColumn, SortState } from './grid/types'
 
 type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status'
 
@@ -53,10 +59,25 @@ function RoleTag({ roleType }: { roleType: string }) {
 
 export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void }) {
   const [q, setQ] = useState('')
-  const [teamFilter, setTeamFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [conds, setConds] = useState<FilterCond[]>([])
+  const [sort, setSort] = useState<SortState | null>(null)
   const [cols, setCols] = useState<ColId[]>(DEFAULT_COLS)
   const [colMenu, setColMenu] = useState(false)
+
+  // Filterable/sortable columns — a superset of the visible table columns, so you
+  // can filter or sort by anything even when the column is hidden. Person = name.
+  const filterColumns = useMemo<GridColumn<PersonView>[]>(() => [
+    { id: 'name', label: 'Name', type: 'text', get: p => p.full_name },
+    { id: 'team', label: 'Team', type: 'enum', get: p => p.teamName, options: teamOptions.map(t => ({ value: t.name, label: t.name })) },
+    { id: 'role', label: 'Contact type', type: 'enum', get: p => p.roleType, options: ROLE_TYPE_OPTIONS.map(v => ({ value: v, label: ROLE_TYPE_LABEL[v] })) },
+    { id: 'job', label: 'Job title', type: 'text', get: p => p.title },
+    { id: 'reports', label: 'Reports to', type: 'text', get: p => p.managerName },
+    { id: 'type', label: 'Type', type: 'enum', get: p => p.employmentType, options: [{ value: 'us', label: 'US Employee' }, { value: 'contractor', label: 'Contractor' }] },
+    { id: 'time', label: 'Schedule', type: 'enum', get: p => p.schedule, options: [{ value: 'full', label: 'Full-Time' }, { value: 'part', label: 'Part-Time' }] },
+    { id: 'joined', label: 'Joined', type: 'date', get: p => p.hireDate },
+    { id: 'rate', label: 'Internal rate', type: 'number', get: p => p.internalRate },
+    { id: 'status', label: 'Status', type: 'enum', get: p => p.status, options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
+  ], [teamOptions])
 
   // Hydrate saved column choices once on mount. Deliberately a post-mount effect
   // (not a lazy initializer) so the server and first client render agree, then we
@@ -82,23 +103,18 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase()
-    return people.filter(p => {
-      if (teamFilter !== 'all' && p.teamId !== teamFilter) return false
-      if (statusFilter === 'active' && p.status !== 'active') return false
-      if (statusFilter === 'inactive' && p.status !== 'inactive') return false
-      if (term) {
-        const hay = `${p.full_name} ${p.title ?? ''} ${p.teamName ?? ''} ${primaryEmail(p)}`.toLowerCase()
-        if (!hay.includes(term)) return false
-      }
-      return true
-    })
-  }, [people, q, teamFilter, statusFilter])
+    const base = term
+      ? people.filter(p => `${p.full_name} ${p.title ?? ''} ${p.teamName ?? ''} ${primaryEmail(p)}`.toLowerCase().includes(term))
+      : people
+    return applyFilters(base, filterColumns, conds)
+  }, [people, q, conds, filterColumns])
 
   const visCols = COLUMNS.filter(c => cols.includes(c.id))
   const gridTemplate = `2fr ${visCols.map(c => c.fr).join(' ')}`
+  // Sort is applied WITHIN each group so the Active / Inactive split is preserved.
   const groups = [
-    { key: 'active', label: 'Active', on: true, rows: filtered.filter(p => p.status === 'active') },
-    { key: 'inactive', label: 'Inactive', on: false, rows: filtered.filter(p => p.status === 'inactive') },
+    { key: 'active', label: 'Active', on: true, rows: applySort(filtered.filter(p => p.status === 'active'), filterColumns, sort) },
+    { key: 'inactive', label: 'Inactive', on: false, rows: applySort(filtered.filter(p => p.status === 'inactive'), filterColumns, sort) },
   ].filter(g => g.rows.length > 0)
 
   const inactiveCount = people.filter(p => p.status === 'inactive').length
@@ -118,41 +134,8 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
           />
         </div>
 
-        {/* team filter pills */}
-        <div className="flex gap-[7px] flex-wrap">
-          {[{ id: 'all', name: 'All', color: '' }, ...teamOptions].map(f => {
-            const active = teamFilter === f.id
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setTeamFilter(f.id)}
-                className={`inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[12.5px] rounded-full px-3.5 py-[7px] border transition-all ${
-                  active ? 'border-tn-teal bg-tn-teal-soft text-tn-teal' : 'border-slate-200 bg-white text-foreground hover:border-tn-teal'
-                }`}
-              >
-                {f.color && <span className="w-2 h-2 rounded-[2px]" style={{ background: f.color }} />}
-                {f.name}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* active/inactive segment */}
-        <div className="flex items-center bg-subtle border border-slate-200 rounded-[10px] p-[3px]">
-          {(['all', 'active', 'inactive'] as const).map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatusFilter(s)}
-              className={`font-(family-name:--font-display) font-extrabold text-xs rounded-lg px-[13px] py-1.5 transition-all capitalize ${
-                statusFilter === s ? 'bg-white text-tn-teal shadow-[0_1px_3px_rgba(1,35,88,.14)]' : 'text-muted'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {/* filter builder — "filter by anything" (replaces the fixed team + status pills) */}
+        <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
 
         {/* columns control */}
         <div className="relative ml-auto">
@@ -195,9 +178,9 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
       {/* table */}
       <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
         <div className="grid gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200" style={{ gridTemplateColumns: gridTemplate }}>
-          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">Person</span>
+          <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
           {visCols.map(c => (
-            <span key={c.id} className={`font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted ${c.align === 'right' ? 'text-right' : ''}`}>{c.label}</span>
+            <SortHeader key={c.id} label={c.label} align={c.align} active={sort?.id === c.id} dir={sort?.id === c.id ? sort.dir : null} onClick={() => setSort(s => nextSort(s, c.id))} />
           ))}
         </div>
 
