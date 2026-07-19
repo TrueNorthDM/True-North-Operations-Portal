@@ -11,6 +11,7 @@ import { getOrgChart } from '@/lib/org/data'
 import { getCurrentTier } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
+import { Anniversaries } from '@/components/home/Anniversaries'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 
@@ -31,6 +32,9 @@ export default async function HomePage() {
 
       {/* i7 budget at a glance — privileged tiers only. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
+
+      {/* Work anniversaries — last / this / next month (hidden when the window is empty). */}
+      <Anniversaries />
 
       {/* Company org chart — permanent fixture of the home page. */}
       <section>
