@@ -67,3 +67,13 @@ export function formatTenure(t: Tenure | null): string {
   if (parts.length === 1) return parts[0]
   return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1]
 }
+
+// Compact one-line form: "1y 2mo 4d" (zero components dropped, days always kept).
+export function formatTenureShort(t: Tenure | null): string {
+  if (!t) return '—'
+  const parts: string[] = []
+  if (t.years) parts.push(`${t.years}y`)
+  if (t.months) parts.push(`${t.months}mo`)
+  if (t.days || parts.length === 0) parts.push(`${t.days}d`)
+  return parts.join(' ')
+}
