@@ -8,11 +8,12 @@ export interface PersonMilestone {
   note: string | null
 }
 
-export const MILESTONE_KINDS = ['joined', 'promotion', 'role_change', 'role_addition', 'left', 'other'] as const
+export const MILESTONE_KINDS = ['joined', 'joined_team', 'promoted', 'role_change', 'role_addition', 'left', 'other'] as const
 
 export const MILESTONE_LABEL: Record<string, string> = {
   joined: 'Joined',
-  promotion: 'Promotion',
+  joined_team: 'Joined team',
+  promoted: 'Promoted',
   role_change: 'Role change',
   role_addition: 'Role addition',
   left: 'Left',
@@ -21,11 +22,12 @@ export const MILESTONE_LABEL: Record<string, string> = {
 
 export const MILESTONE_COLOR: Record<string, string> = {
   joined: '#1f8a5b', // green
-  promotion: '#6d5ae0', // violet
+  joined_team: '#1E7D7F', // teal
+  promoted: '#6d5ae0', // violet
   role_change: '#e08a1e', // orange
   role_addition: '#3b82f6', // blue
-  left: '#8593a4', // slate
-  other: '#8593a4',
+  left: '#d7392f', // red
+  other: '#8593a4', // slate
 }
 
 export const milestoneLabel = (kind: string) => MILESTONE_LABEL[kind] ?? 'Note'

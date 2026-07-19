@@ -434,13 +434,13 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
           <div className="flex flex-col gap-3">
             {sortMilestones(p.milestones).map((m, i) => (
               <div key={i} className="flex gap-3">
-                <span className="mt-[5px] w-[9px] h-[9px] rounded-full shrink-0" style={{ background: milestoneColor(m.kind) }} />
-                <div className="min-w-0">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="font-(family-name:--font-display) font-extrabold text-[12.5px]" style={{ color: milestoneColor(m.kind) }}>{milestoneLabel(m.kind)}</span>
+                <span className="mt-[6px] w-[9px] h-[9px] rounded-full shrink-0" style={{ background: milestoneColor(m.kind) }} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[9px] py-[3px] whitespace-nowrap" style={{ color: milestoneColor(m.kind), background: `${milestoneColor(m.kind)}1a` }}>{milestoneLabel(m.kind)}</span>
                     {m.date && <span className="text-[12px] text-muted font-semibold">{formatDate(m.date)}</span>}
                   </div>
-                  {m.note && <p className="text-[13px] text-foreground leading-snug mt-0.5 m-0">{m.note}</p>}
+                  {m.note && <p className="text-[13px] text-foreground leading-snug mt-1 m-0">{m.note}</p>}
                 </div>
               </div>
             ))}
@@ -676,7 +676,7 @@ function EditBody({
               </button>
             </div>
           ))}
-          <button type="button" onClick={() => setDraft(d => ({ ...d, milestones: [...d.milestones, { kind: 'promotion', date: '', note: '' }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
+          <button type="button" onClick={() => setDraft(d => ({ ...d, milestones: [...d.milestones, { kind: 'promoted', date: '', note: '' }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
             Add milestone
           </button>
