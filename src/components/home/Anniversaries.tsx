@@ -1,43 +1,28 @@
 // Anniversaries — work anniversaries across last / this / next month, each with
-// the milestone badge and time of service. Server component: loads its own data
-// and renders nothing when the three-month window is empty.
+// the person's name, team, milestone badge and the date they joined. Renders
+// nothing when the three-month window is empty.
 
-import { createClient } from '@/lib/supabase/server'
 import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
-import { tenureSince, formatTenure, yearColor } from '@/lib/tenure'
+import { yearColor } from '@/lib/tenure'
+import { formatDate, TEAM_COLOR } from '@/components/admin/people-types'
+import { monthWindow, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+interface Ann extends CelebrationPerson { years: number; day: number }
 
-interface Ann { id: string; name: string; avatarUrl: string | null; years: number; tenure: string; day: number }
-
-export async function Anniversaries() {
-  const supabase = await createClient()
-  let res = await supabase.from('people').select('id, full_name, hire_date, status, avatar_url')
-  if (res.error) res = (await supabase.from('people').select('id, full_name, hire_date, status')) as typeof res
-  const people = res.data ?? []
-
-  const now = new Date()
-  const targets = [-1, 0, 1].map(off => {
-    const d = new Date(now.getFullYear(), now.getMonth() + off, 1)
-    return { year: d.getFullYear(), month: d.getMonth(), label: MONTHS[d.getMonth()], current: off === 0 }
-  })
-
+export function Anniversaries({ people }: { people: CelebrationPerson[] }) {
+  const targets = monthWindow(new Date())
   const cols: Ann[][] = [[], [], []]
   for (const p of people) {
-    if (p.status !== 'active' || !p.hire_date) continue
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(p.hire_date)
-    if (!m) continue
-    const hy = +m[1], hmo = +m[2] - 1, hd = +m[3]
+    const h = parseYMD(p.hireDate)
+    if (!h) continue
     targets.forEach((t, i) => {
-      if (hmo !== t.month) return
-      const years = t.year - hy
-      if (years < 1) return // a real anniversary only
-      cols[i].push({ id: p.id, name: p.full_name, avatarUrl: p.avatar_url ?? null, years, tenure: formatTenure(tenureSince(p.hire_date, now)), day: hd })
+      if (h.m !== t.month) return
+      const years = t.year - h.y
+      if (years >= 1) cols[i].push({ ...p, years, day: h.d })
     })
   }
   cols.forEach(c => c.sort((a, b) => a.day - b.day || a.name.localeCompare(b.name)))
-
   if (cols.every(c => c.length === 0)) return null
 
   return (
@@ -59,12 +44,17 @@ export async function Anniversaries() {
               <div className="flex flex-col gap-3">
                 {cols[i].map(a => (
                   <div key={a.id} className="flex items-center gap-2.5">
-                    <Avatar name={a.name} avatarUrl={a.avatarUrl} size={30} color={yearColor(a.years)} />
+                    <Avatar name={a.name} avatarUrl={a.avatarUrl} size={32} color={TEAM_COLOR[a.teamKey]} />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-bold text-tn-ink truncate">{a.name}</span>
-                      <span className="block text-[11px] text-muted truncate">{a.tenure}</span>
+                      <span className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                        {a.teamName && (
+                          <span className="shrink-0 max-w-[120px] truncate font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-1.5 py-0.5" style={{ color: TEAM_COLOR[a.teamKey], background: `${TEAM_COLOR[a.teamKey]}1a` }}>{a.teamName}</span>
+                        )}
+                        <span className="text-[11px] text-muted truncate">Joined {formatDate(a.hireDate)}</span>
+                      </span>
                     </span>
-                    <TenureBadge milestone={{ kind: 'year', value: a.years, color: yearColor(a.years) }} size={38} />
+                    <TenureBadge milestone={{ kind: 'year', value: a.years, color: yearColor(a.years) }} size={40} />
                   </div>
                 ))}
               </div>

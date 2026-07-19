@@ -12,13 +12,15 @@ import { getCurrentTier } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
 import { Anniversaries } from '@/components/home/Anniversaries'
+import { Birthdays } from '@/components/home/Birthdays'
+import { loadCelebrationPeople } from '@/lib/hr/celebrations'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const [org, tier, me] = await Promise.all([getOrgChart(), getCurrentTier(), loadCurrentPerson(supabase, user)])
+  const [org, tier, me, celebPeople] = await Promise.all([getOrgChart(), getCurrentTier(), loadCurrentPerson(supabase, user), loadCelebrationPeople()])
   // i7 budget at a glance — privileged only (sensitive $), for the current month.
   const month = currentYearMonth()
   const i7Carryover = tier.isPrivileged ? (await loadI7ReportData(month)).carryover : null
@@ -33,8 +35,9 @@ export default async function HomePage() {
       {/* i7 budget at a glance — privileged tiers only. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
-      {/* Work anniversaries — last / this / next month (hidden when the window is empty). */}
-      <Anniversaries />
+      {/* Work anniversaries + birthdays — last / this / next month (each hidden when empty). */}
+      <Anniversaries people={celebPeople} />
+      <Birthdays people={celebPeople} />
 
       {/* Company org chart — permanent fixture of the home page. */}
       <section>
