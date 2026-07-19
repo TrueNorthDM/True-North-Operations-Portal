@@ -35,9 +35,11 @@ export default async function HomePage() {
       {/* i7 budget at a glance — privileged tiers only. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
-      {/* Work anniversaries + birthdays — last / this / next month (each hidden when empty). */}
-      <Anniversaries people={celebPeople} />
-      <Birthdays people={celebPeople} />
+      {/* This month's work anniversaries + birthdays, side by side. */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Anniversaries people={celebPeople} />
+        <Birthdays people={celebPeople} />
+      </section>
 
       {/* Company org chart — permanent fixture of the home page. */}
       <section>
