@@ -289,13 +289,13 @@ function SectionTitle({ children, right }: { children: ReactNode; right?: ReactN
   )
 }
 
-// Top-level group heading: a thick rounded blue accent bar + bold title, one
-// tier above the teal SectionTitles it groups.
+// Top-level group heading: a full navy bar with white text, matching the i7
+// budget card header. One tier above the teal SectionTitles it groups. Uses a
+// literal white so the text stays white in dark mode (the token would remap).
 function GroupTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`flex items-stretch gap-3 mb-4 ${className}`}>
-      <span className="w-[5px] rounded-full bg-tn-primary shrink-0" aria-hidden="true" />
-      <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-tight m-0">{children}</h3>
+    <div className={`bg-tn-primary rounded-[10px] px-5 py-3 mb-4 ${className}`}>
+      <h3 className="font-(family-name:--font-display) font-extrabold text-[14px] text-[#ffffff] m-0">{children}</h3>
     </div>
   )
 }
