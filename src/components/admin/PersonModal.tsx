@@ -75,13 +75,6 @@ interface Draft {
   mondayDocs: string
 }
 
-const EMAIL_META: { key: keyof Draft['emails']; label: string; color: string }[] = [
-  { key: 'trueNorth', label: 'True North', color: '#012358' },
-  { key: 'goodnews', label: 'GoodNews', color: '#1f8a5b' },
-  { key: 'coe', label: 'COE', color: '#6d5ae0' },
-  { key: 'personal', label: 'Personal', color: '#8593a4' },
-]
-
 function emailDraft(addr: string | null): EmailDraft { return { has: !!addr, addr: addr ?? '' } }
 
 function toDraft(p: PersonView | null): Draft {
@@ -366,6 +359,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             {item('True North', link(p.emails.trueNorth))}
             {item('GoodNews', link(p.emails.goodnews))}
             {item('COE', link(p.emails.coe))}
+            {item('QuickBooks Time', pillNode(p.hasTsheets ? { kind: 'green', label: 'Linked' } : { kind: 'grey', label: 'Not linked' }))}
           </div>
         </div>
       </div>
@@ -472,10 +466,6 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
 // ── EDIT ──
 const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[11px] w-full transition-all focus:outline-none focus:border-tn-teal'
 
-function Wrap({ wide, children }: { wide?: boolean; children: ReactNode }) {
-  return <label className={`flex flex-col gap-1.5 ${wide ? 'col-span-2' : ''}`}>{children}</label>
-}
-
 function EditBody({
   draft, set, setDraft, managerOptions, teamOptions, personId, attachments,
 }: {
@@ -511,44 +501,98 @@ function EditBody({
     />
   )
 
+  const field = (l: string, control: ReactNode) => <div className="flex flex-col gap-1.5">{label(l)}{control}</div>
+  const setEmail = (key: keyof Draft['emails'], v: string) => setDraft(d => ({ ...d, emails: { ...d.emails, [key]: { has: !!v.trim(), addr: v } } }))
+  const emailInput = (key: keyof Draft['emails'], l: string) => field(l, <input type="email" value={draft.emails[key].addr} onChange={e => setEmail(key, e.target.value)} className={fieldCls} placeholder="name@domain.com" />)
+
   return (
     <>
-      {/* Identity */}
-      <div className="mb-6">
-        <SectionTitle>Identity</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
-          <Wrap>{label('Full name')}<input type="text" value={draft.full_name} onChange={e => set('full_name', e.target.value)} className={fieldCls} placeholder="Jane Doe" /></Wrap>
-          <Wrap>{label('Last name')}<input type="text" value={draft.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} placeholder="Doe" /></Wrap>
-          <Wrap wide>{label('Job title')}<input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" /></Wrap>
-          <Wrap wide>
-            <span className="flex items-center gap-2">
-              {label('Team position')}
-              <span className="text-[11px] text-muted normal-case font-normal tracking-normal">(a person can be in several teams, with a different position in each)</span>
-            </span>
+      {/* Personal data + Login & access, mirroring the read view. */}
+      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start">
+        <div>
+          <SectionTitle>Personal data</SectionTitle>
+          <div className="flex flex-col gap-3.5">
+            {field('Full name', <input type="text" value={draft.full_name} onChange={e => set('full_name', e.target.value)} className={fieldCls} placeholder="Jane Doe" />)}
+            {field('Last name', <input type="text" value={draft.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} placeholder="Doe" />)}
+            {emailInput('personal', 'Email')}
+            {field('Phone / WhatsApp', (
+              <>
+                <input type="text" value={draft.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+55 85 98683 9825" />
+                <span className="text-[11px] text-muted normal-case font-normal tracking-normal mt-1">Include the country code so we can show the flag.</span>
+              </>
+            ))}
+            {field('WhatsApp, same number?', seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v)))}
+            {field('Date of birth', <input type="date" value={draft.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} />)}
+            {field('Location', <input type="text" value={draft.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" />)}
+            {field('Full address', (
+              <div className="space-y-2.5">
+                {/* Country first; the rest of the form only appears once a country is chosen. */}
+                <Select fullWidth searchable value={draft.address.country} onChange={v => setAddr('country', v)} options={countryOptions} placeholder="Select a country…" className={fieldCls} ariaLabel="Country" />
+                {draft.address.country && (
+                  <>
+                    <input type="text" value={draft.address.zip} onChange={e => setAddr('zip', e.target.value)} className={fieldCls} placeholder="ZIP / Postal code" />
+                    <input type="text" value={draft.address.city} onChange={e => setAddr('city', e.target.value)} className={fieldCls} placeholder="City" />
+                    <input type="text" value={draft.address.line1} onChange={e => setAddr('line1', e.target.value)} className={fieldCls} placeholder="Address line 1 (street, number)" />
+                    <input type="text" value={draft.address.line2} onChange={e => setAddr('line2', e.target.value)} className={fieldCls} placeholder="Address line 2 (apt, suite, complement)" />
+                    <input type="text" value={draft.address.state} onChange={e => setAddr('state', e.target.value)} className={fieldCls} placeholder="State / Province / Region" />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <SectionTitle>Login &amp; access</SectionTitle>
+          <div className="flex flex-col gap-3.5">
+            {field('Contact type (access)', (
+              <Select fullWidth value={draft.roleType} onChange={v => set('roleType', v)} options={ROLE_TYPE_OPTIONS.map(r => ({ value: r, label: ROLE_TYPE_LABEL[r] }))} className={fieldCls} ariaLabel="Contact type" />
+            ))}
+            {emailInput('trueNorth', 'True North')}
+            {emailInput('goodnews', 'GoodNews')}
+            {emailInput('coe', 'COE')}
+            <ToggleCard title="QuickBooks Time" desc="Linked for logging hours (TSheets)." on={draft.hasTsheets} onToggle={() => set('hasTsheets', !draft.hasTsheets)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Employment + Onboarding | Team position + Reporting + Dates, same as the view. */}
+      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start mt-6">
+        <div className="space-y-6">
+          <div>
+            <SectionTitle>Employment</SectionTitle>
+            <div className="flex flex-col gap-3.5">
+              {field('Job title', <input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" />)}
+              {field('Type', seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v)))}
+              {field('Time', seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v)))}
+              {field('Weekly hours', <input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" />)}
+              {field('Internal rate ($/hr)', <input type="number" value={draft.internalRate} onChange={e => set('internalRate', e.target.value)} className={fieldCls} placeholder="60" />)}
+              {field('Status', seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive')))}
+            </div>
+          </div>
+          <div>
+            <SectionTitle>Onboarding</SectionTitle>
+            <div className="flex flex-col gap-3.5">
+              {field('Company email', seg(draft.companyEmail, [{ v: 'yes', l: 'Yes' }, { v: 'notyet', l: 'Not yet' }], v => set('companyEmail', v)))}
+              {field('Uses the system', seg(draft.usesSystem, [{ v: 'yes', l: 'Yes' }, { v: 'notyet', l: 'Not yet' }, { v: 'no', l: 'No' }], v => set('usesSystem', v)))}
+              {field('Team meeting', seg(draft.teamMeeting ? 'yes' : 'no', [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('teamMeeting', v === 'yes')))}
+            </div>
+          </div>
+        </div>
+        <div className="space-y-6">
+          <div>
+            <div className="flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">
+              <span>Team position</span>
+              <span className="text-[10px] text-muted normal-case font-normal tracking-normal">(several teams, a different position in each)</span>
+            </div>
             <div className="space-y-2">
               {draft.teams.length === 0 && <p className="text-[12.5px] text-muted italic">No teams yet, add one below.</p>}
               {draft.teams.map((row, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
-                    <Select
-                      fullWidth
-                      value={row.teamId}
-                      onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)) }))}
-                      options={teamOptions.map(t => ({ value: t.id, label: t.name }))}
-                      placeholder="Choose a team…"
-                      className={fieldCls}
-                      ariaLabel="Team"
-                    />
+                    <Select fullWidth value={row.teamId} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)) }))} options={teamOptions.map(t => ({ value: t.id, label: t.name }))} placeholder="Choose a team…" className={fieldCls} ariaLabel="Team" />
                   </div>
-                  <div className="shrink-0 w-[160px]">
-                    <Select
-                      fullWidth
-                      value={row.position}
-                      onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))}
-                      options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))}
-                      className={fieldCls}
-                      ariaLabel="Team position"
-                    />
+                  <div className="shrink-0 w-[150px]">
+                    <Select fullWidth value={row.position} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))} options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))} className={fieldCls} ariaLabel="Team position" />
                   </div>
                   <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.filter((_, j) => j !== i) }))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -560,128 +604,26 @@ function EditBody({
                 Add team
               </button>
             </div>
-          </Wrap>
-          <Wrap>{label('Status')}{seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive'))}</Wrap>
-          <Wrap>{label('Contact type (access)')}
-            <Select
-              fullWidth
-              value={draft.roleType}
-              onChange={v => set('roleType', v)}
-              options={ROLE_TYPE_OPTIONS.map(r => ({ value: r, label: ROLE_TYPE_LABEL[r] }))}
-              className={fieldCls}
-              ariaLabel="Contact type"
-            />
-          </Wrap>
-          <Wrap>{label('Type')}{seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v))}</Wrap>
-          <Wrap>{label('Time')}{seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v))}</Wrap>
-          <Wrap>{label('Weekly hours')}<input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" /></Wrap>
-          <Wrap>{label('Internal rate ($/hr)')}<input type="number" value={draft.internalRate} onChange={e => set('internalRate', e.target.value)} className={fieldCls} placeholder="60" /></Wrap>
-        </div>
-      </div>
-
-      {/* Reporting */}
-      <div className="mb-6">
-        <SectionTitle>Reporting</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
-          <Wrap>{label('Reports to')}{managerSelect(draft.manager_id, v => set('manager_id', v))}</Wrap>
-          <Wrap>{label('Also reports to')}{managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v))}</Wrap>
-        </div>
-      </div>
-
-      {/* Contact */}
-      <div className="mb-6">
-        <SectionTitle>Contact</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
-          <Wrap>
-            {label('Phone / WhatsApp')}
-            <input type="text" value={draft.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+55 85 98683 9825" />
-            <span className="text-[11px] text-muted normal-case font-normal tracking-normal">Include the country code so we can show the flag.</span>
-          </Wrap>
-          <Wrap>{label('Location')}<input type="text" value={draft.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Wrap>
-          <Wrap wide>
-            {label('Full address')}
-            <div className="space-y-2.5">
-              {/* Country first; the rest of the form only appears once a country is chosen. */}
-              <Select
-                fullWidth
-                searchable
-                value={draft.address.country}
-                onChange={v => setAddr('country', v)}
-                options={countryOptions}
-                placeholder="Select a country…"
-                className={fieldCls}
-                ariaLabel="Country"
-              />
-              {draft.address.country && (
-                <div className="grid grid-cols-2 gap-x-[18px] gap-y-2.5">
-                  <input type="text" value={draft.address.zip} onChange={e => setAddr('zip', e.target.value)} className={fieldCls} placeholder="ZIP / Postal code" />
-                  <input type="text" value={draft.address.city} onChange={e => setAddr('city', e.target.value)} className={fieldCls} placeholder="City" />
-                  <input type="text" value={draft.address.line1} onChange={e => setAddr('line1', e.target.value)} className={`${fieldCls} col-span-2`} placeholder="Address line 1 (street, number)" />
-                  <input type="text" value={draft.address.line2} onChange={e => setAddr('line2', e.target.value)} className={`${fieldCls} col-span-2`} placeholder="Address line 2 (apt, suite, complement)" />
-                  <input type="text" value={draft.address.state} onChange={e => setAddr('state', e.target.value)} className={`${fieldCls} col-span-2`} placeholder="State / Province / Region" />
-                </div>
-              )}
+          </div>
+          <div>
+            <SectionTitle>Reporting</SectionTitle>
+            <div className="flex flex-col gap-3.5">
+              {field('Reports to', managerSelect(draft.manager_id, v => set('manager_id', v)))}
+              {field('Also reports to', managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v)))}
             </div>
-          </Wrap>
-          <Wrap wide>{label('WhatsApp, same number?')}{seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v))}</Wrap>
-          <Wrap>{label('Date of birth')}<input type="date" value={draft.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} /></Wrap>
-          <Wrap>{label('Joined on')}<input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} /></Wrap>
-          <Wrap>{label('Left on')}<input type="date" value={draft.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} /></Wrap>
-        </div>
-      </div>
-
-      {/* Onboarding */}
-      <div className="mb-6">
-        <SectionTitle>Onboarding</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
-          <Wrap>{label('Company email')}{seg(draft.companyEmail, [{ v: 'yes', l: 'Yes' }, { v: 'notyet', l: 'Not yet' }], v => set('companyEmail', v))}</Wrap>
-          <Wrap wide>{label('Uses the system')}{seg(draft.usesSystem, [{ v: 'yes', l: 'Yes' }, { v: 'notyet', l: 'Not yet' }, { v: 'no', l: 'No' }], v => set('usesSystem', v))}</Wrap>
-        </div>
-      </div>
-
-      {/* Emails */}
-      <div className="mb-6">
-        <SectionTitle>Emails</SectionTitle>
-        <div className="flex flex-col gap-2.5">
-          {EMAIL_META.map(t => {
-            const e = draft.emails[t.key]
-            return (
-              <div key={t.key} className="grid grid-cols-[180px_1fr] gap-3 items-center">
-                <button
-                  type="button"
-                  onClick={() => setDraft(d => ({ ...d, emails: { ...d.emails, [t.key]: { ...d.emails[t.key], has: !d.emails[t.key].has } } }))}
-                  className="inline-flex items-center gap-2.5 w-full text-left font-(family-name:--font-display) font-extrabold text-[12.5px] rounded-[10px] px-3.5 py-2.5 border-[1.5px] transition-all"
-                  style={e.has ? { borderColor: t.color, background: `${t.color}14`, color: t.color } : undefined}
-                  data-off={!e.has}
-                >
-                  <span className="shrink-0 w-[18px] h-[18px] rounded-full inline-flex items-center justify-center text-white" style={{ background: e.has ? t.color : '#c9cfd8' }}>
-                    {e.has && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>}
-                  </span>
-                  <span className={e.has ? '' : 'text-foreground'}>{t.label}</span>
-                </button>
-                {e.has ? (
-                  <input type="text" value={e.addr} onChange={ev => setDraft(d => ({ ...d, emails: { ...d.emails, [t.key]: { ...d.emails[t.key], addr: ev.target.value } } }))} placeholder="name@domain.com" className={fieldCls} />
-                ) : (
-                  <span className="text-[12.5px] text-muted italic">Not enabled, click to add.</span>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Access toggles */}
-      <div className="mb-6">
-        <SectionTitle>Access</SectionTitle>
-        <div className="grid grid-cols-2 gap-3">
-          <ToggleCard title="Active" desc="Inactive people keep history but can’t sign in." on={draft.status === 'active'} onToggle={() => set('status', draft.status === 'active' ? 'inactive' : 'active')} />
-          <ToggleCard title="QuickBooks Time" desc="Linked for logging hours (TSheets)." on={draft.hasTsheets} onToggle={() => set('hasTsheets', !draft.hasTsheets)} />
-          <ToggleCard title="Team meeting" desc="Included in the team meeting (from the board)." on={draft.teamMeeting} onToggle={() => set('teamMeeting', !draft.teamMeeting)} />
+          </div>
+          <div>
+            <SectionTitle>Dates</SectionTitle>
+            <div className="flex flex-col gap-3.5">
+              {field('Joined on', <input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} />)}
+              {field('Left on', <input type="date" value={draft.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} />)}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* History */}
-      <div className="mb-6">
+      <div className="mt-6 mb-6">
         <SectionTitle>Employment history</SectionTitle>
         <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Notes on start date, role changes, milestones…" className={`${fieldCls} min-h-[90px] resize-y leading-relaxed`} />
       </div>
