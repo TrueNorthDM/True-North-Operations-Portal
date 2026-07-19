@@ -68,7 +68,7 @@ export async function addTeamMember(teamId: string, personId: string, position: 
 }
 
 // Set a member's POSITION within a team (Team Leader ↔ Collaborator). The team's
-// lead is whoever holds the team_leader position — there is no separate "make
+// lead is whoever holds the team_leader position, there is no separate "make
 // lead" any more.
 export async function setTeamMemberPosition(teamId: string, personId: string, position: TeamPosition) {
   await requireAdmin()

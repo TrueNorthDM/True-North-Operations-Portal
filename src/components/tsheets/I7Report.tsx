@@ -1,6 +1,6 @@
 'use client'
 
-// i7 Budget Usage Report — an expandable table with 3 row levels (Project → Job
+// i7 Budget Usage Report, an expandable table with 3 row levels (Project → Job
 // code → Activity). People are COLUMNS, not rows: each person has an HOURS
 // column, filled at every level. Hours/cost/budget roll up at each level. Data
 // is computed server-side and passed in.
@@ -78,7 +78,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       {preview && (
         <div className="flex items-center gap-3 rounded-[12px] border border-[#f0d69a] bg-hfa-soft px-4 py-3 text-sm text-[#8a6d1a]">
           <span className="text-base">&#x26A0;&#xFE0F;</span>
-          <span><strong className="font-(family-name:--font-display) font-extrabold">Sample data</strong> — structure preview only. Add your TSheets API token in{' '}
+          <span><strong className="font-(family-name:--font-display) font-extrabold">Sample data</strong>, structure preview only. Add your TSheets API token in{' '}
             <Link href="/settings" className="underline font-semibold hover:text-[#6d5612]">Settings</Link> to pull real hours.</span>
         </div>
       )}
@@ -103,7 +103,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         )}
       </div>
 
-      {/* View tabs — the same month's data as a table (In Numbers) or charts (In Graphics) */}
+      {/* View tabs, the same month's data as a table (In Numbers) or charts (In Graphics) */}
       <div className="flex gap-1 border-b border-slate-200">
         {(['numbers', 'graphics'] as const).map(v => (
           <button
@@ -120,7 +120,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} trend={trend} />
       ) : (
       <>
-      {/* Carryover — bank-account running balance */}
+      {/* Carryover: bank-account running balance */}
       {carryover && <CarryoverPanel c={carryover} month={selectedMonth} />}
 
       {/* Month narrative (also printed on the client report) */}
@@ -134,7 +134,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         <Chip label="People" value={String(people.length)} />
       </div>
 
-      {/* Pivot table — 3 row levels, one HOURS column per person */}
+      {/* Pivot table, 3 row levels, one HOURS column per person */}
       <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
         <table className="min-w-full text-sm">
           <thead>
@@ -172,12 +172,12 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           <tfoot>
             <tr className="border-t-2 border-slate-300 bg-subtle">
               <td className="px-4 py-3 font-(family-name:--font-display) font-extrabold text-tn-ink sticky left-0 bg-subtle z-10">Total</td>
-              {showBudget && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)]">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '—'}</td>}
-              {showBudget && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '—'}</td>}
-              {showBudgetAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '—'}</td>}
+              {showBudget && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)]">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '-'}</td>}
+              {showBudget && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '-'}</td>}
+              {showBudgetAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '-'}</td>}
               {showCost && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)] border-r border-[rgba(1,35,88,0.1)]">{money(data.totalCost)}</td>}
               {people.map(name => (
-                <td key={name} className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">—</span>}</td>
+                <td key={name} className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">-</span>}</td>
               ))}
               <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]">{data.totalHours.toFixed(2)}</td>
             </tr>

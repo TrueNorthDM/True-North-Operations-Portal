@@ -5,11 +5,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Single system-wide page background — the warm off-white from the COE
+  /* Single system-wide page background, the warm off-white from the COE
      dashboard, applied everywhere for consistency (no per-brand tint). */
-  /* True North Digital Marketing brand — warm off-white canvas, navy ink. */
+  /* True North Digital Marketing brand, warm off-white canvas, navy ink. */
   --background: #f1efe8;
-  --subtle: #f4f2ec;       /* warm subtle fill — table headers, group rows */
+  --subtle: #f4f2ec;       /* warm subtle fill, table headers, group rows */
   --stat-total: #0f2036;   /* Tickets "Total" stat card (lightened in dark) */
 
   /* Ticket status/priority/type badge palette (see TicketsClient). Literal in
@@ -34,7 +34,7 @@
   --success: #1e9e6a;
   --warning: #e0940e;
   --danger: #d64545;
-  /* Display face for headings — Raleway (loaded via next/font). */
+  /* Display face for headings, Raleway (loaded via next/font). */
   --font-display: var(--font-raleway), var(--font-open-sans), system-ui, sans-serif;
   /* Org chart connector default (when a node has no team colour). */
   --org-thread: #d6d3cb;
@@ -54,27 +54,27 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Brand tokens — kept in a plain @theme (no `inline`) so Tailwind v4
+/* Brand tokens, kept in a plain @theme (no `inline`) so Tailwind v4
    emits both the CSS variables on :root AND the utility classes:
    bg-aaaf-primary / text-aaaf-ink / font-aaaf-display, etc. */
 @theme {
-  /* True North portal identity — deep navy + north-star gold. Used for the
+  /* True North portal identity, deep navy + north-star gold. Used for the
      chrome (active nav, avatar, accents); project pages keep their brands. */
-  --color-tn-primary: #012358;      /* navy — primary buttons, avatar */
-  --color-tn-ink: #012358;          /* heading ink (dark: light — see .dark) */
-  --color-tn-accent: #F2C40A;       /* gold — logo star, small accents, top rule */
-  --color-tn-teal: #1E7D7F;         /* teal — active nav, links, focus ring */
+  --color-tn-primary: #012358;      /* navy, primary buttons, avatar */
+  --color-tn-ink: #012358;          /* heading ink (dark: light, see .dark) */
+  --color-tn-accent: #F2C40A;       /* gold, logo star, small accents, top rule */
+  --color-tn-teal: #1E7D7F;         /* teal, active nav, links, focus ring */
   --color-tn-teal-soft: #eaf4f4;    /* soft teal fills (icon chips) */
-  --color-tn-lightteal: #94C4C5;    /* light teal — chart Target bars, soft fills */
+  --color-tn-lightteal: #94C4C5;    /* light teal, chart Target bars, soft fills */
 
-  /* AAAF brand — sampled from askanadventistfriend.com */
+  /* AAAF brand, sampled from askanadventistfriend.com */
   --color-aaaf-primary: #44ad85;
   --color-aaaf-primary-hover: #3a9472;
   --color-aaaf-secondary: #0e4777;
   --color-aaaf-ink: #263954;
   --color-aaaf-soft: #eaf6f1;
 
-  /* HFA brand — sampled from hopefor.africa */
+  /* HFA brand, sampled from hopefor.africa */
   --color-hfa-primary: #fe9d2d;
   --color-hfa-primary-hover: #e58a1a;
   --color-hfa-secondary: #a03319;
@@ -116,31 +116,31 @@ h1, h2, h3 {
   0%   { transform: scale(.28); opacity: .55; }
   100% { transform: scale(1);   opacity: 0; }
 }
-/* Home widget icon motions — amplitudes match the design prototype. */
+/* Home widget icon motions, amplitudes match the design prototype. */
 @keyframes tn-ico-pulse  { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.28); } 60% { transform: scale(.94); } }
 @keyframes tn-ico-wiggle { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-16deg); } 55% { transform: rotate(16deg); } 80% { transform: rotate(-6deg); } }
 @keyframes tn-ico-swing  { 0%, 100% { transform: rotate(-11deg); } 50% { transform: rotate(11deg); } }
-/* "My Team" — two figures split apart while a third fades in between (2 → 3). */
+/* "My Team", two figures split apart while a third fades in between (2 → 3). */
 @keyframes tn-split-left  { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
 @keyframes tn-split-right { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
 @keyframes tn-appear     { 0%, 32% { opacity: 0; transform: scale(.2); } 50% { opacity: 1; transform: scale(1); } 68%, 100% { opacity: 0; transform: scale(.2); } }
-/* Admin hub card icons — a gentle bob, a pulsing dot, a self-drawing check. */
+/* Admin hub card icons, a gentle bob, a pulsing dot, a self-drawing check. */
 @keyframes tn-ico-bob    { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes tn-dot-pulse  { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .55; } }
 @keyframes tn-check-draw { 0%, 12% { stroke-dashoffset: 26; } 45%, 85% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 26; } }
 
-/* Project-page "Overall progress" bar — grows in on load (scaleX works for any
+/* Project-page "Overall progress" bar, grows in on load (scaleX works for any
    width), with a slow sheen sweeping across. Matches the handoff prototype. */
 @keyframes tn-bar-grow  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes tn-bar-sheen { 0% { transform: translateX(-140%); } 60%, 100% { transform: translateX(360%); } }
 .tn-bar-fill  { transform-origin: left; animation: tn-bar-grow 1.2s cubic-bezier(.22, 1, .36, 1); }
 .tn-bar-sheen { animation: tn-bar-sheen 2.6s ease-in-out infinite; }
 
-/* Login "check your inbox" — the confirmation envelope floats gently. */
+/* Login "check your inbox", the confirmation envelope floats gently. */
 @keyframes tn-mail-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .tn-mail { animation: tn-mail-bob 2.8s ease-in-out infinite; }
 
-/* Directory person modal — a one-shot rise-in on open. */
+/* Directory person modal, a one-shot rise-in on open. */
 @keyframes tn-modal-in { from { transform: translateY(12px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -151,7 +151,7 @@ h1, h2, h3 {
   .tn-modal     { animation: none !important; }
 }
 
-/* ── Dark mode — one palette remap, not per-component dark: classes ─────────
+/* ── Dark mode, one palette remap, not per-component dark: classes ─────────
    Tailwind v4 utilities resolve through CSS variables (bg-slate-100 →
    var(--color-slate-100)), so flipping the palette here re-skins the whole
    app at once. The neutral scale is MIRRORED (white↔near-black, 50↔900 …),
@@ -166,7 +166,7 @@ h1, h2, h3 {
   --subtle: #0c1a30;       /* warm-equivalent subtle fill for dark */
   --stat-total: #1a2f4d;   /* lightened Total card so it reads on the dark canvas */
 
-  /* Brighter badge palette for dark — vivid text/dots + a touch more fill. */
+  /* Brighter badge palette for dark, vivid text/dots + a touch more fill. */
   --bdg-bar-muted: rgba(170,182,201,.28);
   --bdg-green-bg: rgba(95,206,156,.15);   --bdg-green-fg: #6fd9a5;  --bdg-green-active: #6fd9a5;
   --bdg-orange-bg: rgba(242,165,74,.16);  --bdg-orange-fg: #f2a54a; --bdg-orange-active: #f2a54a;
@@ -187,14 +187,14 @@ h1, h2, h3 {
 
   --org-thread: #20355a;
 
-  /* Portal identity — navy lightened so it reads on dark */
+  /* Portal identity, navy lightened so it reads on dark */
   --color-tn-primary: #4b8fe0;
   --color-tn-ink: #eaf1fb;          /* heading ink on dark */
   --color-tn-teal: #5ac2bf;
   --color-tn-teal-soft: #10262e;
   --color-tn-lightteal: #4d8a8b;
 
-  /* Neutral scale — mirrored to True North navy-darks (low = surface, high = ink) */
+  /* Neutral scale, mirrored to True North navy-darks (low = surface, high = ink) */
   --color-white: #101f37;      /* cards / surfaces (bg-white) */
   --color-slate-50: #0c1a30;   /* subtle fills / hover / icon rail */
   --color-slate-100: #16294a;  /* tracks / light fills */
@@ -267,7 +267,7 @@ h1, h2, h3 {
   --color-hfa-primary-hover: #ffb255;
 }
 
-/* ── Org chart — horizontal connector tree ──────────────────────────────────
+/* ── Org chart, horizontal connector tree ──────────────────────────────────
    Auto-laid-out from the reporting hierarchy (no diagram library). Each level
    is a centered flex row; ::before/::after draw the connector elbows. Each <li>
    sets --thread to its team colour, so the connector INTO a node is tinted. */
@@ -318,7 +318,7 @@ h1, h2, h3 {
   border-left: 2px solid var(--thread, var(--org-thread));
 }
 
-/* ── Budget usage bar — soft sheen sweeping across the filled portion ─────────
+/* ── Budget usage bar, soft sheen sweeping across the filled portion ─────────
    Confined to its clipped parent (the filled area), transform-only so it stays
    on the compositor. Disabled under reduced-motion. */
 .tr-shimmer {
@@ -351,14 +351,14 @@ h1, h2, h3 {
 /* Report → PDF: force chart/badge colours to print, and isolate the document
    from the app chrome (sidebar/top bar) when the browser prints.
 
-   The document stays in NORMAL FLOW — we simply hide the app chrome. The old
+   The document stays in NORMAL FLOW, we simply hide the app chrome. The old
    approach (visibility:hidden everything + reposition .print-doc as absolute)
    printed blank in Safari and some Chrome cases, because absolutely-positioned
    content doesn't paginate reliably. Hiding the chrome and letting the doc flow
    is the robust cross-browser way. */
 .print-doc { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 @media print {
-  /* App chrome — the top bar (<header>) and the sidebar (<aside>). The report
+  /* App chrome, the top bar (<header>) and the sidebar (<aside>). The report
      document uses only <div>s, so these tags are safe to drop. The document
      itself stays in normal flow (see the blank-PDF note below). */
   header, aside, .no-print { display: none !important; }

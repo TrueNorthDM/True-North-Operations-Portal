@@ -1,6 +1,6 @@
 'use client'
 
-// Per-month budgeted hours per i7 project — the report's "Budget hrs / Hrs
+// Per-month budgeted hours per i7 project, the report's "Budget hrs / Hrs
 // avail." guide (i7_project_month_hours). Rows are projects, columns are months
 // (a 6-month window). Opens read-only; "Edit" turns the section editable with
 // its own Review → Save.
@@ -55,7 +55,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
   function startEdit() { setVals(initial()); setError(null); setEditing(true) }
   function cancel() { setVals(initial()); setError(null); setEditing(false); setToast(null); setCopyFor(null) }
 
-  // ── Fill helpers: copy a month across, or a project across — with a flash on the
+  // ── Fill helpers: copy a month across, or a project across, with a flash on the
   // changed cells and an undoable toast. All draft-only (Cancel / Review still gate).
   const [flash, setFlash] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<null | { msg: string; undo: () => void }>(null)
@@ -121,7 +121,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
       const ov = existing.get(k) ?? 0
       if (nv !== ov) {
         changes.push({ project: p, month: ym, hours: nv })
-        lines.push(`${p} · ${monthLabel(ym)}: ${ov ? fmtHrs(ov) : '—'} → ${nv ? fmtHrs(nv) : '—'} h`)
+        lines.push(`${p} · ${monthLabel(ym)}: ${ov ? fmtHrs(ov) : '-'} → ${nv ? fmtHrs(nv) : '-'} h`)
       }
     }
     return { changes, lines }
@@ -147,7 +147,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
   const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-[var(--bdg-orange-fg)] px-3 py-3 whitespace-nowrap'
   const changeCount = diff().changes.length
 
-  // ── $ allocation (live): a PLANNING estimate — allocated = total budgeted hours
+  // ── $ allocation (live): a PLANNING estimate, allocated = total budgeted hours
   // × the highest Rate/client (the same rate for every project); the month's budget
   // (budget + extra) is the ceiling; left/over = ceiling − allocated.
   const money = (n: number) => `$${Math.round(n).toLocaleString()}`
@@ -228,7 +228,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
                           </button>
                         </div>
                       ) : (
-                        <span className="tabular-nums font-semibold text-tn-ink">{h > 0 ? fmtHrs(h) : <span className="text-slate-300">—</span>}</span>
+                        <span className="tabular-nums font-semibold text-tn-ink">{h > 0 ? fmtHrs(h) : <span className="text-slate-300">-</span>}</span>
                       )}
                     </td>
                   )
@@ -244,13 +244,13 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
               </tr>
               <tr className="bg-subtle">
                 <td className={`text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle ${COL0}`}>Budget (ceiling)</td>
-                {months.map(ym => <td key={ym} className={`${sumCell} text-muted`}>{ceilingFor(ym) > 0 ? money(ceilingFor(ym)) : <span className="text-slate-300">—</span>}</td>)}
+                {months.map(ym => <td key={ym} className={`${sumCell} text-muted`}>{ceilingFor(ym) > 0 ? money(ceilingFor(ym)) : <span className="text-slate-300">-</span>}</td>)}
               </tr>
               <tr className="bg-subtle border-t border-slate-200">
                 <td className={`text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle ${COL0}`}>Left to allocate</td>
                 {months.map(ym => {
                   const left = ceilingFor(ym) - allocatedFor(ym)
-                  if (ceilingFor(ym) <= 0) return <td key={ym} className={`${sumCell} text-slate-300`}>—</td>
+                  if (ceilingFor(ym) <= 0) return <td key={ym} className={`${sumCell} text-slate-300`}>-</td>
                   const over = left < 0
                   return (
                     <td key={ym} className={`${sumCell} font-(family-name:--font-display) font-extrabold ${over ? 'text-[var(--bdg-red-fg)]' : 'text-[var(--bdg-green-fg)]'}`}>
@@ -271,7 +271,7 @@ export function ProjectHoursGrid({ clientId, projects, hours, estimateRate, budg
       {error && <p className="text-xs text-red-600">{error}</p>}
       {editing && (
         <p className="text-[11px] text-muted px-0.5 leading-relaxed">
-          <b className="text-foreground">Copy a month</b> with the copy icon in its header — then choose which months to apply it to; <b className="text-foreground">fill one project</b> with the → on a focused cell. Both are undoable and only apply when you save.
+          <b className="text-foreground">Copy a month</b> with the copy icon in its header, then choose which months to apply it to; <b className="text-foreground">fill one project</b> with the → on a focused cell. Both are undoable and only apply when you save.
         </p>
       )}
       {editing && (

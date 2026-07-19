@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * TeamsManager — the Teams tab. Admins create, rename and delete teams, set the
+ * TeamsManager: the Teams tab. Admins create, rename and delete teams, set the
  * team lead, and add/remove members here. Each card lists members with the team
  * lead (then anyone typed Team Leader) at the top and users below alphabetically,
  * each showing their contact-type. A key at the top explains what each contact
@@ -36,8 +36,8 @@ export interface TeamCard {
 // portal. role_type is set per person on the People tab; it drives the whole
 // permission model (Part 4 of "People, Teams and Permissions").
 const TIERS: { key: string; desc: string }[] = [
-  { key: 'admin', desc: 'Full access — manage people, teams, tool access, Settings and Admin; sees the i7 budget with export.' },
-  { key: 'admin_assistant', desc: 'Same as Admin — full run of the portal.' },
+  { key: 'admin', desc: 'Full access, manage people, teams, tool access, Settings and Admin; sees the i7 budget with export.' },
+  { key: 'admin_assistant', desc: 'Same as Admin, full run of the portal.' },
   { key: 'team_leader', desc: 'Read-only People directory (their own card and their team’s) and the i7 budget without export. No Admin or Settings.' },
   { key: 'user', desc: 'Read-only People directory (their own card only). No Admin or Settings.' },
 ]
@@ -50,7 +50,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  // The create/rename dialog (styled — replaces the native window.prompt).
+  // The create/rename dialog (styled, replaces the native window.prompt).
   const [dialog, setDialog] = useState<DialogState>(null)
 
   function run(fn: () => Promise<void>) {
@@ -83,7 +83,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
     <div>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-[18px]">
         <p className="text-[13.5px] text-muted max-w-[600px] leading-relaxed">
-          Create teams and add members. Each member has a <b className="text-foreground font-semibold">Team Position</b> here (Team Leader or Collaborator) — separate from their <b className="text-foreground font-semibold">Contact type</b> (portal access). A person can be in several teams with a different position in each.
+          Create teams and add members. Each member has a <b className="text-foreground font-semibold">Team Position</b> here (Team Leader or Collaborator), separate from their <b className="text-foreground font-semibold">Contact type</b> (portal access). A person can be in several teams with a different position in each.
         </p>
         <button type="button" onClick={() => setDialog({ mode: 'new' })} disabled={pending}
           className="inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[15px] py-[9px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:opacity-50">
@@ -92,11 +92,11 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
         </button>
       </div>
 
-      {/* Access key — what each contact type can see/do + how tool access works. */}
+      {/* Access key, what each contact type can see/do + how tool access works. */}
       <div className="rounded-[16px] border border-slate-200 bg-white p-5 mb-6 space-y-4">
         <div>
           <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-0.5">Contact type = portal access</div>
-          <p className="text-[12px] text-muted leading-snug mb-2.5">What each access level can see/do — <b className="text-foreground font-semibold">separate</b> from the Team Position (Team&nbsp;Leader / Collaborator) shown on the member cards below.</p>
+          <p className="text-[12px] text-muted leading-snug mb-2.5">What each access level can see/do, <b className="text-foreground font-semibold">separate</b> from the Team Position (Team&nbsp;Leader / Collaborator) shown on the member cards below.</p>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {TIERS.map(t => {
               const pill = roleTypePill(t.key)
@@ -112,7 +112,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
         <div className="pt-4 border-t border-slate-100">
           <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-1.5">How tool access works</div>
           <p className="text-[12.5px] text-muted leading-relaxed">
-            On each team card below, set who can open each tool — <b className="text-foreground font-semibold">Off</b> (hidden), <b className="text-foreground font-semibold">Lead only</b> (just the team lead), or <b className="text-foreground font-semibold">Whole team</b>. Applied once permissions ship.
+            On each team card below, set who can open each tool, <b className="text-foreground font-semibold">Off</b> (hidden), <b className="text-foreground font-semibold">Lead only</b> (just the team lead), or <b className="text-foreground font-semibold">Whole team</b>. Applied once permissions ship.
           </p>
         </div>
       </div>
@@ -120,7 +120,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
       {cards.length === 0 ? (
-        <div className="rounded-[16px] border border-dashed border-slate-300 bg-white/50 px-5 py-12 text-center text-sm text-muted">No teams yet — create the first one.</div>
+        <div className="rounded-[16px] border border-dashed border-slate-300 bg-white/50 px-5 py-12 text-center text-sm text-muted">No teams yet, create the first one.</div>
       ) : (
         // At most 4 across (wider cards); steps down for tablet → mobile:
         // 1 col on phones, 2 on tablets, 3 on desktops, 4 only on wide screens.
@@ -175,7 +175,7 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
         </div>
 
         <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mt-[18px] mb-2 shrink-0">Members · {team.memberCount}</div>
-        {/* Only the member list scrolls — the card keeps a fixed height and the
+        {/* Only the member list scrolls, the card keeps a fixed height and the
             tool-access footer stays pinned at the bottom. */}
         <div className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
           {team.members.length === 0 && <span className="text-[12.5px] text-muted italic">No members yet.</span>}
@@ -201,7 +201,7 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
                   <span className={`group-hover/mem:hidden font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
                   <span className="hidden group-hover/mem:flex items-center gap-1">
                     {/* Quick promote/demote between Team Leader and Collaborator.
-                        Founder is a deliberate role — set it in the person's card. */}
+                        Founder is a deliberate role, set it in the person's card. */}
                     {!isFounder && (
                       <button type="button" title={isLeader ? 'Set as Collaborator' : 'Set as Team Leader'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'collaborator' : 'team_leader'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
@@ -281,7 +281,7 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
   )
 }
 
-// TeamDialog — styled create/rename modal (replaces window.prompt). Same visual
+// TeamDialog: styled create/rename modal (replaces window.prompt). Same visual
 // language as the rest of the portal: a colour accent bar, a name field, and the
 // shared team colour palette. Esc or a backdrop click cancels; Enter saves.
 function TeamDialog({ mode, team, pending, onSave, onClose }: {
@@ -295,7 +295,7 @@ function TeamDialog({ mode, team, pending, onSave, onClose }: {
   const [color, setColor] = useState(team?.color ?? DEFAULT_COLOR)
   const canSave = name.trim().length > 0 && !pending
 
-  // Close on Escape — matches the rest of the portal's modals.
+  // Close on Escape, matches the rest of the portal's modals.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)

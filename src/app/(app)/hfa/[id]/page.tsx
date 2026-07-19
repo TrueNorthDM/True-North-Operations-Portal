@@ -1,4 +1,4 @@
-// HFA — page detail (Server Component)
+// HFA: page detail (Server Component)
 // Fetches one page with its URLs + confirmations, renders the shared editor.
 
 import { notFound } from 'next/navigation'

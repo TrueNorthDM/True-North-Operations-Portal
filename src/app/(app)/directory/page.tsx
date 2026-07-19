@@ -26,16 +26,16 @@ const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tshee
 
 const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
 
-/** Loosely-typed people row — columns depend on whether migration 029 ran. */
+/** Loosely-typed people row, columns depend on whether migration 029 ran. */
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  // ?open=<personId> — deep-link a person's card open (e.g. from Human Resources).
+  // ?open=<personId>, deep-link a person's card open (e.g. from Human Resources).
   const openId = (await searchParams).open ?? null
-  // Directory is open to everyone now (Part 4); the tier decides the view —
+  // Directory is open to everyone now (Part 4); the tier decides the view,
   // privileged get the full admin tabs, everyone else the read-only list below.
   const [isAdmin, mePerson] = await Promise.all([isCurrentUserAdmin(), loadCurrentPerson(supabase, user)])
   const tier = tierOf(isAdmin ? 'admin' : (mePerson?.roleType ?? 'user'))
@@ -51,9 +51,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
     // Separate + graceful: monday_docs (034) / role_type (035) / avatar_url (036)
-    // may not exist yet — a failed query here must NOT drop the PEOPLE_FULL select.
+    // may not exist yet, a failed query here must NOT drop the PEOPLE_FULL select.
     supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
-    // Team → tool access (037). Table may not exist yet — empty on error.
+    // Team → tool access (037). Table may not exist yet, empty on error.
     supabase.from('team_tool_grants').select('team_id, tool_key, audience'),
   ])
 
@@ -211,7 +211,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     if (g.subject_type !== 'team') continue
     const site = siteById.get(g.project_id)
     const arr = grantsByTeam.get(g.subject_id) ?? []
-    arr.push({ projectId: g.project_id, name: site?.name ?? '—', logo: site ? LOGO_BY_CODE[site.code] ?? null : null, role: g.role as GrantRole })
+    arr.push({ projectId: g.project_id, name: site?.name ?? '-', logo: site ? LOGO_BY_CODE[site.code] ?? null : null, role: g.role as GrantRole })
     grantsByTeam.set(g.subject_id, arr)
   }
   const membersByTeam = new Map<string, { personId: string; position: string }[]>()

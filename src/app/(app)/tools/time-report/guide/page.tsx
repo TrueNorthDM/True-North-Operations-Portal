@@ -1,5 +1,5 @@
 import Link from 'next/link'
-// How the i7 Budget Usage Report is built — a plain-language explainer linked
+// How the i7 Budget Usage Report is built, a plain-language explainer linked
 // from the info icon in Settings. Static content (the July 2026 numbers are an
 // illustrative worked example).
 
@@ -18,9 +18,9 @@ const SOURCES = [
   { tag: 'Rates', name: 'Hourly rates', cls: 'bg-indigo-50 border-indigo-200 text-indigo-900', dot: 'text-indigo-600',
     body: 'People, Teams and Permissions → Rates & Costs. Each person’s Rate / client ($/hour billed on i7), with history ($120 through January, $95 from February, foreign contractors $60).' },
   { tag: 'Budget $', name: 'Monthly budget', cls: 'bg-emerald-50 border-emerald-200 text-emerald-900', dot: 'text-emerald-600',
-    body: 'Settings → Clients & Budgets → i7. Each month’s budget in dollars (base + extra). This is the source of truth for the month — the report never back-calculates it from hours.' },
+    body: 'Settings → Clients & Budgets → i7. Each month’s budget in dollars (base + extra). This is the source of truth for the month, the report never back-calculates it from hours.' },
   { tag: 'Budget hrs', name: 'Budget hours per project', cls: 'bg-amber-50 border-amber-200 text-amber-900', dot: 'text-amber-600',
-    body: 'Same i7 modal. A planning estimate: how the budget splits into hours per project. Editing it never changes the dollar budget — a live “left to allocate” line flags when the hours run past it. Copy a month across to the others in a click.' },
+    body: 'Same i7 modal. A planning estimate: how the budget splits into hours per project. Editing it never changes the dollar budget, a live “left to allocate” line flags when the hours run past it. Copy a month across to the others in a click.' },
 ]
 
 const FORMULAS = [
@@ -57,7 +57,7 @@ export default function ReportGuidePage() {
             <h1 className="text-2xl font-bold text-slate-900">How the i7 Budget Usage Report is built</h1>
             <p className="mt-1 text-slate-500">
               The report never invents a number. It combines <strong className="text-slate-700">one thing pulled from QuickBooks Time</strong> with{' '}
-              <strong className="text-slate-700">three things you set</strong> — then only adds and subtracts.
+              <strong className="text-slate-700">three things you set</strong>, then only adds and subtracts.
             </p>
           </div>
         </div>
@@ -105,14 +105,14 @@ export default function ReportGuidePage() {
             <li><strong className="text-slate-900">Balance left</strong> = Budget total − Used (this carries into next month).</li>
           </ul>
           <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600 leading-relaxed">
-            On the report, <strong className="text-slate-900">Budget total this month</strong> shows the breakdown in brackets — e.g. <span className="font-mono text-slate-800">$49,094 ($55,000 − $5,906)</span>: this month’s full budget minus what was carried over (or plus, if last month came in under). The <strong className="text-slate-900">Team Update</strong> button (next to Export) turns the same numbers — used, % used, and what’s left — into a shareable image for the team.
+            On the report, <strong className="text-slate-900">Budget total this month</strong> shows the breakdown in brackets, e.g. <span className="font-mono text-slate-800">$49,094 ($55,000 − $5,906)</span>: this month’s full budget minus what was carried over (or plus, if last month came in under). The <strong className="text-slate-900">Team Update</strong> button (next to Export) turns the same numbers (used, % used, and what’s left) into a shareable image for the team.
           </div>
         </div>
       </section>
 
       {/* The proof */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">The proof — July 2026</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">The proof - July 2026</h2>
         <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
@@ -151,7 +151,7 @@ export default function ReportGuidePage() {
         <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <div className="text-sm font-semibold text-emerald-900 mb-2">Everything checks out ✓</div>
           <ul className="space-y-1 text-sm text-emerald-800">
-            <li><strong>588</strong> = 220 + 50 + 10 + 308 — the hours you typed into the July matrix</li>
+            <li><strong>588</strong> = 220 + 50 + 10 + 308, the hours you typed into the July matrix</li>
             <li><strong>486.00</strong> = 588 − 102.00</li>
             <li><strong>$46,170</strong> = 486 × <strong>$95</strong> (July&rsquo;s standard rate)</li>
             <li><strong>$9,629</strong> = the sum of actual cost (hours × each person&rsquo;s rate)</li>
@@ -169,7 +169,7 @@ export default function ReportGuidePage() {
         <p className="text-lg leading-relaxed">
           <span className="text-emerald-300 font-semibold">Settings</span> sets the targets (budgeted hours and dollars),{' '}
           <span className="text-blue-300 font-semibold">QuickBooks Time</span> brings the actuals (hours),{' '}
-          the <span className="text-indigo-300 font-semibold">rates</span> turn hours into dollars, and the report just adds and subtracts — every number traceable.
+          the <span className="text-indigo-300 font-semibold">rates</span> turn hours into dollars, and the report just adds and subtracts, every number traceable.
         </p>
       </section>
 

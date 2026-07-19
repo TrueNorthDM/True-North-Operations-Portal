@@ -1,5 +1,5 @@
-// Pure sort/filter helpers for the Directory grid. No React — just data in, data
-// out — so they're trivial to reason about and reuse across the three tabs.
+// Pure sort/filter helpers for the Directory grid. No React, just data in, data
+// out, so they're trivial to reason about and reuse across the three tabs.
 
 import type { ColType, FilterCond, GridColumn, Operator, SortState } from './types'
 

@@ -1,5 +1,5 @@
 /**
- * proxy.ts — auth gate for every route.
+ * proxy.ts: auth gate for every route.
  *
  * Next.js 16+ renamed `middleware` → `proxy`. Same behavior, new file name.
  *
@@ -14,8 +14,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Paths that bypass the user-session auth gate.
-//   /login + /auth     — sign-in flow itself
-//   /api/monday        — webhooks from Monday; authentication is HMAC of the
+//   /login + /auth, sign-in flow itself
+//   /api/monday: webhooks from Monday; authentication is HMAC of the
 //                        payload (see src/lib/monday/verify.ts), not a user
 //                        cookie. Without this exception, Monday's POSTs get
 //                        a 307 → /login and the webhook test fails.
@@ -55,12 +55,12 @@ export async function proxy(request: NextRequest) {
   )
 
   // IMPORTANT: getUser() will refresh the session if it's expired.
-  // Don't use getSession() in middleware — it doesn't revalidate.
+  // Don't use getSession() in middleware, it doesn't revalidate.
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
-  // Public routes — always allowed
+  // Public routes, always allowed
   if (isPublic(pathname)) {
     // If already logged in, kick away from /login
     if (user && pathname === '/login') {
@@ -69,7 +69,7 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
-  // Protected routes — require a session
+  // Protected routes, require a session
   if (!user) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('next', pathname)

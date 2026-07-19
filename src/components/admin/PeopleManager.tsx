@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * PeopleManager — the People tab of the Directory. A searchable, filterable,
+ * PeopleManager: the People tab of the Directory. A searchable, filterable,
  * column-configurable roster grouped into Active / Inactive. Rows open the
  * shared person modal (owned by DirectoryTabs).
  */
@@ -64,7 +64,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
   const [cols, setCols] = useState<ColId[]>(DEFAULT_COLS)
   const [colMenu, setColMenu] = useState(false)
 
-  // Filterable/sortable columns — a superset of the visible table columns, so you
+  // Filterable/sortable columns, a superset of the visible table columns, so you
   // can filter or sort by anything even when the column is hidden. Person = name.
   const filterColumns = useMemo<GridColumn<PersonView>[]>(() => [
     { id: 'name', label: 'Name', type: 'text', get: p => p.full_name },
@@ -81,7 +81,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
 
   // Hydrate saved column choices once on mount. Deliberately a post-mount effect
   // (not a lazy initializer) so the server and first client render agree, then we
-  // adopt localStorage — avoids an SSR/hydration mismatch on the table columns.
+  // adopt localStorage, avoids an SSR/hydration mismatch on the table columns.
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(LS_COLS)
@@ -134,7 +134,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
           />
         </div>
 
-        {/* filter builder — "filter by anything" (replaces the fixed team + status pills) */}
+        {/* filter builder, "filter by anything" (replaces the fixed team + status pills) */}
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
 
         {/* columns control */}
@@ -205,7 +205,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
                       <span className="font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
                       {p.roleType !== 'user' && <RoleTag roleType={p.roleType} />}
                     </span>
-                    <span className="block text-xs text-muted truncate">{primaryEmail(p) || '—'}</span>
+                    <span className="block text-xs text-muted truncate">{primaryEmail(p) || '-'}</span>
                   </span>
                 </span>
                 {visCols.map(c => (
@@ -231,15 +231,15 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
 function Cell({ col, p }: { col: { id: ColId; align?: 'right' }; p: PersonView }) {
   const wrap = `inline-flex items-center gap-2 min-w-0 ${col.align === 'right' ? 'justify-end' : ''}`
 
-  if (col.id === 'team') return <span className={wrap}><span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[p.teamKey], background: `${TEAM_COLOR[p.teamKey]}1a` }}>{p.teamName ?? '—'}</span></span>
+  if (col.id === 'team') return <span className={wrap}><span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[p.teamKey], background: `${TEAM_COLOR[p.teamKey]}1a` }}>{p.teamName ?? '-'}</span></span>
   if (col.id === 'role') return <span className={wrap}><PillBadge pill={roleTypePill(p.roleType)} /></span>
-  if (col.id === 'job') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{p.title ?? '—'}</span></span>
-  if (col.id === 'joined') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{formatDate(p.hireDate) ?? '—'}</span></span>
-  if (col.id === 'rate') return <span className={wrap}><span className="text-[13.5px] font-bold tabular-nums text-tn-ink">{p.internalRate != null ? `$${p.internalRate}` : '—'}</span></span>
-  if (col.id === 'type') { const pill = typePill(p.employmentType); return <span className={wrap}>{pill ? <PillBadge pill={pill} /> : <span className="text-[13px] text-muted">—</span>}</span> }
-  if (col.id === 'time') { const pill = timePill(p.schedule); return <span className={wrap}>{pill ? <PillBadge pill={pill} /> : <span className="text-[13px] text-muted">—</span>}</span> }
+  if (col.id === 'job') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{p.title ?? '-'}</span></span>
+  if (col.id === 'joined') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{formatDate(p.hireDate) ?? '-'}</span></span>
+  if (col.id === 'rate') return <span className={wrap}><span className="text-[13.5px] font-bold tabular-nums text-tn-ink">{p.internalRate != null ? `$${p.internalRate}` : '-'}</span></span>
+  if (col.id === 'type') { const pill = typePill(p.employmentType); return <span className={wrap}>{pill ? <PillBadge pill={pill} /> : <span className="text-[13px] text-muted">-</span>}</span> }
+  if (col.id === 'time') { const pill = timePill(p.schedule); return <span className={wrap}>{pill ? <PillBadge pill={pill} /> : <span className="text-[13px] text-muted">-</span>}</span> }
   if (col.id === 'reports') {
-    if (!p.managerName) return <span className={wrap}><span className="text-[12.5px] text-muted italic">—</span></span>
+    if (!p.managerName) return <span className={wrap}><span className="text-[12.5px] text-muted italic">-</span></span>
     return (
       <span className={wrap}>
         <span className="shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[10px]" style={{ width: 26, height: 26, background: TEAM_COLOR[p.managerTeamKey ?? 'other'] }}>{initialsOf(p.managerName)}</span>

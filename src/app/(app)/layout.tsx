@@ -1,4 +1,4 @@
-// (app) route group — wraps everything that needs the top bar + sidebar.
+// (app) route group, wraps everything that needs the top bar + sidebar.
 // Login and auth callback are at the root level, so they get a clean layout.
 // All protected pages live inside this layout.
 
@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* Top bar — brand on the left; theme toggle + avatar on the right
+      {/* Top bar, brand on the left; theme toggle + avatar on the right
           (avatar is always the rightmost element). */}
       <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">
         {/* True North lockup. On dark the navy wordmark sits on a white chip so

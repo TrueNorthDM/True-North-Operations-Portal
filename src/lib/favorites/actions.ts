@@ -1,13 +1,13 @@
 'use server'
 
 /**
- * Favourites mutations. Writes go through the signed-in user's session — RLS
+ * Favourites mutations. Writes go through the signed-in user's session, RLS
  * (favorites_owner) scopes everything to their own rows, so any logged-in user
  * can manage their favourites without admin rights or a service role.
  *
  * The hrefs are validated against the catalog (labels come from the catalog
  * too, never from the client) and capped at MAX_FAVORITES. Saving replaces the
- * whole set — simplest correct semantics for a small ordered list.
+ * whole set, simplest correct semantics for a small ordered list.
  */
 
 import { createClient } from '@/lib/supabase/server'

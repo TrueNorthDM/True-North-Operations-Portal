@@ -18,7 +18,7 @@ export interface AuditEntry {
   changedAt: string
   /** Who made the change (profiles.full_name), resolved server-side. */
   actorName: string | null
-  /** What was changed — the client/entity name, resolved server-side. */
+  /** What was changed, the client/entity name, resolved server-side. */
   entityLabel: string | null
 }
 
@@ -30,12 +30,12 @@ interface Props {
 
 const RECENT_LIMIT = 10
 
-// ── What changed — the badge (real field) + an inline diff summary ──────────
+// ── What changed, the badge (real field) + an inline diff summary ──────────
 type MonthRow = { month: string; budget_amount: number | null; extra_amount: number | null }
 
 interface Change { badge: string; kind: PillKind; summary: string }
 
-const num = (v: unknown) => (v == null || v === '' ? '—' : typeof v === 'number' ? `$${v.toLocaleString()}` : `$${v}`)
+const num = (v: unknown) => (v == null || v === '' ? '-' : typeof v === 'number' ? `$${v.toLocaleString()}` : `$${v}`)
 const arrow = (bv: unknown, av: unknown) => `${num(bv)} → ${num(av)}`
 
 function describe(e: AuditEntry): Change {
@@ -66,7 +66,7 @@ function describe(e: AuditEntry): Change {
       if (b.budget_amount !== a.budget_amount) return { badge: 'Budget', kind: 'blue', summary: arrow(b.budget_amount, a.budget_amount) }
       if (b.extra_budget !== a.extra_budget) return { badge: 'Extra', kind: 'amber', summary: arrow(b.extra_budget, a.extra_budget) }
       if (b.start_date !== a.start_date || b.budget_end_date !== a.budget_end_date) {
-        const s = a.start_date ? String(a.start_date) : '—'
+        const s = a.start_date ? String(a.start_date) : '-'
         const en = a.budget_end_date ? String(a.budget_end_date) : 'ongoing'
         return { badge: 'Budget period', kind: 'teal', summary: `${s} – ${en}` }
       }

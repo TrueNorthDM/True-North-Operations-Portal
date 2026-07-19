@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * HreflangCodeBlock — renders the generated hreflang HTML with a copy button.
+ * HreflangCodeBlock: renders the generated hreflang HTML with a copy button.
  *
  * This replaces the "paste special → values only" step from the Google Sheet.
  * The assignee clicks Copy, then pastes directly into WordPress.
@@ -39,7 +39,7 @@ export function HreflangCodeBlock({ urls, defaultLang = 'en' }: Props) {
 
   return (
     <div className="rounded-xl overflow-hidden border border-[#1f2d3d]">
-      {/* Toolbar — fixed dark chrome (same in light & dark, like the handoff). */}
+      {/* Toolbar: fixed dark chrome (same in light & dark, like the handoff). */}
       <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#152030]">
         <span className="text-[11.5px] font-mono text-[#8ba0b8]">
           hreflang tags · {urls.length} {urls.length === 1 ? 'language' : 'languages'}

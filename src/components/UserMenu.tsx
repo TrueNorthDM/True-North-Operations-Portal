@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * UserMenu — the avatar at the far right of the top bar (always the first
+ * UserMenu: the avatar at the far right of the top bar (always the first
  * thing right-to-left). Initials circle in the portal navy; clicking opens a
  * small menu with the signed-in email and Sign out. Replaces the old
  * "Signed in" block that lived at the bottom of the sidebar.
@@ -13,7 +13,7 @@ import { signOut } from '@/app/auth/actions'
 import { Avatar } from '@/components/Avatar'
 
 export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string | null; userName?: string | null; avatarUrl?: string | null }) {
-  // Name for the avatar initials — the person's name, else the email local part.
+  // Name for the avatar initials, the person's name, else the email local part.
   const initialsName = userName ?? (userEmail ? userEmail.split('@')[0].replace(/[._-]+/g, ' ') : null)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -66,7 +66,7 @@ export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Signed in</div>
             {userName && <div className="text-sm text-slate-800 font-semibold truncate" title={userName}>{userName}</div>}
             <div className={`truncate ${userName ? 'text-[12.5px] text-slate-500' : 'text-sm text-slate-800 font-medium'}`} title={userEmail ?? undefined}>
-              {userEmail ?? '—'}
+              {userEmail ?? '-'}
             </div>
           </div>
           <Link

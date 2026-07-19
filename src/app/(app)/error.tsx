@@ -25,7 +25,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         </div>
         <h1 className="text-xl font-bold text-slate-900">Something went wrong</h1>
         <p className="mt-2 text-sm text-slate-500">
-          This page couldn’t load — it’s usually temporary. Try again, or head back home.
+          This page couldn’t load, it’s usually temporary. Try again, or head back home.
         </p>
         {error.digest && <p className="mt-2 text-xs text-slate-400">Reference: {error.digest}</p>}
         <div className="mt-6 flex items-center justify-center gap-3">

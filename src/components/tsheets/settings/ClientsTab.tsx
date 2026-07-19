@@ -24,17 +24,17 @@ export interface ClientWithBudget {
   } | null
   // Per-project budget-hours guide (populated for i7; empty for other clients).
   projectBudgets: ProjectBudget[]
-  // The per-month budget schedule the report reads — set for i7 only. When
+  // The per-month budget schedule the report reads, set for i7 only. When
   // present, the modal shows the month grid (source of truth) instead of the
   // legacy single-budget form.
   monthlyBudgets?: MonthlyBudget[]
-  // Per-month budgeted hours per project (i7 only) — the matrix editor.
+  // Per-month budgeted hours per project (i7 only), the matrix editor.
   projectMonthHours?: ProjectMonthHours[]
 }
 
 interface Props {
   clients: ClientWithBudget[]
-  // The highest Rate/client (People & rates) — used only to estimate, in the i7
+  // The highest Rate/client (People & rates), used only to estimate, in the i7
   // budget modal, how many budgeted hours the month's budget covers at that rate.
   estimateRate?: number
 }
@@ -50,7 +50,7 @@ function dateLabel(date: string): string {
 
 /** A start/optional-end pair as "Jul 1, 2026 – Sep 30, 2026" or "Jul 1, 2026 – ongoing". */
 function periodLabel(start: string | null | undefined, end: string | null | undefined): string {
-  if (!start) return '—'
+  if (!start) return '-'
   return end ? `${dateLabel(start)} – ${dateLabel(end)}` : `${dateLabel(start)} – ongoing`
 }
 
@@ -58,7 +58,7 @@ const Dash = () => <span className="text-slate-300">&mdash;</span>
 const TH = 'text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3.5'
 
 export function ClientsTab({ clients, estimateRate }: Props) {
-  // Only the selected id is state — the client object is derived from `clients`,
+  // Only the selected id is state, the client object is derived from `clients`,
   // so after a save + router.refresh() the modal shows the fresh values.
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const selected = clients.find(c => c.id === selectedId) ?? null
@@ -217,7 +217,7 @@ function ClientBudgetModal({ client, estimateRate, onClose }: { client: ClientWi
   )
 }
 
-// Read-only summary — shows ONLY the fields this client actually has set.
+// Read-only summary, shows ONLY the fields this client actually has set.
 function ViewBudget({ client, onEdit }: { client: ClientWithBudget; onEdit: () => void }) {
   const b = client.budget
   const projectHours = client.projectBudgets.filter(p => p.hours != null)

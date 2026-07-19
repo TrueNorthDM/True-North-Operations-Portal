@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * Sidebar — left-rail navigation.
+ * Sidebar: left-rail navigation.
  *
  * Client Component because it uses usePathname() to highlight the active item.
- * Hidden on mobile (md:flex) — the top bar remains usable on its own there.
+ * Hidden on mobile (md:flex), the top bar remains usable on its own there.
  * The signed-in block moved to the top-bar avatar (UserMenu).
  */
 
@@ -12,7 +12,7 @@ import { usePathname, useRouter } from 'next/navigation'
 
 const iconClass = 'w-6 h-6 shrink-0'
 
-// Home — house outline.
+// Home: house outline.
 const HomeIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <path d="M3 10.5 12 3l9 7.5" />
@@ -20,7 +20,7 @@ const HomeIcon = (
   </svg>
 )
 
-// Grid icon — used for the Projects overview.
+// Grid icon, used for the Projects overview.
 const DashboardIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <rect x="3" y="3" width="7" height="9" rx="1" />
@@ -30,7 +30,7 @@ const DashboardIcon = (
   </svg>
 )
 
-// Boards Review — kanban board outline (split into columns). Distinct from the
+// Boards Review, kanban board outline (split into columns). Distinct from the
 // dashboard grid icon so the two top-level views read differently at a glance.
 const BoardsIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -39,7 +39,7 @@ const BoardsIcon = (
   </svg>
 )
 
-// My Work — briefcase outline (everything assigned to you across Monday).
+// My Work, briefcase outline (everything assigned to you across Monday).
 const WorkIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <rect x="2" y="7" width="20" height="14" rx="2" />
@@ -47,7 +47,7 @@ const WorkIcon = (
   </svg>
 )
 
-// Directory — two people (the org directory / people & teams).
+// Directory: two people (the org directory / people & teams).
 const DirectoryIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -56,7 +56,7 @@ const DirectoryIcon = (
   </svg>
 )
 
-// Admin — shield with check (access control: people, teams, permissions).
+// Admin: shield with check (access control: people, teams, permissions).
 const AdminIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
@@ -64,7 +64,7 @@ const AdminIcon = (
   </svg>
 )
 
-// Human Resources — an award medal (anniversary badges live here).
+// Human Resources, an award medal (anniversary badges live here).
 const HrIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <circle cx="12" cy="8" r="6" />
@@ -72,7 +72,7 @@ const HrIcon = (
   </svg>
 )
 
-// Settings — gear icon
+// Settings: gear icon
 const SettingsIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
@@ -94,7 +94,7 @@ const home: Item = {
   match: p => p === '/',
 }
 
-// Tools & Dashboards — the unified hub (Boards Review dashboards + the tools
+// Tools & Dashboards, the unified hub (Boards Review dashboards + the tools
 // used inside a project). Highlights across /tools, /dashboards and /boards-beta.
 const toolsDash: Item = {
   href: '/tools',
@@ -103,7 +103,7 @@ const toolsDash: Item = {
   match: p => p === '/tools' || p.startsWith('/tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
 }
 
-// Projects overview (AAAF/HFA hreflang management) — the former root dashboard.
+// Projects overview (AAAF/HFA hreflang management), the former root dashboard.
 const projectsNav: Item = {
   href: '/projects',
   label: 'Projects',
@@ -111,7 +111,7 @@ const projectsNav: Item = {
   match: p => p === '/projects',
 }
 
-// My Work — the signed-in person's tasks across Monday (board + list).
+// My Work, the signed-in person's tasks across Monday (board + list).
 const myWorkNav: Item = {
   href: '/my-work',
   label: 'My Work',
@@ -119,7 +119,7 @@ const myWorkNav: Item = {
   match: p => p === '/my-work',
 }
 
-// Directory — the People & Teams directory (its own top-level page). Admin-only,
+// Directory: the People & Teams directory (its own top-level page). Admin-only,
 // like Admin; the /directory route also guards server-side.
 const directoryNav: Item = {
   href: '/directory',
@@ -128,7 +128,7 @@ const directoryNav: Item = {
   match: p => p === '/directory' || p.startsWith('/directory/'),
 }
 
-// Admin — people, teams, and access control. Only shown to portal admins; the
+// Admin: people, teams, and access control. Only shown to portal admins; the
 // /admin route also guards server-side, so hiding the link is convenience only.
 const adminNav: Item = {
   href: '/admin',
@@ -137,7 +137,7 @@ const adminNav: Item = {
   match: p => p === '/admin' || p.startsWith('/admin/'),
 }
 
-// Human Resources — anniversary badges (for now). Privileged only.
+// Human Resources, anniversary badges (for now). Privileged only.
 const hrNav: Item = {
   href: '/human-resources',
   label: 'Human Resources',
@@ -149,7 +149,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
   const router = useRouter()
   return (
     // A button (not an <a href>) so the browser never surfaces the destination
-    // URL on hover — the friendly name tooltip below is all we want to show.
+    // URL on hover, the friendly name tooltip below is all we want to show.
     // router.push keeps SPA navigation. (Trade-off: no cmd/middle-click new tab.)
     <button
       type="button"
@@ -163,7 +163,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       }`}
     >
       {item.icon}
-      {/* Name tooltip — appears to the right on hover/focus. bg-slate-800 +
+      {/* Name tooltip, appears to the right on hover/focus. bg-slate-800 +
           text-white auto-invert in dark mode via the palette remap. */}
       <span
         role="tooltip"
@@ -187,13 +187,13 @@ export function Sidebar({ isPrivileged = false }: { isPrivileged?: boolean }) {
         <NavLink item={toolsDash} active={toolsDash.match(pathname)} />
         <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
         <NavLink item={myWorkNav} active={myWorkNav.match(pathname)} />
-        {/* Directory is visible to everyone (Part 4) — the page itself tiers the
+        {/* Directory is visible to everyone (Part 4), the page itself tiers the
             view: privileged see all, team leaders their reports, users only self. */}
         <NavLink item={directoryNav} active={directoryNav.match(pathname)} />
       </nav>
 
       <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">
-        {/* Human Resources + Admin + Settings are management surfaces — only the
+        {/* Human Resources + Admin + Settings are management surfaces, only the
             privileged tiers (admin, admin_assistant) see them. */}
         {isPrivileged && <NavLink item={hrNav} active={hrNav.match(pathname)} />}
         {isPrivileged && <NavLink item={adminNav} active={adminNav.match(pathname)} />}

@@ -142,7 +142,7 @@ export type PersonRow = {
   team_meeting: boolean
   manager_name_text: string | null    // free-text manager (board question)
   whatsapp_same_number: string | null // 'yes' | 'no'
-  monday_item_id: string | null       // board item id — importer idempotency
+  monday_item_id: string | null       // board item id, importer idempotency
   monday_docs: string | null          // text of the person's "History" Monday Doc (migration 034)
   role_type: string                   // 'user'|'admin'|'admin_assistant'|'team_leader' (migration 035)
   avatar_url: string | null           // profile photo public URL (migration 036)
@@ -178,7 +178,7 @@ export type TeamMemberRow = {
   created_at: string
 }
 
-// Time Report settings (migration 021) — job codes cached from TSheets,
+// Time Report settings (migration 021), job codes cached from TSheets,
 // treated as clients/projects.
 export type TrClientRow = {
   id: number
@@ -221,7 +221,7 @@ export type TrAssignmentRow = {
   created_at: string
 }
 
-// i7 monthly $ budget (base + extra) — the bank-account ledger's inflows.
+// i7 monthly $ budget (base + extra), the bank-account ledger's inflows.
 export type I7MonthlyBudgetRow = {
   id: number
   month: string
@@ -526,7 +526,7 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
-      // accessible_site_ids(uid) — SECURITY DEFINER helper (migration 016).
+      // accessible_site_ids(uid), SECURITY DEFINER helper (migration 016).
       // Returns the set of project (site) ids the user can reach.
       accessible_site_ids: {
         Args: { uid: string }

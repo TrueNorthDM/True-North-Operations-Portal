@@ -4,7 +4,7 @@
  * Self-service actions for the signed-in user's own profile: the avatar photo
  * and the "your details" personal fields. All use the service role but ONLY ever
  * the current user's own person (resolved from the session, never from a
- * client-supplied id) and only a fixed whitelist of columns — so they can't be
+ * client-supplied id) and only a fixed whitelist of columns, so they can't be
  * used to touch anyone else's record or any HR-managed field. Photos live in the
  * public `avatars` bucket (migration 036).
  */
@@ -45,7 +45,7 @@ export async function uploadMyAvatar(formData: FormData): Promise<string> {
   if (upErr) throw new Error(upErr.message)
 
   const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path)
-  const url = `${pub.publicUrl}?v=${Date.now()}` // cache-bust — path is stable, so bump the query
+  const url = `${pub.publicUrl}?v=${Date.now()}` // cache-bust, path is stable, so bump the query
   const { error: updErr } = await admin.from('people').update({ avatar_url: url }).eq('id', personId)
   if (updErr) throw new Error(updErr.message)
 
@@ -62,7 +62,7 @@ export async function removeMyAvatar(): Promise<void> {
   revalidate()
 }
 
-// ── "Your details" — the fields the person can edit about themselves ─────────
+// ── "Your details", the fields the person can edit about themselves ─────────
 export interface MyProfileInput {
   last_name: string | null
   email_personal: string | null

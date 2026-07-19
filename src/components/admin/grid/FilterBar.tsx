@@ -1,6 +1,6 @@
 'use client'
 
-// FilterBar — "filter by anything". A Filter button (same language as the
+// FilterBar: "filter by anything". A Filter button (same language as the
 // Columns control) opens a small builder: pick a column, a condition, and a
 // value. Each added condition shows as a removable chip (same pill language as
 // the team filters it replaces). Generic over the row type via GridColumn<T>.

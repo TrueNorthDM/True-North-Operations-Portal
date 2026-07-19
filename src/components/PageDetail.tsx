@@ -1,12 +1,12 @@
 'use client'
 
 /**
- * PageDetail — the heart of the workflow. Shared by /aaaf/[id] and /hfa/[id].
+ * PageDetail: the heart of the workflow. Shared by /aaaf/[id] and /hfa/[id].
  *
  * Renders three sections:
- *   1. URL entry form      — one input per language, saved via savePageUrls
- *   2. Hreflang code block — generated from the saved URLs, with a copy button
- *   3. Confirmation list   — per-language checkboxes, toggled via toggleConfirmation
+ *   1. URL entry form, one input per language, saved via savePageUrls
+ *   2. Hreflang code block, generated from the saved URLs, with a copy button
+ *   3. Confirmation list, per-language checkboxes, toggled via toggleConfirmation
  *
  * Enforce-order rules (mirrored from the server actions so the UI matches):
  *   - 'confirmed live' is disabled until a URL is saved for that language
@@ -106,7 +106,7 @@ export function PageDetail({
   const [savedFlash, setSavedFlash] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Always editable (matches the handoff — no view/edit toggle). URL inputs and
+  // Always editable (matches the handoff, no view/edit toggle). URL inputs and
   // confirmation checkboxes are live; a confirm checkbox stays disabled until a
   // URL is saved for that language.
   const isEditing = true
@@ -248,7 +248,7 @@ export function PageDetail({
                   type="url"
                   value={urlInputs[lang] ?? ''}
                   onChange={e => setUrlInputs(prev => ({ ...prev, [lang]: e.target.value }))}
-                  placeholder={isEditing ? `https://… (${lang})` : '—'}
+                  placeholder={isEditing ? `https://… (${lang})` : '-'}
                   readOnly={!isEditing}
                   className={`flex-1 px-3 py-2 rounded-[9px] border text-sm focus:outline-none ${
                     isEditing
@@ -256,7 +256,7 @@ export function PageDetail({
                       : 'border-transparent bg-subtle text-foreground cursor-default'
                   }`}
                 />
-                {/* Open the SAVED URL in a new tab — used for the WordPress verification step.
+                {/* Open the SAVED URL in a new tab, used for the WordPress verification step.
                     Only enabled when there's a saved URL (the input may have unsaved edits). */}
                 {savedUrl ? (
                   <a
@@ -282,7 +282,7 @@ export function PageDetail({
         </div>
       </section>
 
-      {/* 1b. Discontinued languages — saved URLs whose language isn't in the
+      {/* 1b. Discontinued languages, saved URLs whose language isn't in the
           current site config (someone removed it from Settings). Show faded
           as read-only history; not included in hreflang generation. */}
       {(() => {
@@ -310,9 +310,9 @@ export function PageDetail({
                 return (
                   <div key={lang} className="flex items-center gap-3 text-sm">
                     {/* Discontinued: show lang in muted greyscale (the language color
-                        identity is intentionally lost here — it's no longer active). */}
+                        identity is intentionally lost here, it's no longer active). */}
                     <span className="w-11 inline-flex items-center justify-center text-xs font-bold uppercase rounded px-2 py-0.5 bg-slate-100 text-slate-400">{lang}</span>
-                    <span className="flex-1 text-slate-500 truncate font-mono text-xs">{url ?? '—'}</span>
+                    <span className="flex-1 text-slate-500 truncate font-mono text-xs">{url ?? '-'}</span>
                     <span className="text-[10px] uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-semibold">
                       discontinued
                     </span>

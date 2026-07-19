@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * OrgChart — read-only company org chart as a horizontal connector tree
+ * OrgChart: read-only company org chart as a horizontal connector tree
  * (boxes), auto-laid-out from the reporting hierarchy. Each card carries its
  * team's signature color (top band) and the connector thread leading into it is
  * tinted the same color (via the --thread CSS var on each <li>; see globals.css
@@ -52,7 +52,7 @@ function TeamBox({ team }: { team: OrgTeamGroup }) {
     <li style={threadStyle}>
       <div className="inline-block align-top min-w-[280px] max-w-[400px] rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
         {/* Team band colours are fixed light pastels, so the header text is a
-            fixed dark ink — not a themed token — to keep contrast in dark mode. */}
+            fixed dark ink (not a themed token) to keep contrast in dark mode. */}
         <div className="px-5 py-3.5 font-(family-name:--font-display) text-[16px] font-extrabold text-[#26261f]" style={{ backgroundColor: color }}>{team.name}</div>
         {team.members.length === 0 ? (
           <div className="px-5 py-3.5 text-sm text-slate-400">No members</div>
@@ -100,7 +100,7 @@ function Tree({ roots }: { roots: OrgPerson[] }) {
 }
 
 /**
- * ScaledTree — renders the tree at an explicit scale, reserving the scaled
+ * ScaledTree: renders the tree at an explicit scale, reserving the scaled
  * footprint so a scrolling parent can pan when zoomed in. `width: max-content`
  * lets the inner tree take its natural width regardless of the parent.
  */

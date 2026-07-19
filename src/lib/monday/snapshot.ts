@@ -72,7 +72,7 @@ export interface BoardSnapshot {
 /* ---------- Monday call helper ---------- */
 
 /* Retry with exponential backoff for transient Monday failures (503/502/429 and
-   network errors). GraphQL errors in the body are NOT retried — deterministic. */
+   network errors). GraphQL errors in the body are NOT retried, deterministic. */
 async function mondayCall<T>(
   token: string,
   query: string,
@@ -313,7 +313,7 @@ export async function processBoard(token: string, boardReq: BoardReq & { since: 
 
 /**
  * Resolve the Monday API token. Primary source is the Settings page
- * (app_settings.monday_api_token) — the same token the webhook + cron use, so
+ * (app_settings.monday_api_token), the same token the webhook + cron use, so
  * the whole portal shares one token managed in one place. Falls back to the
  * MONDAY_TOKEN env var (handy for local dev without the service-role key).
  */

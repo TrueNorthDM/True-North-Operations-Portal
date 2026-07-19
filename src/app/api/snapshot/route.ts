@@ -1,10 +1,10 @@
 /**
- * POST /api/snapshot — returns Monday board snapshots for the dashboards.
+ * POST /api/snapshot, returns Monday board snapshots for the dashboards.
  *
  * Reads from the `monday_snapshot` warm store (populated nightly by
  * /api/cron/ingest), so the dashboards load instantly instead of fetching live
  * from Monday on every request. Boards not yet in the store fall back to a live
- * fetch — keeps things working before the first nightly run.
+ * fetch, keeps things working before the first nightly run.
  *
  * Response shape is unchanged: { boards: [{ id, items, groups, activity }], _meta }.
  */

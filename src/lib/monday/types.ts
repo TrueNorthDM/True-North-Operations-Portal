@@ -12,7 +12,7 @@
  *      Many event types; we react only to `update_column_value` on the
  *      Href Links status column. Other shapes are logged and ignored.
  *
- * All fields are optional in the type — we narrow at runtime. Trusting
+ * All fields are optional in the type, we narrow at runtime. Trusting
  * the docs to be accurate is a great way to ship a bug. See `monday/verify.ts`
  * for why we keep the raw body around too.
  */
@@ -39,7 +39,7 @@ export interface MondayEventBody {
     columnTitle?: string
     /** Monday user that made the change */
     userId?: number | string
-    /** Old/new column values — shape varies wildly by columnType */
+    /** Old/new column values, shape varies wildly by columnType */
     value?: unknown
     previousValue?: unknown
     /** Wall-clock time Monday observed the event */

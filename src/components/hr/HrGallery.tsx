@@ -1,6 +1,6 @@
 'use client'
 
-// HrGallery — the badge gallery + in-place person card. Each milestone card puts
+// HrGallery: the badge gallery + in-place person card. Each milestone card puts
 // the (double-size) badge on the left and the label / headcount on the right;
 // each holder is a button that opens their PersonModal right here, no navigation.
 

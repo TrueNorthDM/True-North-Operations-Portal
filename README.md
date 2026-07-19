@@ -3,9 +3,9 @@
 Unified operations portal for the **AAAF** and **HFA** sites. Brings together,
 in one Next.js app:
 
-- **Boards Review** — editorial translation pipeline + weekly publishing goals
+- **Boards Review**, editorial translation pipeline + weekly publishing goals
   (Monday.com integration; absorbed from the former COE Dashboard).
-- **Href Links** — hreflang tag tracker for the WordPress sites (replaces two
+- **Href Links**, hreflang tag tracker for the WordPress sites (replaces two
   legacy Google Sheets workflows).
 
 Auth (magic link, domain-restricted with a named admin exception), Supabase +

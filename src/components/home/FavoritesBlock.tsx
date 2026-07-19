@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * FavoritesBlock — the user's pinned destinations (up to 5) on Home.
+ * FavoritesBlock: the user's pinned destinations (up to 5) on Home.
  * Display: a row of link cards. Edit: an inline picker over the catalog
- * (grouped, capped at MAX_FAVORITES — extra options disable at the cap).
+ * (grouped, capped at MAX_FAVORITES, extra options disable at the cap).
  * Saved per user in the DB via saveFavorites; empty state offers the action.
  */
 
@@ -137,7 +137,7 @@ export function FavoritesBlock({ favorites, catalog }: { favorites: Favorite[]; 
         </div>
       ) : favorites.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white/50 px-5 py-8 text-center">
-          <p className="text-sm text-slate-500">Nothing pinned yet — keep your most-used pages one click away.</p>
+          <p className="text-sm text-slate-500">Nothing pinned yet, keep your most-used pages one click away.</p>
           <button
             type="button"
             onClick={openEditor}

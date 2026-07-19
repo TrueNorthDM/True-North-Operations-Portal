@@ -1,7 +1,7 @@
 /**
  * GET /tools/time-report/csv?month=YYYY-MM&type=client|internal
  *
- * CSV export of the i7 Budget Usage Report — pure data, no rendering.
+ * CSV export of the i7 Budget Usage Report, pure data, no rendering.
  *   internal → per-person detail (tidy/long): one row per
  *              Invoice · Project · Job code · Activity · Person, with Hours + Cost
  *              (cost uses each person's own month rate). Confidential.
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
 
   // BOM so Excel reads UTF-8 (accented names, the em dash) correctly.
   const csv = '﻿' + lines.join('\r\n') + '\r\n'
-  const name = (type === 'internal' ? `i7 Budget Internal Report — ${label}` : `i7 Budget Month Report — ${label}`) + '.csv'
+  const name = (type === 'internal' ? `i7 Budget Internal Report - ${label}` : `i7 Budget Month Report - ${label}`) + '.csv'
   const asciiName = name.replace(/[^\x20-\x7e]/g, '-')
 
   return new Response(csv, {

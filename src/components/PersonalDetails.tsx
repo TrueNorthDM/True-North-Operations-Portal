@@ -1,6 +1,6 @@
 'use client'
 
-// "Your details" — the personal fields the signed-in user can edit about
+// "Your details", the personal fields the signed-in user can edit about
 // themselves, with a view/edit toggle. Saves the whitelisted fields via the
 // scoped updateMyProfile action. Everything else on the profile is HR-managed
 // and read-only (see the profile page).
@@ -29,7 +29,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     </div>
   )
 }
-const txt = (v: string | null) => <span className="text-[13.5px] text-foreground font-semibold">{v || '—'}</span>
+const txt = (v: string | null) => <span className="text-[13.5px] text-foreground font-semibold">{v || '-'}</span>
 const mail = (v: string | null) => (v ? <a href={`mailto:${v}`} className="text-[13.5px] font-semibold text-tn-teal truncate inline-block max-w-[220px] align-bottom">{v}</a> : txt(null))
 function ynBadge(v: string) {
   const pill = ynPill(v || null)
@@ -97,7 +97,7 @@ export function PersonalDetails({ initial }: { initial: PersonalFields }) {
           <Row label="Last name">{txt(initial.lastName || null)}</Row>
           <Row label="Personal email">{mail(initial.personalEmail || null)}</Row>
           <Row label="Phone / WhatsApp">{txt(initial.phone || null)}</Row>
-          <Row label="WhatsApp — same number">{ynBadge(initial.whatsappSameNumber)}</Row>
+          <Row label="WhatsApp, same number">{ynBadge(initial.whatsappSameNumber)}</Row>
           <Row label="Location">{txt(initial.location || null)}</Row>
           <Row label="Date of birth">{txt(formatDate(initial.dateOfBirth))}</Row>
         </div>
@@ -106,7 +106,7 @@ export function PersonalDetails({ initial }: { initial: PersonalFields }) {
           <label className="flex flex-col gap-1.5">{label('Last name')}<input type="text" value={d.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} placeholder="Doe" /></label>
           <label className="flex flex-col gap-1.5">{label('Personal email')}<input type="email" value={d.personalEmail} onChange={e => set('personalEmail', e.target.value)} className={fieldCls} placeholder="name@email.com" /></label>
           <label className="flex flex-col gap-1.5">{label('Phone / WhatsApp')}<input type="text" value={d.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+1 555 000 0000" /></label>
-          <div className="flex flex-col gap-1.5">{label('WhatsApp — same number?')}{seg}</div>
+          <div className="flex flex-col gap-1.5">{label('WhatsApp, same number?')}{seg}</div>
           <label className="flex flex-col gap-1.5">{label('Location')}<input type="text" value={d.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></label>
           <label className="flex flex-col gap-1.5">{label('Date of birth')}<input type="date" value={d.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} /></label>
         </div>

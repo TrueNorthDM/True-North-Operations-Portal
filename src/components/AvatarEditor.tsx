@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * AvatarEditor — a drag-and-drop / pick → crop modal. The chosen image sits in a
+ * AvatarEditor: a drag-and-drop / pick → crop modal. The chosen image sits in a
  * circular viewport you can drag to reposition and zoom with the slider; Save
  * exports the visible circle as a square JPEG blob (handed back via onSave).
  */

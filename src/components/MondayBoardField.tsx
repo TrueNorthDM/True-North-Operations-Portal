@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * MondayBoardField — small per-site input for the Monday board ID.
+ * MondayBoardField: small per-site input for the Monday board ID.
  *
  * Board IDs are the all-digit number in the Monday board URL:
  *   https://yourorg.monday.com/boards/1234567890  ←  "1234567890"
  *
- * Mounted inside each project card on /settings. Not sensitive — board IDs
- * are not secrets — so no masking/blur treatment, just a normal text field
+ * Mounted inside each project card on /settings. Not sensitive, board IDs
+ * are not secrets, so no masking/blur treatment, just a normal text field
  * with inline save + saved/error flash.
  */
 

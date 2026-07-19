@@ -1,9 +1,9 @@
-// WelcomeBanner — the Home hero: a personalised greeting on the same navy
+// WelcomeBanner: the Home hero: a personalised greeting on the same navy
 // brand panel + animated "sunrise" used on the login screen. Server component
 // (no state); the animation is pure CSS and honours prefers-reduced-motion.
 //
 // The panel is navy in BOTH themes, so its text uses fixed literal colors
-// (#ffffff), not tokens/`text-white` — those remap to dark under the dark theme.
+// (#ffffff), not tokens/`text-white`, those remap to dark under the dark theme.
 
 import { Sunrise } from '@/components/Sunrise'
 
@@ -24,7 +24,7 @@ export function WelcomeBanner({ name }: { name: string | null }) {
           {first ? `Hello, ${first}` : 'Welcome back'}
         </h2>
         <p className="text-[15px] text-[#ffffff]/80 mt-1.5">Welcome back to the True North Operations Portal.</p>
-        <p className="text-[13.5px] text-[#ffffff]/60 mt-1">Where you find tools, dashboards, and team celebrations — all in one place, gathering and displaying the information that makes your day-to-day more efficient.</p>
+        <p className="text-[13.5px] text-[#ffffff]/60 mt-1">Where you find tools, dashboards, and team celebrations, all in one place, gathering and displaying the information that makes your day-to-day more efficient.</p>
       </div>
     </section>
   )

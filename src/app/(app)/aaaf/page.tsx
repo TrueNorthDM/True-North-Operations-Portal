@@ -1,4 +1,4 @@
-// AAAF — page list (Server Component)
+// AAAF: page list (Server Component)
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -10,7 +10,7 @@ import { canAccessSite } from '@/lib/auth/access'
 export default async function AaafPagesPage() {
   const { site, siteLanguages, rows, done } = await getSitePageData('aaaf')
 
-  // Access enforcement — admins & unrestricted sites pass; otherwise needs a grant.
+  // Access enforcement, admins & unrestricted sites pass; otherwise needs a grant.
   if (site && !(await canAccessSite(site.id))) redirect('/')
 
   return (

@@ -1,4 +1,4 @@
-// Boards Review — Targets editor (Phase B4 staging route).
+// Boards Review, Targets editor (Phase B4 staging route).
 //
 // Server Component: reads the user's role + targets + recent audit, then hands
 // off to the client editor. Admins edit; viewers see read-only. RLS on
@@ -33,7 +33,7 @@ export default async function TargetsPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Boards Review</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Publishing targets <span className="text-slate-400">(beta — native rewrite)</span>
+          Publishing targets <span className="text-slate-400">(beta, native rewrite)</span>
         </p>
       </div>
 

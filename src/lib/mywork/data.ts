@@ -1,4 +1,4 @@
-// My Work — sample dataset. This screen is meant to show everything assigned to
+// My Work, sample dataset. This screen is meant to show everything assigned to
 // the signed-in person across the Monday account; until that integration is
 // wired, it renders this in-repo sample so the design is live and testable.
 // Swap TASKS (and derive PEOPLE/projects) for the Monday pull when ready.
@@ -52,5 +52,5 @@ export const TASKS: Task[] = [
   { id: 7, title: 'Keyword research for Q3 campaign', project: 'SEO Sprints', prio: 'med', due: 'Jun 20', dueSoon: false, who: 'EM', status: 'todo' },
   { id: 8, title: 'Client check-in deck for i7', project: 'i7 Marketing', prio: 'med', due: 'Jun 15', dueSoon: false, who: 'AO', status: 'doing' },
   { id: 9, title: 'Approve June editorial calendar', project: 'Editorial', prio: 'high', due: 'Jun 8', dueSoon: true, who: 'JR', status: 'done' },
-  { id: 10, title: 'Update WordPress plugins — AAAF', project: 'AAAF', prio: 'low', due: 'Jun 7', dueSoon: true, who: 'DC', status: 'done' },
+  { id: 10, title: 'Update WordPress plugins, AAAF', project: 'AAAF', prio: 'low', due: 'Jun 7', dueSoon: true, who: 'DC', status: 'done' },
 ]

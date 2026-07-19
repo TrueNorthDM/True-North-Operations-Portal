@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * DeletePageButton — destructive action on the page detail.
+ * DeletePageButton: destructive action on the page detail.
  *
  * Two-step confirmation:
  *   1. Click "Delete page" → modal opens with warning

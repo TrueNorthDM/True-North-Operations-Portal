@@ -1,4 +1,4 @@
-// Boards Review — Goals view (Phase B2 staging route).
+// Boards Review, Goals view (Phase B2 staging route).
 //
 // Lives inside the (app) group, so it gets the portal sidebar/topbar + auth
 // gate. The legacy boards.html stays the live Boards Review until cutover (B6);

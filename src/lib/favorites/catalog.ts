@@ -1,8 +1,8 @@
 /**
- * favorites/catalog.ts — the set of destinations a user may pin to Home.
+ * favorites/catalog.ts: the set of destinations a user may pin to Home.
  *
  * Kept as a static catalog (not crawled from routes) so labels are curated and
- * hrefs are validated server-side before saving — a favourite can only ever
+ * hrefs are validated server-side before saving, a favourite can only ever
  * point at a known portal destination. Admin-only targets are filtered out of
  * the picker for non-admins (their server guards still apply regardless).
  */
@@ -20,8 +20,8 @@ export const FAVORITE_TARGETS: FavoriteTarget[] = [
   { href: '/boards-beta', label: 'Workload (beta)', group: 'Dashboards' },
 
   { href: '/projects', label: 'Projects', group: 'Projects' },
-  { href: '/aaaf', label: 'AAAF — Href Links', group: 'Projects' },
-  { href: '/hfa', label: 'HFA — Href Links', group: 'Projects' },
+  { href: '/aaaf', label: 'AAAF, Href Links', group: 'Projects' },
+  { href: '/hfa', label: 'HFA, Href Links', group: 'Projects' },
 
   { href: '/admin', label: 'Admin', group: 'Admin', adminOnly: true },
   { href: '/admin/tickets', label: 'Tickets', group: 'Admin', adminOnly: true },

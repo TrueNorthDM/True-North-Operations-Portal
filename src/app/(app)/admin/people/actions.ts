@@ -2,7 +2,7 @@
 
 /**
  * People directory mutations (admin-only). Writes go through the signed-in
- * admin's session — RLS (people_admin_write) permits is_admin(auth.uid()), so
+ * admin's session, RLS (people_admin_write) permits is_admin(auth.uid()), so
  * no service role is needed. Every change revalidates the Directory AND the
  * home org chart, which reads the same directory.
  */

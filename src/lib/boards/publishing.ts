@@ -2,13 +2,13 @@
  * boards/publishing.ts
  *
  * Pure computation for the Goals (Publishing) view, ported from the COE
- * Dashboard. No UI, no I/O — takes snapshot data + targets, returns structured
+ * Dashboard. No UI, no I/O, takes snapshot data + targets, returns structured
  * metrics the React components render.
  *
  * Two stages, mirroring the legacy flow:
- *   1. enrichPublishingBoard() — turn raw snapshot items + activity logs into
+ *   1. enrichPublishingBoard(), turn raw snapshot items + activity logs into
  *      PublishedItem[] (language, publishers, whether/when published).
- *   2. computePublishingMetrics() — aggregate published items vs targets into
+ *   2. computePublishingMetrics(), aggregate published items vs targets into
  *      pace-vs-target numbers for the selected period.
  */
 
@@ -54,7 +54,7 @@ interface Change {
 }
 
 /** Monday activity-log timestamps are 100-nanosecond units (a huge integer),
- *  NOT ISO or ms — `new Date("17750831407806976")` silently yields Invalid Date.
+ *  NOT ISO or ms, `new Date("17750831407806976")` silently yields Invalid Date.
  *  Convert to ISO. Passes through values that are already ISO. */
 export function parseMondayLogTs(s: string | number | null): string | null {
   if (s == null) return null
@@ -126,7 +126,7 @@ export function enrichPublishingBoard(board: SnapshotBoard, config: BoardConfig)
     const byId = colsById(it.column_values)
     const changes = changesByItem.get(String(it.id)) || []
 
-    const language = (config.languageCol ? byId[config.languageCol]?.text : null) || '—'
+    const language = (config.languageCol ? byId[config.languageCol]?.text : null) || '-'
     const publishers = config.publisherCol ? [...collectPeopleNames(byId, [config.publisherCol])] : []
 
     const targetLabel = config.publishedLabel || 'Done'
@@ -324,7 +324,7 @@ export function computePublishingMetrics(
     if (periodFrom && d < periodFrom) continue
     if (periodTo && d > periodTo) continue
     if (!data[it.boardId]) data[it.boardId] = {}
-    const lang = it.language || '—'
+    const lang = it.language || '-'
     data[it.boardId][lang] = (data[it.boardId][lang] || 0) + 1
   }
 

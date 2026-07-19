@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * TargetsEditor — edit weekly publishing pace targets (Settings › Publishing
+ * TargetsEditor: edit weekly publishing pace targets (Settings › Publishing
  * targets, and Boards Review · Targets).
  *
  * Admins get inline edit / add / remove (Server Actions, RLS-enforced). Viewers
@@ -16,7 +16,7 @@ import { saveTargetValue, addTarget, deleteTarget } from '@/app/(app)/boards-bet
 import { initialsOf, PILL_CLASS, type PillKind } from '@/components/admin/people-types'
 import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
 
-// ── Language dots — flag colours, keyed by the Monday label text ─────────────
+// ── Language dots, flag colours, keyed by the Monday label text ─────────────
 const LANG_DOT: Record<string, string> = {
   english: '#111111',
   spanish: '#F5B800',
@@ -71,7 +71,7 @@ export function TargetsEditor({
     <div className="space-y-8">
       {!isAdmin && (
         <div className="rounded-[12px] border border-slate-200 bg-subtle px-4 py-3 text-sm text-muted">
-          View-only — ask an admin to change targets.
+          View-only: ask an admin to change targets.
         </div>
       )}
 
@@ -244,7 +244,7 @@ function AddTargetForm({ boardId, boardShort }: { boardId: string; boardShort: s
   )
 }
 
-// ── Change history — branded rows (avatar + badge + diff) ────────────────────
+// ── Change history, branded rows (avatar + badge + diff) ────────────────────
 interface Change { label: string; kind: PillKind; summary: string }
 
 /** Prettify an email into a display name: "ana.oliveira@x" → "Ana Oliveira". */

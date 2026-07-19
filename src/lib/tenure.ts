@@ -1,4 +1,4 @@
-// Tenure (time of service) — the maths behind the anniversary badges. Pure
+// Tenure (time of service), the maths behind the anniversary badges. Pure
 // functions: an ISO hire date + an "as of" date in, a calendar breakdown +
 // milestone out. No React, no Date.now() inside (the caller passes `now`).
 
@@ -56,10 +56,10 @@ export const yearColor = (years: number): string =>
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 
-// "1 year, 3 months and 3 days" — omits zero components (but always shows at
+// "1 year, 3 months and 3 days", omits zero components (but always shows at
 // least days, so a brand-new hire still reads "5 days").
 export function formatTenure(t: Tenure | null): string {
-  if (!t) return '—'
+  if (!t) return '-'
   const parts: string[] = []
   if (t.years) parts.push(plural(t.years, 'year'))
   if (t.months) parts.push(plural(t.months, 'month'))
@@ -70,7 +70,7 @@ export function formatTenure(t: Tenure | null): string {
 
 // Compact one-line form: "1y 2mo 4d" (zero components dropped, days always kept).
 export function formatTenureShort(t: Tenure | null): string {
-  if (!t) return '—'
+  if (!t) return '-'
   const parts: string[] = []
   if (t.years) parts.push(`${t.years}y`)
   if (t.months) parts.push(`${t.months}mo`)

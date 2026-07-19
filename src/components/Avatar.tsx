@@ -1,4 +1,4 @@
-// Avatar — the person's photo if they have one, else their initials on a team
+// Avatar: the person's photo if they have one, else their initials on a team
 // colour. No hooks, so it renders in both server and client components.
 
 import { initialsOf } from '@/components/admin/people-types'

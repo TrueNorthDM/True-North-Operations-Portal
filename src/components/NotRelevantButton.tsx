@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * NotRelevantButton — toggle a page's not_relevant flag.
+ * NotRelevantButton: toggle a page's not_relevant flag.
  *
  * When OFF (default): page is part of the normal workflow. Button label
  *   is "Not relevant" with a muted appearance, inviting opt-out.
@@ -10,7 +10,7 @@
  *   so it stops looking like an action and starts looking like a status
  *   chip the user can click to undo.
  *
- * No confirm dialog — the action is fully reversible, so a single click
+ * No confirm dialog, the action is fully reversible, so a single click
  * is fine. Errors surface inline.
  */
 

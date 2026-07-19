@@ -1,8 +1,8 @@
-// view-as.ts — signed impersonation tokens for the View Stage (admin preview of
+// view-as.ts: signed impersonation tokens for the View Stage (admin preview of
 // each permission tier). A token carries the target person + role_type and the
 // admin who signed it; it only changes what the app RENDERS (writes always use
 // the real session). HMAC-SHA256 with the server-only service-role key as the
-// secret. Node-only (crypto) — client code must `import type` from here.
+// secret. Node-only (crypto), client code must `import type` from here.
 
 import { createHmac, timingSafeEqual } from 'crypto'
 

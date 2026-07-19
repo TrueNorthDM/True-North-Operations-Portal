@@ -1,4 +1,4 @@
-// i7 Budget on the Home page — a mirror of the i7 report's budget-balance card
+// i7 Budget on the Home page, a mirror of the i7 report's budget-balance card
 // (same navy header, same animated usage bar via BudgetBalanceCard). Rendered
 // only for privileged tiers (sensitive $); data loaded in the Home page.
 

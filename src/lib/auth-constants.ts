@@ -16,7 +16,7 @@
 export const ALLOWED_EMAIL_DOMAINS = ['goodnewsadvocates.org', 'truenorthdigitalmarketing.com'] as const
 
 // Named exceptions: specific addresses allowed regardless of domain.
-// arnaldo.oliveira@me.com is the primary admin — auto-promoted to 'admin' by the
+// arnaldo.oliveira@me.com is the primary admin, auto-promoted to 'admin' by the
 // handle_new_user DB trigger (migration 007). Everyone else must use one of the
 // ALLOWED_EMAIL_DOMAINS addresses.
 export const ALLOWED_EMAILS = ['arnaldo.oliveira@me.com'] as const

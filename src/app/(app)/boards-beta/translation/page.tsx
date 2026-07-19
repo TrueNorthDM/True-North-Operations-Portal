@@ -1,4 +1,4 @@
-// Boards Review — Translation view (Phase B3 staging route).
+// Boards Review, Translation view (Phase B3 staging route).
 
 import { TranslationView } from '@/components/boards/TranslationView'
 

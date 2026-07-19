@@ -35,7 +35,7 @@ export interface PersonView {
   avatarUrl: string | null // profile photo (public URL)
   title: string | null // job title
 
-  // Primary team (first membership) — drives avatar colour, badge, filter, group.
+  // Primary team (first membership), drives avatar colour, badge, filter, group.
   teamId: string | null
   teamName: string | null
   teamKey: TeamKey
@@ -64,7 +64,7 @@ export interface PersonView {
   // Contact
   phone: string | null
   location: string | null
-  whatsappSameNumber: string | null // 'yes' | 'no' — same number on WhatsApp?
+  whatsappSameNumber: string | null // 'yes' | 'no', same number on WhatsApp?
 
   // Onboarding (tri-state chips)
   companyEmail: string | null // 'yes' | 'notyet'
@@ -182,7 +182,7 @@ export const ynPill = (v: string | null): Pill | null => {
   return null
 }
 
-// Contact type (migration 035) — a directory label, distinct from RBAC grants.
+// Contact type (migration 035), a directory label, distinct from RBAC grants.
 export const ROLE_TYPE_OPTIONS = ['user', 'admin', 'admin_assistant', 'team_leader'] as const
 export const ROLE_TYPE_LABEL: Record<string, string> = {
   user: 'User', admin: 'Admin', admin_assistant: 'Admin Assistant', team_leader: 'Team Leader',
@@ -194,7 +194,7 @@ export const roleTypePill = (v: string): Pill => {
   return { kind: 'grey', label: 'User' }
 }
 
-// Team Position (migration 040) — a person's role WITHIN a specific team, which
+// Team Position (migration 040), a person's role WITHIN a specific team, which
 // is separate from their global Contact Type / access. Team Leaders sort to the
 // top of a team's member list.
 export const TEAM_POSITION_OPTIONS = ['founder', 'team_leader', 'collaborator'] as const
@@ -210,7 +210,7 @@ export const teamPositionRank = (v: string): number => (v === 'founder' ? 0 : v 
 // Whether the position "leads" the team (drives org-chart colour + tier scope).
 export const teamPositionLeads = (v: string): boolean => v === 'founder' || v === 'team_leader'
 
-// Access-grant roles — the product vocabulary from the design (migration 030).
+// Access-grant roles, the product vocabulary from the design (migration 030).
 // Legacy keys (admin/member) are mapped too, so grants still read correctly in
 // the brief window before migration 030 is applied.
 export const ROLE_PILL: Record<string, string> = {

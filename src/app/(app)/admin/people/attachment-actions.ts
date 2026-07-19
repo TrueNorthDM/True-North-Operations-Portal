@@ -1,7 +1,7 @@
 'use server'
 
 /**
- * Person "History" documents — upload / delete / signed-download for the files
+ * Person "History" documents, upload / delete / signed-download for the files
  * kept in the private `person-files` Storage bucket (migration 033). Admin-only,
  * through the signed-in admin's session (Storage RLS `person_files_admin_all` +
  * `person_attachments` admin write). The one-off Monday importer uses the

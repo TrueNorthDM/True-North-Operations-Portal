@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * SiteCard — per-site publishing config, styled to the True North handoff.
+ * SiteCard: per-site publishing config, styled to the True North handoff.
  *
  * One card holds: the tracked publishing languages (with a pause/resume toggle),
  * the Monday board ID, and the Dev/Live WordPress URLs. A per-card Edit button
  * flips the card into edit mode (toggles active, add enabled, fields editable);
  * Save persists the board/URL fields. Pausing/resuming and adding a language act
- * immediately (they refresh the server data). English is the x-default anchor —
+ * immediately (they refresh the server data). English is the x-default anchor,
  * it's not shown as a toggleable row.
  */
 
@@ -117,7 +117,7 @@ export function SiteCard({ site }: SiteCardProps) {
   function startAdd() {
     setError(null)
     const code = codeFromInput(newLang)
-    if (!code) { setError('Enter a language name or code — e.g. “French” or “fr”.'); return }
+    if (!code) { setError('Enter a language name or code, e.g. “French” or “fr”.'); return }
     if (site.languages.includes(code) || site.paused_languages.includes(code)) {
       setError(`${languageName(code)} is already tracked for this site.`)
       return
@@ -234,7 +234,7 @@ export function SiteCard({ site }: SiteCardProps) {
 
       <div className="flex justify-end mt-4 pt-4 border-t border-slate-100">{editBtn}</div>
 
-      {/* Confirm add — a new language flags existing pages for an hreflang update */}
+      {/* Confirm add, a new language flags existing pages for an hreflang update */}
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4" onClick={() => setConfirm(null)}>
           <div className="w-full max-w-md rounded-[16px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -244,7 +244,7 @@ export function SiteCard({ site }: SiteCardProps) {
               {site.pagesWithUrlsCount > 0 ? (
                 <p className="pt-2 border-t border-slate-100"><b className="text-[var(--bdg-gold-fg)]">Heads up:</b> {site.pagesWithUrlsCount} page{site.pagesWithUrlsCount === 1 ? '' : 's'} with URLs will be flagged as <em>needs update</em> so their hreflang tags get the new language.</p>
               ) : (
-                <p className="pt-2 border-t border-slate-100 text-muted">No pages will be flagged — empty pages don&apos;t need attention.</p>
+                <p className="pt-2 border-t border-slate-100 text-muted">No pages will be flagged, empty pages don&apos;t need attention.</p>
               )}
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">

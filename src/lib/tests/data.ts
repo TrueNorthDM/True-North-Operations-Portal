@@ -1,5 +1,5 @@
 /**
- * tests/data.ts — the manual test checklist for the whole system (admin page at
+ * tests/data.ts: the manual test checklist for the whole system (admin page at
  * /admin/tests). Code-based and maintained by Claude: every feature we ship
  * adds its checks here, so the portal can be verified end-to-end.
  *
@@ -26,7 +26,7 @@ export const TEST_AREAS: TestArea[] = [
       { id: 'NAV-1', check: 'Log in; look at the narrow icon-only left rail and hover each icon.', expect: 'Icons for Home, Dashboards, Projects, Tools (+ Admin if admin, Settings at the bottom); hovering shows the name as a tooltip to the right. The active page’s icon is highlighted.' },
       { id: 'NAV-2', check: 'Open /admin (or click Admin).', expect: 'Admins see the Admin hub; a non-admin is redirected to Home (Admin never shows for them).', needs: 'to fully test, a non-admin account' },
       { id: 'NAV-3', check: 'Go to a sub-page (e.g. Admin → People) and use the breadcrumb.', expect: 'Breadcrumb reads Dashboard / Admin / People and each crumb links back.' },
-      { id: 'NAV-4', check: 'Visit several pages (Home, HFA, Admin, Settings).', expect: 'All share the same background tone — warm off-white in light mode, warm near-black in dark mode. Consistent everywhere.' },
+      { id: 'NAV-4', check: 'Visit several pages (Home, HFA, Admin, Settings).', expect: 'All share the same background tone, warm off-white in light mode, warm near-black in dark mode. Consistent everywhere.' },
     ],
   },
   {
@@ -43,14 +43,14 @@ export const TEST_AREAS: TestArea[] = [
     cases: [
       { id: 'HOME-1', check: 'Open Home on a desktop-size window.', expect: 'Block 1 shows five widgets side by side: Dashboards, Projects, Tools (clickable) and My Team / My Work (dashed, “Soon” badge, not clickable).' },
       { id: 'HOME-2', check: 'In “My favourites”, click Choose favourites (or Edit), pick a few destinations, try picking a 6th.', expect: 'The counter shows n/5 and unchecked options disable at 5.', needs: 'migration 018 applied' },
-      { id: 'HOME-3', check: 'Save, reload the page (and ideally open another browser where you are logged in).', expect: 'Your picks show as star cards, in order, and persist — they are stored per user, not per browser.' },
+      { id: 'HOME-3', check: 'Save, reload the page (and ideally open another browser where you are logged in).', expect: 'Your picks show as star cards, in order, and persist, they are stored per user, not per browser.' },
       { id: 'HOME-4', check: 'Click a favourite card.', expect: 'It navigates to that destination.' },
     ],
   },
   {
     area: 'Home · Org chart',
     cases: [
-      { id: 'ORG-1', check: 'Open Home.', expect: 'The “Organization” section shows the company org chart: a tree from David Sharpe down, ~33 people, with team chips and team boxes — auto-scaled to fit the block width (no horizontal scroll).', needs: 'migrations 014 + 015 applied' },
+      { id: 'ORG-1', check: 'Open Home.', expect: 'The “Organization” section shows the company org chart: a tree from David Sharpe down, ~33 people, with team chips and team boxes, auto-scaled to fit the block width (no horizontal scroll).', needs: 'migrations 014 + 015 applied' },
       { id: 'ORG-2', check: 'Click “Full screen”, then use the − / + buttons (or the +/− keys), Reset, Esc, and drag the canvas with the mouse.', expect: 'The chart opens big; zoom out/in works (40–250%), Reset returns to 100%, you can scroll OR click-and-drag to pan, and Esc/Close exits.' },
     ],
   },
@@ -71,7 +71,7 @@ export const TEST_AREAS: TestArea[] = [
     cases: [
       { id: 'PPL-1', check: 'Open Admin → People.', expect: 'Table lists everyone with title, “Reports to”, teams, account, status; search works.' },
       { id: 'PPL-2', check: 'Click “Add person”, fill name + title + a manager, save.', expect: 'The person appears in the list with those values.' },
-      { id: 'PPL-3', check: 'Edit someone’s “Reports to”, save, then open Home.', expect: 'The org chart redraws with the new reporting line — no manual repositioning.' },
+      { id: 'PPL-3', check: 'Edit someone’s “Reports to”, save, then open Home.', expect: 'The org chart redraws with the new reporting line, no manual repositioning.' },
       { id: 'PPL-4', check: 'On a row, click Delete → Yes.', expect: 'The person is removed (after the inline confirm).' },
       { id: 'PPL-5', check: 'Edit a person, set “Portal account” to an email, save. Then try linking the same account to a second person.', expect: 'First save shows the email in the Account column; the second is rejected with “already linked to another person”.', needs: 'migration 017 applied' },
     ],
@@ -95,7 +95,7 @@ export const TEST_AREAS: TestArea[] = [
   {
     area: 'Access enforcement',
     cases: [
-      { id: 'ENF-1', check: 'With no grants set, open /projects as any logged-in user.', expect: 'Both AAAF and HFA cards are visible (nothing is hidden until a project is granted — even if migration 016 isn’t applied yet, access fails open).' },
+      { id: 'ENF-1', check: 'With no grants set, open /projects as any logged-in user.', expect: 'Both AAAF and HFA cards are visible (nothing is hidden until a project is granted, even if migration 016 isn’t applied yet, access fails open).' },
       { id: 'ENF-2', check: 'Grant AAAF to one team only; log in as a non-admin NOT in that team (with a linked account).', expect: 'That user no longer sees AAAF in /projects and /aaaf redirects them home; admins still see everything.', needs: 'a non-admin account linked to a person' },
     ],
   },
@@ -118,19 +118,19 @@ export const TEST_AREAS: TestArea[] = [
   {
     area: 'Tools · Budget Usage Report',
     cases: [
-      { id: 'TR-1', check: 'Open Tools → Budget Usage Report without a TSheets token configured in Settings.', expect: 'A “token not configured” empty state with a link to Settings — no error, no crash.' },
+      { id: 'TR-1', check: 'Open Tools → Budget Usage Report without a TSheets token configured in Settings.', expect: 'A “token not configured” empty state with a link to Settings, no error, no crash.' },
       { id: 'TR-2', check: 'Add a valid TSheets API token in Settings → QuickBooks Time section, save.', expect: 'Token saves and shows masked ···XXXX. Budget Usage Report page no longer shows the empty state.', needs: 'valid TSheets API token + migration 019 applied' },
       { id: 'TR-3', check: 'Open Budget Usage Report; note the default month.', expect: 'Month selector defaults to the current month; the pivot table shows hours from TSheets.', needs: 'TSheets token configured' },
       { id: 'TR-4', check: 'Switch to a past month in the selector.', expect: 'URL updates to ?month=YYYY-MM and the table reloads with the correct data for that month.', needs: 'TSheets token configured' },
-      { id: 'TR-5', check: 'Inspect the pivot table structure.', expect: 'Rows = job codes, columns = employee first names, rightmost column = Total. Each cell shows hours or —. Row totals and column totals both sum correctly to the grand total.', needs: 'TSheets token configured' },
+      { id: 'TR-5', check: 'Inspect the pivot table structure.', expect: 'Rows = job codes, columns = employee first names, rightmost column = Total. Each cell shows hours or a dash. Row totals and column totals both sum correctly to the grand total.', needs: 'TSheets token configured' },
     ],
   },
   {
     area: 'Dashboards',
     cases: [
-      { id: 'DSH-1', check: 'Open Dashboards.', expect: 'Two cards: “Publishing Goals” and “Workload — IN CONSTRUCTION”.' },
+      { id: 'DSH-1', check: 'Open Dashboards.', expect: 'Two cards: “Publishing Goals” and “Workload, IN CONSTRUCTION”.' },
       { id: 'DSH-2', check: 'Open Publishing Goals.', expect: 'The COE dashboard fills the whole content area with the portal’s top bar + sidebar around it; Home is always reachable.' },
-      { id: 'DSH-3', check: 'Open Workload (/boards-beta) and switch Goals / Translation / Targets.', expect: 'All three render with real data. (Note: Boards Review’s purpose is being rethought — TN-019.)' },
+      { id: 'DSH-3', check: 'Open Workload (/boards-beta) and switch Goals / Translation / Targets.', expect: 'All three render with real data. (Note: Boards Review’s purpose is being rethought, TN-019.)' },
     ],
   },
 ]

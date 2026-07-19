@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * CarryoverPanel — the i7 budget-balance widget. Left block (20%): carried-in
- * balance. Right block (80%): BudgetBalanceCard — this month's total budget,
+ * CarryoverPanel: the i7 budget-balance widget. Left block (20%): carried-in
+ * balance. Right block (80%): BudgetBalanceCard, this month's total budget,
  * closing balance, and an animated usage bar. "Budget total" = carried-in + this
  * month's budget, so Balance left = Budget total − Used stays consistent.
  *
@@ -76,14 +76,14 @@ export function BudgetBalanceCard({ c, month }: { c: I7Carryover; month: string 
 export function CarryoverPanel({ c, month }: { c: I7Carryover; month: string }) {
   return (
     <div className="flex flex-col lg:flex-row gap-4 items-stretch">
-      {/* Left 20% — Carried in */}
+      {/* Left 20%, Carried in */}
       <div className="lg:w-1/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)] flex flex-col justify-center">
         <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Carried in</div>
         <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums mt-1 ${c.opening < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{moneySigned(c.opening)}</div>
         <div className="text-xs text-muted mt-1">Balance brought from last month</div>
       </div>
 
-      {/* Right 80% — Budget balance card (navy header + animated usage bar) */}
+      {/* Right 80%, Budget balance card (navy header + animated usage bar) */}
       <div className="lg:w-4/5">
         <BudgetBalanceCard c={c} month={month} />
       </div>
@@ -94,7 +94,7 @@ export function CarryoverPanel({ c, month }: { c: I7Carryover; month: string }) 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
 
 // Usage progress bar. The track holds a fixed green→amber→red gradient (colours
-// map to real budget-% positions — yellowing past ~50%, red toward/over 100%);
+// map to real budget-% positions, yellowing past ~50%, red toward/over 100%);
 // a grey mask reveals it up to the used %. On mount it fills from 0 → used while
 // the $ counts up (ease-out), and a soft shimmer sweeps the filled part. All of
 // it is skipped under prefers-reduced-motion.

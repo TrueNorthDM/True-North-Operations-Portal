@@ -4,7 +4,7 @@
  * Single source of truth for per-language color tokens.
  *
  * Each language gets a unique soft-bg + saturated-text pair so EN, PT, ES, SW
- * (and future langs) are distinguishable at a glance — even on dense tables.
+ * (and future langs) are distinguishable at a glance, even on dense tables.
  * The "neutral" pair is used for the "not done yet" state in status tables.
  *
  * Colors chosen to NOT collide with:

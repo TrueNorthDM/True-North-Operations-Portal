@@ -1,4 +1,4 @@
-// Home — welcome banner, destination widgets, the i7 budget at a glance
+// Home: welcome banner, destination widgets, the i7 budget at a glance
 // (privileged tiers), and the company org chart. Admin is reachable from the
 // sidebar. Uses the wide Home container (see MainContent) so widgets sit side
 // by side.
@@ -21,7 +21,7 @@ export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const [org, tier, me, celebPeople] = await Promise.all([getOrgChart(), getCurrentTier(), loadCurrentPerson(supabase, user), loadCelebrationPeople()])
-  // i7 budget at a glance — privileged only (sensitive $), for the current month.
+  // i7 budget at a glance, privileged only (sensitive $), for the current month.
   const month = currentYearMonth()
   const i7Carryover = tier.isPrivileged ? (await loadI7ReportData(month)).carryover : null
 
@@ -32,7 +32,7 @@ export default async function HomePage() {
       {/* Destination widgets (My Team is a placeholder). */}
       <HomeWidgets />
 
-      {/* i7 budget at a glance — privileged tiers only. */}
+      {/* i7 budget at a glance, privileged tiers only. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
       {/* This month's work anniversaries + birthdays, side by side. */}
@@ -41,7 +41,7 @@ export default async function HomePage() {
         <Birthdays people={celebPeople} />
       </section>
 
-      {/* Company org chart — permanent fixture of the home page. */}
+      {/* Company org chart, permanent fixture of the home page. */}
       <section>
         <div className="flex items-baseline justify-between gap-3 mb-3">
           <h2 className="text-lg font-bold text-tn-ink">Organization</h2>

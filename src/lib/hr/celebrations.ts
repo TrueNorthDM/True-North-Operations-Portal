@@ -24,10 +24,10 @@ export function parseYMD(iso: string | null | undefined): { y: number; m: number
   return x ? { y: +x[1], m: +x[2] - 1, d: +x[3] } : null
 }
 
-/** "Apr 7" — month + day, no year (for birthdays). */
+/** "Apr 7", month + day, no year (for birthdays). */
 export function formatMonthDay(iso: string | null | undefined): string {
   const p = parseYMD(iso)
-  return p ? `${MON_SHORT[p.m]} ${p.d}` : '—'
+  return p ? `${MON_SHORT[p.m]} ${p.d}` : '-'
 }
 
 export interface MonthTarget { year: number; month: number; label: string; current: boolean }

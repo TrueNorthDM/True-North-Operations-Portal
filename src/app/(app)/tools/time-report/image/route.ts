@@ -1,14 +1,14 @@
 /**
  * GET /tools/time-report/image?month=YYYY-MM
  *
- * A shareable PNG of the i7 budget at a glance — the card the team sends around
+ * A shareable PNG of the i7 budget at a glance, the card the team sends around
  * (like the spreadsheet screenshot, but generated). Shows budget used ($ + %),
  * amount left, and the month's total budget. "Used" includes any overage carried
  * in from prior months, so: used = this month's cost − carried-in balance (a
  * negative carried-in adds the overage); left = total budget − used.
  *
  * Built server-side: we load the report data with the caller's session, render a
- * self-contained HTML card into headless Chromium (setContent — no auth forward
+ * self-contained HTML card into headless Chromium (setContent, no auth forward
  * needed), and screenshot it. Same Chromium setup as the PDF route.
  */
 
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
       : await page.screenshot({ type: 'png' })
 
     const label = monthLabel(month)
-    const name = `i7 Budget Summary — ${label}.png`
+    const name = `i7 Budget Summary - ${label}.png`
     const asciiName = name.replace(/[^\x20-\x7e]/g, '-')
     return new Response(png as unknown as BodyInit, {
       headers: {
@@ -136,7 +136,7 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error('[time-report/image] generation failed:', err)
     const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    return new Response(`Image generation failed — ${detail}`, { status: 500, headers: { 'Content-Type': 'text/plain' } })
+    return new Response(`Image generation failed: ${detail}`, { status: 500, headers: { 'Content-Type': 'text/plain' } })
   } finally {
     await browser?.close()
   }

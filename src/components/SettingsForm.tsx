@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * SettingsForm — per-project language config UI.
+ * SettingsForm: per-project language config UI.
  *
  * - Removable language chips (English locked because it's the x-default anchor)
  * - "Add language" input (validates BCP-47 shape)
@@ -24,7 +24,7 @@ interface Props {
     pagesWithUrlsCount: number
   }
   /**
-   * When true, render without the outer card chrome — the parent supplies
+   * When true, render without the outer card chrome, the parent supplies
    * the rounded-xl/border/padding so siblings (e.g. MondayBoardField) can
    * sit inside the same visual card.
    */
@@ -102,7 +102,7 @@ export function SettingsForm({ site, embedded = false }: Props) {
     })
   }
 
-  // How many pages WILL be flagged on save (any language change — add OR remove — requires a hreflang update)
+  // How many pages WILL be flagged on save (any language change, add OR remove, requires a hreflang update)
   const flagCountOnSave = isDirty ? site.pagesWithUrlsCount : 0
 
   return (
@@ -123,7 +123,7 @@ export function SettingsForm({ site, embedded = false }: Props) {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-slate-700">Languages</h3>
           <span className="text-xs text-slate-400">
-            Default: <strong className="font-semibold text-slate-700">en</strong> (locked — drives x-default)
+            Default: <strong className="font-semibold text-slate-700">en</strong> (locked, drives x-default)
           </span>
         </div>
         <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -195,7 +195,7 @@ export function SettingsForm({ site, embedded = false }: Props) {
         {removed.length > 0 && (
           <div className="mt-2 text-xs text-slate-500">
             Removing: {removed.map(l => <span key={l} className="inline-block uppercase font-mono mr-1 px-1.5 py-0.5 rounded bg-red-50 text-red-700">{l}</span>)}
-            <span className="ml-1 text-slate-400">— existing URLs stay in DB, marked discontinued on the page.</span>
+            <span className="ml-1 text-slate-400">(existing URLs stay in DB, marked discontinued on the page)</span>
           </div>
         )}
       </div>
@@ -230,7 +230,7 @@ export function SettingsForm({ site, embedded = false }: Props) {
                 </p>
               ) : (
                 <p className="pt-2 border-t border-slate-100 text-slate-500">
-                  No pages will be flagged — empty pages don&apos;t need attention.
+                  No pages will be flagged, empty pages don&apos;t need attention.
                 </p>
               )}
               {removed.length > 0 && (

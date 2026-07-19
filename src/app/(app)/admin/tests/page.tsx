@@ -1,4 +1,4 @@
-// Admin → Tests — manual test checklist for the whole system. Admin-only.
+// Admin → Tests, manual test checklist for the whole system. Admin-only.
 // Data lives in lib/tests/data.ts, maintained in the repo.
 
 import { redirect } from 'next/navigation'

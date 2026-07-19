@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * GoalsChart — published vs target per board×language, as grouped bars.
+ * GoalsChart: published vs target per board×language, as grouped bars.
  * react-chartjs-2 wrapper; replaces the COE's Chart.js usage.
  */
 

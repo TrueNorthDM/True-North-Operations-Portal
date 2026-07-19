@@ -5,7 +5,7 @@
  *
  * These tags tell Google which version of a page to show for each
  * language/region. Without them, Google may serve the wrong language
- * to users — which is exactly the problem this app solves.
+ * to users, which is exactly the problem this app solves.
  *
  * Spec: https://developers.google.com/search/docs/specialty/international/locales-languages
  */
@@ -15,14 +15,14 @@
  *
  * Only add entries when the hreflang value should differ from the internal
  * code (e.g. 'pt-br' → 'pt', or a custom legacy code). For codes that already
- * match BCP-47 (en, pt, es, sw, fr, de, …), DON'T add them here — the resolver
+ * match BCP-47 (en, pt, es, sw, fr, de, …), DON'T add them here, the resolver
  * uses the raw code as fallback, so they work automatically.
  *
  * Was previously a hard whitelist that silently dropped any unknown code.
  * Now it's an opt-in override and the fallback prevents missing tags.
  */
 const HREFLANG_OVERRIDES: Record<string, string> = {
-  // (empty by default — add overrides only when needed)
+  // (empty by default, add overrides only when needed)
 }
 
 /**
@@ -31,7 +31,7 @@ const HREFLANG_OVERRIDES: Record<string, string> = {
  */
 function resolveHreflang(languageCode: string): string | null {
   if (HREFLANG_OVERRIDES[languageCode]) return HREFLANG_OVERRIDES[languageCode]
-  // Basic shape check — letters + optional region (e.g. 'en', 'pt-BR')
+  // Basic shape check, letters + optional region (e.g. 'en', 'pt-BR')
   if (/^[a-z]{2,3}(-[A-Z]{2})?$/i.test(languageCode)) return languageCode.toLowerCase()
   return null
 }

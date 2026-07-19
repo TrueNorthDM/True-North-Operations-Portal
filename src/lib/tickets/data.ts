@@ -1,7 +1,7 @@
 /**
- * tickets/data.ts — the dev work tracker (admin-only page at /admin/tickets).
+ * tickets/data.ts: the dev work tracker (admin-only page at /admin/tickets).
  *
- * Code-based on purpose: Claude maintains this file directly — adds a ticket
+ * Code-based on purpose: Claude maintains this file directly, adds a ticket
  * whenever new work comes up, and flips it to `done` (with the commit) when it
  * lands. That only works if the data lives in the repo, not the DB. Versioned
  * with the code, no migration needed.
@@ -117,7 +117,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-005',
     type: 'feature',
     title: 'Access matrix + per-project "Manage access" (F3)',
-    description: 'Teams × Projects matrix at /admin/access — each cell an inline role select (none/admin/member/viewer). Plus an admin-only "Manage access" link on each project page.',
+    description: 'Teams × Projects matrix at /admin/access, each cell an inline role select (none/admin/member/viewer). Plus an admin-only "Manage access" link on each project page.',
     status: 'done',
     priority: 'medium',
     area: 'RBAC',
@@ -140,7 +140,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-016',
     type: 'feature',
     title: 'Link a person to a portal account (in People editor)',
-    description: 'People editor now has a "Portal account" field (links people.profile_id). Migration 017 enforces one account ↔ one person. Closes the RBAC loop — grants now resolve to real logins.',
+    description: 'People editor now has a "Portal account" field (links people.profile_id). Migration 017 enforces one account ↔ one person. Closes the RBAC loop, grants now resolve to real logins.',
     status: 'done',
     priority: 'medium',
     area: 'RBAC',
@@ -200,14 +200,14 @@ export const TICKETS: Ticket[] = [
     area: 'Dashboards',
     createdAt: '2026-06-09',
     doneAt: '2026-06-09',
-    notes: 'Verified: all 3 tabs render with real data (Goals/Translation/Targets). But the desired Boards Review functionality is under review — see TN-019.',
+    notes: 'Verified: all 3 tabs render with real data (Goals/Translation/Targets). But the desired Boards Review functionality is under review, see TN-019.',
   },
   {
     code: 'TN-019',
     type: 'idea',
     title: 'Boards Review → "My Work" view (what everyone works on across Monday)',
     description:
-      'DIRECTION CHOSEN (2026-06-12): option C. Boards Review should become a person-centric "My Work" view — for each user, everything they’re working on across the whole Monday account (all boards), not the board-centric editorial port from the COE. Converges with TN-022 (the Home "My Work" widget) — same concept, two surfaces (a Home summary + a full view). Open design questions for when we resume: which Monday boards/columns define "assigned to me" and "in progress"; grouping (by board? by status? by project?); whether it’s read-only or actionable. Deferred — Arnaldo doesn’t want to build it yet. Done so far: targets editing moved out of the dashboard to Settings (TN-025). Still pending here: build the My Work view, then retire the legacy boards.html (+ its orphaned target modal that writes to the dead COE Supabase) in the cutover (TN-010).',
+      'DIRECTION CHOSEN (2026-06-12): option C. Boards Review should become a person-centric "My Work" view, for each user, everything they’re working on across the whole Monday account (all boards), not the board-centric editorial port from the COE. Converges with TN-022 (the Home "My Work" widget), same concept, two surfaces (a Home summary + a full view). Open design questions for when we resume: which Monday boards/columns define "assigned to me" and "in progress"; grouping (by board? by status? by project?); whether it’s read-only or actionable. Deferred. Arnaldo doesn’t want to build it yet. Done so far: targets editing moved out of the dashboard to Settings (TN-025). Still pending here: build the My Work view, then retire the legacy boards.html (+ its orphaned target modal that writes to the dead COE Supabase) in the cutover (TN-010).',
     status: 'backlog',
     priority: 'medium',
     area: 'Dashboards',
@@ -217,7 +217,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-025',
     type: 'feature',
     title: 'Move the publishing-targets editor to Settings',
-    description: 'The original target modal lived inside boards.html and wrote to the old COE Supabase — orphaned after the merge (the dashboard reads /api/targets from the PORTAL DB). The connected React editor (TargetsEditor, writes portal publishing_targets) was hidden under the /boards-beta beta tab. Re-homed it in Settings — targets are configuration; the dashboard only shows progress against them. Admin edits, viewer read-only.',
+    description: 'The original target modal lived inside boards.html and wrote to the old COE Supabase, orphaned after the merge (the dashboard reads /api/targets from the PORTAL DB). The connected React editor (TargetsEditor, writes portal publishing_targets) was hidden under the /boards-beta beta tab. Re-homed it in Settings, targets are configuration; the dashboard only shows progress against them. Admin edits, viewer read-only.',
     status: 'done',
     priority: 'medium',
     area: 'Dashboards',
@@ -228,7 +228,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-010',
     type: 'task',
     title: 'B6 cutover: retire boards.html, /boards-beta becomes Boards Review',
-    description: 'Remove the legacy static dashboard and promote the React version. Destructive — only after the Boards Review direction is settled.',
+    description: 'Remove the legacy static dashboard and promote the React version. Destructive, only after the Boards Review direction is settled.',
     status: 'blocked',
     priority: 'low',
     area: 'Dashboards',
@@ -240,7 +240,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-014',
     type: 'task',
     title: 'Refine org chart reporting lines + verify on deploy',
-    description: 'After 014/015 are applied: check the org chart renders, then correct the best-guess manager lines (who reports to whom) — easiest once the People editor (F2) exists, or directly in SQL.',
+    description: 'After 014/015 are applied: check the org chart renders, then correct the best-guess manager lines (who reports to whom), easiest once the People editor (F2) exists, or directly in SQL.',
     status: 'backlog',
     priority: 'low',
     area: 'Org Chart',
@@ -250,7 +250,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-021',
     type: 'feature',
-    title: 'My Team widget — decide and build the content',
+    title: 'My Team widget, decide and build the content',
     description: 'The Home "My Team" widget is a placeholder. Decide what it shows (your team’s members? activity? leader view?) and build it on the directory data.',
     status: 'backlog',
     priority: 'low',
@@ -260,8 +260,8 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-022',
     type: 'feature',
-    title: 'My Work widget — everything a person works on across Monday',
-    description: 'The Home "My Work" widget is a placeholder. Eventually: pull every item assigned to the signed-in person across the Monday account (boards/columns TBD) and list it. Same concept as TN-019 (Boards Review → "My Work"): this is the Home summary, TN-019 is the full view — build them together.',
+    title: 'My Work widget, everything a person works on across Monday',
+    description: 'The Home "My Work" widget is a placeholder. Eventually: pull every item assigned to the signed-in person across the Monday account (boards/columns TBD) and list it. Same concept as TN-019 (Boards Review → "My Work"): this is the Home summary, TN-019 is the full view, build them together.',
     status: 'backlog',
     priority: 'low',
     area: 'Home',
@@ -271,7 +271,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-026',
     type: 'feature',
-    title: 'QuickBooks Time (TSheets) integration — Budget Usage Report tool',
+    title: 'QuickBooks Time (TSheets) integration, Budget Usage Report tool',
     description:
       'Automates the admin assistant\'s manual process: TSheets → CSV → Excel pivot → copy hours into Google Sheet. Portal now pulls hours directly from the TSheets REST API (3 endpoints: /users, /jobcodes, /timesheets) and renders the employee × job code pivot for any month. Token stored in app_settings. Settings system: clients/budgets (tr_budgets), people rates with history (tr_assignments), immutable audit log (tr_audit_log), all changes require justification. Migrations 019, 020, 021 applied.',
     status: 'done',
@@ -284,7 +284,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-027',
     type: 'feature',
-    title: 'Budget Usage Report — Phase D: date range + cost columns',
+    title: 'Budget Usage Report, Phase D: date range + cost columns',
     description:
       'Add day/week/month/custom date range picker (beyond the current month-only selector). Add cost columns to the matrix (hours × hourly rate from tr_assignments), budget vs actual variance per client, and total cost per employee. Requires tr_assignments to be populated first.',
     status: 'backlog',
@@ -297,26 +297,26 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-024',
     type: 'bug',
-    title: 'Project cards vanished from /projects — enforcement failed closed',
-    description: 'With migration 016 not applied, the accessible_site_ids RPC errored and the code treated it as "no access", hiding AAAF/HFA for everyone (even admins). Fixed: access now fails OPEN when it can’t be evaluated — per the "unrestricted until granted" rule — and logs the error. Applies to /projects, /aaaf and /hfa guards.',
+    title: 'Project cards vanished from /projects, enforcement failed closed',
+    description: 'With migration 016 not applied, the accessible_site_ids RPC errored and the code treated it as "no access", hiding AAAF/HFA for everyone (even admins). Fixed: access now fails OPEN when it can’t be evaluated (per the "unrestricted until granted" rule) and logs the error. Applies to /projects, /aaaf and /hfa guards.',
     status: 'done',
     priority: 'high',
     area: 'RBAC',
     createdAt: '2026-06-12',
     doneAt: '2026-06-12',
-    notes: 'Migrations 016/017 applied 2026-06-12 — enforcement fully wired.',
+    notes: 'Migrations 016/017 applied 2026-06-12, enforcement fully wired.',
   },
   {
     code: 'TN-023',
     type: 'feature',
-    title: 'Design system v2 — dark mode, navy identity, top-bar avatar + theme toggle',
-    description: 'Portal-wide light/dark theme via a semantic palette remap (one CSS layer, contrast preserved by construction), True North navy + north-star gold identity on the chrome, Space Grotesk display headings, and a redesigned top bar: avatar menu (rightmost, with email + Sign out — replaces the sidebar "Signed in" block) and a sun/moon theme toggle. Theme persists per browser and follows the system preference on first visit.',
+    title: 'Design system v2, dark mode, navy identity, top-bar avatar + theme toggle',
+    description: 'Portal-wide light/dark theme via a semantic palette remap (one CSS layer, contrast preserved by construction), True North navy + north-star gold identity on the chrome, Space Grotesk display headings, and a redesigned top bar: avatar menu (rightmost, with email + Sign out, replaces the sidebar "Signed in" block) and a sun/moon theme toggle. Theme persists per browser and follows the system preference on first visit.',
     status: 'done',
     priority: 'medium',
     area: 'UI',
     createdAt: '2026-06-12',
     doneAt: '2026-06-12',
-    notes: 'Known gaps in dark mode: the legacy Publishing Goals iframe (boards.html) and the beta chart.js charts stay light — both pending the Boards Review rethink (TN-019).',
+    notes: 'Known gaps in dark mode: the legacy Publishing Goals iframe (boards.html) and the beta chart.js charts stay light, both pending the Boards Review rethink (TN-019).',
   },
   {
     code: 'TN-020',
@@ -333,7 +333,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-011',
     type: 'feature',
-    title: 'F0 — reshape IA into Dashboards / Projects / Tools / Admin',
+    title: 'F0, reshape IA into Dashboards / Projects / Tools / Admin',
     status: 'done',
     priority: 'high',
     area: 'Navigation',
@@ -355,7 +355,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-013',
     type: 'bug',
-    title: 'Done pages stuck in On-going — backfill confirmed_done_at (migration 013)',
+    title: 'Done pages stuck in On-going, backfill confirmed_done_at (migration 013)',
     status: 'done',
     priority: 'high',
     area: 'Hreflang',

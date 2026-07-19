@@ -1,7 +1,7 @@
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 
 /**
- * requireAdmin — shared guard for the i7 settings server actions.
+ * requireAdmin: shared guard for the i7 settings server actions.
  *
  * Returns null when the caller is an admin, otherwise a user-facing message.
  * Writes are also protected by RLS (is_admin); this just turns a silent RLS

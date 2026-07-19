@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * SystemManual — the internal docs, hand-built to match the handoff prototype:
+ * SystemManual: the internal docs, hand-built to match the handoff prototype:
  * a sticky scroll-spy table of contents on the left, richly-laid-out sections
  * on the right (cards, the left-rail reference, page cards, the access-model
  * flow, the Monday data-flow, and the data-source cards). Content is static;
@@ -43,7 +43,7 @@ const TOC = [
 ]
 
 const RAIL = [
-  { icon: 'home', name: 'Home', desc: 'Your landing page — My Team and My Work at a glance.', admin: false },
+  { icon: 'home', name: 'Home', desc: 'Your landing page, My Team and My Work at a glance.', admin: false },
   { icon: 'dash', name: 'Dashboards', desc: 'Board review dashboards, including Publishing Goals.', admin: false },
   { icon: 'proj', name: 'Projects', desc: 'The hreflang workflow for the AAAF and HFA sites.', admin: false },
   { icon: 'tools', name: 'Tools', desc: 'Utilities the team runs day to day.', admin: false },
@@ -60,19 +60,19 @@ const SRC: Record<string, { color: string; bg: string }> = {
 }
 const PAGES = [
   { icon: 'home', name: 'Home', desc: 'The landing screen. Surfaces your team at a glance and everything assigned to you, with quick jumps to the rest of the portal.', src: 'Monday', srcKey: 'monday' as const },
-  { icon: 'work', name: 'My Work', desc: 'Everything assigned to you across Monday in one place — switch between a board and a list view.', src: 'Monday', srcKey: 'monday' as const },
+  { icon: 'work', name: 'My Work', desc: 'Everything assigned to you across Monday in one place, switch between a board and a list view.', src: 'Monday', srcKey: 'monday' as const },
   { icon: 'dash', name: 'Dashboards', desc: 'Board review dashboards. Publishing Goals tracks publishing pace versus target for AAAF and HFA over a chosen timeframe.', src: 'Monday', srcKey: 'monday' as const, sub: ['Publishing Goals', 'Workload'] },
-  { icon: 'proj', name: 'Projects', desc: 'Manages the hreflang tag workflow for the AAAF and HFA WordPress sites — the one place the portal writes back to Monday.', src: 'Monday + WordPress', srcKey: 'mixed' as const },
+  { icon: 'proj', name: 'Projects', desc: 'Manages the hreflang tag workflow for the AAAF and HFA WordPress sites, the one place the portal writes back to Monday.', src: 'Monday + WordPress', srcKey: 'mixed' as const },
   { icon: 'tools', name: 'Tools', desc: 'Utilities the team runs day to day, each launched from one list.', src: 'Varies', srcKey: 'none' as const },
-  { icon: 'ticket', name: 'Tickets', desc: 'The dev work tracker — everything that needs resolving, so nothing gets lost.', src: 'Portal', srcKey: 'portal' as const },
-  { icon: 'test', name: 'Tests', desc: 'A pre-launch checklist to verify the whole system end to end — walk each area, tick off what works, flag what doesn’t.', src: 'Portal', srcKey: 'portal' as const },
+  { icon: 'ticket', name: 'Tickets', desc: 'The dev work tracker, everything that needs resolving, so nothing gets lost.', src: 'Portal', srcKey: 'portal' as const },
+  { icon: 'test', name: 'Tests', desc: 'A pre-launch checklist to verify the whole system end to end, walk each area, tick off what works, flag what doesn’t.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'dir', name: 'People, Teams and Permissions', desc: 'People, teams and access in one place. Add or edit people, manage team membership, and grant each team access to projects.', src: 'Portal', srcKey: 'portal' as const },
-  { icon: 'book', name: 'System manual', desc: 'This page — how the portal works, who can see what, and how the data flows in.', src: 'Portal', srcKey: 'portal' as const },
+  { icon: 'book', name: 'System manual', desc: 'This page, how the portal works, who can see what, and how the data flows in.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'settings', name: 'Settings', desc: 'Sites & languages, publishing targets, clients & budgets, people & rates, and API tokens. This is where connections are configured.', src: 'Config', srcKey: 'config' as const },
 ]
 
 const FLOWS = [
-  { surface: 'Dashboards', reads: 'AAAF & HFA Publishing boards — pace, targets and totals.', both: false },
+  { surface: 'Dashboards', reads: 'AAAF & HFA Publishing boards, pace, targets and totals.', both: false },
   { surface: 'My Work', reads: 'Every item assigned to the signed-in person across boards.', both: false },
   { surface: 'Home · My Team', reads: 'Team membership and each person’s open work.', both: false },
   { surface: 'Projects', reads: 'Page & language items for the hreflang workflow.', both: true },
@@ -116,7 +116,7 @@ export function SystemManual() {
           <span className="font-semibold text-tn-ink">System manual</span>
         </div>
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">System manual</h1>
-        <p className="mt-1.5 max-w-2xl text-muted">How the Operations Portal is put together — every page, who can see what, and how Monday, WordPress and QuickBooks Time feed the numbers you see.</p>
+        <p className="mt-1.5 max-w-2xl text-muted">How the Operations Portal is put together, every page, who can see what, and how Monday, WordPress and QuickBooks Time feed the numbers you see.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[214px_1fr] gap-10 items-start">
@@ -147,12 +147,12 @@ export function SystemManual() {
           <section id="overview" className="scroll-mt-6">
             <Eyebrow>Overview</Eyebrow>
             <Heading>What this portal is</Heading>
-            <Lede>The Operations Portal is True North’s single home for the tools, dashboards, and to-do lists that keep publishing and client work moving. It doesn’t replace Monday, WordPress or QuickBooks Time — it reads from them and gives the team one calm, consistent place to see status and act on it.</Lede>
+            <Lede>The Operations Portal is True North’s single home for the tools, dashboards, and to-do lists that keep publishing and client work moving. It doesn’t replace Monday, WordPress or QuickBooks Time, it reads from them and gives the team one calm, consistent place to see status and act on it.</Lede>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {[
-                { t: 'Who signs in', d: 'True North staff and contractors on the allow-list — no public access.' },
-                { t: 'How you get in', d: 'Magic-link email — no password to remember or reset.' },
-                { t: 'Where data lives', d: 'Monday, WordPress and QuickBooks Time. The portal reads — it’s the source that’s the truth.' },
+                { t: 'Who signs in', d: 'True North staff and contractors on the allow-list, no public access.' },
+                { t: 'How you get in', d: 'Magic-link email, no password to remember or reset.' },
+                { t: 'Where data lives', d: 'Monday, WordPress and QuickBooks Time. The portal reads, it’s the source that’s the truth.' },
               ].map(c => (
                 <div key={c.t} className={`${card} p-4`}>
                   <div className="font-(family-name:--font-display) font-black text-[15px] text-tn-ink">{c.t}</div>
@@ -236,8 +236,8 @@ export function SystemManual() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
               {[
                 { role: 'Manager', dot: '#127A3E', d: 'Full access to the project: edit pages, assign work, and manage the team’s access.' },
-                { role: 'Editor', dot: '#1E7D7F', d: 'Works inside the project — edits pages and moves items through the workflow.' },
-                { role: 'Viewer', dot: '#8593a4', d: 'Read-only — can see dashboards and status but can’t change anything.' },
+                { role: 'Editor', dot: '#1E7D7F', d: 'Works inside the project, edits pages and moves items through the workflow.' },
+                { role: 'Viewer', dot: '#8593a4', d: 'Read-only, can see dashboards and status but can’t change anything.' },
               ].map(r => (
                 <div key={r.role} className={`${card} p-4`}>
                   <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export function SystemManual() {
             </div>
             <div className="flex gap-3 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 items-start">
               <svg className="shrink-0 mt-0.5 text-amber-700" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16v-4M12 8h.01" /><circle cx="12" cy="12" r="10" /></svg>
-              <div className="text-[13px] leading-relaxed text-amber-800"><strong className="font-extrabold">Login is separate from access.</strong> Being on the sign-in allow-list only lets someone in the front door — what they see inside is decided entirely by their team’s project grants.</div>
+              <div className="text-[13px] leading-relaxed text-amber-800"><strong className="font-extrabold">Login is separate from access.</strong> Being on the sign-in allow-list only lets someone in the front door, what they see inside is decided entirely by their team’s project grants.</div>
             </div>
           </section>
 
@@ -292,7 +292,7 @@ export function SystemManual() {
             </div>
             <div className={`flex gap-3 mt-4 ${card} bg-subtle px-4 py-3.5 items-start`}>
               <svg className="shrink-0 mt-0.5 text-tn-teal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-              <div className="text-[13px] leading-relaxed text-foreground"><strong className="font-extrabold text-tn-ink">Write-backs are deliberate.</strong> The one place the portal writes to Monday is the hreflang workflow in Projects — when a language goes live, marking it Done ticks the matching item back on the Monday board. Everything else is read-only.</div>
+              <div className="text-[13px] leading-relaxed text-foreground"><strong className="font-extrabold text-tn-ink">Write-backs are deliberate.</strong> The one place the portal writes to Monday is the hreflang workflow in Projects, when a language goes live, marking it Done ticks the matching item back on the Monday board. Everything else is read-only.</div>
             </div>
           </section>
 

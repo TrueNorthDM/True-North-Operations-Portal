@@ -1,6 +1,6 @@
 'use client'
 
-// TSheets API token field on Settings — mirrors MondayTokenField exactly:
+// TSheets API token field on Settings, mirrors MondayTokenField exactly:
 // full token never leaves the server, client only sees { exists, last4 }.
 
 import { useState, useTransition, type ReactNode } from 'react'
@@ -54,7 +54,7 @@ export function TsheetsTokenField({ tokenInfo, footer }: Props) {
       <div>
         <h2 className="text-lg font-bold text-slate-900">QuickBooks Time (TSheets) API</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          Static API token — used by the Budget Usage Report tool to pull hours from TSheets.
+          Static API token, used by the Budget Usage Report tool to pull hours from TSheets.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export function TsheetsTokenField({ tokenInfo, footer }: Props) {
 
       {showEmpty && (
         <div className="px-3 py-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 italic">
-          No token set — click <span className="font-semibold not-italic text-slate-500">Edit</span> to add one.
+          No token set, click <span className="font-semibold not-italic text-slate-500">Edit</span> to add one.
         </div>
       )}
 

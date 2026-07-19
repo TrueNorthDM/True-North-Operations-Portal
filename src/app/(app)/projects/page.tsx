@@ -1,5 +1,5 @@
 // Dashboard: overview of both AAAF and HFA sites
-// This is a Server Component — data is fetched at request time.
+// This is a Server Component, data is fetched at request time.
 
 import Link from 'next/link'
 import Image from 'next/image'
@@ -7,7 +7,7 @@ import { languagePalette } from '@/lib/language-colors'
 import { getProjectsOverview } from '@/lib/projects-data'
 import { StatCell } from '@/components/ProjectStatCell'
 
-// Each card carries its project's brand identity — colors + display font + real logo.
+// Each card carries its project's brand identity, colors + display font + real logo.
 const SITES = [
   {
     code: 'aaaf',
@@ -18,7 +18,7 @@ const SITES = [
     logo: '/logos/aaaf.jpg',
     logoW: 148,
     logoH: 78,
-    brand: '#44ad85', // AAAF green — top accent bar + brand-tinted numbers/links
+    brand: '#44ad85', // AAAF green, top accent bar + brand-tinted numbers/links
     cardCls: 'bg-white border-slate-200 hover:border-tn-teal',
     titleCls: 'text-aaaf-ink font-(family-name:--font-aaaf-display)',
     linkCls: 'text-aaaf-primary',
@@ -33,7 +33,7 @@ const SITES = [
     logo: '/logos/hfa.png',
     logoW: 300,
     logoH: 83,
-    brand: '#fe9d2d', // HFA orange — top accent bar + brand-tinted numbers/links
+    brand: '#fe9d2d', // HFA orange, top accent bar + brand-tinted numbers/links
     cardCls: 'bg-white border-slate-200 hover:border-tn-teal',
     titleCls: 'text-hfa-ink font-(family-name:--font-hfa-display) tracking-wide uppercase',
     linkCls: 'text-hfa-secondary',
@@ -41,7 +41,7 @@ const SITES = [
   },
 ] as const
 
-// Workflow tag palette — copied verbatim from the handoff: a soft translucent
+// Workflow tag palette, copied verbatim from the handoff: a soft translucent
 // fill (colour at ~12% alpha, the `1f` suffix) + saturated text, NO border.
 // Literal hex so the chips read identically in light and dark.
 const TAG_BASE =
@@ -70,7 +70,7 @@ export default async function ProjectsPage() {
 
       {/* Compact "ready to apply" banner (handoff 2): one line + per-site jump
           pills. A page is ready when every language has a URL but it isn't live
-          yet — SEO 2 can apply the hreflang now. The pill links to the site's
+          yet, SEO 2 can apply the hreflang now. The pill links to the site's
           page list. bg-white on the pills maps to the dark surface via the mirror. */}
       {totalReady > 0 && (
         <div className="flex items-center gap-3 flex-wrap rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -108,7 +108,7 @@ export default async function ProjectsPage() {
         </div>
       )}
 
-      {/* Site cards — pseudo-element overlay pattern so the card is clickable
+      {/* Site cards, pseudo-element overlay pattern so the card is clickable
           (→ project page) AND the domain inside is independently clickable
           (→ external site). Valid HTML, no JS, fully keyboard accessible. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -122,7 +122,7 @@ export default async function ProjectsPage() {
             <div className="h-1" style={{ backgroundColor: site.brand }} aria-hidden="true" />
             <div className="p-6">
             <div className="flex items-stretch gap-5">
-              {/* Logo plate stays literally white in both themes — the logo
+              {/* Logo plate stays literally white in both themes, the logo
                   files have white backgrounds, so a themed surface would clash. */}
               <div className="shrink-0 self-center rounded-lg bg-[#fff] p-3 w-36 aspect-[3/2] flex items-center justify-center">
                 <Image
@@ -136,7 +136,7 @@ export default async function ProjectsPage() {
 
               <div className="flex-1 min-w-0 flex flex-col justify-between gap-4">
                 <div className="min-w-0">
-                  {/* Title link — its ::before spans the whole <article>,
+                  {/* Title link, its ::before spans the whole <article>,
                       so any click on the card (outside other links) goes here. */}
                   <h2 className={`text-2xl leading-tight ${site.titleCls}`}>
                     <Link
@@ -146,7 +146,7 @@ export default async function ProjectsPage() {
                       {site.name}
                     </Link>
                   </h2>
-                  {/* Domain link — `relative z-10` lifts it above the ::before,
+                  {/* Domain link, `relative z-10` lifts it above the ::before,
                       so clicks here open the external site instead of the title link. */}
                   <a
                     href={`https://${site.domain}`}
@@ -179,7 +179,7 @@ export default async function ProjectsPage() {
             </div>
             </div>
 
-            {/* Stats — three at-a-glance numbers, unified into the card with a
+            {/* Stats: three at-a-glance numbers, unified into the card with a
                 top-border divider (matches the handoff). Non-interactive, so
                 sitting under the card-wide ::before link is harmless. */}
             <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-200">
@@ -204,7 +204,7 @@ export default async function ProjectsPage() {
         ))}
       </div>
 
-      {/* Workflow — end-to-end, in execution order.
+      {/* Workflow: end-to-end, in execution order.
           Each step is tagged Auto (system + Monday API do it) or Manual
           (a person, normally SEO 2, does it). The same list serves three
           masters: human instructions, Monday workflow design, and the
@@ -231,7 +231,7 @@ export default async function ProjectsPage() {
         <ol className="space-y-3 text-sm text-slate-600">
           {/* `w` (where) names the primary actor of the step. Cross-boundary
               actions (e.g. system writes to Monday) tag the actor, not the
-              destination — answers "where do I look to see this happen?". */}
+              destination, answers "where do I look to see this happen?". */}
           {([
             { m: 'auto',   w: 'monday',    t: 'Publishing item moves to Done → Monday automation sets Href Links to "Run Link"' },
             { m: 'auto',   w: 'system',    t: 'Monday webhook fires; the system receives the "Run Link" trigger' },
@@ -266,7 +266,7 @@ export default async function ProjectsPage() {
           ))}
         </ol>
 
-        {/* Project-specific quality steps — performed by SEO 2 on top of the
+        {/* Project-specific quality steps, performed by SEO 2 on top of the
             general flow. Kept project-scoped because they differ between sites. */}
         <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mt-6 mb-2">AAAF only</div>
         <ul className="space-y-2 text-sm text-slate-600">
@@ -284,7 +284,7 @@ export default async function ProjectsPage() {
         </ul>
       </div>
 
-      {/* Resources — links from the original Sheets Instructions tab */}
+      {/* Resources: links from the original Sheets Instructions tab */}
       <div className="rounded-lg bg-white border border-slate-200 p-5">
         <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink mb-3">Resources</h3>
         <ul className="space-y-2 text-sm">
@@ -316,7 +316,7 @@ export default async function ProjectsPage() {
               >
                 {r.label} ↗
               </a>
-              {r.note && <span className="text-muted"> — {r.note}</span>}
+              {r.note && <span className="text-muted">, {r.note}</span>}
             </li>
           ))}
         </ul>

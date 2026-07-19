@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * LoginForm — magic-link request form.
+ * LoginForm: magic-link request form.
  *
  * Layer 1 of defense-in-depth: client-side email domain validation for instant
  * feedback. The server (sendMagicLink) and the DB trigger re-validate.
@@ -19,7 +19,7 @@ export function LoginForm() {
   const [sending, startSend] = useTransition()
   // Pre-populate with any ?error= the auth callback may have set.
   const [error, setError] = useState<string | null>(searchParams.get('error'))
-  // Where to land after login — captured by the proxy as ?next=… (validated
+  // Where to land after login, captured by the proxy as ?next=… (validated
   // server-side and again in the callback before it's used for a redirect).
   const next = searchParams.get('next') ?? undefined
 
@@ -46,7 +46,7 @@ export function LoginForm() {
     return (
       <div role="status" className="space-y-3 text-center">
         {/* Custom line-icon (system style) in a teal-soft chip; floats gently
-            — the animation is disabled under prefers-reduced-motion. */}
+, the animation is disabled under prefers-reduced-motion. */}
         <div className="flex justify-center">
           <span className="tn-mail inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-tn-teal-soft text-tn-teal">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -115,7 +115,7 @@ export function LoginForm() {
       </button>
 
       <p className="text-xs text-muted">
-        We&apos;ll email you a link that signs you in — no password needed.
+        We&apos;ll email you a link that signs you in, no password needed.
       </p>
     </form>
   )

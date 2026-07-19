@@ -1,5 +1,5 @@
 /**
- * GET /api/targets — reads publishing targets from Supabase.
+ * GET /api/targets, reads publishing targets from Supabase.
  *
  * Ported from the COE Dashboard (api/targets.js) into the unified portal.
  *
@@ -9,7 +9,7 @@
  *
  * NOTE: the `publishing_targets` table lands in the portal's Supabase in a
  * later migration step. Until then this returns a 502, and the dashboard falls
- * back to its hardcoded PUBLISHING_TARGETS_FALLBACK — so wiring it now is safe.
+ * back to its hardcoded PUBLISHING_TARGETS_FALLBACK, so wiring it now is safe.
  *
  * Cache: 5min CDN cache + 24h stale-while-revalidate.
  */
@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 export const maxDuration = 10
-// Supabase is in us-east-1 (North Virginia) — keep this function next to it.
+// Supabase is in us-east-1 (North Virginia), keep this function next to it.
 export const preferredRegion = 'iad1'
 export const dynamic = 'force-dynamic'
 

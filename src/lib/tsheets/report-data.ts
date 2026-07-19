@@ -1,4 +1,4 @@
-// Shared loader for the i7 Budget Usage Report — used by both the interactive
+// Shared loader for the i7 Budget Usage Report, used by both the interactive
 // report page and the print/PDF page. Reads everything from the local cache
 // (kept fresh by the background sync): the Project → Job code → Activity tree,
 // the per-project budget-hours guide, the carryover balance, and the Jan→month
@@ -36,7 +36,7 @@ function rateFor(assignments: Assignment[], userId: number, ym: string): number 
   return best ? best.rate : 0
 }
 
-/** The "standard" i7 hourly rate for a month — the most common active rate. */
+/** The "standard" i7 hourly rate for a month, the most common active rate. */
 function standardI7Rate(assignments: Assignment[], ym: string): number {
   const userIds = [...new Set(assignments.map(a => a.userId))]
   const counts = new Map<number, number>()
@@ -112,7 +112,7 @@ export interface BudgetInputs {
   flat: Record<string, number>   // i7_monthly_budget: budget_amount + extra_amount per month
 }
 
-// The month's total $ budget (budget + extra) per month — the source of truth.
+// The month's total $ budget (budget + extra) per month, the source of truth.
 async function loadBudgetInputs(): Promise<BudgetInputs> {
   const supabase = await createClient()
   const { data } = await supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount')
@@ -141,7 +141,7 @@ export interface ProjectDirectoryRow {
 export interface ProjectDirectory {
   clientName: string
   month: string           // the YYYY-MM the rate was resolved for
-  highestRate: number     // the highest Rate/client in People & rates — the uniform rate used ONLY to estimate allocatable hours
+  highestRate: number     // the highest Rate/client in People & rates, the uniform rate used ONLY to estimate allocatable hours
   rows: ProjectDirectoryRow[]
 }
 
@@ -187,7 +187,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   ])
 
   // Monthly $ budget = the flat i7_monthly_budget (budget + extra). The total
-  // budget for the month is the source of truth — NOT derived from hours × rate.
+  // budget for the month is the source of truth, NOT derived from hours × rate.
   // Budgeted hours per project are a separate planning estimate; actual usage is
   // per-person TSheets hours × their Rate/client (report.totalCost, below).
   const monthlyBudgets: Record<string, number> = { ...budgetInputs.flat }

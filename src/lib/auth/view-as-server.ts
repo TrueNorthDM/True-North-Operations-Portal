@@ -1,4 +1,4 @@
-// view-as-server.ts — resolve the active View Stage impersonation for THIS
+// view-as-server.ts: resolve the active View Stage impersonation for THIS
 // request. The middleware relays the iframe's ?_vs=<token> into the x-vs request
 // header; here we verify it and confirm the current (real) user is the admin who
 // signed it, so a leaked token can't be used by anyone else.

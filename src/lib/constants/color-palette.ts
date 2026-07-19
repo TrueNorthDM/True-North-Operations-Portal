@@ -1,4 +1,4 @@
-// Team colour palette — the swatch set for the Teams-tab colour picker. Mirrors
+// Team colour palette, the swatch set for the Teams-tab colour picker. Mirrors
 // the palette used in the group's other portals (Clinica Sentido) so a colour
 // chosen here reads the same across products. 21 hues, warm → cool; a team with
 // no chosen colour falls back to DEFAULT_COLOR.
@@ -12,7 +12,7 @@ export const COLOR_PALETTE = [
 export const DEFAULT_COLOR = '#6D5EF5'
 
 // Readable ink/white for text drawn ON a swatch, via YIQ perceived brightness.
-// Light swatches (yiq ≥ 160) get dark ink; dark swatches get white — used for
+// Light swatches (yiq ≥ 160) get dark ink; dark swatches get white, used for
 // the check mark on the selected colour.
 export function textColorFor(hex: string): string {
   const h = hex.replace('#', '')

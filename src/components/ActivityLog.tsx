@@ -1,14 +1,14 @@
 'use client'
 
 /**
- * ActivityLog — collapsible feed of recent Monday webhook events for one site.
+ * ActivityLog: collapsible feed of recent Monday webhook events for one site.
  *
  * Collapsed by default to keep the project page focused on its primary
  * job (managing pages). When something interesting happens (a recent
  * event in the last 5 minutes) we hint with a small green dot, so the
  * user knows it's worth expanding without forcing them to look.
  *
- * Receives pre-shaped rows from a Server Component — no API call from the
+ * Receives pre-shaped rows from a Server Component, no API call from the
  * client. Refreshes naturally when the project page revalidates.
  */
 
@@ -31,7 +31,7 @@ interface Props {
 
 /**
  * Visual style per tag. Same shape as the System / Monday / WordPress
- * badges in the dashboard's "How to do this" section — keeps the visual
+ * badges in the dashboard's "How to do this" section, keeps the visual
  * grammar consistent: small uppercase pill with bg/text/border in the
  * same color family.
  */

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * ProjectRows — the "In Numbers" pivot rows for one project (Project → Job code
+ * ProjectRows: the "In Numbers" pivot rows for one project (Project → Job code
  * → Activity), with one HOURS cell per person column. Split out of I7Report
  * (audit M5-2). Stateless: expand state + toggles come from the parent via props.
  */
@@ -26,7 +26,7 @@ function PersonCells({ people, byPerson, muted }: { people: string[]; byPerson: 
         const h = byPerson[name] ?? 0
         return (
           <td key={name} className={`px-3 py-2 text-right tabular-nums whitespace-nowrap ${muted ? 'text-muted text-[13px]' : 'text-foreground'}`}>
-            {h ? fmtHours(h) : <span className="text-slate-300">—</span>}
+            {h ? fmtHours(h) : <span className="text-slate-300">-</span>}
           </td>
         )
       })}
@@ -49,7 +49,7 @@ export function ProjectRows({ project, people, pOpen, openCodes, showCost, showB
 }) {
   const avail = budgetHours != null ? budgetHours - project.hours : null
   const dollarAvail = avail != null && showBudgetAvail ? avail * stdRate : null
-  // Empty cells to keep alignment on job-code / activity rows — one per
+  // Empty cells to keep alignment on job-code / activity rows, one per
   // project-only column (Budget hrs, Hrs avail., and optionally Budget avail.).
   const emptyCount = (showBudget ? 2 : 0) + (showBudgetAvail ? 1 : 0)
   const emptyBudget = emptyCount > 0 ? Array.from({ length: emptyCount }, (_, i) => <td key={i} className="bg-[rgba(30,125,127,0.06)]" />) : null
@@ -59,7 +59,7 @@ export function ProjectRows({ project, people, pOpen, openCodes, showCost, showB
 
   return (
     <>
-      {/* Level 1 — Project (budget columns live here) */}
+      {/* Level 1, Project (budget columns live here) */}
       <tr className="border-b border-slate-100 hover:bg-subtle/60 cursor-pointer" onClick={onToggleProject}>
         <td className="px-4 py-3 sticky left-0 bg-white z-10">
           <div className="flex items-center gap-2">
@@ -68,15 +68,15 @@ export function ProjectRows({ project, people, pOpen, openCodes, showCost, showB
             <span className="text-xs text-muted whitespace-nowrap">{project.jobcodes.length} job code{project.jobcodes.length !== 1 ? 's' : ''}</span>
           </div>
         </td>
-        {showBudget && <td className={`px-3 py-3 text-right text-foreground tabular-nums ${tealCell}`}>{budgetHours != null ? budgetHours.toLocaleString() : <span className="text-slate-300">—</span>}</td>}
-        {showBudget && <td className={`px-3 py-3 text-right font-semibold tabular-nums ${tealCell} ${avail != null && avail < 0 ? 'text-[#c2410c]' : 'text-foreground'}`}>{avail != null ? avail.toFixed(2) : <span className="text-slate-300">—</span>}</td>}
-        {showBudgetAvail && <td className={`px-3 py-3 text-right font-semibold tabular-nums ${tealCell} ${dollarAvail != null && dollarAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{dollarAvail != null ? moneySigned(dollarAvail) : <span className="text-slate-300">—</span>}</td>}
-        {showCost && <td className={`px-3 py-3 text-right font-(family-name:--font-display) font-bold text-tn-ink tabular-nums ${budgetUsedCell}`}>{project.cost > 0 ? money(project.cost) : <span className="text-slate-300">—</span>}</td>}
+        {showBudget && <td className={`px-3 py-3 text-right text-foreground tabular-nums ${tealCell}`}>{budgetHours != null ? budgetHours.toLocaleString() : <span className="text-slate-300">-</span>}</td>}
+        {showBudget && <td className={`px-3 py-3 text-right font-semibold tabular-nums ${tealCell} ${avail != null && avail < 0 ? 'text-[#c2410c]' : 'text-foreground'}`}>{avail != null ? avail.toFixed(2) : <span className="text-slate-300">-</span>}</td>}
+        {showBudgetAvail && <td className={`px-3 py-3 text-right font-semibold tabular-nums ${tealCell} ${dollarAvail != null && dollarAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{dollarAvail != null ? moneySigned(dollarAvail) : <span className="text-slate-300">-</span>}</td>}
+        {showCost && <td className={`px-3 py-3 text-right font-(family-name:--font-display) font-bold text-tn-ink tabular-nums ${budgetUsedCell}`}>{project.cost > 0 ? money(project.cost) : <span className="text-slate-300">-</span>}</td>}
         <PersonCells people={people} byPerson={project.byPerson} />
         <td className={`px-3 py-3 text-right font-(family-name:--font-display) font-bold text-tn-ink tabular-nums ${goldCell}`}>{fmtHours(project.hours)}</td>
       </tr>
 
-      {/* Level 2 — Job codes */}
+      {/* Level 2, Job codes */}
       {pOpen && project.jobcodes.map(jc => {
         const key = `${project.project}|${jc.code}`
         const hasActs = jc.activities.length > 0
@@ -91,12 +91,12 @@ export function ProjectRows({ project, people, pOpen, openCodes, showCost, showB
                 </div>
               </td>
               {emptyBudget}
-              {showCost && <td className={`px-3 py-2.5 text-right text-foreground tabular-nums ${budgetUsedCell}`}>{jc.cost > 0 ? money(jc.cost) : <span className="text-slate-300">—</span>}</td>}
+              {showCost && <td className={`px-3 py-2.5 text-right text-foreground tabular-nums ${budgetUsedCell}`}>{jc.cost > 0 ? money(jc.cost) : <span className="text-slate-300">-</span>}</td>}
               <PersonCells people={people} byPerson={jc.byPerson} />
               <td className={`px-3 py-2.5 text-right text-tn-ink tabular-nums ${goldCell}`}>{fmtHours(jc.hours)}</td>
             </tr>
 
-            {/* Level 3 — Activities (leaf rows) */}
+            {/* Level 3, Activities (leaf rows) */}
             {cOpen && jc.activities.map((a, i) => (
               <tr key={i} className="border-b border-slate-50">
                 <td className="px-4 py-2 text-foreground sticky left-0 bg-white z-10">
@@ -106,7 +106,7 @@ export function ProjectRows({ project, people, pOpen, openCodes, showCost, showB
                   </div>
                 </td>
                 {emptyBudget}
-                {showCost && <td className={`px-3 py-2 text-right text-muted tabular-nums ${budgetUsedCell}`}>{a.cost > 0 ? money(a.cost) : <span className="text-slate-300">—</span>}</td>}
+                {showCost && <td className={`px-3 py-2 text-right text-muted tabular-nums ${budgetUsedCell}`}>{a.cost > 0 ? money(a.cost) : <span className="text-slate-300">-</span>}</td>}
                 <PersonCells people={people} byPerson={a.byPerson} muted />
                 <td className={`px-3 py-2 text-right text-foreground tabular-nums ${goldCell}`}>{fmtHours(a.hours)}</td>
               </tr>

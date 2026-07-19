@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * TranslationView — the Boards Review "Translation" pipeline, native React.
+ * TranslationView: the Boards Review "Translation" pipeline, native React.
  *
  * Fetches the translation boards' snapshot once, enriches client-side with the
  * ported evalPipeline engine, and renders a filterable table: current stage,
@@ -109,7 +109,7 @@ export function TranslationView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Boards Review</h1>
-        <p className="mt-1 text-sm text-slate-500">Translation pipeline <span className="text-slate-400">(beta — native rewrite)</span></p>
+        <p className="mt-1 text-sm text-slate-500">Translation pipeline <span className="text-slate-400">(beta, native rewrite)</span></p>
       </div>
 
       <BoardsTabs />
@@ -197,9 +197,9 @@ export function TranslationView() {
                         <span className="ml-2 text-xs text-slate-400">{it.stageValue}</span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">{it.currentOwners.join(', ') || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{it.currentOwners.join(', ') || <span className="text-slate-300">-</span>}</td>
                     <td className="px-4 py-2.5 text-slate-600">
-                      {it.subitemProgress ? `${it.subitemProgress.done}/${it.subitemProgress.total}` : <span className="text-slate-300">—</span>}
+                      {it.subitemProgress ? `${it.subitemProgress.done}/${it.subitemProgress.total}` : <span className="text-slate-300">-</span>}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">{fmtDays(businessDays(it.stageDays))}</td>
                   </tr>

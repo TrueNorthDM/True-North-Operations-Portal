@@ -1,5 +1,5 @@
 /**
- * role.ts — read the signed-in user's profile/role, server-side.
+ * role.ts: read the signed-in user's profile/role, server-side.
  *
  * The profiles table + admin/viewer role came in with the merge (migration
  * 007). Used to gate the publishing-targets editor: admins edit, viewers read.
@@ -32,7 +32,7 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
 /**
  * The signed-in user's access tier (Part 4), from people.role_type. Safety net:
  * a real portal admin (profiles.role = 'admin') is always privileged, even if
- * their account isn't linked to a directory person yet — so nobody with the
+ * their account isn't linked to a directory person yet, so nobody with the
  * hard admin gate is ever locked into the restricted UI by a missing link.
  */
 export async function getCurrentTier(): Promise<Tier> {

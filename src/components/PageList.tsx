@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * PageList — interactive list view shared by /aaaf and /hfa.
+ * PageList: interactive list view shared by /aaaf and /hfa.
  *
  * The Server Components fetch and shape data, then pass it to this Client
- * Component. Search/filter/sort all live here as local state — no network
+ * Component. Search/filter/sort all live here as local state, no network
  * roundtrips, so it's instant even on 100+ pages.
  */
 
@@ -15,7 +15,7 @@ import { Tooltip, Popover, PopoverItem, SortHeader } from './PageListParts'
 
 // Language chips use flag colours (matches the handoff): filled when the system
 // holds the URL for that language, a muted track when not. Literal hex, so they
-// read identically in light and dark — same as the prototype.
+// read identically in light and dark, same as the prototype.
 const LANG_FLAG: Record<string, { bg: string; text: string }> = {
   en: { bg: '#111111', text: '#ffffff' },
   pt: { bg: '#009C3B', text: '#ffffff' },
@@ -49,7 +49,7 @@ export interface PageListRow {
   id: string
   name: string
   langStatus: Record<string, { hasUrl: boolean; confirmed: boolean }>
-  /** Flagged after a language config change — page may have stale hreflang. */
+  /** Flagged after a language config change, page may have stale hreflang. */
   needsUpdate?: boolean
   /** Intentional opt-out: counts as done in progress; shown faded in the list. */
   notRelevant?: boolean
@@ -70,8 +70,8 @@ function formatDoneDate(iso: string | null | undefined): string | null {
 
 // ── Row groups ────────────────────────────────────────────────────
 // Three buckets based on the user's mental model:
-//   - On-going    : active work — neither completed nor opted out
-//   - Completed   : strict definition — confirmed_done_at is stamped
+//   - On-going    : active work, neither completed nor opted out
+//   - Completed   : strict definition, confirmed_done_at is stamped
 //   - Not relevant: explicitly opted out of the workflow
 // Module-level (pure) so the grouping useMemo can depend on `groupOf` safely.
 type GroupKey = 'ongoing' | 'completed' | 'not_relevant'
@@ -113,7 +113,7 @@ const accentMap = {
 
 export function PageList({ rows, languages, siteCode, accent }: Props) {
   const a = accentMap[accent]
-  // Search stays as plain state — typing into the URL on every keystroke
+  // Search stays as plain state, typing into the URL on every keystroke
   // would spam history. Filter/sort are URL-backed so a filtered view is
   // shareable via link.
   const [search, setSearch] = useState('')
@@ -139,7 +139,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
 
   // Single helper used by every dropdown + every sortable header to write
   // back to the URL. Empty/null values get deleted (URL stays clean for
-  // defaults — no `?status=all` clutter).
+  // defaults, no `?status=all` clutter).
   function updateUrl(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
     for (const [k, v] of Object.entries(patch)) {
@@ -176,7 +176,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     [],
   )
 
-  // "Not relevant" pages are explicitly opted out — they count as done for
+  // "Not relevant" pages are explicitly opted out, they count as done for
   // progress, filtering, and the "Done" status pill. Memoized (deps: languages)
   // so the filtering useMemos can list them without re-running every render.
   const isDone = useCallback((r: PageListRow) => {
@@ -215,7 +215,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
       if (sortKey === 'hreflang_status') {
         cmp = urlCount(x) - urlCount(y)
       } else if (sortKey === 'all_live') {
-        // Nulls last in asc, first in desc — so dates always group together
+        // Nulls last in asc, first in desc, so dates always group together
         const tx = x.confirmedDoneAt ? new Date(x.confirmedDoneAt).getTime() : null
         const ty = y.confirmedDoneAt ? new Date(y.confirmedDoneAt).getTime() : null
         if (tx === ty) cmp = 0
@@ -248,9 +248,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
   // defaults, then hydrates on mount.
   const COLLAPSE_KEY = `pageList:${siteCode}:groups`
   const [collapsed, setCollapsed] = useState<Record<GroupKey, boolean>>({
-    ongoing: false,        // active work — open by default
-    completed: true,       // reference / archive — closed by default
-    not_relevant: true,    // archive — closed by default
+    ongoing: false,        // active work, open by default
+    completed: true,       // reference / archive, closed by default
+    not_relevant: true,    // archive, closed by default
   })
   useEffect(() => {
     try {
@@ -261,7 +261,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         if (parsed && typeof parsed === 'object') setCollapsed(c => ({ ...c, ...parsed }))
       }
-    } catch { /* localStorage unavailable — keep defaults */ }
+    } catch { /* localStorage unavailable, keep defaults */ }
   // Only hydrate on mount per site; intentionally ignore COLLAPSE_KEY dep.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteCode])
@@ -277,7 +277,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
 
   return (
     <>
-      {/* Toolbar — search + filter dropdowns + counts. */}
+      {/* Toolbar: search + filter dropdowns + counts. */}
       <div className="rounded-xl bg-white border border-slate-200 p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">
@@ -305,7 +305,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
           )}
         </div>
 
-        {/* Status dropdown — single select. Button shows the active value
+        {/* Status dropdown, single select. Button shows the active value
             so users don't have to open the menu to remember. */}
         <Popover
           label={
@@ -356,7 +356,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
           )}
         </Popover>
 
-        {/* Has-language dropdown — multi-select (OR). Button shows current
+        {/* Has-language dropdown, multi-select (OR). Button shows current
             count so the toolbar communicates state without opening it. */}
         <Popover
           label={
@@ -421,7 +421,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
         {filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-slate-400 text-sm">
             {rows.length === 0
-              ? <>No pages yet — they sync automatically from Monday.com.</>
+              ? <>No pages yet, they sync automatically from Monday.com.</>
               : <>No pages match the current search/filter.</>}
           </div>
         ) : (
@@ -430,7 +430,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                 and truncates with ellipsis on overflow. Status pills no longer
                 wrap to 2 lines. */}
             <colgroup>
-              {/* Page name absorbs all remaining width — keep it first/flex
+              {/* Page name absorbs all remaining width, keep it first/flex
                   so long names use as much room as possible. The trailing
                   action col is just an eye icon, so w-12 is enough. */}
               <col />
@@ -500,7 +500,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                     </tr>
                     {isOpen && groupRows.map((r, i) => {
                       const done = isDone(r)
-                // HREFLANG (SYSTEM) tracks what THIS system holds — i.e.
+                // HREFLANG (SYSTEM) tracks what THIS system holds, i.e.
                 // URLs received from the Monday Run Link webhook. So we
                 // color and count by `hasUrl`. The final "✓ Done" pill
                 // still uses `confirmed` because that means all langs
@@ -526,7 +526,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                             className="shrink-0 text-amber-700"
                             aria-label="Needs update"
                           >
-                            <title>Language config changed — this page needs URLs reviewed</title>
+                            <title>Language config changed, this page needs URLs reviewed</title>
                             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                             <path d="M12 9v4M12 17h.01" />
                           </svg>
@@ -548,7 +548,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       </div>
                     </td>
 
-                    {/* HREFLANG (system) — languages */}
+                    {/* HREFLANG (system), languages */}
                     <td className="px-5 py-4 border-l border-slate-100">
                       <div className="flex gap-1">
                         {languages.map(lang => {
@@ -575,7 +575,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       </div>
                     </td>
 
-                    {/* HREFLANG (system) — status */}
+                    {/* HREFLANG (system), status */}
                     <td className="px-5 py-4">
                       <span
                         className={`inline-flex items-center text-[11.5px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
@@ -593,12 +593,12 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       </span>
                     </td>
 
-                    {/* HREFLANG (system) — done date */}
+                    {/* HREFLANG (system), done date */}
                     <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">
-                      {formatDoneDate(r.confirmedDoneAt) ?? <span className="text-slate-300">—</span>}
+                      {formatDoneDate(r.confirmedDoneAt) ?? <span className="text-slate-300">-</span>}
                     </td>
 
-                    {/* ACTIONS — View only. Copy lives on the detail card. */}
+                    {/* ACTIONS: View only. Copy lives on the detail card. */}
                     <td className="px-3 py-4 text-right">
                       <Tooltip label="View page">
                         <Link

@@ -1,4 +1,4 @@
-// My profile — the signed-in user's own directory card (read-only). Opened from
+// My profile, the signed-in user's own directory card (read-only). Opened from
 // the avatar menu. Any authenticated user can see their own record; editing
 // stays in the admin Directory. Deliberately omits internal cost rate.
 
@@ -17,7 +17,7 @@ import { PersonalDetails } from '@/components/PersonalDetails'
 export const dynamic = 'force-dynamic'
 
 // The subset PROFILE_COLS fetches. (A concatenated select string isn't a literal,
-// so the client can't infer the row shape — we cast to this.)
+// so the client can't infer the row shape, we cast to this.)
 type MeRow = Pick<PersonRow,
   'id' | 'full_name' | 'last_name' | 'title' | 'manager_id' | 'also_reports_to_id' | 'reports_to_manager'
   | 'manager_name_text' | 'employment_type' | 'schedule' | 'weekly_hours' | 'status' | 'role_type' | 'phone'
@@ -32,7 +32,7 @@ const PROFILE_COLS =
   'email_true_north, email_goodnews, email_coe, email_personal, employment_history, monday_docs'
 
 function Badge({ pill }: { pill: Pill | null }) {
-  if (!pill) return <span className="text-[13.5px] text-foreground font-semibold">—</span>
+  if (!pill) return <span className="text-[13.5px] text-foreground font-semibold">-</span>
   return <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
 }
 
@@ -44,7 +44,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     </div>
   )
 }
-const txt = (v: string | null | undefined) => <span className="text-[13.5px] text-foreground font-semibold">{v || '—'}</span>
+const txt = (v: string | null | undefined) => <span className="text-[13.5px] text-foreground font-semibold">{v || '-'}</span>
 const mail = (v: string | null) => (v ? <a href={`mailto:${v}`} className="text-[13.5px] font-semibold text-tn-teal truncate inline-block max-w-[220px] align-bottom">{v}</a> : txt(null))
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -120,13 +120,13 @@ export default async function ProfilePage() {
       </div>
 
       <div className="rounded-[18px] border border-slate-200 bg-white overflow-hidden">
-        {/* header — larger avatar */}
+        {/* header, larger avatar */}
         <div className="px-8 pt-8 pb-6 border-b border-slate-200 flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-6 min-w-0">
             <ProfileAvatar name={me.full_name} avatarUrl={avatarUrl} color={TEAM_COLOR[teamKey]} size={120} />
             <div className="min-w-0">
               <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink leading-tight m-0">{me.full_name}</h1>
-              <p className="text-[15px] text-muted mt-1 font-semibold">{me.title || '—'}</p>
+              <p className="text-[15px] text-muted mt-1 font-semibold">{me.title || '-'}</p>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: TEAM_COLOR[teamKey], background: `${TEAM_COLOR[teamKey]}1a` }}>{teamName ?? 'No team'}</span>
                 <Badge pill={roleTypePill(me.role_type ?? 'user')} />
@@ -137,7 +137,7 @@ export default async function ProfilePage() {
           {isPrivileged && <Link href="/directory" className="shrink-0 inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">Manage in People &amp; Teams →</Link>}
         </div>
 
-        {/* Part 1 — the person's own, editable details */}
+        {/* Part 1, the person's own, editable details */}
         <div className="px-8 pt-6 pb-6 border-b border-slate-200">
           <PersonalDetails initial={{
             lastName: me.last_name ?? '',
@@ -149,7 +149,7 @@ export default async function ProfilePage() {
           }} />
         </div>
 
-        {/* Part 2 — HR-managed, read-only for the user (future HR module) */}
+        {/* Part 2, HR-managed, read-only for the user (future HR module) */}
         <div className="px-8 pt-6 pb-6">
           <div className="flex items-center gap-2 mb-1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8593a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
@@ -201,7 +201,7 @@ export default async function ProfilePage() {
                   <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px]" style={{ width: 30, height: 30, background: TEAM_COLOR[teamKey] }}>{initialsOf(m.full_name)}</span>
                   <span className="min-w-0">
                     <span className="block text-[13.5px] font-bold text-tn-ink truncate">{m.full_name}</span>
-                    <span className="block text-xs text-muted truncate">{m.title ?? '—'}</span>
+                    <span className="block text-xs text-muted truncate">{m.title ?? '-'}</span>
                   </span>
                 </div>
               ))}

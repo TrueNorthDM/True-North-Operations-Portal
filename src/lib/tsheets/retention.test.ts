@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { retentionFloor, availableMonths, editableMonths, pastMonths, DATA_START } from './retention'
 
-// Month is 0-indexed in `new Date(y, m, d)` — so (2026, 6, …) is July 2026.
+// Month is 0-indexed in `new Date(y, m, d)`, so (2026, 6, …) is July 2026.
 
 describe('retentionFloor', () => {
   it('floors at DATA_START when the rolling window predates our data', () => {

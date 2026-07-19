@@ -1,9 +1,9 @@
 'use client'
 
-// Print/PDF layouts for the i7 Budget Usage Report — two bespoke documents:
-//   internal — full detail: invoice reconciliation, per-person table grouped by
+// Print/PDF layouts for the i7 Budget Usage Report, two bespoke documents:
+//   internal, full detail: invoice reconciliation, per-person table grouped by
 //              invoice (i7 vs MME), team workload / cost / utilization charts.
-//   client   — client-facing: "Your month at a glance", friendly copy, billing
+//   client, client-facing: "Your month at a glance", friendly copy, billing
 //              blocks, budget-health gauge, investment + activity charts,
 //              highlights. No internal costs or staff names.
 // Colours are hardcoded hex (print must be identical regardless of theme and
@@ -63,7 +63,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   useEffect(() => {
     document.documentElement.classList.remove('dark')
     document.documentElement.style.colorScheme = 'light'
-    // Server-side PDF (Puppeteer, ?pdf=1) prints via page.pdf() itself — don't
+    // Server-side PDF (Puppeteer, ?pdf=1) prints via page.pdf() itself, don't
     // pop the browser print dialog in that headless render.
     if (new URLSearchParams(window.location.search).has('pdf')) return
     const t = setTimeout(() => window.print(), 700) // let the SVG charts paint first
@@ -74,7 +74,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   const totalCost = report.totalCost
   const monthShort = monthLabel.split(' ')[0]
 
-  // Invoice split — MME is billed separately; everything else is the i7 invoice.
+  // Invoice split, MME is billed separately; everything else is the i7 invoice.
   const i7Projects = report.projects.filter(p => !isMME(p.project))
   const mmeProjects = report.projects.filter(p => isMME(p.project))
   const i7Cost = i7Projects.reduce((s, p) => s + p.cost, 0)
@@ -160,7 +160,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           {/* summary cards */}
           <div className="grid grid-cols-4 gap-3.5 mt-4">
             {[
-              { l: 'Budget available', v: carryover ? moneySigned(carryover.totalAvailable) : '—', c: INK },
+              { l: 'Budget available', v: carryover ? moneySigned(carryover.totalAvailable) : '-', c: INK },
               { l: 'Total work delivered', v: money(totalCost), c: INK },
               { l: 'Hours delivered', v: report.totalHours.toFixed(2), c: INK },
             ].map(x => (
@@ -276,7 +276,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             </div>
           )}
 
-          {/* charts — flow naturally after the tables; Puppeteer paginates and
+          {/* charts, flow naturally after the tables; Puppeteer paginates and
               numbers every page (no forced section break). */}
           <div className="grid grid-cols-2 gap-3.5 items-stretch break-inside-avoid mt-3">
             <div className="rounded-[12px] p-[7px_16px] flex flex-col" style={{ border: `1px solid ${BORDER}` }}>
@@ -344,16 +344,16 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     const budget = projectHours[p.project] ?? 0
     const avail = budget - p.hours
     const cells = (bp: Record<string, number>, faint = false) => report.people.map(n => (
-      <td key={n} className={`p-[4px_3px] text-right tabular-nums text-[9.9px] ${faint ? 'opacity-70' : ''}`} style={{ color: faint ? MUTED : BODY }}>{bp[n] ? fmtHours(bp[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>
+      <td key={n} className={`p-[4px_3px] text-right tabular-nums text-[9.9px] ${faint ? 'opacity-70' : ''}`} style={{ color: faint ? MUTED : BODY }}>{bp[n] ? fmtHours(bp[n]) : <span style={{ color: '#cbd5e1' }}>-</span>}</td>
     ))
     return (
       <Fragment key={p.project}>
         <tr style={{ borderBottom: `1px solid ${TRACK}` }}>
           <td className="p-[6px_16px] font-(family-name:--font-display) font-bold whitespace-nowrap" style={{ color: INK }}>{p.project}</td>
-          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? budget.toLocaleString() : '—'}</td>
-          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: avail < 0 ? RED : BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? avail.toFixed(2) : '—'}</td>
-          {showBudgetAvail && <td className="p-[6px_9px] text-right tabular-nums font-semibold" style={{ color: avail < 0 ? RED : INK, background: 'rgba(30,125,127,.05)' }}>{budget ? moneySigned(avail * stdRate) : '—'}</td>}
-          {showCost && <td className="p-[6px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{p.cost > 0 ? money(p.cost) : '—'}</td>}
+          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? budget.toLocaleString() : '-'}</td>
+          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: avail < 0 ? RED : BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? avail.toFixed(2) : '-'}</td>
+          {showBudgetAvail && <td className="p-[6px_9px] text-right tabular-nums font-semibold" style={{ color: avail < 0 ? RED : INK, background: 'rgba(30,125,127,.05)' }}>{budget ? moneySigned(avail * stdRate) : '-'}</td>}
+          {showCost && <td className="p-[6px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{p.cost > 0 ? money(p.cost) : '-'}</td>}
           {cells(p.byPerson)}
           <td className="p-[6px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(242,196,10,.09)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(p.hours)}</td>
         </tr>
@@ -362,7 +362,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             <tr style={{ borderBottom: `1px solid #f4f5f7` }}>
               <td className="p-[5px_16px] pl-8 font-medium text-[10.4px]" style={{ color: BODY }}>{jc.code}</td>
               <td style={{ background: 'rgba(30,125,127,.05)' }} /><td style={{ background: 'rgba(30,125,127,.05)' }} />{showBudgetAvail && <td style={{ background: 'rgba(30,125,127,.05)' }} />}
-              {showCost && <td className="p-[5px_9px] text-right tabular-nums text-[9.9px]" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{jc.cost > 0 ? money(jc.cost) : '—'}</td>}
+              {showCost && <td className="p-[5px_9px] text-right tabular-nums text-[9.9px]" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{jc.cost > 0 ? money(jc.cost) : '-'}</td>}
               {cells(jc.byPerson)}
               <td className="p-[5px_9px] text-right tabular-nums text-[9.9px]" style={{ color: BODY, background: 'rgba(242,196,10,.06)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(jc.hours)}</td>
             </tr>
@@ -370,7 +370,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               <tr key={`${p.project}-${jc.code}-${i}`} style={{ borderBottom: `1px solid #f7f8fa` }}>
                 <td className="p-[4px_16px] pl-[52px] text-[9.9px]" style={{ color: MUTED }}>{a.activity}</td>
                 <td style={{ background: 'rgba(30,125,127,.04)' }} /><td style={{ background: 'rgba(30,125,127,.04)' }} />{showBudgetAvail && <td style={{ background: 'rgba(30,125,127,.04)' }} />}
-                {showCost && <td className="p-[4px_9px] text-right tabular-nums text-[9.5px]" style={{ color: MUTED, background: 'rgba(30,125,127,.04)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{a.cost > 0 ? money(a.cost) : '—'}</td>}
+                {showCost && <td className="p-[4px_9px] text-right tabular-nums text-[9.5px]" style={{ color: MUTED, background: 'rgba(30,125,127,.04)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{a.cost > 0 ? money(a.cost) : '-'}</td>}
                 {cells(a.byPerson, true)}
                 <td className="p-[4px_9px] text-right tabular-nums text-[9.5px]" style={{ color: MUTED, background: 'rgba(242,196,10,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(a.hours)}</td>
               </tr>
@@ -396,7 +396,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
         <td className="p-[6px_16px] font-(family-name:--font-display) font-extrabold text-[9px] uppercase tracking-wide" style={{ color }}>{label}</td>
         <td /><td />{showBudgetAvail && <td />}
         {showCost && <td className="p-[6px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color, borderRight: '1px solid rgba(1,35,88,.10)' }}>{money(cost)}</td>}
-        {report.people.map(n => <td key={n} className="p-[6px_3px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{per[n] ? fmtHours(per[n]) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
+        {report.people.map(n => <td key={n} className="p-[6px_3px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{per[n] ? fmtHours(per[n]) : <span style={{ color: '#cbd5e1' }}>-</span>}</td>)}
         <td className="p-[6px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.12)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{fmtHours(hrs)}</td>
       </tr>
     )
@@ -475,7 +475,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               <div className="flex items-center px-2.5 text-white font-(family-name:--font-display) font-extrabold text-[9.5px]" style={{ flexBasis: `${i7Pct}%`, background: TEAL }}>Billed to i7 · {money(i7Cost)}</div>
               <div style={{ flexBasis: `${100 - i7Pct}%`, background: MMEC }} />
             </div>
-            <div className="mt-2 text-[9.5px] leading-relaxed" style={{ color: MUTED }}>Wagner Meters &amp; Bessemeter are billed to i7. <b style={{ color: BODY }}>Moisture Meters (MME)</b> is part of i7’s work report but invoiced separately to Wagner Meter — so the Sheet total is always higher than the i7 invoice by the MME amount.</div>
+            <div className="mt-2 text-[9.5px] leading-relaxed" style={{ color: MUTED }}>Wagner Meters &amp; Bessemeter are billed to i7. <b style={{ color: BODY }}>Moisture Meters (MME)</b> is part of i7’s work report but invoiced separately to Wagner Meter, so the Sheet total is always higher than the i7 invoice by the MME amount.</div>
           </div>
         )}
 
@@ -507,11 +507,11 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               {showCost && mmeProjects.length > 0 && subtotalRow('Subtotal · MME invoice', mmeProjects, MMEC)}
               <tr style={{ borderTop: '2px solid #cfd6de', background: WARM }}>
                 <td className="p-[7px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: INK }}>Total</td>
-                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderLeft: '1px solid rgba(1,35,88,.12)' }}>{totBudget ? totBudget.toLocaleString() : '—'}</td>
-                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '—'}</td>
-                {showBudgetAvail && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '—'}</td>}
+                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderLeft: '1px solid rgba(1,35,88,.12)' }}>{totBudget ? totBudget.toLocaleString() : '-'}</td>
+                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '-'}</td>
+                {showBudgetAvail && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '-'}</td>}
                 {showCost && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderRight: '1px solid rgba(1,35,88,.12)' }}>{money(totalCost)}</td>}
-                {report.people.map(n => <td key={n} className="p-[7px_3px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>—</span>}</td>)}
+                {report.people.map(n => <td key={n} className="p-[7px_3px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>-</span>}</td>)}
                 <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{report.totalHours.toFixed(2)}</td>
               </tr>
             </tbody>
@@ -524,7 +524,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           {' '}The monthly <b style={{ color: BODY }}>budget</b> is built per project from its budgeted hours × the <b style={{ color: BODY }}>average</b> i7 hourly rate of the people assigned to that project.
         </p>
 
-        {/* charts — flow after the table (Puppeteer paginates + numbers). */}
+        {/* charts, flow after the table (Puppeteer paginates + numbers). */}
         <div className="grid grid-cols-[1fr_0.85fr_1.05fr] gap-4 break-inside-avoid mt-4">
           <div className="rounded-[12px] p-[10px_16px]" style={{ border: `1px solid ${BORDER}` }}>
             <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Team workload</div>

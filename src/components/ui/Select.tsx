@@ -1,15 +1,15 @@
 'use client'
 
 /**
- * Select — the portal's custom dropdown, replacing native <select> everywhere.
+ * Select: the portal's custom dropdown, replacing native <select> everywhere.
  *
  * Why not a native <select>? Its option popup is drawn by the OS: it ignores our
  * fonts and follows the system light/dark appearance (a dark popup on a light
- * page). This one is ours end to end — white surface in light mode, dark in dark
+ * page). This one is ours end to end, white surface in light mode, dark in dark
  * (the app's tokens remap under .dark), and the brand display font throughout.
  *
  * The menu is portalled to <body> and positioned `fixed` from the trigger's rect,
- * so it floats above everything and is never clipped inside a scrolling modal —
+ * so it floats above everything and is never clipped inside a scrolling modal,
  * the one thing the native control did for free.
  */
 

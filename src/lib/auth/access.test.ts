@@ -7,7 +7,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth: { getUser }, rpc }),
 }))
 
-// The fail-open path logs via console.error by design — keep test output clean.
+// The fail-open path logs via console.error by design, keep test output clean.
 vi.spyOn(console, 'error').mockImplementation(() => {})
 
 import { getAccessibleSiteIds, canAccessSite } from './access'
@@ -29,7 +29,7 @@ describe('getAccessibleSiteIds', () => {
     expect(await getAccessibleSiteIds()).toEqual(new Set(['a', 'b']))
   })
 
-  it('fails OPEN (null) when the RPC errors — nothing is hidden', async () => {
+  it('fails OPEN (null) when the RPC errors, nothing is hidden', async () => {
     getUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
     rpc.mockResolvedValue({ data: null, error: { message: 'function missing' } })
     expect(await getAccessibleSiteIds()).toBeNull()

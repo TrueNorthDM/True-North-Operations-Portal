@@ -39,7 +39,7 @@ export function PastScheduleTables({ budgets, hours, projects }: {
 
       {months.length === 0 ? (
         <div className="rounded-[12px] border border-slate-200 bg-white p-6 text-center text-sm text-muted">
-          No past months yet — the schedule starts this month.
+          No past months yet, the schedule starts this month.
         </div>
       ) : (
         <div className="space-y-6">
@@ -68,7 +68,7 @@ export function PastScheduleTables({ budgets, hours, projects }: {
                         const strong = rowKind === 'total'
                         return (
                           <td key={ym} className={`px-3 py-2.5 text-right tabular-nums ${strong ? 'font-bold text-tn-teal' : 'font-semibold text-tn-ink'}`}>
-                            {v ? money(v) : <span className="text-slate-300">—</span>}
+                            {v ? money(v) : <span className="text-slate-300">-</span>}
                           </td>
                         )
                       })}
@@ -100,7 +100,7 @@ export function PastScheduleTables({ budgets, hours, projects }: {
                         const h = hByKey.get(`${p}|${ym}`)
                         return (
                           <td key={ym} className="px-3 py-2.5 text-right tabular-nums font-semibold text-tn-ink">
-                            {h != null && h > 0 ? fmtHrs(h) : <span className="text-slate-300">—</span>}
+                            {h != null && h > 0 ? fmtHrs(h) : <span className="text-slate-300">-</span>}
                           </td>
                         )
                       })}

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * MyWork — the "My Work" screen: everything assigned to the signed-in person,
+ * MyWork: the "My Work" screen: everything assigned to the signed-in person,
  * as a kanban board or a list, with priority filters and a show/hide-done
  * toggle. Data is the in-repo sample (src/lib/mywork/data.ts) until the Monday
  * pull is wired.
@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react'
 import { TASKS, PROJECT_COLOR, PEOPLE, type Prio, type Status } from '@/lib/mywork/data'
 
-// Priority pill styling — theme-aware via the shared --bdg-* badge palette.
+// Priority pill styling, theme-aware via the shared --bdg-* badge palette.
 const PRIO_META: Record<Prio, { label: string; cls: string; rank: number }> = {
   high: { label: 'High', cls: 'text-[var(--bdg-red-fg)] bg-[var(--bdg-red-bg)]', rank: 0 },
   med: { label: 'Medium', cls: 'text-[var(--bdg-gold-fg)] bg-[var(--bdg-gold-bg)]', rank: 1 },

@@ -1,4 +1,4 @@
-// Human Resources — for now, the anniversary badge gallery: every service
+// Human Resources, for now, the anniversary badge gallery: every service
 // milestone (quarterly through the first year, then 1–20 years) with the people
 // who currently hold it. Privileged only. Clicking a person opens their card
 // in place (no navigation).
@@ -52,7 +52,7 @@ export default async function HumanResourcesPage() {
       <div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">Human Resources</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          Anniversary badges — every service milestone and who currently holds it. Click a name to open their card.
+          Anniversary badges, every service milestone and who currently holds it. Click a name to open their card.
         </p>
       </div>
 
@@ -60,7 +60,7 @@ export default async function HumanResourcesPage() {
 
       {underThree > 0 && (
         <p className="text-[12.5px] text-muted">
-          {underThree} active {underThree === 1 ? 'person has' : 'people have'} been here under 3 months — no badge yet.
+          {underThree} active {underThree === 1 ? 'person has' : 'people have'} been here under 3 months, no badge yet.
         </p>
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-// The i7 monthly budget schedule — THE source of truth the report reads
+// The i7 monthly budget schedule, THE source of truth the report reads
 // (i7_monthly_budget). Transposed: rows Budget / Extra / Total, columns = a
 // 6-month window (current month + next 5). Opens read-only; "Edit" turns the
 // section editable with its own Review → Save.
@@ -89,7 +89,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
   const view = (ym: string, field: 'budget' | 'extra') => {
     const b = existing.get(ym)
     const v = b ? (field === 'budget' ? b.budget : b.extra) : 0
-    return v ? money(v) : <span className="text-slate-300">—</span>
+    return v ? money(v) : <span className="text-slate-300">-</span>
   }
   const total = (ym: string) => {
     if (editing) {
@@ -106,7 +106,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
       <div className="flex items-start justify-between gap-3">
         <div className="border-l-[3px] border-tn-teal pl-3">
           <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">Monthly budget</h3>
-          <p className="text-xs text-muted mt-0.5">The schedule the report reads — current month and the next 5. Older months live in Full history → Past schedule.</p>
+          <p className="text-xs text-muted mt-0.5">The schedule the report reads, current month and the next 5. Older months live in Full history → Past schedule.</p>
         </div>
         {!editing && (
           <button onClick={startEdit} className="shrink-0 inline-flex items-center gap-1.5 text-[12.5px] font-(family-name:--font-display) font-extrabold px-3.5 py-2 rounded-[9px] bg-tn-teal text-white hover:brightness-110 transition-all">
@@ -148,7 +148,7 @@ export function MonthlyBudgetGrid({ budgets }: { budgets: MonthlyBudget[] }) {
               <td className={`${rowLabel} bg-tn-teal-soft !text-tn-teal`}>Total</td>
               {months.map(ym => {
                 const t = total(ym)
-                return <td key={ym} className="px-3 py-2.5 text-right tabular-nums font-bold text-tn-teal">{t ? money(t) : '—'}</td>
+                return <td key={ym} className="px-3 py-2.5 text-right tabular-nums font-bold text-tn-teal">{t ? money(t) : '-'}</td>
               })}
             </tr>
           </tbody>

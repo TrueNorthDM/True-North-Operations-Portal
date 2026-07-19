@@ -1,10 +1,10 @@
 /**
- * GET /api/cron/tsheets-sync — automatic TSheets → portal sync.
+ * GET /api/cron/tsheets-sync, automatic TSheets → portal sync.
  *
  * Run by Vercel Cron (see vercel.json) on the same 4-hourly cadence as the
  * Monday ingest. Pulls job codes (→ tr_clients) and users (→ people directory
  * link/import) using the token from Settings. Runs with the admin/service-role
- * client because a cron has no user session — the same reason the Monday
+ * client because a cron has no user session, the same reason the Monday
  * ingest uses createAdminClient().
  */
 
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'TSheets token not configured (Settings → QuickBooks Time).' }, { status: 500 })
   }
 
-  // The previous sync time is the watermark for the incremental timesheet pull —
+  // The previous sync time is the watermark for the incremental timesheet pull,
   // read it before we overwrite it below.
   const lastSyncedAt = row?.tsheets_synced_at ?? null
 

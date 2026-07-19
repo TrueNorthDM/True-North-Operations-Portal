@@ -1,5 +1,5 @@
 /**
- * access.ts — resolves which projects (sites) the signed-in user can reach,
+ * access.ts: resolves which projects (sites) the signed-in user can reach,
  * via the accessible_site_ids() SECURITY DEFINER function (migration 016).
  *
  * Safe rule: admins → all; a site with no grants → everyone; otherwise only
@@ -7,8 +7,8 @@
  *
  * Fail OPEN on errors: if the RPC is missing (migration 016 not applied yet)
  * or fails transiently, return null = "couldn't evaluate" and callers skip
- * filtering. That matches the design rule — nothing is hidden until access is
- * deliberately granted — and avoids silently blanking the portal.
+ * filtering. That matches the design rule, nothing is hidden until access is
+ * deliberately granted, and avoids silently blanking the portal.
  */
 
 import { createClient } from '@/lib/supabase/server'

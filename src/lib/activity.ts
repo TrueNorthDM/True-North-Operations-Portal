@@ -3,15 +3,15 @@
  * summary for the activity feed on the project page.
  *
  * The raw strings (produced in handlers.ts) are designed to be greppable
- * for debugging — they include the language code, missing langs, sibling
+ * for debugging, they include the language code, missing langs, sibling
  * count, etc. The activity feed wants them readable instead, so we
  * normalize: language codes → uppercase, "ok:" prefix dropped, etc.
  *
  * Categorizes severity so the feed can color-code:
  *   - 'ok'      → page got created/updated successfully
  *   - 'warn'    → something was skipped on purpose (unknown lang, item
- *                 not in Monday, etc.) — usually user-fixable
- *   - 'error'   → actual failure (DB error, API error) — bug-fixable
+ *                 not in Monday, etc.), usually user-fixable
+ *   - 'error'   → actual failure (DB error, API error), bug-fixable
  */
 
 export type ActivitySeverity = 'ok' | 'warn' | 'error'
@@ -22,13 +22,13 @@ export type ActivitySeverity = 'ok' | 'warn' | 'error'
  * here means adding the matching color there.
  */
 export type ActivityTag =
-  | 'URL_RECEIVED'  // blue   — Run Link saved a single language URL
-  | 'APPLY_LINK'    // purple — all languages ready; system wrote Apply Link back to Monday
-  | 'DONE'          // green  — Monday Done received for a single language
-  | 'ALL_LIVE'      // emerald — all languages now Done; confirmed_done_at stamped
-  | 'DELETED'       // red    — page deleted locally by a user
-  | 'WARN'          // amber  — skipped on purpose (unknown lang, item gone, empty URL, etc.)
-  | 'ERROR'         // red    — handler hit a DB or API error
+  | 'URL_RECEIVED'  // blue, Run Link saved a single language URL
+  | 'APPLY_LINK'    // purple, all languages ready; system wrote Apply Link back to Monday
+  | 'DONE'          // green, Monday Done received for a single language
+  | 'ALL_LIVE'      // emerald, all languages now Done; confirmed_done_at stamped
+  | 'DELETED'       // red, page deleted locally by a user
+  | 'WARN'          // amber, skipped on purpose (unknown lang, item gone, empty URL, etc.)
+  | 'ERROR'         // red, handler hit a DB or API error
 
 export interface ActivitySummary {
   severity: ActivitySeverity
@@ -71,7 +71,7 @@ export function summarizeResult(result: string | null): ActivitySummary {
     return {
       severity: 'ok',
       tag: 'URL_RECEIVED',
-      message: `${lang} URL received — still waiting on ${waiting}`,
+      message: `${lang} URL received, still waiting on ${waiting}`,
     }
   }
 
@@ -104,7 +104,7 @@ export function summarizeResult(result: string | null): ActivitySummary {
       return {
         severity: 'ok',
         tag: 'ALL_LIVE',
-        message: `${lang} marked Done — page now fully live ✓`,
+        message: `${lang} marked Done, page now fully live ✓`,
       }
     }
     return {
@@ -131,7 +131,7 @@ export function summarizeResult(result: string | null): ActivitySummary {
     return {
       severity: 'warn',
       tag: 'WARN',
-      message: 'Done arrived before Run Link — page not in system yet',
+      message: 'Done arrived before Run Link, page not in system yet',
     }
   }
   if (result.startsWith('skipped:')) {
@@ -147,7 +147,7 @@ export function summarizeResult(result: string | null): ActivitySummary {
     }
   }
 
-  // Fallback — show raw
+  // Fallback: show raw
   return { severity: 'warn', tag: 'WARN', message: result }
 }
 

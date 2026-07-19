@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-/** NavCard — a large clickable card linking to a section. Used by the Home and
+/** NavCard: a large clickable card linking to a section. Used by the Home and
  *  Dashboards landing pages. Uses next/link for in-app routes (client-side nav),
  *  but falls back to a plain <a> for static files (e.g. /boards.html) or
  *  external URLs, so the "works for both" contract is preserved. */
@@ -17,7 +17,7 @@ export function NavCard({
   icon?: React.ReactNode
   soon?: boolean
 }) {
-  // "Soon" — a not-ready section: dashed border, muted, a Soon pill, no link
+  // "Soon", a not-ready section: dashed border, muted, a Soon pill, no link
   // (matches the Home placeholder widgets).
   if (soon) {
     return (

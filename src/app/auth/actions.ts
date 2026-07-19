@@ -18,17 +18,17 @@ import { headers } from 'next/headers'
 
 /**
  * Builds the absolute callback URL that Supabase embeds in the magic-link
- * email. It MUST point back to the host the user is actually on — otherwise
+ * email. It MUST point back to the host the user is actually on, otherwise
  * a request from production sends an email pointing to localhost (or vice
  * versa).
  *
  * Strategy: derive from incoming request headers (Option A). Works in every
- * environment without extra config — Vercel sets `host` and `x-forwarded-proto`
+ * environment without extra config, Vercel sets `host` and `x-forwarded-proto`
  * correctly on prod, previews, and custom domains; the Next.js dev server
  * sets them for localhost. No env vars to remember.
  *
  * Whatever this returns MUST also be present on Supabase's Auth → URL
- * Configuration allow-list — otherwise Supabase silently rewrites it to the
+ * Configuration allow-list, otherwise Supabase silently rewrites it to the
  * project's Site URL.
  */
 async function getCallbackUrl(): Promise<string> {
@@ -64,7 +64,7 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
     email,
     options: {
       // Where Supabase sends the user after they click the email link.
-      // Must be on the Allow-List in Supabase Auth → URL Configuration —
+      // Must be on the Allow-List in Supabase Auth → URL Configuration,
       // any URL not on that list gets silently replaced by the Site URL.
       // (Extra query params like ?next= are preserved as long as the callback
       // PATH is allow-listed, which it already is for the base flow.)

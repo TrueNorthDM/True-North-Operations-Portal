@@ -1,6 +1,6 @@
 'use client'
 
-// Per-project budgeted HOURS — the "guide" level shown when a client is
+// Per-project budgeted HOURS, the "guide" level shown when a client is
 // expanded, below its high-level $ budget. Each change goes through the same
 // justification modal and audit trail as the rest.
 
@@ -93,12 +93,12 @@ export function ProjectBudgets({ clientId, projects, onSaved }: Props) {
                   <td className="px-4 py-2 text-right">
                     {isEd
                       ? <input type="number" min="0" step="0.5" value={hours} onChange={e => setHours(e.target.value)} placeholder="e.g. 221" className={cellInput} />
-                      : <span className="tabular-nums text-slate-700">{p.hours != null ? p.hours.toLocaleString() : <span className="text-slate-300">—</span>}</span>}
+                      : <span className="tabular-nums text-slate-700">{p.hours != null ? p.hours.toLocaleString() : <span className="text-slate-300">-</span>}</span>}
                   </td>
                   <td className="px-4 py-2">
                     {isEd
                       ? <input type="month" value={month} onChange={e => setMonth(e.target.value)} className={cellInput} />
-                      : <span className="text-slate-400">—</span>}
+                      : <span className="text-slate-400">-</span>}
                   </td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
                     {isEd ? (

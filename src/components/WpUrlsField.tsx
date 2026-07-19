@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * WpUrlsField — Dev / Live WordPress URL inputs for a site.
+ * WpUrlsField: Dev / Live WordPress URL inputs for a site.
  *
  * Saves both fields together in a single action because they're a pair: an
  * SEO 2 normally updates one when the other changes (e.g. moving the test

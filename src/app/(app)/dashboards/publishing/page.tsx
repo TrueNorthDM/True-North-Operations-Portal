@@ -1,5 +1,5 @@
 /**
- * Publishing Goals — the legacy COE dashboard (public/boards.html) wrapped in
+ * Publishing Goals, the legacy COE dashboard (public/boards.html) wrapped in
  * the portal shell so it keeps the top bar + sidebar.
  *
  * boards.html is a static file served from /public, OUTSIDE the React tree, so
@@ -11,11 +11,11 @@
 
 export default function PublishingDashboardPage() {
   // MainContent gives this route a full-height, edge-to-edge wrapper, so the
-  // iframe fills the entire content area — no padding, border, or viewport math.
+  // iframe fills the entire content area, no padding, border, or viewport math.
   return (
     <iframe
       src="/boards.html"
-      title="Publishing Goals — Boards Review"
+      title="Publishing Goals, Boards Review"
       className="block h-full w-full border-0"
     />
   )

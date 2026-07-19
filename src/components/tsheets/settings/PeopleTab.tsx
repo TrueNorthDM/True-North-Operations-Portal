@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * PeopleTab — "People & rates", built to the handoff. ONE clean table:
+ * PeopleTab: "People & rates", built to the handoff. ONE clean table:
  *   Person · Team · Report to · Joined on   → read-only, sourced from the Directory
  *   Rate / client · Rate / cost             → the only two things we set here
  *
  * The Directory (/directory) is the source of truth for who exists and their
  * identity fields; we never create a person here. "Edit" makes both rate columns
- * editable at once; "Save changes" writes every change — client rate via a dated
+ * editable at once; "Save changes" writes every change, client rate via a dated
  * tr_assignments row (so rate history stays intact for past-month reports) and cost
  * via people.internal_rate. Both are still audited (auto reason, no prompt).
  */
@@ -62,7 +62,7 @@ const AUTO_REASON = 'Updated in Rates & Costs'
 
 // Team pill, tinted from the shared team-colour system.
 function TeamBadge({ team }: { team: string | null }) {
-  if (!team) return <span className="text-slate-300">—</span>
+  if (!team) return <span className="text-slate-300">-</span>
   const color = TEAM_COLOR[teamKeyFromName(team)]
   return (
     <span
@@ -82,7 +82,7 @@ export function PeopleTab({ people, allClients }: Props) {
   // The tool is i7-locked; "Rate / client" is the person's rate on the i7 client.
   const i7ClientId = allClients.find(c => /i7/i.test(c.name))?.id ?? null
 
-  // A person's current client (i7) rate — the i7 assignment, else their only one.
+  // A person's current client (i7) rate, the i7 assignment, else their only one.
   const rateOf = (p: PersonWithAssignments): number | null => {
     if (i7ClientId != null) {
       const a = p.assignments.find(x => x.clientId === i7ClientId)
@@ -96,7 +96,7 @@ export function PeopleTab({ people, allClients }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Sort / filter — shares the Directory grid engine. Editing + saving always act
+  // Sort / filter, shares the Directory grid engine. Editing + saving always act
   // on the full `people` list (drafts are keyed by id), so filtering only changes
   // what's visible, never what gets saved.
   const [q, setQ] = useState('')
@@ -159,18 +159,18 @@ export function PeopleTab({ people, allClients }: Props) {
     for (const p of people) {
       const d = drafts[p.id]
       if (!d) continue
-      // Client (i7) rate — only when it actually changed.
+      // Client (i7) rate, only when it actually changed.
       const newClient = d.client.trim() === '' ? null : Number(d.client)
       if (newClient != null && newClient > 0 && newClient !== rateOf(p)) {
         if (i7ClientId == null) { setError('No i7 client found to attach the rate to.'); setSaving(false); return }
         ops.push(saveTrAssignment({ tsheetsUserId: p.tsheetsUserId, clientId: i7ClientId, hourlyRate: newClient, effectiveFrom: today, justification: AUTO_REASON }))
       }
-      // Cost rate — only when it changed.
+      // Cost rate, only when it changed.
       const newCost = d.cost.trim() === '' ? null : Number(d.cost)
       if (newCost != null && newCost > 0 && newCost !== p.costRate) {
         ops.push(savePersonCostRate({ personId: p.id, costRate: newCost, justification: AUTO_REASON }))
       }
-      // Monthly salary — only when it changed.
+      // Monthly salary, only when it changed.
       const newSalary = d.salary.trim() === '' ? null : Number(d.salary)
       if (newSalary != null && newSalary > 0 && newSalary !== p.monthlySalary) {
         ops.push(savePersonMonthlySalary({ personId: p.id, monthlySalary: newSalary, justification: AUTO_REASON }))
@@ -195,7 +195,7 @@ export function PeopleTab({ people, allClients }: Props) {
     )
   }
 
-  // USD display — always a dot and two decimals (95 → "95.00"). Applied only on
+  // USD display, always a dot and two decimals (95 → "95.00"). Applied only on
   // the read side; while editing we keep the raw string so the cursor is stable.
   const money = (v: string): string | null => {
     if (v.trim() === '') return null
@@ -204,7 +204,7 @@ export function PeopleTab({ people, allClients }: Props) {
   }
 
   // Edit uses a text field with inputMode=decimal (not type=number) so the value
-  // always shows a dot — type=number renders the OS locale separator (e.g. 44,78).
+  // always shows a dot, type=number renders the OS locale separator (e.g. 44,78).
   const rateInput = (val: string, onChange: (v: string) => void, focusColor: string) => (
     <span className="flex w-full items-center justify-end gap-1.5">
       <span className="text-[12px] text-muted">$</span>
@@ -214,14 +214,14 @@ export function PeopleTab({ people, allClients }: Props) {
           inputMode="decimal"
           value={val}
           onChange={e => onChange(e.target.value)}
-          placeholder="—"
+          placeholder="-"
           className="w-48 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink bg-white border border-slate-200 rounded-md px-3 py-1.5 outline-none"
           onFocus={e => { e.currentTarget.style.borderColor = focusColor }}
           onBlur={e => { e.currentTarget.style.borderColor = '' }}
         />
       ) : (
         <span className="w-48 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink rounded-md px-3 py-1.5 bg-subtle">
-          {money(val) ?? <span className="text-slate-300">—</span>}
+          {money(val) ?? <span className="text-slate-300">-</span>}
         </span>
       )}
     </span>
@@ -264,7 +264,7 @@ export function PeopleTab({ people, allClients }: Props) {
             const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
             return (
               <div key={p.id} className={`${GRID} px-[22px] py-3 border-b border-slate-100 last:border-0`}>
-                {/* Person — navy avatar + name (from Directory) */}
+                {/* Person: navy avatar + name (from Directory) */}
                 <span className="inline-flex items-center gap-[11px] min-w-0">
                   <span className="w-[30px] h-[30px] rounded-full shrink-0 bg-tn-primary text-white inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[10.5px]">
                     {initialsOf(p.name)}
@@ -284,12 +284,12 @@ export function PeopleTab({ people, allClients }: Props) {
                       </span>
                       <span className="text-[13px] text-foreground truncate">{p.managerName}</span>
                     </>
-                  ) : <span className="text-slate-300">—</span>}
+                  ) : <span className="text-slate-300">-</span>}
                 </span>
 
                 {/* Joined on */}
                 <span className="text-[13px] text-foreground tabular-nums">
-                  {p.hireDate ? formatDate(p.hireDate) : <span className="text-slate-300">—</span>}
+                  {p.hireDate ? formatDate(p.hireDate) : <span className="text-slate-300">-</span>}
                 </span>
 
                 {/* Rate / client (teal focus) */}
@@ -311,7 +311,7 @@ export function PeopleTab({ people, allClients }: Props) {
         {error ? (
           <span className="text-[13px] text-[var(--bdg-red-fg)] mr-auto">{error}</span>
         ) : editing ? (
-          <span className="text-[13px] text-muted mr-auto">Editing — changes apply when you save.</span>
+          <span className="text-[13px] text-muted mr-auto">Editing, changes apply when you save.</span>
         ) : null}
 
         {editing ? (

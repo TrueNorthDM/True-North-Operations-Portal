@@ -1,10 +1,10 @@
 /**
- * WpLinks — Dev / Live WordPress quick-access pills shown on each project
+ * WpLinks: Dev / Live WordPress quick-access pills shown on each project
  * page header. Renders nothing when both URLs are missing.
  *
  * Styling matches the handoff: WP Dev is a neutral pill with a grey status
  * dot; WP Live is a brand-tinted pill (green for AAAF, orange for HFA) with a
- * matching dot — a glanceable cue about which environment they're heading into.
+ * matching dot, a glanceable cue about which environment they're heading into.
  *
  * Server Component (no client state needed).
  */

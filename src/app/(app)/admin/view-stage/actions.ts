@@ -1,9 +1,9 @@
 'use server'
 
-// View Stage — sign a read-only impersonation token for a tier, so a column can
+// View Stage, sign a read-only impersonation token for a tier, so a column can
 // render the portal AS that role. Only a real portal admin (profiles.role) may
 // sign; the token is bound to that admin and expires in 30 min. The token only
-// changes what the app RENDERS — writes always run under the real session.
+// changes what the app RENDERS, writes always run under the real session.
 
 import { createClient } from '@/lib/supabase/server'
 import { signViewAs, type ViewAsRole } from '@/lib/auth/view-as'
@@ -18,7 +18,7 @@ export async function tokenViewAs(role: ViewAsRole): Promise<{ token?: string; n
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
   if (profile?.role !== 'admin') return { error: 'Admins only.' }
 
-  // Pick a real, active person of that tier — the identity the column shows.
+  // Pick a real, active person of that tier, the identity the column shows.
   const { data: people } = await supabase
     .from('people')
     .select('id, full_name, role_type, status')

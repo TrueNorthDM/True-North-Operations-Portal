@@ -4,7 +4,7 @@
  * Pure computation for the Translation view, ported from the COE Dashboard
  * (evalPipeline + enrichItem). Turns a snapshot board into TranslationItem[]
  * with the current pipeline stage, owners, subitem (per-language) progress,
- * and time-in-stage — no UI, no I/O.
+ * and time-in-stage, no UI, no I/O.
  */
 
 import { BOARDS, labelSemantic, type BoardConfig, type BoardStage, type LabelSemantic } from './config'
@@ -94,7 +94,7 @@ export function businessDays(days: number | null): number | null {
 }
 
 export function fmtDays(d: number | null): string {
-  if (d == null || isNaN(d)) return '—'
+  if (d == null || isNaN(d)) return '-'
   if (d < 1) return `${Math.round(d * 24)}h`
   return `${d.toFixed(1)}d`
 }
@@ -230,7 +230,7 @@ function enrichTranslationItem(
     const subPipelineCols = new Set(sp.stages.map((s) => s.col).filter(Boolean))
     for (const sub of it.subitems as SnapshotSubitem[]) {
       const sbyId = colsById(sub.column_values)
-      const lang = sbyId[sp.languageCol]?.text || '—'
+      const lang = sbyId[sp.languageCol]?.text || '-'
       const evalSub = evalPipeline(sbyId, sp.stages)
       let subDoneDate: string | null = null
       if (evalSub.isDone) {

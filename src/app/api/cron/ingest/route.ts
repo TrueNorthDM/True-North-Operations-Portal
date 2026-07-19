@@ -1,13 +1,13 @@
 /**
- * GET /api/cron/ingest — nightly Monday → monday_snapshot ingestion.
+ * GET /api/cron/ingest, nightly Monday → monday_snapshot ingestion.
  *
  * Run by Vercel Cron (see vercel.json). Fetches the Publishing boards from
  * Monday (using the token from Settings) and writes them to the warm store, so
- * /api/snapshot — and therefore the dashboards — load instantly.
+ * /api/snapshot (and therefore the dashboards) load instantly.
  *
  * Window: a rolling INGEST_DAYS (3 years). Each nightly run does a full
  * re-fetch and OVERWRITES the store, so it always holds exactly the last 3
- * years — no pruning needed. maxDuration 300s (Vercel Pro) covers it
+ * years, no pruning needed. maxDuration 300s (Vercel Pro) covers it
  * comfortably (1yr took ~48s).
  */
 

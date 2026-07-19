@@ -2,7 +2,7 @@
  * Server-side helper: fetch recent Monday webhook events for one board
  * (i.e. one site), enriched with the affected page name.
  *
- * Filters out the dispatcher-level "skipped:column not Href Links" noise —
+ * Filters out the dispatcher-level "skipped:column not Href Links" noise,
  * those events fire on every column change in the board, even ones we
  * don't care about, and would drown out the meaningful entries in the feed.
  */
@@ -34,7 +34,7 @@ export async function getRecentActivity(
     .select('id, received_at, monday_item_id, result')
     .eq('board_id', boardId)
     // Hide the dispatcher noise. PostgREST's `not.like` works for our
-    // simple prefix string but isn't a regex — we use OR with multiple
+    // simple prefix string but isn't a regex, we use OR with multiple
     // patterns if more noise classes appear later.
     .not('result', 'like', 'skipped:column %')
     .order('received_at', { ascending: false })

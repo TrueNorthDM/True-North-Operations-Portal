@@ -1,6 +1,6 @@
 'use client'
 
-// "In Graphics" tab — dependency-free SVG/CSS charts from the same month's data
+// "In Graphics" tab, dependency-free SVG/CSS charts from the same month's data
 // (plus the Jan→month trend series). Styled to the True North handoff: donut
 // (hours by project), horizontal bars (hours by person), radial rings (budget
 // utilization), a global 100% stacked bar (activity mix), and a line+area trend.
@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
 import { fmtHours } from '@/lib/tsheets/format'
 
-// Brand palette — teal / blue / purple / orange / cyan / green.
+// Brand palette, teal / blue / purple / orange / cyan / green.
 const PROJ = ['#1E7D7F', '#3B82C6', '#e08a1e', '#6d5ae0', '#00A3DD', '#009C3B']
 const ACT = ['#1E7D7F', '#3B82C6', '#6d5ae0', '#e08a1e', '#00A3DD', '#009C3B']
 const OTHER = '#8593a4'
@@ -54,7 +54,7 @@ function Legend({ items, dense = false }: { items: { label: string; color: strin
   )
 }
 
-// ── Donut — share of hours by project ───────────────────────────────────────
+// ── Donut: share of hours by project ───────────────────────────────────────
 function Donut({ segments, centerTop, centerBottom }: { segments: { label: string; value: number; color: string }[]; centerTop: string; centerBottom: string }) {
   const total = segments.reduce((s, x) => s + x.value, 0)
   const r = 46, C = 2 * Math.PI * r
@@ -79,7 +79,7 @@ function Donut({ segments, centerTop, centerBottom }: { segments: { label: strin
   )
 }
 
-// ── Horizontal bars — hours by person ───────────────────────────────────────
+// ── Horizontal bars, hours by person ───────────────────────────────────────
 function PersonBars({ rows }: { rows: { name: string; hours: number }[] }) {
   const max = Math.max(1, ...rows.map(r => r.hours))
   if (rows.length === 0) return <p className="text-sm text-muted py-6 text-center">No hours logged this period.</p>
@@ -100,7 +100,7 @@ function PersonBars({ rows }: { rows: { name: string; hours: number }[] }) {
   )
 }
 
-// ── Radial rings — budget utilization per project ───────────────────────────
+// ── Radial rings, budget utilization per project ───────────────────────────
 function Rings({ rows }: { rows: { label: string; pct: number | null; hours: number; budget: number }[] }) {
   const r = 24, C = 2 * Math.PI * r
   return (
@@ -119,7 +119,7 @@ function Rings({ rows }: { rows: { label: string; pct: number | null; hours: num
                 <circle cx="30" cy="30" r={r} stroke="#eef0f3" />
                 <circle cx="30" cy="30" r={r} stroke={color} strokeLinecap="round" strokeDasharray={`${fill * C} ${C}`} transform="rotate(-90 30 30)" />
               </g>
-              <text x="30" y="34" textAnchor="middle" fontSize="13" fontWeight="800" fontFamily="Raleway, sans-serif" fill="#012358">{has ? `${Math.round(p * 100)}%` : '—'}</text>
+              <text x="30" y="34" textAnchor="middle" fontSize="13" fontWeight="800" fontFamily="Raleway, sans-serif" fill="#012358">{has ? `${Math.round(p * 100)}%` : '-'}</text>
             </svg>
             <div className="min-w-0">
               <div className="text-[13px] font-(family-name:--font-display) font-bold text-tn-ink truncate">{row.label}</div>
@@ -134,7 +134,7 @@ function Rings({ rows }: { rows: { label: string; pct: number | null; hours: num
   )
 }
 
-// ── Global 100% stacked bar — activity mix ──────────────────────────────────
+// ── Global 100% stacked bar, activity mix ──────────────────────────────────
 function ActivityMix({ parts, total, colorOf }: { parts: { activity: string; hours: number }[]; total: number; colorOf: (a: string) => string }) {
   if (total <= 0) return <p className="text-sm text-muted py-4 text-center">No activity data this period.</p>
   return (
@@ -158,7 +158,7 @@ function ActivityMix({ parts, total, colorOf }: { parts: { activity: string; hou
   )
 }
 
-// ── 100% stacked bar per project — activity mix (client PDF) ─────────────────
+// ── 100% stacked bar per project, activity mix (client PDF) ─────────────────
 function StackedBars({ rows, colorOf, dense = false }: { rows: { label: string; total: number; parts: { activity: string; hours: number }[] }[]; colorOf: (a: string) => string; dense?: boolean }) {
   return (
     <div className={dense ? 'space-y-2.5' : 'space-y-3'}>
@@ -179,7 +179,7 @@ function StackedBars({ rows, colorOf, dense = false }: { rows: { label: string; 
   )
 }
 
-// ── Vertical bars — % of budget used per project (client PDF) ────────────────
+// ── Vertical bars, % of budget used per project (client PDF) ────────────────
 function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours: number; budget: number }[] }) {
   const H = 106
   return (
@@ -194,7 +194,7 @@ function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours
           const color = !has ? '#cbd5e1' : p > 1 ? '#ef4444' : p >= 0.9 ? '#e08a1e' : '#1E7D7F'
           return (
             <div key={row.label} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full">
-              <span className="text-[10px] tabular-nums mb-1" style={{ color: has ? color : '#8593a4' }}>{has ? `${Math.round(p * 100)}%` : '—'}</span>
+              <span className="text-[10px] tabular-nums mb-1" style={{ color: has ? color : '#8593a4' }}>{has ? `${Math.round(p * 100)}%` : '-'}</span>
               <div className="w-full max-w-[44px] rounded-t-md" style={{ height: `${Math.max(fill * H, has ? 3 : 0)}px`, background: color }} />
             </div>
           )
@@ -213,14 +213,14 @@ function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours
 }
 
 export function I7Charts({ data, projectHours, totalByPerson, variant = 'full' }: Props) {
-  // Donut + rings — per project
+  // Donut + rings, per project
   const projectSegments = data.projects.map((p, i) => ({ label: p.project, value: p.hours, color: PROJ[i % PROJ.length] }))
   const rings = data.projects.map(p => {
     const budget = projectHours[p.project] ?? 0
     return { label: p.project, pct: budget > 0 ? p.hours / budget : null, hours: p.hours, budget }
   })
 
-  // Hours by person — sorted by name (matches the handoff order).
+  // Hours by person, sorted by name (matches the handoff order).
   const personRows = Object.entries(totalByPerson)
     .map(([name, hours]) => ({ name, hours: Math.round(hours * 100) / 100 }))
     .filter(r => r.hours > 0)
@@ -249,7 +249,7 @@ export function I7Charts({ data, projectHours, totalByPerson, variant = 'full' }
   ]
   const actLegend = [...topActs.map((a, i) => ({ label: a, color: ACT[i] })), ...(globalAct.size > topActs.length ? [{ label: 'Other', color: OTHER }] : [])]
 
-  // Client PDF — just the two charts i7 asked for, stacked full-width.
+  // Client PDF, just the two charts i7 asked for, stacked full-width.
   if (variant === 'client') {
     return (
       <div className="space-y-4">

@@ -5,7 +5,7 @@
  *   - the manual "Sync from TSheets" buttons (settings-actions, user session)
  *   - the Vercel Cron endpoint (admin/service-role client, no user session)
  *
- * Kept out of the 'use server' actions file on purpose — this module is imported
+ * Kept out of the 'use server' actions file on purpose, this module is imported
  * by an API route as well, and must not be marked as server actions.
  */
 
@@ -84,7 +84,7 @@ export async function syncClientsCore(supabase: Client, token: string): Promise<
       tsheets_jobcode_id: jc.id,
       name: jc.name,
       active: true,
-      // TSheets uses parent_id 0 for top-level clients — normalise to NULL so
+      // TSheets uses parent_id 0 for top-level clients, normalise to NULL so
       // the settings screens can filter real clients with `parent_id IS NULL`.
       parent_id: jc.parent_id ? jc.parent_id : null,
     }))
@@ -162,7 +162,7 @@ function toTsheetsIso(iso: string): string {
 }
 
 /**
- * Caches the i7 timesheets the report reads from — so the page never calls the
+ * Caches the i7 timesheets the report reads from, so the page never calls the
  * TSheets API live. Backfills the whole retention window the first time (empty
  * cache), then pulls only entries modified since the last sync. Prunes anything
  * that has aged out of the rolling 24-month window.

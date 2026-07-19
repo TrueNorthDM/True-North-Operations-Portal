@@ -1,4 +1,4 @@
-// Login — split brand panel (handoff option 1a). Server Component shell; the
+// Login: split brand panel (handoff option 1a). Server Component shell; the
 // form (client) is LoginForm. Left panel = navy gradient + animated "sunrise"
 // (pure CSS, guarded by prefers-reduced-motion); right = logo + magic-link form.
 
@@ -11,13 +11,13 @@ import { Sunrise } from '@/components/Sunrise'
 export default function LoginPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
-      {/* Theme toggle — the top-bar toggle only exists once signed in, so the
+      {/* Theme toggle, the top-bar toggle only exists once signed in, so the
           login screen gets its own so you can switch before logging in. */}
       <div className="absolute right-5 top-5 z-10">
         <ThemeToggle />
       </div>
       <div className="flex w-full max-w-[1120px] min-h-[620px] overflow-hidden rounded-[22px] bg-card shadow-[0_24px_60px_-24px_rgba(1,35,88,.30)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,.65)]">
-        {/* Left brand panel — hidden on small screens */}
+        {/* Left brand panel, hidden on small screens */}
         <div
           className="relative hidden w-[480px] shrink-0 flex-col justify-end overflow-hidden p-12 text-white md:flex"
           style={{ background: 'linear-gradient(160deg, #012358, #0a2f63)' }}
@@ -37,7 +37,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Right panel — logo + form */}
+        {/* Right panel, logo + form */}
         <div className="flex flex-1 flex-col items-center justify-center px-8 py-14 sm:px-14">
           <div className="w-full max-w-sm text-center">
             <span className="mb-9 inline-block rounded-lg dark:bg-[#ffffff] dark:p-2">

@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * TicketsClient — the dev work tracker (data from lib/tickets/data.ts).
+ * TicketsClient: the dev work tracker (data from lib/tickets/data.ts).
  * Search + type/status filters live as local state (instant, no network); the
- * stat cards double as status filters. Read-only view — the data is maintained
+ * stat cards double as status filters. Read-only view, the data is maintained
  * in the repo. Styling matches the handoff prototype.
  */
 
@@ -122,10 +122,10 @@ export function TicketsClient() {
           <span className="font-semibold text-tn-ink">Tickets</span>
         </div>
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Tickets</h1>
-        <p className="mt-1.5 text-muted">Everything we need to resolve — so nothing gets lost.</p>
+        <p className="mt-1.5 text-muted">Everything we need to resolve, so nothing gets lost.</p>
       </div>
 
-      {/* Stat cards — each doubles as a status filter (Total clears it). */}
+      {/* Stat cards, each doubles as a status filter (Total clears it). */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {STAT_CARDS.map(card => (
           <button

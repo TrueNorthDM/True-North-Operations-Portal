@@ -91,7 +91,7 @@ async function prepareEventContext(
     return `skipped:language ${langCode} not configured for ${site.code}`
   }
 
-  // 4. Extract Page Link URL (may be empty — that's not necessarily a
+  // 4. Extract Page Link URL (may be empty, that's not necessarily a
   //    blocker for the Done handler, only for Run Link).
   const linkCol = item.column_values.find(c => c.id === cfg.pageLink)
   const pageUrl = linkCol?.text?.trim() || null
@@ -169,7 +169,7 @@ export async function runLinkHandler(
     return `ok:saved ${langCode} (waiting on: ${missing})`
   }
 
-  // All ready — flip every sibling item to "Apply Link" in Monday. We do
+  // All ready, flip every sibling item to "Apply Link" in Monday. We do
   // this serially and swallow individual failures so one broken item
   // doesn't block the rest. (Vercel free-tier function time budget is
   // tight; if siblings ever explode in count, batch via subscriptions.)
@@ -213,13 +213,13 @@ interface ConfirmationRow {
  *
  * Updates the HREFLANG SYSTEM side only:
  *
- *  - `confirmations` — what our app considers "verified live" for the
+ *  - `confirmations`, what our app considers "verified live" for the
  *    hreflang tag. Drives the "All Live" badge.
- *  - `pages.confirmed_done_at` — stamped the first time ALL languages are
+ *  - `pages.confirmed_done_at`, stamped the first time ALL languages are
  *    confirmed live (preserved on un-toggle).
  *
  * Note: the Monday/WordPress implementation mirror (monday_status /
- * monday_lang_status) was removed — this handler no longer tracks it.
+ * monday_lang_status) was removed, this handler no longer tracks it.
  */
 export async function doneHandler(
   boardId: string,
@@ -230,7 +230,7 @@ export async function doneHandler(
   if (typeof prepared === 'string') return prepared
   const { site, pageName, langCode } = prepared
 
-  // Find the page — Done can't create it (the URL must have been set
+  // Find the page, Done can't create it (the URL must have been set
   // earlier via Run Link). If missing, log + skip.
   const { data: page } = await ctx.supabase
     .from('pages')

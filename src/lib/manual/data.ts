@@ -1,8 +1,8 @@
 /**
- * manual/data.ts — the System Manual (admin page at /admin/manual).
+ * manual/data.ts: the System Manual (admin page at /admin/manual).
  *
  * Code-based on purpose: Claude maintains this alongside the tracker and the
- * test checklist. When a feature changes, this doc changes with it — so it
+ * test checklist. When a feature changes, this doc changes with it, so it
  * never rots into stale wiki pages. Plain structured blocks, rendered by
  * SystemManual.tsx.
  */
@@ -31,10 +31,10 @@ export const MANUAL: ManualSection[] = [
       { kind: 'p', text: 'The True North Operations Portal is the company’s operations hub. Today it covers the editorial / publishing workflow for AAAF and HFA and the company directory; it’s growing toward CRM, communications, task tracking and tools.' },
       { kind: 'subhead', text: 'The four pillars' },
       { kind: 'list', items: [
-        'Dashboards — Boards Review: publishing pace vs target, fed from Monday.',
-        'Projects — your workspaces (AAAF, HFA), where the hreflang tag management lives.',
-        'Tools — capabilities you use inside a project (e.g. Href Link Management).',
-        'Admin — people, teams and access control, plus the dev Tickets, the Tests checklist, and this manual.',
+        'Dashboards, Boards Review: publishing pace vs target, fed from Monday.',
+        'Projects, your workspaces (AAAF, HFA), where the hreflang tag management lives.',
+        'Tools, capabilities you use inside a project (e.g. Href Link Management).',
+        'Admin, people, teams and access control, plus the dev Tickets, the Tests checklist, and this manual.',
       ] },
       { kind: 'p', text: 'Home shows the company org chart, your pinned favourites, and shortcuts to the pillars.' },
     ],
@@ -46,19 +46,19 @@ export const MANUAL: ManualSection[] = [
       { kind: 'p', text: 'Access is modelled as a directory: People belong to Teams, and Teams (or a single person) are granted access to Projects with a role.' },
       { kind: 'subhead', text: 'Roles, per project' },
       { kind: 'list', items: [
-        'Admin — manage the project and who can access it.',
-        'Member — use and edit.',
-        'Viewer — read-only.',
-        'Portal super-admin (profiles.role = admin) — sees everything and manages people/teams/access.',
+        'Admin, manage the project and who can access it.',
+        'Member, use and edit.',
+        'Viewer, read-only.',
+        'Portal super-admin (profiles.role = admin), sees everything and manages people/teams/access.',
       ] },
       { kind: 'subhead', text: 'The enforcement rule: “unrestricted until granted”' },
-      { kind: 'p', text: 'A project with no grants is visible to everyone signed in. The moment you grant it to a team, only that team (plus super-admins) can reach it. So nothing is hidden until you deliberately grant access — and removing the grant makes it open again.' },
+      { kind: 'p', text: 'A project with no grants is visible to everyone signed in. The moment you grant it to a team, only that team (plus super-admins) can reach it. So nothing is hidden until you deliberately grant access, and removing the grant makes it open again.' },
       { kind: 'note', text: 'A grant only reaches a real person once their portal account is linked: Admin → People → edit → Portal account. Until then, granting a project effectively restricts it to super-admins.' },
     ],
   },
   {
     id: 'pages',
-    title: 'Pages — what they do & who sees them',
+    title: 'Pages, what they do & who sees them',
     body: [
       { kind: 'table',
         head: ['Page', 'What it does', 'Who'],
@@ -67,7 +67,7 @@ export const MANUAL: ManualSection[] = [
           ['Dashboards → Publishing Goals', 'Publishing pace vs weekly target (Boards Review)', 'Anyone signed in'],
           ['Projects → AAAF / HFA', 'hreflang tag management per WordPress site', 'By grant (super-admins: all)'],
           ['Tools → Href Link Management', 'Manage hreflang tags for AAAF / HFA WordPress pages', 'By project grant'],
-          ['Tools → Budget Usage Report', 'Hours per employee per job code from QuickBooks Time — the admin\'s manual pivot, automated', 'Anyone signed in'],
+          ['Tools → Budget Usage Report', 'Hours per employee per job code from QuickBooks Time, the admin\'s manual pivot, automated', 'Anyone signed in'],
           ['Settings', 'Languages per project, Monday + TSheets API tokens, publishing targets', 'Admins edit; others read'],
           ['Admin → People / Teams / Access', 'The directory + RBAC (who can access what)', 'Admins'],
           ['Admin → Tickets / Tests / Manual', 'Dev work tracker, QA checklist, this document', 'Admins'],
@@ -82,15 +82,15 @@ export const MANUAL: ManualSection[] = [
       { kind: 'p', text: 'The Monday API is touched in just three files (monday/snapshot.ts, monday/client.ts, monday/handlers.ts), through two distinct flows, with one shared token.' },
       { kind: 'subhead', text: 'The token' },
       { kind: 'p', text: 'It lives only in the database (app_settings.monday_api_token) and is set in Settings → Monday API token. It is never hardcoded anywhere; an optional MONDAY_TOKEN env var exists only as a local-dev fallback. The nightly cron, the live snapshot and the webhook all use this one token.' },
-      { kind: 'subhead', text: 'Flow 1 — Pull (nightly) → Dashboards' },
+      { kind: 'subhead', text: 'Flow 1, Pull (nightly) → Dashboards' },
       { kind: 'steps', items: [
         'A Vercel Cron runs /api/cron/ingest on a schedule.',
         'processBoard() pulls items (paginated) + activity logs from the Publishing boards via GraphQL.',
         'The whole snapshot is written to the monday_snapshot store (a JSONB cache), overwriting the previous one.',
-        'Dashboards read /api/snapshot — instant from the store, with a live fetch as a fallback if a board is missing.',
+        'Dashboards read /api/snapshot, instant from the store, with a live fetch as a fallback if a board is missing.',
         'The pace / stage math runs over the snapshot. This flow is read-only: the dashboard is a nightly mirror of Monday.',
       ] },
-      { kind: 'subhead', text: 'Flow 2 — Webhook (near real-time) → Href Link Management' },
+      { kind: 'subhead', text: 'Flow 2, Webhook (near real-time) → Href Link Management' },
       { kind: 'steps', items: [
         'Monday fires a webhook to /api/monday/webhook when the “Href Link(s)” status column changes.',
         'The request’s HMAC signature is verified and the event is logged to monday_events.',
@@ -117,10 +117,10 @@ export const MANUAL: ManualSection[] = [
         rows: [
           ['People, teams, grants, org chart', 'Supabase (directory tables)'],
           ['hreflang pages, URLs, confirmations', 'Supabase'],
-          ['Publishing targets', 'Supabase (publishing_targets) — NOT Monday'],
+          ['Publishing targets', 'Supabase (publishing_targets), NOT Monday'],
           ['Dashboard data (Monday snapshot)', 'Supabase store, refreshed nightly from Monday'],
           ['Favourites', 'Supabase (per user)'],
-          ['Budget Usage Report (TSheets hours)', 'Live fetch from TSheets REST API — not stored in the portal DB'],
+          ['Budget Usage Report (TSheets hours)', 'Live fetch from TSheets REST API, not stored in the portal DB'],
           ['Tickets, tests, this manual', 'Code (repo), maintained by Claude'],
           ['Editorial / publishing source of truth', 'Monday'],
         ],
@@ -129,11 +129,11 @@ export const MANUAL: ManualSection[] = [
   },
   {
     id: 'tsheets',
-    title: 'QuickBooks Time (TSheets) — Budget Usage Report',
+    title: 'QuickBooks Time (TSheets), Budget Usage Report',
     body: [
       { kind: 'p', text: 'The Budget Usage Report tool at /tools/time-report replaces a manual process: the admin assistant used to export a TSheets CSV, build a pivot table in Excel, and copy hours cell-by-cell into the monthly Google Sheet. The portal does all of that automatically.' },
       { kind: 'subhead', text: 'The token' },
-      { kind: 'p', text: 'A static API access token lives in app_settings.tsheets_api_token and is set in Settings → QuickBooks Time API. Like the Monday token, it never leaves the server — the component only receives { exists, last4 }. To generate one: TSheets → company menu → Company Settings → Add-ons → API Access.' },
+      { kind: 'p', text: 'A static API access token lives in app_settings.tsheets_api_token and is set in Settings → QuickBooks Time API. Like the Monday token, it never leaves the server, the component only receives { exists, last4 }. To generate one: TSheets → company menu → Company Settings → Add-ons → API Access.' },
       { kind: 'subhead', text: 'How it works' },
       { kind: 'steps', items: [
         'User opens /tools/time-report (optionally with ?month=YYYY-MM; defaults to current month).',
@@ -141,9 +141,9 @@ export const MANUAL: ManualSection[] = [
         'Server calls 3 TSheets REST v1 endpoints in parallel: GET /users, GET /jobcodes, GET /timesheets (filtered by date range).',
         'buildMatrix() sums duration (seconds → hours) per jobcode x user and pre-computes row/column totals.',
         'The matrix is passed as props to TimeReportMatrixView (client component) for the month picker and table render.',
-        'No data is stored in the portal DB — always fetched fresh from TSheets on each page load.',
+        'No data is stored in the portal DB, always fetched fresh from TSheets on each page load.',
       ] },
-      { kind: 'note', text: 'Phase 2 (not yet built): budget hours per job code stored in the portal DB so the table can show actual vs budget and cost variance — replacing the Google Sheet entirely.' },
+      { kind: 'note', text: 'Phase 2 (not yet built): budget hours per job code stored in the portal DB so the table can show actual vs budget and cost variance, replacing the Google Sheet entirely.' },
     ],
   },
   {
@@ -151,9 +151,9 @@ export const MANUAL: ManualSection[] = [
     title: 'Not built yet',
     body: [
       { kind: 'list', items: [
-        'Budget Usage Report Phase 2 — budget hours + cost variance stored in portal DB (replaces the Google Sheet).',
-        'My Work — everything you\'re working on across the whole Monday account (the Home widget + a full view; TN-019 / TN-022). This would be the third Monday use.',
-        'My Team — a team-at-a-glance view on Home.',
+        'Budget Usage Report Phase 2, budget hours + cost variance stored in portal DB (replaces the Google Sheet).',
+        'My Work, everything you\'re working on across the whole Monday account (the Home widget + a full view; TN-019 / TN-022). This would be the third Monday use.',
+        'My Team, a team-at-a-glance view on Home.',
         'Custom SMTP (Resend) for production login (to lift the email rate limit).',
       ] },
     ],

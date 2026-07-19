@@ -1,7 +1,7 @@
 /**
- * ClientsProjectsTab — a read-only catalogue: the client, its projects, and the
+ * ClientsProjectsTab: a read-only catalogue: the client, its projects, and the
  * live job codes under each (grouped from the TSheets "1 · i7 Code" field by
- * prefix). No rates or people here — rates live in People & rates, and the budget
+ * prefix). No rates or people here, rates live in People & rates, and the budget
  * report uses each person's own Rate/client × their TSheets hours.
  */
 

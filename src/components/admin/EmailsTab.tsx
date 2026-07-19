@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * EmailsTab — which mailboxes each person holds (True North / GoodNews / COE /
+ * EmailsTab: which mailboxes each person holds (True North / GoodNews / COE /
  * Personal). A check means the address exists; a row opens the person in edit
  * mode so addresses can be changed. Sortable columns + "filter by anything"
  * share the Directory grid engine (./grid).
@@ -97,7 +97,7 @@ export function EmailsTab({ people, onOpen }: { people: PersonView[]; onOpen: (i
                   <span className={`shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[12px] ${p.status === 'inactive' ? 'opacity-45 grayscale-[.4]' : ''}`} style={{ width: 38, height: 38, background: TEAM_COLOR[p.teamKey] }}>{initialsOf(p.full_name)}</span>
                   <span className="min-w-0">
                     <span className="block font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
-                    <span className="block text-xs text-muted truncate">{p.title ?? '—'}</span>
+                    <span className="block text-xs text-muted truncate">{p.title ?? '-'}</span>
                   </span>
                 </span>
                 {COLS.map(c => {
@@ -112,7 +112,7 @@ export function EmailsTab({ people, onOpen }: { people: PersonView[]; onOpen: (i
                           <span className="text-[11.5px] text-foreground truncate" title={addr}>{shorten(addr)}</span>
                         </span>
                       ) : (
-                        <span className="text-[13px] text-slate-300">—</span>
+                        <span className="text-[13px] text-slate-300">-</span>
                       )}
                     </span>
                   )

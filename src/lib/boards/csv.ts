@@ -1,5 +1,5 @@
 /**
- * csv.ts — tiny client-side CSV builder + download.
+ * csv.ts: tiny client-side CSV builder + download.
  * Used by the Boards Review views' "Export CSV" buttons.
  */
 

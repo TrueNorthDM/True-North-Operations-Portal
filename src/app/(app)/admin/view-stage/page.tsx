@@ -4,7 +4,7 @@ import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import ViewStageClient from './ViewStageClient'
 
-// View Stage lives inside /admin — a preview of the portal through each
+// View Stage lives inside /admin, a preview of the portal through each
 // permission tier. Impersonation is server-render only (writes use the real
 // session); it travels by token on the iframe URLs (?_vs=), so this control
 // page never self-impersonates. force-dynamic: identity resolves per request.

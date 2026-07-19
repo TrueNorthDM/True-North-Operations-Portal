@@ -1,4 +1,4 @@
-// Data layer for the Projects overview page — access filtering, stale-page
+// Data layer for the Projects overview page, access filtering, stale-page
 // grouping, and per-site progress stats. Kept out of the page component so the
 // page stays presentational (audit M6/DT-07).
 
@@ -8,7 +8,7 @@ import { getAccessibleSiteIds } from '@/lib/auth/access'
 export interface ProjectStats {
   /** Pages shipped in the trailing 14 days (confirmed_done_at within window). */
   recentCompletions: number
-  /** Pages we consider "done" overall — fully live OR explicitly set aside. */
+  /** Pages we consider "done" overall, fully live OR explicitly set aside. */
   totalDone: number
   /** Pages still pending work. */
   remaining: number
@@ -25,7 +25,7 @@ export interface ProjectsOverview {
   accessibleCodes: Set<string> | null
   /**
    * Pages that are **ready to apply**: every site language already has a URL,
-   * the page isn't set aside (not_relevant), and it isn't fully live yet — so
+   * the page isn't set aside (not_relevant), and it isn't fully live yet, so
    * SEO 2 can generate + paste the hreflang and confirm it. Grouped by site.
    */
   readyBySite: Record<string, { id: string; name: string }[]>

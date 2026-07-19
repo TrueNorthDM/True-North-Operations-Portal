@@ -20,7 +20,7 @@
  *   3. Dispatch. Each event is logged to `monday_events` (audit trail),
  *      then routed by `boardId + columnId + newValue` to the right
  *      handler. Unknown shapes are logged with result='skipped:<reason>'
- *      and return 200 — we never make Monday retry on something we don't
+ *      and return 200, we never make Monday retry on something we don't
  *      understand, because the retry storm just wastes both sides' budget.
  *
  * Always returns 200 (or 401 on bad signature). 5xx makes Monday retry,
@@ -44,9 +44,9 @@ interface AppSettings {
 }
 
 export async function POST(req: NextRequest) {
-  // 1. Read body as raw text — we need both the JSON and the original
+  // 1. Read body as raw text, we need both the JSON and the original
   //    bytes (the latter for HMAC verification of the JWT signing input,
-  //    which is the JWT header+payload, not the request body — so the raw
+  //    which is the JWT header+payload, not the request body, so the raw
   //    body isn't strictly required here, but keeping it gives a single
   //    truthy source if we ever switch verification strategies).
   const rawBody = await req.text()
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
   }
 
-  // 2. Challenge handshake. No signature on this one — Monday hasn't
+  // 2. Challenge handshake. No signature on this one, Monday hasn't
   //    issued the secret yet at the moment they call this.
   if (isChallengeBody(body)) {
     return NextResponse.json({ challenge: body.challenge }, { status: 200 })
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   // 4. Look up settings: signing secret + API token. The webhook is a
   //    machine-to-machine endpoint with no user session, so we use the
-  //    admin (service_role) client — bypasses RLS, which would otherwise
+  //    admin (service_role) client, bypasses RLS, which would otherwise
   //    hide every row from `sites`, `app_settings`, etc.
   const supabase = createAdminClient()
   const { data: settingsRow } = await supabase
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     .single()
   const auditId = auditInsert?.id as string | undefined
 
-  // 7. Dispatch. For now, only acknowledge — handlers land in next step.
+  // 7. Dispatch. For now, only acknowledge, handlers land in next step.
   const result = await dispatch(event, { token, supabase })
 
   // 8. Update audit row with the outcome.
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
  * Route the event by (board, column, new label) to a handler.
  * Returns a short string for the audit log.
  *
- * We don't hardcode the Href Links column ID here — instead the handlers
+ * We don't hardcode the Href Links column ID here, instead the handlers
  * receive the boardId and look up the column mapping themselves via
  * sites.monday_column_ids. That keeps the routing logic data-driven and
  * means a new project doesn't require a code change.
@@ -148,7 +148,7 @@ async function dispatch(
   const itemId = event.pulseId != null ? String(event.pulseId) : null
   if (!colId || !boardId || !itemId) return 'skipped:missing column/board/item id'
 
-  // The new value of a status column is wrapped — Monday sends e.g.
+  // The new value of a status column is wrapped, Monday sends e.g.
   // { label: { index: 8, text: 'Run Link' } } or { post_id: ..., color: ... }
   // depending on column type. Read it loosely.
   const newLabel = extractStatusLabel(event.value)

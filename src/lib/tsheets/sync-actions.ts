@@ -2,13 +2,13 @@
 
 /**
  * TSheets sync server actions (split out of settings-actions.ts, audit M5-2):
- *   - linkTsheetsPersonToDirectory — manual link of a TSheets-only import to a
+ *   - linkTsheetsPersonToDirectory: manual link of a TSheets-only import to a
  *     real directory person (People tab).
- *   - syncAllFromTsheets — the "Sync now" button: clients + people + timesheets,
+ *   - syncAllFromTsheets: the "Sync now" button: clients + people + timesheets,
  *     then stamp tsheets_synced_at. The cron runs the same cores on schedule.
  *
- * (Four granular wrappers — syncTrClients / syncPeopleFromTsheets /
- * syncClientsFromPortal / syncPeopleFromPortal — were removed in the audit:
+ * (Four granular wrappers, syncTrClients / syncPeopleFromTsheets /
+ * syncClientsFromPortal / syncPeopleFromPortal, were removed in the audit:
  * dead code, no callers.)
  */
 
@@ -54,7 +54,7 @@ export async function linkTsheetsPersonToDirectory(input: {
   return { ok: true }
 }
 
-// ─── Manual "sync now" — clients + people + timesheets, then stamp the time ──
+// ─── Manual "sync now", clients + people + timesheets, then stamp the time ──
 
 export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: string }> {
   const notAdmin = await requireAdmin()

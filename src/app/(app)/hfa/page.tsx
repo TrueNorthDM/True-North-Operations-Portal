@@ -1,4 +1,4 @@
-// HFA — page list (Server Component)
+// HFA: page list (Server Component)
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -10,7 +10,7 @@ import { canAccessSite } from '@/lib/auth/access'
 export default async function HfaPagesPage() {
   const { site, siteLanguages, rows, done } = await getSitePageData('hfa')
 
-  // Access enforcement — admins & unrestricted sites pass; otherwise needs a grant.
+  // Access enforcement, admins & unrestricted sites pass; otherwise needs a grant.
   if (site && !(await canAccessSite(site.id))) redirect('/')
 
   return (
@@ -24,7 +24,7 @@ export default async function HfaPagesPage() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             {/* Same heading treatment as AAAF (Nunito, 3xl, extrabold, mixed
-                case) — only the colour changes to HFA's brand orange. */}
+                case), only the colour changes to HFA's brand orange. */}
             <h1 className="text-3xl font-extrabold text-hfa-primary font-(family-name:--font-aaaf-display)">
               {site?.name ?? 'Hope For Africa'}
             </h1>

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 /**
- * Global 404 — rendered for unmatched URLs and any notFound() call. Lives at
+ * Global 404, rendered for unmatched URLs and any notFound() call. Lives at
  * the root so it also covers routes outside the (app) group.
  */
 export default function NotFound() {

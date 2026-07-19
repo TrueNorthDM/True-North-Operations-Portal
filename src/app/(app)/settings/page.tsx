@@ -1,4 +1,4 @@
-// Settings — one surface with a left sub-nav: APIs & tokens, Clients & budgets,
+// Settings: one surface with a left sub-nav: APIs & tokens, Clients & budgets,
 // People & rates, Publishing targets, Sites & languages (+ Change history). The
 // heavy editors are the existing functional components, routed into sections.
 
@@ -122,7 +122,7 @@ export default async function SettingsPage() {
   // Clients → Projects → Job codes directory + the auto avg rate (current month).
   const projectDirectory = await loadProjectDirectory(new Date().toISOString().slice(0, 7))
 
-  // "Signed in as" — the current user's directory name (fallback to email).
+  // "Signed in as", the current user's directory name (fallback to email).
   const profile = await getCurrentProfile()
   const { data: me } = profile
     ? await supabase.from('people').select('full_name').eq('profile_id', profile.id).maybeSingle()
@@ -177,7 +177,7 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div className="space-y-5">
-          <SectionHead title="Clients, Projects & Job Codes" desc="The client, its projects, and the job codes under each — read live from QuickBooks Time. Each project shows who's assigned and the average billing rate that feeds the Budget Usage Report." />
+          <SectionHead title="Clients, Projects & Job Codes" desc="The client, its projects, and the job codes under each, read live from QuickBooks Time. Each project shows who's assigned and the average billing rate that feeds the Budget Usage Report." />
           <ClientsProjectsTab directory={projectDirectory} />
         </div>
       ),
@@ -215,7 +215,7 @@ export default async function SettingsPage() {
   const historyContent = (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
-        <SectionHead title="Full history" desc="Every budget, rate, and target change — who changed what, when, and why — plus the past budget schedule." />
+        <SectionHead title="Full history" desc="Every budget, rate, and target change (who changed what, when, and why) plus the past budget schedule." />
         <FullHistoryButton />
       </div>
       <HistoryTab entries={budget.auditLog} pastBudgets={budget.pastBudgets} pastProjectHours={budget.pastProjectHours} />
@@ -227,7 +227,7 @@ export default async function SettingsPage() {
       <div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Settings</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens — the shared settings the whole portal runs on. Changes apply everywhere.
+          Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens, the shared settings the whole portal runs on. Changes apply everywhere.
         </p>
       </div>
 

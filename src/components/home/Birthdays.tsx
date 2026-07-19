@@ -1,4 +1,4 @@
-// Birthdays — this month's birthdays: name, team and the day (no year). A single
+// Birthdays: this month's birthdays: name, team and the day (no year). A single
 // self-contained block so it can sit side by side with Work anniversaries.
 
 import { Avatar } from '@/components/Avatar'

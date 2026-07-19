@@ -1,4 +1,4 @@
-// Admin — hub for the portal's admin tools (Tickets, Tests, System manual,
+// Admin: hub for the portal's admin tools (Tickets, Tests, System manual,
 // Directory). Server-guarded: only portal admins reach it; everyone else is
 // redirected home. Card layout + animated icons match the handoff prototype.
 
@@ -15,7 +15,7 @@ const OpenArrow = (
   </svg>
 )
 
-// Ticket — the whole glyph bobs; the punch-hole dot pulses.
+// Ticket: the whole glyph bobs; the punch-hole dot pulses.
 const TicketsIcon = (
   <svg className="tn-anim w-[22px] h-[22px]" style={{ animation: 'tn-ico-bob 2.8s ease-in-out infinite' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L3 13V4a1 1 0 0 1 1-1h9l7.59 7.59a2 2 0 0 1 0 2.82z" />
@@ -23,7 +23,7 @@ const TicketsIcon = (
   </svg>
 )
 
-// Clipboard — the checkmark draws itself in on a loop.
+// Clipboard: the checkmark draws itself in on a loop.
 const TestsIcon = (
   <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
@@ -32,7 +32,7 @@ const TestsIcon = (
   </svg>
 )
 
-// Book — the left page gently swings on its spine.
+// Book: the left page gently swings on its spine.
 const ManualIcon = (
   <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <g className="tn-anim" style={{ transformBox: 'fill-box', transformOrigin: 'bottom center', animation: 'tn-ico-swing 3.4s ease-in-out infinite' }}>
@@ -43,7 +43,7 @@ const ManualIcon = (
   </svg>
 )
 
-// View Stage — three panels; the middle one pulses (a live preview).
+// View Stage, three panels; the middle one pulses (a live preview).
 const StageIcon = (
   <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <rect x="3" y="4" width="5" height="16" rx="1" />
@@ -53,10 +53,10 @@ const StageIcon = (
 )
 
 const CARDS = [
-  { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker — everything we need to resolve, so nothing gets lost.' },
-  { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end — tick off what works.' },
-  { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works — pages, access, and how Monday feeds it.' },
-  { href: '/admin/view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level — admin, team leader, user — side by side.' },
+  { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker, everything we need to resolve, so nothing gets lost.' },
+  { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
+  { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
+  { href: '/admin/view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level (admin, team leader, user) side by side.' },
 ] as const
 
 export default async function AdminPage() {
@@ -98,7 +98,7 @@ export default async function AdminPage() {
 
       <p className="text-[13px] leading-relaxed text-muted">
         Access model: people join <strong className="font-bold text-foreground">teams</strong>, teams are granted access to{' '}
-        <strong className="font-bold text-foreground">projects</strong> with a role — all managed from the Directory.
+        <strong className="font-bold text-foreground">projects</strong> with a role, all managed from the Directory.
       </p>
     </div>
   )

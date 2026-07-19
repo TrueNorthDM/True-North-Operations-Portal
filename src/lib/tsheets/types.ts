@@ -1,4 +1,4 @@
-// TSheets (QuickBooks Time) REST API v1 — response shapes.
+// TSheets (QuickBooks Time) REST API v1, response shapes.
 //
 // The API wraps all results in a keyed object (not an array):
 //   { results: { timesheets: { "12345": { id: 12345, ... } } }, more: boolean, ... }
@@ -38,7 +38,7 @@ export interface TsheetsTimesheet {
   customfields?: Record<string, string>
 }
 
-// A flattened i7 timesheet entry — the shape the report is built from, matching
+// A flattened i7 timesheet entry, the shape the report is built from, matching
 // the cache table (tsheets_timesheets). i7Code/activity come from the two custom
 // fields; duration stays in seconds.
 export interface I7Entry {
@@ -49,7 +49,7 @@ export interface I7Entry {
   activity: string
 }
 
-// ── i7 Budget Usage Report — Project → Job code → Activity tree ──────────────
+// ── i7 Budget Usage Report, Project → Job code → Activity tree ──────────────
 // People are no longer a row level: each node carries a name→hours map so the
 // table can show one HOURS column per person. `people` on the report is the
 // ordered union of everyone with hours in the period (the column headers).

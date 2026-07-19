@@ -2,8 +2,8 @@
  * boards/config.ts
  *
  * Board configuration + label semantics for the Boards Review section, ported
- * verbatim from the COE Dashboard (index.html). This is pure data + helpers —
- * no UI, no I/O — so it's shared by both the server (snapshot enrichment) and
+ * verbatim from the COE Dashboard (index.html). This is pure data + helpers
+ * (no UI, no I/O) so it's shared by both the server (snapshot enrichment) and
  * the client (rendering).
  *
  * Phase B note: this replaces the inline `BOARDS` / `LABEL_SEMANTICS` constants

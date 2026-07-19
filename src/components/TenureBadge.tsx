@@ -1,7 +1,7 @@
-// TenureBadge — the anniversary medallion. A YEAR milestone (1–20) is a solid
+// TenureBadge: the anniversary medallion. A YEAR milestone (1–20) is a solid
 // coloured medal with the year number; a QUARTER milestone (3/6/9 months) is a
-// lighter progress ring filling toward the first year. Pure presentational — no
-// hooks — so it renders in server and client components alike.
+// lighter progress ring filling toward the first year. Pure presentational, no
+// hooks, so it renders in server and client components alike.
 
 import type { Milestone } from '@/lib/tenure'
 
@@ -12,8 +12,8 @@ export function TenureBadge({ milestone, size = 56 }: { milestone: Milestone; si
 
   if (milestone.kind === 'year') {
     const c = milestone.color
-    // Alternate solid (even years) / outline (odd years) so adjacent years —
-    // which can share a similar palette hue — always read as distinct badges.
+    // Alternate solid (even years) / outline (odd years) so adjacent years,
+    // which can share a similar palette hue, always read as distinct badges.
     const solid = milestone.value % 2 === 0
     const ink = solid ? '#ffffff' : c
     return (
@@ -41,7 +41,7 @@ export function TenureBadge({ milestone, size = 56 }: { milestone: Milestone; si
     )
   }
 
-  // Quarter — a progress ring (1/4, 2/4, 3/4) building toward the first year.
+  // Quarter: a progress ring (1/4, 2/4, 3/4) building toward the first year.
   const r = 24
   const circ = 2 * Math.PI * r
   const filled = (milestone.value / 4) * circ

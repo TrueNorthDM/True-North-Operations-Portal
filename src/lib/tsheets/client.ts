@@ -1,6 +1,6 @@
 // TSheets (QuickBooks Time) REST API v1 client.
 //
-// Pure fetch wrapper — no Supabase, no Next.js imports. The token is passed
+// Pure fetch wrapper, no Supabase, no Next.js imports. The token is passed
 // by the caller (read from app_settings server-side) so this module stays
 // independently testable by stubbing global.fetch.
 //
@@ -25,7 +25,7 @@ async function tsGet<T>(
   const url = `${BASE}${path}${qs ? '?' + qs : ''}`
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
-    // Always fetch fresh — report data must reflect current approvals
+    // Always fetch fresh, report data must reflect current approvals
     cache: 'no-store',
   })
   if (!res.ok) {
@@ -78,9 +78,9 @@ export async function fetchJobcodes(token: string): Promise<TsheetsJobcode[]> {
 
 // Fetches all approved/submitted timesheets for a date range.
 // `on_the_clock=no` excludes currently-running entries (not yet saved).
-// Pass `jobcodeIds` to fetch only those job codes' entries — much smaller than
+// Pass `jobcodeIds` to fetch only those job codes' entries, much smaller than
 // the whole account (essential for the multi-month carryover query).
-// Pass `modifiedSince` (ISO 8601) to fetch only entries changed since then —
+// Pass `modifiedSince` (ISO 8601) to fetch only entries changed since then,
 // the background sync uses this to pull just what's new/edited/approved,
 // which also catches retroactive approvals to older days.
 export async function fetchTimesheets(

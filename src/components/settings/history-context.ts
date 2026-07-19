@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Settings "Full history" toggle — lets the change-history view be opened from
+ * Settings "Full history" toggle, lets the change-history view be opened from
  * inside a section's content (the Clients & budgets action row) and closed from
  * the history view, while SettingsNav (client) still owns the actual state.
  * The provider lives in SettingsNav; FullHistoryButton consumes it.

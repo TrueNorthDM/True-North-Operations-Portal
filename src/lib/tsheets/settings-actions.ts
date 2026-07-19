@@ -13,7 +13,7 @@ export async function saveTrBudget(input: {
   clientId: number
   hoursAllocated: number | null
   budgetAmount: number | null
-  budgetStartDate: string          // YYYY-MM-DD (first of month) — required
+  budgetStartDate: string          // YYYY-MM-DD (first of month), required
   budgetEndDate: string | null     // YYYY-MM-DD or null (ongoing)
   extraBudget: number
   extraStartDate: string | null    // required when extraBudget > 0
@@ -87,7 +87,7 @@ export async function saveTrBudget(input: {
 
 // ─── Monthly budget schedule (the report's source of truth) ──────────────────
 // Writes the per-month $ budget the i7 report reads (i7_monthly_budget). Past
-// months are locked — only the current month and future can change — and every
+// months are locked (only the current month and future can change) and every
 // save records one audit entry summarising the months it touched.
 export async function saveMonthlyBudgets(input: {
   changes: { month: string; budgetAmount: number; extraAmount: number }[]  // month = 'YYYY-MM'
@@ -346,7 +346,7 @@ export async function saveTrAssignment(input: {
   return { ok: true }
 }
 
-// Internal cost per hour (people.internal_rate) — one value per person, shared
+// Internal cost per hour (people.internal_rate), one value per person, shared
 // with the Directory. Justified + audited, like the client rate.
 export async function savePersonCostRate(input: {
   personId: string
@@ -386,7 +386,7 @@ export async function savePersonCostRate(input: {
   return { ok: true }
 }
 
-// Fixed monthly cost (people.monthly_salary) — for staff paid a flat amount per
+// Fixed monthly cost (people.monthly_salary), for staff paid a flat amount per
 // month rather than by the hour. One value per person, justified + audited like
 // the cost rate. Edited in the Directory's Rates & Costs tab.
 export async function savePersonMonthlySalary(input: {
@@ -470,7 +470,7 @@ export async function savePersonProjects(input: {
 
 // Project-side roster editing (Clients, Projects & Job Codes tab): set exactly
 // which people work on ONE project. Reconciles people.i7_projects across the
-// whole roster — adds the project to the chosen people, removes it from the rest.
+// whole roster, adds the project to the chosen people, removes it from the rest.
 // Same array the budget's average rate reads. Light-touch, still audited.
 export async function saveProjectRoster(input: {
   project: string

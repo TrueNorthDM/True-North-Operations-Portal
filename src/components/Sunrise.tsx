@@ -1,4 +1,4 @@
-// Animated "sunrise" / north-star — counter-rotating gold ray layers, expanding
+// Animated "sunrise" / north-star, counter-rotating gold ray layers, expanding
 // rings, a breathing glow, and a pulsing gold core, all anchored on one point.
 // Pure CSS, guarded by prefers-reduced-motion via .tn-anim. Shared by the login
 // brand panel and the Home welcome banner (the anchor is configurable so each

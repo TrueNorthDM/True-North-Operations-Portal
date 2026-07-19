@@ -16,7 +16,7 @@ type SiteCode = 'aaaf' | 'hfa'
  *
  * Important caveat: this only deletes our local copy. The corresponding
  * Monday items still exist. If you ever change their Href Link to "Run
- * Link" again, the webhook will recreate the page from scratch — which is
+ * Link" again, the webhook will recreate the page from scratch, which is
  * usually what you want (the system stays reactive to Monday) but worth
  * knowing when cleaning up test items.
  *
@@ -24,7 +24,7 @@ type SiteCode = 'aaaf' | 'hfa'
  * Recent activity feed on the project page reflects locally-initiated
  * actions, not just inbound Monday webhooks. We reuse that table (instead
  * of a parallel one) because the feed semantics are "what happened on
- * this site, in order" — the source of the event matters less than the
+ * this site, in order", the source of the event matters less than the
  * fact that it happened.
  *
  * Returns ok/error to the caller; the client component handles redirect.
@@ -54,7 +54,7 @@ export async function deletePage(input: {
 
   // Best-effort audit log. We use the admin client because INSERT on
   // monday_events is blocked by RLS for the authenticated role (writes
-  // are server-side only). Failure here is non-fatal — the delete itself
+  // are server-side only). Failure here is non-fatal, the delete itself
   // already succeeded.
   const admin = createAdminClient()
   await admin.from('monday_events').insert({
@@ -73,7 +73,7 @@ export async function deletePage(input: {
 /**
  * Updates a site's `languages` array AND flags every page that already has at
  * least one saved URL as `needs_hreflang_update = TRUE`. Empty pages are left
- * alone — they're already "incomplete" by definition.
+ * alone, they're already "incomplete" by definition.
  *
  * Discontinued languages: when a language is removed, we keep its existing
  * page_urls + confirmations in the DB. The detail UI shows them faded with a
@@ -91,7 +91,7 @@ export async function updateSiteLanguages(input: {
     return { ok: false, error: 'At least one language is required.' }
   }
   if (!input.newLanguages.includes('en')) {
-    return { ok: false, error: 'English (en) is required — it powers x-default.' }
+    return { ok: false, error: 'English (en) is required, it powers x-default.' }
   }
   for (const lang of input.newLanguages) {
     if (!/^[a-z]{2,3}(-[a-z]{2})?$/i.test(lang)) {
@@ -148,7 +148,7 @@ export async function updateSiteLanguages(input: {
  * Pause or resume a publishing language for a site. Pausing parks the code in
  * `sites.paused_languages` and drops it from `sites.languages`, so it disappears
  * from dashboards and reports while its history (URLs, confirmations) stays put
- * — and, unlike a removal, no pages get flagged for an hreflang update. Resuming
+ * and, unlike a removal, no pages get flagged for an hreflang update. Resuming
  * moves it back. English can't be paused (it anchors x-default).
  */
 export async function setLanguagePaused(input: {
@@ -194,7 +194,7 @@ export async function setLanguagePaused(input: {
 }
 
 /**
- * Clears the needs_hreflang_update flag on a page — called automatically when
+ * Clears the needs_hreflang_update flag on a page, called automatically when
  * the user re-saves URLs or toggles confirmation after a config change.
  */
 async function clearStaleFlag(supabase: Awaited<ReturnType<typeof createClient>>, pageId: string) {
@@ -203,7 +203,7 @@ async function clearStaleFlag(supabase: Awaited<ReturnType<typeof createClient>>
 
 /**
  * Toggle a page's `not_relevant` flag. When true, the page is treated as
- * intentionally out of scope — it counts toward the project's progress
+ * intentionally out of scope, it counts toward the project's progress
  * bar as "done" (the team isn't going to ship it, so it shouldn't
  * suppress the percent-complete number).
  */
@@ -314,7 +314,7 @@ export async function saveMondayApiToken(input: { token: string }): Promise<{ ok
 
 /**
  * Saves the TSheets (QuickBooks Time) API token to app_settings.
- * Same security model as monday_api_token — full value stays server-side,
+ * Same security model as monday_api_token, full value stays server-side,
  * client only sees { exists, last4 }.
  */
 export async function saveTsheetsApiToken(input: { token: string }): Promise<{ ok: boolean; error?: string }> {
@@ -385,7 +385,7 @@ export async function savePageUrls(input: {
 }
 
 /**
- * Toggles the 'confirmed_on_live' flag for one language of a page —
+ * Toggles the 'confirmed_on_live' flag for one language of a page,
  * meaning the hreflang tags are verified live on WordPress.
  *
  * AGREED BUSINESS RULES (decided with the user):
@@ -408,7 +408,7 @@ export async function toggleConfirmation(input: {
   const supabase = await createClient()
   const { pageId, languageCode, field, value } = input
 
-  // Rule 1 — ENFORCE ORDER: can't confirm live without a saved URL.
+  // Rule 1, ENFORCE ORDER: can't confirm live without a saved URL.
   if (field === 'confirmed_on_live' && value === true) {
     const { data: urlRow } = await supabase
       .from('page_urls')
@@ -419,7 +419,7 @@ export async function toggleConfirmation(input: {
     if (!urlRow) return { ok: false, error: 'Enter the URL first.' }
   }
 
-  // Build upsert payload (Rule 2 — timestamps).
+  // Build upsert payload (Rule 2, timestamps).
   const nowIso = new Date().toISOString()
   const payload = {
     page_id: pageId,
@@ -435,7 +435,7 @@ export async function toggleConfirmation(input: {
 
   // ──────────────────────────────────────────────────────────────
   // Auto-stamp pages.confirmed_done_at the first time ALL languages
-  // become confirmed_on_live=true. We never clear it on un-toggle —
+  // become confirmed_on_live=true. We never clear it on un-toggle,
   // the historical "first done" date is preserved (matches the
   // original Google Sheet column behavior).
   if (field === 'confirmed_on_live' && value === true) {

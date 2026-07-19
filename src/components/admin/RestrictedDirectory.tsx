@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * RestrictedDirectory — the People directory as seen by non-privileged tiers
+ * RestrictedDirectory: the People directory as seen by non-privileged tiers
  * (team_leader, user). Part 4 of "People, Teams and Permissions".
  *
  * Read-only by construction: there are no edit affordances here, so none can
  * leak to a user who shouldn't have them. Everyone sees the org LIST (name,
- * title, team, photo, contact type, status). Only people in the viewer's scope
- * — themselves, and (for a team lead) their reports + led-team members — carry a
+ * title, team, photo, contact type, status). Only people in the viewer's scope,
+ * themselves, and (for a team lead) their reports + led-team members, carry a
  * `detail` block and are openable. Sensitive comp/HR fields (rate, DOB, personal
  * contacts) are never sent to this view for anyone; the server builds this lean
  * shape so nothing sensitive reaches the browser.
@@ -58,7 +58,7 @@ export function RestrictedDirectory({ people, isLead }: { people: RestrictedPers
       <div className="max-w-[640px]">
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          The company directory. Open your own {isLead ? 'and your team’s ' : ''}profile for full details — everyone else shows name, role, and team.
+          The company directory. Open your own {isLead ? 'and your team’s ' : ''}profile for full details, everyone else shows name, role, and team.
         </p>
       </div>
 
@@ -91,9 +91,9 @@ export function RestrictedDirectory({ people, isLead }: { people: RestrictedPers
                   <span className="text-[14px] font-semibold text-foreground truncate">{p.name}</span>
                   <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 shrink-0 ${PILL_CLASS[rp.kind]}`}>{rp.label}</span>
                 </span>
-                <span className="block text-[12.5px] text-muted truncate">{p.title ?? '—'}</span>
+                <span className="block text-[12.5px] text-muted truncate">{p.title ?? '-'}</span>
               </span>
-              <span className="hidden sm:block text-[12.5px] text-muted truncate max-w-[160px]">{p.teamName ?? '—'}</span>
+              <span className="hidden sm:block text-[12.5px] text-muted truncate max-w-[160px]">{p.teamName ?? '-'}</span>
               <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 shrink-0 ${PILL_CLASS[sp.kind]}`}>{sp.label}</span>
               {openable && (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-slate-300 shrink-0"><path d="M9 18l6-6-6-6" /></svg>
@@ -111,7 +111,7 @@ export function RestrictedDirectory({ people, isLead }: { people: RestrictedPers
               <Avatar name={open.name} avatarUrl={open.avatarUrl} size={52} color={TEAM_COLOR[open.teamKey]} />
               <div className="min-w-0">
                 <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0 truncate">{open.name}</h2>
-                <p className="text-[13px] text-muted mt-0.5 truncate">{open.title ?? '—'}</p>
+                <p className="text-[13px] text-muted mt-0.5 truncate">{open.title ?? '-'}</p>
               </div>
               <button type="button" onClick={() => setOpenId(null)} aria-label="Close" className="ml-auto shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted hover:bg-subtle hover:text-tn-ink transition-colors">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -137,7 +137,7 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2 border-b border-slate-50 last:border-0">
       <dt className="text-muted shrink-0">{label}</dt>
-      <dd className="font-semibold text-foreground text-right min-w-0 truncate">{value || '—'}</dd>
+      <dd className="font-semibold text-foreground text-right min-w-0 truncate">{value || '-'}</dd>
     </div>
   )
 }

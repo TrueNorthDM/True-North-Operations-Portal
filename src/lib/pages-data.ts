@@ -69,7 +69,7 @@ export async function getSitePageData(siteCode: 'aaaf' | 'hfa'): Promise<SitePag
     }
   })
 
-  // "Done" includes pages marked Not relevant — they're intentionally out of
+  // "Done" includes pages marked Not relevant, they're intentionally out of
   // scope and shouldn't drag the completion percentage down.
   const done = rows.filter(
     r => r.notRelevant || siteLanguages.every(l => r.langStatus[l]?.confirmed),

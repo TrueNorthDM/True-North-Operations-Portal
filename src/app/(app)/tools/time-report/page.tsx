@@ -1,4 +1,4 @@
-// i7 Budget Usage Report — renders the Project → Job code → Activity tree from
+// i7 Budget Usage Report, renders the Project → Job code → Activity tree from
 // the LOCAL cache of i7 timesheets (table tsheets_timesheets), which the
 // background sync keeps fresh. The page makes no live TSheets calls, so it
 // renders instantly. All the data loading lives in report-data.ts (shared with
@@ -76,7 +76,7 @@ export default async function TimeReportPage({ searchParams }: Props) {
           </div>
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">i7 Budget Usage Report</h1>
           <p className="mt-1.5 text-muted leading-relaxed">
-            Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client — pulled directly from QuickBooks Time.
+            Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client, pulled directly from QuickBooks Time.
           </p>
           <div className="mt-3 flex items-center gap-2.5 flex-wrap">
             <Link
@@ -151,7 +151,7 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
         <p className="font-semibold text-slate-700">No i7 hours for {selectedMonth} yet</p>
         <p className="text-sm text-slate-500">
-          Nothing is cached for this month. New data is pulled from QuickBooks Time automatically in the background — or run a sync now from <Link href="/settings" className="underline">Settings</Link>.
+          Nothing is cached for this month. New data is pulled from QuickBooks Time automatically in the background, or run a sync now from <Link href="/settings" className="underline">Settings</Link>.
         </p>
       </div>
     )

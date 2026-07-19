@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * TestChecklist — pre-launch QA checklist (data from lib/tests/data.ts).
+ * TestChecklist: pre-launch QA checklist (data from lib/tests/data.ts).
  * Tri-state per check (pass / fail / skip / not-run) plus an optional note,
- * remembered in localStorage per browser. Read-only data — the checks are
+ * remembered in localStorage per browser. Read-only data, the checks are
  * maintained in the repo. Styling matches the handoff prototype.
  */
 
@@ -237,7 +237,7 @@ export function TestChecklist() {
                               <textarea
                                 value={notes[c.id] ?? ''}
                                 onChange={e => setNote(c.id, e.target.value)}
-                                placeholder="Add a note — what broke, repro steps, ticket link…"
+                                placeholder="Add a note, what broke, repro steps, ticket link…"
                                 rows={2}
                                 className="w-full mt-2.5 resize-y rounded-[9px] border border-slate-200 px-3 py-2 text-[13px] text-foreground bg-subtle outline-none leading-relaxed focus:ring-2 focus:ring-tn-teal/30"
                               />

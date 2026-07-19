@@ -1,10 +1,10 @@
 'use client'
 
-// View Stage — the portal through each permission tier, side by side, on a
+// View Stage, the portal through each permission tier, side by side, on a
 // pan/zoom canvas. Each column is a TIER rendered in an iframe. The Admin column
 // is your real session; the others impersonate a real person of that tier via a
 // signed token on the iframe URL (?_vs=). Desktop-only. Theme-aware chrome
-// (portal identity) — the iframes themselves render the portal in the theme.
+// (portal identity), the iframes themselves render the portal in the theme.
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { tokenViewAs } from './actions'
@@ -68,7 +68,7 @@ export default function ViewStageClient({ myName }: { myName: string }) {
   }, [])
   const zoom = (d: number) => setTr(p => ({ ...p, s: Math.min(2.5, Math.max(0.12, p.s + d)) }))
 
-  // Fit — scale so the columns fill the canvas width, top-aligned.
+  // Fit: scale so the columns fill the canvas width, top-aligned.
   const fit = useCallback(() => {
     const frame = frameRef.current, content = contentRef.current
     if (!frame || !content) return
@@ -111,7 +111,7 @@ export default function ViewStageClient({ myName }: { myName: string }) {
           <div className="flex items-start gap-6 p-8">
             {cols.map((t, i) => {
               const st = IMPERSONATE(t) ? toks[t] : undefined
-              const name = t === 'admin' ? `${myName} · you` : (st?.name ?? '—')
+              const name = t === 'admin' ? `${myName} · you` : (st?.name ?? '-')
               const src = IMPERSONATE(t) ? (st?.token ? `/?_vs=${encodeURIComponent(st.token)}` : null) : '/'
               return (
                 <div key={i} className="flex flex-col items-center gap-2" style={{ width: DV.w * DV.base }}>
@@ -141,7 +141,7 @@ export default function ViewStageClient({ myName }: { myName: string }) {
                       {src ? (
                         <iframe
                           src={src}
-                          title={`${LABEL[t]} — desktop`}
+                          title={`${LABEL[t]}, desktop`}
                           style={{ width: DV.w, height: DV.h, border: 'none', transform: `scale(${DV.base})`, transformOrigin: 'top left' }}
                         />
                       ) : (
@@ -159,7 +159,7 @@ export default function ViewStageClient({ myName }: { myName: string }) {
         </div>
 
         <div className="absolute left-4 bottom-4 text-[11px] text-muted bg-white/90 border border-slate-200 rounded-lg px-3 py-2 max-w-md shadow-sm">
-          Drag the background to move · scroll to zoom. Each tier is a live preview of what that access level sees — the <b className="text-tn-ink font-semibold">Admin</b> column is your own session.
+          Drag the background to move · scroll to zoom. Each tier is a live preview of what that access level sees, the <b className="text-tn-ink font-semibold">Admin</b> column is your own session.
         </div>
       </div>
     </div>

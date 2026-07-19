@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * PersonModal — the person record: a read view (Employment, Reporting, Emails,
+ * PersonModal: the person record: a read view (Employment, Reporting, Emails,
  * Contact, Onboarding, Dates, Team members, History) and an edit form over the
  * same fields. Self-contained: it runs create/update/delete and refreshes.
  */
@@ -129,7 +129,7 @@ export function PersonModal({
   const isExisting = !!state.person
   const p = state.person
 
-  // Tenure medallion — measured to the person's leave date (former) or today.
+  // Tenure medallion, measured to the person's leave date (former) or today.
   const tenureEnd = (() => {
     const m = p?.leftOn ? /^(\d{4})-(\d{2})-(\d{2})/.exec(p.leftOn) : null
     return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date()
@@ -194,7 +194,7 @@ export function PersonModal({
   // ── header ──
   const headTeamKey: TeamKey = isEdit ? draftTeamKey : p ? p.teamKey : 'other'
   const headName = isEdit ? draft.full_name || 'New person' : p?.full_name ?? ''
-  const headJob = isEdit ? draft.title || '—' : p?.title ?? '—'
+  const headJob = isEdit ? draft.title || '-' : p?.title ?? '-'
   const headInactive = !isEdit && p?.status === 'inactive'
 
   const managerOptions = people.filter(x => !p || x.id !== p.id)
@@ -221,7 +221,7 @@ export function PersonModal({
               </div>
             </div>
             <div className="flex items-start gap-3.5 shrink-0">
-              {/* Tenure medallion — years of service, top-right of the card. */}
+              {/* Tenure medallion, years of service, top-right of the card. */}
               {tenureMs.kind !== 'none' && (
                 <div className="flex flex-col items-center gap-1 pt-0.5">
                   <TenureBadge milestone={tenureMs} size={54} />
@@ -299,8 +299,8 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
       <span className="text-right min-w-0">{node}</span>
     </div>
   )
-  const txt = (v: string | null | undefined) => <span className="text-[13.5px] text-foreground font-semibold">{v || '—'}</span>
-  const pillNode = (pill: Pill | null) => (pill ? <PillBadge pill={pill} /> : txt('—'))
+  const txt = (v: string | null | undefined) => <span className="text-[13.5px] text-foreground font-semibold">{v || '-'}</span>
+  const pillNode = (pill: Pill | null) => (pill ? <PillBadge pill={pill} /> : txt('-'))
   const link = (v: string | null) => (v ? <a href={`mailto:${v}`} className="text-[13.5px] font-semibold text-tn-teal truncate inline-block max-w-[220px] align-bottom">{v}</a> : txt('Not set'))
   const personNode = (id: string | null, name: string | null, key: TeamKey | null) =>
     id && name ? (
@@ -308,7 +308,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[10px]" style={{ width: 24, height: 24, background: TEAM_COLOR[key ?? 'other'] }}>{initialsOf(name)}</span>
         <span className="text-[13.5px] text-foreground font-semibold">{name}</span>
       </span>
-    ) : txt('—')
+    ) : txt('-')
 
   return (
     <>
@@ -374,7 +374,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             <SectionTitle>Contact</SectionTitle>
             <div className="flex flex-col gap-[13px]">
               {item('Phone / WhatsApp', txt(p.phone))}
-              {item('WhatsApp — same number', pillNode(ynPill(p.whatsappSameNumber)))}
+              {item('WhatsApp, same number', pillNode(ynPill(p.whatsappSameNumber)))}
               {item('Location', txt(p.location))}
             </div>
           </div>
@@ -398,7 +398,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
                 <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px]" style={{ width: 30, height: 30, background: TEAM_COLOR[m.teamKey] }}>{initialsOf(m.full_name)}</span>
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-bold text-tn-ink truncate">{m.full_name}</span>
-                  <span className="block text-xs text-muted truncate">{m.title ?? '—'}</span>
+                  <span className="block text-xs text-muted truncate">{m.title ?? '-'}</span>
                 </span>
               </div>
             ))}
@@ -463,7 +463,7 @@ function EditBody({
       fullWidth
       value={value}
       onChange={onChange}
-      options={[{ value: '', label: '— None —' }, ...managerOptions.map(o => ({ value: o.id, label: `${o.full_name}${o.teamName ? ` · ${o.teamName}` : ''}` }))]}
+      options={[{ value: '', label: 'None' }, ...managerOptions.map(o => ({ value: o.id, label: `${o.full_name}${o.teamName ? ` · ${o.teamName}` : ''}` }))]}
       className={fieldCls}
       ariaLabel="Manager"
     />
@@ -481,10 +481,10 @@ function EditBody({
           <Wrap wide>
             <span className="flex items-center gap-2">
               {label('Team position')}
-              <span className="text-[11px] text-muted normal-case font-normal tracking-normal">— a person can be in several teams, with a different position in each</span>
+              <span className="text-[11px] text-muted normal-case font-normal tracking-normal">(a person can be in several teams, with a different position in each)</span>
             </span>
             <div className="space-y-2">
-              {draft.teams.length === 0 && <p className="text-[12.5px] text-muted italic">No teams yet — add one below.</p>}
+              {draft.teams.length === 0 && <p className="text-[12.5px] text-muted italic">No teams yet, add one below.</p>}
               {draft.teams.map((row, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
@@ -552,7 +552,7 @@ function EditBody({
         <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
           <Wrap>{label('Phone / WhatsApp')}<input type="text" value={draft.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+1 555 000 0000" /></Wrap>
           <Wrap>{label('Location')}<input type="text" value={draft.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Wrap>
-          <Wrap wide>{label('WhatsApp — same number?')}{seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v))}</Wrap>
+          <Wrap wide>{label('WhatsApp, same number?')}{seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v))}</Wrap>
           <Wrap>{label('Date of birth')}<input type="date" value={draft.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} /></Wrap>
           <Wrap>{label('Joined on')}<input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} /></Wrap>
           <Wrap>{label('Left on')}<input type="date" value={draft.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} /></Wrap>
@@ -591,7 +591,7 @@ function EditBody({
                 {e.has ? (
                   <input type="text" value={e.addr} onChange={ev => setDraft(d => ({ ...d, emails: { ...d.emails, [t.key]: { ...d.emails[t.key], addr: ev.target.value } } }))} placeholder="name@domain.com" className={fieldCls} />
                 ) : (
-                  <span className="text-[12.5px] text-muted italic">Not enabled — click to add.</span>
+                  <span className="text-[12.5px] text-muted italic">Not enabled, click to add.</span>
                 )}
               </div>
             )

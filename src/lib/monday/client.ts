@@ -5,7 +5,7 @@
  * few columns, write a status column value. Skipping fancy abstractions
  * (DataLoader, retries, etc.) until we have evidence we need them.
  *
- * The token is read from app_settings.monday_api_token via the caller —
+ * The token is read from app_settings.monday_api_token via the caller,
  * we don't reach into Supabase from here, so this module stays a pure
  * fetch wrapper that's easy to test by stubbing global.fetch.
  */
@@ -28,7 +28,7 @@ async function gql<T>({ token, query, variables }: GqlInput): Promise<T> {
     },
     body: JSON.stringify({ query, variables }),
   })
-  // Monday returns 200 with {errors: [...]} on validation errors — check both.
+  // Monday returns 200 with {errors: [...]} on validation errors, check both.
   const json = (await res.json()) as { data?: T; errors?: { message: string }[] }
   if (json.errors?.length) {
     throw new Error(`Monday API: ${json.errors.map(e => e.message).join('; ')}`)
@@ -54,7 +54,7 @@ export interface MondayItem {
 
 /**
  * Fetch a single item plus the column values we care about.
- * Pass the column IDs you actually need — keeps the response small and
+ * Pass the column IDs you actually need, keeps the response small and
  * forces the caller to be explicit about its dependency on a column.
  */
 export async function fetchItem(opts: {

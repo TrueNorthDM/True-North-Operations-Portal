@@ -1,7 +1,7 @@
 /**
- * HomeWidgets — the top block of the Home page: compact destination widgets
+ * HomeWidgets: the top block of the Home page: compact destination widgets
  * side by side (Tools & Dashboards, My Team, My Work). My Team is a placeholder
- * for now ("Soon" badge, not clickable) — shown rather than hidden so the
+ * for now ("Soon" badge, not clickable), shown rather than hidden so the
  * direction is visible in-product. Server-rendered, no state.
  */
 

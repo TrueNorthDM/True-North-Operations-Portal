@@ -1,14 +1,14 @@
 /**
  * HMAC verification of incoming Monday webhook payloads.
  *
- * Monday sends an `Authorization` header on each delivery (JWT format —
+ * Monday sends an `Authorization` header on each delivery (JWT format,
  * 3 base64url segments separated by dots). The middle segment, decoded,
  * is the JSON claim set. The signing key is the secret you configured
  * when creating the webhook in Monday.
  *
  * If verification fails or the secret isn't configured yet, the caller
  * decides what to do (200-and-log vs 401). In dev mode we typically log;
- * in prod we reject — see the route handler.
+ * in prod we reject, see the route handler.
  *
  * Why we don't use a JWT library: Edge runtime + simpler audit, and the
  * standard Web Crypto API is enough for HS256.

@@ -1,11 +1,11 @@
 'use client'
 
 /**
- * GoalsView — the Boards Review "Goals" (Publishing) dashboard, native React.
+ * GoalsView: the Boards Review "Goals" (Publishing) dashboard, native React.
  *
  * Fetches the Monday snapshot + targets once, enriches client-side with the
  * ported pure logic, and recomputes pace-vs-target whenever the period/board
- * filter changes (no refetch — the snapshot already spans 180 days).
+ * filter changes (no refetch, the snapshot already spans 180 days).
  *
  * Phase B2: this is the staging view at /boards-beta. The legacy boards.html
  * stays the live Boards Review until cutover (B6).
@@ -108,7 +108,7 @@ export function GoalsView() {
         <h1 className="text-2xl font-bold text-slate-900">Boards Review</h1>
         <p className="mt-1 text-sm text-slate-500">
           Publishing pace vs target, over the selected timeframe{' '}
-          <span className="text-slate-400">(beta — native rewrite)</span>
+          <span className="text-slate-400">(beta, native rewrite)</span>
         </p>
       </div>
 

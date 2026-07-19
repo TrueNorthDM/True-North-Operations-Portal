@@ -1,9 +1,9 @@
 /**
- * tier.ts — the signed-in user's access tier, derived from people.role_type.
+ * tier.ts: the signed-in user's access tier, derived from people.role_type.
  *
  * Part 4 of "People, Teams and Permissions". role_type is the source of truth
  * for what a person may SEE in the portal; the hard security boundary is still
- * profiles.role + RLS (unchanged) — this only drives UI visibility. Two
+ * profiles.role + RLS (unchanged), this only drives UI visibility. Two
  * privileged tiers (admin, admin_assistant) get the full portal; team_leader
  * and user get the restricted view (own / subordinates only).
  *
@@ -22,9 +22,9 @@ export function asRoleType(v: string | null | undefined): RoleType {
 
 export interface Tier {
   roleType: RoleType
-  /** admin | admin_assistant — full portal (Admin, Settings, all Directory tabs, i7 buttons). */
+  /** admin | admin_assistant, full portal (Admin, Settings, all Directory tabs, i7 buttons). */
   isPrivileged: boolean
-  /** team_leader — restricted, but sees subordinates' cards (vs. only their own). */
+  /** team_leader, restricted, but sees subordinates' cards (vs. only their own). */
   isLead: boolean
 }
 

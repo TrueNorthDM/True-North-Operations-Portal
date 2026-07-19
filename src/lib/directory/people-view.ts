@@ -1,5 +1,5 @@
-// Loads the PersonView models + team options + free accounts — the exact inputs
-// the PersonModal needs — so surfaces other than the Directory (e.g. Human
+// Loads the PersonView models + team options + free accounts, the exact inputs
+// the PersonModal needs, so surfaces other than the Directory (e.g. Human
 // Resources) can open a person's card in place. Kept in sync with the identical
 // construction in app/(app)/directory/page.tsx (the Directory owns the canonical
 // version; this is a self-contained copy so it never risks that critical page).

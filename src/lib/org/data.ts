@@ -1,5 +1,5 @@
 /**
- * org/data.ts — reads the People & Teams directory and builds the org chart
+ * org/data.ts: reads the People & Teams directory and builds the org chart
  * tree (by manager_id). Read-only; the chart redraws whenever the directory
  * changes. RLS lets any signed-in user read people/teams, so this works for
  * everyone (the chart is public to logged-in users).
@@ -14,7 +14,7 @@ export interface OrgPerson {
   /** Signature color for the card/threads: the team they lead, else their first team. */
   color: string | null
   teams: { name: string; color: string | null }[]
-  /** Teams this person leads — rendered as a box of members under them. */
+  /** Teams this person leads, rendered as a box of members under them. */
   ledTeams: OrgTeamGroup[]
   children: OrgPerson[]
 }
@@ -55,7 +55,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   let tmRes = await supabase.from('team_members').select('team_id, person_id, position')
   if (tmRes.error) tmRes = (await supabase.from('team_members').select('team_id, person_id')) as typeof tmRes
 
-  // Inactive people are hidden everywhere outside the People tab — the org chart
+  // Inactive people are hidden everywhere outside the People tab, the org chart
   // (and its "N people" count) shows actives only.
   const people: PersonRow[] = (pData ?? []).filter(p => p.status !== 'inactive')
   const teams: TeamRow[] = tData ?? []

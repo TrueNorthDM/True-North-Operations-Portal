@@ -1,4 +1,4 @@
-// Rates & Costs — the per-person rate grid, moved here from Settings → People &
+// Rates & Costs, the per-person rate grid, moved here from Settings → People &
 // rates. Person / team / report-to / joined-on are read-only (from the People
 // tab); Rate / client and Rate / cost are edited inline and saved via the
 // tr_assignments + people.internal_rate actions inside PeopleTab.

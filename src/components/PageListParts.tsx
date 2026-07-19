@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Generic UI primitives used by PageList — a CSS-only Tooltip, a click-outside
+ * Generic UI primitives used by PageList, a CSS-only Tooltip, a click-outside
  * Popover (filter dropdowns), its PopoverItem, and a sortable SortHeader.
  * Split out of PageList (audit M6) so the list component keeps to its data +
  * table concerns; these are reusable leaves with no PageList state.
@@ -14,7 +14,7 @@ export type SortDir = 'asc' | 'desc'
 /**
  * Lightweight CSS-only tooltip. Appears instantly on hover (no 2s delay like
  * the native `title` attribute) and matches the app's visual language. Uses
- * `group-hover` + absolute positioning — no JS, no library.
+ * `group-hover` + absolute positioning, no JS, no library.
  */
 export function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
   return (

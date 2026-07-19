@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * SettingsNav — the Settings surface as a top action row (help + sync + change
+ * SettingsNav: the Settings surface as a top action row (help + sync + change
  * history) over a sticky left sub-nav + content panel, matching the handoff.
  * Only the active section mounts. "Change history" is a top-right toggle, not a
  * nav item.
@@ -83,7 +83,7 @@ export function SettingsNav({
           })}
         </nav>
 
-        {/* panel — only the active section mounts (like the previous tabbed
+        {/* panel, only the active section mounts (like the previous tabbed
             settings), so inactive editors' heavy grids don't render up front. */}
         <section className="min-w-0">
           <HistoryContext.Provider value={{ isHistory: active === HISTORY, toggle: toggleHistory }}>

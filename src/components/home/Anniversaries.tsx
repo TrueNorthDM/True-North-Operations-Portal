@@ -1,4 +1,4 @@
-// Anniversaries — this month's work anniversaries: name, team, milestone badge
+// Anniversaries: this month's work anniversaries: name, team, milestone badge
 // and the date they joined. A single self-contained block (title + card) so it
 // can sit side by side with Birthdays on the Home page.
 

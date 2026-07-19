@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * MondayTokenField — Monday API token input on Settings.
+ * MondayTokenField: Monday API token input on Settings.
  *
  * SECURITY MODEL (current):
  *   - The full token value NEVER leaves the server.
  *   - This component only receives { exists, last4 } as props.
  *   - "Change" requires the user to re-enter the full token (we don't pre-fill).
- *   - Saved state is rendered as a blurred mask — no copy, no select.
+ *   - Saved state is rendered as a blurred mask, no copy, no select.
  *   - Saving sends a NEW token via Server Action (which uses the supabase-js
  *     anon client to write to `app_settings`).
  *
@@ -88,11 +88,11 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
       <div>
         <h2 className="text-lg font-bold text-slate-900">Monday API</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          Personal API token from monday.com — used (later) to sync page implementation status.
+          Personal API token from monday.com, used (later) to sync page implementation status.
         </p>
       </div>
 
-      {/* Saved state — blurred mask, no copy, no select. Change/Remove appear
+      {/* Saved state, blurred mask, no copy, no select. Change/Remove appear
           only in the page Edit mode. */}
       {showMask && (
         <div className="flex items-center gap-3 flex-wrap">
@@ -132,14 +132,14 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
         </div>
       )}
 
-      {/* No token yet, view mode — nudge to Edit */}
+      {/* No token yet, view mode, nudge to Edit */}
       {showEmpty && (
         <div className="px-3 py-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 italic">
-          No token set — click <span className="font-semibold not-italic text-slate-500">Edit</span> to add one.
+          No token set, click <span className="font-semibold not-italic text-slate-500">Edit</span> to add one.
         </div>
       )}
 
-      {/* Edit state — enter a new token */}
+      {/* Edit state, enter a new token */}
       {showInput && (
         <div className="space-y-3">
           {tokenInfo.exists && (
@@ -204,7 +204,7 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
             Any sync running with the current token will fail until you save a new one.
           </p>
           <p className="text-sm text-slate-500">
-            You won&apos;t see the old token again — make sure you have a new one ready before continuing.
+            You won&apos;t see the old token again, make sure you have a new one ready before continuing.
           </p>
           <div className="flex items-center justify-end gap-3 pt-2">
             <button onClick={() => setWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
@@ -231,7 +231,7 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
         </Modal>
       )}
 
-      {/* Security note — informational */}
+      {/* Security note, informational */}
       <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2">
         <span aria-hidden="true">⚠</span>
         <span>

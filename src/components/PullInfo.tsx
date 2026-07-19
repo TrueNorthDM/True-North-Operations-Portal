@@ -45,7 +45,7 @@ interface Props {
 /** Footer for an API card: the exact times data is pulled + when it last ran. */
 export function PullInfo({ syncedAt, utcHours, utcMinute = 0, label, pastVerb }: Props) {
   // Times/relative-time are timezone- and clock-dependent, so compute them only
-  // after mount — otherwise the server (UTC) and client render differently and
+  // after mount, otherwise the server (UTC) and client render differently and
   // React reports a hydration mismatch. The tick also refreshes "X ago".
   const [mounted, setMounted] = useState(false)
   const [, setTick] = useState(0)

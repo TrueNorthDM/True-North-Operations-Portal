@@ -2,8 +2,8 @@
 
 /**
  * Small chrome pieces of the i7 report, split out of I7Report (audit M5-2):
- *   - ExportMenu — the Export → "Save as PDF" dropdown.
- *   - NoteCard   — the editable month narrative (admins), shown + in the PDF.
+ *   - ExportMenu: the Export → "Save as PDF" dropdown.
+ *   - NoteCard: the editable month narrative (admins), shown + in the PDF.
  */
 
 import { useState } from 'react'
@@ -20,7 +20,7 @@ function Spinner() {
   )
 }
 
-// "Export image" — a shareable PNG of the budget-at-a-glance (used $ + %, amount
+// "Export image", a shareable PNG of the budget-at-a-glance (used $ + %, amount
 // left, month total) generated server-side (/tools/time-report/image). The card
 // the team passes around, straight from the app.
 export function ExportImageButton({ month }: { month: string }) {
@@ -136,7 +136,7 @@ export function ExportMenu({ month }: { month: string }) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
               </a>
             </div>
-            {error && <p className="px-1 pt-2.5 text-[11px] text-[var(--bdg-red-fg)] break-words">{error} — or use &ldquo;Save current view&rdquo; below.</p>}
+            {error && <p className="px-1 pt-2.5 text-[11px] text-[var(--bdg-red-fg)] break-words">{error}, or use &ldquo;Save current view&rdquo; below.</p>}
             <div className="h-px bg-slate-100 mx-1 my-2" />
             <button onClick={() => { setOpen(false); window.print() }} className="flex items-center gap-2.5 w-full text-left rounded-[8px] px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-subtle transition-colors">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
@@ -149,7 +149,7 @@ export function ExportMenu({ month }: { month: string }) {
   )
 }
 
-// Month narrative — shown on the report and included in the PDF. Admins edit.
+// Month narrative, shown on the report and included in the PDF. Admins edit.
 export function NoteCard({ month, note, canEdit }: { month: string; note: string; canEdit: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
@@ -185,7 +185,7 @@ export function NoteCard({ month, note, canEdit }: { month: string; note: string
       ) : note ? (
         <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{note}</p>
       ) : (
-        <p className="text-sm text-muted italic">No note for this month{canEdit ? ' — click Edit to add one.' : '.'}</p>
+        <p className="text-sm text-muted italic">No note for this month{canEdit ? ', click Edit to add one.' : '.'}</p>
       )}
     </div>
   )

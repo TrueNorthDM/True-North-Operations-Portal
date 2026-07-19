@@ -2,7 +2,7 @@
 
 // A single project metric (big number + label) that counts up from 0 to its
 // value on first render. Client component because the count-up runs in the
-// browser (requestAnimationFrame) — the Projects page that renders it is a
+// browser (requestAnimationFrame), the Projects page that renders it is a
 // Server Component and just passes the final value down as a prop.
 
 import { useEffect, useState } from 'react'
@@ -18,7 +18,7 @@ function useCountUp(target: number, durationMs = 1100): number {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     // Jump straight to the value (no animation) when reduced-motion is on,
-    // there's nothing to count, or the tab is hidden — rAF is paused in
+    // there's nothing to count, or the tab is hidden, rAF is paused in
     // background tabs, so animating there would leave a stale 0 until focus.
     // setTimeout fires regardless of visibility and is deferred, so we never
     // setState synchronously in the effect body.
@@ -32,7 +32,7 @@ function useCountUp(target: number, durationMs = 1100): number {
     const step = (ts: number) => {
       if (!start) start = ts
       const p = Math.min(1, (ts - start) / durationMs)
-      const eased = 1 - Math.pow(1 - p, 3) // easeOutCubic — fast then settles
+      const eased = 1 - Math.pow(1 - p, 3) // easeOutCubic, fast then settles
       setValue(Math.round(target * eased))
       if (p < 1) raf = requestAnimationFrame(step)
     }
@@ -44,7 +44,7 @@ function useCountUp(target: number, durationMs = 1100): number {
 }
 
 /**
- * `color` tints the number with the site's brand colour — used for the
+ * `color` tints the number with the site's brand colour, used for the
  * "Remaining" cell, the one the team actually needs to act on. The other two
  * use the neutral ink token.
  */

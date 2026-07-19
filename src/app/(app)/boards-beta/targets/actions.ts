@@ -20,7 +20,7 @@ async function requireAdmin(): Promise<{ ok: false; error: string } | { ok: true
   } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'Not signed in.' }
   const { data: profile } = await supabase.from('profiles').select('role, email').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') return { ok: false, error: 'Admins only — you have view-only access.' }
+  if (profile?.role !== 'admin') return { ok: false, error: 'Admins only, you have view-only access.' }
   return { ok: true, email: profile.email ?? user.email ?? 'unknown' }
 }
 

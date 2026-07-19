@@ -1,5 +1,5 @@
 /**
- * Admin Supabase client — bypasses RLS.
+ * Admin Supabase client, bypasses RLS.
  *
  * Use ONLY in server-side machine-to-machine endpoints (webhooks, cron jobs,
  * background jobs). Never instantiate from a Server Action that runs on
@@ -23,7 +23,7 @@ export function createAdminClient() {
   }
   return createClient(url, key, {
     auth: {
-      // No cookie/session storage — service_role doesn't need to be a "user".
+      // No cookie/session storage, service_role doesn't need to be a "user".
       persistSession: false,
       autoRefreshToken: false,
     },
