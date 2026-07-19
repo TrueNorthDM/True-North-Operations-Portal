@@ -289,6 +289,16 @@ function SectionTitle({ children, right }: { children: ReactNode; right?: ReactN
   )
 }
 
+// Top-level group heading: a blue accent bar + bold title, one tier above the
+// teal SectionTitles it groups.
+function GroupTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={`border-l-[3px] border-tn-primary pl-3 mb-4 ${className}`}>
+      <h3 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink leading-tight m-0">{children}</h3>
+    </div>
+  )
+}
+
 // ── VIEW ──
 function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
   const reports = people.filter(x => x.manager_id === p.id)
@@ -339,7 +349,8 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
 
   return (
     <>
-      {/* Personal data + Login & access, the two lead sections. */}
+      {/* Group 1: Personal Data and Login */}
+      <GroupTitle>Personal Data and Login</GroupTitle>
       <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start">
         <div>
           <SectionTitle>Personal data</SectionTitle>
@@ -365,71 +376,71 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         </div>
       </div>
 
-      {/* Everything else, unchanged grouping. */}
-      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start mt-6">
-        {/* Left column */}
-        <div className="space-y-6">
-          <div>
-            <SectionTitle>Employment</SectionTitle>
-            <div className="flex flex-col gap-[13px]">
-              {item('Job title', txt(p.title))}
-              {item('Type', pillNode(typePill(p.employmentType)))}
-              {item('Time', pillNode(timePill(p.schedule)))}
-              {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
-              {item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
-              {item('Status', pillNode(statusPill(p.status === 'active')))}
-            </div>
-          </div>
-          <div>
-            <SectionTitle>Onboarding</SectionTitle>
-            <div className="flex flex-col gap-[13px]">
-              {item('Status', <PillBadge pill={lifecyclePill(p.onboardingStatus)} />)}
-            </div>
-          </div>
-          <div>
-            <SectionTitle>Offboarding</SectionTitle>
-            <div className="flex flex-col gap-[13px]">
-              {item('Status', <PillBadge pill={lifecyclePill(p.offboardingStatus)} />)}
-            </div>
+      {/* Group 2: Employment. Multi-column flow so the four blocks pack to fit
+          however much each one holds, instead of a rigid two-column split. */}
+      <GroupTitle className="mt-8">Employment</GroupTitle>
+      <div className="columns-2 gap-x-10">
+        <div className="break-inside-avoid mb-6">
+          <SectionTitle>Employment</SectionTitle>
+          <div className="flex flex-col gap-[13px]">
+            {item('Job title', txt(p.title))}
+            {item('Type', pillNode(typePill(p.employmentType)))}
+            {item('Time', pillNode(timePill(p.schedule)))}
+            {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
+            {item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
+            {item('Status', pillNode(statusPill(p.status === 'active')))}
           </div>
         </div>
+        <div className="break-inside-avoid mb-6">
+          <SectionTitle>Team position</SectionTitle>
+          <div className="flex flex-col gap-2.5">
+            {p.teams.length ? p.teams.map(t => (
+              <div key={t.teamId} className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 min-w-0">
+                  <span className="w-[9px] h-[9px] rounded-[3px] shrink-0" style={{ background: TEAM_COLOR[t.teamKey] }} />
+                  <span className="text-[13.5px] text-foreground font-semibold truncate">{t.teamName}</span>
+                </span>
+                <PillBadge pill={teamPositionPill(t.position)} />
+              </div>
+            )) : <span className="text-[13px] text-muted italic">No team yet.</span>}
+          </div>
+        </div>
+        <div className="break-inside-avoid mb-6">
+          <SectionTitle>Reporting</SectionTitle>
+          <div className="flex flex-col gap-[13px]">
+            {item('Reports to', personNode(p.manager_id, p.managerName, p.managerTeamKey))}
+            {item('Also reports to', personNode(p.alsoReportsToId, p.alsoReportsToName, p.alsoReportsToTeamKey))}
+          </div>
+        </div>
+        <div className="break-inside-avoid mb-6">
+          <SectionTitle>Dates</SectionTitle>
+          <div className="flex flex-col gap-[13px]">
+            {item('Joined on', txt(formatDate(p.hireDate)))}
+            {item('Left on', txt(formatDate(p.leftOn)))}
+          </div>
+        </div>
+      </div>
 
-        {/* Right column */}
-        <div className="space-y-6">
-          <div>
-            <SectionTitle>Team position</SectionTitle>
-            <div className="flex flex-col gap-2.5">
-              {p.teams.length ? p.teams.map(t => (
-                <div key={t.teamId} className="flex items-center justify-between gap-3">
-                  <span className="inline-flex items-center gap-2 min-w-0">
-                    <span className="w-[9px] h-[9px] rounded-[3px] shrink-0" style={{ background: TEAM_COLOR[t.teamKey] }} />
-                    <span className="text-[13.5px] text-foreground font-semibold truncate">{t.teamName}</span>
-                  </span>
-                  <PillBadge pill={teamPositionPill(t.position)} />
-                </div>
-              )) : <span className="text-[13px] text-muted italic">No team yet.</span>}
-            </div>
+      {/* Group 3: Hiring. Onboarding + Offboarding side by side, matched height. */}
+      <GroupTitle className="mt-2">Hiring</GroupTitle>
+      <div className="grid grid-cols-2 gap-x-10 items-start">
+        <div>
+          <SectionTitle>Onboarding</SectionTitle>
+          <div className="flex flex-col gap-[13px]">
+            {item('Status', <PillBadge pill={lifecyclePill(p.onboardingStatus)} />)}
           </div>
-          <div>
-            <SectionTitle>Reporting</SectionTitle>
-            <div className="flex flex-col gap-[13px]">
-              {item('Reports to', personNode(p.manager_id, p.managerName, p.managerTeamKey))}
-              {item('Also reports to', personNode(p.alsoReportsToId, p.alsoReportsToName, p.alsoReportsToTeamKey))}
-            </div>
-          </div>
-          <div>
-            <SectionTitle>Dates</SectionTitle>
-            <div className="flex flex-col gap-[13px]">
-              {item('Joined on', txt(formatDate(p.hireDate)))}
-              {item('Left on', txt(formatDate(p.leftOn)))}
-            </div>
+        </div>
+        <div>
+          <SectionTitle>Offboarding</SectionTitle>
+          <div className="flex flex-col gap-[13px]">
+            {item('Status', <PillBadge pill={lifecyclePill(p.offboardingStatus)} />)}
           </div>
         </div>
       </div>
 
       {reports.length > 0 && (
         <div className="mt-6">
-          <SectionTitle right={`${reports.length} ${reports.length === 1 ? 'report' : 'reports'}`}>Team members</SectionTitle>
+          <SectionTitle right={`${reports.length} ${reports.length === 1 ? 'report' : 'reports'}`}>My Team</SectionTitle>
           <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
             {reports.map(m => (
               <div key={m.id} className="flex items-center gap-2.5">
