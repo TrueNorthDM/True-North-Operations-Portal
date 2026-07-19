@@ -45,6 +45,7 @@ export interface PersonInput {
   email_personal?: string | null
   phone?: string | null
   location?: string | null
+  address?: string | null
   company_email?: string | null
   uses_system?: string | null
   date_of_birth?: string | null
@@ -97,6 +98,7 @@ function personColumns(input: PersonInput): PersonCols {
     email_personal: trimOrNull(input.email_personal),
     phone: trimOrNull(input.phone),
     location: trimOrNull(input.location),
+    address: trimOrNull(input.address),
     company_email: input.company_email || null,
     uses_system: input.uses_system || null,
     date_of_birth: input.date_of_birth || null,

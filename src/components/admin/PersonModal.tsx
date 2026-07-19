@@ -14,6 +14,7 @@ import { Avatar } from '@/components/Avatar'
 import { Select } from '@/components/ui/Select'
 import { TenureBadge } from '@/components/TenureBadge'
 import { tenureSince, milestoneOf, formatTenure } from '@/lib/tenure'
+import { formatPhone } from '@/lib/phone'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -59,6 +60,7 @@ interface Draft {
   status: 'active' | 'inactive'
   phone: string
   location: string
+  address: string
   whatsappSameNumber: string
   companyEmail: string
   usesSystem: string
@@ -85,7 +87,7 @@ function toDraft(p: PersonView | null): Draft {
     return {
       full_name: '', lastName: '', title: '', teams: [], manager_id: '', alsoReportsToId: '',
       reportsToManager: 'no', managerNameText: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
-      teamMeeting: false, roleType: 'user', status: 'active', phone: '', location: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
+      teamMeeting: false, roleType: 'user', status: 'active', phone: '', location: '', address: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
       dateOfBirth: '', hireDate: '', leftOn: '',
       emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
       hasTsheets: true, history: '', mondayDocs: '',
@@ -96,7 +98,7 @@ function toDraft(p: PersonView | null): Draft {
     alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
-    teamMeeting: p.teamMeeting, roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', whatsappSameNumber: p.whatsappSameNumber ?? '',
+    teamMeeting: p.teamMeeting, roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', address: p.address ?? '', whatsappSameNumber: p.whatsappSameNumber ?? '',
     companyEmail: p.companyEmail ?? '', usesSystem: p.usesSystem ?? '',
     dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
     emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
@@ -169,6 +171,7 @@ export function PersonModal({
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
+      address: draft.address || null,
       whatsapp_same_number: draft.whatsappSameNumber || null,
       company_email: draft.companyEmail || null,
       uses_system: draft.usesSystem || null,
@@ -309,32 +312,62 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         <span className="text-[13.5px] text-foreground font-semibold">{name}</span>
       </span>
     ) : txt('-')
+  // Phone shown in international format with the country flag (parsed from the
+  // calling code). Links to WhatsApp when the number is valid.
+  const phoneNode = (raw: string | null) => {
+    const f = formatPhone(raw)
+    if (!f) return txt('-')
+    const body = (
+      <span className="inline-flex items-center gap-1.5">
+        {f.flag && <span className="text-[15px] leading-none" aria-hidden="true">{f.flag}</span>}
+        <span className="text-[13.5px] text-foreground font-semibold">{f.international}</span>
+      </span>
+    )
+    return f.valid ? (
+      <a href={`https://wa.me/${f.digits}`} target="_blank" rel="noopener noreferrer" className="hover:text-tn-teal [&_span]:hover:text-tn-teal">{body}</a>
+    ) : body
+  }
 
   return (
     <>
+      {/* Personal data + Login & access, the two lead sections. */}
       <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start">
+        <div>
+          <SectionTitle>Personal data</SectionTitle>
+          <div className="flex flex-col gap-[13px]">
+            {item('Last name', txt(p.lastName))}
+            {item('Email', link(p.emails.personal))}
+            {item('Phone / WhatsApp', phoneNode(p.phone))}
+            {item('WhatsApp, same number', pillNode(ynPill(p.whatsappSameNumber)))}
+            {item('Date of birth', txt(formatDate(p.dateOfBirth)))}
+            {item('Location', txt(p.location))}
+            {item('Full address', txt(p.address))}
+          </div>
+        </div>
+        <div>
+          <SectionTitle>Login &amp; access</SectionTitle>
+          <div className="flex flex-col gap-[13px]">
+            {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
+            {item('True North', link(p.emails.trueNorth))}
+            {item('GoodNews', link(p.emails.goodnews))}
+            {item('COE', link(p.emails.coe))}
+          </div>
+        </div>
+      </div>
+
+      {/* Everything else, unchanged grouping. */}
+      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start mt-6">
         {/* Left column */}
         <div className="space-y-6">
           <div>
             <SectionTitle>Employment</SectionTitle>
             <div className="flex flex-col gap-[13px]">
               {item('Job title', txt(p.title))}
-              {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
-              {item('Last name', txt(p.lastName))}
               {item('Type', pillNode(typePill(p.employmentType)))}
               {item('Time', pillNode(timePill(p.schedule)))}
               {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
               {item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
               {item('Status', pillNode(statusPill(p.status === 'active')))}
-            </div>
-          </div>
-          <div>
-            <SectionTitle>Emails</SectionTitle>
-            <div className="flex flex-col gap-[13px]">
-              {item('True North', link(p.emails.trueNorth))}
-              {item('GoodNews', link(p.emails.goodnews))}
-              {item('COE', link(p.emails.coe))}
-              {item('Personal', link(p.emails.personal))}
             </div>
           </div>
           <div>
@@ -371,17 +404,8 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             </div>
           </div>
           <div>
-            <SectionTitle>Contact</SectionTitle>
-            <div className="flex flex-col gap-[13px]">
-              {item('Phone / WhatsApp', txt(p.phone))}
-              {item('WhatsApp, same number', pillNode(ynPill(p.whatsappSameNumber)))}
-              {item('Location', txt(p.location))}
-            </div>
-          </div>
-          <div>
             <SectionTitle>Dates</SectionTitle>
             <div className="flex flex-col gap-[13px]">
-              {item('Date of birth', txt(formatDate(p.dateOfBirth)))}
               {item('Joined on', txt(formatDate(p.hireDate)))}
               {item('Left on', txt(formatDate(p.leftOn)))}
             </div>
@@ -550,8 +574,13 @@ function EditBody({
       <div className="mb-6">
         <SectionTitle>Contact</SectionTitle>
         <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
-          <Wrap>{label('Phone / WhatsApp')}<input type="text" value={draft.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+1 555 000 0000" /></Wrap>
+          <Wrap>
+            {label('Phone / WhatsApp')}
+            <input type="text" value={draft.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+55 85 98683 9825" />
+            <span className="text-[11px] text-muted normal-case font-normal tracking-normal">Include the country code so we can show the flag.</span>
+          </Wrap>
           <Wrap>{label('Location')}<input type="text" value={draft.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Wrap>
+          <Wrap wide>{label('Full address')}<textarea value={draft.address} onChange={e => set('address', e.target.value)} className={`${fieldCls} min-h-[64px] resize-y leading-relaxed`} placeholder="Street, number, complement, city, state, ZIP, country" /></Wrap>
           <Wrap wide>{label('WhatsApp, same number?')}{seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v))}</Wrap>
           <Wrap>{label('Date of birth')}<input type="date" value={draft.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} /></Wrap>
           <Wrap>{label('Joined on')}<input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} /></Wrap>

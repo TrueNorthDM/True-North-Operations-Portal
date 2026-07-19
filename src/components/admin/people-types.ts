@@ -64,6 +64,7 @@ export interface PersonView {
   // Contact
   phone: string | null
   location: string | null
+  address: string | null // full mailing address (free text)
   whatsappSameNumber: string | null // 'yes' | 'no', same number on WhatsApp?
 
   // Onboarding (tri-state chips)

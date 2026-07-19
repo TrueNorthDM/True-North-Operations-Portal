@@ -44,7 +44,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes] = await Promise.all([
+  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, addrRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
@@ -55,6 +55,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
     // Team → tool access (037). Table may not exist yet, empty on error.
     supabase.from('team_tool_grants').select('team_id, tool_key, audience'),
+    // Isolated + graceful: address (042) may not exist yet.
+    supabase.from('people').select('id, address'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -90,6 +92,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
     if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
+  const addressById = new Map<string, string>()
+  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: string | null }[]) if (r.address) addressById.set(r.id, r.address)
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -178,6 +182,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         phone: str(p.phone),
         location: str(p.location),
+        address: addressById.get(p.id) ?? null,
         whatsappSameNumber: str(p.whatsapp_same_number),
         companyEmail: str(p.company_email),
         usesSystem: str(p.uses_system),

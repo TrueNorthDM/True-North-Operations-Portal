@@ -32,11 +32,14 @@ export async function loadDirectoryPeopleView(
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: prData }, aRes, dRes] = await Promise.all([
+  const [{ data: tData }, { data: prData }, aRes, dRes, addrRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
     supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
+    // Isolated select: `address` (042) may not exist yet, so a failure here must
+    // NOT drop the other columns. Left empty until the migration runs.
+    supabase.from('people').select('id, address'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -66,6 +69,8 @@ export async function loadDirectoryPeopleView(
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
     if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
+  const addressById = new Map<string, string>()
+  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: string | null }[]) if (r.address) addressById.set(r.id, r.address)
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -138,6 +143,7 @@ export async function loadDirectoryPeopleView(
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         phone: str(p.phone),
         location: str(p.location),
+        address: addressById.get(p.id) ?? null,
         whatsappSameNumber: str(p.whatsapp_same_number),
         companyEmail: str(p.company_email),
         usesSystem: str(p.uses_system),
