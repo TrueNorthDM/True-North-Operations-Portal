@@ -523,7 +523,8 @@ function EditBody({
 
   return (
     <>
-      {/* Personal data + Login & access, mirroring the read view. */}
+      {/* Group 1: Personal Data and Login */}
+      <GroupTitle>Personal Data and Login</GroupTitle>
       <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start">
         <div>
           <SectionTitle>Personal data</SectionTitle>
@@ -571,73 +572,76 @@ function EditBody({
         </div>
       </div>
 
-      {/* Employment + Onboarding | Team position + Reporting + Dates, same as the view. */}
-      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start mt-6">
-        <div className="space-y-6">
-          <div>
-            <SectionTitle>Employment</SectionTitle>
-            <div className="flex flex-col gap-3.5">
-              {field('Job title', <input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" />)}
-              {field('Type', seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v)))}
-              {field('Time', seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v)))}
-              {field('Weekly hours', <input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" />)}
-              {field('Internal rate ($/hr)', <input type="number" value={draft.internalRate} onChange={e => set('internalRate', e.target.value)} className={fieldCls} placeholder="60" />)}
-              {field('Status', seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive')))}
-            </div>
-          </div>
-          <div>
-            <SectionTitle>Onboarding</SectionTitle>
-            <div className="flex flex-col gap-3.5">
-              {field('Status', seg(draft.onboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('onboardingStatus', v)))}
-            </div>
-          </div>
-          <div>
-            <SectionTitle>Offboarding</SectionTitle>
-            <div className="flex flex-col gap-3.5">
-              {field('Status', seg(draft.offboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('offboardingStatus', v)))}
-            </div>
+      {/* Group 2: Employment. Multi-column flow so the four blocks pack to fit
+          however much each one holds, matching the read view. */}
+      <GroupTitle className="mt-8">Employment</GroupTitle>
+      <div className="columns-2 gap-x-10">
+        <div className="break-inside-avoid mb-6">
+          <SectionTitle>Employment</SectionTitle>
+          <div className="flex flex-col gap-3.5">
+            {field('Job title', <input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" />)}
+            {field('Type', seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v)))}
+            {field('Time', seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v)))}
+            {field('Weekly hours', <input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" />)}
+            {field('Internal rate ($/hr)', <input type="number" value={draft.internalRate} onChange={e => set('internalRate', e.target.value)} className={fieldCls} placeholder="60" />)}
+            {field('Status', seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive')))}
           </div>
         </div>
-        <div className="space-y-6">
-          <div>
-            <div className="flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">
-              <span>Team position</span>
-              <span className="text-[10px] text-muted normal-case font-normal tracking-normal">(several teams, a different position in each)</span>
-            </div>
-            <div className="space-y-2">
-              {draft.teams.length === 0 && <p className="text-[12.5px] text-muted italic">No teams yet, add one below.</p>}
-              {draft.teams.map((row, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <Select fullWidth value={row.teamId} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)) }))} options={teamOptions.map(t => ({ value: t.id, label: t.name }))} placeholder="Choose a team…" className={fieldCls} ariaLabel="Team" />
-                  </div>
-                  <div className="shrink-0 w-[150px]">
-                    <Select fullWidth value={row.position} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))} options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))} className={fieldCls} ariaLabel="Team position" />
-                  </div>
-                  <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.filter((_, j) => j !== i) }))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                  </button>
+        <div className="break-inside-avoid mb-6">
+          <div className="flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">
+            <span>Team position</span>
+            <span className="text-[10px] text-muted normal-case font-normal tracking-normal">(several teams, a different position in each)</span>
+          </div>
+          <div className="space-y-2">
+            {draft.teams.length === 0 && <p className="text-[12.5px] text-muted italic">No teams yet, add one below.</p>}
+            {draft.teams.map((row, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <Select fullWidth value={row.teamId} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, teamId: v } : t)) }))} options={teamOptions.map(t => ({ value: t.id, label: t.name }))} placeholder="Choose a team…" className={fieldCls} ariaLabel="Team" />
                 </div>
-              ))}
-              <button type="button" onClick={() => setDraft(d => ({ ...d, teams: [...d.teams, { teamId: '', position: 'collaborator' }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-                Add team
-              </button>
-            </div>
+                <div className="shrink-0 w-[150px]">
+                  <Select fullWidth value={row.position} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))} options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))} className={fieldCls} ariaLabel="Team position" />
+                </div>
+                <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.filter((_, j) => j !== i) }))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setDraft(d => ({ ...d, teams: [...d.teams, { teamId: '', position: 'collaborator' }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              Add team
+            </button>
           </div>
-          <div>
-            <SectionTitle>Reporting</SectionTitle>
-            <div className="flex flex-col gap-3.5">
-              {field('Reports to', managerSelect(draft.manager_id, v => set('manager_id', v)))}
-              {field('Also reports to', managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v)))}
-            </div>
+        </div>
+        <div className="break-inside-avoid mb-6">
+          <SectionTitle>Reporting</SectionTitle>
+          <div className="flex flex-col gap-3.5">
+            {field('Reports to', managerSelect(draft.manager_id, v => set('manager_id', v)))}
+            {field('Also reports to', managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v)))}
           </div>
-          <div>
-            <SectionTitle>Dates</SectionTitle>
-            <div className="flex flex-col gap-3.5">
-              {field('Joined on', <input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} />)}
-              {field('Left on', <input type="date" value={draft.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} />)}
-            </div>
+        </div>
+        <div className="break-inside-avoid mb-6">
+          <SectionTitle>Dates</SectionTitle>
+          <div className="flex flex-col gap-3.5">
+            {field('Joined on', <input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} />)}
+            {field('Left on', <input type="date" value={draft.leftOn} onChange={e => set('leftOn', e.target.value)} className={fieldCls} />)}
+          </div>
+        </div>
+      </div>
+
+      {/* Group 3: Hiring. Onboarding + Offboarding side by side, matched height. */}
+      <GroupTitle className="mt-2">Hiring</GroupTitle>
+      <div className="grid grid-cols-2 gap-x-10 items-start">
+        <div>
+          <SectionTitle>Onboarding</SectionTitle>
+          <div className="flex flex-col gap-3.5">
+            {field('Status', seg(draft.onboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('onboardingStatus', v)))}
+          </div>
+        </div>
+        <div>
+          <SectionTitle>Offboarding</SectionTitle>
+          <div className="flex flex-col gap-3.5">
+            {field('Status', seg(draft.offboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('offboardingStatus', v)))}
           </div>
         </div>
       </div>
