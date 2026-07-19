@@ -12,7 +12,8 @@ import { revalidatePath } from 'next/cache'
 import { TOOL_KEYS, type ToolAudience } from '@/lib/access/tools'
 
 export type GrantRole = 'manager' | 'publisher' | 'editor' | 'viewer'
-export type TeamPosition = 'team_leader' | 'collaborator'
+export type TeamPosition = 'founder' | 'team_leader' | 'collaborator'
+const TEAM_POSITIONS: TeamPosition[] = ['founder', 'team_leader', 'collaborator']
 
 async function requireAdmin() {
   if (!(await isCurrentUserAdmin())) throw new Error('Not authorized')
@@ -56,7 +57,7 @@ export async function deleteTeam(id: string) {
 // ── Membership ──────────────────────────────────────────────────────────────
 export async function addTeamMember(teamId: string, personId: string, position: TeamPosition = 'collaborator') {
   await requireAdmin()
-  if (position !== 'team_leader' && position !== 'collaborator') throw new Error('Invalid position')
+  if (!TEAM_POSITIONS.includes(position)) throw new Error('Invalid position')
   const supabase = await createClient()
   const { error } = await supabase
     .from('team_members')
@@ -71,7 +72,7 @@ export async function addTeamMember(teamId: string, personId: string, position: 
 // lead" any more.
 export async function setTeamMemberPosition(teamId: string, personId: string, position: TeamPosition) {
   await requireAdmin()
-  if (position !== 'team_leader' && position !== 'collaborator') throw new Error('Invalid position')
+  if (!TEAM_POSITIONS.includes(position)) throw new Error('Invalid position')
   const supabase = await createClient()
   const { error } = await supabase
     .from('team_members')

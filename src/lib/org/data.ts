@@ -62,7 +62,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   const members: MemberRow[] = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
     team_id: m.team_id,
     person_id: m.person_id,
-    position: m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    position: m.position === 'founder' ? 'founder' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
   }))
 
   if (people.length === 0) return { roots: [], total: 0 }
@@ -82,7 +82,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // color even when they aren't listed as a member), else their first team.
   const leaderColor = new Map<string, string | null>()
   for (const m of members) {
-    if (m.position !== 'team_leader') continue
+    if (m.position !== 'team_leader' && m.position !== 'founder') continue
     const t = teamById.get(m.team_id)
     if (t?.color) leaderColor.set(m.person_id, t.color)
   }
@@ -102,7 +102,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // Teams each person leads, with their members.
   const ledTeamsByLeader = new Map<string, OrgTeamGroup[]>()
   for (const m of members) {
-    if (m.position !== 'team_leader') continue
+    if (m.position !== 'team_leader' && m.position !== 'founder') continue
     const t = teamById.get(m.team_id)
     if (!t) continue
     const arr = ledTeamsByLeader.get(m.person_id) ?? []

@@ -183,6 +183,7 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
             const posPill = teamPositionPill(m.position)
             const access = roleTypePill(m.roleType)
             const isLeader = m.position === 'team_leader'
+            const isFounder = m.position === 'founder'
             return (
               <div key={m.id} className="group/mem flex items-center gap-2.5 py-[5px]">
                 <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={TEAM_COLOR[m.teamKey]} />
@@ -199,9 +200,13 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
                   )}
                   <span className={`group-hover/mem:hidden font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
                   <span className="hidden group-hover/mem:flex items-center gap-1">
-                    <button type="button" title={isLeader ? 'Set as Collaborator' : 'Set as Team Leader'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'collaborator' : 'team_leader'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                    </button>
+                    {/* Quick promote/demote between Team Leader and Collaborator.
+                        Founder is a deliberate role — set it in the person's card. */}
+                    {!isFounder && (
+                      <button type="button" title={isLeader ? 'Set as Collaborator' : 'Set as Team Leader'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'collaborator' : 'team_leader'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                      </button>
+                    )}
                     <button type="button" title="Remove from team" disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>

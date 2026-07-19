@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
-import { teamKeyFromName, TEAM_COLOR, initialsOf, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
+import { teamKeyFromName, TEAM_COLOR, initialsOf, teamPositionRank, teamPositionLeads, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { ToolAudience } from '@/lib/access/tools'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -64,7 +64,7 @@ export default async function DirectoryPage() {
   const members = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
     team_id: m.team_id,
     person_id: m.person_id,
-    position: m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    position: m.position === 'founder' ? 'founder' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
   }))
   const grants = gData ?? []
   const sites = sData ?? []
@@ -122,15 +122,15 @@ export default async function DirectoryPage() {
       arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position })
       teamsByPerson.set(m.person_id, arr)
     }
-    if (m.position === 'team_leader') {
+    if (teamPositionLeads(m.position)) {
       const s = leadTeamIdsByPerson.get(m.person_id) ?? new Set<string>()
       s.add(m.team_id)
       leadTeamIdsByPerson.set(m.person_id, s)
     }
   }
-  // Team Leaders first, then alphabetical by team name.
+  // Founder → Team Leader → Collaborator, then alphabetical by team name.
   for (const arr of teamsByPerson.values()) {
-    arr.sort((a, b) => (a.position === b.position ? (a.teamName ?? '').localeCompare(b.teamName ?? '') : a.position === 'team_leader' ? -1 : 1))
+    arr.sort((a, b) => teamPositionRank(a.position) - teamPositionRank(b.position) || (a.teamName ?? '').localeCompare(b.teamName ?? ''))
   }
 
   // ── Accounts (for the account picker) ──
@@ -238,12 +238,12 @@ export default async function DirectoryPage() {
           initials: initialsOf(p.full_name),
           teamKey: teamKeyByPerson.get(p.id) ?? key,
           position,
-          isLead: position === 'team_leader',
+          isLead: teamPositionLeads(position),
           roleType: roleTypeById.get(p.id) ?? 'user',
           avatarUrl: avatarById.get(p.id) ?? null,
         }))
-        // Team Leaders (by team position) at the top; everyone else alphabetical.
-        .sort((a, b) => (a.isLead === b.isLead ? a.name.localeCompare(b.name) : a.isLead ? -1 : 1))
+        // Founder → Team Leader → Collaborator, then alphabetical.
+        .sort((a, b) => teamPositionRank(a.position) - teamPositionRank(b.position) || a.name.localeCompare(b.name))
       return {
         id: t.id,
         name: t.name,

@@ -64,6 +64,14 @@ const AdminIcon = (
   </svg>
 )
 
+// Human Resources — an award medal (anniversary badges live here).
+const HrIcon = (
+  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <circle cx="12" cy="8" r="6" />
+    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+  </svg>
+)
+
 // Settings — gear icon
 const SettingsIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -129,6 +137,14 @@ const adminNav: Item = {
   match: p => p === '/admin' || p.startsWith('/admin/'),
 }
 
+// Human Resources — anniversary badges (for now). Privileged only.
+const hrNav: Item = {
+  href: '/human-resources',
+  label: 'Human Resources',
+  icon: HrIcon,
+  match: p => p === '/human-resources' || p.startsWith('/human-resources/'),
+}
+
 function NavLink({ item, active }: { item: Item; active: boolean }) {
   const router = useRouter()
   return (
@@ -177,8 +193,9 @@ export function Sidebar({ isPrivileged = false }: { isPrivileged?: boolean }) {
       </nav>
 
       <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">
-        {/* Admin + Settings are management surfaces — only the privileged tiers
-            (admin, admin_assistant) see them. */}
+        {/* Human Resources + Admin + Settings are management surfaces — only the
+            privileged tiers (admin, admin_assistant) see them. */}
+        {isPrivileged && <NavLink item={hrNav} active={hrNav.match(pathname)} />}
         {isPrivileged && <NavLink item={adminNav} active={adminNav.match(pathname)} />}
         {isPrivileged && (
           <NavLink

@@ -12,6 +12,8 @@ import { createPerson, updatePerson, deletePerson, type PersonInput } from '@/ap
 import { uploadPersonAttachment, deletePersonAttachment, signedAttachmentUrl } from '@/app/(app)/admin/people/attachment-actions'
 import { Avatar } from '@/components/Avatar'
 import { Select } from '@/components/ui/Select'
+import { TenureBadge } from '@/components/TenureBadge'
+import { tenureSince, milestoneOf, formatTenure } from '@/lib/tenure'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -26,6 +28,7 @@ import {
   ROLE_TYPE_LABEL,
   TEAM_POSITION_OPTIONS,
   TEAM_POSITION_LABEL,
+  teamPositionPill,
   teamKeyFromName,
   type PersonView,
   type PersonAttachment,
@@ -126,6 +129,15 @@ export function PersonModal({
   const isExisting = !!state.person
   const p = state.person
 
+  // Tenure medallion — measured to the person's leave date (former) or today.
+  const tenureEnd = (() => {
+    const m = p?.leftOn ? /^(\d{4})-(\d{2})-(\d{2})/.exec(p.leftOn) : null
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date()
+  })()
+  const tenure = tenureSince(p?.hireDate, tenureEnd)
+  const tenureMs = milestoneOf(tenure)
+  const tenureText = formatTenure(tenure)
+
   const teamNameById = useMemo(() => new Map(teamOptions.map(t => [t.id, t.name])), [teamOptions])
   const draftTeamKey = teamKeyFromName(teamNameById.get(draft.teams[0]?.teamId ?? ''))
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft(d => ({ ...d, [k]: v }))
@@ -208,9 +220,18 @@ export function PersonModal({
                 </div>
               </div>
             </div>
-            <button type="button" onClick={() => setState(null)} aria-label="Close" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-all hover:bg-subtle hover:text-tn-ink">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-            </button>
+            <div className="flex items-start gap-3.5 shrink-0">
+              {/* Tenure medallion — years of service, top-right of the card. */}
+              {tenureMs.kind !== 'none' && (
+                <div className="flex flex-col items-center gap-1 pt-0.5">
+                  <TenureBadge milestone={tenureMs} size={54} />
+                  <span className="text-[10.5px] text-muted font-semibold text-center leading-tight max-w-[116px]">{tenureText}</span>
+                </div>
+              )}
+              <button type="button" onClick={() => setState(null)} aria-label="Close" className="inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-all hover:bg-subtle hover:text-tn-ink">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -291,69 +312,79 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-x-10 gap-y-6">
-        <div>
-          <SectionTitle>Employment</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
-            {item('Last name', txt(p.lastName))}
-            {item('Type', pillNode(typePill(p.employmentType)))}
-            {item('Teams', p.teams.length ? (
-              <span className="flex flex-col gap-1.5">
-                {p.teams.map(t => (
-                  <span key={t.teamId} className="inline-flex items-center gap-2">
-                    <span className="font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px]" style={{ color: TEAM_COLOR[t.teamKey], background: `${TEAM_COLOR[t.teamKey]}1a` }}>{t.teamName}</span>
-                    <span className="text-[11px] font-semibold text-muted">{TEAM_POSITION_LABEL[t.position] ?? 'Collaborator'}</span>
+      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start">
+        {/* Left column */}
+        <div className="space-y-6">
+          <div>
+            <SectionTitle>Employment</SectionTitle>
+            <div className="flex flex-col gap-[13px]">
+              {item('Job title', txt(p.title))}
+              {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
+              {item('Last name', txt(p.lastName))}
+              {item('Type', pillNode(typePill(p.employmentType)))}
+              {item('Time', pillNode(timePill(p.schedule)))}
+              {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
+              {item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
+              {item('Status', pillNode(statusPill(p.status === 'active')))}
+            </div>
+          </div>
+          <div>
+            <SectionTitle>Emails</SectionTitle>
+            <div className="flex flex-col gap-[13px]">
+              {item('True North', link(p.emails.trueNorth))}
+              {item('GoodNews', link(p.emails.goodnews))}
+              {item('COE', link(p.emails.coe))}
+              {item('Personal', link(p.emails.personal))}
+            </div>
+          </div>
+          <div>
+            <SectionTitle>Onboarding</SectionTitle>
+            <div className="flex flex-col gap-[13px]">
+              {item('Company email', pillNode(ynPill(p.companyEmail)))}
+              {item('Uses the system', pillNode(ynPill(p.usesSystem)))}
+              {item('Team meeting', pillNode(p.teamMeeting ? { kind: 'green', label: 'Yes' } : { kind: 'grey', label: 'No' }))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-6">
+          <div>
+            <SectionTitle>Team position</SectionTitle>
+            <div className="flex flex-col gap-2.5">
+              {p.teams.length ? p.teams.map(t => (
+                <div key={t.teamId} className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    <span className="w-[9px] h-[9px] rounded-[3px] shrink-0" style={{ background: TEAM_COLOR[t.teamKey] }} />
+                    <span className="text-[13.5px] text-foreground font-semibold truncate">{t.teamName}</span>
                   </span>
-                ))}
-              </span>
-            ) : txt('—'))}
-            {item('Time', pillNode(timePill(p.schedule)))}
-            {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
-            {item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
-            {item('Status', pillNode(statusPill(p.status === 'active')))}
+                  <PillBadge pill={teamPositionPill(t.position)} />
+                </div>
+              )) : <span className="text-[13px] text-muted italic">No team yet.</span>}
+            </div>
           </div>
-        </div>
-        <div>
-          <SectionTitle>Reporting</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Reports to', personNode(p.manager_id, p.managerName, p.managerTeamKey))}
-            {item('Do you report to a manager?', pillNode(ynPill(p.reportsToManager)))}
-            {item('Also reports to', personNode(p.alsoReportsToId, p.alsoReportsToName, p.alsoReportsToTeamKey))}
-            {item('Manager (as stated)', txt(p.managerNameText))}
+          <div>
+            <SectionTitle>Reporting</SectionTitle>
+            <div className="flex flex-col gap-[13px]">
+              {item('Reports to', personNode(p.manager_id, p.managerName, p.managerTeamKey))}
+              {item('Also reports to', personNode(p.alsoReportsToId, p.alsoReportsToName, p.alsoReportsToTeamKey))}
+            </div>
           </div>
-        </div>
-        <div>
-          <SectionTitle>Emails</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('True North', link(p.emails.trueNorth))}
-            {item('GoodNews', link(p.emails.goodnews))}
-            {item('COE', link(p.emails.coe))}
-            {item('Personal', link(p.emails.personal))}
+          <div>
+            <SectionTitle>Contact</SectionTitle>
+            <div className="flex flex-col gap-[13px]">
+              {item('Phone / WhatsApp', txt(p.phone))}
+              {item('WhatsApp — same number', pillNode(ynPill(p.whatsappSameNumber)))}
+              {item('Location', txt(p.location))}
+            </div>
           </div>
-        </div>
-        <div>
-          <SectionTitle>Contact</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Phone / WhatsApp', txt(p.phone))}
-            {item('WhatsApp — same number', pillNode(ynPill(p.whatsappSameNumber)))}
-            {item('Location', txt(p.location))}
-          </div>
-        </div>
-        <div>
-          <SectionTitle>Onboarding</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Company email', pillNode(ynPill(p.companyEmail)))}
-            {item('Uses the system', pillNode(ynPill(p.usesSystem)))}
-            {item('Team meeting', pillNode(p.teamMeeting ? { kind: 'green', label: 'Yes' } : { kind: 'grey', label: 'No' }))}
-          </div>
-        </div>
-        <div>
-          <SectionTitle>Dates</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Date of birth', txt(formatDate(p.dateOfBirth)))}
-            {item('Joined on', txt(formatDate(p.hireDate)))}
-            {item('Left on', txt(formatDate(p.leftOn)))}
+          <div>
+            <SectionTitle>Dates</SectionTitle>
+            <div className="flex flex-col gap-[13px]">
+              {item('Date of birth', txt(formatDate(p.dateOfBirth)))}
+              {item('Joined on', txt(formatDate(p.hireDate)))}
+              {item('Left on', txt(formatDate(p.leftOn)))}
+            </div>
           </div>
         </div>
       </div>
@@ -449,7 +480,7 @@ function EditBody({
           <Wrap wide>{label('Job title')}<input type="text" value={draft.title} onChange={e => set('title', e.target.value)} className={fieldCls} placeholder="SEO Strategist" /></Wrap>
           <Wrap wide>
             <span className="flex items-center gap-2">
-              {label('Teams & position')}
+              {label('Team position')}
               <span className="text-[11px] text-muted normal-case font-normal tracking-normal">— a person can be in several teams, with a different position in each</span>
             </span>
             <div className="space-y-2">
@@ -511,9 +542,7 @@ function EditBody({
         <SectionTitle>Reporting</SectionTitle>
         <div className="grid grid-cols-2 gap-x-[18px] gap-y-3.5">
           <Wrap>{label('Reports to')}{managerSelect(draft.manager_id, v => set('manager_id', v))}</Wrap>
-          <Wrap>{label('Do you report to a manager?')}{seg(draft.reportsToManager, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }, { v: 'sometimes', l: 'Sometimes' }], v => set('reportsToManager', v))}</Wrap>
           <Wrap>{label('Also reports to')}{managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v))}</Wrap>
-          <Wrap>{label('Manager (as stated)')}<input type="text" value={draft.managerNameText} onChange={e => set('managerNameText', e.target.value)} className={fieldCls} placeholder="Free-text manager name" /></Wrap>
         </div>
       </div>
 
