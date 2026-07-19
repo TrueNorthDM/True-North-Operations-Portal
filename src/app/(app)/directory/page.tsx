@@ -29,10 +29,12 @@ const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/l
 /** Loosely-typed people row — columns depend on whether migration 029 ran. */
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
-export default async function DirectoryPage() {
+export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  // ?open=<personId> — deep-link a person's card open (e.g. from Human Resources).
+  const openId = (await searchParams).open ?? null
   // Directory is open to everyone now (Part 4); the tier decides the view —
   // privileged get the full admin tabs, everyone else the read-only list below.
   const [isAdmin, mePerson] = await Promise.all([isCurrentUserAdmin(), loadCurrentPerson(supabase, user)])
@@ -333,6 +335,7 @@ export default async function DirectoryPage() {
         availableAccounts={availableAccounts}
         ratesPeople={budget.people}
         ratesClients={budget.clients.map(c => ({ id: c.id, name: c.name }))}
+        initialOpenId={openId}
       />
     </div>
   )

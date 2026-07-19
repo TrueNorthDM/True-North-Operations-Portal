@@ -12,15 +12,28 @@ export function TenureBadge({ milestone, size = 56 }: { milestone: Milestone; si
 
   if (milestone.kind === 'year') {
     const c = milestone.color
+    // Alternate solid (even years) / outline (odd years) so adjacent years —
+    // which can share a similar palette hue — always read as distinct badges.
+    const solid = milestone.value % 2 === 0
+    const ink = solid ? '#ffffff' : c
     return (
       <span className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }}>
         <svg viewBox="0 0 56 56" width={size} height={size} aria-hidden="true">
-          <circle cx="28" cy="28" r="25.5" fill={`${c}1f`} stroke={c} strokeWidth="2.5" />
-          <circle cx="28" cy="28" r="21" fill="none" stroke={c} strokeWidth="1" strokeOpacity="0.35" />
+          {solid ? (
+            <>
+              <circle cx="28" cy="28" r="26" fill={c} />
+              <circle cx="28" cy="28" r="21.5" fill="none" stroke="#ffffff" strokeWidth="1" strokeOpacity="0.5" />
+            </>
+          ) : (
+            <>
+              <circle cx="28" cy="28" r="25.5" fill={`${c}1f`} stroke={c} strokeWidth="2.75" />
+              <circle cx="28" cy="28" r="21" fill="none" stroke={c} strokeWidth="1" strokeOpacity="0.35" />
+            </>
+          )}
         </svg>
         <span className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-          <span className="font-(family-name:--font-display) font-extrabold" style={{ color: c, fontSize: size * 0.42 }}>{milestone.value}</span>
-          <span className="font-(family-name:--font-display) font-extrabold uppercase tracking-wide" style={{ color: c, fontSize: size * 0.135, marginTop: size * 0.02 }}>
+          <span className="font-(family-name:--font-display) font-extrabold" style={{ color: ink, fontSize: size * 0.42 }}>{milestone.value}</span>
+          <span className="font-(family-name:--font-display) font-extrabold uppercase tracking-wide" style={{ color: ink, fontSize: size * 0.135, marginTop: size * 0.02 }}>
             {milestone.value === 1 ? 'year' : 'years'}
           </span>
         </span>

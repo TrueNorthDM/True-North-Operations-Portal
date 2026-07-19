@@ -27,6 +27,7 @@ export function DirectoryTabs({
   availableAccounts,
   ratesPeople,
   ratesClients,
+  initialOpenId,
 }: {
   people: PersonView[]
   teamOptions: TeamOption[]
@@ -34,9 +35,11 @@ export function DirectoryTabs({
   availableAccounts: Account[]
   ratesPeople: PersonWithAssignments[]
   ratesClients: { id: number; name: string }[]
+  initialOpenId?: string | null
 }) {
   const [tab, setTab] = useState<Tab>('people')
-  const [modal, setModal] = useState<ModalState>(null)
+  // Deep-link: open a person's card on mount when ?open=<id> was passed.
+  const [modal, setModal] = useState<ModalState>(() => (initialOpenId ? { mode: 'view', person: people.find(p => p.id === initialOpenId) ?? null } : null))
   const [addMenu, setAddMenu] = useState(false)
 
   // Inactive people live only on the People tab; every other surface (Emails,
