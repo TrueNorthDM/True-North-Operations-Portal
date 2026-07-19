@@ -31,8 +31,8 @@ export function HrGallery({ quarters, years, people, teamOptions, availableAccou
       <div className="flex items-center justify-between gap-3">
         <TenureBadge milestone={s.milestone} size={128} />
         <div className="text-right">
-          <div className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink">{s.label}</div>
-          <div className="text-[12px] text-muted">{s.holders.length} {s.holders.length === 1 ? 'person' : 'people'}</div>
+          <div className="font-(family-name:--font-display) font-extrabold text-[32px] leading-none text-tn-ink">{s.label}</div>
+          <div className="text-[12px] text-muted mt-1.5">{s.holders.length} {s.holders.length === 1 ? 'person' : 'people'}</div>
         </div>
       </div>
       {s.holders.length === 0 ? (
