@@ -290,12 +290,14 @@ function SectionTitle({ children, right }: { children: ReactNode; right?: ReactN
 }
 
 // Top-level group heading: a full navy bar with white text, matching the i7
-// budget card header. One tier above the teal SectionTitles it groups. Uses a
-// literal white so the text stays white in dark mode (the token would remap).
-function GroupTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
+// budget card header (optional right-aligned meta, like its month). One tier
+// above the teal SectionTitles it groups. Uses a literal white so the text
+// stays white in dark mode (the token would remap).
+function GroupTitle({ children, right, className = '' }: { children: ReactNode; right?: ReactNode; className?: string }) {
   return (
-    <div className={`bg-tn-primary rounded-[10px] px-5 py-3 mb-4 ${className}`}>
+    <div className={`flex items-center justify-between gap-3 bg-tn-primary rounded-[10px] px-5 py-3 mb-4 ${className}`}>
       <h3 className="font-(family-name:--font-display) font-extrabold text-[14px] text-[#ffffff] m-0">{children}</h3>
+      {right && <span className="font-(family-name:--font-display) font-bold text-[11px] tracking-wide uppercase text-[#ffffff]/70">{right}</span>}
     </div>
   )
 }
@@ -441,7 +443,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
 
       {reports.length > 0 && (
         <div className="mt-6">
-          <SectionTitle right={`${reports.length} ${reports.length === 1 ? 'report' : 'reports'}`}>My Team</SectionTitle>
+          <GroupTitle right={`${reports.length} ${reports.length === 1 ? 'report' : 'reports'}`}>My Team</GroupTitle>
           <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
             {reports.map(m => (
               <div key={m.id} className="flex items-center gap-2.5">
