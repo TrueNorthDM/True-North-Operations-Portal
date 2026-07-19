@@ -27,7 +27,7 @@ import { SortHeader } from './grid/SortHeader'
 import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
 
-type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status'
+type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status' | 'tsheets'
 
 const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'team', label: 'Team', fr: '1fr' },
@@ -39,8 +39,9 @@ const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'joined', label: 'Joined', fr: '1fr' },
   { id: 'rate', label: 'Internal rate', fr: '0.95fr', align: 'right' },
   { id: 'status', label: 'Status', fr: '0.9fr' },
+  { id: 'tsheets', label: 'TSheets', fr: '1fr' },
 ]
-const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'rate', 'status']
+const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'rate', 'status', 'tsheets']
 const LS_COLS = 'tn-directory-cols-v1'
 
 const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews || p.emails.coe || p.emails.personal || ''
@@ -77,6 +78,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
     { id: 'joined', label: 'Joined', type: 'date', get: p => p.hireDate },
     { id: 'rate', label: 'Internal rate', type: 'number', get: p => p.internalRate },
     { id: 'status', label: 'Status', type: 'enum', get: p => p.status, options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
+    { id: 'tsheets', label: 'TSheets', type: 'enum', get: p => (p.hasTsheets ? 'linked' : 'unlinked'), options: [{ value: 'linked', label: 'Linked' }, { value: 'unlinked', label: 'Not linked' }] },
   ], [teamOptions])
 
   // Hydrate saved column choices once on mount. Deliberately a post-mount effect
@@ -258,5 +260,6 @@ function Cell({ col, p }: { col: { id: ColId; align?: 'right' }; p: PersonView }
       </span>
     )
   }
+  if (col.id === 'tsheets') return <span className={wrap}><PillBadge pill={p.hasTsheets ? { kind: 'green', label: 'Linked' } : { kind: 'grey', label: 'Not linked' }} /></span>
   return null
 }
