@@ -1,0 +1,277 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The i7 Budget — Automated</title>
+<style>
+  :root {
+    --paper: #F3F5F8;
+    --raised: #FFFFFF;
+    --ink: #06214D;
+    --body: #3B4A63;
+    --muted: #78859B;
+    --teal: #1E7D7F;
+    --teal-deep: #145E60;
+    --teal-soft: #E4F1EE;
+    --gold: #A9710B;
+    --gold-bright: #F2C40A;
+    --gold-soft: #FBF0D6;
+    --success: #16875A;
+    --line: #E1E7EF;
+    --line-soft: #EBEFF5;
+    --navy-panel: #06214D;
+    --shadow: 0 1px 2px rgba(6,33,77,.05), 0 18px 40px -26px rgba(6,33,77,.28);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0A1830; --raised: #0F2141; --ink: #EAF1FA; --body: #B6C2D6; --muted: #7E8CA6;
+      --teal: #52BBA0; --teal-deep: #7FD0BA; --teal-soft: #123430; --gold: #E7B24C; --gold-soft: #2A2110;
+      --success: #45C089; --line: #21365B; --line-soft: #1A2C4C; --navy-panel: #0C2650;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 22px 44px -28px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #F3F5F8; --raised: #FFFFFF; --ink: #06214D; --body: #3B4A63; --muted: #78859B;
+    --teal: #1E7D7F; --teal-deep: #145E60; --teal-soft: #E4F1EE; --gold: #A9710B; --gold-soft: #FBF0D6;
+    --success: #16875A; --line: #E1E7EF; --line-soft: #EBEFF5; --navy-panel: #06214D;
+    --shadow: 0 1px 2px rgba(6,33,77,.05), 0 18px 40px -26px rgba(6,33,77,.28);
+  }
+  :root[data-theme="dark"] {
+    --paper: #0A1830; --raised: #0F2141; --ink: #EAF1FA; --body: #B6C2D6; --muted: #7E8CA6;
+    --teal: #52BBA0; --teal-deep: #7FD0BA; --teal-soft: #123430; --gold: #E7B24C; --gold-soft: #2A2110;
+    --success: #45C089; --line: #21365B; --line-soft: #1A2C4C; --navy-panel: #0C2650;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 22px 44px -28px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .page {
+    background: var(--paper); color: var(--body);
+    font-family: var(--sans); font-size: 17px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased; padding: clamp(20px, 5vw, 64px) 20px 72px;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; }
+
+  h1, h2, h3 { font-family: var(--serif); color: var(--ink); font-weight: 600; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(34px, 6vw, 50px); line-height: 1.06; letter-spacing: -.012em; }
+  h2 { font-size: clamp(23px, 3.6vw, 29px); line-height: 1.16; letter-spacing: -.006em; }
+  h3 { font-size: 18px; line-height: 1.3; }
+  p { margin: 0; }
+  .lead { font-size: clamp(18px, 2.4vw, 21px); line-height: 1.55; color: var(--body); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  strong { color: var(--ink); font-weight: 600; }
+
+  .eyebrow {
+    font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--teal); display: inline-flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 2px; background: var(--gold-bright); border-radius: 2px; }
+
+  /* rhythm */
+  .hero { padding: 8px 0 8px; }
+  .hero h1 { margin: 22px 0 20px; }
+  .hero .lead { max-width: 62ch; }
+  section { margin-top: clamp(46px, 8vw, 74px); }
+  .sec-head { margin-bottom: 26px; }
+  .sec-head h2 { margin-bottom: 12px; }
+  .sec-head p { max-width: 60ch; color: var(--body); }
+
+  .card {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 16px;
+    padding: 26px 26px; box-shadow: var(--shadow);
+  }
+
+  /* proof table */
+  .proof { display: grid; gap: 0; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+  .tbl th { text-align: left; font-family: var(--sans); font-size: 11.5px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--muted); padding: 0 0 12px; border-bottom: 1px solid var(--line); }
+  .tbl th.r, .tbl td.r { text-align: right; }
+  .tbl td { padding: 12px 0; border-bottom: 1px solid var(--line-soft); color: var(--body); }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl td.mo { color: var(--ink); font-weight: 600; }
+  .chk { color: var(--success); font-weight: 700; white-space: nowrap; }
+  .chk svg { vertical-align: -2px; margin-right: 4px; }
+  .flag { color: var(--gold); font-weight: 700; white-space: nowrap; }
+  .proof-note { margin-top: 18px; font-size: 14.5px; color: var(--muted); }
+
+  /* flip: two cards */
+  .flip { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+  .flip .card { display: flex; flex-direction: column; gap: 12px; }
+  .tag { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 7px; width: fit-content; padding: 5px 11px; border-radius: 999px; }
+  .tag.old { color: var(--gold); background: var(--gold-soft); }
+  .tag.new { color: var(--teal-deep); background: var(--teal-soft); }
+  .flip h3 { margin-top: 2px; }
+  .flip p { font-size: 15.5px; line-height: 1.55; }
+  .chain { font-family: var(--mono); font-size: 13.5px; color: var(--ink); background: color-mix(in srgb, var(--paper) 55%, transparent);
+    border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; margin-top: auto; }
+  .chain .a { color: var(--teal); }
+  .flip-tie { margin-top: 18px; font-size: 15.5px; color: var(--body); text-align: center; }
+  .flip-tie strong { color: var(--ink); }
+
+  /* benefits */
+  .gains { display: grid; gap: 2px; }
+  .gain { display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start;
+    padding: 16px 4px; border-bottom: 1px solid var(--line-soft); }
+  .gain:last-child { border-bottom: 0; }
+  .gain .ic { width: 34px; height: 34px; border-radius: 9px; background: var(--teal-soft); color: var(--teal-deep);
+    display: grid; place-items: center; margin-top: 1px; }
+  .gain h3 { font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+  .gain p { font-size: 15px; color: var(--body); }
+
+  /* small print differences */
+  .diffs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .diff .card { height: 100%; }
+  .diff .n { font-family: var(--serif); font-size: 15px; color: var(--gold); font-weight: 600; }
+  .diff h3 { font-family: var(--sans); font-size: 16px; margin: 8px 0 8px; }
+  .diff p { font-size: 14.5px; color: var(--body); }
+  .diff .fix { margin-top: 12px; font-size: 13.5px; color: var(--teal-deep); font-weight: 600;
+    display: inline-flex; align-items: center; gap: 7px; }
+
+  /* the ask */
+  .ask { background: var(--navy-panel); border-radius: 18px; padding: clamp(28px, 5vw, 44px);
+    color: #DCE6F5; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .ask::after { content: ""; position: absolute; right: -60px; top: -60px; width: 200px; height: 200px;
+    border-radius: 50%; background: radial-gradient(circle, rgba(242,196,10,.16), transparent 68%); }
+  .ask .eyebrow { color: var(--gold-bright); }
+  .ask .eyebrow::before { background: var(--gold-bright); }
+  .ask h2 { color: #FFFFFF; margin: 18px 0 14px; max-width: 22ch; }
+  .ask p { color: #C4D2E8; font-size: 16.5px; max-width: 54ch; }
+  .ask .kept { margin-top: 20px; display: flex; gap: 22px; flex-wrap: wrap; }
+  .ask .kept div { flex: 1 1 210px; }
+  .ask .kept .k { font-family: var(--sans); font-size: 11.5px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--gold-bright); margin-bottom: 6px; }
+  .ask .kept .v { color: #E7EEFA; font-size: 15px; line-height: 1.5; }
+
+  .signoff { margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--line); }
+  .signoff p { font-size: 15.5px; color: var(--body); }
+  .signoff .warm { font-family: var(--serif); font-size: 19px; color: var(--ink); line-height: 1.45; margin-bottom: 10px; text-wrap: balance; }
+  .foot { margin-top: 34px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+  .reveal { opacity: 0; transform: translateY(14px); animation: rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; transform: none; } }
+
+  @media (max-width: 680px) {
+    .flip, .diffs { grid-template-columns: 1fr; }
+    .page { font-size: 16px; }
+  }
+</style>
+
+<div class="page">
+  <div class="wrap">
+
+    <header class="hero reveal">
+      <span class="eyebrow">The i7 budget &middot; a note before July</span>
+      <h1>The math already agrees.<br>Now let the app keep it current.</h1>
+      <p class="lead">You built the i7 budget by hand for six months, and it holds up beautifully &mdash; we put your spreadsheet next to the app, month by month, and the numbers line up. Here is exactly what stays the same, the one idea that flips, and the hours it hands back to you.</p>
+    </header>
+
+    <section class="reveal" style="animation-delay:.06s">
+      <div class="sec-head">
+        <h2>First, the reassurance: we didn&rsquo;t change your numbers</h2>
+        <p>The app reads the same QuickBooks Time hours and the same per-person rates you use. Across all six months, the cost totals reconcile — three of them to the exact cent, the rest within a dollar or two of rounding.</p>
+      </div>
+      <div class="card proof">
+        <table class="tbl">
+          <thead>
+            <tr><th>Month</th><th class="r">Your spreadsheet</th><th class="r">The app</th><th class="r">Match</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="mo">January</td><td class="r num">$60,453.40</td><td class="r num">$60,455.00</td><td class="r chk">within $2</td></tr>
+            <tr><td class="mo">February</td><td class="r num">$34,503.70</td><td class="r num">$34,503.50</td><td class="r chk">within $1</td></tr>
+            <tr><td class="mo">March</td><td class="r num">$38,360.00</td><td class="r num">$38,360.00</td><td class="r chk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>exact</td></tr>
+            <tr><td class="mo">April</td><td class="r num">$54,335.85</td><td class="r num">$54,335.38</td><td class="r chk">within $1</td></tr>
+            <tr><td class="mo">May</td><td class="r num">$44,461.25</td><td class="r num">$44,461.25</td><td class="r chk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>exact</td></tr>
+            <tr><td class="mo">June</td><td class="r num">$48,791.25</td><td class="r num">$48,791.25</td><td class="r chk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>exact</td></tr>
+          </tbody>
+        </table>
+        <p class="proof-note">The cent-level gaps are rounding, nothing more &mdash; March, May and June match to the exact cent, and no month is off by more than two dollars. (June only looked different for a day: before the month closed the sheet was still mid-update; with the full month saved, both sides land on <span class="num">$48,791.25</span>.)</p>
+      </div>
+    </section>
+
+    <section class="reveal">
+      <div class="sec-head">
+        <h2>The one idea that flips</h2>
+        <p>This is the whole change, and it&rsquo;s a good one. Your spreadsheet and the app reach the same answer from opposite ends.</p>
+      </div>
+      <div class="flip">
+        <div class="card">
+          <span class="tag old">The spreadsheet today</span>
+          <h3>Hours are the anchor</h3>
+          <p>You allocate the budgeted hours per project. Those hours, times the rate, produce the dollar budget. That&rsquo;s why February&ndash;June land at <strong>$44,975</strong> &mdash; it&rsquo;s the result of the hours you set.</p>
+          <div class="chain">budgeted hours <span class="a">&rarr;</span> &times; rate <span class="a">&rarr;</span> $ budget</div>
+        </div>
+        <div class="card">
+          <span class="tag new">The app going forward</span>
+          <h3>Dollars are the anchor</h3>
+          <p>The dollar budget is the ceiling you set. Hours become the plan. And <strong>actual usage is read live</strong> from QuickBooks Time &mdash; each person&rsquo;s real hours &times; their own rate, on its own.</p>
+          <div class="chain">$ budget (ceiling) <span class="a">+</span> real hours &times; rate <span class="a">&rarr;</span> live usage</div>
+        </div>
+      </div>
+      <p class="flip-tie">Same inputs, same output. <strong>The app just reads the clock for you</strong> instead of asking you to re-key it every month.</p>
+    </section>
+
+    <section class="reveal">
+      <div class="sec-head">
+        <h2>What this hands back to you</h2>
+        <p>This isn&rsquo;t about replacing your work. It&rsquo;s about giving the repetitive half of it to the app &mdash; so your time goes to the work only you can do.</p>
+      </div>
+      <div class="card">
+        <div class="gains">
+          <div class="gain"><span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><path d="M21 3v6h-6"/></svg></span><div><h3>No monthly rebuild</h3><p>The app refreshes on its own every four hours. There&rsquo;s no fresh tab to set up, no formulas to copy forward.</p></div></div>
+          <div class="gain"><span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><path d="M8 12h8"/></svg></span><div><h3>No re-keying hours</h3><p>It reads QuickBooks Time directly. The hours you used to transcribe by hand arrive already in place.</p></div></div>
+          <div class="gain"><span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span><div><h3>Carryover is automatic</h3><p>Each month&rsquo;s over or under rolls into the next by itself &mdash; no manual link between tabs to keep from breaking.</p></div></div>
+          <div class="gain"><span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>No arithmetic to double-check</h3><p>Every person&rsquo;s hours &times; their rate is calculated for you. One less place for a stray number to slip in.</p></div></div>
+          <div class="gain"><span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><div><h3>One place, always current</h3><p>When anyone asks &ldquo;where&rsquo;s the i7 budget?&rdquo;, the answer is one link &mdash; live, not last-Friday&rsquo;s copy.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="reveal">
+      <div class="sec-head">
+        <h2>In the open: the only difference left</h2>
+        <p>No surprises &mdash; here&rsquo;s the one place the app and your file don&rsquo;t already agree, and what we&rsquo;re doing about it. Everything else is already reconciled.</p>
+      </div>
+      <div class="diffs">
+        <div class="diff">
+          <div class="card">
+            <span class="n">01</span>
+            <h3>A $25 rounding on the budget</h3>
+            <p>For February&ndash;June, the app carries <span class="num">$45,000</span> where your sheet holds <span class="num">$44,975</span> &mdash; the amount you kept just under $45k on purpose.</p>
+            <span class="fix"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>We&rsquo;re setting the app to $44,975 to match yours.</span>
+          </div>
+        </div>
+        <div class="diff">
+          <div class="card">
+            <span class="n">&check;</span>
+            <h3>Everything else reconciles</h3>
+            <p>All six months of cost line up &mdash; March, May and June to the exact cent. June, which briefly looked different before the month closed, now matches at <span class="num">$48,791.25</span> on both sides.</p>
+            <span class="fix"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nothing to fix &mdash; the app and your sheet already agree.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="reveal">
+      <div class="ask">
+        <span class="eyebrow">The ask</span>
+        <h2>From July, the app is the source of truth.</h2>
+        <p>January through June stay exactly as your spreadsheet recorded them &mdash; that history isn&rsquo;t touched or rewritten. July is where the automated version takes over, and where the manual monthly build comes off your plate.</p>
+        <div class="kept">
+          <div><div class="k">Kept as-is</div><div class="v">Jan&ndash;Jun in your spreadsheet, unchanged, as the record of the first half.</div></div>
+          <div><div class="k">Made official</div><div class="v">The app&rsquo;s live usage &mdash; real hours &times; real rates &mdash; from July onward.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="signoff reveal">
+      <p class="warm">Same trusted numbers, kept current for you &mdash; automatically. That&rsquo;s the entire change.</p>
+      <p>You&rsquo;ve carried this by hand and made it accurate every month. All we&rsquo;re doing is teaching the app to do the copying, the totting-up, and the carryover &mdash; so that accuracy keeps itself, and your hours go somewhere better.</p>
+      <p class="foot">Reconciliation performed across Jan&ndash;Jun 2026, comparing the &ldquo;2026 i7 Daily&rdquo; spreadsheet with the i7 Budget Usage Report. Cost totals use QuickBooks Time hours &times; each person&rsquo;s billing rate; budget figures compare the app&rsquo;s monthly amount with the spreadsheet&rsquo;s allocated total.</p>
+    </div>
+
+  </div>
+</div>
+</body></html>

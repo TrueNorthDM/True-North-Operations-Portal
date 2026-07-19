@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@600;700;800;900&amp;family=Open+Sans:wght@400;500;600;700&amp;family=Nunito:wght@700;800;900&amp;family=Bebas+Neue&amp;display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  a { text-decoration: none; }
+</style>
+</helmet>
+
+<div style="{{ themeStyle }}">
+<div style="min-height:100vh;background:var(--tn-canvas,#f1efe8);font-family:'Open Sans',system-ui,sans-serif;padding:52px 48px 80px;transition:background .3s ease;">
+
+  <!-- turn header -->
+  <div style="max-width:1440px;margin:0 auto 16px;display:flex;align-items:center;gap:10px;">
+    <span style="font-family:'Raleway',sans-serif;font-weight:900;font-size:12px;letter-spacing:.14em;background:var(--tn-badge,#012358);color:#fff;padding:5px 11px;border-radius:7px;">4a</span>
+    <span style="font-family:'Raleway',sans-serif;font-weight:900;font-size:13px;letter-spacing:.16em;color:var(--tn-teal,#1E7D7F);text-transform:uppercase;">Turn 4 — Projects</span>
+    <span style="width:6px;height:6px;border-radius:50%;background:var(--tn-gold,#F2C40A);"></span>
+    <span style="font-size:13px;color:var(--tn-muted,#8593a4);">Projects home (AAAF + HFA). Lista e editor vêm em seguida.</span>
+  </div>
+
+  <!-- ============ APP FRAME ============ -->
+  <div style="max-width:1440px;margin:0 auto;position:relative;border-radius:18px;overflow:hidden;box-shadow:var(--tn-shadow-frame,0 30px 80px -30px rgba(1,35,88,.35));background:var(--tn-canvas,#f1efe8);border:1px solid var(--tn-border,#e4e7ec);">
+
+    <!-- top bar -->
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;background:var(--tn-topbar,#fff);border-bottom:1px solid var(--tn-border,#e4e7ec);transition:background .3s ease;">
+      <div style="display:flex;align-items:flex-end;gap:11px;">
+        <span style="display:inline-flex;align-items:center;background:var(--tn-logo-bg,transparent);padding:var(--tn-logo-pad,0);border-radius:9px;"><img src="brand/logo-large.png" alt="True North Digital Marketing" style="height:40px;display:block;"></span>
+        <span style="font-size:14px;font-weight:600;color:var(--tn-muted,#8593a4);padding-bottom:3px;">Operations Portal</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button type="button" onClick="{{ toggleTheme }}" aria-label="Toggle dark mode" style="display:inline-flex;width:38px;height:38px;align-items:center;justify-content:center;border-radius:10px;border:none;background:transparent;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+          <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </sc-if>
+          <sc-if value="{{ isDark }}">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+          </sc-if>
+        </button>
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--tn-avatar,#012358);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Raleway',sans-serif;font-weight:800;font-size:13px;letter-spacing:.02em;">AO</div>
+      </div>
+    </header>
+
+    <!-- body -->
+    <div style="display:flex;min-height:880px;">
+
+      <!-- icon rail -->
+      <aside style="width:64px;flex:none;background:var(--tn-topbar,#fff);border-right:1px solid var(--tn-border,#e4e7ec);display:flex;flex-direction:column;padding:12px 0;transition:background .3s ease;">
+        <nav style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+          </div>
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+          </div>
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;background:var(--tn-active-bg,rgba(30,125,127,.10));color:var(--tn-active-ink,#1E7D7F);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18M15 3v18"></path></svg>
+          </div>
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+          </div>
+        </nav>
+        <div style="margin-top:auto;border-top:1px solid var(--tn-border,#e4e7ec);padding-top:12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          </div>
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </div>
+        </div>
+      </aside>
+
+      <!-- main -->
+      <main style="flex:1;min-width:0;padding:34px 40px 48px;">
+
+        <!-- header -->
+        <div style="margin-bottom:22px;">
+          <h1 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:27px;color:var(--tn-ink,#012358);margin:0;letter-spacing:-.01em;">Projects</h1>
+          <p style="font-size:15px;color:var(--tn-muted,#8593a4);margin:6px 0 0;">Manage hreflang tag workflows for AAAF and HFA WordPress sites.</p>
+        </div>
+
+        <!-- stale warning (compact) -->
+        <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;border:1px solid var(--tn-amber-border,#E0940E55);background:var(--tn-amber-bg,#E0940E14);border-radius:12px;padding:11px 16px;margin-bottom:24px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--tn-amber,#B8790A)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+          <span style="font-family:'Raleway',sans-serif;font-weight:800;font-size:13.5px;color:var(--tn-ink,#012358);">3 pages need hreflang review</span>
+          
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <sc-for list="{{ staleGroups }}" as="g" hint-placeholder-count="2">
+              <span style="display:inline-flex;align-items:center;gap:5px;background:var(--tn-surface,#fff);border:1px solid var(--tn-amber-border,#E0940E44);border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:700;color:var(--tn-amber,#B8790A);cursor:pointer;white-space:nowrap;"><span style="text-transform:uppercase;letter-spacing:.04em;">{{ g.code }}</span> · {{ g.count }} →</span>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- site cards -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;">
+          <sc-for list="{{ sites }}" as="s" hint-placeholder-count="2">
+            <div style="border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:16px;overflow:hidden;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));cursor:pointer;transition:all .16s;" style-hover="transform:translateY(-2px);box-shadow:0 16px 34px -18px rgba(1,35,88,.4);">
+              <div style="height:4px;background:{{ s.brand }};"></div>
+              <div style="padding:22px;display:flex;gap:18px;">
+                <div style="flex:none;width:110px;height:74px;background:#fff;border:1px solid #e4e7ec;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:8px;">
+                  <img src="{{ s.logo }}" alt="{{ s.name }}" style="max-width:100%;max-height:100%;object-fit:contain;">
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <h2 style="font-family:{{ s.font }};font-weight:800;font-size:22px;color:{{ s.ink }};margin:0;line-height:1.1;{{ s.titleExtra }}">{{ s.name }}</h2>
+                  <div style="font-size:13px;color:var(--tn-muted,#8593a4);margin-top:4px;">{{ s.domain }} ↗</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;">
+                    <span style="font-family:'Raleway',sans-serif;font-weight:800;font-size:13px;color:{{ s.brand }};">View pages →</span>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+                      <sc-for list="{{ s.langs }}" as="l" hint-placeholder-count="4">
+                        <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:{{ l.bg }};color:{{ l.text }};">{{ l.code }}</span>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--tn-border,#e4e7ec);">
+                <div style="padding:14px 16px;border-right:1px solid var(--tn-border,#e4e7ec);">
+                  <div style="font-family:'Raleway',sans-serif;font-weight:900;font-size:26px;color:var(--tn-ink,#012358);font-variant-numeric:tabular-nums;line-height:1;">{{ s.recent }}</div>
+                  <div style="font-size:11.5px;color:var(--tn-muted,#8593a4);margin-top:5px;">Last 2 weeks</div>
+                </div>
+                <div style="padding:14px 16px;border-right:1px solid var(--tn-border,#e4e7ec);">
+                  <div style="font-family:'Raleway',sans-serif;font-weight:900;font-size:26px;color:var(--tn-ink,#012358);font-variant-numeric:tabular-nums;line-height:1;">{{ s.total }}</div>
+                  <div style="font-size:11.5px;color:var(--tn-muted,#8593a4);margin-top:5px;">Total done</div>
+                </div>
+                <div style="padding:14px 16px;">
+                  <div style="font-family:'Raleway',sans-serif;font-weight:900;font-size:26px;color:{{ s.brand }};font-variant-numeric:tabular-nums;line-height:1;">{{ s.remaining }}</div>
+                  <div style="font-size:11.5px;color:var(--tn-muted,#8593a4);margin-top:5px;">Remaining</div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- how to do this -->
+        <div style="border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:14px;padding:22px 24px;margin-bottom:20px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));">
+          <h3 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:16px;color:var(--tn-ink,#012358);margin:0 0 14px;">How to do this</h3>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--tn-border,#e4e7ec);margin-bottom:16px;">
+            <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tn-muted,#8593a4);">Legend:</span>
+            <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:5px;background:#059f6b1f;color:#059f6b;">Auto</span>
+            <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:5px;background:#d979061f;color:#c67f0c;">Manual</span>
+            <span style="color:var(--tn-border,#cbd5e1);">·</span>
+            <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:5px;background:#7c3aed1f;color:#7c3aed;">Monday</span>
+            <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:5px;background:#0284c71f;color:#0284c7;">System</span>
+            <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:5px;background:#2563eb1f;color:#2563eb;">WordPress</span>
+          </div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tn-muted,#8593a4);margin-bottom:12px;">General workflow</div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <sc-for list="{{ steps }}" as="st" hint-placeholder-count="6">
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <span style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);display:flex;align-items:center;justify-content:center;font-family:'Raleway',sans-serif;font-weight:800;font-size:11px;">{{ st.n }}</span>
+                <div style="flex:1;">
+                  <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                    <span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:5px;background:{{ st.modeBg }};color:{{ st.modeColor }};">{{ st.mode }}</span>
+                    <span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:5px;background:{{ st.whereBg }};color:{{ st.whereColor }};">{{ st.whereLabel }}</span>
+                    <span style="font-size:13.5px;font-weight:600;color:var(--tn-ink,#012358);">{{ st.text }}</span>
+                  </div>
+                  <sc-if value="{{ st.detail }}">
+                    <div style="font-size:12px;color:var(--tn-muted,#8593a4);margin-top:4px;">{{ st.detail }}</div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- resources -->
+        <div style="border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:14px;padding:22px 24px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));">
+          <h3 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:16px;color:var(--tn-ink,#012358);margin:0 0 14px;">Resources</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ resources }}" as="r" hint-placeholder-count="4">
+              <div style="font-size:13.5px;">
+                <span style="color:var(--tn-teal,#1E7D7F);font-weight:700;">{{ r.label }} ↗</span>
+                <sc-if value="{{ r.note }}"><span style="color:var(--tn-muted,#8593a4);"> — {{ r.note }}</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light' };
+
+  themeStyle() {
+    const LIGHT = "--tn-canvas:#f1efe8;--tn-surface:#ffffff;--tn-topbar:#ffffff;--tn-ink:#012358;--tn-body:#435066;--tn-muted:#8593a4;--tn-border:#e4e7ec;--tn-teal:#1E7D7F;--tn-gold:#F2C40A;--tn-badge:#012358;--tn-active-bg:rgba(30,125,127,.10);--tn-active-ink:#1E7D7F;--tn-rail-idle:#9aa7b6;--tn-hover-bg:#f4f2ec;--tn-avatar:#012358;--tn-logo-bg:transparent;--tn-logo-pad:0;--tn-shadow-card:0 1px 2px rgba(1,35,88,.06);--tn-shadow-frame:0 30px 80px -30px rgba(1,35,88,.35);--tn-amber:#B8790A;--tn-amber-bg:#E0940E14;--tn-amber-border:#E0940E55";
+    const DARK = "--tn-canvas:#070f1d;--tn-surface:#101f37;--tn-topbar:#0c1a30;--tn-ink:#eaf1fb;--tn-body:#aebfd4;--tn-muted:#74849c;--tn-border:#20355a;--tn-teal:#5ac2bf;--tn-gold:#F2C40A;--tn-badge:#2a5cab;--tn-active-bg:rgba(90,194,191,.16);--tn-active-ink:#5ac2bf;--tn-rail-idle:#6b7c95;--tn-hover-bg:#0c1a30;--tn-avatar:#2a5cab;--tn-logo-bg:#ffffff;--tn-logo-pad:5px 8px;--tn-shadow-card:0 1px 2px rgba(0,0,0,.4);--tn-shadow-frame:0 30px 80px -30px rgba(0,0,0,.7);--tn-amber:#F2C40A;--tn-amber-bg:rgba(242,196,10,.12);--tn-amber-border:rgba(242,196,10,.38)";
+    return this.state.theme === 'dark' ? DARK : LIGHT;
+  }
+
+  langChip(code) {
+    const map = { EN: '#2563eb', PT: '#e11d48', ES: '#7c3aed', SW: '#65a30d', FR: '#d97706' };
+    const c = map[code] || '#8593a4';
+    return { code, bg: c + '1f', text: c };
+  }
+
+  renderVals() {
+    const sites = [
+      { code: 'aaaf', name: 'Ask An Adventist Friend', domain: 'askanadventistfriend.com', logo: 'brand/aaaf.jpg', brand: '#44ad85', ink: '#263954', font: "'Nunito',sans-serif", titleExtra: '', langs: ['EN', 'PT', 'ES', 'SW'].map(l => this.langChip(l)), recent: 6, total: 41, remaining: 12 },
+      { code: 'hfa', name: 'Hope For Africa', domain: 'hopefor.africa', logo: 'brand/hfa.png', brand: '#fe9d2d', ink: '#212121', font: "'Bebas Neue',sans-serif", titleExtra: 'letter-spacing:.03em;text-transform:uppercase;font-size:26px;', langs: ['EN', 'SW'].map(l => this.langChip(l)), recent: 3, total: 18, remaining: 7 },
+    ];
+
+    const staleGroups = [
+      { code: 'aaaf', count: 2, pages: ['How to study the Bible', 'Understanding prophecy'] },
+      { code: 'hfa', count: 1, pages: ['Finding hope in hard times'] },
+    ];
+
+    const MODE = { auto: { bg: '#059f6b1f', color: '#059f6b' }, manual: { bg: '#d979061f', color: '#c67f0c' } };
+    const WHERE = { monday: { bg: '#7c3aed1f', color: '#7c3aed', label: 'Monday' }, system: { bg: '#0284c71f', color: '#0284c7', label: 'System' }, wordpress: { bg: '#2563eb1f', color: '#2563eb', label: 'WordPress' } };
+    const rawSteps = [
+      { m: 'auto', w: 'monday', t: 'Publishing item moves to Done → Monday sets Href Links to "Run Link"' },
+      { m: 'auto', w: 'system', t: 'Monday webhook fires; the system receives the "Run Link" trigger' },
+      { m: 'auto', w: 'system', t: 'System verifies the page exists; creates it if missing' },
+      { m: 'auto', w: 'system', t: 'System reads each language URL from Monday and saves them to the page' },
+      { m: 'auto', w: 'system', t: 'Once all URLs are present, system generates WordPress-ready hreflang tags' },
+      { m: 'auto', w: 'system', t: 'System updates Href Links on Monday to "Apply Link"' },
+      { m: 'auto', w: 'monday', t: 'Monday runs automations: assigns SEO 2 and sends notifications' },
+      { m: 'manual', w: 'wordpress', t: 'SEO 2 logs in to WordPress in the browser' },
+      { m: 'manual', w: 'wordpress', t: 'SEO 2 opens each language URL from the system and clicks Edit in WordPress' },
+      { m: 'manual', w: 'wordpress', t: 'SEO 2 copies the hreflang tags, pastes them into the "custom_hreflang" field on each page, and saves', d: 'Select "custom_hreflang" as the field name, paste as value, then click "Add Custom Field" or it will not save.' },
+      { m: 'manual', w: 'monday', t: 'SEO 2 marks every language item for the page as Done in Monday' },
+      { m: 'auto', w: 'system', t: 'System ticks "Confirmed live" for each language and stamps the All Live date' },
+    ];
+    const steps = rawSteps.map((s, i) => ({
+      n: i + 1, text: s.t, detail: s.d || '',
+      mode: s.m, modeBg: MODE[s.m].bg, modeColor: MODE[s.m].color,
+      whereLabel: WHERE[s.w].label, whereBg: WHERE[s.w].bg, whereColor: WHERE[s.w].color,
+    }));
+
+    const resources = [
+      { label: 'ISO 639 language codes (reference)', note: '' },
+      { label: 'Validate hreflang tags', note: 'Valid ISO 639 codes, self-reference, and reciprocal tags to every language.' },
+      { label: 'Google requirements for localized versions', note: '' },
+      { label: 'Ahrefs hreflang training', note: '' },
+    ];
+
+    return {
+      themeStyle: this.themeStyle(),
+      isDark: this.state.theme === 'dark',
+      isLight: this.state.theme === 'light',
+      toggleTheme: () => this.setState(s => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+      sites, staleGroups, steps, resources,
+    };
+  }
+}
+</script>
+</body>
+</html>

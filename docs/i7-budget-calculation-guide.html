@@ -1,0 +1,204 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the i7 Budget Usage Report is built</title>
+<style>
+  :root{
+    --paper:#F2F4F7; --ink:#06214D; --body:#3B4A63; --muted:#7A8598; --line:#E1E7EF; --line-soft:#EBEFF5;
+    --raised:#FFFFFF; --teal:#1E7D7F; --gold:#B87A0C; --gold-bright:#F2C40A;
+    --blue-bg:#EEF4FF; --blue-bd:#D5E0FB; --blue-tag:#2A6FDB; --blue-tx:#123a86;
+    --indigo-bg:#F0EEFE; --indigo-bd:#DDD6FB; --indigo-tag:#6D5AE0; --indigo-tx:#3a2c8a;
+    --green-bg:#ECFBF2; --green-bd:#C7ECD6; --green-tag:#1E9E6A; --green-tx:#0d5c3a;
+    --amber-bg:#FFF8EC; --amber-bd:#F3DFB0; --amber-tag:#C9761A; --amber-tx:#8a5a12;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0}
+  .page{background:var(--paper);color:var(--body);font-family:var(--sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;padding:clamp(20px,4vw,52px) 20px 64px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-family:var(--serif);font-weight:600;color:var(--ink);font-size:clamp(28px,4.4vw,38px);line-height:1.08;letter-spacing:-.01em;margin:0;text-wrap:balance}
+  h2{font-family:var(--sans);font-weight:700;font-size:12.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0}
+  h2 .n{font-weight:400;text-transform:none;letter-spacing:0;color:#a2adbd}
+  p{margin:0}
+  .num{font-variant-numeric:tabular-nums}
+  strong{color:var(--ink);font-weight:600}
+
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}
+  header{display:flex;align-items:flex-start;gap:18px;margin-bottom:12px}
+  .imark{flex:none;width:56px;height:56px;border-radius:16px;background:var(--ink);color:var(--gold-bright);
+    display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:30px;font-weight:700;font-style:italic}
+  header h1{margin:14px 0 12px}
+  .intro{font-size:clamp(16px,2vw,18px);line-height:1.55;color:var(--body);max-width:64ch}
+
+  section{margin-top:clamp(34px,5vw,48px)}
+  .sec-head{margin-bottom:18px}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{border-radius:16px;padding:22px 24px;border:1px solid}
+  .card .tag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:block}
+  .card h3{font-family:var(--sans);font-size:19px;font-weight:700;margin:0 0 10px}
+  .card p{font-size:14.5px;line-height:1.55}
+  .c-blue{background:var(--blue-bg);border-color:var(--blue-bd)}.c-blue .tag{color:var(--blue-tag)}.c-blue h3,.c-blue p{color:var(--blue-tx)}
+  .c-indigo{background:var(--indigo-bg);border-color:var(--indigo-bd)}.c-indigo .tag{color:var(--indigo-tag)}.c-indigo h3,.c-indigo p{color:var(--indigo-tx)}
+  .c-green{background:var(--green-bg);border-color:var(--green-bd)}.c-green .tag{color:var(--green-tag)}.c-green h3,.c-green p{color:var(--green-tx)}
+  .c-amber{background:var(--amber-bg);border-color:var(--amber-bd)}.c-amber .tag{color:var(--amber-tag)}.c-amber h3,.c-amber p{color:var(--amber-tx)}
+
+  .formulas{background:var(--raised);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .frow{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding:15px 22px;border-top:1px solid var(--line-soft)}
+  .frow:first-child{border-top:0}
+  .frow .l{width:150px;flex:none;font-weight:600;color:var(--ink);font-size:15px}
+  .frow .f{flex:1;min-width:220px;color:var(--body);font-size:14.5px}
+  .frow .from{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#a2adbd}
+
+  .bank{background:var(--raised);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+  .bank>p{font-size:14.5px;color:var(--body);margin-bottom:14px}
+  .bank ul{margin:0;padding:0;list-style:none;display:grid;gap:11px}
+  .bank li{font-size:14.5px;color:var(--body);padding-left:18px;position:relative}
+  .bank li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--teal)}
+  .callout{margin-top:16px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-size:14px;color:var(--body);line-height:1.55}
+  .callout .mono{font-family:var(--mono);font-size:13px;color:var(--ink)}
+
+  .tbl-wrap{background:var(--raised);border:1px solid var(--line);border-radius:16px;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+  thead th{background:#f6f8fb;border-bottom:1px solid var(--line);text-align:right;padding:12px 16px;
+    font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  thead th:first-child{text-align:left}
+  thead th .sub{display:block;font-weight:400;text-transform:none;letter-spacing:0;color:#a2adbd;font-size:10.5px}
+  tbody td{padding:13px 16px;text-align:right;border-bottom:1px solid var(--line-soft);color:var(--body);font-variant-numeric:tabular-nums}
+  tbody td:first-child{text-align:left;font-weight:600;color:var(--ink)}
+  tbody td.b{font-weight:700;color:var(--ink)}
+  tbody tr.total td{background:#eef1f6;border-top:2px solid #cfd6e0;font-weight:800;color:var(--ink)}
+
+  .checks{margin-top:16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:16px;padding:22px 24px}
+  .checks .h{font-size:14.5px;font-weight:700;color:var(--green-tx);margin-bottom:12px}
+  .checks ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+  .checks li{font-size:14px;color:var(--green-tx);padding-left:18px;position:relative}
+  .checks li::before{content:"✓";position:absolute;left:0;top:0;color:var(--green-tag);font-weight:800}
+  .checks .proof-calc{margin-top:16px;background:rgba(255,255,255,.7);border:1px solid var(--green-bd);border-radius:12px;
+    padding:15px 17px;font-family:var(--mono);font-size:13px;color:var(--green-tx);line-height:1.7}
+
+  .oneline{margin-top:clamp(34px,5vw,48px);background:var(--ink);border-radius:18px;padding:30px 32px;color:#dbe6f6}
+  .oneline .k{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7f93b6;margin-bottom:12px}
+  .oneline p{font-size:18px;line-height:1.55;text-wrap:balance}
+  .oneline .g{color:#7fe3b3;font-weight:600}.oneline .b{color:#8fb8f2;font-weight:600}.oneline .i{color:#b3a6f0;font-weight:600}
+
+  .foot{margin-top:32px;font-size:12.5px;color:var(--muted)}
+
+  @media (max-width:700px){.cards{grid-template-columns:1fr}.frow .l{width:100%}}
+  @media print{.page{background:#fff;padding:0}.oneline{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    section{break-inside:avoid}.card,.checks,.tbl-wrap{break-inside:avoid}}
+</style>
+
+<div class="page">
+  <div class="wrap">
+
+    <header>
+      <span class="imark">i</span>
+      <div>
+        <span class="eyebrow">i7 Budget Usage Report</span>
+        <h1>How the i7 Budget Usage Report is built</h1>
+        <p class="intro">The report never invents a number. It combines <strong>one thing pulled from QuickBooks Time</strong> with <strong>three things you set in Settings</strong> — then only adds and subtracts.</p>
+      </div>
+    </header>
+
+    <section>
+      <div class="sec-head"><h2>The four inputs</h2></div>
+      <div class="cards">
+        <div class="card c-blue">
+          <span class="tag">Actuals</span>
+          <h3>QuickBooks Time (TSheets)</h3>
+          <p>The real hours. Pulled automatically every 4 hours. Each approved entry says who worked, on which i7 code (&rarr; project + job code), on which activity, and how many hours.</p>
+        </div>
+        <div class="card c-indigo">
+          <span class="tag">Rates</span>
+          <h3>Hourly rates</h3>
+          <p>Settings &rarr; People &amp; Rates. Each person&rsquo;s $/hour on i7, with history ($120 through January, $95 from February, foreign contractors $60).</p>
+        </div>
+        <div class="card c-green">
+          <span class="tag">Budget $</span>
+          <h3>Monthly budget</h3>
+          <p>Settings &rarr; Clients &amp; Budgets &rarr; i7. Each month&rsquo;s budget in dollars (base + extra). This is the source of truth for the month — the report never back-calculates it from hours.</p>
+        </div>
+        <div class="card c-amber">
+          <span class="tag">Budget hrs</span>
+          <h3>Budget hours per project</h3>
+          <p>Same i7 modal. A planning estimate: how the budget splits into hours per project. Editing it never changes the dollar budget — a live &ldquo;left to allocate&rdquo; line flags when the hours run past it. Copy a month across to the others in a click.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>How each column is calculated <span class="n">(for the selected month)</span></h2></div>
+      <div class="formulas">
+        <div class="frow"><span class="l">Hours used</span><span class="f">= sum of that group&rsquo;s hours</span><span class="from">TSheets</span></div>
+        <div class="frow"><span class="l">Budget used ($)</span><span class="f">= for each person: their hours &times; their rate that month, summed</span><span class="from">TSheets &times; Rates</span></div>
+        <div class="frow"><span class="l">Budget hrs</span><span class="f">= the project&rsquo;s budgeted hours for the month</span><span class="from">Settings</span></div>
+        <div class="frow"><span class="l">Hrs avail.</span><span class="f">= Budget hrs &minus; Hours used</span><span class="from">Derived</span></div>
+        <div class="frow"><span class="l">Budget avail. ($)</span><span class="f">= Hrs avail. &times; the month&rsquo;s standard i7 rate ($95 in July)</span><span class="from">Derived &times; Rates</span></div>
+        <div class="frow"><span class="l">Person columns</span><span class="f">= each person&rsquo;s hours in that group</span><span class="from">TSheets</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Budget balance <span class="n">(the running balance at the top)</span></h2></div>
+      <div class="bank">
+        <p>It works like a bank account, running from January:</p>
+        <ul>
+          <li><strong>Carried in</strong> = (all monthly budgets since January) &minus; (all actual cost since January), for the months <em>before</em> the one you&rsquo;re viewing.</li>
+          <li><strong>Budget total this month</strong> = Carried in + this month&rsquo;s budget (base + extra).</li>
+          <li><strong>Used</strong> = the same &ldquo;Budget used&rdquo; total from the bottom of the table.</li>
+          <li><strong>Balance left</strong> = Budget total &minus; Used (this carries into next month).</li>
+        </ul>
+        <div class="callout">On the report, <strong>Budget total this month</strong> shows the breakdown in brackets — e.g. <span class="mono">$49,094 ($55,000 &minus; $5,906)</span>: this month&rsquo;s full budget minus what was carried over (or plus, if last month came in under). The <strong>Team Update</strong> button (next to Export) turns the same numbers — used, % used, and what&rsquo;s left — into a shareable image for the team.</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>The proof <span class="n">— July 2026</span></h2></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Budget hrs<span class="sub">Settings</span></th>
+              <th>Hours used<span class="sub">TSheets</span></th>
+              <th>Hrs avail.<span class="sub">hrs &minus; used</span></th>
+              <th>Budget avail.<span class="sub">avail &times; $95</span></th>
+              <th>Budget used<span class="sub">hrs &times; rate</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Bessemeter</td><td>220</td><td>15.5</td><td class="b">204.50</td><td class="b">$19,428</td><td>$1,411</td></tr>
+            <tr><td>i7 Marketing</td><td>50</td><td>2.25</td><td class="b">47.75</td><td class="b">$4,536</td><td>$214</td></tr>
+            <tr><td>Moisture Meters (MME)</td><td>10</td><td>8.5</td><td class="b">1.50</td><td class="b">$143</td><td>$808</td></tr>
+            <tr><td>Wagner Meters (WM)</td><td>308</td><td>75.75</td><td class="b">232.25</td><td class="b">$22,064</td><td>$7,196</td></tr>
+            <tr class="total"><td>Total</td><td>588</td><td>102.00</td><td>486.00</td><td>$46,170</td><td>$9,629</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="checks">
+        <div class="h">Everything checks out</div>
+        <ul>
+          <li><strong>588</strong> = 220 + 50 + 10 + 308 — the hours you typed into the July matrix</li>
+          <li><strong>486.00</strong> = 588 &minus; 102.00</li>
+          <li><strong>$46,170</strong> = 486 &times; <strong>$95</strong> (July&rsquo;s standard rate)</li>
+          <li><strong>$9,629</strong> = the sum of actual cost (hours &times; each person&rsquo;s rate)</li>
+        </ul>
+        <div class="proof-calc">
+          Carried in (&minus;$5,906) + This month ($55,000) = Budget total ($49,094)<br>
+          Budget total ($49,094) &minus; Used ($9,629) = Balance left ($39,465)
+        </div>
+      </div>
+    </section>
+
+    <div class="oneline">
+      <div class="k">In one line</div>
+      <p><span class="g">Settings</span> sets the targets (budgeted hours and dollars), <span class="b">QuickBooks Time</span> brings the actuals (hours), the <span class="i">rates</span> turn hours into dollars, and the report just adds and subtracts — every number traceable.</p>
+    </div>
+
+    <p class="foot">True North Digital Marketing &middot; Operations Portal &middot; i7 Budget Usage Report. July 2026 figures are an illustrative worked example.</p>
+
+  </div>
+</div>
+</body></html>
