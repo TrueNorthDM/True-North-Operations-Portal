@@ -2,6 +2,8 @@
 // Emails tab, Teams cards, Access rows, and the person modal). Plain module (no
 // 'use client') so both the server page and the client components can import it.
 
+import type { PersonAddress } from '@/lib/address'
+
 export interface PersonEmails {
   trueNorth: string | null
   goodnews: string | null
@@ -64,7 +66,7 @@ export interface PersonView {
   // Contact
   phone: string | null
   location: string | null
-  address: string | null // full mailing address (free text)
+  address: PersonAddress | null // structured mailing address
   whatsappSameNumber: string | null // 'yes' | 'no', same number on WhatsApp?
 
   // Onboarding (tri-state chips)

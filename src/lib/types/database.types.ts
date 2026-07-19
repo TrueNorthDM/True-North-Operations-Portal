@@ -9,6 +9,8 @@
  * resolve to `never`.
  */
 
+import type { PersonAddress } from '@/lib/address'
+
 export type SiteCode = 'aaaf' | 'hfa'
 export type LanguageCode = 'en' | 'pt' | 'es' | 'sw'
 
@@ -146,7 +148,7 @@ export type PersonRow = {
   monday_docs: string | null          // text of the person's "History" Monday Doc (migration 034)
   role_type: string                   // 'user'|'admin'|'admin_assistant'|'team_leader' (migration 035)
   avatar_url: string | null           // profile photo public URL (migration 036)
-  address: string | null              // full mailing address, free text (migration 042)
+  address: PersonAddress | null       // structured mailing address, JSON (migration 042)
 }
 
 // The "History" file attachments on a person, held in the private person-files

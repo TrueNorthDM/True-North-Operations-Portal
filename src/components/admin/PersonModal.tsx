@@ -15,6 +15,8 @@ import { Select } from '@/components/ui/Select'
 import { TenureBadge } from '@/components/TenureBadge'
 import { tenureSince, milestoneOf, formatTenure } from '@/lib/tenure'
 import { formatPhone } from '@/lib/phone'
+import { toAddressForm, normalizeAddress, formatAddressLines, addressFlag, type AddressForm, type PersonAddress } from '@/lib/address'
+import { allCountries } from '@/lib/countries'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -60,7 +62,7 @@ interface Draft {
   status: 'active' | 'inactive'
   phone: string
   location: string
-  address: string
+  address: AddressForm
   whatsappSameNumber: string
   companyEmail: string
   usesSystem: string
@@ -87,7 +89,7 @@ function toDraft(p: PersonView | null): Draft {
     return {
       full_name: '', lastName: '', title: '', teams: [], manager_id: '', alsoReportsToId: '',
       reportsToManager: 'no', managerNameText: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
-      teamMeeting: false, roleType: 'user', status: 'active', phone: '', location: '', address: '', whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
+      teamMeeting: false, roleType: 'user', status: 'active', phone: '', location: '', address: toAddressForm(null), whatsappSameNumber: '', companyEmail: 'notyet', usesSystem: 'notyet',
       dateOfBirth: '', hireDate: '', leftOn: '',
       emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
       hasTsheets: true, history: '', mondayDocs: '',
@@ -98,7 +100,7 @@ function toDraft(p: PersonView | null): Draft {
     alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
-    teamMeeting: p.teamMeeting, roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', address: p.address ?? '', whatsappSameNumber: p.whatsappSameNumber ?? '',
+    teamMeeting: p.teamMeeting, roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', address: toAddressForm(p.address), whatsappSameNumber: p.whatsappSameNumber ?? '',
     companyEmail: p.companyEmail ?? '', usesSystem: p.usesSystem ?? '',
     dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
     emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
@@ -171,7 +173,7 @@ export function PersonModal({
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
-      address: draft.address || null,
+      address: normalizeAddress(draft.address),
       whatsapp_same_number: draft.whatsappSameNumber || null,
       company_email: draft.companyEmail || null,
       uses_system: draft.usesSystem || null,
@@ -327,6 +329,19 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
       <a href={`https://wa.me/${f.digits}`} target="_blank" rel="noopener noreferrer" className="hover:text-tn-teal [&_span]:hover:text-tn-teal">{body}</a>
     ) : body
   }
+  // Structured address, stacked and right-aligned; the country line carries the flag.
+  const addressNode = (a: PersonAddress | null) => {
+    const lines = formatAddressLines(a)
+    if (lines.length === 0) return txt('-')
+    const flag = addressFlag(a)
+    return (
+      <span className="inline-flex flex-col items-end text-[13.5px] text-foreground font-semibold leading-snug">
+        {lines.map((ln, i) => (
+          <span key={i}>{i === lines.length - 1 && flag ? `${flag} ${ln}` : ln}</span>
+        ))}
+      </span>
+    )
+  }
 
   return (
     <>
@@ -341,7 +356,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             {item('WhatsApp, same number', pillNode(ynPill(p.whatsappSameNumber)))}
             {item('Date of birth', txt(formatDate(p.dateOfBirth)))}
             {item('Location', txt(p.location))}
-            {item('Full address', txt(p.address))}
+            {item('Full address', addressNode(p.address))}
           </div>
         </div>
         <div>
@@ -474,6 +489,9 @@ function EditBody({
 }) {
   const label = (t: string) => <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">{t}</span>
 
+  const countryOptions = useMemo(() => allCountries().map(c => ({ value: c.code, label: `${c.flag ? `${c.flag}  ` : ''}${c.name}` })), [])
+  const setAddr = (k: keyof AddressForm, v: string) => setDraft(d => ({ ...d, address: { ...d.address, [k]: v } }))
+
   const seg = (value: string, opts: { v: string; l: string }[], onPick: (v: string) => void) => (
     <div className="flex gap-1.5">
       {opts.map(o => (
@@ -580,7 +598,31 @@ function EditBody({
             <span className="text-[11px] text-muted normal-case font-normal tracking-normal">Include the country code so we can show the flag.</span>
           </Wrap>
           <Wrap>{label('Location')}<input type="text" value={draft.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" /></Wrap>
-          <Wrap wide>{label('Full address')}<textarea value={draft.address} onChange={e => set('address', e.target.value)} className={`${fieldCls} min-h-[64px] resize-y leading-relaxed`} placeholder="Street, number, complement, city, state, ZIP, country" /></Wrap>
+          <Wrap wide>
+            {label('Full address')}
+            <div className="space-y-2.5">
+              {/* Country first; the rest of the form only appears once a country is chosen. */}
+              <Select
+                fullWidth
+                searchable
+                value={draft.address.country}
+                onChange={v => setAddr('country', v)}
+                options={countryOptions}
+                placeholder="Select a country…"
+                className={fieldCls}
+                ariaLabel="Country"
+              />
+              {draft.address.country && (
+                <div className="grid grid-cols-2 gap-x-[18px] gap-y-2.5">
+                  <input type="text" value={draft.address.zip} onChange={e => setAddr('zip', e.target.value)} className={fieldCls} placeholder="ZIP / Postal code" />
+                  <input type="text" value={draft.address.city} onChange={e => setAddr('city', e.target.value)} className={fieldCls} placeholder="City" />
+                  <input type="text" value={draft.address.line1} onChange={e => setAddr('line1', e.target.value)} className={`${fieldCls} col-span-2`} placeholder="Address line 1 (street, number)" />
+                  <input type="text" value={draft.address.line2} onChange={e => setAddr('line2', e.target.value)} className={`${fieldCls} col-span-2`} placeholder="Address line 2 (apt, suite, complement)" />
+                  <input type="text" value={draft.address.state} onChange={e => setAddr('state', e.target.value)} className={`${fieldCls} col-span-2`} placeholder="State / Province / Region" />
+                </div>
+              )}
+            </div>
+          </Wrap>
           <Wrap wide>{label('WhatsApp, same number?')}{seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v))}</Wrap>
           <Wrap>{label('Date of birth')}<input type="date" value={draft.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} /></Wrap>
           <Wrap>{label('Joined on')}<input type="date" value={draft.hireDate} onChange={e => set('hireDate', e.target.value)} className={fieldCls} /></Wrap>

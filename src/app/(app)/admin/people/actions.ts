@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
 import type { PersonRow } from '@/lib/types/database.types'
+import type { PersonAddress } from '@/lib/address'
 
 type PersonCols = Partial<Omit<PersonRow, 'id' | 'created_at' | 'updated_at'>>
 
@@ -45,7 +46,7 @@ export interface PersonInput {
   email_personal?: string | null
   phone?: string | null
   location?: string | null
-  address?: string | null
+  address?: PersonAddress | null
   company_email?: string | null
   uses_system?: string | null
   date_of_birth?: string | null
@@ -98,7 +99,7 @@ function personColumns(input: PersonInput): PersonCols {
     email_personal: trimOrNull(input.email_personal),
     phone: trimOrNull(input.phone),
     location: trimOrNull(input.location),
-    address: trimOrNull(input.address),
+    address: input.address ?? null,
     company_email: input.company_email || null,
     uses_system: input.uses_system || null,
     date_of_birth: input.date_of_birth || null,

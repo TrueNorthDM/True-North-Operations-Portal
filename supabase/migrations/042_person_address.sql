@@ -1,6 +1,9 @@
 -- 042_person_address.sql
--- Full mailing address for a person, separate from the short "location"
--- (city / country) already stored. Free text so it can hold a multi-line
--- street address. Safe to run more than once.
+-- Structured mailing address, stored as JSON so it works for any country:
+--   { country, zip, line1, line2, city, state }
+-- (country is an ISO 3166-1 alpha-2 code). Separate from the short "location"
+-- (city / country) already stored. No real address data exists yet, so a
+-- straight drop + add is safe and this stays re-runnable.
 
-alter table people add column if not exists address text;
+alter table people drop column if exists address;
+alter table people add column address jsonb;

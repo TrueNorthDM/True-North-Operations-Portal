@@ -5,6 +5,7 @@
 // version; this is a self-contained copy so it never risks that critical page).
 
 import { createClient } from '@/lib/supabase/server'
+import type { PersonAddress } from '@/lib/address'
 import {
   teamKeyFromName,
   teamPositionRank,
@@ -69,8 +70,8 @@ export async function loadDirectoryPeopleView(
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
     if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
-  const addressById = new Map<string, string>()
-  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: string | null }[]) if (r.address) addressById.set(r.id, r.address)
+  const addressById = new Map<string, PersonAddress>()
+  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: PersonAddress | null }[]) if (r.address) addressById.set(r.id, r.address)
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))

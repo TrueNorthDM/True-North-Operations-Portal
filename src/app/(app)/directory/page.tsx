@@ -8,6 +8,7 @@ import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
 import { teamKeyFromName, TEAM_COLOR, initialsOf, teamPositionRank, teamPositionLeads, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
+import type { PersonAddress } from '@/lib/address'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { ToolAudience } from '@/lib/access/tools'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -92,8 +93,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
     if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
-  const addressById = new Map<string, string>()
-  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: string | null }[]) if (r.address) addressById.set(r.id, r.address)
+  const addressById = new Map<string, PersonAddress>()
+  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: PersonAddress | null }[]) if (r.address) addressById.set(r.id, r.address)
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
