@@ -10,6 +10,7 @@
  */
 
 import type { PersonAddress } from '@/lib/address'
+import type { PersonMilestone } from '@/lib/milestones'
 
 export type SiteCode = 'aaaf' | 'hfa'
 export type LanguageCode = 'en' | 'pt' | 'es' | 'sw'
@@ -148,6 +149,7 @@ export type PersonRow = {
   role_type: string                   // 'user'|'admin'|'admin_assistant'|'team_leader' (migration 035)
   avatar_url: string | null           // profile photo public URL (migration 036)
   address: PersonAddress | null       // structured mailing address, JSON (migration 042)
+  milestones: PersonMilestone[] | null // career timeline, JSON array (migration 044)
 }
 
 // The "History" file attachments on a person, held in the private person-files

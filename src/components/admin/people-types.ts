@@ -3,6 +3,7 @@
 // 'use client') so both the server page and the client components can import it.
 
 import type { PersonAddress } from '@/lib/address'
+import type { PersonMilestone } from '@/lib/milestones'
 
 export interface PersonEmails {
   trueNorth: string | null
@@ -84,6 +85,7 @@ export interface PersonView {
   hasTsheets: boolean
 
   history: string | null
+  milestones: PersonMilestone[] // career timeline (joined, promotions, role changes)
   mondayDocs: string | null // text of the person's "History" Monday Doc
   attachments: PersonAttachment[] // "History" documents
 }

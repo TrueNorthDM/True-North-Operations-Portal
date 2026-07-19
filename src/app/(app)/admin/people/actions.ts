@@ -12,6 +12,7 @@ import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
 import type { PersonRow } from '@/lib/types/database.types'
 import type { PersonAddress } from '@/lib/address'
+import type { PersonMilestone } from '@/lib/milestones'
 
 type PersonCols = Partial<Omit<PersonRow, 'id' | 'created_at' | 'updated_at'>>
 
@@ -59,6 +60,7 @@ export interface PersonInput {
   manager_name_text?: string | null
   whatsapp_same_number?: string | null
   monday_docs?: string | null
+  milestones?: PersonMilestone[] | null
   role_type?: string
 
   /**
@@ -109,6 +111,7 @@ function personColumns(input: PersonInput): PersonCols {
     manager_name_text: trimOrNull(input.manager_name_text),
     whatsapp_same_number: input.whatsapp_same_number || null,
     monday_docs: trimOrNull(input.monday_docs),
+    milestones: input.milestones ?? null,
     role_type: input.role_type || 'user',
   }
   return cols

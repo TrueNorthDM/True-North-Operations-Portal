@@ -17,6 +17,7 @@ import { tenureSince, milestoneOf, formatTenure } from '@/lib/tenure'
 import { formatPhone } from '@/lib/phone'
 import { toAddressForm, normalizeAddress, formatAddressLines, addressFlag, type AddressForm, type PersonAddress } from '@/lib/address'
 import { allCountries } from '@/lib/countries'
+import { toMilestoneForms, normalizeMilestones, sortMilestones, milestoneLabel, milestoneColor, MILESTONE_KINDS, MILESTONE_LABEL, type MilestoneForm } from '@/lib/milestones'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -74,6 +75,7 @@ interface Draft {
   emails: { trueNorth: EmailDraft; goodnews: EmailDraft; coe: EmailDraft; personal: EmailDraft }
   hasTsheets: boolean
   history: string
+  milestones: MilestoneForm[]
   mondayDocs: string
 }
 
@@ -87,7 +89,7 @@ function toDraft(p: PersonView | null): Draft {
       roleType: 'user', status: 'active', phone: '', location: '', address: toAddressForm(null), whatsappSameNumber: '', onboardingStatus: 'not_started', offboardingStatus: 'not_started',
       dateOfBirth: '', hireDate: '', leftOn: '',
       emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
-      hasTsheets: true, history: '', mondayDocs: '',
+      hasTsheets: true, history: '', milestones: [], mondayDocs: '',
     }
   }
   return {
@@ -99,7 +101,7 @@ function toDraft(p: PersonView | null): Draft {
     onboardingStatus: p.onboardingStatus ?? '', offboardingStatus: p.offboardingStatus ?? '',
     dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
     emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
-    hasTsheets: p.hasTsheets, history: p.history ?? '', mondayDocs: p.mondayDocs ?? '',
+    hasTsheets: p.hasTsheets, history: p.history ?? '', milestones: toMilestoneForms(p.milestones), mondayDocs: p.mondayDocs ?? '',
   }
 }
 
@@ -179,6 +181,7 @@ export function PersonModal({
       email_coe: emailVal(draft.emails.coe),
       email_personal: emailVal(draft.emails.personal),
       employment_history: draft.history || null,
+      milestones: normalizeMilestones(draft.milestones),
       monday_docs: draft.mondayDocs || null,
       tsheets: draft.hasTsheets ? undefined : false,
     }
@@ -424,6 +427,33 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         </div>
       </div>
 
+      {/* Milestones timeline + employment history, still under the Employment group. */}
+      {p.milestones.length > 0 && (
+        <div className="mt-6">
+          <SectionTitle>Milestones</SectionTitle>
+          <div className="flex flex-col gap-3">
+            {sortMilestones(p.milestones).map((m, i) => (
+              <div key={i} className="flex gap-3">
+                <span className="mt-[5px] w-[9px] h-[9px] rounded-full shrink-0" style={{ background: milestoneColor(m.kind) }} />
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-(family-name:--font-display) font-extrabold text-[12.5px]" style={{ color: milestoneColor(m.kind) }}>{milestoneLabel(m.kind)}</span>
+                    {m.date && <span className="text-[12px] text-muted font-semibold">{formatDate(m.date)}</span>}
+                  </div>
+                  {m.note && <p className="text-[13px] text-foreground leading-snug mt-0.5 m-0">{m.note}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {p.history && p.history.trim() && (
+        <div className="mt-6">
+          <SectionTitle>Employment history</SectionTitle>
+          <p className="text-[13.5px] leading-relaxed text-foreground m-0">{p.history}</p>
+        </div>
+      )}
+
       {/* Group 3: Hiring. Onboarding + Offboarding side by side, matched height. */}
       <GroupTitle className="mt-2">Hiring</GroupTitle>
       <div className="grid grid-cols-2 gap-x-10 items-start">
@@ -455,13 +485,6 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {p.history && p.history.trim() && (
-        <div className="mt-6 mb-2">
-          <SectionTitle>Employment history</SectionTitle>
-          <p className="text-[13.5px] leading-relaxed text-foreground m-0">{p.history}</p>
         </div>
       )}
 
@@ -632,6 +655,38 @@ function EditBody({
         </div>
       </div>
 
+      {/* Milestones editor + employment history, still under the Employment group. */}
+      <div className="mt-6">
+        <SectionTitle>Milestones</SectionTitle>
+        <div className="space-y-2">
+          {draft.milestones.length === 0 && <p className="text-[12.5px] text-muted italic">No milestones yet. Add joined dates, promotions, role changes…</p>}
+          {draft.milestones.map((row, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="shrink-0 w-[150px]">
+                <Select fullWidth value={row.kind} onChange={v => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, kind: v } : m)) }))} options={MILESTONE_KINDS.map(k => ({ value: k, label: MILESTONE_LABEL[k] }))} className={fieldCls} ariaLabel="Milestone type" />
+              </div>
+              <div className="shrink-0 w-[150px]">
+                <input type="date" value={row.date} onChange={e => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, date: e.target.value } : m)) }))} className={fieldCls} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <input type="text" value={row.note} onChange={e => setDraft(d => ({ ...d, milestones: d.milestones.map((m, j) => (j === i ? { ...m, note: e.target.value } : m)) }))} className={fieldCls} placeholder="What changed…" />
+              </div>
+              <button type="button" onClick={() => setDraft(d => ({ ...d, milestones: d.milestones.filter((_, j) => j !== i) }))} aria-label="Remove milestone" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={() => setDraft(d => ({ ...d, milestones: [...d.milestones, { kind: 'promotion', date: '', note: '' }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            Add milestone
+          </button>
+        </div>
+      </div>
+      <div className="mt-6">
+        <SectionTitle>Employment history</SectionTitle>
+        <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Free-text summary (the timeline above is the structured version)…" className={`${fieldCls} min-h-[80px] resize-y leading-relaxed`} />
+      </div>
+
       {/* Group 3: Hiring. Onboarding + Offboarding side by side, matched height. */}
       <GroupTitle className="mt-2">Hiring</GroupTitle>
       <div className="grid grid-cols-2 gap-x-10 items-start">
@@ -647,12 +702,6 @@ function EditBody({
             {field('Status', seg(draft.offboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('offboardingStatus', v)))}
           </div>
         </div>
-      </div>
-
-      {/* History */}
-      <div className="mt-6 mb-6">
-        <SectionTitle>Employment history</SectionTitle>
-        <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Notes on start date, role changes, milestones…" className={`${fieldCls} min-h-[90px] resize-y leading-relaxed`} />
       </div>
 
       {/* Monday Docs */}

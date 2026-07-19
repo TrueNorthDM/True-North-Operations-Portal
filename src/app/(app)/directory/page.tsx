@@ -9,6 +9,7 @@ import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
 import { teamKeyFromName, TEAM_COLOR, initialsOf, teamPositionRank, teamPositionLeads, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
 import type { PersonAddress } from '@/lib/address'
+import type { PersonMilestone } from '@/lib/milestones'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { ToolAudience } from '@/lib/access/tools'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -45,7 +46,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, addrRes, lcRes] = await Promise.all([
+  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, addrRes, lcRes, msRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
@@ -60,6 +61,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     supabase.from('people').select('id, address'),
     // Isolated + graceful: onboarding/offboarding status (043).
     supabase.from('people').select('id, onboarding_status, offboarding_status'),
+    // Isolated + graceful: milestones (044).
+    supabase.from('people').select('id, milestones'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -103,6 +106,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     if (r.onboarding_status) onboardingById.set(r.id, r.onboarding_status)
     if (r.offboarding_status) offboardingById.set(r.id, r.offboarding_status)
   }
+  const milestonesById = new Map<string, PersonMilestone[]>()
+  if (!msRes.error) for (const r of (msRes.data ?? []) as { id: string; milestones: PersonMilestone[] | null }[]) if (Array.isArray(r.milestones)) milestonesById.set(r.id, r.milestones)
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -207,6 +212,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
         history: str(p.employment_history),
+        milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,
         attachments: attachmentsByPerson.get(p.id) ?? [],
       }

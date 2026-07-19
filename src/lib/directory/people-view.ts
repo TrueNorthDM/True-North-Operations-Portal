@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import type { PersonAddress } from '@/lib/address'
+import type { PersonMilestone } from '@/lib/milestones'
 import {
   teamKeyFromName,
   teamPositionRank,
@@ -33,7 +34,7 @@ export async function loadDirectoryPeopleView(
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: prData }, aRes, dRes, addrRes, lcRes] = await Promise.all([
+  const [{ data: tData }, { data: prData }, aRes, dRes, addrRes, lcRes, msRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
@@ -43,6 +44,8 @@ export async function loadDirectoryPeopleView(
     supabase.from('people').select('id, address'),
     // Isolated select: onboarding/offboarding status (043), same graceful pattern.
     supabase.from('people').select('id, onboarding_status, offboarding_status'),
+    // Isolated select: milestones (044), same graceful pattern.
+    supabase.from('people').select('id, milestones'),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -80,6 +83,8 @@ export async function loadDirectoryPeopleView(
     if (r.onboarding_status) onboardingById.set(r.id, r.onboarding_status)
     if (r.offboarding_status) offboardingById.set(r.id, r.offboarding_status)
   }
+  const milestonesById = new Map<string, PersonMilestone[]>()
+  if (!msRes.error) for (const r of (msRes.data ?? []) as { id: string; milestones: PersonMilestone[] | null }[]) if (Array.isArray(r.milestones)) milestonesById.set(r.id, r.milestones)
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -168,6 +173,7 @@ export async function loadDirectoryPeopleView(
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
         history: str(p.employment_history),
+        milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,
         attachments: attachmentsByPerson.get(p.id) ?? [],
       }
