@@ -52,12 +52,6 @@ function PillBadge({ pill }: { pill: Pill }) {
   )
 }
 
-// Compact contact-type tag shown next to the name (only for non-user roles).
-function RoleTag({ roleType }: { roleType: string }) {
-  const pill = roleTypePill(roleType)
-  return <span className={`shrink-0 inline-flex items-center font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-[5px] px-1.5 py-0.5 whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
-}
-
 export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void }) {
   const [q, setQ] = useState('')
   const [conds, setConds] = useState<FilterCond[]>([])
@@ -215,10 +209,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
                 <span className="inline-flex items-center gap-3 min-w-0">
                   <Avatar name={p.full_name} avatarUrl={p.avatarUrl} size={38} color={TEAM_COLOR[p.teamKey]} dimmed={p.status === 'inactive'} />
                   <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
-                      {p.roleType !== 'user' && <RoleTag roleType={p.roleType} />}
-                    </span>
+                    <span className="block font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
                     <span className="block text-xs text-muted truncate">{primaryEmail(p) || '-'}</span>
                   </span>
                 </span>
