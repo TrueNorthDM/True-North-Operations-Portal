@@ -16,7 +16,7 @@ export function WelcomeBanner({ name }: { name: string | null }) {
     >
       <Sunrise anchorLeft="86%" anchorTop={14} glowAt="86% 34%" />
 
-      <div className="relative max-w-[620px]">
+      <div className="relative max-w-[1100px]">
         <div className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.2em] text-[#94C4C5]">
           TRUE NORTH DIGITAL MARKETING
         </div>
