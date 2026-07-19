@@ -289,12 +289,13 @@ function SectionTitle({ children, right }: { children: ReactNode; right?: ReactN
   )
 }
 
-// Top-level group heading: a blue accent bar + bold title, one tier above the
-// teal SectionTitles it groups.
+// Top-level group heading: a thick rounded blue accent bar + bold title, one
+// tier above the teal SectionTitles it groups.
 function GroupTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`border-l-[3px] border-tn-primary pl-3 mb-4 ${className}`}>
-      <h3 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink leading-tight m-0">{children}</h3>
+    <div className={`flex items-stretch gap-3 mb-4 ${className}`}>
+      <span className="w-[5px] rounded-full bg-tn-primary shrink-0" aria-hidden="true" />
+      <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink leading-tight m-0">{children}</h3>
     </div>
   )
 }
