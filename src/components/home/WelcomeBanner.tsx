@@ -24,7 +24,7 @@ export function WelcomeBanner({ name }: { name: string | null }) {
           {first ? `Hello, ${first}` : 'Welcome back'}
         </h2>
         <p className="text-[15px] text-[#ffffff]/80 mt-1.5">Welcome back to the True North Operations Portal.</p>
-        <p className="text-[13.5px] text-[#ffffff]/60 mt-1">Your tools, dashboards, and team — all in one place.</p>
+        <p className="text-[13.5px] text-[#ffffff]/60 mt-1">Where you find tools, dashboards, and team celebrations — all in one place, gathering and displaying the information that makes your day-to-day more efficient.</p>
       </div>
     </section>
   )
