@@ -95,7 +95,7 @@ export function FilterBar<T>({ columns, conds, onChange }: {
                   fullWidth
                   value={colId}
                   onChange={pickColumn}
-                  options={columns.map(c => ({ value: c.id, label: c.label }))}
+                  options={[...columns].sort((a, b) => a.label.localeCompare(b.label)).map(c => ({ value: c.id, label: c.label }))}
                   placeholder="Choose a column…"
                   ariaLabel="Filter column"
                   className={`${inputCls} cursor-pointer`}

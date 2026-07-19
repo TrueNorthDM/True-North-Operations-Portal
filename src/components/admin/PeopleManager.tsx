@@ -42,7 +42,7 @@ const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'tsheets', label: 'TSheets', fr: '1fr' },
 ]
 const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'rate', 'status', 'tsheets']
-const LS_COLS = 'tn-directory-cols-v1'
+const LS_COLS = 'tn-directory-cols-v2'
 
 const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews || p.emails.coe || p.emails.personal || ''
 
@@ -86,11 +86,23 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
   // adopt localStorage, avoids an SSR/hydration mismatch on the table columns.
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(LS_COLS)
-      if (raw) {
-        const arr = JSON.parse(raw)
+      const rawV2 = window.localStorage.getItem(LS_COLS)
+      if (rawV2) {
+        const arr = JSON.parse(rawV2)
         // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage hydration
         if (Array.isArray(arr)) setCols(COLUMNS.filter(c => arr.includes(c.id)).map(c => c.id))
+        return
+      }
+      // Migrate v1 → v2 once, forcing the new TSheets column into everyone's set
+      // (later toggles are saved to v2, so it can still be hidden afterwards).
+      const rawV1 = window.localStorage.getItem('tn-directory-cols-v1')
+      if (rawV1) {
+        const arr = JSON.parse(rawV1)
+        if (Array.isArray(arr)) {
+          const merged = COLUMNS.filter(c => arr.includes(c.id) || c.id === 'tsheets').map(c => c.id)
+          setCols(merged)
+          window.localStorage.setItem(LS_COLS, JSON.stringify(merged))
+        }
       }
     } catch {}
   }, [])
