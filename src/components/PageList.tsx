@@ -74,16 +74,22 @@ function formatDoneDate(iso: string | null | undefined): string | null {
 //   - Completed   : strict definition, confirmed_done_at is stamped
 //   - Not relevant: explicitly opted out of the workflow
 // Module-level (pure) so the grouping useMemo can depend on `groupOf` safely.
-type GroupKey = 'ongoing' | 'completed' | 'not_relevant'
-const GROUP_ORDER: GroupKey[] = ['ongoing', 'completed', 'not_relevant']
+type GroupKey = 'ready' | 'ongoing' | 'completed' | 'not_relevant'
+const GROUP_ORDER: GroupKey[] = ['ready', 'ongoing', 'completed', 'not_relevant']
 const GROUP_LABEL: Record<GroupKey, string> = {
+  ready: 'Ready to be worked on',
   ongoing: 'On-going',
   completed: 'Completed',
   not_relevant: 'Not relevant',
 }
-function groupOf(r: PageListRow): GroupKey {
+// `languages` is passed in (not closed over) so this stays pure and safe to
+// call from a useMemo. A page is "ready" once every language has a page/URL
+// created but the item is not finished yet, so all that's left is the work of
+// reviewing and marking each language live.
+function groupOf(r: PageListRow, languages: string[]): GroupKey {
   if (r.notRelevant) return 'not_relevant'
   if (r.confirmedDoneAt) return 'completed'
+  if (languages.length > 0 && languages.every(l => r.langStatus[l]?.hasUrl)) return 'ready'
   return 'ongoing'
 }
 
@@ -237,17 +243,18 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
 
   const grouped = useMemo(() => {
     const out: Record<GroupKey, PageListRow[]> = {
-      ongoing: [], completed: [], not_relevant: [],
+      ready: [], ongoing: [], completed: [], not_relevant: [],
     }
-    for (const r of filtered) out[groupOf(r)].push(r)
+    for (const r of filtered) out[groupOf(r, languages)].push(r)
     return out
-  }, [filtered])
+  }, [filtered, languages])
 
   // Collapse state per group, persisted per site in localStorage so HFA
   // and AAAF remember independently. SSR-safe: starts from sensible
   // defaults, then hydrates on mount.
   const COLLAPSE_KEY = `pageList:${siteCode}:groups`
   const [collapsed, setCollapsed] = useState<Record<GroupKey, boolean>>({
+    ready: false,          // next up to work on, open by default
     ongoing: false,        // active work, open by default
     completed: true,       // reference / archive, closed by default
     not_relevant: true,    // archive, closed by default
@@ -461,7 +468,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
               </tr>
             </thead>
             <tbody>
-              {/* Three section groups (On-going / Completed / Not relevant).
+              {/* Section groups (Ready / On-going / Completed / Not relevant).
                   Empty groups are skipped entirely so the table doesn't show
                   redundant headers when the filter narrows things down. */}
               {GROUP_ORDER.map(groupKey => {
@@ -480,7 +487,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                           type="button"
                           onClick={() => toggleGroup(groupKey)}
                           aria-expanded={isOpen}
-                          className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[11px] uppercase tracking-wide text-foreground hover:text-tn-ink transition-colors"
+                          className={`inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[11px] uppercase tracking-wide transition-colors ${
+                            groupKey === 'ready' ? 'text-tn-teal hover:brightness-90' : 'text-foreground hover:text-tn-ink'
+                          }`}
                         >
                           <svg
                             width="11" height="11" viewBox="0 0 24 24"
@@ -491,6 +500,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                           >
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
+                          {groupKey === 'ready' && (
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-tn-teal" aria-hidden="true" />
+                          )}
                           <span>{GROUP_LABEL[groupKey]}</span>
                           <span className="text-muted font-semibold normal-case tracking-normal">
                             {groupRows.length}
