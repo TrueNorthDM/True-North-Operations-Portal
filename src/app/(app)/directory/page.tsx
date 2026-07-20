@@ -352,12 +352,27 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const budget = await getBudgetUsageData()
 
   // Access-log rows resolved to the current person (avatar/team) for the tab.
+  // Resolve each access row to a person by any key we hold, most specific
+  // first: the stored person_id, then the auth profile_id (People link to auth
+  // by profile_id, which is why the card's Last access already resolves), then
+  // any known email. logAccess can store a null person_id/name when RLS hides
+  // the people table from the signed-in user at insert time, so we re-resolve
+  // here, where the page reads as admin and sees everyone.
   const pvById = new Map(peopleView.map(pv => [pv.id, pv]))
+  const pvByProfile = new Map(peopleView.filter(pv => pv.accountId).map(pv => [pv.accountId as string, pv]))
+  const pvByEmail = new Map<string, PersonView>()
+  for (const pv of peopleView) {
+    for (const e of [pv.accountEmail, pv.emails.trueNorth, pv.emails.goodnews, pv.emails.coe, pv.emails.personal]) {
+      if (e) pvByEmail.set(e.toLowerCase(), pv)
+    }
+  }
   const accessLog: AccessLogEntry[] = accessRows.map(r => {
-    const pv = r.person_id ? pvById.get(r.person_id) : undefined
+    const pv = (r.person_id ? pvById.get(r.person_id) : undefined)
+      ?? (r.profile_id ? pvByProfile.get(r.profile_id) : undefined)
+      ?? (r.email ? pvByEmail.get(r.email.toLowerCase()) : undefined)
     return {
       id: r.id,
-      personId: r.person_id,
+      personId: pv?.id ?? r.person_id,
       name: pv?.full_name ?? r.name ?? r.email ?? '(unknown)',
       email: r.email ?? pv?.accountEmail ?? '',
       userAgent: r.user_agent,
