@@ -172,6 +172,8 @@ export async function loadDirectoryPeopleView(
         accountId: str(p.profile_id),
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
+        lastAccessAt: null,
+        lastAccessAgent: null,
         history: str(p.employment_history),
         milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,

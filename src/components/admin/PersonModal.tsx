@@ -18,6 +18,7 @@ import { formatPhone } from '@/lib/phone'
 import { toAddressForm, normalizeAddress, formatAddressLines, addressFlag, type AddressForm, type PersonAddress } from '@/lib/address'
 import { allCountries } from '@/lib/countries'
 import { toMilestoneForms, normalizeMilestones, sortMilestones, milestoneLabel, milestoneColor, MILESTONE_KINDS, MILESTONE_LABEL, type MilestoneForm } from '@/lib/milestones'
+import { deviceLabel } from '@/lib/user-agent'
 import {
   TEAM_COLOR,
   PILL_CLASS,
@@ -107,6 +108,13 @@ function toDraft(p: PersonView | null): Draft {
 
 const parseNum = (s: string): number | null => { const t = s.trim(); if (!t) return null; const n = Number(t); return Number.isNaN(n) ? null : n }
 const emailVal = (e: EmailDraft): string | null => (e.has && e.addr.trim() ? e.addr.trim() : null)
+
+function lastAccessText(iso: string | null, ua: string | null): string {
+  if (!iso) return 'Never'
+  const d = new Date(iso)
+  const when = Number.isNaN(d.getTime()) ? iso : d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return `${when} · ${deviceLabel(ua)}`
+}
 
 export function PersonModal({
   state,
@@ -378,6 +386,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             {item('GoodNews', link(p.emails.goodnews))}
             {item('COE', link(p.emails.coe))}
             {item('QuickBooks Time', pillNode(p.hasTsheets ? { kind: 'green', label: 'Linked' } : { kind: 'grey', label: 'Not linked' }))}
+            {item('Last access', txt(lastAccessText(p.lastAccessAt, p.lastAccessAgent)))}
           </div>
         </div>
       </div>

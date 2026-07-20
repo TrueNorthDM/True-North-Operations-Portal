@@ -83,6 +83,8 @@ export interface PersonView {
   accountId: string | null
   accountEmail: string | null
   hasTsheets: boolean
+  lastAccessAt: string | null // most recent portal access (from access_log)
+  lastAccessAgent: string | null
 
   history: string | null
   milestones: PersonMilestone[] // career timeline (joined, promotions, role changes)

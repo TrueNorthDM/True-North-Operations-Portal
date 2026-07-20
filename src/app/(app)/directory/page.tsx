@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
+import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
 import { teamKeyFromName, TEAM_COLOR, initialsOf, teamPositionRank, teamPositionLeads, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
 import type { PersonAddress } from '@/lib/address'
@@ -46,7 +47,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, addrRes, lcRes, msRes] = await Promise.all([
+  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, addrRes, lcRes, msRes, alRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
@@ -63,6 +64,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     supabase.from('people').select('id, onboarding_status, offboarding_status'),
     // Isolated + graceful: milestones (044).
     supabase.from('people').select('id, milestones'),
+    // Access log (045), admin-readable; graceful if the table isn't there yet.
+    supabase.from('access_log').select('id, profile_id, person_id, name, email, user_agent, accessed_at').order('accessed_at', { ascending: false }).limit(1000),
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
@@ -108,6 +111,13 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   }
   const milestonesById = new Map<string, PersonMilestone[]>()
   if (!msRes.error) for (const r of (msRes.data ?? []) as { id: string; milestones: PersonMilestone[] | null }[]) if (Array.isArray(r.milestones)) milestonesById.set(r.id, r.milestones)
+
+  // Access log (045). Rows come newest-first, so the first row per profile is
+  // their latest access. Graceful if the table doesn't exist yet.
+  type AlRow = { id: string; profile_id: string | null; person_id: string | null; name: string | null; email: string | null; user_agent: string | null; accessed_at: string }
+  const accessRows = (!alRes.error ? (alRes.data ?? []) : []) as AlRow[]
+  const lastAccessByProfile = new Map<string, { at: string; agent: string | null }>()
+  for (const r of accessRows) if (r.profile_id && !lastAccessByProfile.has(r.profile_id)) lastAccessByProfile.set(r.profile_id, { at: r.accessed_at, agent: r.user_agent })
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -211,6 +221,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         accountId: str(p.profile_id),
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
+        lastAccessAt: str(p.profile_id) ? lastAccessByProfile.get(p.profile_id as string)?.at ?? null : null,
+        lastAccessAgent: str(p.profile_id) ? lastAccessByProfile.get(p.profile_id as string)?.agent ?? null : null,
         history: str(p.employment_history),
         milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,
@@ -339,6 +351,22 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // trigger it.
   const budget = await getBudgetUsageData()
 
+  // Access-log rows resolved to the current person (avatar/team) for the tab.
+  const pvById = new Map(peopleView.map(pv => [pv.id, pv]))
+  const accessLog: AccessLogEntry[] = accessRows.map(r => {
+    const pv = r.person_id ? pvById.get(r.person_id) : undefined
+    return {
+      id: r.id,
+      personId: r.person_id,
+      name: pv?.full_name ?? r.name ?? r.email ?? '(unknown)',
+      email: r.email ?? pv?.accountEmail ?? '',
+      userAgent: r.user_agent,
+      accessedAt: r.accessed_at,
+      avatarUrl: pv?.avatarUrl ?? null,
+      teamKey: (pv?.teamKey ?? 'other') as TeamKey,
+    }
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-[13px] text-muted">
@@ -354,6 +382,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         availableAccounts={availableAccounts}
         ratesPeople={budget.people}
         ratesClients={budget.clients.map(c => ({ id: c.id, name: c.name }))}
+        accessLog={accessLog}
         initialOpenId={openId}
       />
     </div>

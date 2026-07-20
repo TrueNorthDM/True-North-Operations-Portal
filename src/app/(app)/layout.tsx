@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { UserMenu } from '@/components/UserMenu'
+import { AccessPing } from '@/components/AccessPing'
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -23,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
+      {user && <AccessPing />}
       {/* Top bar, brand on the left; theme toggle + avatar on the right
           (avatar is always the rightmost element). */}
       <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">

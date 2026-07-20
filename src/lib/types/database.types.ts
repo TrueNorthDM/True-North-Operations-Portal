@@ -270,6 +270,17 @@ export type PageWithUrls = PageRow & {
   confirmations: ConfirmationRow[]
 }
 
+// Portal access log (migration 045): one row per visit/session.
+export type AccessLogRow = {
+  id: string
+  profile_id: string | null
+  person_id: string | null
+  email: string | null
+  name: string | null
+  user_agent: string | null
+  accessed_at: string
+}
+
 // ── Database type (used by createBrowserClient / createServerClient) ─
 //
 // Each table requires a `Relationships` array to satisfy GenericTable in
@@ -388,6 +399,12 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      access_log: {
+        Row: AccessLogRow
+        Insert: Partial<Omit<AccessLogRow, 'id' | 'accessed_at'>>
+        Update: Partial<Omit<AccessLogRow, 'id'>>
+        Relationships: []
       }
       teams: {
         Row: TeamRow

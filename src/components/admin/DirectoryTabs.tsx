@@ -11,11 +11,12 @@ import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
 import { RatesCostsTab } from './RatesCostsTab'
+import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, Account } from './people-types'
 import type { PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
-type Tab = 'people' | 'emails' | 'teams' | 'rates'
+type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access'
 
 export interface TeamOption { id: string; name: string; key: string; color: string }
 export interface ProjectOption { id: string; name: string; logo: string | null }
@@ -27,6 +28,7 @@ export function DirectoryTabs({
   availableAccounts,
   ratesPeople,
   ratesClients,
+  accessLog,
   initialOpenId,
 }: {
   people: PersonView[]
@@ -35,6 +37,7 @@ export function DirectoryTabs({
   availableAccounts: Account[]
   ratesPeople: PersonWithAssignments[]
   ratesClients: { id: number; name: string }[]
+  accessLog: AccessLogEntry[]
   initialOpenId?: string | null
 }) {
   const [tab, setTab] = useState<Tab>('people')
@@ -51,6 +54,7 @@ export function DirectoryTabs({
     { key: 'emails', label: 'Emails', count: activePeople.length },
     { key: 'teams', label: 'Teams', count: teamCards.length },
     { key: 'rates', label: 'Rates & Costs' },
+    { key: 'access', label: 'Access log', count: accessLog.length },
   ]
 
   return (
@@ -161,6 +165,7 @@ export function DirectoryTabs({
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
+      {tab === 'access' && <AccessLogManager entries={accessLog} />}
 
       {modal && (
         <PersonModal
