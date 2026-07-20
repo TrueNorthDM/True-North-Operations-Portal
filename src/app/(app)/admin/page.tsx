@@ -5,6 +5,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 
 // Each card's icon is a system-style line SVG whose animated parts carry the
 // `tn-anim` class (so prefers-reduced-motion disables them via globals.css).
@@ -52,9 +53,17 @@ const StageIcon = (
   </svg>
 )
 
+// Automations: a lightning bolt whose fill pulses (a live signal).
+const AutomationsIcon = (
+  <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path className="tn-anim" d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" style={{ transformBox: 'fill-box', transformOrigin: 'center', animation: 'tn-dot-pulse 2.8s ease-in-out infinite' }} />
+  </svg>
+)
+
 const CARDS = [
   { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker, everything we need to resolve, so nothing gets lost.' },
   { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
+  { href: '/admin/automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },
   { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
   { href: '/admin/view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level (admin, team leader, user) side by side.' },
 ] as const
@@ -64,6 +73,7 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
+      <SystemHealthBanner />
       <div>
         <div className="flex items-center gap-2 text-sm text-muted mb-2">
           <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>

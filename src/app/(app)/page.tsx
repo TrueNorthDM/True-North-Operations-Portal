@@ -16,6 +16,7 @@ import { Birthdays } from '@/components/home/Birthdays'
 import { loadCelebrationPeople } from '@/lib/hr/celebrations'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
+import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -28,6 +29,9 @@ export default async function HomePage() {
   return (
     <div className="space-y-8">
       <WelcomeBanner name={me?.full_name ?? null} />
+
+      {/* Surfaces a red alert to admins if a monitored integration is down. */}
+      <SystemHealthBanner />
 
       {/* Destination widgets (My Team is a placeholder). */}
       <HomeWidgets />
