@@ -213,18 +213,19 @@ export const roleTypePill = (v: string): Pill => {
 // Team Position (migration 040), a person's role WITHIN a specific team, which
 // is separate from their global Contact Type / access. Team Leaders sort to the
 // top of a team's member list.
-export const TEAM_POSITION_OPTIONS = ['founder', 'team_leader', 'collaborator'] as const
+export const TEAM_POSITION_OPTIONS = ['founder', 'manager', 'team_leader', 'collaborator'] as const
 export const TEAM_POSITION_LABEL: Record<string, string> = {
-  founder: 'Founder', team_leader: 'Team Leader', collaborator: 'Collaborator',
+  founder: 'Founder', manager: 'Manager', team_leader: 'Team Leader', collaborator: 'Collaborator',
 }
 export const teamPositionPill = (v: string): Pill =>
   v === 'founder' ? { kind: 'violet', label: 'Founder' }
-    : v === 'team_leader' ? { kind: 'teal', label: 'Team Leader' }
-      : { kind: 'grey', label: 'Collaborator' }
-// Order within a team's member list: Founder → Team Leader → Collaborator.
-export const teamPositionRank = (v: string): number => (v === 'founder' ? 0 : v === 'team_leader' ? 1 : 2)
+    : v === 'manager' ? { kind: 'blue', label: 'Manager' }
+      : v === 'team_leader' ? { kind: 'teal', label: 'Team Leader' }
+        : { kind: 'grey', label: 'Collaborator' }
+// Order within a team's member list: Founder → Manager → Team Leader → Collaborator.
+export const teamPositionRank = (v: string): number => (v === 'founder' ? 0 : v === 'manager' ? 1 : v === 'team_leader' ? 2 : 3)
 // Whether the position "leads" the team (drives org-chart colour + tier scope).
-export const teamPositionLeads = (v: string): boolean => v === 'founder' || v === 'team_leader'
+export const teamPositionLeads = (v: string): boolean => v === 'founder' || v === 'manager' || v === 'team_leader'
 
 // Access-grant roles, the product vocabulary from the design (migration 030).
 // Legacy keys (admin/member) are mapped too, so grants still read correctly in

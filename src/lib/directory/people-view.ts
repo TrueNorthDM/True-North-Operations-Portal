@@ -57,7 +57,7 @@ export async function loadDirectoryPeopleView(
   const members = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
     team_id: m.team_id,
     person_id: m.person_id,
-    position: m.position === 'founder' ? 'founder' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    position: m.position === 'founder' ? 'founder' : m.position === 'manager' ? 'manager' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
   }))
 
   const attachmentsByPerson = new Map<string, PersonAttachment[]>()

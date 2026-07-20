@@ -122,7 +122,7 @@ async function setPersonTeams(supabase: Awaited<ReturnType<typeof createClient>>
   const { error: delErr } = await supabase.from('team_members').delete().eq('person_id', personId)
   if (delErr) throw new Error(delErr.message)
   // Dedupe by team (last wins) and normalise the position value.
-  const norm = (pos: string) => (pos === 'founder' ? 'founder' : pos === 'team_leader' ? 'team_leader' : 'collaborator')
+  const norm = (pos: string) => (pos === 'founder' ? 'founder' : pos === 'manager' ? 'manager' : pos === 'team_leader' ? 'team_leader' : 'collaborator')
   const byTeam = new Map<string, string>()
   for (const t of teams) if (t.teamId) byTeam.set(t.teamId, norm(t.position))
   const rows = [...byTeam].map(([team_id, position]) => ({ team_id, person_id: personId, position }))

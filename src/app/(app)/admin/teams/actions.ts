@@ -12,8 +12,8 @@ import { revalidatePath } from 'next/cache'
 import { TOOL_KEYS, type ToolAudience } from '@/lib/access/tools'
 
 export type GrantRole = 'manager' | 'publisher' | 'editor' | 'viewer'
-export type TeamPosition = 'founder' | 'team_leader' | 'collaborator'
-const TEAM_POSITIONS: TeamPosition[] = ['founder', 'team_leader', 'collaborator']
+export type TeamPosition = 'founder' | 'manager' | 'team_leader' | 'collaborator'
+const TEAM_POSITIONS: TeamPosition[] = ['founder', 'manager', 'team_leader', 'collaborator']
 
 async function requireAdmin() {
   if (!(await isCurrentUserAdmin())) throw new Error('Not authorized')
