@@ -52,12 +52,22 @@ export async function loadDirectoryPeopleView(
   const teams = tData ?? []
   const profiles = prData ?? []
 
-  let tmRes = await supabase.from('team_members').select('team_id, person_id, position')
-  if (tmRes.error) tmRes = (await supabase.from('team_members').select('team_id, person_id')) as typeof tmRes
-  const members = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
+  type TmRow = { team_id: string; person_id: string; position?: string; is_primary?: boolean }
+  let tmData: TmRow[] = []
+  {
+    const withPrimary = await supabase.from('team_members').select('team_id, person_id, position, is_primary')
+    if (!withPrimary.error) tmData = withPrimary.data as unknown as TmRow[]
+    else {
+      const withPos = await supabase.from('team_members').select('team_id, person_id, position')
+      if (!withPos.error) tmData = withPos.data as unknown as TmRow[]
+      else tmData = ((await supabase.from('team_members').select('team_id, person_id')).data ?? []) as unknown as TmRow[]
+    }
+  }
+  const members = tmData.map((m) => ({
     team_id: m.team_id,
     person_id: m.person_id,
     position: m.position === 'founder' ? 'founder' : m.position === 'manager' ? 'manager' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    is_primary: m.is_primary === true,
   }))
 
   const attachmentsByPerson = new Map<string, PersonAttachment[]>()
@@ -96,7 +106,11 @@ export async function loadDirectoryPeopleView(
     arr.push(m.team_id)
     teamIdsByPerson.set(m.person_id, arr)
   }
+  const primaryTeamIdByPerson = new Map<string, string>()
+  for (const m of members) if (m.is_primary) primaryTeamIdByPerson.set(m.person_id, m.team_id)
   const primaryTeam = (pid: string): { id: string; name: string } | null => {
+    const explicit = primaryTeamIdByPerson.get(pid)
+    if (explicit) { const t = teamById.get(explicit); if (t) return { id: t.id, name: t.name } }
     const named = (teamIdsByPerson.get(pid) ?? []).map(id => teamById.get(id)).filter((t): t is NonNullable<typeof t> => !!t)
     named.sort((a, b) => a.name.localeCompare(b.name))
     return named[0] ? { id: named[0].id, name: named[0].name } : null
@@ -109,7 +123,7 @@ export async function loadDirectoryPeopleView(
     const t = teamById.get(m.team_id)
     if (!t) continue
     const arr = teamsByPerson.get(m.person_id) ?? []
-    arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position })
+    arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position, primary: m.is_primary })
     teamsByPerson.set(m.person_id, arr)
   }
   for (const arr of teamsByPerson.values()) {

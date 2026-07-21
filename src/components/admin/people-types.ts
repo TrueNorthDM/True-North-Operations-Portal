@@ -28,7 +28,8 @@ export interface PersonTeam {
   teamId: string
   teamName: string | null
   teamKey: TeamKey
-  position: string // 'team_leader' | 'collaborator'
+  position: string // 'founder' | 'manager' | 'team_leader' | 'collaborator'
+  primary: boolean // the person's main department (migration 048)
 }
 
 export interface PersonView {

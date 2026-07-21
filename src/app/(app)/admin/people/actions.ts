@@ -69,7 +69,7 @@ export interface PersonInput {
    * (a person can belong to several teams with a different position in each).
    * Omit to leave as-is.
    */
-  teams?: { teamId: string; position: string }[]
+  teams?: { teamId: string; position: string; primary?: boolean }[]
   /** When false, unlink any TSheets user. Omit / true leaves the link as-is. */
   tsheets?: boolean
 }
@@ -117,17 +117,34 @@ function personColumns(input: PersonInput): PersonCols {
   return cols
 }
 
-/** Reconcile the person's memberships to exactly the given teams + positions. */
-async function setPersonTeams(supabase: Awaited<ReturnType<typeof createClient>>, personId: string, teams: { teamId: string; position: string }[]) {
+/** Reconcile the person's memberships to exactly the given teams + positions,
+ *  with exactly one marked as the primary department. */
+async function setPersonTeams(supabase: Awaited<ReturnType<typeof createClient>>, personId: string, teams: { teamId: string; position: string; primary?: boolean }[]) {
   const { error: delErr } = await supabase.from('team_members').delete().eq('person_id', personId)
   if (delErr) throw new Error(delErr.message)
   // Dedupe by team (last wins) and normalise the position value.
   const norm = (pos: string) => (pos === 'founder' ? 'founder' : pos === 'manager' ? 'manager' : pos === 'team_leader' ? 'team_leader' : 'collaborator')
-  const byTeam = new Map<string, string>()
-  for (const t of teams) if (t.teamId) byTeam.set(t.teamId, norm(t.position))
-  const rows = [...byTeam].map(([team_id, position]) => ({ team_id, person_id: personId, position }))
+  const byTeam = new Map<string, { position: string; primary: boolean }>()
+  for (const t of teams) if (t.teamId) byTeam.set(t.teamId, { position: norm(t.position), primary: !!t.primary })
+  const entries = [...byTeam]
+  // Guarantee exactly one primary: default to the first team if none chosen,
+  // and keep only the first if somehow several were flagged.
+  if (entries.length && !entries.some(([, v]) => v.primary)) entries[0][1].primary = true
+  let primarySeen = false
+  for (const [, v] of entries) {
+    if (!v.primary) continue
+    if (primarySeen) v.primary = false
+    else primarySeen = true
+  }
+  const rows = entries.map(([team_id, v]) => ({ team_id, person_id: personId, position: v.position, is_primary: v.primary }))
   if (rows.length) {
-    const { error: insErr } = await supabase.from('team_members').insert(rows)
+    // is_primary is a late-added column (migration 048). Try with it; if the DB
+    // doesn't have it yet, fall back to inserting without it.
+    let insErr = (await supabase.from('team_members').insert(rows as never)).error
+    if (insErr && /is_primary|column/i.test(insErr.message)) {
+      const bare = rows.map(r => ({ team_id: r.team_id, person_id: r.person_id, position: r.position }))
+      insErr = (await supabase.from('team_members').insert(bare)).error
+    }
     if (insErr) throw new Error(insErr.message)
   }
 }
@@ -148,12 +165,37 @@ export async function createPerson(input: PersonInput) {
   revalidate()
 }
 
+// Would setting `id`'s primary manager to `newManagerId` create a reporting
+// loop? Walk up from the proposed manager following existing manager links; if
+// we come back to `id`, it's a cycle. The `seen` set also stops us looping on a
+// pre-existing cycle elsewhere in the data. Guards the org chart's tree.
+async function wouldCreateCycle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: string,
+  newManagerId: string,
+): Promise<boolean> {
+  if (newManagerId === id) return true
+  const { data } = await supabase.from('people').select('id, manager_id')
+  const mgr = new Map((data ?? []).map((p: { id: string; manager_id: string | null }) => [p.id, p.manager_id]))
+  const seen = new Set<string>([id])
+  let cur: string | null = newManagerId
+  while (cur) {
+    if (seen.has(cur)) return true
+    seen.add(cur)
+    cur = mgr.get(cur) ?? null
+  }
+  return false
+}
+
 export async function updatePerson(id: string, input: PersonInput) {
   await requireAdmin()
   const name = input.full_name.trim()
   if (!name) throw new Error('Name is required')
   if (input.manager_id === id) throw new Error('A person cannot report to themselves')
   const supabase = await createClient()
+  if (input.manager_id && await wouldCreateCycle(supabase, id, input.manager_id)) {
+    throw new Error('That reporting line would create a loop, the chosen manager already reports up to this person.')
+  }
 
   const patch: PersonCols & { full_name: string } = { full_name: name, ...personColumns(input) }
   // Only touch the account link when the caller passed it.

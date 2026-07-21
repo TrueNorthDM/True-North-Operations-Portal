@@ -53,7 +53,7 @@ interface Draft {
   full_name: string
   lastName: string
   title: string
-  teams: { teamId: string; position: string }[]
+  teams: { teamId: string; position: string; primary: boolean }[]
   manager_id: string
   alsoReportsToId: string
   reportsToManager: string
@@ -94,7 +94,7 @@ function toDraft(p: PersonView | null): Draft {
     }
   }
   return {
-    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teams: p.teams.map(t => ({ teamId: t.teamId, position: t.position })), manager_id: p.manager_id ?? '',
+    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teams: p.teams.map(t => ({ teamId: t.teamId, position: t.position, primary: t.primary })), manager_id: p.manager_id ?? '',
     alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
@@ -625,7 +625,7 @@ function EditBody({
         <div className="break-inside-avoid mb-6">
           <div className="flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">
             <span>Team position</span>
-            <span className="text-[10px] text-muted normal-case font-normal tracking-normal">(several teams, a different position in each)</span>
+            <span className="text-[10px] text-muted normal-case font-normal tracking-normal">(several teams, a different position in each. The star marks the primary department)</span>
           </div>
           <div className="space-y-2">
             {draft.teams.length === 0 && <p className="text-[12.5px] text-muted italic">No teams yet, add one below.</p>}
@@ -637,12 +637,15 @@ function EditBody({
                 <div className="shrink-0 w-[150px]">
                   <Select fullWidth value={row.position} onChange={v => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => (j === i ? { ...t, position: v } : t)) }))} options={TEAM_POSITION_OPTIONS.map(pos => ({ value: pos, label: TEAM_POSITION_LABEL[pos] }))} className={fieldCls} ariaLabel="Team position" />
                 </div>
+                <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.map((t, j) => ({ ...t, primary: j === i })) }))} aria-label={row.primary ? 'Primary department' : 'Set as primary department'} title={row.primary ? 'Primary department' : 'Set as primary department'} className={`shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] transition-colors ${row.primary ? 'text-tn-primary bg-tn-teal-soft' : 'text-slate-300 hover:text-tn-teal hover:bg-tn-teal-soft'}`}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill={row.primary ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                </button>
                 <button type="button" onClick={() => setDraft(d => ({ ...d, teams: d.teams.filter((_, j) => j !== i) }))} aria-label="Remove team" className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-colors hover:bg-red-50 hover:text-red-600">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
               </div>
             ))}
-            <button type="button" onClick={() => setDraft(d => ({ ...d, teams: [...d.teams, { teamId: '', position: 'collaborator' }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
+            <button type="button" onClick={() => setDraft(d => ({ ...d, teams: [...d.teams, { teamId: '', position: 'collaborator', primary: d.teams.length === 0 }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
               Add team
             </button>

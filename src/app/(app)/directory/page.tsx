@@ -70,14 +70,25 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
   const people = (pRes.data ?? []) as unknown as PRow[]
   const teams = tData ?? []
-  // Team memberships + per-team position (040). Graceful: pre-migration the
-  // position column is absent, so fall back and default everyone to collaborator.
-  let tmRes = await supabase.from('team_members').select('team_id, person_id, position')
-  if (tmRes.error) tmRes = (await supabase.from('team_members').select('team_id, person_id')) as typeof tmRes
-  const members = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
+  // Team memberships + per-team position (040) + is_primary (048). Graceful:
+  // pre-migration those columns are absent, so fall back progressively. Cast
+  // through a loose type because is_primary isn't in the generated DB types.
+  type TmRow = { team_id: string; person_id: string; position?: string; is_primary?: boolean }
+  let tmData: TmRow[] = []
+  {
+    const withPrimary = await supabase.from('team_members').select('team_id, person_id, position, is_primary')
+    if (!withPrimary.error) tmData = withPrimary.data as unknown as TmRow[]
+    else {
+      const withPos = await supabase.from('team_members').select('team_id, person_id, position')
+      if (!withPos.error) tmData = withPos.data as unknown as TmRow[]
+      else tmData = ((await supabase.from('team_members').select('team_id, person_id')).data ?? []) as unknown as TmRow[]
+    }
+  }
+  const members = tmData.map((m) => ({
     team_id: m.team_id,
     person_id: m.person_id,
     position: m.position === 'founder' ? 'founder' : m.position === 'manager' ? 'manager' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    is_primary: m.is_primary === true,
   }))
   const grants = gData ?? []
   const sites = sData ?? []
@@ -132,7 +143,13 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     arr.push(m.team_id)
     teamIdsByPerson.set(m.person_id, arr)
   }
+  // Explicit primary (migration 048) wins; otherwise fall back to the
+  // alphabetical-first membership so this stays deterministic pre-backfill.
+  const primaryTeamIdByPerson = new Map<string, string>()
+  for (const m of members) if (m.is_primary) primaryTeamIdByPerson.set(m.person_id, m.team_id)
   function primaryTeam(personId: string): { id: string; name: string } | null {
+    const pid = primaryTeamIdByPerson.get(personId)
+    if (pid) { const t = teamById.get(pid); if (t) return { id: t.id, name: t.name } }
     const ids = teamIdsByPerson.get(personId) ?? []
     const named = ids.map(id => teamById.get(id)).filter((t): t is NonNullable<typeof t> => !!t)
     named.sort((a, b) => a.name.localeCompare(b.name))
@@ -149,7 +166,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     const t = teamById.get(m.team_id)
     if (t) {
       const arr = teamsByPerson.get(m.person_id) ?? []
-      arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position })
+      arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position, primary: m.is_primary })
       teamsByPerson.set(m.person_id, arr)
     }
     if (teamPositionLeads(m.position)) {
