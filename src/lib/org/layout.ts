@@ -17,10 +17,10 @@ import type { OrgPerson, OrgGhost } from './data'
 
 export const CARD_W = 288
 export const CARD_H = 92
-const H_GAP = 30            // min horizontal gap between sibling subtrees
-const V_GAP = 34            // vertical gap between rows
+const H_GAP = 58            // min horizontal gap between sibling subtrees
+const V_GAP = 62            // vertical gap between rows
 export const ROW_H = CARD_H + V_GAP
-const COL_GAP = 24          // gap between a team's stacked columns
+const COL_GAP = 44          // gap between a team's stacked columns
 
 export interface PlacedCard { id: string; x: number; y: number; person?: OrgPerson; ghost?: OrgGhost }
 export interface PlacedEdge { key: string; kind: 'primary' | 'secondary'; color: string; d: string }
@@ -129,14 +129,13 @@ function elbow(px: number, py: number, cx: number, cy: number): string {
 export function layoutOrg(roots: OrgPerson[]): OrgLayout {
   const cards: PlacedCard[] = []
   const edges: PlacedEdge[] = []
-  const centreOf = new Map<string, { x: number; y: number }>() // person id -> card centre (for secondary lines)
+  const MARGIN = 40 // baked into every position so cards and edges stay aligned
 
   // Emit a subtree at absolute centre (ax) and depth. Returns nothing; fills arrays.
   function emit(node: LNode, ax: number, depth: number) {
-    const y = depth * ROW_H
+    const y = depth * ROW_H + MARGIN
     const color = node.person.color ?? NEUTRAL
     cards.push({ id: node.person.id, person: node.person, x: ax - CARD_W / 2, y })
-    centreOf.set(node.person.id, { x: ax, y: y + CARD_H / 2 })
 
     if (node.kind === 'stack') {
       const stackW = node.columns.length * CARD_W + (node.columns.length - 1) * COL_GAP
@@ -144,11 +143,10 @@ export function layoutOrg(roots: OrgPerson[]): OrgLayout {
       for (const col of node.columns) {
         const colCentre = colLeft + CARD_W / 2
         col.forEach((item, k) => {
-          const cy = (depth + 1 + k) * ROW_H
+          const cy = (depth + 1 + k) * ROW_H + MARGIN
           if (item.kind === 'solid') {
             const p = item.person
             cards.push({ id: p.id, x: colCentre - CARD_W / 2, y: cy, person: p })
-            centreOf.set(p.id, { x: colCentre, y: cy + CARD_H / 2 })
             edges.push({ key: `p-${p.id}`, kind: 'primary', color: p.color ?? color, d: elbow(ax, y + CARD_H, colCentre, cy) })
           } else {
             const g = item.ghost
@@ -164,38 +162,20 @@ export function layoutOrg(roots: OrgPerson[]): OrgLayout {
 
     for (const ch of node.children) {
       const cx = ax + ch.x
-      edges.push({ key: `p-${ch.person.id}`, kind: 'primary', color: ch.person.color ?? NEUTRAL, d: elbow(ax, y + CARD_H, cx, (depth + 1) * ROW_H) })
+      edges.push({ key: `p-${ch.person.id}`, kind: 'primary', color: ch.person.color ?? NEUTRAL, d: elbow(ax, y + CARD_H, cx, (depth + 1) * ROW_H + MARGIN) })
       emit(ch, cx, depth + 1)
     }
   }
 
-  // Lay out each root, then place roots side by side by contour.
+  // Lay out each root, then place roots side by side by contour. Starting at
+  // MARGIN keeps the leftmost content padded without a post-shift.
   const built = roots.map(build)
-  let rootLeft = 0
+  let rootLeft = MARGIN
   for (const b of built) {
     const ax = rootLeft - Math.min(...b.contourL) // shift so its leftmost is at rootLeft
     emit(b, ax, 0)
     const w = Math.max(...b.contourR) - Math.min(...b.contourL)
     rootLeft += w + H_GAP * 2
-  }
-
-  // Normalise to a 0-based canvas + a small margin.
-  const MARGIN = 40
-  const minX = Math.min(...cards.map(c => c.x))
-  const shift = MARGIN - minX
-  for (const c of cards) c.x += shift
-  for (const [, v] of centreOf) v.x += shift
-
-  // Secondary dotted lines (also_reports_to), drawn as smooth curves between
-  // centres. Only from solid cards (ghosts are borrowed appearances, not homes).
-  for (const c of cards) {
-    if (!c.person) continue
-    const to = c.person.secondaryManagerId
-    if (!to || to === c.person.id) continue
-    const a = centreOf.get(c.person.id), b = centreOf.get(to)
-    if (!a || !b) continue
-    const my = (a.y + b.y) / 2
-    edges.push({ key: `s-${c.person.id}`, kind: 'secondary', color: '#94a3b8', d: `M ${a.x} ${a.y} C ${a.x} ${my}, ${b.x} ${my}, ${b.x} ${b.y}` })
   }
 
   const width = Math.max(0, ...cards.map(c => c.x + CARD_W)) + MARGIN
