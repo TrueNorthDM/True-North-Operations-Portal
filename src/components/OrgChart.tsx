@@ -93,21 +93,26 @@ function Canvas({ roots, innerRef }: { roots: OrgPerson[]; innerRef?: React.Ref<
   )
 }
 
-/** Inline: the chart in a scroll area (horizontal + capped-height vertical),
- *  opened centred on the diagram. */
-function ScrollTree({ roots }: { roots: OrgPerson[] }) {
+/** Inline: the whole chart auto-scaled to fit the container width, no scrollbars.
+ *  (Full screen is where you zoom in to read detail.) */
+function AutoFit({ roots }: { roots: OrgPerson[] }) {
+  const layout = useMemo(() => layoutOrg(roots), [roots])
   const ref = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
   useIsoLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const center = () => { el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2) }
-    center()
-    const t = setTimeout(center, 250) // re-centre once fonts/layout settle
-    return () => clearTimeout(t)
-  }, [roots])
+    const fit = () => { const w = el.clientWidth; setScale(w > 0 ? Math.min(1, w / layout.width) : 1) }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [layout.width])
   return (
-    <div ref={ref} className="overflow-auto max-h-[78vh] pt-1 pb-2">
-      <Canvas roots={roots} />
+    <div ref={ref} className="w-full overflow-hidden" style={{ height: layout.height * scale }}>
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: layout.width, height: layout.height }}>
+        <Canvas roots={roots} />
+      </div>
     </div>
   )
 }
@@ -271,7 +276,7 @@ export function OrgChart({ roots }: { roots: OrgPerson[] }) {
         </button>
       </div>
 
-      <ScrollTree roots={roots} />
+      <AutoFit roots={roots} />
 
       {full && <FullScreen roots={roots} onClose={() => setFull(false)} />}
     </>
