@@ -13,7 +13,7 @@
  * columns grouped by team, exactly as before, just placed by this engine.
  */
 
-import type { OrgPerson } from './data'
+import type { OrgPerson, OrgGhost } from './data'
 
 export const CARD_W = 288
 export const CARD_H = 92
@@ -22,9 +22,11 @@ const V_GAP = 34            // vertical gap between rows
 export const ROW_H = CARD_H + V_GAP
 const COL_GAP = 24          // gap between a team's stacked columns
 
-export interface PlacedCard { id: string; person: OrgPerson; x: number; y: number }
+export interface PlacedCard { id: string; x: number; y: number; person?: OrgPerson; ghost?: OrgGhost }
 export interface PlacedEdge { key: string; kind: 'primary' | 'secondary'; color: string; d: string }
 export interface OrgLayout { cards: PlacedCard[]; edges: PlacedEdge[]; width: number; height: number }
+
+type StackItem = { kind: 'solid'; person: OrgPerson } | { kind: 'ghost'; ghost: OrgGhost }
 
 const NEUTRAL = '#cbd5e1'
 
@@ -32,35 +34,41 @@ interface LNode {
   person: OrgPerson
   kind: 'leaf' | 'stack' | 'branch'
   children: LNode[]                 // branch
-  columns: OrgPerson[][]            // stack (leaf children grouped by team)
+  columns: StackItem[][]            // stack: team columns of solid + ghost members
   x: number                         // center x, relative to this subtree's own frame
   contourL: number[]                // per relative row: min x
   contourR: number[]                // per relative row: max x
   rows: number                      // vertical rows this subtree spans
 }
 
-function stackColumns(children: OrgPerson[]): OrgPerson[][] {
-  const groups = new Map<string, OrgPerson[]>()
-  for (const c of children) {
-    const key = c.primaryTeamName ?? '—'
+// Team columns: leaf reports grouped by their primary team (solid) merged with
+// ghost members grouped by the team they're borrowed into. One column per team.
+function stackColumns(children: OrgPerson[], ghosts: OrgGhost[]): StackItem[][] {
+  const groups = new Map<string, StackItem[]>()
+  const push = (key: string, item: StackItem) => {
     const arr = groups.get(key) ?? []
-    arr.push(c)
+    arr.push(item)
     groups.set(key, arr)
   }
+  for (const c of children) push(c.primaryTeamName ?? '—', { kind: 'solid', person: c })
+  for (const g of ghosts) push(g.onTeamName, { kind: 'ghost', ghost: g })
   return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, g]) => g)
 }
 
 function build(person: OrgPerson): LNode {
   const kids = person.children
+  const ghosts = person.ghosts ?? []
   const half = CARD_W / 2
 
-  if (kids.length === 0) {
+  if (kids.length === 0 && ghosts.length === 0) {
     return { person, kind: 'leaf', children: [], columns: [], x: 0, contourL: [-half], contourR: [half], rows: 1 }
   }
 
-  // Bottom-level team: all children are leaves -> vertical columns grouped by team.
-  if (kids.length > 1 && kids.every(c => c.children.length === 0)) {
-    const columns = stackColumns(kids)
+  // A team group: all children are leaves, and there are members to show
+  // (2+ reports, or any borrowed ghost). Render vertical columns per team.
+  const allLeaf = kids.every(c => c.children.length === 0)
+  if (allLeaf && (kids.length >= 2 || ghosts.length >= 1)) {
+    const columns = stackColumns(kids, ghosts)
     const stackRows = Math.max(...columns.map(c => c.length))
     const stackW = columns.length * CARD_W + (columns.length - 1) * COL_GAP
     const sh = stackW / 2
@@ -135,11 +143,19 @@ export function layoutOrg(roots: OrgPerson[]): OrgLayout {
       let colLeft = ax - stackW / 2
       for (const col of node.columns) {
         const colCentre = colLeft + CARD_W / 2
-        col.forEach((p, k) => {
+        col.forEach((item, k) => {
           const cy = (depth + 1 + k) * ROW_H
-          cards.push({ id: p.id, person: p, x: colCentre - CARD_W / 2, y: cy })
-          centreOf.set(p.id, { x: colCentre, y: cy + CARD_H / 2 })
-          edges.push({ key: `p-${p.id}`, kind: 'primary', color: p.color ?? color, d: elbow(ax, y + CARD_H, colCentre, cy) })
+          if (item.kind === 'solid') {
+            const p = item.person
+            cards.push({ id: p.id, x: colCentre - CARD_W / 2, y: cy, person: p })
+            centreOf.set(p.id, { x: colCentre, y: cy + CARD_H / 2 })
+            edges.push({ key: `p-${p.id}`, kind: 'primary', color: p.color ?? color, d: elbow(ax, y + CARD_H, colCentre, cy) })
+          } else {
+            const g = item.ghost
+            const id = `g-${g.id}-${g.onTeamName}`
+            cards.push({ id, x: colCentre - CARD_W / 2, y: cy, ghost: g })
+            edges.push({ key: `p-${id}`, kind: 'primary', color: g.onTeamColor ?? color, d: elbow(ax, y + CARD_H, colCentre, cy) })
+          }
         })
         colLeft += CARD_W + COL_GAP
       }
@@ -170,8 +186,10 @@ export function layoutOrg(roots: OrgPerson[]): OrgLayout {
   for (const c of cards) c.x += shift
   for (const [, v] of centreOf) v.x += shift
 
-  // Secondary dotted lines (also_reports_to), drawn as smooth curves between centres.
+  // Secondary dotted lines (also_reports_to), drawn as smooth curves between
+  // centres. Only from solid cards (ghosts are borrowed appearances, not homes).
   for (const c of cards) {
+    if (!c.person) continue
     const to = c.person.secondaryManagerId
     if (!to || to === c.person.id) continue
     const a = centreOf.get(c.person.id), b = centreOf.get(to)

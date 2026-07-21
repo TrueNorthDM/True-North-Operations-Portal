@@ -20,7 +20,21 @@ export interface OrgPerson {
   secondaryManagerId: string | null
   /** Name of the person's primary team, used to group stacked collaborators by team. */
   primaryTeamName: string | null
+  /** People who are on a team this person leads but whose home is elsewhere,
+   *  shown as lighter "also on this team" cards under this leader. */
+  ghosts: OrgGhost[]
   children: OrgPerson[]
+}
+
+/** A borrowed team member: same person as a solid card elsewhere, shown lighter. */
+export interface OrgGhost {
+  id: string
+  name: string
+  title: string | null
+  color: string | null
+  onTeamName: string
+  onTeamColor: string | null
+  primaryTeamName: string | null
 }
 
 export interface OrgTeamGroup {
@@ -160,8 +174,36 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
       ledTeams: ledTeamsByLeader.get(p.id) ?? [],
       secondaryManagerId: p.also_reports_to_id ?? null,
       primaryTeamName: primaryNameByPerson.get(p.id) ?? myTeams[0]?.name ?? null,
+      ghosts: [],
       children: [],
     })
+  }
+
+  // Team membership overlay: for each team, find its leader (highest-ranked
+  // "leads" position) and attach every OTHER member whose home team is elsewhere
+  // as a ghost, so a person on several teams appears (lighter) under each team.
+  const membersByTeamId = new Map<string, typeof members>()
+  for (const m of members) {
+    const arr = membersByTeamId.get(m.team_id) ?? []
+    arr.push(m)
+    membersByTeamId.set(m.team_id, arr)
+  }
+  const posRank = (pos: string) => (pos === 'founder' ? 0 : pos === 'manager' ? 1 : pos === 'team_leader' ? 2 : 3)
+  for (const [teamId, mem] of membersByTeamId) {
+    const t = teamById.get(teamId)
+    if (!t) continue
+    const leaders = mem.filter(m => m.position === 'founder' || m.position === 'manager' || m.position === 'team_leader').sort((a, b) => posRank(a.position) - posRank(b.position))
+    const leaderId = leaders[0]?.person_id
+    if (!leaderId) continue
+    const leaderNode = nodeById.get(leaderId)
+    if (!leaderNode) continue
+    for (const m of mem) {
+      if (m.person_id === leaderId) continue
+      const mn = nodeById.get(m.person_id)
+      if (!mn) continue                      // inactive, skip
+      if (mn.primaryTeamName === t.name) continue // home member, already solid in their own spot
+      leaderNode.ghosts.push({ id: mn.id, name: mn.name, title: mn.title, color: mn.color, onTeamName: t.name, onTeamColor: t.color, primaryTeamName: mn.primaryTeamName })
+    }
   }
 
   // Effective manager = the primary manager, but only if it exists among active

@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { OrgPerson } from '@/lib/org/data'
+import type { OrgPerson, OrgGhost } from '@/lib/org/data'
 import { layoutOrg, CARD_W, CARD_H } from '@/lib/org/layout'
 
 const NEUTRAL = '#cbd5e1'
@@ -35,6 +35,26 @@ function PersonCard({ p }: { p: OrgPerson }) {
               </span>
             ))}
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** A borrowed team member: the same person as a solid card elsewhere, shown as a
+ *  lighter dashed "also on this team" card so it never reads as extra headcount. */
+function GhostCard({ g }: { g: OrgGhost }) {
+  const color = g.onTeamColor ?? NEUTRAL
+  return (
+    <div className="w-full h-full rounded-[14px] border border-dashed border-slate-300 bg-white/50 text-left overflow-hidden">
+      <div className="h-2.5 opacity-40" style={{ backgroundColor: color }} />
+      <div className="px-5 py-3">
+        <div className="font-(family-name:--font-display) text-[16px] font-semibold text-slate-500 leading-tight truncate">{g.name}</div>
+        <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-slate-400">
+          <span aria-hidden="true" style={{ color }}>↪</span> also on {g.onTeamName}
+        </div>
+        {g.primaryTeamName && (
+          <div className="mt-1.5 inline-block text-[10.5px] text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">primary: {g.primaryTeamName}</div>
         )}
       </div>
     </div>
@@ -66,7 +86,7 @@ function Canvas({ roots, innerRef }: { roots: OrgPerson[]; innerRef?: React.Ref<
       </svg>
       {layout.cards.map(c => (
         <div key={c.id} style={{ position: 'absolute', left: c.x, top: c.y, width: CARD_W, height: CARD_H, zIndex: 1 }}>
-          <PersonCard p={c.person} />
+          {c.person ? <PersonCard p={c.person} /> : c.ghost ? <GhostCard g={c.ghost} /> : null}
         </div>
       ))}
     </div>
