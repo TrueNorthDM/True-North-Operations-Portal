@@ -44,21 +44,49 @@ function PersonCard({ p }: { p: OrgPerson }) {
   )
 }
 
+/** Bottom-level team: leaf reports stacked vertically under their leader, with a
+ *  left spine + elbow connectors tinted the leader's colour. Far narrower than a
+ *  horizontal row and keeps a team reading as one group. */
+function StackList({ reports, color }: { reports: OrgPerson[]; color: string }) {
+  return (
+    <div style={{ position: 'relative', paddingLeft: 34, paddingTop: 6, textAlign: 'left' }}>
+      <div style={{ position: 'absolute', left: 17, top: 0, bottom: 34, width: 2, background: color }} />
+      {reports.map(r => (
+        <div key={r.id} style={{ position: 'relative', marginTop: 12 }}>
+          <div style={{ position: 'absolute', left: -17, top: 26, width: 17, height: 2, background: color }} />
+          <PersonCard p={r} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Node({ node }: { node: OrgPerson }) {
   // The connector INTO this node is tinted by the node's own primary-team color,
   // so each branch reads as a coloured thread. Colour-less nodes fall back to the
   // theme's connector token (light/dark aware). Pure reporting tree: every person
-  // is one card, parented by their primary manager, so no one is duplicated or
-  // dropped (which the old team-box absorption did once members had reports).
+  // is one card, parented by their primary manager, so no one is duplicated.
   const threadStyle = { ['--thread']: node.color ?? 'var(--org-thread)' } as React.CSSProperties
   const reports = node.children
+  // A bottom-level team = a leader whose reports are ALL collaborators (leaves).
+  // Those stack vertically; anything with its own reports keeps branching sideways.
+  const stack = reports.length > 1 && reports.every(c => c.children.length === 0)
   return (
     <li style={threadStyle}>
-      <PersonCard p={node} />
-      {reports.length > 0 && (
-        <ul>
-          {reports.map(c => <Node key={c.id} node={c} />)}
-        </ul>
+      {stack ? (
+        <div style={{ display: 'inline-block', textAlign: 'left' }}>
+          <PersonCard p={node} />
+          <StackList reports={reports} color={node.color ?? NEUTRAL} />
+        </div>
+      ) : (
+        <>
+          <PersonCard p={node} />
+          {reports.length > 0 && (
+            <ul>
+              {reports.map(c => <Node key={c.id} node={c} />)}
+            </ul>
+          )}
+        </>
       )}
     </li>
   )
@@ -91,10 +119,19 @@ function SecondaryEdges({ roots }: { roots: OrgPerson[] }) {
     const svg = svgRef.current
     const container = svg?.parentElement as HTMLElement | null
     if (!container) return
+    // Sum offsets up the offsetParent chain to the tree container, so positions
+    // are correct even for cards nested inside positioned wrappers (the stacks).
+    const offsetWithin = (el: HTMLElement) => {
+      let l = 0, t = 0
+      let cur: HTMLElement | null = el
+      while (cur && cur !== container) { l += cur.offsetLeft; t += cur.offsetTop; cur = cur.offsetParent as HTMLElement | null }
+      return { l, t }
+    }
     const compute = () => {
       const box = new Map<string, { l: number; t: number; w: number; h: number }>()
       container.querySelectorAll<HTMLElement>('[data-person-id]').forEach(el => {
-        box.set(el.dataset.personId as string, { l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight })
+        const { l, t } = offsetWithin(el)
+        box.set(el.dataset.personId as string, { l, t, w: el.offsetWidth, h: el.offsetHeight })
       })
       const ds: string[] = []
       for (const { from, to } of secondaryPairs(roots)) {
@@ -118,21 +155,26 @@ function SecondaryEdges({ roots }: { roots: OrgPerson[] }) {
   }, [roots])
 
   return (
-    <svg ref={svgRef} width={size.w} height={size.h} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible' }} aria-hidden="true">
+    <svg ref={svgRef} width={size.w} height={size.h} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible', zIndex: 0 }} aria-hidden="true">
       {paths.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 5" />
+        <path key={i} d={d} fill="none" stroke="#94a3b8" strokeWidth={1.25} strokeDasharray="4 5" strokeOpacity={0.5} />
       ))}
     </svg>
   )
 }
 
 function Tree({ roots }: { roots: OrgPerson[] }) {
+  // Cards sit in a z-index:1 layer above the dotted-line SVG (z-index:0), so the
+  // secondary lines tuck BEHIND the boxes and show only in the gaps, much
+  // calmer than drawing them on top of everything.
   return (
     <div className="org-tree inline-block" style={{ position: 'relative' }}>
       <SecondaryEdges roots={roots} />
-      <ul>
-        {roots.map(r => <Node key={r.id} node={r} />)}
-      </ul>
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <ul>
+          {roots.map(r => <Node key={r.id} node={r} />)}
+        </ul>
+      </div>
     </div>
   )
 }
