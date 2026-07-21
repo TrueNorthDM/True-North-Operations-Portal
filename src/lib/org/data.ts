@@ -18,6 +18,8 @@ export interface OrgPerson {
   ledTeams: OrgTeamGroup[]
   /** Secondary manager (also_reports_to_id), drawn as a dotted line, not the tree. */
   secondaryManagerId: string | null
+  /** Name of the person's primary team, used to group stacked collaborators by team. */
+  primaryTeamName: string | null
   children: OrgPerson[]
 }
 
@@ -138,10 +140,11 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // (migration 048), then any team. Falls back to alphabetical-first while the
   // is_primary column/backfill isn't in place yet.
   const primaryColorByPerson = new Map<string, string | null>()
+  const primaryNameByPerson = new Map<string, string>()
   for (const m of members) {
     if (!m.is_primary) continue
     const t = teamById.get(m.team_id)
-    if (t) primaryColorByPerson.set(m.person_id, t.color)
+    if (t) { primaryColorByPerson.set(m.person_id, t.color); primaryNameByPerson.set(m.person_id, t.name) }
   }
 
   // Build nodes, then wire children by the PRIMARY manager (manager_id).
@@ -156,6 +159,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
       teams: myTeams,
       ledTeams: ledTeamsByLeader.get(p.id) ?? [],
       secondaryManagerId: p.also_reports_to_id ?? null,
+      primaryTeamName: primaryNameByPerson.get(p.id) ?? myTeams[0]?.name ?? null,
       children: [],
     })
   }

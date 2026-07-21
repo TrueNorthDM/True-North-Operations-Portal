@@ -44,18 +44,38 @@ function PersonCard({ p }: { p: OrgPerson }) {
   )
 }
 
-/** Bottom-level team: leaf reports stacked vertically under their leader, with a
- *  left spine + elbow connectors tinted the leader's colour. Far narrower than a
- *  horizontal row and keeps a team reading as one group. */
-function StackList({ reports, color }: { reports: OrgPerson[]; color: string }) {
+/** One vertical column of leaf reports, with a left spine + elbow connectors
+ *  tinted the column's team colour. */
+function StackColumn({ reports, color }: { reports: OrgPerson[]; color: string }) {
   return (
-    <div style={{ position: 'relative', paddingLeft: 34, paddingTop: 6, textAlign: 'left' }}>
+    <div style={{ position: 'relative', paddingLeft: 34, textAlign: 'left' }}>
       <div style={{ position: 'absolute', left: 17, top: 0, bottom: 34, width: 2, background: color }} />
       {reports.map(r => (
         <div key={r.id} style={{ position: 'relative', marginTop: 12 }}>
           <div style={{ position: 'absolute', left: -17, top: 26, width: 17, height: 2, background: color }} />
           <PersonCard p={r} />
         </div>
+      ))}
+    </div>
+  )
+}
+
+/** Bottom-level team: leaf reports stacked vertically under their leader. When
+ *  the leader runs several teams, the collaborators split into one column per
+ *  team (side by side), each spine tinted its own team colour. */
+function StackList({ reports, color }: { reports: OrgPerson[]; color: string }) {
+  const groups = new Map<string, OrgPerson[]>()
+  for (const r of reports) {
+    const key = r.primaryTeamName ?? '—'
+    const arr = groups.get(key) ?? []
+    arr.push(r)
+    groups.set(key, arr)
+  }
+  const cols = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  return (
+    <div style={{ display: 'flex', gap: 24, paddingTop: 6, alignItems: 'flex-start', justifyContent: 'center' }}>
+      {cols.map(([key, group]) => (
+        <StackColumn key={key} reports={group} color={group[0].color ?? color} />
       ))}
     </div>
   )
@@ -74,7 +94,7 @@ function Node({ node }: { node: OrgPerson }) {
   return (
     <li style={threadStyle}>
       {stack ? (
-        <div style={{ display: 'inline-block', textAlign: 'left' }}>
+        <div style={{ display: 'inline-block', textAlign: 'center' }}>
           <PersonCard p={node} />
           <StackList reports={reports} color={node.color ?? NEUTRAL} />
         </div>
