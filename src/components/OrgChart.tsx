@@ -24,7 +24,7 @@ const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : use
 function PersonCard({ p }: { p: OrgPerson }) {
   const color = p.color ?? NEUTRAL
   return (
-    <div className="inline-block min-w-[280px] max-w-[380px] rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
+    <div data-person-id={p.id} className="inline-block min-w-[280px] max-w-[380px] rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
       <div className="h-3" style={{ backgroundColor: color }} />
       <div className="px-5 py-3.5">
         <div className="font-(family-name:--font-display) text-[19px] font-bold text-tn-ink leading-tight">{p.name}</div>
@@ -64,9 +64,72 @@ function Node({ node }: { node: OrgPerson }) {
   )
 }
 
+// Flatten the tree to person → secondary-manager pairs (the dotted lines).
+function secondaryPairs(roots: OrgPerson[]): { from: string; to: string }[] {
+  const out: { from: string; to: string }[] = []
+  const walk = (n: OrgPerson) => {
+    if (n.secondaryManagerId && n.secondaryManagerId !== n.id) out.push({ from: n.id, to: n.secondaryManagerId })
+    n.children.forEach(walk)
+  }
+  roots.forEach(walk)
+  return out
+}
+
+/**
+ * SecondaryEdges: an SVG overlay inside the .org-tree that draws a dotted line
+ * from each person to their SECONDARY manager (also_reports_to). Positions are
+ * read from layout offsets relative to the tree, so they're immune to the
+ * zoom/scale transform used in full-screen. Sits behind the cards (drawn first),
+ * so lines tuck under the boxes and show in the gaps.
+ */
+function SecondaryEdges({ roots }: { roots: OrgPerson[] }) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [paths, setPaths] = useState<string[]>([])
+  const [size, setSize] = useState({ w: 0, h: 0 })
+
+  useIsoLayoutEffect(() => {
+    const svg = svgRef.current
+    const container = svg?.parentElement as HTMLElement | null
+    if (!container) return
+    const compute = () => {
+      const box = new Map<string, { l: number; t: number; w: number; h: number }>()
+      container.querySelectorAll<HTMLElement>('[data-person-id]').forEach(el => {
+        box.set(el.dataset.personId as string, { l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight })
+      })
+      const ds: string[] = []
+      for (const { from, to } of secondaryPairs(roots)) {
+        const a = box.get(from), b = box.get(to)
+        if (!a || !b) continue
+        // From the top-center of the report to the bottom-center of the manager,
+        // as a smooth S-curve.
+        const x1 = a.l + a.w / 2, y1 = a.t
+        const x2 = b.l + b.w / 2, y2 = b.t + b.h
+        const my = (y1 + y2) / 2
+        ds.push(`M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`)
+      }
+      setPaths(ds)
+      setSize({ w: container.scrollWidth, h: container.scrollHeight })
+    }
+    compute()
+    const t = setTimeout(compute, 300) // re-measure once fonts/layout settle
+    const ro = new ResizeObserver(compute)
+    ro.observe(container)
+    return () => { clearTimeout(t); ro.disconnect() }
+  }, [roots])
+
+  return (
+    <svg ref={svgRef} width={size.w} height={size.h} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible' }} aria-hidden="true">
+      {paths.map((d, i) => (
+        <path key={i} d={d} fill="none" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 5" />
+      ))}
+    </svg>
+  )
+}
+
 function Tree({ roots }: { roots: OrgPerson[] }) {
   return (
-    <div className="org-tree inline-block">
+    <div className="org-tree inline-block" style={{ position: 'relative' }}>
+      <SecondaryEdges roots={roots} />
       <ul>
         {roots.map(r => <Node key={r.id} node={r} />)}
       </ul>
