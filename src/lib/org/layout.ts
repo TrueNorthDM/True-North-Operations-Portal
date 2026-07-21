@@ -21,14 +21,13 @@ const H_GAP = 58            // min horizontal gap between sibling subtrees
 const V_GAP = 62            // vertical gap between rows
 export const ROW_H = CARD_H + V_GAP
 const COL_GAP = 44          // gap between a team's stacked columns
+const LINE = '#aab0bb'      // single neutral colour for every connector
 
 export interface PlacedCard { id: string; x: number; y: number; person?: OrgPerson; ghost?: OrgGhost }
 export interface PlacedEdge { key: string; kind: 'primary' | 'secondary'; color: string; d: string }
 export interface OrgLayout { cards: PlacedCard[]; edges: PlacedEdge[]; width: number; height: number }
 
 type StackItem = { kind: 'solid'; person: OrgPerson } | { kind: 'ghost'; ghost: OrgGhost }
-
-const NEUTRAL = '#cbd5e1'
 
 interface LNode {
   person: OrgPerson
@@ -134,7 +133,6 @@ export function layoutOrg(roots: OrgPerson[]): OrgLayout {
   // Emit a subtree at absolute centre (ax) and depth. Returns nothing; fills arrays.
   function emit(node: LNode, ax: number, depth: number) {
     const y = depth * ROW_H + MARGIN
-    const color = node.person.color ?? NEUTRAL
     cards.push({ id: node.person.id, person: node.person, x: ax - CARD_W / 2, y })
 
     if (node.kind === 'stack') {
@@ -147,12 +145,12 @@ export function layoutOrg(roots: OrgPerson[]): OrgLayout {
           if (item.kind === 'solid') {
             const p = item.person
             cards.push({ id: p.id, x: colCentre - CARD_W / 2, y: cy, person: p })
-            edges.push({ key: `p-${p.id}`, kind: 'primary', color: p.color ?? color, d: elbow(ax, y + CARD_H, colCentre, cy) })
+            edges.push({ key: `p-${p.id}`, kind: 'primary', color: LINE, d: elbow(ax, y + CARD_H, colCentre, cy) })
           } else {
             const g = item.ghost
             const id = `g-${g.id}-${g.onTeamName}`
             cards.push({ id, x: colCentre - CARD_W / 2, y: cy, ghost: g })
-            edges.push({ key: `p-${id}`, kind: 'primary', color: g.onTeamColor ?? color, d: elbow(ax, y + CARD_H, colCentre, cy) })
+            edges.push({ key: `p-${id}`, kind: 'primary', color: LINE, d: elbow(ax, y + CARD_H, colCentre, cy) })
           }
         })
         colLeft += CARD_W + COL_GAP
@@ -162,7 +160,7 @@ export function layoutOrg(roots: OrgPerson[]): OrgLayout {
 
     for (const ch of node.children) {
       const cx = ax + ch.x
-      edges.push({ key: `p-${ch.person.id}`, kind: 'primary', color: ch.person.color ?? NEUTRAL, d: elbow(ax, y + CARD_H, cx, (depth + 1) * ROW_H + MARGIN) })
+      edges.push({ key: `p-${ch.person.id}`, kind: 'primary', color: LINE, d: elbow(ax, y + CARD_H, cx, (depth + 1) * ROW_H + MARGIN) })
       emit(ch, cx, depth + 1)
     }
   }
