@@ -11,11 +11,13 @@ export interface OrgPerson {
   id: string
   name: string
   title: string | null
-  /** Signature color for the card/threads: the team they lead, else their first team. */
+  /** Signature color for the card/threads: the team they lead, else their primary team. */
   color: string | null
   teams: { name: string; color: string | null }[]
   /** Teams this person leads, rendered as a box of members under them. */
   ledTeams: OrgTeamGroup[]
+  /** Secondary manager (also_reports_to_id), drawn as a dotted line, not the tree. */
+  secondaryManagerId: string | null
   children: OrgPerson[]
 }
 
@@ -30,6 +32,7 @@ interface PersonRow {
   full_name: string
   title: string | null
   manager_id: string | null
+  also_reports_to_id: string | null
   status: string
   sort_order: number
 }
@@ -41,28 +44,49 @@ interface TeamRow {
 interface MemberRow {
   team_id: string
   person_id: string
-  position: string // 'team_leader' | 'collaborator' (migration 040)
+  position: string // 'founder' | 'manager' | 'team_leader' | 'collaborator'
+  is_primary: boolean // migration 048: the person's main department
 }
 
 export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number }> {
   const supabase = await createClient()
 
-  const [{ data: pData }, { data: tData }] = await Promise.all([
-    supabase.from('people').select('id, full_name, title, manager_id, status, sort_order'),
-    supabase.from('teams').select('id, name, color'),
-  ])
-  // team_members + per-team position (040); graceful pre-migration.
-  let tmRes = await supabase.from('team_members').select('team_id, person_id, position')
-  if (tmRes.error) tmRes = (await supabase.from('team_members').select('team_id, person_id')) as typeof tmRes
+  // also_reports_to_id is a late-added column; select it in an isolated query so
+  // a pre-migration DB still returns the base people list.
+  let pData: PersonRow[] | null = null
+  {
+    const full = await supabase.from('people').select('id, full_name, title, manager_id, also_reports_to_id, status, sort_order')
+    if (full.error) {
+      const base = await supabase.from('people').select('id, full_name, title, manager_id, status, sort_order')
+      pData = (base.data ?? []).map(p => ({ ...(p as Omit<PersonRow, 'also_reports_to_id'>), also_reports_to_id: null }))
+    } else {
+      pData = full.data as unknown as PersonRow[]
+    }
+  }
+  const { data: tData } = await supabase.from('teams').select('id, name, color')
+  // team_members + per-team position (040) + is_primary (048); graceful pre-migration.
+  // Cast through a loose type because is_primary isn't in the generated DB types.
+  type TmRow = { team_id: string; person_id: string; position?: string; is_primary?: boolean }
+  let tmData: TmRow[] = []
+  {
+    const withPrimary = await supabase.from('team_members').select('team_id, person_id, position, is_primary')
+    if (!withPrimary.error) tmData = withPrimary.data as unknown as TmRow[]
+    else {
+      const withPos = await supabase.from('team_members').select('team_id, person_id, position')
+      if (!withPos.error) tmData = withPos.data as unknown as TmRow[]
+      else tmData = ((await supabase.from('team_members').select('team_id, person_id')).data ?? []) as unknown as TmRow[]
+    }
+  }
 
   // Inactive people are hidden everywhere outside the People tab, the org chart
   // (and its "N people" count) shows actives only.
   const people: PersonRow[] = (pData ?? []).filter(p => p.status !== 'inactive')
   const teams: TeamRow[] = tData ?? []
-  const members: MemberRow[] = (tmRes.data ?? []).map((m: { team_id: string; person_id: string; position?: string }) => ({
+  const members: MemberRow[] = tmData.map((m) => ({
     team_id: m.team_id,
     person_id: m.person_id,
     position: m.position === 'founder' ? 'founder' : m.position === 'manager' ? 'manager' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    is_primary: m.is_primary === true,
   }))
 
   if (people.length === 0) return { roots: [], total: 0 }
@@ -82,7 +106,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // color even when they aren't listed as a member), else their first team.
   const leaderColor = new Map<string, string | null>()
   for (const m of members) {
-    if (m.position !== 'team_leader' && m.position !== 'founder') continue
+    if (m.position !== 'team_leader' && m.position !== 'founder' && m.position !== 'manager') continue
     const t = teamById.get(m.team_id)
     if (t?.color) leaderColor.set(m.person_id, t.color)
   }
@@ -102,7 +126,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // Teams each person leads, with their members.
   const ledTeamsByLeader = new Map<string, OrgTeamGroup[]>()
   for (const m of members) {
-    if (m.position !== 'team_leader' && m.position !== 'founder') continue
+    if (m.position !== 'team_leader' && m.position !== 'founder' && m.position !== 'manager') continue
     const t = teamById.get(m.team_id)
     if (!t) continue
     const arr = ledTeamsByLeader.get(m.person_id) ?? []
@@ -110,7 +134,17 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
     ledTeamsByLeader.set(m.person_id, arr)
   }
 
-  // Build nodes, then wire children by manager_id.
+  // Signature color prefers the team they lead, then their PRIMARY team
+  // (migration 048), then any team. Falls back to alphabetical-first while the
+  // is_primary column/backfill isn't in place yet.
+  const primaryColorByPerson = new Map<string, string | null>()
+  for (const m of members) {
+    if (!m.is_primary) continue
+    const t = teamById.get(m.team_id)
+    if (t) primaryColorByPerson.set(m.person_id, t.color)
+  }
+
+  // Build nodes, then wire children by the PRIMARY manager (manager_id).
   const nodeById = new Map<string, OrgPerson>()
   for (const p of people) {
     const myTeams = teamsByPerson.get(p.id) ?? []
@@ -118,18 +152,36 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
       id: p.id,
       name: p.full_name,
       title: p.title,
-      color: leaderColor.get(p.id) ?? myTeams[0]?.color ?? null,
+      color: leaderColor.get(p.id) ?? primaryColorByPerson.get(p.id) ?? myTeams[0]?.color ?? null,
       teams: myTeams,
       ledTeams: ledTeamsByLeader.get(p.id) ?? [],
+      secondaryManagerId: p.also_reports_to_id ?? null,
       children: [],
     })
+  }
+
+  // Effective manager = the primary manager, but only if it exists among active
+  // people. Then BREAK CYCLES: if following manager links loops (A → B → A, or
+  // longer), sever the link at the first repeat so that person becomes a root
+  // instead of the whole loop (and everyone under it) vanishing from the chart.
+  const effManager = new Map<string, string | null>()
+  for (const p of people) effManager.set(p.id, p.manager_id && nodeById.has(p.manager_id) ? p.manager_id : null)
+  for (const p of people) {
+    const seen = new Set<string>()
+    let cur: string | null = p.id
+    while (cur) {
+      if (seen.has(cur)) { effManager.set(cur, null); break }
+      seen.add(cur)
+      cur = effManager.get(cur) ?? null
+    }
   }
 
   const sortOf = new Map(people.map(p => [p.id, p.sort_order]))
   const roots: OrgPerson[] = []
   for (const p of people) {
     const node = nodeById.get(p.id)!
-    const parent = p.manager_id ? nodeById.get(p.manager_id) : null
+    const mgr = effManager.get(p.id)
+    const parent = mgr ? nodeById.get(mgr) : null
     if (parent && parent !== node) parent.children.push(node)
     else roots.push(node)
   }
