@@ -1,20 +1,17 @@
 'use client'
 
 /**
- * OrgChart: read-only company org chart as a horizontal connector tree
- * (boxes), auto-laid-out from the reporting hierarchy. Each card carries its
- * team's signature color (top band) and the connector thread leading into it is
- * tinted the same color (via the --thread CSS var on each <li>; see globals.css
- * .org-tree).
- *
- * Inline, the tree auto-scales to fit the block's width (no horizontal scroll).
- * A full-screen view shows it bigger with zoom in/out controls. Both scale via
- * a CSS transform; the scroll/area math reserves the scaled size so panning
- * works when zoomed in.
+ * OrgChart: read-only company org chart, positioned by a computed tidy-tree
+ * engine (src/lib/org/layout.ts) instead of the browser's auto-flow, so a
+ * person's direct reports are evenly spaced no matter how big one sibling's team
+ * is (leaf siblings pack tight; a wide team flows below and under them). Cards
+ * are absolutely positioned; every connector (solid primary + dotted secondary)
+ * is drawn in one SVG. Inline it scrolls; full screen adds zoom + drag-to-pan.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { OrgPerson } from '@/lib/org/data'
+import { layoutOrg, CARD_W, CARD_H } from '@/lib/org/layout'
 
 const NEUTRAL = '#cbd5e1'
 
@@ -24,16 +21,16 @@ const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : use
 function PersonCard({ p }: { p: OrgPerson }) {
   const color = p.color ?? NEUTRAL
   return (
-    <div data-person-id={p.id} className="inline-block min-w-[280px] max-w-[380px] rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
-      <div className="h-3" style={{ backgroundColor: color }} />
-      <div className="px-5 py-3.5">
-        <div className="font-(family-name:--font-display) text-[19px] font-bold text-tn-ink leading-tight">{p.name}</div>
-        {p.title && <div className="mt-1 text-[14px] text-muted leading-tight">{p.title}</div>}
+    <div className="w-full h-full rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
+      <div className="h-2.5" style={{ backgroundColor: color }} />
+      <div className="px-5 py-3">
+        <div className="font-(family-name:--font-display) text-[18px] font-bold text-tn-ink leading-tight truncate">{p.name}</div>
+        {p.title && <div className="mt-0.5 text-[13px] text-muted leading-tight truncate">{p.title}</div>}
         {p.teams.length > 0 && (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden">
             {p.teams.map(t => (
-              <span key={t.name} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500" title={t.name}>
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color ?? NEUTRAL }} />
+              <span key={t.name} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 whitespace-nowrap" title={t.name}>
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.color ?? NEUTRAL }} />
                 {t.name}
               </span>
             ))}
@@ -44,177 +41,40 @@ function PersonCard({ p }: { p: OrgPerson }) {
   )
 }
 
-/** One vertical column of leaf reports, with a left spine + elbow connectors
- *  tinted the column's team colour. */
-function StackColumn({ reports, color }: { reports: OrgPerson[]; color: string }) {
+/** The positioned card + connector canvas, sized to the computed layout. */
+function Canvas({ roots, innerRef }: { roots: OrgPerson[]; innerRef?: React.Ref<HTMLDivElement> }) {
+  const layout = useMemo(() => layoutOrg(roots), [roots])
   return (
-    <div style={{ position: 'relative', paddingLeft: 34, textAlign: 'left' }}>
-      <div style={{ position: 'absolute', left: 17, top: 0, bottom: 34, width: 2, background: color }} />
-      {reports.map(r => (
-        <div key={r.id} style={{ position: 'relative', marginTop: 12 }}>
-          <div style={{ position: 'absolute', left: -17, top: 26, width: 17, height: 2, background: color }} />
-          <PersonCard p={r} />
+    <div ref={innerRef} style={{ position: 'relative', width: layout.width, height: layout.height }}>
+      <svg
+        width={layout.width}
+        height={layout.height}
+        style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible', zIndex: 0 }}
+        aria-hidden="true"
+      >
+        {layout.edges.map(e => (
+          <path
+            key={e.key}
+            d={e.d}
+            fill="none"
+            stroke={e.color}
+            strokeWidth={e.kind === 'secondary' ? 1.25 : 2}
+            strokeDasharray={e.kind === 'secondary' ? '4 5' : undefined}
+            strokeOpacity={e.kind === 'secondary' ? 0.5 : 1}
+          />
+        ))}
+      </svg>
+      {layout.cards.map(c => (
+        <div key={c.id} style={{ position: 'absolute', left: c.x, top: c.y, width: CARD_W, height: CARD_H, zIndex: 1 }}>
+          <PersonCard p={c.person} />
         </div>
       ))}
     </div>
   )
 }
 
-/** Bottom-level team: leaf reports stacked vertically under their leader. When
- *  the leader runs several teams, the collaborators split into one column per
- *  team (side by side), each spine tinted its own team colour. */
-function StackList({ reports, color }: { reports: OrgPerson[]; color: string }) {
-  const groups = new Map<string, OrgPerson[]>()
-  for (const r of reports) {
-    const key = r.primaryTeamName ?? '—'
-    const arr = groups.get(key) ?? []
-    arr.push(r)
-    groups.set(key, arr)
-  }
-  const cols = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  return (
-    <div style={{ display: 'flex', gap: 24, paddingTop: 6, alignItems: 'flex-start', justifyContent: 'center' }}>
-      {cols.map(([key, group]) => (
-        <StackColumn key={key} reports={group} color={group[0].color ?? color} />
-      ))}
-    </div>
-  )
-}
-
-function Node({ node }: { node: OrgPerson }) {
-  // The connector INTO this node is tinted by the node's own primary-team color,
-  // so each branch reads as a coloured thread. Colour-less nodes fall back to the
-  // theme's connector token (light/dark aware). Pure reporting tree: every person
-  // is one card, parented by their primary manager, so no one is duplicated.
-  const threadStyle = { ['--thread']: node.color ?? 'var(--org-thread)' } as React.CSSProperties
-  const reports = node.children
-  // A bottom-level team = a leader whose reports are ALL collaborators (leaves).
-  // Those stack vertically; anything with its own reports keeps branching sideways.
-  const stack = reports.length > 1 && reports.every(c => c.children.length === 0)
-  return (
-    <li style={threadStyle}>
-      {stack ? (
-        <div style={{ display: 'inline-block', textAlign: 'center' }}>
-          <PersonCard p={node} />
-          <StackList reports={reports} color={node.color ?? NEUTRAL} />
-        </div>
-      ) : (
-        <>
-          <PersonCard p={node} />
-          {reports.length > 0 && (
-            <ul>
-              {reports.map(c => <Node key={c.id} node={c} />)}
-            </ul>
-          )}
-        </>
-      )}
-    </li>
-  )
-}
-
-// Flatten the tree to person → secondary-manager pairs (the dotted lines).
-function secondaryPairs(roots: OrgPerson[]): { from: string; to: string }[] {
-  const out: { from: string; to: string }[] = []
-  const walk = (n: OrgPerson) => {
-    if (n.secondaryManagerId && n.secondaryManagerId !== n.id) out.push({ from: n.id, to: n.secondaryManagerId })
-    n.children.forEach(walk)
-  }
-  roots.forEach(walk)
-  return out
-}
-
-/**
- * SecondaryEdges: an SVG overlay inside the .org-tree that draws a dotted line
- * from each person to their SECONDARY manager (also_reports_to). Positions are
- * read from layout offsets relative to the tree, so they're immune to the
- * zoom/scale transform used in full-screen. Sits behind the cards (drawn first),
- * so lines tuck under the boxes and show in the gaps.
- */
-function SecondaryEdges({ roots }: { roots: OrgPerson[] }) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [paths, setPaths] = useState<string[]>([])
-  const [size, setSize] = useState({ w: 0, h: 0 })
-
-  useIsoLayoutEffect(() => {
-    const svg = svgRef.current
-    const container = svg?.parentElement as HTMLElement | null
-    if (!container) return
-    // Sum offsets up the offsetParent chain to the tree container, so positions
-    // are correct even for cards nested inside positioned wrappers (the stacks).
-    const offsetWithin = (el: HTMLElement) => {
-      let l = 0, t = 0
-      let cur: HTMLElement | null = el
-      while (cur && cur !== container) { l += cur.offsetLeft; t += cur.offsetTop; cur = cur.offsetParent as HTMLElement | null }
-      return { l, t }
-    }
-    const compute = () => {
-      const box = new Map<string, { l: number; t: number; w: number; h: number }>()
-      container.querySelectorAll<HTMLElement>('[data-person-id]').forEach(el => {
-        const { l, t } = offsetWithin(el)
-        box.set(el.dataset.personId as string, { l, t, w: el.offsetWidth, h: el.offsetHeight })
-      })
-      const ds: string[] = []
-      for (const { from, to } of secondaryPairs(roots)) {
-        const a = box.get(from), b = box.get(to)
-        if (!a || !b) continue
-        // From the top-center of the report to the bottom-center of the manager,
-        // as a smooth S-curve.
-        const x1 = a.l + a.w / 2, y1 = a.t
-        const x2 = b.l + b.w / 2, y2 = b.t + b.h
-        const my = (y1 + y2) / 2
-        ds.push(`M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`)
-      }
-      setPaths(ds)
-      setSize({ w: container.scrollWidth, h: container.scrollHeight })
-    }
-    compute()
-    const t = setTimeout(compute, 300) // re-measure once fonts/layout settle
-    const ro = new ResizeObserver(compute)
-    ro.observe(container)
-    return () => { clearTimeout(t); ro.disconnect() }
-  }, [roots])
-
-  return (
-    <svg ref={svgRef} width={size.w} height={size.h} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible', zIndex: 0 }} aria-hidden="true">
-      {paths.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="#94a3b8" strokeWidth={1.25} strokeDasharray="4 5" strokeOpacity={0.5} />
-      ))}
-    </svg>
-  )
-}
-
-function Tree({ roots }: { roots: OrgPerson[] }) {
-  // Cards sit in a z-index:1 layer above the dotted-line SVG (z-index:0), so the
-  // secondary lines tuck BEHIND the boxes and show only in the gaps, much
-  // calmer than drawing them on top of everything.
-  return (
-    <div className="org-tree inline-block" style={{ position: 'relative' }}>
-      <SecondaryEdges roots={roots} />
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <ul>
-          {roots.map(r => <Node key={r.id} node={r} />)}
-        </ul>
-      </div>
-    </div>
-  )
-}
-
-/**
- * ScaledTree: renders the tree at an explicit scale, reserving the scaled
- * footprint so a scrolling parent can pan when zoomed in. `width: max-content`
- * lets the inner tree take its natural width regardless of the parent.
- */
-function ScaledTree({ roots, scale, innerRef }: { roots: OrgPerson[]; scale: number; innerRef: React.Ref<HTMLDivElement> }) {
-  return (
-    <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: 'max-content' }}>
-      <Tree roots={roots} />
-    </div>
-  )
-}
-
-/** Inline: full-size tree in a scroll area (horizontal + capped-height vertical),
- *  so cards stay readable and you pan a large org instead of shrinking it. Opens
- *  centred on the diagram (the root sits above the middle of the tree). */
+/** Inline: the chart in a scroll area (horizontal + capped-height vertical),
+ *  opened centred on the diagram. */
 function ScrollTree({ roots }: { roots: OrgPerson[] }) {
   const ref = useRef<HTMLDivElement>(null)
   useIsoLayoutEffect(() => {
@@ -227,7 +87,17 @@ function ScrollTree({ roots }: { roots: OrgPerson[] }) {
   }, [roots])
   return (
     <div ref={ref} className="overflow-auto max-h-[78vh] pt-1 pb-2">
-      <Tree roots={roots} />
+      <Canvas roots={roots} />
+    </div>
+  )
+}
+
+/** ScaledTree: the canvas at an explicit scale, reserving the scaled footprint
+ *  so a scrolling parent can pan when zoomed in. */
+function ScaledTree({ roots, scale, innerRef }: { roots: OrgPerson[]; scale: number; innerRef: React.Ref<HTMLDivElement> }) {
+  return (
+    <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: 'max-content' }}>
+      <Canvas roots={roots} innerRef={innerRef} />
     </div>
   )
 }
@@ -254,7 +124,6 @@ const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.roun
 function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => void }) {
   const treeRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  // Drag-to-pan state kept in a ref (no re-render per mouse-move).
   const drag = useRef({ active: false, startX: 0, startY: 0, left: 0, top: 0 })
   const [grabbing, setGrabbing] = useState(false)
   const [nat, setNat] = useState({ w: 0, h: 0 })
@@ -269,7 +138,6 @@ function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => voi
     return () => clearTimeout(t)
   }, [])
 
-  // Open centred on the diagram (runs once the natural size is known).
   useIsoLayoutEffect(() => {
     const el = scrollRef.current
     if (!el || !nat.w) return
@@ -287,8 +155,6 @@ function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => voi
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // Drag-to-pan: listen on window so the pan keeps tracking even if the cursor
-  // leaves the canvas mid-drag.
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const el = scrollRef.current
@@ -312,8 +178,8 @@ function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => voi
 
   function onMouseDown(e: React.MouseEvent) {
     const el = scrollRef.current
-    if (e.button !== 0 || !el) return // left button only
-    e.preventDefault() // stop native text/image drag
+    if (e.button !== 0 || !el) return
+    e.preventDefault()
     drag.current = { active: true, startX: e.clientX, startY: e.clientY, left: el.scrollLeft, top: el.scrollTop }
     setGrabbing(true)
   }
@@ -351,7 +217,6 @@ function FullScreen({ roots, onClose }: { roots: OrgPerson[]; onClose: () => voi
         onMouseDown={onMouseDown}
         className={`flex-1 overflow-auto p-8 select-none ${grabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
       >
-        {/* Reserve the scaled footprint so panning works when zoomed in. */}
         <div style={{ width: nat.w ? nat.w * zoom : undefined, height: nat.h ? nat.h * zoom : undefined }}>
           <ScaledTree roots={roots} scale={zoom} innerRef={treeRef} />
         </div>
