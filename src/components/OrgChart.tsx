@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { OrgPerson, OrgTeamGroup } from '@/lib/org/data'
+import type { OrgPerson } from '@/lib/org/data'
 
 const NEUTRAL = '#cbd5e1'
 
@@ -44,44 +44,19 @@ function PersonCard({ p }: { p: OrgPerson }) {
   )
 }
 
-/** A team rendered as a box: coloured header + members stacked vertically. */
-function TeamBox({ team }: { team: OrgTeamGroup }) {
-  const color = team.color ?? NEUTRAL
-  const threadStyle = { ['--thread']: color } as React.CSSProperties
-  return (
-    <li style={threadStyle}>
-      <div className="inline-block align-top min-w-[280px] max-w-[400px] rounded-[14px] border border-slate-200 bg-white text-left shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:border-tn-teal hover:shadow-[0_16px_34px_-16px_rgba(1,35,88,.45)]">
-        {/* Team band colours are fixed light pastels, so the header text is a
-            fixed dark ink (not a themed token) to keep contrast in dark mode. */}
-        <div className="px-5 py-3.5 font-(family-name:--font-display) text-[16px] font-extrabold text-[#26261f]" style={{ backgroundColor: color }}>{team.name}</div>
-        {team.members.length === 0 ? (
-          <div className="px-5 py-3.5 text-sm text-slate-400">No members</div>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {team.members.map(m => <li key={m.id} className="px-5 py-2.5 text-[15px] text-slate-700">{m.name}</li>)}
-          </ul>
-        )}
-      </div>
-    </li>
-  )
-}
-
 function Node({ node }: { node: OrgPerson }) {
-  // The connector INTO this node is tinted by the node's own team color, so each
-  // branch reads as a coloured thread down to its team. Colour-less nodes fall
-  // back to the theme's connector token (light/dark aware).
+  // The connector INTO this node is tinted by the node's own primary-team color,
+  // so each branch reads as a coloured thread. Colour-less nodes fall back to the
+  // theme's connector token (light/dark aware). Pure reporting tree: every person
+  // is one card, parented by their primary manager, so no one is duplicated or
+  // dropped (which the old team-box absorption did once members had reports).
   const threadStyle = { ['--thread']: node.color ?? 'var(--org-thread)' } as React.CSSProperties
-  // Members of a team this person leads are shown INSIDE the team box, so they
-  // shouldn't also appear as individual report nodes.
-  const ledMemberIds = new Set(node.ledTeams.flatMap(t => t.members.map(m => m.id)))
-  const reports = node.children.filter(c => !ledMemberIds.has(c.id))
-  const hasBelow = node.ledTeams.length > 0 || reports.length > 0
+  const reports = node.children
   return (
     <li style={threadStyle}>
       <PersonCard p={node} />
-      {hasBelow && (
+      {reports.length > 0 && (
         <ul>
-          {node.ledTeams.map(t => <TeamBox key={t.name} team={t} />)}
           {reports.map(c => <Node key={c.id} node={c} />)}
         </ul>
       )}
