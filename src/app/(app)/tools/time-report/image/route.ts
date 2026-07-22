@@ -36,20 +36,20 @@ async function launch(): Promise<Browser> {
 
 function cardHtml(month: string, c: { opening: number; monthBudget: number; monthUsed: number; totalAvailable: number; totalLeft: number } | null): string {
   const label = monthLabel(month)
-  const full = c?.monthBudget ?? 0
-  const used = c ? c.monthUsed - c.opening : 0        // adds prior overage when carried-in < 0
+  // Mirrors the dashboard's BudgetBalanceCard: this month's spend measured
+  // against the budget actually AVAILABLE this month (full budget +/- carryover),
+  // instead of folding the carried-over overage into "used" and dividing by the
+  // full budget. Both framings agree on what's left; this keeps the shared image
+  // and the dashboard telling the same story.
+  const monthTotal = c?.monthBudget ?? 0    // full month budget, shown in the breakdown
+  const full = c?.totalAvailable ?? 0       // available after carryover, the denominator
+  const used = c?.monthUsed ?? 0            // spend this month (carryover lives in `full`)
   const left = c?.totalLeft ?? 0
   const pct = full > 0 ? Math.round((used / full) * 100) : 0
   const fill = Math.max(0, Math.min(100, pct))
-  const overage = c && c.opening < 0 ? -c.opening : 0
-  const surplus = c && c.opening > 0 ? c.opening : 0
   const over = left < 0
-  const usedNote = overage > 0
-    ? `${pct}% of budget · includes ${money(overage)} carried over`
-    : surplus > 0
-      ? `${pct}% of budget · ${money(surplus)} credit carried in`
-      : `${pct}% of budget`
-  const calc = c && c.opening !== 0 ? `${money(full)} ${c.opening < 0 ? '−' : '+'} ${money(Math.abs(c.opening))}` : money(full)
+  const usedNote = `${pct}% of budget`
+  const calc = c && c.opening !== 0 ? `${money(monthTotal)} ${c.opening < 0 ? '−' : '+'} ${money(Math.abs(c.opening))}` : money(monthTotal)
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -98,7 +98,7 @@ function cardHtml(month: string, c: { opening: number; monthBudget: number; mont
         <div class="stats">
           <div class="stat"><div class="k">Budget used</div><div class="v">${money(used)}</div><div class="note">${usedNote}</div></div>
           <div class="stat"><div class="k">Amount left</div><div class="v ${over ? 'red' : 'green'}">${money(left)}</div><div class="note">${over ? 'Over budget this month' : 'Remaining this month'}</div></div>
-          <div class="stat"><div class="k">Budget total</div><div class="v">${money(c?.totalAvailable ?? full)}</div><div class="note">${calc}</div></div>
+          <div class="stat"><div class="k">Budget total</div><div class="v">${money(full)}</div><div class="note">${calc}</div></div>
         </div>
       </div>
     </div>
