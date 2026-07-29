@@ -127,8 +127,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // their latest access. Graceful if the table doesn't exist yet.
   type AlRow = { id: string; profile_id: string | null; person_id: string | null; name: string | null; email: string | null; user_agent: string | null; accessed_at: string }
   const accessRows = (!alRes.error ? (alRes.data ?? []) : []) as AlRow[]
-  const lastAccessByProfile = new Map<string, { at: string; agent: string | null }>()
-  for (const r of accessRows) if (r.profile_id && !lastAccessByProfile.has(r.profile_id)) lastAccessByProfile.set(r.profile_id, { at: r.accessed_at, agent: r.user_agent })
+  // lastAccessByPersonId is built below, after the email lookups exist, so it can
+  // resolve a login to a person by person_id -> profile_id -> any known email
+  // (a login under an unlinked email would otherwise never reach the card).
 
   const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
@@ -182,6 +183,34 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
   // ── Accounts (for the account picker) ──
   const emailByProfile = new Map(profiles.map(pr => [pr.id, pr.email ?? '(no email)']))
+
+  // Last access per PERSON: resolve each access row (newest first) to a person by
+  // person_id, then the person's linked profile_id, then any email they hold
+  // (account email or one of their address columns). This is why "Last access"
+  // shows up even when someone logs in with an email whose auth account isn't the
+  // one linked on their person record.
+  const peopleIds = new Set(people.map(p => p.id as string))
+  const personIdByProfile = new Map<string, string>()
+  const personIdByEmail = new Map<string, string>()
+  for (const p of people) {
+    const pid = p.id as string
+    const prof = str(p.profile_id)
+    if (prof) {
+      personIdByProfile.set(prof, pid)
+      const accEmail = emailByProfile.get(prof)
+      if (accEmail && accEmail !== '(no email)') personIdByEmail.set(accEmail.toLowerCase(), pid)
+    }
+    for (const e of [p.email_true_north, p.email_goodnews, p.email_coe, p.email_personal]) {
+      if (typeof e === 'string' && e) personIdByEmail.set(e.toLowerCase(), pid)
+    }
+  }
+  const lastAccessByPersonId = new Map<string, { at: string; agent: string | null }>()
+  for (const r of accessRows) {
+    const pid = (r.person_id && peopleIds.has(r.person_id) ? r.person_id : null)
+      ?? (r.profile_id ? personIdByProfile.get(r.profile_id) ?? null : null)
+      ?? (r.email ? personIdByEmail.get(r.email.toLowerCase()) ?? null : null)
+    if (pid && !lastAccessByPersonId.has(pid)) lastAccessByPersonId.set(pid, { at: r.accessed_at, agent: r.user_agent })
+  }
   const linkedProfileIds = new Set(people.map(p => (typeof p.profile_id === 'string' ? p.profile_id : null)).filter(Boolean) as string[])
   const availableAccounts = profiles
     .filter(pr => !linkedProfileIds.has(pr.id))
@@ -238,8 +267,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         accountId: str(p.profile_id),
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
-        lastAccessAt: str(p.profile_id) ? lastAccessByProfile.get(p.profile_id as string)?.at ?? null : null,
-        lastAccessAgent: str(p.profile_id) ? lastAccessByProfile.get(p.profile_id as string)?.agent ?? null : null,
+        lastAccessAt: lastAccessByPersonId.get(p.id as string)?.at ?? null,
+        lastAccessAgent: lastAccessByPersonId.get(p.id as string)?.agent ?? null,
         history: str(p.employment_history),
         milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,
