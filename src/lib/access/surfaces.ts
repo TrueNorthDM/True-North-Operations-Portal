@@ -53,7 +53,7 @@ export const SURFACES: readonly Surface[] = [
     defaults: ON,
     note: 'Opens the area. Which tools appear inside it is set per team, on the Directory’s Teams tab.',
   },
-  { key: 'my-work', label: 'My Work', group: 'Navigation', defaults: ON },
+  { key: 'my-work', label: 'My Work / My Team', group: 'Navigation', defaults: ON },
   { key: 'directory', label: 'People directory', group: 'Navigation', defaults: ON },
   { key: 'human-resources', label: 'Human Resources', group: 'Navigation', defaults: PRIV },
   // Settings holds the budgets, the hourly rates and the API tokens, so it is

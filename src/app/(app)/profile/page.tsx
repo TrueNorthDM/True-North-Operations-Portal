@@ -7,9 +7,11 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentTier } from '@/lib/auth/role'
 import {
-  TEAM_COLOR, PILL_CLASS, initialsOf, formatDate, teamKeyFromName,
-  typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill, type Pill,
+  TEAM_COLOR, initialsOf, formatDate, teamKeyFromName,
+  typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill,
 } from '@/components/admin/people-types'
+// Shared with the popup on My Team, so the two render the same card.
+import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profile/profile-parts'
 import type { PersonRow } from '@/lib/types/database.types'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { PersonalDetails } from '@/components/PersonalDetails'
@@ -30,31 +32,6 @@ const PROFILE_COLS =
   'employment_type, schedule, weekly_hours, status, role_type, phone, location, whatsapp_same_number, ' +
   'date_of_birth, hire_date, left_on, ' +
   'email_true_north, email_goodnews, email_coe, email_personal, employment_history, monday_docs'
-
-function Badge({ pill }: { pill: Pill | null }) {
-  if (!pill) return <span className="text-[13.5px] text-foreground font-semibold">-</span>
-  return <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3.5">
-      <span className="text-[12.5px] text-muted font-semibold shrink-0">{label}</span>
-      <span className="text-right min-w-0">{children}</span>
-    </div>
-  )
-}
-const txt = (v: string | null | undefined) => <span className="text-[13.5px] text-foreground font-semibold">{v || '-'}</span>
-const mail = (v: string | null) => (v ? <a href={`mailto:${v}`} className="text-[13.5px] font-semibold text-tn-teal truncate inline-block max-w-[220px] align-bottom">{v}</a> : txt(null))
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">{title}</div>
-      <div className="flex flex-col gap-[13px]">{children}</div>
-    </div>
-  )
-}
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -157,11 +134,7 @@ export default async function ProfilePage() {
 
         {/* Part 2, HR-managed, read-only for the user (future HR module) */}
         <div className="px-8 pt-6 pb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8593a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-            <span className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.06em] uppercase text-muted">Managed by your admin · read-only</span>
-          </div>
-          <p className="text-[12.5px] text-muted mb-5">Your employment, team and company details are kept by your admin and will connect to the HR module. Need a change? Ask an admin.</p>
+          <ManagedNote own />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
             <Section title="Employment">

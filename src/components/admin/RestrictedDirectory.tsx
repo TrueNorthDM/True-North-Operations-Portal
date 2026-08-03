@@ -18,7 +18,8 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, statusPill, formatDate, teamKeyFromName, PILL_CLASS, TEAM_COLOR, type TeamKey } from './people-types'
+import { roleTypePill, statusPill, formatDate, teamKeyFromName, typePill, timePill, ynPill, lifecyclePill, PILL_CLASS, TEAM_COLOR, type TeamKey } from './people-types'
+import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profile/profile-parts'
 
 export interface RestrictedPersonDetail {
   managerName: string | null
@@ -36,6 +37,7 @@ export interface RestrictedPersonDetail {
  */
 export interface FullProfile {
   name: string
+  lastName: string | null
   title: string | null
   avatarUrl: string | null
   roleType: string
@@ -52,6 +54,9 @@ export interface FullProfile {
   managerName: string | null
   alsoReportsToName: string | null
   managerNameText: string | null
+  reportsToManager: string | null
+  onboardingStatus: string | null
+  offboardingStatus: string | null
   emailTrueNorth: string | null
   emailGoodnews: string | null
   emailCoe: string | null
@@ -307,93 +312,101 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
 }
 
 // ── The full profile card ───────────────────────────────────────────────────
-// The same fields My profile shows, in a popup so you never leave My team to
-// check someone's details. Who gets one is decided on the server by the
-// viewer's directory level. Read-only either way: editing your own details
-// still lives on My profile, the one place that owns those writes.
-function SelfRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className="text-[12px] text-muted font-semibold shrink-0">{label}</span>
-      <span className="text-right min-w-0 text-[13px] text-foreground font-semibold truncate">{children}</span>
-    </div>
-  )
-}
-
-function SelfSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-2.5 pb-1.5 border-b border-slate-100">{title}</div>
-      <div className="flex flex-col gap-2.5">{children}</div>
-    </div>
-  )
-}
-
-const dash = (v: string | null | undefined) => (v && v.trim() ? v : '-')
-
-function ProfileCard({ profile: self, isSelf, onClose }: { profile: FullProfile; isSelf: boolean; onClose: () => void }) {
-  const rp = roleTypePill(self.roleType)
-  const sp = statusPill(self.active)
-  const mailLink = (v: string | null) =>
-    v ? <a href={`mailto:${v}`} className="text-tn-teal">{v}</a> : '-'
+// Deliberately the SAME layout as the My profile page, in a popup, built from
+// the same shared parts (components/profile/profile-parts) so the two cannot
+// drift into lookalikes. Read-only either way: editing your own details still
+// lives on My profile, the one place that owns those writes.
+function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProfile; isSelf: boolean; onClose: () => void }) {
+  const teamKey = teamKeyFromName(p.teamNames[0])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Your profile">
-      <div className="absolute inset-0 bg-tn-ink/40" onClick={onClose} />
-      <div className="relative w-full max-w-[720px] max-h-[85vh] overflow-y-auto bg-white rounded-[18px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
-        <div className="flex items-start gap-4 px-6 pt-6 pb-5 border-b border-slate-100">
-          <Avatar name={self.name} avatarUrl={self.avatarUrl} size={56} color={TEAM_COLOR[teamKeyFromName(self.teamNames[0])]} />
-          <div className="min-w-0 flex-1">
-            <h2 className="font-(family-name:--font-display) font-extrabold text-[20px] text-tn-ink m-0 truncate">{self.name}</h2>
-            <p className="text-[13.5px] text-muted m-0 mt-0.5 truncate">{dash(self.title)}</p>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[rp.kind]}`}>{rp.label}</span>
-              <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[sp.kind]}`}>{sp.label}</span>
-              {self.teamNames.map(t => (
-                <span key={t} className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5" style={{ color: TEAM_COLOR[teamKeyFromName(t)], background: `${TEAM_COLOR[teamKeyFromName(t)]}1a` }}>{t}</span>
-              ))}
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8" role="dialog" aria-modal="true" aria-label={`${p.name} profile`}>
+      <div className="fixed inset-0 bg-tn-ink/40" onClick={onClose} />
+      <div className="relative w-full max-w-[920px] my-auto rounded-[18px] border border-slate-200 bg-white overflow-hidden shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
+        {/* header, same proportions as the page */}
+        <div className="px-8 pt-8 pb-6 border-b border-slate-200 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-6 min-w-0">
+            <Avatar name={p.name} avatarUrl={p.avatarUrl} size={120} color={TEAM_COLOR[teamKey]} />
+            <div className="min-w-0">
+              <h2 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink leading-tight m-0">{p.name}</h2>
+              <p className="text-[15px] text-muted mt-1 font-semibold">{p.title || '-'}</p>
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {p.teamNames.length === 0 ? (
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: TEAM_COLOR[teamKey], background: `${TEAM_COLOR[teamKey]}1a` }}>No team</span>
+                ) : p.teamNames.map(t => (
+                  <span key={t} className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: TEAM_COLOR[teamKeyFromName(t)], background: `${TEAM_COLOR[teamKeyFromName(t)]}1a` }}>{t}</span>
+                ))}
+                <Badge pill={roleTypePill(p.roleType)} />
+                <Badge pill={statusPill(p.active)} />
+              </div>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="shrink-0 text-muted hover:text-tn-ink text-2xl leading-none">&times;</button>
+          <button onClick={onClose} aria-label="Close" className="shrink-0 text-muted hover:text-tn-ink text-[26px] leading-none -mt-1">&times;</button>
         </div>
 
-        <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-          <SelfSection title="Personal">
-            <SelfRow label="Personal email">{mailLink(self.personalEmail)}</SelfRow>
-            <SelfRow label="Phone">{dash(self.phone)}</SelfRow>
-            <SelfRow label="WhatsApp">{dash(self.whatsapp)}</SelfRow>
-            <SelfRow label="Location">{dash(self.location)}</SelfRow>
-            <SelfRow label="Date of birth">{dash(formatDate(self.dateOfBirth))}</SelfRow>
-          </SelfSection>
-
-          <SelfSection title="Employment">
-            <SelfRow label="Type">{dash(EMPLOYMENT_LABEL[self.employmentType ?? ''] ?? self.employmentType)}</SelfRow>
-            <SelfRow label="Time">{dash(self.schedule)}</SelfRow>
-            <SelfRow label="Weekly hours">{self.weeklyHours != null ? `${self.weeklyHours} h / week` : '-'}</SelfRow>
-            <SelfRow label="Joined on">{dash(formatDate(self.hireDate))}</SelfRow>
-            {self.leftOn && <SelfRow label="Left on">{dash(formatDate(self.leftOn))}</SelfRow>}
-          </SelfSection>
-
-          <SelfSection title="Reporting">
-            <SelfRow label="Reports to">{dash(self.managerName)}</SelfRow>
-            <SelfRow label="Also reports to">{dash(self.alsoReportsToName)}</SelfRow>
-            <SelfRow label="Manager (as stated)">{dash(self.managerNameText)}</SelfRow>
-          </SelfSection>
-
-          <SelfSection title="Company emails">
-            <SelfRow label="True North">{mailLink(self.emailTrueNorth)}</SelfRow>
-            <SelfRow label="GoodNews">{mailLink(self.emailGoodnews)}</SelfRow>
-            <SelfRow label="COE">{mailLink(self.emailCoe)}</SelfRow>
-          </SelfSection>
-        </div>
-
-        {isSelf && (
-          <div className="px-6 pb-6">
-            <Link href="/profile" className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">
-              Edit on My profile →
-            </Link>
+        {/* Part 1, the personal details (read-only here, editable on My profile) */}
+        <div className="px-8 pt-6 pb-6 border-b border-slate-200">
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <span className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.06em] uppercase text-tn-teal">
+              {isSelf ? 'Your details' : 'Personal details'}
+            </span>
+            {isSelf && (
+              <Link href="/profile" className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                Edit
+              </Link>
+            )}
           </div>
-        )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-[13px]">
+            <Row label="Last name">{txt(p.lastName)}</Row>
+            <Row label="Personal email">{mail(p.personalEmail)}</Row>
+            <Row label="Phone / WhatsApp">{txt(p.phone)}</Row>
+            <Row label="WhatsApp, same number">{txt(p.whatsapp)}</Row>
+            <Row label="Location">{txt(p.location)}</Row>
+            <Row label="Date of birth">{txt(formatDate(p.dateOfBirth))}</Row>
+          </div>
+        </div>
+
+        {/* Part 2, HR-managed, read-only */}
+        <div className="px-8 pt-6 pb-8">
+          <ManagedNote own={isSelf} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+            <Section title="Employment">
+              <Row label="Contact type"><Badge pill={roleTypePill(p.roleType)} /></Row>
+              <Row label="Type"><Badge pill={typePill(p.employmentType)} /></Row>
+              <Row label="Time"><Badge pill={timePill(p.schedule)} /></Row>
+              <Row label="Weekly hours">{txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null)}</Row>
+              <Row label="Status"><Badge pill={statusPill(p.active)} /></Row>
+            </Section>
+
+            <Section title="Reporting">
+              <Row label="Reports to">{txt(p.managerName)}</Row>
+              <Row label={isSelf ? 'Do you report to a manager?' : 'Reports to a manager?'}><Badge pill={ynPill(p.reportsToManager)} /></Row>
+              <Row label="Also reports to">{txt(p.alsoReportsToName)}</Row>
+              <Row label="Manager (as stated)">{txt(p.managerNameText)}</Row>
+            </Section>
+
+            <Section title="Company emails">
+              <Row label="True North">{mail(p.emailTrueNorth)}</Row>
+              <Row label="GoodNews">{mail(p.emailGoodnews)}</Row>
+              <Row label="COE">{mail(p.emailCoe)}</Row>
+            </Section>
+
+            <Section title="Onboarding">
+              <Row label="Status"><Badge pill={lifecyclePill(p.onboardingStatus)} /></Row>
+            </Section>
+
+            <Section title="Offboarding">
+              <Row label="Status"><Badge pill={lifecyclePill(p.offboardingStatus)} /></Row>
+            </Section>
+
+            <Section title="Dates">
+              <Row label="Joined on">{txt(formatDate(p.hireDate))}</Row>
+              <Row label="Left on">{txt(formatDate(p.leftOn))}</Row>
+            </Section>
+          </div>
+        </div>
       </div>
     </div>
   )

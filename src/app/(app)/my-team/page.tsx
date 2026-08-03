@@ -27,7 +27,7 @@ export default async function MyTeamPage() {
       <div className="flex items-center gap-2 text-[13px] text-muted">
         <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
         <span className="text-slate-300">/</span>
-        <span className="font-semibold text-tn-ink">My team</span>
+        <span className="font-semibold text-tn-ink">My Team</span>
       </div>
 
       <RestrictedDirectory people={people} teams={[]} showTeams={false} profiles={profiles} selfId={selfId} />

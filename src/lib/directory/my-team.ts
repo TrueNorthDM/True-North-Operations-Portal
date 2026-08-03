@@ -62,7 +62,7 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
 
   const { data: rows } = await supabase
     .from('people')
-    .select('id, full_name, title, avatar_url, role_type, status, manager_id, also_reports_to_id, manager_name_text, email_true_north, email_goodnews, email_coe, email_personal, phone, whatsapp_same_number, location, date_of_birth, hire_date, left_on, employment_type, schedule, weekly_hours')
+    .select('id, full_name, last_name, title, avatar_url, role_type, status, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, email_true_north, email_goodnews, email_coe, email_personal, phone, whatsapp_same_number, location, date_of_birth, hire_date, left_on, employment_type, schedule, weekly_hours, onboarding_status, offboarding_status')
     .in('id', [...personIds])
 
   const nameById = new Map((rows ?? []).map(r => [r.id, r.full_name]))
@@ -117,6 +117,7 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
   type Row = NonNullable<typeof rows>[number]
   const toProfile = (r: Row): FullProfile => ({
     name: r.full_name,
+    lastName: str(r.last_name),
     title: str(r.title),
     avatarUrl: r.avatar_url ?? null,
     roleType: asRoleType(r.role_type),
@@ -133,6 +134,9 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
     managerName: str(r.manager_id) ? nameById.get(r.manager_id as string) ?? null : null,
     alsoReportsToName: str(r.also_reports_to_id) ? nameById.get(r.also_reports_to_id as string) ?? null : null,
     managerNameText: str(r.manager_name_text),
+    reportsToManager: str(r.reports_to_manager),
+    onboardingStatus: str(r.onboarding_status),
+    offboardingStatus: str(r.offboarding_status),
     emailTrueNorth: str(r.email_true_north),
     emailGoodnews: str(r.email_goodnews),
     emailCoe: str(r.email_coe),

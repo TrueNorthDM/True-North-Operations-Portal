@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic'
 
 const TABS = [
   { key: 'work', label: 'My Work' },
-  { key: 'team', label: 'My team' },
+  { key: 'team', label: 'My Team' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 

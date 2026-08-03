@@ -97,7 +97,7 @@ const toolsDash: Item = {
 // My Work, the signed-in person's tasks across Monday (board + list).
 const myWorkNav: Item = {
   href: '/my-work',
-  label: 'My Work',
+  label: 'My Work / My Team',
   icon: WorkIcon,
   match: p => p === '/my-work',
 }
