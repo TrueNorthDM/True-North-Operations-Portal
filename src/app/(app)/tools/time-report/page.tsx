@@ -1,8 +1,14 @@
-// i7 Budget Usage Report, renders the Project → Job code → Activity tree from
-// the LOCAL cache of i7 timesheets (table tsheets_timesheets), which the
-// background sync keeps fresh. The page makes no live TSheets calls, so it
-// renders instantly. All the data loading lives in report-data.ts (shared with
-// the print/PDF page).
+// Clients Reports, a tabbed page with one tab per client.
+//
+// The i7 tab renders the Project → Job code → Activity tree from the LOCAL cache
+// of i7 timesheets (table tsheets_timesheets), which the background sync keeps
+// fresh, so it makes no live TSheets calls and renders instantly (data loading
+// lives in report-data.ts, shared with the print/PDF page). The Grant Pass tab
+// is a framework placeholder for now (see GrantPassReport), because Grant Pass
+// is not tracked in QuickBooks Time.
+//
+// Tabs are driven by the `client` search param (?client=i7 | grant-pass), which
+// keeps the page a server component and leaves the i7 route/exports unchanged.
 
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -11,8 +17,16 @@ import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
+import { GrantPassReport } from '@/components/tsheets/GrantPassReport'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import type { I7Report } from '@/lib/tsheets/types'
+
+// One tab per client. `key` is the ?client= value; keep keys stable.
+const CLIENT_TABS = [
+  { key: 'i7', label: 'i7 Marketing' },
+  { key: 'grant-pass', label: 'Grant Pass' },
+] as const
+type ClientKey = (typeof CLIENT_TABS)[number]['key']
 
 // Sample tree shown when no API token is configured, so the structure is visible.
 const MOCK_I7: I7Report = {
@@ -44,11 +58,69 @@ const MOCK_I7: I7Report = {
 }
 
 interface Props {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; client?: string }>
 }
 
-export default async function TimeReportPage({ searchParams }: Props) {
-  const { month } = await searchParams
+export default async function ClientsReportsPage({ searchParams }: Props) {
+  const { month, client } = await searchParams
+  const active: ClientKey = CLIENT_TABS.some(t => t.key === client) ? (client as ClientKey) : 'i7'
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm text-muted mb-1">
+            <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
+            <span>/</span>
+            <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools</Link>
+            <span>/</span>
+            <span className="text-foreground font-semibold">Clients Reports</span>
+          </div>
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clients Reports</h1>
+          <p className="mt-1.5 text-muted leading-relaxed">
+            Hours, cost and budget usage per client. Pick a client below.
+          </p>
+        </div>
+        <Link
+          href="/settings"
+          title="Manage rates & budgets in Settings"
+          aria-label="Settings"
+          className="shrink-0 w-11 h-11 rounded-full border border-slate-200 bg-white text-muted flex items-center justify-center transition-colors hover:text-tn-ink hover:border-tn-teal"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+        </Link>
+      </div>
+
+      {/* Client tabs. Each is a plain link so the page stays a server component. */}
+      <div className="border-b border-slate-200 flex items-center gap-1">
+        {CLIENT_TABS.map(t => {
+          const isActive = t.key === active
+          return (
+            <Link
+              key={t.key}
+              href={t.key === 'i7' ? '/tools/time-report' : `/tools/time-report?client=${t.key}`}
+              aria-current={isActive ? 'page' : undefined}
+              className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
+                isActive
+                  ? 'border-tn-teal text-tn-ink'
+                  : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
+              }`}
+            >
+              {t.label}
+            </Link>
+          )
+        })}
+      </div>
+
+      {active === 'i7' ? <I7Tab month={month} /> : <GrantPassReport />}
+    </div>
+  )
+}
+
+// The i7 client tab: the existing i7 Budget Usage Report, with its own guide
+// link and sync status (both i7-specific), plus the month resolution that only
+// applies to the cached i7 data.
+async function I7Tab({ month }: { month?: string }) {
   const months = availableMonths(new Date())      // Jan 2026 … current (rolling 24-mo window)
   const requested = month ?? currentYearMonth()
   const selectedMonth = months.includes(requested) ? requested : months[0]
@@ -64,40 +136,20 @@ export default async function TimeReportPage({ searchParams }: Props) {
   const syncedAt = settings?.tsheets_synced_at ?? null
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm text-muted mb-1">
-            <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
-            <span>/</span>
-            <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools</Link>
-            <span>/</span>
-            <span className="text-foreground font-semibold">i7 Budget Usage Report</span>
-          </div>
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">i7 Budget Usage Report</h1>
-          <p className="mt-1.5 text-muted leading-relaxed">
-            Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client, pulled directly from QuickBooks Time.
-          </p>
-          <div className="mt-3 flex items-center gap-2.5 flex-wrap">
-            <Link
-              href="/tools/time-report/guide"
-              title="How the report works"
-              aria-label="How the report works"
-              className="shrink-0 w-9 h-9 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-            </Link>
-            <SyncStatus syncedAt={syncedAt} />
-          </div>
-        </div>
+    <div className="space-y-5">
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <p className="text-sm text-muted leading-relaxed m-0 mr-1">
+          Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client, pulled directly from QuickBooks Time.
+        </p>
         <Link
-          href="/settings"
-          title="Manage rates & budgets in Settings"
-          aria-label="Settings"
-          className="shrink-0 w-11 h-11 rounded-full border border-slate-200 bg-white text-muted flex items-center justify-center transition-colors hover:text-tn-ink hover:border-tn-teal"
+          href="/tools/time-report/guide"
+          title="How the report works"
+          aria-label="How the report works"
+          className="shrink-0 w-9 h-9 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
         </Link>
+        <SyncStatus syncedAt={syncedAt} />
       </div>
 
       {!token ? (

@@ -72,8 +72,8 @@ export default function ToolsPage() {
           <NavCard
             href="/tools/time-report"
             icon={BudgetIcon}
-            title="i7 Budget Usage Report"
-            description="Hours, cost and budget usage for the i7 Marketing client, pulled live from QuickBooks Time."
+            title="Clients Reports"
+            description="Hours, cost and budget usage per client. Includes the i7 Marketing report, with more clients coming."
           />
         </div>
       </section>

@@ -165,6 +165,22 @@ export default async function SettingsPage() {
               <FullHistoryButton />
             </div>
             <ClientsTab clients={budget.clients} estimateRate={projectDirectory.highestRate} />
+            {/* Grant Pass framework placeholder: it is an hours-based retainer
+                (Church + School) with no dollar budget and no QuickBooks Time
+                feed, so it doesn't fit the budget table above. This reserves the
+                spot until the data source is confirmed. */}
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Setup pending</span>
+                <span className="text-sm font-semibold text-tn-ink">Grant Pass</span>
+              </div>
+              <p className="mt-1.5 text-sm text-muted leading-relaxed m-0">
+                Grant Pass (Church and School) is an hours-based retainer tracked with a monthly
+                carryover, not a dollar budget, and it is not logged in QuickBooks Time. Once the
+                data source is confirmed, its setup will live here and it will appear as a tab in
+                the Clients Reports page.
+              </p>
+            </div>
           </div>
           <ChangeHistory entries={budget.auditLog} />
         </div>

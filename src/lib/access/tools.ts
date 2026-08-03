@@ -27,7 +27,7 @@ export const TOOLS: ToolDef[] = [
   { key: 'publishing', label: 'Publishing Goals', href: '/dashboards/publishing', group: 'Dashboards' },
   { key: 'workload', label: 'Workload', href: '/boards-beta', group: 'Dashboards' },
   { key: 'href-links', label: 'Href Link Management', href: '/projects', group: 'Tools' },
-  { key: 'i7-budget', label: 'i7 Budget Report', href: '/tools/time-report', group: 'Tools', sensitive: true },
+  { key: 'i7-budget', label: 'Clients Reports', href: '/tools/time-report', group: 'Tools', sensitive: true },
   { key: 'my-work', label: 'My Work', href: '/my-work', group: 'Tools' },
 ]
 
