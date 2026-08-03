@@ -26,8 +26,8 @@ export interface LevelDef {
 // (components/admin/people-types), so a level looks the same on this board and
 // on every Directory card.
 export const LEVELS: readonly LevelDef[] = [
-  { key: 'admin', label: 'Admin', summary: 'Runs the portal. The only level that can change anything.' },
-  { key: 'admin_assistant', label: 'Admin Assistant', summary: 'Sees everything an Admin sees, but cannot save changes.' },
+  { key: 'admin', label: 'Admin', summary: 'Runs the portal. Full access, and can change anything.' },
+  { key: 'admin_assistant', label: 'Admin Assistant', summary: 'The same access as Admin, under a different label.' },
   { key: 'team_leader', label: 'Team Leader', summary: 'Read-only. Their own card plus the people they lead.' },
   { key: 'user', label: 'User', summary: 'Read-only. Their own card only. The default for a new person.' },
 ] as const
@@ -47,7 +47,6 @@ export interface CapabilityGroup {
 
 const ALL: Record<RoleType, CapState> = { admin: 'yes', admin_assistant: 'yes', team_leader: 'yes', user: 'yes' }
 const PRIVILEGED: Record<RoleType, CapState> = { admin: 'yes', admin_assistant: 'yes', team_leader: 'no', user: 'no' }
-const ADMIN_ONLY: Record<RoleType, CapState> = { admin: 'yes', admin_assistant: 'no', team_leader: 'no', user: 'no' }
 
 export const CAPABILITIES: readonly CapabilityGroup[] = [
   {
@@ -55,16 +54,8 @@ export const CAPABILITIES: readonly CapabilityGroup[] = [
     items: [
       { label: 'Home, Tools, Projects, My Work, Directory', state: ALL },
       { label: 'Human Resources', state: PRIVILEGED },
-      {
-        label: 'Admin (this area)',
-        state: ADMIN_ONLY,
-        caveat: 'Admin Assistants are sent back to Home here, even though the sidebar shows the icon.',
-      },
-      {
-        label: 'Settings',
-        state: { admin: 'yes', admin_assistant: 'yes', team_leader: 'partial', user: 'partial' },
-        caveat: 'The sidebar icon is hidden for Team Leaders and Users, but the page still opens if the URL is typed directly. It is not blocked on the server yet.',
-      },
+      { label: 'Admin (this area)', state: PRIVILEGED },
+      { label: 'Settings', state: PRIVILEGED },
     ],
   },
   {
@@ -91,14 +82,10 @@ export const CAPABILITIES: readonly CapabilityGroup[] = [
   {
     area: 'Managing',
     items: [
-      {
-        label: 'Add or edit people and teams',
-        state: ADMIN_ONLY,
-        caveat: 'Admin Assistants see the Add and Edit buttons, but saving fails with "Not authorized".',
-      },
-      { label: 'Change access levels (this page)', state: ADMIN_ONLY },
-      { label: 'Edit budgets, rates and API tokens', state: ADMIN_ONLY },
-      { label: 'View Stage, preview each level side by side', state: ADMIN_ONLY },
+      { label: 'Add or edit people and teams', state: PRIVILEGED },
+      { label: 'Change access levels (this page)', state: PRIVILEGED },
+      { label: 'Edit budgets, rates and API tokens', state: PRIVILEGED },
+      { label: 'View Stage, preview each level side by side', state: PRIVILEGED },
     ],
   },
 ] as const
@@ -106,8 +93,8 @@ export const CAPABILITIES: readonly CapabilityGroup[] = [
 /** Gaps worth knowing before handing out access. Shown as a callout. */
 export const KNOWN_GAPS: readonly { title: string; detail: string }[] = [
   {
-    title: 'Settings is not blocked on the server',
-    detail: 'The icon is hidden, but anyone who types /settings reaches budgets, rates and the API token panel. Worth closing before opening the portal to more people.',
+    title: 'Admin and Admin Assistant have the same powers',
+    detail: 'They are two names for the same access. Both can reach Admin and Settings and both can save. The difference is only the label on the person, so pick either and use it consistently.',
   },
   {
     title: 'The per-team tool toggles do nothing yet',
@@ -116,9 +103,5 @@ export const KNOWN_GAPS: readonly { title: string; detail: string }[] = [
   {
     title: 'Salary and address are hidden by the interface only',
     detail: 'The screens never show them to a Team Leader or User, but the underlying table still allows any signed-in account to read those columns through the API.',
-  },
-  {
-    title: 'Admin Assistant cannot actually save',
-    detail: 'It grants the full admin view, but every write is rejected. Until that is reconciled, prefer Admin for people who really need to change things.',
   },
 ] as const

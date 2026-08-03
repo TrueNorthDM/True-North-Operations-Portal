@@ -14,6 +14,7 @@
 
 import puppeteer, { type Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
+import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 
 export const runtime = 'nodejs'
@@ -106,6 +107,9 @@ function cardHtml(month: string, c: { opening: number; monthBudget: number; mont
 }
 
 export async function GET(request: Request) {
+  const denied = await requirePrivileged()
+  if (denied) return denied
+
   const url = new URL(request.url)
   const month = url.searchParams.get('month') ?? ''
 

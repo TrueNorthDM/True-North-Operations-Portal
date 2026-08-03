@@ -29,19 +29,138 @@ function revalidate() {
 
 // Mirrors the CHECK constraint in migration 035.
 const ROLE_TYPES: readonly string[] = ['user', 'admin', 'admin_assistant', 'team_leader']
+const PRIVILEGED_TYPES: readonly string[] = ['admin', 'admin_assistant']
+
+/** What setPersonRoleType actually managed to apply. */
+export interface RoleTypeResult {
+  /** 'live' = the security role was synced too; 'pending' = no account yet. */
+  applied: 'live' | 'pending'
+}
 
 /**
- * Set just a person's contact type (people.role_type), the portal access level.
+ * Set a person's contact type (people.role_type), the portal access level.
+ *
+ * The portal keeps TWO role fields: people.role_type drives what the interface
+ * shows, and profiles.role is the hard gate (RLS + isCurrentUserAdmin). Nothing
+ * in the database syncs them (migration 038 was a one-time backfill, explicitly
+ * not a login-time sync), so writing role_type alone produced levels that only
+ * half worked: a promotion granted the admin VIEW but no admin POWER, and a
+ * demotion did nothing at all, because getCurrentTier floors anyone whose
+ * profiles.role is 'admin' back up to admin. This writes BOTH, so the level a
+ * person is given is the level they get.
+ *
+ * profiles rows only exist after a first sign-in, so for someone who has never
+ * logged in we save role_type and report 'pending': the security role lands the
+ * moment they sign in, via the one-time backfill's rule (privileged → admin).
+ *
  * A focused counterpart to updatePerson, which needs the whole PersonInput and
- * would reset any field the caller omits. Used by the Access levels board.
+ * would reset any field the caller omits.
  */
-export async function setPersonRoleType(id: string, roleType: string) {
+export async function setPersonRoleType(id: string, roleType: string): Promise<RoleTypeResult> {
   await requireAdmin()
   if (!ROLE_TYPES.includes(roleType)) throw new Error('Unknown access level')
+  const privileged = PRIVILEGED_TYPES.includes(roleType)
   const supabase = await createClient()
-  const { error } = await supabase.from('people').update({ role_type: roleType }).eq('id', id)
+
+  const { data: person } = await supabase
+    .from('people')
+    .select('id, profile_id, email_true_north, email_goodnews, email_coe, email_personal')
+    .eq('id', id)
+    .maybeSingle()
+  if (!person) throw new Error('Person not found')
+
+  // Find their auth account: the explicit link if set, else a mailbox that
+  // matches a profile. profile_id is only filled in by hand, so most people who
+  // sign in daily are matched by email here.
+  let profileId = person.profile_id as string | null
+  if (!profileId) {
+    const emails = [person.email_true_north, person.email_goodnews, person.email_coe, person.email_personal]
+      .map(e => (e ?? '').trim().toLowerCase())
+      .filter(Boolean)
+    if (emails.length) {
+      const { data: profileRows } = await supabase.from('profiles').select('id, email')
+      profileId = (profileRows ?? []).find(p => emails.includes((p.email ?? '').trim().toLowerCase()))?.id ?? null
+    }
+  }
+
+  // Never let an admin strip their own access, that would lock them out of the
+  // very screen they'd need to undo it.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user && profileId === user.id && !privileged) {
+    throw new Error('You cannot remove your own admin access. Ask another admin to do it.')
+  }
+
+  const patch: PersonCols = { role_type: roleType }
+  // Repair the link while we're here, so the account shows as connected.
+  if (!person.profile_id && profileId) patch.profile_id = profileId
+
+  const { error } = await supabase.from('people').update(patch).eq('id', id)
   if (error) throw new Error(error.message)
+
+  if (profileId) {
+    const { error: roleError } = await supabase
+      .from('profiles')
+      .update({ role: privileged ? 'admin' : 'viewer' })
+      .eq('id', profileId)
+    if (roleError) throw new Error(`Level saved, but the security role could not be updated: ${roleError.message}`)
+  }
+
   revalidate()
+  return { applied: profileId ? 'live' : 'pending' }
+}
+
+/**
+ * Re-apply every person's contact type to their security role, so accounts set
+ * before role_type started syncing (or linked only by email, which the one-time
+ * backfill in migration 038 skipped) end up consistent. Idempotent.
+ *
+ * The caller is skipped: an admin whose own directory entry is typed
+ * team_leader/user would otherwise demote themselves mid-sweep and lose the
+ * screen they'd need to undo it.
+ */
+export async function syncAllRoleTypes(): Promise<{ updated: number; skippedSelf: boolean }> {
+  await requireAdmin()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const [{ data: peopleRows }, { data: profileRows }] = await Promise.all([
+    supabase
+      .from('people')
+      .select('id, profile_id, role_type, email_true_north, email_goodnews, email_coe, email_personal')
+      .eq('status', 'active'),
+    supabase.from('profiles').select('id, email, role'),
+  ])
+
+  const profiles = profileRows ?? []
+  const byEmail = new Map<string, { id: string; role: string | null }>()
+  for (const p of profiles) {
+    const e = (p.email ?? '').trim().toLowerCase()
+    if (e) byEmail.set(e, { id: p.id, role: p.role })
+  }
+  const roleById = new Map(profiles.map(p => [p.id, p.role]))
+
+  let updated = 0
+  let skippedSelf = false
+  for (const person of peopleRows ?? []) {
+    let profileId = person.profile_id as string | null
+    if (!profileId) {
+      const emails = [person.email_true_north, person.email_goodnews, person.email_coe, person.email_personal]
+        .map(e => (e ?? '').trim().toLowerCase())
+        .filter(Boolean)
+      profileId = emails.map(e => byEmail.get(e)?.id).find(Boolean) ?? null
+    }
+    if (!profileId) continue
+
+    const wanted = PRIVILEGED_TYPES.includes(person.role_type) ? 'admin' : 'viewer'
+    if (profileId === user?.id && wanted !== 'admin') { skippedSelf = true; continue }
+    if (roleById.get(profileId) === wanted) continue
+
+    const { error } = await supabase.from('profiles').update({ role: wanted }).eq('id', profileId)
+    if (!error) updated++
+  }
+
+  revalidate()
+  return { updated, skippedSelf }
 }
 
 export interface PersonInput {

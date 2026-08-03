@@ -8,9 +8,10 @@
  * there's no browser header/footer and no print dialog. This is the only way to
  * force landscape in Safari, which ignores CSS @page{size}.
  *
- * Auth: this route sits under (app), so the proxy already required a session for
- * the caller. We forward the caller's cookies to the headless page so it passes
- * the same auth gate when it loads /print. No proxy change, no token.
+ * Auth: the proxy requires a session, and requirePrivileged restricts this to
+ * admins (the PDF carries the same budget figures the report hides from Team
+ * Leaders and Users). We forward the caller's cookies to the headless page so
+ * it passes the same gate when it loads /print. No proxy change, no token.
  *
  * Chromium: local dev uses the machine's Chrome; on Vercel we use the bundled
  * @sparticuz/chromium binary.
@@ -18,6 +19,7 @@
 
 import puppeteer, { type Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
+import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -43,6 +45,9 @@ async function launch(): Promise<Browser> {
 }
 
 export async function GET(request: Request) {
+  const denied = await requirePrivileged()
+  if (denied) return denied
+
   const url = new URL(request.url)
   const month = url.searchParams.get('month') ?? ''
   const type = url.searchParams.get('type') === 'internal' ? 'internal' : 'client'

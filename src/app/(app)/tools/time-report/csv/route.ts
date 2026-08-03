@@ -8,9 +8,12 @@
  *   client   → billing lines: one row per Invoice · Project · Job code with
  *              Hours, Investment ($) and Share of total. No names, no rates.
  *
- * Auth: under (app), so the proxy already required the caller's session.
+ * Auth: the proxy requires a session, and requirePrivileged then restricts this
+ * to admins, since both variants expose budget figures (and `internal` exposes
+ * per-person rates) that the report hides from Team Leaders and Users.
  */
 
+import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -38,6 +41,9 @@ function cell(v: string | number): string {
 const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 
 export async function GET(request: Request) {
+  const denied = await requirePrivileged()
+  if (denied) return denied
+
   const url = new URL(request.url)
   const month = resolveMonth(url.searchParams.get('month'))
   const type = url.searchParams.get('type') === 'internal' ? 'internal' : 'client'

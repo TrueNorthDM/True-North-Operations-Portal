@@ -3,8 +3,9 @@
 // heavy editors are the existing functional components, routed into sections.
 
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentProfile } from '@/lib/auth/role'
+import { getCurrentProfile, getCurrentTier } from '@/lib/auth/role'
 import { SettingsNav, type SettingsSection } from '@/components/SettingsNav'
 import { SiteCard } from '@/components/settings/SiteCard'
 import { MondayTokenField } from '@/components/MondayTokenField'
@@ -57,6 +58,11 @@ function SectionHead({ title, desc }: { title: string; desc: string }) {
 }
 
 export default async function SettingsPage() {
+  // Settings exposes budgets, hourly rates and the API token panel, so it is
+  // gated on the server, not just by hiding the sidebar icon (which left the
+  // page reachable by typing the URL). Same gate as /human-resources.
+  if (!(await getCurrentTier()).isPrivileged) redirect('/')
+
   const supabase = await createClient()
 
   const { data: sites } = await supabase
