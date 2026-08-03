@@ -69,20 +69,54 @@ const AccessIcon = (
   </svg>
 )
 
-const CARDS = [
+// Finished and in daily use.
+const ACTIVE = [
   { href: '/admin/access-levels', title: 'Access levels', icon: AccessIcon, description: 'The four access levels, what each one can see, and who has it today.' },
+  { href: '/admin/view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level (admin, team leader, user) side by side.' },
+] as const
+
+// Usable, but still being built out. Grouped separately so the finished tools
+// above are not mistaken for work in progress.
+const IN_CONSTRUCTION = [
   { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker, everything we need to resolve, so nothing gets lost.' },
   { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
   { href: '/admin/automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },
   { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
-  { href: '/admin/view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level (admin, team leader, user) side by side.' },
 ] as const
+
+type AdminCard = (typeof ACTIVE)[number] | (typeof IN_CONSTRUCTION)[number]
+
+function CardGrid({ cards }: { cards: readonly AdminCard[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map(card => (
+        <Link
+          key={card.href}
+          href={card.href}
+          className="group rounded-2xl border border-slate-200 bg-white p-[22px] shadow-sm transition-all hover:-translate-y-[3px] hover:border-tn-teal hover:shadow-md"
+        >
+          <div className="flex items-start justify-between gap-2.5">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-tn-teal-soft text-tn-teal">
+              {card.icon}
+            </span>
+            <span className="inline-flex items-center gap-1 font-(family-name:--font-display) font-extrabold text-[13px] text-tn-teal whitespace-nowrap">
+              Open
+              <span className="transition-transform group-hover:translate-x-0.5">{OpenArrow}</span>
+            </span>
+          </div>
+          <h2 className="mt-4 font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink">{card.title}</h2>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{card.description}</p>
+        </Link>
+      ))}
+    </div>
+  )
+}
 
 export default async function AdminPage() {
   if (!(await isCurrentUserAdmin())) redirect('/')
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <SystemHealthBanner />
       <div>
         <div className="flex items-center gap-2 text-sm text-muted mb-2">
@@ -94,31 +128,20 @@ export default async function AdminPage() {
         <p className="mt-1.5 text-muted">People, teams, and who can access what.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {CARDS.map(card => (
-          <Link
-            key={card.href}
-            href={card.href}
-            className="group rounded-2xl border border-slate-200 bg-white p-[22px] shadow-sm transition-all hover:-translate-y-[3px] hover:border-tn-teal hover:shadow-md"
-          >
-            <div className="flex items-start justify-between gap-2.5">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-tn-teal-soft text-tn-teal">
-                {card.icon}
-              </span>
-              <span className="inline-flex items-center gap-1 font-(family-name:--font-display) font-extrabold text-[13px] text-tn-teal whitespace-nowrap">
-                Open
-                <span className="transition-transform group-hover:translate-x-0.5">{OpenArrow}</span>
-              </span>
-            </div>
-            <h2 className="mt-4 font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink">{card.title}</h2>
-            <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{card.description}</p>
-          </Link>
-        ))}
-      </div>
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Active</h2>
+        <CardGrid cards={ACTIVE} />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">In construction</h2>
+        <CardGrid cards={IN_CONSTRUCTION} />
+      </section>
 
       <p className="text-[13px] leading-relaxed text-muted">
-        Access model: people join <strong className="font-bold text-foreground">teams</strong>, teams are granted access to{' '}
-        <strong className="font-bold text-foreground">projects</strong> with a role, all managed from the Directory.
+        Access model: each person has one <strong className="font-bold text-foreground">access level</strong>, which decides the
+        pages they reach, and the <strong className="font-bold text-foreground">teams</strong> they belong to decide which tools
+        appear inside them. Levels are set above; teams and their tools on the Directory.
       </p>
     </div>
   )
