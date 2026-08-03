@@ -1,16 +1,18 @@
 'use client'
 
 /**
- * RestrictedDirectory: the People directory as seen by non-privileged tiers
- * (team_leader, user). Part 4 of "People, Teams and Permissions".
+ * RestrictedDirectory: the People directory at levels 1 and 2 (see
+ * access/surfaces.ts). Level 3 gets the full DirectoryTabs instead.
+ *
+ * Level 1  the People list, scoped to the teams the viewer belongs to, and only
+ *          their own card is openable.
+ * Level 2  adds a Teams tab for those same teams, showing who can open which
+ *          tool, read-only.
  *
  * Read-only by construction: there are no edit affordances here, so none can
- * leak to a user who shouldn't have them. Everyone sees the org LIST (name,
- * title, team, photo, contact type, status). Only people in the viewer's scope,
- * themselves, and (for a team lead) their reports + led-team members, carry a
- * `detail` block and are openable. Sensitive comp/HR fields (rate, DOB, personal
- * contacts) are never sent to this view for anyone; the server builds this lean
- * shape so nothing sensitive reaches the browser.
+ * leak to someone who shouldn't have them. Sensitive comp/HR fields (rate, DOB,
+ * salary, address) are never sent to this view for anyone; the server builds
+ * this lean shape so nothing sensitive reaches the browser at all.
  */
 
 import { useState } from 'react'
@@ -24,6 +26,29 @@ export interface RestrictedPersonDetail {
   location: string | null
   hireDate: string | null
   employmentType: string | null
+}
+
+export interface RestrictedTeamMember {
+  id: string
+  name: string
+  title: string | null
+  avatarUrl: string | null
+  positionLabel: string
+}
+
+export interface RestrictedTeamTool {
+  label: string
+  /** 'lead' = only the team lead, 'all' = every member. */
+  audience: 'lead' | 'all'
+}
+
+export interface RestrictedTeam {
+  id: string
+  name: string
+  teamKey: TeamKey
+  members: RestrictedTeamMember[]
+  /** Level 2 only; null at level 1, which hides the tool-access block. */
+  tools: RestrictedTeamTool[] | null
 }
 
 export interface RestrictedPerson {
@@ -40,9 +65,19 @@ export interface RestrictedPerson {
 
 const EMPLOYMENT_LABEL: Record<string, string> = { us: 'US employee', contractor: 'Contractor' }
 
-export function RestrictedDirectory({ people, isLead }: { people: RestrictedPerson[]; isLead: boolean }) {
+export function RestrictedDirectory({
+  people,
+  teams,
+  showTeams,
+}: {
+  people: RestrictedPerson[]
+  teams: RestrictedTeam[]
+  /** Level 2, the Teams tab. Level 1 gets the People list on its own. */
+  showTeams: boolean
+}) {
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
+  const [tab, setTab] = useState<'people' | 'teams'>('people')
 
   const needle = q.trim().toLowerCase()
   const rows = needle
@@ -55,13 +90,36 @@ export function RestrictedDirectory({ people, isLead }: { people: RestrictedPers
 
   return (
     <div className="space-y-6">
-      <div className="max-w-[640px]">
+      <div className="max-w-[680px]">
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          The company directory. Open your own {isLead ? 'and your team’s ' : ''}profile for full details, everyone else shows name, role, and team.
+          {teams.length > 0
+            ? 'Your team, and your own profile. Open your card for the full details; everyone else shows name, role and team.'
+            : 'Your own profile. You are not on a team yet, so no colleagues are listed.'}
         </p>
       </div>
 
+      {showTeams && (
+        <div className="border-b border-slate-200 flex items-center gap-1">
+          {([['people', 'People'], ['teams', 'Teams']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              aria-current={tab === key ? 'page' : undefined}
+              className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
+                tab === key ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showTeams && tab === 'teams' && <TeamsView teams={teams} />}
+
+      <div className={showTeams && tab === 'teams' ? 'hidden' : 'contents'}>
       <input
         type="text"
         value={q}
@@ -103,6 +161,8 @@ export function RestrictedDirectory({ people, isLead }: { people: RestrictedPers
         })}
       </div>
 
+      </div>
+
       {open && open.detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-tn-ink/40" onClick={() => setOpenId(null)} />
@@ -138,6 +198,72 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
     <div className="flex items-start justify-between gap-4 py-2 border-b border-slate-50 last:border-0">
       <dt className="text-muted shrink-0">{label}</dt>
       <dd className="font-semibold text-foreground text-right min-w-0 truncate">{value || '-'}</dd>
+    </div>
+  )
+}
+
+// ── Teams tab (level 2) ─────────────────────────────────────────────────────
+// The viewer's own teams, read-only. The tool-access block is what separates
+// level 2 from level 1; it says who on the team can open each tool, without
+// any way to change it.
+function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
+  if (teams.length === 0) {
+    return (
+      <div className="rounded-[16px] border border-slate-200 bg-white px-5 py-12 text-center">
+        <p className="text-sm font-semibold text-tn-ink m-0">You are not on a team yet</p>
+        <p className="mt-1.5 text-[13px] text-muted m-0">Ask an admin to add you to one.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+      {teams.map(t => (
+        <div key={t.id} className="rounded-[16px] border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+          <div className="h-1.5" style={{ background: TEAM_COLOR[t.teamKey] }} />
+          <div className="p-5 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink m-0 truncate">{t.name}</h3>
+              <span className="shrink-0 text-[11px] text-muted">{t.members.length} {t.members.length === 1 ? 'member' : 'members'}</span>
+            </div>
+
+            <div className="space-y-2">
+              {t.members.map(m => (
+                <div key={m.id} className="flex items-center gap-2.5">
+                  <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={TEAM_COLOR[t.teamKey]} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-semibold text-foreground truncate">{m.name}</span>
+                    {m.title && <span className="block text-[11.5px] text-muted truncate">{m.title}</span>}
+                  </span>
+                  <span className="shrink-0 font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 bg-slate-100 text-slate-500">
+                    {m.positionLabel}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {t.tools && (
+              <div className="pt-3.5 border-t border-slate-100">
+                <p className="font-(family-name:--font-display) font-extrabold text-[10px] uppercase tracking-wide text-muted m-0 mb-2">Tool access</p>
+                {t.tools.length === 0 ? (
+                  <p className="text-[12.5px] text-muted m-0">No tools granted to this team.</p>
+                ) : (
+                  <ul className="space-y-1.5 list-none p-0 m-0">
+                    {t.tools.map(tool => (
+                      <li key={tool.label} className="flex items-center justify-between gap-2 text-[12.5px]">
+                        <span className="text-foreground truncate">{tool.label}</span>
+                        <span className="shrink-0 font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 bg-tn-teal-soft text-tn-teal">
+                          {tool.audience === 'lead' ? 'Lead only' : 'Whole team'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

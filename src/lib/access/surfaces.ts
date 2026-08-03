@@ -42,7 +42,6 @@ export interface Surface {
 
 const ON: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: true, user: true }
 const PRIV: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: false, user: false }
-const LEAD: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: true, user: false }
 
 export const SURFACES: readonly Surface[] = [
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -62,29 +61,30 @@ export const SURFACES: readonly Surface[] = [
   { key: 'admin', label: 'Admin', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
 
   // ── People directory ──────────────────────────────────────────────────────
-  // The list of names is visible to everyone, always. These rows control who
-  // can OPEN a card, meaning see that person's details.
+  // Three cumulative levels rather than independent switches, because that is
+  // how the screens actually stack. Level 1 is the floor everyone gets; each
+  // row below adds to it. See directoryLevel() for the resolution.
   {
-    key: 'dir-own',
-    label: 'Open their own card',
+    key: 'dir-base',
+    label: 'Level 1, their own team and their own card',
     group: 'People directory',
     locked: 'always',
     defaults: ON,
-    note: 'The list of everyone is always visible. This is about opening a card to see the details behind it.',
+    note: 'The People list shows the members of the teams they belong to (all of them, if several) and they can open only their own card. Someone in no team sees just themselves.',
   },
   {
-    key: 'dir-reports',
-    label: "Open their reports' and their team's cards",
-    group: 'People directory',
-    defaults: LEAD,
-    note: 'Shows manager, work email, phone, location, hire date and contract type. Never salary or home address.',
-  },
-  {
-    key: 'dir-anyone',
-    label: 'Open anyone’s card, with the full admin view',
+    key: 'dir-teams-config',
+    label: 'Level 2, also see tool access on their teams',
     group: 'People directory',
     defaults: PRIV,
-    note: 'The whole directory: every card, the Emails, Teams, Rates & Costs and Access log tabs, and the sensitive fields (salaries, internal rates, home address, date of birth). These come as one, the screens do not separate them.',
+    note: 'Adds the Teams tab for their own teams, including who can open which tool, read-only. Still no Emails, Rates & Costs or Access log.',
+  },
+  {
+    key: 'dir-full',
+    label: 'Level 3, the full directory, and edit it',
+    group: 'People directory',
+    defaults: PRIV,
+    note: 'Everyone’s card, every team, all tabs (Emails, Teams, Rates & Costs, Access log), the sensitive fields (salaries, internal rates, home address, date of birth), and the ability to change them.',
   },
 
   // ── Clients Reports ───────────────────────────────────────────────────────
@@ -126,4 +126,19 @@ export function surfaceAllowed(
   if (surface.locked === 'admin') return false
   const set = configured.get(`${role}:${key}`)
   return set ?? surface.defaults[role as ConfigurableRole] ?? false
+}
+
+/**
+ * The three People-directory levels, resolved from the cumulative rows.
+ *
+ *   1 = their own team's list, their own card (the floor, always granted)
+ *   2 = + the Teams tab for their own teams, tool access read-only
+ *   3 = + the whole directory, every tab, the sensitive fields, and editing
+ */
+export type DirectoryLevel = 1 | 2 | 3
+
+export function directoryLevel(can: (surfaceKey: string) => boolean): DirectoryLevel {
+  if (can('dir-full')) return 3
+  if (can('dir-teams-config')) return 2
+  return 1
 }

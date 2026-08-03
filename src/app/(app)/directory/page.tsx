@@ -4,20 +4,20 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
-import { RestrictedDirectory, type RestrictedPerson } from '@/components/admin/RestrictedDirectory'
-import { teamKeyFromName, TEAM_COLOR, initialsOf, teamPositionRank, teamPositionLeads, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
+import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
+import { teamKeyFromName, TEAM_COLOR, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/components/admin/people-types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { ToolAudience } from '@/lib/access/tools'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { tierOf } from '@/lib/auth/tier'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
+import { directoryLevel } from '@/lib/access/surfaces'
+import { TOOLS } from '@/lib/access/tools'
 
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
@@ -41,10 +41,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   if (!user) redirect('/login')
   // ?open=<personId>, deep-link a person's card open (e.g. from Human Resources).
   const openId = (await searchParams).open ?? null
-  // Directory is open to everyone now (Part 4); the tier decides the view,
-  // privileged get the full admin tabs, everyone else the read-only list below.
-  const [isAdmin, mePerson] = await Promise.all([isCurrentUserAdmin(), loadCurrentPerson(supabase, user)])
-  const tier = tierOf(isAdmin ? 'admin' : (mePerson?.roleType ?? 'user'))
+  // Directory is reachable by everyone; the configured directory level decides
+  // the view (see access/surfaces.ts): level 3 gets the full admin tabs,
+  // levels 1 and 2 the read-only, team-scoped list below.
+  const mePerson = await loadCurrentPerson(supabase, user)
 
   // People with graceful degradation, then the rest in parallel.
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
@@ -339,30 +339,29 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  // ── Anyone without "open anyone's card": read-only, scoped list ──
-  // The list itself is always visible. Who carries a detail block is
-  // configured on Admin -> Access levels: 'dir-own' is always on, and
-  // 'dir-reports' adds their reports and the teams they lead.
-  const canOpenAnyone = access.can('dir-anyone')
-  const canOpenReports = access.can('dir-reports')
-  if (!canOpenAnyone) {
+  // ── Levels 1 and 2: read-only, scoped to the viewer's own teams ──
+  // Level 3 ('dir-full') falls through to the full DirectoryTabs below.
+  // Level 1  the People list for the teams they belong to; only their own card
+  //          opens. Someone on no team sees just themselves.
+  // Level 2  adds a Teams tab for those same teams, with tool access read-only.
+  const level = directoryLevel(access.can)
+  if (level < 3) {
     const viewerId = mePerson?.id ?? null
-    const scope = new Set<string>()
-    if (viewerId) {
-      scope.add(viewerId)
-      if (canOpenReports && tier.isLead) {
-        for (const p of people) {
-          if (str(p.manager_id) === viewerId || str(p.also_reports_to_id) === viewerId) scope.add(p.id)
-        }
-        const myTeamIds = leadTeamIdsByPerson.get(viewerId) ?? new Set<string>()
-        for (const m of members) if (myTeamIds.has(m.team_id)) scope.add(m.person_id)
-      }
-    }
+
+    // The viewer's teams (all of them, if several) and everyone in them.
+    const myTeamIds = new Set<string>(
+      viewerId ? members.filter(m => m.person_id === viewerId).map(m => m.team_id) : [],
+    )
+    const visible = new Set<string>(viewerId ? [viewerId] : [])
+    for (const m of members) if (myTeamIds.has(m.team_id)) visible.add(m.person_id)
+
     const dirPeople: RestrictedPerson[] = people
-      .filter(p => p.status !== 'inactive')
+      .filter(p => p.status !== 'inactive' && visible.has(p.id))
       .map((p): RestrictedPerson => {
         const pt = primaryTeam(p.id)
         const mgrId = str(p.manager_id)
+        // Only the viewer's own card carries detail, at both levels.
+        const isSelf = p.id === viewerId
         return {
           id: p.id,
           name: p.full_name,
@@ -372,7 +371,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           avatarUrl: avatarById.get(p.id) ?? null,
           roleType: roleTypeById.get(p.id) ?? 'user',
           status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
-          detail: scope.has(p.id)
+          detail: isSelf
             ? {
                 managerName: mgrId ? nameById.get(mgrId) ?? null : null,
                 workEmail: str(p.email_true_north) ?? str(p.email_goodnews) ?? str(p.email_coe),
@@ -386,6 +385,34 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       })
       .sort((a, b) => a.name.localeCompare(b.name))
 
+    // The Teams tab (level 2). Tool labels come from the catalogue so an
+    // unknown/retired key never leaks a raw slug into the UI.
+    const toolLabel = new Map(TOOLS.map(t => [t.key, t.label]))
+    const dirTeams: RestrictedTeam[] = teams
+      .filter(t => myTeamIds.has(t.id))
+      .map((t): RestrictedTeam => ({
+        id: t.id,
+        name: t.name,
+        teamKey: teamKeyFromName(t.name),
+        members: members
+          .filter(m => m.team_id === t.id)
+          .map(m => ({
+            id: m.person_id,
+            name: nameById.get(m.person_id) ?? 'Unknown',
+            title: str(people.find(p => p.id === m.person_id)?.title ?? null),
+            avatarUrl: avatarById.get(m.person_id) ?? null,
+            positionLabel: TEAM_POSITION_LABEL[(m as { position?: string }).position ?? 'collaborator'] ?? 'Collaborator',
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+        tools: level >= 2
+          ? (toolsByTeam.get(t.id) ?? []).map(g => ({
+              label: toolLabel.get(g.toolKey) ?? g.toolKey,
+              audience: g.audience,
+            }))
+          : null,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-[13px] text-muted">
@@ -393,7 +420,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           <span className="text-slate-300">/</span>
           <span className="font-semibold text-tn-ink">People</span>
         </div>
-        <RestrictedDirectory people={dirPeople} isLead={canOpenReports && tier.isLead} />
+        <RestrictedDirectory people={dirPeople} teams={dirTeams} showTeams={level >= 2} />
       </div>
     )
   }
