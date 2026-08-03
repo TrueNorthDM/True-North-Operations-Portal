@@ -62,12 +62,30 @@ export const SURFACES: readonly Surface[] = [
   { key: 'admin', label: 'Admin', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
 
   // ── People directory ──────────────────────────────────────────────────────
-  { key: 'dir-own', label: 'Open their own card', group: 'People directory', locked: 'always', defaults: ON },
-  { key: 'dir-reports', label: "Open their reports' and their team's cards", group: 'People directory', defaults: LEAD },
-  { key: 'dir-anyone', label: "Open anyone's card", group: 'People directory', defaults: PRIV },
-  { key: 'dir-tabs', label: 'Emails, Teams, Rates & Costs and Access log tabs', group: 'People directory', defaults: PRIV },
-  { key: 'dir-salary', label: 'See salaries and internal rates', group: 'People directory', defaults: PRIV },
-  { key: 'dir-personal', label: 'See home address and date of birth', group: 'People directory', defaults: PRIV },
+  // The list of names is visible to everyone, always. These rows control who
+  // can OPEN a card, meaning see that person's details.
+  {
+    key: 'dir-own',
+    label: 'Open their own card',
+    group: 'People directory',
+    locked: 'always',
+    defaults: ON,
+    note: 'The list of everyone is always visible. This is about opening a card to see the details behind it.',
+  },
+  {
+    key: 'dir-reports',
+    label: "Open their reports' and their team's cards",
+    group: 'People directory',
+    defaults: LEAD,
+    note: 'Shows manager, work email, phone, location, hire date and contract type. Never salary or home address.',
+  },
+  {
+    key: 'dir-anyone',
+    label: 'Open anyone’s card, with the full admin view',
+    group: 'People directory',
+    defaults: PRIV,
+    note: 'The whole directory: every card, the Emails, Teams, Rates & Costs and Access log tabs, and the sensitive fields (salaries, internal rates, home address, date of birth). These come as one, the screens do not separate them.',
+  },
 
   // ── Clients Reports ───────────────────────────────────────────────────────
   {

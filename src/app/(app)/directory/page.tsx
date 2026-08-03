@@ -34,7 +34,7 @@ const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/l
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
-  await requireSurface('directory')
+  const access = await requireSurface('directory')
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -339,15 +339,18 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  // ── Non-privileged tiers: read-only, scoped list (Part 4) ──
-  // The list is visible to all; only self (user) or self + reports/led-team
-  // members (lead) carry a detail block, and comp/HR is never sent for anyone.
-  if (!tier.isPrivileged) {
+  // ── Anyone without "open anyone's card": read-only, scoped list ──
+  // The list itself is always visible. Who carries a detail block is
+  // configured on Admin -> Access levels: 'dir-own' is always on, and
+  // 'dir-reports' adds their reports and the teams they lead.
+  const canOpenAnyone = access.can('dir-anyone')
+  const canOpenReports = access.can('dir-reports')
+  if (!canOpenAnyone) {
     const viewerId = mePerson?.id ?? null
     const scope = new Set<string>()
     if (viewerId) {
       scope.add(viewerId)
-      if (tier.isLead) {
+      if (canOpenReports && tier.isLead) {
         for (const p of people) {
           if (str(p.manager_id) === viewerId || str(p.also_reports_to_id) === viewerId) scope.add(p.id)
         }
@@ -390,7 +393,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           <span className="text-slate-300">/</span>
           <span className="font-semibold text-tn-ink">People</span>
         </div>
-        <RestrictedDirectory people={dirPeople} isLead={tier.isLead} />
+        <RestrictedDirectory people={dirPeople} isLead={canOpenReports && tier.isLead} />
       </div>
     )
   }
