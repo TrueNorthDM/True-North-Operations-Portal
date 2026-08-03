@@ -7,7 +7,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentTier } from '@/lib/auth/role'
-import { currentYearMonth } from '@/lib/tsheets/report'
+import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
@@ -146,31 +146,36 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
     )
   }
 
-  if (!data?.report) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center space-y-2">
-        <p className="font-semibold text-slate-700">No i7 hours for {selectedMonth} yet</p>
-        <p className="text-sm text-slate-500">
-          Nothing is cached for this month. New data is pulled from QuickBooks Time automatically in the background, or run a sync now from <Link href="/settings" className="underline">Settings</Link>.
-        </p>
-      </div>
-    )
-  }
-
   const tier = await getCurrentTier()
+
+  // A month with no logged hours still shows the full report (month picker,
+  // budget/carryover, charts), just with an empty hours table, instead of a
+  // dead-end message. This keeps the report reachable and the month filter
+  // usable even before the current month has any hours, matching the dashboard
+  // widget, which already shows the budget for such months.
+  const report = data?.report ?? emptyReport(selectedMonth, (data?.stdRate ?? 0) > 0)
 
   return (
     <I7ReportView
-      data={data.report}
+      data={report}
       selectedMonth={selectedMonth}
       availableMonths={availableMonths}
-      projectHours={data.projectHours}
-      carryover={data.carryover}
-      stdRate={data.stdRate}
-      trend={data.trend}
-      note={data.note}
+      projectHours={data?.projectHours ?? {}}
+      carryover={data?.carryover ?? null}
+      stdRate={data?.stdRate ?? 0}
+      trend={data?.trend ?? []}
+      note={data?.note ?? ''}
       canEditNote={tier.isPrivileged}
       canExport={tier.isPrivileged}
     />
   )
+}
+
+// A zero-hours report for a month with nothing cached yet, so the page still
+// renders its shell (picker, budget) with an empty hours table.
+function emptyReport(ym: string, hasRates: boolean): I7Report {
+  const { startDate, endDate } = monthBounds(ym)
+  const [y, m] = ym.split('-').map(Number)
+  const month = new Date(Date.UTC(y, m - 1, 1)).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  return { month, startDate, endDate, projects: [], people: [], totalHours: 0, totalCost: 0, hasRates }
 }
