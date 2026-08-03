@@ -74,7 +74,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
   return (
     <div>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-[18px]">
-        <p className="text-[13.5px] text-muted max-w-[600px] leading-relaxed">
+        <p className="text-[13.5px] text-muted leading-relaxed">
           Create teams and add members. Each member has a <b className="text-foreground font-semibold">Team Position</b> here (Team Leader or Collaborator), separate from their <b className="text-foreground font-semibold">Contact type</b> (portal access). A person can be in several teams with a different position in each.
         </p>
         <button type="button" onClick={() => setDialog({ mode: 'new' })} disabled={pending}
@@ -90,7 +90,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-0.5">Team Position is not portal access</div>
-            <p className="text-[12.5px] text-muted leading-relaxed max-w-[70ch] m-0">
+            <p className="text-[12.5px] text-muted leading-relaxed m-0">
               The pills on the member cards below (Founder, Manager, Team&nbsp;Leader, Collaborator) say what someone does
               <b className="text-foreground font-semibold"> inside this team</b>. What they can open in the portal is their
               <b className="text-foreground font-semibold"> contact type</b>, set per person and explained in full on the Access levels page.

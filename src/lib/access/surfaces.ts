@@ -57,7 +57,9 @@ export const SURFACES: readonly Surface[] = [
   { key: 'my-work', label: 'My Work', group: 'Navigation', defaults: ON },
   { key: 'directory', label: 'People directory', group: 'Navigation', defaults: ON },
   { key: 'human-resources', label: 'Human Resources', group: 'Navigation', defaults: PRIV },
-  { key: 'settings', label: 'Settings', group: 'Navigation', defaults: PRIV },
+  // Settings holds the budgets, the hourly rates and the API tokens, so it is
+  // locked to admin rather than left configurable.
+  { key: 'settings', label: 'Settings', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
   { key: 'admin', label: 'Admin', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
 
   // ── People directory ──────────────────────────────────────────────────────
@@ -95,8 +97,10 @@ export const SURFACES: readonly Surface[] = [
     defaults: PRIV,
     note: 'Also requires the Clients Reports tool on one of their teams.',
   },
-  { key: 'report-export', label: 'Export (PDF, CSV, image) and Team Update', group: 'Clients Reports', defaults: PRIV },
-  { key: 'report-note', label: "Edit the month's note", group: 'Clients Reports', defaults: PRIV },
+  // Exporting hands out the full budget and per-person cost detail, and the
+  // note is published on the client report, so both stay with admin.
+  { key: 'report-export', label: 'Export (PDF, CSV, image) and Team Update', group: 'Clients Reports', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
+  { key: 'report-note', label: "Edit the month's note", group: 'Clients Reports', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
 
   // ── Managing (admin only, never configurable) ─────────────────────────────
   { key: 'manage-people', label: 'Add or edit people and teams', group: 'Managing', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },

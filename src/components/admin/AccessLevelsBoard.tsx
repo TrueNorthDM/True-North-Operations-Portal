@@ -22,7 +22,7 @@ import { LEVELS, KNOWN_GAPS } from '@/lib/access/levels'
 import { SURFACES, SURFACE_GROUPS, CONFIGURABLE_ROLES, type ConfigurableRole } from '@/lib/access/surfaces'
 import type { RoleType } from '@/lib/auth/tier'
 import { setPersonRoleType, syncAllRoleTypes } from '@/app/(app)/admin/people/actions'
-import { setSurfaceAllowed } from '@/app/(app)/admin/access-levels/actions'
+import { saveSurfaceChanges } from '@/app/(app)/admin/access-levels/actions'
 
 export interface AccessPerson {
   id: string
@@ -62,42 +62,28 @@ function StaticCell({ on, reason }: { on: boolean; reason: string }) {
   )
 }
 
-/** An editable cell: click to flip this level's access to this surface. */
+/**
+ * An editable cell, only rendered in edit mode. It flips a DRAFT value; nothing
+ * reaches the server until Save, so a half-finished set of rules never goes
+ * live and a mistake costs nothing to abandon.
+ */
 function ToggleCell({
-  role, surfaceKey, label, on, onSaved,
-}: { role: ConfigurableRole; surfaceKey: string; label: string; on: boolean; onSaved: () => void }) {
-  const [pending, startTransition] = useTransition()
-  const [failed, setFailed] = useState(false)
-
-  function flip() {
-    setFailed(false)
-    startTransition(async () => {
-      try {
-        await setSurfaceAllowed(role, surfaceKey, !on)
-        onSaved()
-      } catch {
-        setFailed(true)
-      }
-    })
-  }
-
+  label, on, changed, onFlip,
+}: { label: string; on: boolean; changed: boolean; onFlip: () => void }) {
   return (
     <button
       type="button"
-      onClick={flip}
-      disabled={pending}
+      onClick={onFlip}
       aria-pressed={on}
       title={`${label}: click to ${on ? 'block' : 'allow'}`}
-      className={`inline-flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110 disabled:opacity-50 ${
-        failed
-          ? 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]'
-          : on
-            ? 'bg-tn-teal-soft text-tn-teal hover:bg-tn-teal hover:text-white'
-            : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-      }`}
+      className={`inline-flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110 ${
+        on
+          ? 'bg-tn-teal-soft text-tn-teal hover:bg-tn-teal hover:text-white'
+          : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+      } ${changed ? 'ring-2 ring-offset-1 ring-[var(--bdg-gold-fg)]' : ''}`}
     >
-      {failed ? '!' : on ? <Tick /> : <Dash />}
-      <span className="sr-only">{label}, {on ? 'allowed' : 'not allowed'}</span>
+      {on ? <Tick /> : <Dash />}
+      <span className="sr-only">{label}, {on ? 'allowed' : 'not allowed'}{changed ? ', changed' : ''}</span>
     </button>
   )
 }
@@ -222,12 +208,61 @@ export function AccessLevelsBoard({
   const [filter, setFilter] = useState<RoleType | 'all'>('all')
   const onChanged = () => router.refresh()
 
+  // View by default; Edit stages changes in `draft` and Save commits them all.
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Record<string, boolean>>({})
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   // A surface with no stored row falls back to the catalogue default, so a new
   // surface behaves sensibly before anyone touches it.
-  const allowed = (role: ConfigurableRole, key: string): boolean => {
+  const saved = (role: ConfigurableRole, key: string): boolean => {
     const stored = configured[`${role}:${key}`]
     if (stored !== undefined) return stored
     return SURFACES.find(s => s.key === key)?.defaults[role] ?? false
+  }
+  // What the matrix shows: the draft while editing, otherwise what is stored.
+  const allowed = (role: ConfigurableRole, key: string): boolean =>
+    draft[`${role}:${key}`] ?? saved(role, key)
+  const isChanged = (role: ConfigurableRole, key: string): boolean =>
+    `${role}:${key}` in draft
+
+  const changes = Object.entries(draft).map(([k, allowedValue]) => {
+    const [roleType, surfaceKey] = k.split(':')
+    return { roleType, surfaceKey, allowed: allowedValue }
+  })
+
+  function flip(role: ConfigurableRole, key: string) {
+    const id = `${role}:${key}`
+    setDraft(d => {
+      const next = { ...d }
+      const wanted = !allowed(role, key)
+      // Flipping back to the stored value drops the entry, so "0 changes"
+      // really means nothing to save.
+      if (wanted === saved(role, key)) delete next[id]
+      else next[id] = wanted
+      return next
+    })
+  }
+
+  function cancel() {
+    setDraft({})
+    setSaveError(null)
+    setEditing(false)
+  }
+
+  function save() {
+    setSaveError(null)
+    startSaving(async () => {
+      try {
+        await saveSurfaceChanges(changes)
+        setDraft({})
+        setEditing(false)
+        onChanged()
+      } catch (e) {
+        setSaveError(e instanceof Error ? e.message : 'Could not save the changes')
+      }
+    })
   }
 
   const countOf = (key: RoleType) => people.filter(p => p.roleType === key).length
@@ -237,13 +272,55 @@ export function AccessLevelsBoard({
     <div className="space-y-10">
       {/* ── Editable matrix ─────────────────────────────────────────────── */}
       <section className="space-y-4">
-        <div>
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">What each level can do</h2>
-          <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0 max-w-[80ch]">
-            Click a tick to allow or block that page for that level. Changes apply the next time the person loads a
-            page. <strong className="font-semibold text-tn-ink">Admin</strong> is not listed because it always has
-            everything, which is what makes it impossible to lock yourself out.
-          </p>
+        <div className="flex items-end justify-between gap-6 flex-wrap">
+          <div className="min-w-0">
+            <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">What each level can do</h2>
+            <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0">
+              {editing
+                ? 'Click a tick to allow or block that page. Nothing is applied until you press Save.'
+                : 'What each level reaches today. Press Edit to change it.'}
+              {' '}<strong className="font-semibold text-tn-ink">Admin</strong> is not listed because it always has everything, which is what makes it impossible to lock yourself out.
+            </p>
+            {saveError && <p className="mt-1.5 text-[12.5px] text-red-600 m-0">{saveError}</p>}
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {editing && (
+              <span className="text-[12.5px] text-muted tabular-nums">
+                {changes.length === 0 ? 'No changes' : `${changes.length} ${changes.length === 1 ? 'change' : 'changes'}`}
+              </span>
+            )}
+            {editing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={cancel}
+                  disabled={saving}
+                  className="inline-flex items-center rounded-full px-[15px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] border border-slate-200 text-foreground hover:border-slate-300 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving || changes.length === 0}
+                  className="inline-flex items-center gap-2 rounded-full px-[17px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] bg-tn-primary border border-tn-primary text-white shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px disabled:opacity-50 disabled:translate-y-0"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+                  <span className="text-[#ffffff]">{saving ? 'Saving…' : 'Save'}</span>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-2 rounded-full px-[17px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] bg-tn-primary border border-tn-primary text-white shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                <span className="text-[#ffffff]">Edit</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white">
@@ -275,7 +352,7 @@ export function AccessLevelsBoard({
                             {sf.locked === 'always' && <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 rounded-[5px] px-1.5 py-0.5">Always on</span>}
                             {sf.locked === 'admin' && <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--bdg-purple-fg)] bg-[var(--bdg-purple-bg)] rounded-[5px] px-1.5 py-0.5">Admin only</span>}
                           </span>
-                          {sf.note && <p className="mt-1 text-[12px] text-muted leading-relaxed m-0 max-w-[52ch]">{sf.note}</p>}
+                          {sf.note && <p className="mt-1 text-[12px] text-muted leading-relaxed m-0">{sf.note}</p>}
                         </td>
                         {CONFIGURABLE_ROLES.map(r => {
                           const on = allowed(r, sf.key)
@@ -286,14 +363,15 @@ export function AccessLevelsBoard({
                                   on={sf.locked === 'always'}
                                   reason={sf.locked === 'always' ? 'always on for everyone' : 'admin only'}
                                 />
-                              ) : (
+                              ) : editing ? (
                                 <ToggleCell
-                                  role={r}
-                                  surfaceKey={sf.key}
-                                  label={sf.label}
+                                  label={`${sf.label}, ${r}`}
                                   on={on}
-                                  onSaved={onChanged}
+                                  changed={isChanged(r, sf.key)}
+                                  onFlip={() => flip(r, sf.key)}
                                 />
+                              ) : (
+                                <StaticCell on={on} reason={on ? 'allowed' : 'not allowed'} />
                               )}
                             </td>
                           )
@@ -313,7 +391,7 @@ export function AccessLevelsBoard({
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">Who has which level</h2>
-            <p className="mt-1 mb-2.5 text-[13.5px] text-muted leading-relaxed max-w-[74ch]">
+            <p className="mt-1 mb-2.5 text-[13.5px] text-muted leading-relaxed">
               Changing a level here sets both the interface and the security role, so it takes effect the next time
               that person loads a page. For anyone who has never signed in, it lands on their first login.
             </p>

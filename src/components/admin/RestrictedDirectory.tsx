@@ -90,7 +90,7 @@ export function RestrictedDirectory({
 
   return (
     <div className="space-y-6">
-      <div className="max-w-[680px]">
+      <div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
           {teams.length > 0
