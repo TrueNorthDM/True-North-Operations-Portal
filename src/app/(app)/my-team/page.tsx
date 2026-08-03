@@ -1,0 +1,31 @@
+// My team: the signed-in person's own team, always at directory Level 1.
+//
+// Reached from the avatar menu, next to My profile. Unlike /directory, which
+// renders whatever their access level allows, this is deliberately the same
+// personal view for everyone including admins: the people on their teams, with
+// only their own card openable. No gate, it only ever shows you your own team.
+
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { loadMyTeam } from '@/lib/directory/my-team'
+import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
+
+export const dynamic = 'force-dynamic'
+
+export default async function MyTeamPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { people } = await loadMyTeam(supabase, user)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 text-[13px] text-muted">
+        <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
+        <span className="text-slate-300">/</span>
+        <span className="font-semibold text-tn-ink">My team</span>
+      </div>
+
+      <RestrictedDirectory people={people} teams={[]} showTeams={false} />
+    </div>
+  )
+}

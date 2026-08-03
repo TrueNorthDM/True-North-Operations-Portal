@@ -209,6 +209,14 @@ h1, h2, h3 {
   --color-stone-100: #16294a;
   --color-stone-600: #c4d2e6;
 
+  /* Hairlines. slate-100 does double duty: a "light fill" (progress tracks,
+     chips) and the rule between rows. Mirrored to #16294a it works as a fill,
+     but it lands LIGHTER than the card surface (#101f37), so every divider
+     reads as a bright line instead of a hairline. Overriding only the BORDER
+     use keeps the fills intact, and alpha means one value works on cards, on
+     the subtle fill and on the canvas alike. */
+  --hairline: rgba(255, 255, 255, .055);
+
   /* Tonal pairs used by badges, banners and stat cards */
   --color-red-50: #2b1413;
   --color-red-100: #3a1d1b;
@@ -370,3 +378,9 @@ h1, h2, h3 {
      flatten the per-page margins to zero. Content flows naturally, so the page
      count adapts to the data. */
 }
+
+/* Applies the hairline to the divider utilities. Kept out of the palette block
+   above because it overrides a utility rather than a colour token: the same
+   class must stay a fill when used as a background. */
+.dark .border-slate-100 { border-color: var(--hairline); }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--hairline); }

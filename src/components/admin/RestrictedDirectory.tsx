@@ -93,7 +93,7 @@ export function RestrictedDirectory({
       <div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          {teams.length > 0
+          {people.length > 1
             ? 'Your team, and your own profile. Open your card for the full details; everyone else shows name, role and team.'
             : 'Your own profile. You are not on a team yet, so no colleagues are listed.'}
         </p>
