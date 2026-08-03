@@ -17,7 +17,7 @@
 import { Fragment, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
-import { PILL_CLASS, roleTypePill, initialsOf } from '@/components/admin/people-types'
+import { initialsOf } from '@/components/admin/people-types'
 import { LEVELS, KNOWN_GAPS } from '@/lib/access/levels'
 import { SURFACES, SURFACE_GROUPS, CONFIGURABLE_ROLES, type ConfigurableRole } from '@/lib/access/surfaces'
 import type { RoleType } from '@/lib/auth/tier'
@@ -38,11 +38,6 @@ export interface AccessPerson {
 
 /** The security role a level is supposed to map to (migration 038's rule). */
 const expectedRole = (r: RoleType) => (r === 'admin' || r === 'admin_assistant' ? 'admin' : 'viewer')
-
-const pillFor = (key: RoleType) => {
-  const p = roleTypePill(key)
-  return PILL_CLASS[p.kind]
-}
 
 // ── Matrix cells ───────────────────────────────────────────────────────────
 const Tick = () => (
@@ -240,33 +235,6 @@ export function AccessLevelsBoard({
 
   return (
     <div className="space-y-10">
-      {/* ── The four levels ─────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">The four levels</h2>
-          <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0">
-            Every person has one <strong className="font-semibold text-tn-ink">contact type</strong>, which is their portal access.
-            It is separate from their <strong className="font-semibold text-tn-ink">team position</strong> (Founder, Manager, Team Leader,
-            Collaborator), which only says what they do inside a team and grants no access on its own.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {LEVELS.map(l => (
-            <div key={l.key} className="rounded-2xl border border-slate-200 bg-white p-[18px]">
-              <div className="flex items-center justify-between gap-2">
-                <span className={`inline-flex items-center text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 ${pillFor(l.key)}`}>
-                  {l.label}
-                </span>
-                <span className="text-[12.5px] font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">
-                  {countOf(l.key)}
-                </span>
-              </div>
-              <p className="mt-2.5 text-[13px] text-muted leading-relaxed m-0">{l.summary}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── Editable matrix ─────────────────────────────────────────────── */}
       <section className="space-y-4">
         <div>
