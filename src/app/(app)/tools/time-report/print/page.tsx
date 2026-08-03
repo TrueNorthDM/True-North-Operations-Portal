@@ -5,7 +5,7 @@
 
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { getCurrentTier } from '@/lib/auth/role'
+import { loadAccess } from '@/lib/access/resolve'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -38,7 +38,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function ReportPrintPage({ searchParams }: Props) {
   // Same gate as the Export buttons that lead here: this layout carries the
   // full budget and (for `internal`) per-person cost detail.
-  if (!(await getCurrentTier()).isPrivileged) redirect('/tools/time-report')
+  if (!(await loadAccess()).can('report-export')) redirect('/tools/time-report')
 
   const { month, type } = await searchParams
   const selectedMonth = resolveMonth(month)

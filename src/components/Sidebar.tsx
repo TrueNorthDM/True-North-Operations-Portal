@@ -145,6 +145,28 @@ const hrNav: Item = {
   match: p => p === '/human-resources' || p.startsWith('/human-resources/'),
 }
 
+const settingsNav: Item = {
+  href: '/settings',
+  label: 'Settings',
+  icon: SettingsIcon,
+  match: p => p === '/settings' || p.startsWith('/settings/'),
+}
+
+// Rail order, split into the top group and the management group at the bottom.
+// Keys match access/surfaces.ts, the layout passes the allowed ones.
+const TOP: readonly { key: string; item: Item }[] = [
+  { key: 'home', item: home },
+  { key: 'tools', item: toolsDash },
+  { key: 'projects', item: projectsNav },
+  { key: 'my-work', item: myWorkNav },
+  { key: 'directory', item: directoryNav },
+]
+const BOTTOM: readonly { key: string; item: Item }[] = [
+  { key: 'human-resources', item: hrNav },
+  { key: 'admin', item: adminNav },
+  { key: 'settings', item: settingsNav },
+]
+
 function NavLink({ item, active }: { item: Item; active: boolean }) {
   const router = useRouter()
   return (
@@ -175,40 +197,30 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
   )
 }
 
-export function Sidebar({ isPrivileged = false }: { isPrivileged?: boolean }) {
+/**
+ * `allowed` is the set of surface keys this person may reach, resolved in the
+ * layout from Admin → Access levels. The rail renders only those, so hiding an
+ * item and blocking its route now come from the same configuration.
+ */
+export function Sidebar({ allowed }: { allowed: readonly string[] }) {
   const pathname = usePathname()
+  const on = new Set(allowed)
+  const top = TOP.filter(n => on.has(n.key))
+  const bottom = BOTTOM.filter(n => on.has(n.key))
 
   return (
     // Icon-only rail. No overflow clipping, so the hover tooltips can extend
     // past the rail to the right (the few items always fit vertically).
     <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] z-30">
       <nav className="py-3 space-y-1.5">
-        <NavLink item={home} active={home.match(pathname)} />
-        <NavLink item={toolsDash} active={toolsDash.match(pathname)} />
-        <NavLink item={projectsNav} active={projectsNav.match(pathname)} />
-        <NavLink item={myWorkNav} active={myWorkNav.match(pathname)} />
-        {/* Directory is visible to everyone (Part 4), the page itself tiers the
-            view: privileged see all, team leaders their reports, users only self. */}
-        <NavLink item={directoryNav} active={directoryNav.match(pathname)} />
+        {top.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
       </nav>
 
-      <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">
-        {/* Human Resources + Admin + Settings are management surfaces, only the
-            privileged tiers (admin, admin_assistant) see them. */}
-        {isPrivileged && <NavLink item={hrNav} active={hrNav.match(pathname)} />}
-        {isPrivileged && <NavLink item={adminNav} active={adminNav.match(pathname)} />}
-        {isPrivileged && (
-          <NavLink
-            item={{
-              href: '/settings',
-              label: 'Settings',
-              icon: SettingsIcon,
-              match: p => p === '/settings' || p.startsWith('/settings/'),
-            }}
-            active={pathname === '/settings' || pathname.startsWith('/settings/')}
-          />
-        )}
-      </div>
+      {bottom.length > 0 && (
+        <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">
+          {bottom.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
+        </div>
+      )}
     </aside>
   )
 }

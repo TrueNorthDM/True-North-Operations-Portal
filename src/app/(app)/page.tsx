@@ -8,7 +8,7 @@ import { HomeWidgets } from '@/components/home/HomeWidgets'
 import { WelcomeBanner } from '@/components/home/WelcomeBanner'
 import { OrgChart } from '@/components/OrgChart'
 import { getOrgChart } from '@/lib/org/data'
-import { getCurrentTier } from '@/lib/auth/role'
+import { loadAccess } from '@/lib/access/resolve'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
 import { Anniversaries } from '@/components/home/Anniversaries'
@@ -21,10 +21,13 @@ import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const [org, tier, me, celebPeople] = await Promise.all([getOrgChart(), getCurrentTier(), loadCurrentPerson(supabase, user), loadCelebrationPeople()])
-  // i7 budget at a glance, privileged only (sensitive $), for the current month.
+  const [org, access, me, celebPeople] = await Promise.all([getOrgChart(), loadAccess(), loadCurrentPerson(supabase, user), loadCelebrationPeople()])
+  // Budget at a glance. Needs BOTH the level's report-widget surface and the
+  // Clients Reports tool on one of their teams, so switching either off in
+  // Admin -> Access levels or on the Teams tab removes the widget here too.
   const month = currentYearMonth()
-  const i7Carryover = tier.isPrivileged ? (await loadI7ReportData(month)).carryover : null
+  const showBudget = access.can('report-widget') && access.canTool('i7-budget')
+  const i7Carryover = showBudget ? (await loadI7ReportData(month)).carryover : null
 
   return (
     <div className="space-y-8">
@@ -36,7 +39,7 @@ export default async function HomePage() {
       {/* Destination widgets (My Team is a placeholder). */}
       <HomeWidgets />
 
-      {/* i7 budget at a glance, privileged tiers only. */}
+      {/* Budget at a glance, gated by level + team tool grant. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
       {/* This month's work anniversaries + birthdays, side by side. */}

@@ -1,0 +1,43 @@
+/**
+ * access/nav.ts: the surfaces that appear in the sidebar, in rail order, and
+ * the route → surface map used to guard pages.
+ *
+ * Kept apart from surfaces.ts (which is the full matrix, including capabilities
+ * that are not nav items) so the sidebar and the page guards agree on one list.
+ */
+
+/** Sidebar items, top group then bottom group, in the order they render. */
+export const NAV_SURFACES: readonly string[] = [
+  'home',
+  'tools',
+  'projects',
+  'my-work',
+  'directory',
+  'human-resources',
+  'admin',
+  'settings',
+]
+
+/**
+ * Which surface guards a given pathname. First match wins, so list the more
+ * specific prefixes first. Routes with no entry are ungated by surface (they
+ * carry their own checks, e.g. /profile is always your own).
+ */
+const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
+  { prefix: '/admin', surface: 'admin' },
+  { prefix: '/settings', surface: 'settings' },
+  { prefix: '/human-resources', surface: 'human-resources' },
+  { prefix: '/directory', surface: 'directory' },
+  { prefix: '/my-work', surface: 'my-work' },
+  { prefix: '/tools', surface: 'tools' },
+  { prefix: '/dashboards', surface: 'tools' },
+  { prefix: '/boards-beta', surface: 'tools' },
+  { prefix: '/projects', surface: 'projects' },
+  { prefix: '/aaaf', surface: 'projects' },
+  { prefix: '/hfa', surface: 'projects' },
+]
+
+export function surfaceForPath(pathname: string): string | null {
+  const hit = ROUTE_SURFACES.find(r => pathname === r.prefix || pathname.startsWith(r.prefix + '/'))
+  return hit?.surface ?? null
+}

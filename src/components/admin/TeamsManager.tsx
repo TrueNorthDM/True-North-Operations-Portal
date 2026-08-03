@@ -108,7 +108,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
           <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-1.5">How tool access works</div>
           <p className="text-[12.5px] text-muted leading-relaxed m-0">
             On each team card below, set who can open each tool, <b className="text-foreground font-semibold">Off</b> (hidden), <b className="text-foreground font-semibold">Lead only</b> (just the team lead), or <b className="text-foreground font-semibold">Whole team</b>.{' '}
-            <b className="text-[var(--bdg-gold-fg)] font-semibold">Not applied yet</b>, these switches are saved but nothing reads them, so no tool is hidden today.
+            A tool is only reachable if the person’s <b className="text-foreground font-semibold">level</b> allows Tools <i>and</i> one of their teams grants it, so a tool left <b className="text-foreground font-semibold">Off</b> everywhere is hidden from everyone except admins.
           </p>
         </div>
       </div>
@@ -231,7 +231,7 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
 
         <div className="shrink-0 mt-[18px] pt-4 border-t border-slate-100">
         <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mb-[3px]">Tool access</div>
-        <p className="text-[11px] text-muted leading-snug mb-2.5">Who on this team can open each tool. <b className="text-foreground font-semibold">Off</b> hides it. Applied once permissions ship.</p>
+        <p className="text-[11px] text-muted leading-snug mb-2.5">Who on this team can open each tool. <b className="text-foreground font-semibold">Off</b> hides it.</p>
         <div className="flex flex-col gap-1.5">
           {TOOLS.map(tool => {
             const current = team.tools.find(t => t.toolKey === tool.key)?.audience ?? null

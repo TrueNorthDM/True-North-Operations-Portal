@@ -433,6 +433,14 @@ export type Database = {
         Update: Partial<{ team_id: string; tool_key: string; audience: 'lead' | 'all' }>
         Relationships: []
       }
+      // Per-level page/capability permissions (migration 049). 'admin' is never
+      // stored: a real admin always passes every surface.
+      access_level_pages: {
+        Row: { role_type: string; surface_key: string; allowed: boolean; created_at: string; updated_at: string }
+        Insert: { role_type: string; surface_key: string; allowed?: boolean; created_at?: string; updated_at?: string }
+        Update: Partial<{ role_type: string; surface_key: string; allowed: boolean }>
+        Relationships: []
+      }
       tr_clients: {
         Row: TrClientRow
         Insert: Omit<TrClientRow, 'id' | 'created_at' | 'parent_id'> & { id?: number; created_at?: string; parent_id?: number | null }

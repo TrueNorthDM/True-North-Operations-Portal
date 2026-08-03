@@ -17,6 +17,7 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { tierOf } from '@/lib/auth/tier'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
+import { requireSurface } from '@/lib/access/resolve'
 
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
@@ -33,6 +34,8 @@ const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/l
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
+  await requireSurface('directory')
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

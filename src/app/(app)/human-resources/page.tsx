@@ -9,10 +9,13 @@ import { getCurrentTier } from '@/lib/auth/role'
 import { tenureSince, milestoneOf, formatTenureShort, yearColor } from '@/lib/tenure'
 import { loadDirectoryPeopleView } from '@/lib/directory/people-view'
 import { HrGallery, type HrHolder, type HrSection } from '@/components/hr/HrGallery'
+import { requireSurface } from '@/lib/access/resolve'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HumanResourcesPage() {
+  await requireSurface('human-resources')
+
   if (!(await getCurrentTier()).isPrivileged) redirect('/')
 
   const supabase = await createClient()

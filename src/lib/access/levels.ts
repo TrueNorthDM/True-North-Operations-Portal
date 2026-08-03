@@ -1,19 +1,16 @@
 /**
- * access/levels.ts: the canonical description of the four portal access levels
- * (people.role_type) and exactly what each one can see and do.
+ * access/levels.ts: the four portal access levels (people.role_type) as labels
+ * and one-line descriptions.
  *
- * This is DOCUMENTATION DATA, written to match the code as it actually behaves
- * today, not as it is meant to behave eventually. Where a gate is missing or
- * inconsistent, the capability carries a `caveat` instead of being silently
- * listed as blocked, so the Access levels board never over-promises.
+ * What each level may actually REACH is no longer written here, it is
+ * configuration: the catalogue of surfaces lives in access/surfaces.ts and the
+ * per-level answers live in access_level_pages, edited on Admin → Access levels
+ * and enforced by access/resolve.ts. This file is only the naming.
  *
  * Pure module (no server imports) so the client board can render from it.
- * When a gate changes in code, update the matching row here.
  */
 
 import type { RoleType } from '@/lib/auth/tier'
-
-export type CapState = 'yes' | 'no' | 'partial'
 
 export interface LevelDef {
   key: RoleType
@@ -26,82 +23,24 @@ export interface LevelDef {
 // (components/admin/people-types), so a level looks the same on this board and
 // on every Directory card.
 export const LEVELS: readonly LevelDef[] = [
-  { key: 'admin', label: 'Admin', summary: 'Runs the portal. Full access, and can change anything.' },
-  { key: 'admin_assistant', label: 'Admin Assistant', summary: 'The same access as Admin, under a different label.' },
-  { key: 'team_leader', label: 'Team Leader', summary: 'Read-only. Their own card plus the people they lead.' },
-  { key: 'user', label: 'User', summary: 'Read-only. Their own card only. The default for a new person.' },
+  { key: 'admin', label: 'Admin', summary: 'Runs the portal. Always has everything, and is the only level that can change these settings.' },
+  { key: 'admin_assistant', label: 'Admin Assistant', summary: 'Starts with the same access as Admin, minus the ability to change it.' },
+  { key: 'team_leader', label: 'Team Leader', summary: 'Their own card plus the people they lead. Everything else is configurable.' },
+  { key: 'user', label: 'User', summary: 'Their own card only. The default for a new person.' },
 ] as const
 
-export interface Capability {
-  label: string
-  /** Per-level state, keyed by role_type. */
-  state: Record<RoleType, CapState>
-  /** Shown under the row when the reality needs a footnote. */
-  caveat?: string
-}
-
-export interface CapabilityGroup {
-  area: string
-  items: Capability[]
-}
-
-const ALL: Record<RoleType, CapState> = { admin: 'yes', admin_assistant: 'yes', team_leader: 'yes', user: 'yes' }
-const PRIVILEGED: Record<RoleType, CapState> = { admin: 'yes', admin_assistant: 'yes', team_leader: 'no', user: 'no' }
-
-export const CAPABILITIES: readonly CapabilityGroup[] = [
-  {
-    area: 'Navigation',
-    items: [
-      { label: 'Home, Tools, Projects, My Work, Directory', state: ALL },
-      { label: 'Human Resources', state: PRIVILEGED },
-      { label: 'Admin (this area)', state: PRIVILEGED },
-      { label: 'Settings', state: PRIVILEGED },
-    ],
-  },
-  {
-    area: 'People directory',
-    items: [
-      { label: 'See the list of everyone', state: ALL },
-      { label: 'Open their own card', state: ALL },
-      { label: "Open their reports' and their team's cards", state: { admin: 'yes', admin_assistant: 'yes', team_leader: 'yes', user: 'no' } },
-      { label: "Open anyone's card", state: PRIVILEGED },
-      { label: 'Emails, Teams, Rates & Costs and Access log tabs', state: PRIVILEGED },
-      { label: 'See salaries and internal rates', state: PRIVILEGED },
-      { label: 'See home address and date of birth', state: PRIVILEGED },
-    ],
-  },
-  {
-    area: 'Clients Reports',
-    items: [
-      { label: 'Open the Clients Reports page', state: ALL },
-      { label: 'Budget widget on the Home dashboard', state: PRIVILEGED },
-      { label: 'Export (PDF, CSV, image) and Team Update', state: PRIVILEGED },
-      { label: "Edit the month's note", state: PRIVILEGED },
-    ],
-  },
-  {
-    area: 'Managing',
-    items: [
-      { label: 'Add or edit people and teams', state: PRIVILEGED },
-      { label: 'Change access levels (this page)', state: PRIVILEGED },
-      { label: 'Edit budgets, rates and API tokens', state: PRIVILEGED },
-      { label: 'View Stage, preview each level side by side', state: PRIVILEGED },
-    ],
-  },
-] as const
-
-/** Gaps worth knowing before handing out access. Shown as a callout. */
+/** Things worth knowing before handing out access. Shown as a callout. */
 export const KNOWN_GAPS: readonly { title: string; detail: string }[] = [
   {
-    title: 'Admin and Admin Assistant have the same powers',
-    detail: 'They are two names for the same access. Both can reach Admin and Settings and both can save. The difference is only the label on the person, so pick either and use it consistently.',
+    title: 'Tools need a team as well as a level',
+    detail: 'Allowing "Tools & Dashboards" above only opens the area. Which tools appear inside it comes from the person’s teams, on the Directory’s Teams tab. Someone in no team sees no tools, however permissive their level is. Admins are exempt.',
   },
   {
-    title: 'The per-team tool toggles do nothing yet',
-    detail: 'The Off / Lead / Team switches on each team card are saved, but nothing reads them. Turning a tool Off does not hide it from anyone today.',
+    title: 'Admin cannot be restricted',
+    detail: 'The Admin column is deliberately absent: a real admin passes every check. That is what guarantees there is always a way back from a configuration mistake.',
   },
   {
     title: 'Salary and address are hidden by the interface only',
-    detail: 'The screens never show them to a Team Leader or User, but the underlying table still allows any signed-in account to read those columns through the API.',
+    detail: 'The screens never show them to a level without the row above, but the underlying table still allows any signed-in account to read those columns through the API.',
   },
 ] as const

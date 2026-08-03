@@ -28,6 +28,12 @@ export default async function AccessLevelsPage() {
     supabase.from('profiles').select('id, email, role'),
   ])
 
+  // The configured matrix. Absent rows fall back to the catalogue defaults,
+  // resolved in the board so a new surface needs no backfill.
+  const { data: surfaceRows } = await supabase.from('access_level_pages').select('role_type, surface_key, allowed')
+  const configured: Record<string, boolean> = {}
+  for (const r of surfaceRows ?? []) configured[`${r.role_type}:${r.surface_key}`] = r.allowed
+
   // Whether someone has actually signed in. people.profile_id is only set when
   // an admin links the account by hand, so most rows have it null even for
   // people who log in daily; matching any of their addresses against profiles
@@ -97,7 +103,7 @@ export default async function AccessLevelsPage() {
         </div>
       </div>
 
-      <AccessLevelsBoard people={people} />
+      <AccessLevelsBoard people={people} configured={configured} />
     </div>
   )
 }

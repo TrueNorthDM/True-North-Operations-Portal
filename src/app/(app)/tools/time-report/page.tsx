@@ -11,8 +11,9 @@
 // keeps the page a server component and leaves the i7 route/exports unchanged.
 
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentTier } from '@/lib/auth/role'
+import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
@@ -73,6 +74,9 @@ interface Props {
 }
 
 export default async function ClientsReportsPage({ searchParams }: Props) {
+  // The area comes from the level, the report itself from the team tool grant.
+  const access = await requireSurface('tools')
+  if (!access.canTool('i7-budget')) redirect('/tools')
   const { month, client } = await searchParams
   const active: ClientKey = CLIENT_TABS.some(t => t.key === client) ? (client as ClientKey) : 'i7'
 
@@ -205,7 +209,7 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
     )
   }
 
-  const tier = await getCurrentTier()
+  const access = await loadAccess()
 
   // A month with no logged hours still shows the full report (month picker,
   // budget/carryover, charts), just with an empty hours table, instead of a
@@ -225,8 +229,8 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
         stdRate={data?.stdRate ?? 0}
         trend={data?.trend ?? []}
         note={data?.note ?? ''}
-        canEditNote={tier.isPrivileged}
-        canExport={tier.isPrivileged}
+        canEditNote={access.can('report-note')}
+        canExport={access.can('report-export')}
       />
       <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
     </>

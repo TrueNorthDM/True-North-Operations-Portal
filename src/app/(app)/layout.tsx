@@ -10,17 +10,18 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { UserMenu } from '@/components/UserMenu'
 import { AccessPing } from '@/components/AccessPing'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { tierOf } from '@/lib/auth/tier'
+import { loadAccess } from '@/lib/access/resolve'
+import { NAV_SURFACES } from '@/lib/access/nav'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const [isAdmin, me] = await Promise.all([isCurrentUserAdmin(), loadCurrentPerson(supabase, user)])
-  // Tier drives nav visibility (Part 4). profiles.role='admin' is a floor for
-  // privilege, so a real admin is never demoted by a missing/lower role_type.
-  const tier = tierOf(isAdmin ? 'admin' : (me?.roleType ?? 'user'))
+  // Nav visibility comes from the configured per-level surfaces (Admin →
+  // Access levels), not from the tier alone. profiles.role='admin' is still a
+  // floor inside loadAccess, so a real admin is never hidden out of anything.
+  const [access, me] = await Promise.all([loadAccess(), loadCurrentPerson(supabase, user)])
+  const allowedNav = NAV_SURFACES.filter(k => access.can(k))
 
   return (
     <>
@@ -54,7 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar + main */}
       <div className="flex flex-1">
-        <Sidebar isPrivileged={tier.isPrivileged} />
+        <Sidebar allowed={allowedNav} />
         <MainContent>{children}</MainContent>
       </div>
     </>

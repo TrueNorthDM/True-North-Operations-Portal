@@ -3,6 +3,7 @@
 // /dashboards landing redirects here; its sub-pages keep their own paths.
 
 import { NavCard } from '@/components/NavCard'
+import { requireSurface } from '@/lib/access/resolve'
 
 // Line-chart (Publishing Goals), pulses.
 const ChartIcon = (
@@ -33,7 +34,54 @@ const BudgetIcon = (
   </svg>
 )
 
-export default function ToolsPage() {
+export default async function ToolsPage() {
+  const access = await requireSurface('tools')
+
+  // Which cards appear is per-team (Directory → Teams → Tool access); the keys
+  // are the catalogue's (lib/access/tools.ts).
+  const dashboards = [
+    access.canTool('publishing') && (
+      <NavCard
+        key="publishing"
+        href="/dashboards/publishing"
+        title="Publishing Goals"
+        description="Weekly publishing pace vs target, the live dashboard."
+        icon={ChartIcon}
+      />
+    ),
+    access.canTool('workload') && (
+      <NavCard
+        key="workload"
+        href="/boards-beta"
+        title="Workload"
+        description="Native rewrite (Goals, Translation, Targets). Work in progress."
+        icon={ColumnsIcon}
+        soon
+      />
+    ),
+  ].filter(Boolean)
+
+  const tools = [
+    access.canTool('href-links') && (
+      <NavCard
+        key="href-links"
+        href="/projects"
+        icon={LinkMgmtIcon}
+        title="Href Link Management"
+        description="Manage hreflang tags for a project's WordPress pages. Open a project (AAAF or HFA) to use it."
+      />
+    ),
+    access.canTool('i7-budget') && (
+      <NavCard
+        key="i7-budget"
+        href="/tools/time-report"
+        icon={BudgetIcon}
+        title="Clients Reports"
+        description="Hours, cost and budget usage per client. Includes the i7 Marketing report, with more clients coming."
+      />
+    ),
+  ].filter(Boolean)
+
   return (
     <div className="space-y-10">
       <div>
@@ -41,42 +89,28 @@ export default function ToolsPage() {
         <p className="mt-1 text-muted">Boards Review dashboards and the capabilities you use inside a project.</p>
       </div>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Dashboards</h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <NavCard
-            href="/dashboards/publishing"
-            title="Publishing Goals"
-            description="Weekly publishing pace vs target, the live dashboard."
-            icon={ChartIcon}
-          />
-          <NavCard
-            href="/boards-beta"
-            title="Workload"
-            description="Native rewrite (Goals, Translation, Targets). Work in progress."
-            icon={ColumnsIcon}
-            soon
-          />
-        </div>
-      </section>
+      {dashboards.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Dashboards</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">{dashboards}</div>
+        </section>
+      )}
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Tools</h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <NavCard
-            href="/projects"
-            icon={LinkMgmtIcon}
-            title="Href Link Management"
-            description="Manage hreflang tags for a project's WordPress pages. Open a project (AAAF or HFA) to use it."
-          />
-          <NavCard
-            href="/tools/time-report"
-            icon={BudgetIcon}
-            title="Clients Reports"
-            description="Hours, cost and budget usage per client. Includes the i7 Marketing report, with more clients coming."
-          />
+      {tools.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Tools</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">{tools}</div>
+        </section>
+      )}
+
+      {dashboards.length === 0 && tools.length === 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+          <p className="font-semibold text-tn-ink m-0">No tools yet</p>
+          <p className="mt-1.5 text-sm text-muted m-0">
+            Tools are granted per team. Ask an admin to add yours on the Directory&apos;s Teams tab.
+          </p>
         </div>
-      </section>
+      )}
     </div>
   )
 }

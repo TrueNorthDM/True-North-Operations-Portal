@@ -1,22 +1,28 @@
 'use client'
 
 /**
- * Access levels board: what each of the four contact types (people.role_type)
- * can see and do, plus who currently holds each one, with inline reassignment.
+ * Access levels board: an EDITABLE matrix of what each contact type
+ * (people.role_type) may reach, plus who currently holds each level.
  *
- * The matrix is rendered from lib/access/levels (the single written-down source
- * of truth); the people come from the server page. Changing a level calls
- * setPersonRoleType, which is admin-gated server-side, so this UI never decides
- * permission on its own.
+ * The rows come from lib/access/surfaces (the catalogue) and the ticks from
+ * access_level_pages. Toggling a cell calls setSurfaceAllowed and the sidebar,
+ * page guards and Home widgets all read the same rows, so a change here is
+ * applied, not just documented. Admin has no column: it always passes
+ * everything, which is what makes lock-out impossible.
+ *
+ * Every mutation is admin-gated on the server, this UI never decides permission
+ * on its own.
  */
 
 import { Fragment, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { PILL_CLASS, roleTypePill, initialsOf } from '@/components/admin/people-types'
-import { LEVELS, CAPABILITIES, KNOWN_GAPS, type CapState } from '@/lib/access/levels'
+import { LEVELS, KNOWN_GAPS } from '@/lib/access/levels'
+import { SURFACES, SURFACE_GROUPS, CONFIGURABLE_ROLES, type ConfigurableRole } from '@/lib/access/surfaces'
 import type { RoleType } from '@/lib/auth/tier'
 import { setPersonRoleType, syncAllRoleTypes } from '@/app/(app)/admin/people/actions'
+import { setSurfaceAllowed } from '@/app/(app)/admin/access-levels/actions'
 
 export interface AccessPerson {
   id: string
@@ -38,29 +44,66 @@ const pillFor = (key: RoleType) => {
   return PILL_CLASS[p.kind]
 }
 
-// ── The yes / no / partial marks in the matrix ──────────────────────────────
-function Mark({ state }: { state: CapState }) {
-  if (state === 'yes') {
-    return (
-      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-tn-teal-soft text-tn-teal" title="Yes">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-        <span className="sr-only">Yes</span>
-      </span>
-    )
-  }
-  if (state === 'partial') {
-    return (
-      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--bdg-gold-bg)] text-[var(--bdg-gold-fg)]" title="Partly, see the note below">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
-        <span className="sr-only">Partly</span>
-      </span>
-    )
-  }
+// ── Matrix cells ───────────────────────────────────────────────────────────
+const Tick = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+)
+const Dash = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
+)
+
+/** A fixed cell: the Admin column, and any locked row. */
+function StaticCell({ on, reason }: { on: boolean; reason: string }) {
   return (
-    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-400" title="No">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
-      <span className="sr-only">No</span>
+    <span
+      title={reason}
+      className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${
+        on ? 'bg-tn-teal-soft text-tn-teal' : 'bg-slate-100 text-slate-400'
+      }`}
+    >
+      {on ? <Tick /> : <Dash />}
+      <span className="sr-only">{on ? 'Allowed' : 'Not allowed'}, {reason}</span>
     </span>
+  )
+}
+
+/** An editable cell: click to flip this level's access to this surface. */
+function ToggleCell({
+  role, surfaceKey, label, on, onSaved,
+}: { role: ConfigurableRole; surfaceKey: string; label: string; on: boolean; onSaved: () => void }) {
+  const [pending, startTransition] = useTransition()
+  const [failed, setFailed] = useState(false)
+
+  function flip() {
+    setFailed(false)
+    startTransition(async () => {
+      try {
+        await setSurfaceAllowed(role, surfaceKey, !on)
+        onSaved()
+      } catch {
+        setFailed(true)
+      }
+    })
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={flip}
+      disabled={pending}
+      aria-pressed={on}
+      title={`${label}: click to ${on ? 'block' : 'allow'}`}
+      className={`inline-flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110 disabled:opacity-50 ${
+        failed
+          ? 'bg-[var(--bdg-red-bg)] text-[var(--bdg-red-fg)]'
+          : on
+            ? 'bg-tn-teal-soft text-tn-teal hover:bg-tn-teal hover:text-white'
+            : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+      }`}
+    >
+      {failed ? '!' : on ? <Tick /> : <Dash />}
+      <span className="sr-only">{label}, {on ? 'allowed' : 'not allowed'}</span>
+    </button>
   )
 }
 
@@ -172,10 +215,25 @@ function ReapplyButton({ onDone }: { onDone: () => void }) {
   )
 }
 
-export function AccessLevelsBoard({ people }: { people: AccessPerson[] }) {
+export function AccessLevelsBoard({
+  people,
+  configured,
+}: {
+  people: AccessPerson[]
+  /** Rows from access_level_pages, keyed "roleType:surfaceKey". */
+  configured: Record<string, boolean>
+}) {
   const router = useRouter()
   const [filter, setFilter] = useState<RoleType | 'all'>('all')
   const onChanged = () => router.refresh()
+
+  // A surface with no stored row falls back to the catalogue default, so a new
+  // surface behaves sensibly before anyone touches it.
+  const allowed = (role: ConfigurableRole, key: string): boolean => {
+    const stored = configured[`${role}:${key}`]
+    if (stored !== undefined) return stored
+    return SURFACES.find(s => s.key === key)?.defaults[role] ?? false
+  }
 
   const countOf = (key: RoleType) => people.filter(p => p.roleType === key).length
   const shown = filter === 'all' ? people : people.filter(p => p.roleType === filter)
@@ -209,12 +267,14 @@ export function AccessLevelsBoard({ people }: { people: AccessPerson[] }) {
         </div>
       </section>
 
-      {/* ── Capability matrix ───────────────────────────────────────────── */}
+      {/* ── Editable matrix ─────────────────────────────────────────────── */}
       <section className="space-y-4">
         <div>
           <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">What each level can do</h2>
-          <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0">
-            Written to match how the portal behaves today. Rows with a warning sign have a note underneath.
+          <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0 max-w-[80ch]">
+            Click a tick to allow or block that page for that level. Changes apply the next time the person loads a
+            page. <strong className="font-semibold text-tn-ink">Admin</strong> is not listed because it always has
+            everything, which is what makes it impossible to lock yourself out.
           </p>
         </div>
 
@@ -223,35 +283,53 @@ export function AccessLevelsBoard({ people }: { people: AccessPerson[] }) {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-subtle border-b border-slate-200">
-                  <th className="text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3 min-w-[260px]">Capability</th>
-                  {LEVELS.map(l => (
-                    <th key={l.key} className="text-center text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 whitespace-nowrap">
-                      {l.label}
+                  <th className="text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3 min-w-[280px]">Page or capability</th>
+                  {CONFIGURABLE_ROLES.map(r => (
+                    <th key={r} className="text-center text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 whitespace-nowrap">
+                      {LEVELS.find(l => l.key === r)?.label ?? r}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {CAPABILITIES.map(group => (
-                  <Fragment key={group.area}>
+                {SURFACE_GROUPS.map(group => (
+                  <Fragment key={group}>
                     <tr className="bg-tn-teal-soft/40">
-                      <td colSpan={5} className="px-5 py-2 text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal">
-                        {group.area}
+                      <td colSpan={1 + CONFIGURABLE_ROLES.length} className="px-5 py-2 text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal">
+                        {group}
                       </td>
                     </tr>
-                    {group.items.map(cap => (
-                      <tr key={cap.label} className="border-b border-slate-100 last:border-0">
+                    {SURFACES.filter(sf => sf.group === group).map(sf => (
+                      <tr key={sf.key} className="border-b border-slate-100 last:border-0">
                         <td className="px-5 py-3 text-left text-[13.5px] text-foreground align-top">
-                          {cap.label}
-                          {cap.caveat && (
-                            <p className="mt-1 text-[12px] text-[var(--bdg-gold-fg)] leading-relaxed m-0 max-w-[46ch]">{cap.caveat}</p>
-                          )}
+                          <span className="flex items-center gap-2 flex-wrap">
+                            {sf.label}
+                            {sf.locked === 'always' && <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 rounded-[5px] px-1.5 py-0.5">Always on</span>}
+                            {sf.locked === 'admin' && <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--bdg-purple-fg)] bg-[var(--bdg-purple-bg)] rounded-[5px] px-1.5 py-0.5">Admin only</span>}
+                          </span>
+                          {sf.note && <p className="mt-1 text-[12px] text-muted leading-relaxed m-0 max-w-[52ch]">{sf.note}</p>}
                         </td>
-                        {LEVELS.map(l => (
-                          <td key={l.key} className="px-4 py-3 text-center align-top">
-                            <Mark state={cap.state[l.key]} />
-                          </td>
-                        ))}
+                        {CONFIGURABLE_ROLES.map(r => {
+                          const on = allowed(r, sf.key)
+                          return (
+                            <td key={r} className="px-4 py-3 text-center align-top">
+                              {sf.locked ? (
+                                <StaticCell
+                                  on={sf.locked === 'always'}
+                                  reason={sf.locked === 'always' ? 'always on for everyone' : 'admin only'}
+                                />
+                              ) : (
+                                <ToggleCell
+                                  role={r}
+                                  surfaceKey={sf.key}
+                                  label={sf.label}
+                                  on={on}
+                                  onSaved={onChanged}
+                                />
+                              )}
+                            </td>
+                          )
+                        })}
                       </tr>
                     ))}
                   </Fragment>

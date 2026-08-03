@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { languagePalette } from '@/lib/language-colors'
 import { getProjectsOverview } from '@/lib/projects-data'
 import { StatCell } from '@/components/ProjectStatCell'
+import { requireSurface } from '@/lib/access/resolve'
 
 // Each card carries its project's brand identity, colors + display font + real logo.
 const SITES = [
@@ -55,6 +56,8 @@ const TAG_COLOR = {
 } as const
 
 export default async function ProjectsPage() {
+  await requireSurface('projects')
+
   const { accessibleCodes, readyBySite, totalReady, statsBySite } = await getProjectsOverview()
   const visibleSites = accessibleCodes === null ? [...SITES] : SITES.filter(s => accessibleCodes.has(s.code))
 

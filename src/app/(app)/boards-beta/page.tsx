@@ -5,7 +5,10 @@
 // this route is where the native rewrite is built and compared.
 
 import { GoalsView } from '@/components/boards/GoalsView'
+import { requireSurface } from '@/lib/access/resolve'
 
-export default function BoardsBetaPage() {
+export default async function BoardsBetaPage() {
+  await requireSurface('tools')
+
   return <GoalsView />
 }
