@@ -60,7 +60,17 @@ const AutomationsIcon = (
   </svg>
 )
 
+// Shield with a key-hole; the shield outline draws itself in on a loop.
+const AccessIcon = (
+  <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path className="tn-anim" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" style={{ strokeDasharray: 62, animation: 'tn-check-draw 3.4s ease-in-out infinite' }} />
+    <circle cx="12" cy="11" r="1.7" />
+    <path d="M12 12.7V15" />
+  </svg>
+)
+
 const CARDS = [
+  { href: '/admin/access-levels', title: 'Access levels', icon: AccessIcon, description: 'The four access levels, what each one can see, and who has it today.' },
   { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker, everything we need to resolve, so nothing gets lost.' },
   { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
   { href: '/admin/automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },

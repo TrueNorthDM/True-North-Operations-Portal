@@ -23,7 +23,25 @@ async function requireAdmin() {
 function revalidate() {
   revalidatePath('/directory')
   revalidatePath('/admin/people')
+  revalidatePath('/admin/access-levels') // the access-levels board lists role_type
   revalidatePath('/') // home org chart reads the same directory
+}
+
+// Mirrors the CHECK constraint in migration 035.
+const ROLE_TYPES: readonly string[] = ['user', 'admin', 'admin_assistant', 'team_leader']
+
+/**
+ * Set just a person's contact type (people.role_type), the portal access level.
+ * A focused counterpart to updatePerson, which needs the whole PersonInput and
+ * would reset any field the caller omits. Used by the Access levels board.
+ */
+export async function setPersonRoleType(id: string, roleType: string) {
+  await requireAdmin()
+  if (!ROLE_TYPES.includes(roleType)) throw new Error('Unknown access level')
+  const supabase = await createClient()
+  const { error } = await supabase.from('people').update({ role_type: roleType }).eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidate()
 }
 
 export interface PersonInput {

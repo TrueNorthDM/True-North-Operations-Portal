@@ -4,12 +4,14 @@
  * TeamsManager: the Teams tab. Admins create, rename and delete teams, set the
  * team lead, and add/remove members here. Each card lists members with the team
  * lead (then anyone typed Team Leader) at the top and users below alphabetically,
- * each showing their contact-type. A key at the top explains what each contact
- * type can see/do; per-team tool access is set on each card.
+ * each showing their contact-type. The full explanation of what each contact
+ * type can see/do lives on Admin → Access levels (this tab only links to it);
+ * per-team tool access is set on each card.
  */
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition, setTeamTool, removeTeamTool } from '@/app/(app)/admin/teams/actions'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
@@ -31,16 +33,6 @@ export interface TeamCard {
   access: TeamCardAccess[]
   tools: TeamCardTool[]
 }
-
-// The four contact types (people.role_type) and what each can see/do in the
-// portal. role_type is set per person on the People tab; it drives the whole
-// permission model (Part 4 of "People, Teams and Permissions").
-const TIERS: { key: string; desc: string }[] = [
-  { key: 'admin', desc: 'Full access, manage people, teams, tool access, Settings and Admin; sees the i7 budget with export.' },
-  { key: 'admin_assistant', desc: 'Same as Admin, full run of the portal.' },
-  { key: 'team_leader', desc: 'Read-only People directory (their own card and their team’s) and the i7 budget without export. No Admin or Settings.' },
-  { key: 'user', desc: 'Read-only People directory (their own card only). No Admin or Settings.' },
-]
 
 // The create/rename dialog is either creating a new team or editing an existing
 // one (name + colour). null = closed.
@@ -92,27 +84,31 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
         </button>
       </div>
 
-      {/* Access key, what each contact type can see/do + how tool access works. */}
+      {/* Short pointer, the full access reference lives on Admin → Access levels
+          so this tab can stay about teams. */}
       <div className="rounded-[16px] border border-slate-200 bg-white p-5 mb-6 space-y-4">
-        <div>
-          <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-0.5">Contact type = portal access</div>
-          <p className="text-[12px] text-muted leading-snug mb-2.5">What each access level can see/do, <b className="text-foreground font-semibold">separate</b> from the Team Position (Team&nbsp;Leader / Collaborator) shown on the member cards below.</p>
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            {TIERS.map(t => {
-              const pill = roleTypePill(t.key)
-              return (
-                <div key={t.key} className="flex items-start gap-2.5">
-                  <span className={`shrink-0 mt-px font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
-                  <span className="text-[12.5px] text-muted leading-snug">{t.desc}</span>
-                </div>
-              )
-            })}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-0.5">Team Position is not portal access</div>
+            <p className="text-[12.5px] text-muted leading-relaxed max-w-[70ch] m-0">
+              The pills on the member cards below (Founder, Manager, Team&nbsp;Leader, Collaborator) say what someone does
+              <b className="text-foreground font-semibold"> inside this team</b>. What they can open in the portal is their
+              <b className="text-foreground font-semibold"> contact type</b>, set per person and explained in full on the Access levels page.
+            </p>
           </div>
+          <Link
+            href="/admin/access-levels"
+            className="shrink-0 inline-flex items-center gap-2 rounded-full px-[15px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] border border-slate-200 text-foreground hover:border-tn-teal hover:text-tn-teal transition-colors"
+          >
+            Access levels
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+          </Link>
         </div>
         <div className="pt-4 border-t border-slate-100">
           <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-1.5">How tool access works</div>
-          <p className="text-[12.5px] text-muted leading-relaxed">
-            On each team card below, set who can open each tool, <b className="text-foreground font-semibold">Off</b> (hidden), <b className="text-foreground font-semibold">Lead only</b> (just the team lead), or <b className="text-foreground font-semibold">Whole team</b>. Applied once permissions ship.
+          <p className="text-[12.5px] text-muted leading-relaxed m-0">
+            On each team card below, set who can open each tool, <b className="text-foreground font-semibold">Off</b> (hidden), <b className="text-foreground font-semibold">Lead only</b> (just the team lead), or <b className="text-foreground font-semibold">Whole team</b>.{' '}
+            <b className="text-[var(--bdg-gold-fg)] font-semibold">Not applied yet</b>, these switches are saved but nothing reads them, so no tool is hidden today.
           </p>
         </div>
       </div>
