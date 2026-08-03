@@ -8,6 +8,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { loadMyTeam } from '@/lib/directory/my-team'
+import { loadAccess } from '@/lib/access/resolve'
+import { directoryLevel } from '@/lib/access/surfaces'
 import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +17,10 @@ export const dynamic = 'force-dynamic'
 export default async function MyTeamPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const { people } = await loadMyTeam(supabase, user)
+  // Same rule the Directory follows: level 3 opens every teammate's card,
+  // levels 1 and 2 only your own.
+  const access = await loadAccess()
+  const { people, profiles, selfId } = await loadMyTeam(supabase, user, directoryLevel(access.can))
 
   return (
     <div className="space-y-6">
@@ -25,7 +30,7 @@ export default async function MyTeamPage() {
         <span className="font-semibold text-tn-ink">My team</span>
       </div>
 
-      <RestrictedDirectory people={people} teams={[]} showTeams={false} />
+      <RestrictedDirectory people={people} teams={[]} showTeams={false} profiles={profiles} selfId={selfId} />
     </div>
   )
 }

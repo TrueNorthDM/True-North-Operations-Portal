@@ -15,9 +15,10 @@
  * this lean shape so nothing sensitive reaches the browser at all.
  */
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, statusPill, formatDate, PILL_CLASS, TEAM_COLOR, type TeamKey } from './people-types'
+import { roleTypePill, statusPill, formatDate, teamKeyFromName, PILL_CLASS, TEAM_COLOR, type TeamKey } from './people-types'
 
 export interface RestrictedPersonDetail {
   managerName: string | null
@@ -26,6 +27,36 @@ export interface RestrictedPersonDetail {
   location: string | null
   hireDate: string | null
   employmentType: string | null
+}
+
+/**
+ * A full profile card, the same fields My profile shows. Built for the people
+ * the viewer may open: only themselves at directory levels 1 and 2, everyone on
+ * their teams at level 3.
+ */
+export interface FullProfile {
+  name: string
+  title: string | null
+  avatarUrl: string | null
+  roleType: string
+  active: boolean
+  teamNames: string[]
+  personalEmail: string | null
+  phone: string | null
+  whatsapp: string | null
+  location: string | null
+  dateOfBirth: string | null
+  employmentType: string | null
+  schedule: string | null
+  weeklyHours: number | null
+  managerName: string | null
+  alsoReportsToName: string | null
+  managerNameText: string | null
+  emailTrueNorth: string | null
+  emailGoodnews: string | null
+  emailCoe: string | null
+  hireDate: string | null
+  leftOn: string | null
 }
 
 export interface RestrictedTeamMember {
@@ -69,11 +100,16 @@ export function RestrictedDirectory({
   people,
   teams,
   showTeams,
+  profiles,
+  selfId,
 }: {
   people: RestrictedPerson[]
   teams: RestrictedTeam[]
   /** Level 2, the Teams tab. Level 1 gets the People list on its own. */
   showTeams: boolean
+  /** Whose full card can be opened, keyed by person id. */
+  profiles?: Record<string, FullProfile>
+  selfId?: string | null
 }) {
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -163,7 +199,9 @@ export function RestrictedDirectory({
 
       </div>
 
-      {open && open.detail && (
+      {open && profiles?.[open.id] ? (
+        <ProfileCard profile={profiles[open.id]} isSelf={open.id === selfId} onClose={() => setOpenId(null)} />
+      ) : open && open.detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-tn-ink/40" onClick={() => setOpenId(null)} />
           <div className="relative w-full max-w-[420px] bg-white rounded-[18px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] overflow-hidden">
@@ -264,6 +302,99 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── The full profile card ───────────────────────────────────────────────────
+// The same fields My profile shows, in a popup so you never leave My team to
+// check someone's details. Who gets one is decided on the server by the
+// viewer's directory level. Read-only either way: editing your own details
+// still lives on My profile, the one place that owns those writes.
+function SelfRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="text-[12px] text-muted font-semibold shrink-0">{label}</span>
+      <span className="text-right min-w-0 text-[13px] text-foreground font-semibold truncate">{children}</span>
+    </div>
+  )
+}
+
+function SelfSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-2.5 pb-1.5 border-b border-slate-100">{title}</div>
+      <div className="flex flex-col gap-2.5">{children}</div>
+    </div>
+  )
+}
+
+const dash = (v: string | null | undefined) => (v && v.trim() ? v : '-')
+
+function ProfileCard({ profile: self, isSelf, onClose }: { profile: FullProfile; isSelf: boolean; onClose: () => void }) {
+  const rp = roleTypePill(self.roleType)
+  const sp = statusPill(self.active)
+  const mailLink = (v: string | null) =>
+    v ? <a href={`mailto:${v}`} className="text-tn-teal">{v}</a> : '-'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Your profile">
+      <div className="absolute inset-0 bg-tn-ink/40" onClick={onClose} />
+      <div className="relative w-full max-w-[720px] max-h-[85vh] overflow-y-auto bg-white rounded-[18px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
+        <div className="flex items-start gap-4 px-6 pt-6 pb-5 border-b border-slate-100">
+          <Avatar name={self.name} avatarUrl={self.avatarUrl} size={56} color={TEAM_COLOR[teamKeyFromName(self.teamNames[0])]} />
+          <div className="min-w-0 flex-1">
+            <h2 className="font-(family-name:--font-display) font-extrabold text-[20px] text-tn-ink m-0 truncate">{self.name}</h2>
+            <p className="text-[13.5px] text-muted m-0 mt-0.5 truncate">{dash(self.title)}</p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[rp.kind]}`}>{rp.label}</span>
+              <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[sp.kind]}`}>{sp.label}</span>
+              {self.teamNames.map(t => (
+                <span key={t} className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5" style={{ color: TEAM_COLOR[teamKeyFromName(t)], background: `${TEAM_COLOR[teamKeyFromName(t)]}1a` }}>{t}</span>
+              ))}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="shrink-0 text-muted hover:text-tn-ink text-2xl leading-none">&times;</button>
+        </div>
+
+        <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+          <SelfSection title="Personal">
+            <SelfRow label="Personal email">{mailLink(self.personalEmail)}</SelfRow>
+            <SelfRow label="Phone">{dash(self.phone)}</SelfRow>
+            <SelfRow label="WhatsApp">{dash(self.whatsapp)}</SelfRow>
+            <SelfRow label="Location">{dash(self.location)}</SelfRow>
+            <SelfRow label="Date of birth">{dash(formatDate(self.dateOfBirth))}</SelfRow>
+          </SelfSection>
+
+          <SelfSection title="Employment">
+            <SelfRow label="Type">{dash(EMPLOYMENT_LABEL[self.employmentType ?? ''] ?? self.employmentType)}</SelfRow>
+            <SelfRow label="Time">{dash(self.schedule)}</SelfRow>
+            <SelfRow label="Weekly hours">{self.weeklyHours != null ? `${self.weeklyHours} h / week` : '-'}</SelfRow>
+            <SelfRow label="Joined on">{dash(formatDate(self.hireDate))}</SelfRow>
+            {self.leftOn && <SelfRow label="Left on">{dash(formatDate(self.leftOn))}</SelfRow>}
+          </SelfSection>
+
+          <SelfSection title="Reporting">
+            <SelfRow label="Reports to">{dash(self.managerName)}</SelfRow>
+            <SelfRow label="Also reports to">{dash(self.alsoReportsToName)}</SelfRow>
+            <SelfRow label="Manager (as stated)">{dash(self.managerNameText)}</SelfRow>
+          </SelfSection>
+
+          <SelfSection title="Company emails">
+            <SelfRow label="True North">{mailLink(self.emailTrueNorth)}</SelfRow>
+            <SelfRow label="GoodNews">{mailLink(self.emailGoodnews)}</SelfRow>
+            <SelfRow label="COE">{mailLink(self.emailCoe)}</SelfRow>
+          </SelfSection>
+        </div>
+
+        {isSelf && (
+          <div className="px-6 pb-6">
+            <Link href="/profile" className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">
+              Edit on My profile →
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

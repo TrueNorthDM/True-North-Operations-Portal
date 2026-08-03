@@ -22,7 +22,11 @@ export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string
 
   useEffect(() => {
     if (!open) return
-    // Move focus into the menu so keyboard users land on the first item.
+    // Move focus into the menu so keyboard users land on the first item. The
+    // items style their own :focus-visible with an INSET ring: the browser's
+    // default outline is drawn outside the element, and this menu clips with
+    // overflow-hidden, so its left and right edges were cut away and it read
+    // as two stray horizontal lines rather than a focus ring.
     menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
     function onDown(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -73,7 +77,7 @@ export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string
             href="/profile"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100"
+            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100 focus:outline-none focus-visible:bg-slate-50 focus-visible:text-tn-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
             My profile
@@ -82,7 +86,7 @@ export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string
             href="/my-team"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100"
+            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100 focus:outline-none focus-visible:bg-slate-50 focus-visible:text-tn-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
             My team
@@ -91,7 +95,7 @@ export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string
             <button
               type="submit"
               role="menuitem"
-              className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-red-600 transition-colors"
+              className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-red-600 transition-colors focus:outline-none focus-visible:bg-slate-50 focus-visible:text-red-600 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
             >
               Sign out
             </button>
