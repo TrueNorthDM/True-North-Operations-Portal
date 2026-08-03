@@ -7,6 +7,7 @@ import { languagePalette } from '@/lib/language-colors'
 import { getProjectsOverview } from '@/lib/projects-data'
 import { StatCell } from '@/components/ProjectStatCell'
 import { requireSurface } from '@/lib/access/resolve'
+import { redirect } from 'next/navigation'
 
 // Each card carries its project's brand identity, colors + display font + real logo.
 const SITES = [
@@ -56,7 +57,10 @@ const TAG_COLOR = {
 } as const
 
 export default async function ProjectsPage() {
-  await requireSurface('projects')
+  // Href Link Management is a tool inside Tools & Dashboards, not a sidebar
+  // item, so it needs the area plus its own team grant.
+  const access = await requireSurface('tools')
+  if (!access.canTool('href-links')) redirect('/tools')
 
   const { accessibleCodes, readyBySite, totalReady, statsBySite } = await getProjectsOverview()
   const visibleSites = accessibleCodes === null ? [...SITES] : SITES.filter(s => accessibleCodes.has(s.code))

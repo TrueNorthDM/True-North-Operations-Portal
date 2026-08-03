@@ -53,7 +53,6 @@ export const SURFACES: readonly Surface[] = [
     defaults: ON,
     note: 'Opens the area. Which tools appear inside it is set per team, on the Directory’s Teams tab.',
   },
-  { key: 'projects', label: 'Projects', group: 'Navigation', defaults: ON },
   { key: 'my-work', label: 'My Work', group: 'Navigation', defaults: ON },
   { key: 'directory', label: 'People directory', group: 'Navigation', defaults: ON },
   { key: 'human-resources', label: 'Human Resources', group: 'Navigation', defaults: PRIV },

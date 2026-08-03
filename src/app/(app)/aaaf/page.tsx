@@ -6,8 +6,14 @@ import { getSitePageData } from '@/lib/pages-data'
 import { PageList } from '@/components/PageList'
 import { WpLinks } from '@/components/WpLinks'
 import { canAccessSite } from '@/lib/auth/access'
+import { requireSurface } from '@/lib/access/resolve'
 
 export default async function AaafPagesPage() {
+  // Href Link Management is a tool inside Tools & Dashboards, not a sidebar
+  // item, so it needs the area plus its own team grant.
+  const access = await requireSurface('tools')
+  if (!access.canTool('href-links')) redirect('/tools')
+
   const { site, siteLanguages, rows, done } = await getSitePageData('aaaf')
 
   // Access enforcement, admins & unrestricted sites pass; otherwise needs a grant.

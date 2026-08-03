@@ -10,7 +10,6 @@
 export const NAV_SURFACES: readonly string[] = [
   'home',
   'tools',
-  'projects',
   'my-work',
   'directory',
   'human-resources',
@@ -32,9 +31,12 @@ const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
   { prefix: '/tools', surface: 'tools' },
   { prefix: '/dashboards', surface: 'tools' },
   { prefix: '/boards-beta', surface: 'tools' },
-  { prefix: '/projects', surface: 'projects' },
-  { prefix: '/aaaf', surface: 'projects' },
-  { prefix: '/hfa', surface: 'projects' },
+  // Href Link Management lives inside Tools & Dashboards, it has no sidebar
+  // item of its own, so its pages are gated by the Tools area plus the
+  // 'href-links' tool grant (checked in the pages themselves).
+  { prefix: '/projects', surface: 'tools' },
+  { prefix: '/aaaf', surface: 'tools' },
+  { prefix: '/hfa', surface: 'tools' },
 ]
 
 export function surfaceForPath(pathname: string): string | null {

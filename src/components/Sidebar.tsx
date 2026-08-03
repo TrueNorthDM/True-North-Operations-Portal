@@ -30,15 +30,6 @@ const DashboardIcon = (
   </svg>
 )
 
-// Boards Review, kanban board outline (split into columns). Distinct from the
-// dashboard grid icon so the two top-level views read differently at a glance.
-const BoardsIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M9 3v18M15 3v18" />
-  </svg>
-)
-
 // My Work, briefcase outline (everything assigned to you across Monday).
 const WorkIcon = (
   <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -103,14 +94,6 @@ const toolsDash: Item = {
   match: p => p === '/tools' || p.startsWith('/tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
 }
 
-// Projects overview (AAAF/HFA hreflang management), the former root dashboard.
-const projectsNav: Item = {
-  href: '/projects',
-  label: 'Projects',
-  icon: BoardsIcon,
-  match: p => p === '/projects',
-}
-
 // My Work, the signed-in person's tasks across Monday (board + list).
 const myWorkNav: Item = {
   href: '/my-work',
@@ -152,16 +135,13 @@ const settingsNav: Item = {
   match: p => p === '/settings' || p.startsWith('/settings/'),
 }
 
-// Rail order, split into the top group and the management group at the bottom.
-// Keys match access/surfaces.ts, the layout passes the allowed ones.
-const TOP: readonly { key: string; item: Item }[] = [
+// Rail order, one single group. Keys match access/surfaces.ts; the layout
+// passes only the ones this person may reach.
+const NAV: readonly { key: string; item: Item }[] = [
   { key: 'home', item: home },
   { key: 'tools', item: toolsDash },
-  { key: 'projects', item: projectsNav },
   { key: 'my-work', item: myWorkNav },
   { key: 'directory', item: directoryNav },
-]
-const BOTTOM: readonly { key: string; item: Item }[] = [
   { key: 'human-resources', item: hrNav },
   { key: 'admin', item: adminNav },
   { key: 'settings', item: settingsNav },
@@ -205,22 +185,15 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
 export function Sidebar({ allowed }: { allowed: readonly string[] }) {
   const pathname = usePathname()
   const on = new Set(allowed)
-  const top = TOP.filter(n => on.has(n.key))
-  const bottom = BOTTOM.filter(n => on.has(n.key))
+  const items = NAV.filter(n => on.has(n.key))
 
   return (
     // Icon-only rail. No overflow clipping, so the hover tooltips can extend
     // past the rail to the right (the few items always fit vertically).
     <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] z-30">
       <nav className="py-3 space-y-1.5">
-        {top.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
+        {items.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
       </nav>
-
-      {bottom.length > 0 && (
-        <div className="mt-auto border-t border-slate-100 py-3 space-y-1.5">
-          {bottom.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
-        </div>
-      )}
     </aside>
   )
 }
