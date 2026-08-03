@@ -25,16 +25,18 @@ export default async function AccessLevelsPage() {
       .select('id, full_name, title, avatar_url, role_type, profile_id, status, tsheets_only, email_true_north, email_goodnews, email_coe, email_personal')
       .eq('status', 'active')
       .order('full_name'),
-    supabase.from('profiles').select('id, email'),
+    supabase.from('profiles').select('id, email, role'),
   ])
 
   // Whether someone has actually signed in. people.profile_id is only set when
   // an admin links the account by hand, so most rows have it null even for
   // people who log in daily; matching any of their addresses against profiles
   // catches those too (same resolution the Directory's access log uses).
-  const profileIds = new Set((profileRows ?? []).map(p => p.id))
-  const profileEmails = new Set(
-    (profileRows ?? []).map(p => (p.email ?? '').trim().toLowerCase()).filter(Boolean),
+  const roleByProfileId = new Map((profileRows ?? []).map(p => [p.id, p.role ?? null]))
+  const profileByEmail = new Map(
+    (profileRows ?? [])
+      .map(p => [(p.email ?? '').trim().toLowerCase(), p] as const)
+      .filter(([e]) => e),
   )
 
   // Only real portal contacts: TSheets-only rows exist to attribute hours and
@@ -45,13 +47,22 @@ export default async function AccessLevelsPage() {
       const emails = [p.email_true_north, p.email_goodnews, p.email_coe, p.email_personal]
         .map(e => (e ?? '').trim().toLowerCase())
         .filter(Boolean)
+      // The account behind this person: the explicit link if it resolves, else
+      // a mailbox that matches a profile.
+      const linkedId = p.profile_id && roleByProfileId.has(p.profile_id) ? p.profile_id : null
+      const matched = linkedId ?? emails.map(e => profileByEmail.get(e)?.id).find(Boolean) ?? null
+
       return {
         id: p.id,
         name: p.full_name,
         title: p.title,
         avatarUrl: p.avatar_url,
         roleType: asRoleType(p.role_type),
-        hasAccount: (p.profile_id ? profileIds.has(p.profile_id) : false) || emails.some(e => profileEmails.has(e)),
+        hasAccount: Boolean(matched),
+        // The hard gate (profiles.role) as it stands right now. Surfaced so an
+        // account whose security role drifted from its level is visible instead
+        // of silently half-privileged, the exact failure this page had.
+        securityRole: matched ? (roleByProfileId.get(matched) ?? null) : null,
       }
     })
 

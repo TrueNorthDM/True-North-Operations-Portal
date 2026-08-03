@@ -26,7 +26,12 @@ export interface AccessPerson {
   roleType: RoleType
   /** True once the person has actually signed in at least once. */
   hasAccount: boolean
+  /** profiles.role as it stands now ('admin' | 'viewer'), null with no account. */
+  securityRole: string | null
 }
+
+/** The security role a level is supposed to map to (migration 038's rule). */
+const expectedRole = (r: RoleType) => (r === 'admin' || r === 'admin_assistant' ? 'admin' : 'viewer')
 
 const pillFor = (key: RoleType) => {
   const p = roleTypePill(key)
@@ -100,6 +105,14 @@ function PersonRow({ person, onChanged }: { person: AccessPerson; onChanged: () 
           {!person.hasAccount && (
             <span className="shrink-0 text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-1.5 py-0.5 bg-slate-100 text-slate-500" title="This person has never signed in, so the level takes effect on their first login.">
               No login yet
+            </span>
+          )}
+          {person.hasAccount && person.securityRole !== expectedRole(person.roleType) && (
+            <span
+              className="shrink-0 text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-1.5 py-0.5 bg-[var(--bdg-gold-bg)] text-[var(--bdg-gold-fg)]"
+              title={`Their level says "${expectedRole(person.roleType)}" but the security role is "${person.securityRole ?? 'none'}". Use Re-apply all levels to fix it.`}
+            >
+              Out of sync
             </span>
           )}
         </div>
