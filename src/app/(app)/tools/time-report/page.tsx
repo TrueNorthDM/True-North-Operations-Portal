@@ -17,9 +17,10 @@ import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
+import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
 import { GrantPassReport } from '@/components/tsheets/GrantPassReport'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
-import type { I7Report } from '@/lib/tsheets/types'
+import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
 
 // One tab per client. `key` is the ?client= value; keep keys stable.
 const CLIENT_TABS = [
@@ -56,6 +57,16 @@ const MOCK_I7: I7Report = {
     ] },
   ],
 }
+
+// Sample month-by-month series for the no-token preview (mirrors MOCK_I7).
+const MOCK_TREND: I7TrendPoint[] = [
+  { month: '2026-01', hours: 300, cost: 34000, budget: 50000, balance: 16000 },
+  { month: '2026-02', hours: 280, cost: 31000, budget: 45000, balance: 30000 },
+  { month: '2026-03', hours: 320, cost: 38000, budget: 45000, balance: 37000 },
+  { month: '2026-04', hours: 360, cost: 42000, budget: 45000, balance: 40000 },
+  { month: '2026-05', hours: 300, cost: 36000, budget: 45000, balance: 49000 },
+  { month: '2026-06', hours: 340, cost: 41000, budget: 45000, balance: 53000 },
+]
 
 interface Props {
   searchParams: Promise<{ month?: string; client?: string }>
@@ -153,23 +164,19 @@ async function I7Tab({ month }: { month?: string }) {
       </div>
 
       {!token ? (
-        <I7ReportView
-          data={MOCK_I7}
-          selectedMonth={selectedMonth}
-          availableMonths={months}
-          projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
-          carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300 }}
-          stdRate={95}
-          trend={[
-            { month: '2026-01', hours: 300, cost: 34000, budget: 50000, balance: 16000 },
-            { month: '2026-02', hours: 280, cost: 31000, budget: 45000, balance: 30000 },
-            { month: '2026-03', hours: 320, cost: 38000, budget: 45000, balance: 37000 },
-            { month: '2026-04', hours: 360, cost: 42000, budget: 45000, balance: 40000 },
-            { month: '2026-05', hours: 300, cost: 36000, budget: 45000, balance: 49000 },
-            { month: '2026-06', hours: 340, cost: 41000, budget: 45000, balance: 53000 },
-          ]}
-          preview
-        />
+        <>
+          <I7ReportView
+            data={MOCK_I7}
+            selectedMonth={selectedMonth}
+            availableMonths={months}
+            projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
+            carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300 }}
+            stdRate={95}
+            trend={MOCK_TREND}
+            preview
+          />
+          <ClientFullHistory trend={MOCK_TREND} currentMonth="2026-06" />
+        </>
       ) : (
         <ReportView selectedMonth={selectedMonth} availableMonths={months} />
       )}
@@ -208,18 +215,21 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
   const report = data?.report ?? emptyReport(selectedMonth, (data?.stdRate ?? 0) > 0)
 
   return (
-    <I7ReportView
-      data={report}
-      selectedMonth={selectedMonth}
-      availableMonths={availableMonths}
-      projectHours={data?.projectHours ?? {}}
-      carryover={data?.carryover ?? null}
-      stdRate={data?.stdRate ?? 0}
-      trend={data?.trend ?? []}
-      note={data?.note ?? ''}
-      canEditNote={tier.isPrivileged}
-      canExport={tier.isPrivileged}
-    />
+    <>
+      <I7ReportView
+        data={report}
+        selectedMonth={selectedMonth}
+        availableMonths={availableMonths}
+        projectHours={data?.projectHours ?? {}}
+        carryover={data?.carryover ?? null}
+        stdRate={data?.stdRate ?? 0}
+        trend={data?.trend ?? []}
+        note={data?.note ?? ''}
+        canEditNote={tier.isPrivileged}
+        canExport={tier.isPrivileged}
+      />
+      <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
+    </>
   )
 }
 

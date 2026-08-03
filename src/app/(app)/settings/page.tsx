@@ -14,8 +14,7 @@ import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { loadProjectDirectory } from '@/lib/tsheets/report-data'
 import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
 import { ClientsProjectsTab } from '@/components/tsheets/settings/ClientsProjectsTab'
-import { FullHistoryButton } from '@/components/settings/FullHistoryButton'
-import { HistoryTab, ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
+import { ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import { TargetsEditor } from '@/components/boards/TargetsEditor'
 
@@ -151,7 +150,7 @@ export default async function SettingsPage() {
       content: (
         <div className="space-y-12">
           <div className="space-y-5">
-            <SectionHead title="Clients & budgets" desc="The dollar budget and budget period for each client. “Extra” is an approved top-up covering part of the period. Hours are read live from QuickBooks Time and power the i7 Budget Usage Report." />
+            <SectionHead title="Clients & budgets" desc="The dollar budget and budget period for each client. “Extra” is an approved top-up covering part of the period. Hours are read live from QuickBooks Time and power the Clients Reports page." />
             <div className="flex items-center gap-3.5 flex-wrap">
               <Link
                 href="/tools/time-report/guide"
@@ -162,7 +161,6 @@ export default async function SettingsPage() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
               </Link>
               <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
-              <FullHistoryButton />
             </div>
             <ClientsTab clients={budget.clients} estimateRate={projectDirectory.highestRate} />
             {/* Grant Pass framework placeholder: it is an hours-based retainer
@@ -228,16 +226,6 @@ export default async function SettingsPage() {
     },
   ]
 
-  const historyContent = (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <SectionHead title="Full history" desc="Every budget, rate, and target change (who changed what, when, and why) plus the past budget schedule." />
-        <FullHistoryButton />
-      </div>
-      <HistoryTab entries={budget.auditLog} pastBudgets={budget.pastBudgets} pastProjectHours={budget.pastProjectHours} />
-    </div>
-  )
-
   return (
     <div className="space-y-6">
       <div>
@@ -247,7 +235,7 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsNav signedIn={signedIn} sections={sections} historyContent={historyContent} />
+      <SettingsNav signedIn={signedIn} sections={sections} />
     </div>
   )
 }
