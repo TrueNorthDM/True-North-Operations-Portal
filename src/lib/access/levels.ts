@@ -40,7 +40,11 @@ export const KNOWN_GAPS: readonly { title: string; detail: string }[] = [
     detail: 'The Admin column is deliberately absent: a real admin passes every check. That is what guarantees there is always a way back from a configuration mistake.',
   },
   {
-    title: 'Salary and address are hidden by the interface only',
-    detail: 'The screens never show them to a level without the row above, but the underlying table still allows any signed-in account to read those columns through the API.',
+    title: 'Pay is blocked in the database; contact details are not',
+    detail: 'Salaries, internal cost rates and client rates were revoked from the signed-in role, so no session can read them through the API, whatever the level says. Home address, date of birth, personal email and phone are different: the screens hide them, the table still hands them to any signed-in account that asks directly.',
+  },
+  {
+    title: 'These levels shape the screens, not the org chart',
+    detail: 'The Home page shows the whole company org chart to everyone, by design: people need to know who to go to. What a level narrows is whose card, contact details and pay someone can reach, not who they know exists.',
   },
 ] as const

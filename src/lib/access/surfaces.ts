@@ -77,7 +77,7 @@ export const SURFACES: readonly Surface[] = [
     group: 'People directory',
     locked: 'always',
     defaults: ON,
-    note: 'The People list shows the members of the teams they belong to (all of them, if several) and they can open only their own card. Someone in no team sees just themselves.',
+    note: 'In the Directory, the People list shows the members of the teams they belong to (all of them, if several) and they can open only their own card. Someone in no team sees just themselves. Note that the org chart on the Home page is company-wide for everyone: this level narrows whose DETAILS they reach, not who they know exists.',
   },
   {
     key: 'dir-teams-config',
