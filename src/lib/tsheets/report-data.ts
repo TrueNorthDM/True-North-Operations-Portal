@@ -7,7 +7,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { loadAssignmentRates } from '@/lib/hr/compensation'
 import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
-import { monthBounds } from '@/lib/tsheets/report'
+import { monthBounds, monthsBetween } from '@/lib/tsheets/report'
+import { DATA_START, retentionFloor } from '@/lib/tsheets/retention'
 import { buildI7Report, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
 
@@ -149,7 +150,10 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   const { startDate, endDate } = monthBounds(selectedMonth)
   const year = selectedMonth.slice(0, 4)
   const selM = Number(selectedMonth.slice(5, 7))
-  const carryStart = `${year}-01-01`
+  // The balance rolls forward for as long as there is history, rather than
+  // restarting every January (audit finding M3-3). January 2026 is the origin
+  // because it is the first month ever pulled, so nothing precedes it.
+  const carryStart = `${DATA_START}-01`
 
   const [entries, names, assignments, budgetInputs, projectHours, universe, note] = await Promise.all([
     loadCachedEntries(carryStart, endDate),
@@ -191,21 +195,43 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   const personRates: Record<string, number> = {}
   for (const [uid, r] of Object.entries(ratesSel)) personRates[names[Number(uid)] ?? `User ${uid}`] = r
 
-  let cumBudget = 0, cumCost = 0
-  for (let m = 1; m < selM; m++) {
-    const ym = `${year}-${String(m).padStart(2, '0')}`
-    const cost = entries.filter(e => e.date.slice(0, 7) === ym).reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.user_id, ym), 0)
-    cumBudget += monthlyBudgets[ym] ?? 0
-    cumCost += cost
+  // Budget minus cost over a run of months, the shape both the opening balance
+  // and the trend's running balance need.
+  const accumulate = (months: string[]) => {
+    let budget = 0, cost = 0
+    for (const ym of months) {
+      budget += monthlyBudgets[ym] ?? 0
+      cost += entries
+        .filter(e => e.date.slice(0, 7) === ym)
+        .reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.user_id, ym), 0)
+    }
+    return { budget, cost }
   }
-  const opening = round2(cumBudget - cumCost)
+
+  const before = accumulate(monthsBetween(DATA_START, selectedMonth))
+  const opening = round2(before.budget - before.cost)
+
+  // The sync prunes timesheets older than 24 months, so from January 2028 the
+  // earliest retained month moves past the origin and those hours are gone for
+  // good. The balance would then quietly start from a later month and read
+  // higher than it should. Flagged rather than silently shown, until the month
+  // closings are stored somewhere the prune cannot reach.
+  const openingComplete = retentionFloor(new Date()) <= DATA_START
   const monthBudget = monthlyBudgets[selectedMonth] ?? 0
   const monthUsed = report.totalCost
   const totalAvailable = round2(opening + monthBudget)
-  const carryover: I7Carryover = { opening, monthBudget, monthUsed, totalAvailable, totalLeft: round2(totalAvailable - monthUsed) }
+  const carryover: I7Carryover = {
+    opening, monthBudget, monthUsed, totalAvailable,
+    totalLeft: round2(totalAvailable - monthUsed),
+    openingFrom: DATA_START,
+    openingComplete,
+  }
 
+  // The chart still shows the selected year month by month, but its balance
+  // line continues from what came before January instead of dropping to zero.
   const trend: I7TrendPoint[] = []
-  let tB = 0, tC = 0
+  const priorYears = accumulate(monthsBetween(DATA_START, `${year}-01`))
+  let tB = priorYears.budget, tC = priorYears.cost
   for (let m = 1; m <= selM; m++) {
     const ym = `${year}-${String(m).padStart(2, '0')}`
     const me = entries.filter(e => e.date.slice(0, 7) === ym)

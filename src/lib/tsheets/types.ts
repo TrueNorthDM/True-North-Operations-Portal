@@ -79,11 +79,21 @@ export interface I7TrendPoint {
 
 // Bank-account style running balance for the i7 $ budget.
 export interface I7Carryover {
-  opening: number         // balance carried in (Σ budget − Σ cost, Jan … prev month)
+  /** Balance carried in: Σ budget − Σ cost from `openingFrom` to the previous month. */
+  opening: number
   monthBudget: number     // this month's budget ($ base + extra)
   monthUsed: number       // this month's cost
   totalAvailable: number  // opening + monthBudget
   totalLeft: number       // totalAvailable − monthUsed (this month's closing balance)
+  /** First month the opening balance accumulates from ('YYYY-MM'). */
+  openingFrom: string
+  /**
+   * False once the 24-month retention window no longer reaches `openingFrom`,
+   * which happens from January 2028: the hours behind the earliest months are
+   * pruned, so the balance would read higher than it should. The UI says so
+   * instead of presenting an incomplete figure as a complete one.
+   */
+  openingComplete: boolean
 }
 
 // Generic paginated response wrapper

@@ -169,7 +169,7 @@ async function I7Tab({ month }: { month?: string }) {
             selectedMonth={selectedMonth}
             availableMonths={months}
             projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
-            carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300 }}
+            carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300, openingFrom: '2026-01', openingComplete: true }}
             stdRate={95}
             trend={MOCK_TREND}
             preview
