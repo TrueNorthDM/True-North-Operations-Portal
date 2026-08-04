@@ -41,11 +41,16 @@ export async function getCurrentProfile(): Promise<ProfileRow | null> {
  * and the /admin area on this, not on the rendered access level.
  */
 export async function isSecurityAdmin(): Promise<boolean> {
-  // View Stage: while impersonating, admin-ness follows the previewed level.
-  const vs = await getViewAs()
-  if (vs) return vs.role === 'admin' || vs.role === 'admin_assistant'
+  // The database decides first, always. This used to read the previewed role
+  // before asking, which meant a signed token could GRANT what profiles.role
+  // withheld, and previewing as Admin Assistant kept every admin write gate
+  // open. A token may now only take powers away, never hand them out.
   const profile = await getCurrentProfile()
-  return profile?.role === 'admin'
+  if (profile?.role !== 'admin') return false
+
+  // Previewing a lower tier drops admin-ness, so the preview stays honest.
+  const vs = await getViewAs()
+  return vs ? vs.role === 'admin' : true
 }
 
 /**
