@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentTier } from '@/lib/auth/role'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
 import {
   TEAM_COLOR, initialsOf, formatDate, teamKeyFromName,
   typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill,
@@ -38,17 +39,14 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Prefer the explicit account link; fall back to a person whose mailbox is the
-  // signed-in email (a user can only ever match their own login email).
-  const { data: linked } = await supabase.from('people').select(PROFILE_COLS).eq('profile_id', user.id).maybeSingle()
-  let me = linked as unknown as MeRow | null
-  if (!me && user.email) {
-    const em = user.email
-    const { data: byEmail } = await supabase.from('people').select(PROFILE_COLS)
-      .or(`email_personal.eq.${em},email_true_north.eq.${em},email_goodnews.eq.${em},email_coe.eq.${em}`)
-      .limit(1)
-    me = ((byEmail as unknown as MeRow[] | null)?.[0]) ?? null
-  }
+  // Who "me" is comes from loadCurrentPerson, the one resolver that honours a
+  // View Stage preview. Resolving it here from user.id instead meant a preview
+  // of another level rendered the real admin's own card.
+  const current = await loadCurrentPerson(supabase, user)
+  const { data: row } = current
+    ? await supabase.from('people').select(PROFILE_COLS).eq('id', current.id).maybeSingle()
+    : { data: null }
+  const me = row as unknown as MeRow | null
 
   if (!me) {
     return (

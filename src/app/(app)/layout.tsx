@@ -52,7 +52,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <UserMenu userEmail={user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} />
+          {/* The person's own mailbox, not the session's: in a View Stage preview
+              those differ, and the menu should read as that person. */}
+          <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} />
         </div>
       </header>
 
