@@ -45,6 +45,9 @@ const MONDAY_API = 'https://api.monday.com/v2'
 const TSHEETS_BASE = 'https://rest.tsheets.com/api/v1'
 // The webhook "exists" but delivers nothing failure mode is caught here: if no
 // Monday event has been received in this many days, flag a soft warning.
+/** How many recent deliveries the door count looks at. */
+const DOOR_WINDOW = 20
+
 const EVENT_STALE_DAYS = 7
 
 type Check = Omit<HealthResult, 'checked_at'>
@@ -97,27 +100,43 @@ async function checkMondayWebhooks(token: string, sites: SiteHook[]): Promise<Ch
 
 async function checkMondayEvents(supabase: SupabaseClient): Promise<Check> {
   try {
-    const { data, error } = await supabase.from('monday_events').select('received_at, result').order('received_at', { ascending: false }).limit(1)
+    // A window rather than just the latest row. Two doors are open at once
+    // during the cutover (the secret URL and the old unauthenticated one), so
+    // the most recent delivery only tells you which fired last, not whether the
+    // old door is still in use. Counting the window answers the question the
+    // cutover actually turns on: has anything come through the old one lately.
+    const { data, error } = await supabase
+      .from('monday_events')
+      .select('received_at, result')
+      .order('received_at', { ascending: false })
+      .limit(DOOR_WINDOW)
     if (error) return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: `Could not read event log: ${error.message}` }
-    const row = data?.[0] as { received_at?: string; result?: string | null } | undefined
-    const last = row?.received_at
+
+    const rows = (data ?? []) as { received_at?: string; result?: string | null }[]
+    const last = rows[0]?.received_at
     if (!last) return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: 'No Monday events recorded yet.' }
-    const ageMs = Date.now() - new Date(last).getTime()
-    const ageDays = Math.floor(ageMs / 86400000)
+
+    const ageDays = Math.floor((Date.now() - new Date(last).getTime()) / 86400000)
     const when = ageDays === 0 ? 'today' : `${ageDays}d ago`
+    if (ageDays > EVENT_STALE_DAYS) {
+      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${ageDays} days ago. Expected activity, delivery may be broken.` }
+    }
 
-    // The webhook tags each row with the door the delivery came through. That
-    // is how you know when the unauthenticated legacy URL can be deleted: it
-    // has to stop being used first.
-    const door = /^([a-z-]+url)/.exec(row?.result ?? '')?.[1]
-    const doorNote =
-      door === 'secret-url' ? ' Arriving on the secret URL.'
-        : door === 'legacy-url' ? ' Still arriving on the OLD unauthenticated URL: recreate the webhooks in Monday with the URL from Settings.'
-          : ''
+    // The webhook tags every row with the door it came through.
+    const doorOf = (r: string | null | undefined) => /^([a-z-]+url)/.exec(r ?? '')?.[1]
+    const secret = rows.filter(r => doorOf(r.result) === 'secret-url').length
+    const legacy = rows.filter(r => doorOf(r.result) === 'legacy-url').length
+    const untagged = rows.length - secret - legacy
 
-    if (ageDays > EVENT_STALE_DAYS) return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${ageDays} days ago. Expected activity, delivery may be broken.${doorNote}` }
-    if (door !== 'secret-url') return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}.${doorNote}` }
-    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${when}.${doorNote}` }
+    const counts = `Last ${rows.length} deliveries: ${secret} on the secret URL, ${legacy} on the old one${untagged ? `, ${untagged} from before tagging` : ''}.`
+
+    if (legacy > 0) {
+      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. ${counts} Delete the old webhooks in Monday, then the legacy route can go.` }
+    }
+    if (secret === 0) {
+      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. ${counts} Nothing has arrived on the secret URL yet.` }
+    }
+    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${when}. ${counts}` }
   } catch (e) {
     return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: (e as Error).message }
   }
