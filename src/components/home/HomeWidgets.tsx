@@ -6,6 +6,8 @@
  */
 
 import Link from 'next/link'
+import { loadAccess } from '@/lib/access/resolve'
+import { surfaceForPath } from '@/lib/access/nav'
 
 const icon = 'w-5 h-5'
 
@@ -64,10 +66,23 @@ function AnimIcon({ anim, children }: { anim: string; children: React.ReactNode 
   return anim ? <span className="tn-anim inline-flex" style={{ animation: anim }}>{children}</span> : <>{children}</>
 }
 
-export function HomeWidgets() {
+export async function HomeWidgets() {
+  const { can } = await loadAccess()
+
+  // A widget is a door. Showing one that bounces the viewer straight back Home
+  // is worse than not showing it: the page guard holds either way, so all the
+  // card can do is promise something and fail. The surface comes from the same
+  // route map the sidebar uses, so a widget cannot drift from its page.
+  // Placeholders (no href) have nothing to gate.
+  const visible = WIDGETS.filter(w => {
+    if (!w.href) return true
+    const surface = surfaceForPath(w.href)
+    return surface ? can(surface) : true
+  })
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {WIDGETS.map(w =>
+      {visible.map(w =>
         w.href ? (
           <Link
             key={w.title}
