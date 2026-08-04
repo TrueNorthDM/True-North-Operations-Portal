@@ -54,7 +54,13 @@ export const SURFACES: readonly Surface[] = [
     note: 'Opens the area. Which tools appear inside it is set per team, on the Directory’s Teams tab.',
   },
   { key: 'my-work', label: 'My Work / My Team', group: 'Navigation', defaults: ON },
-  { key: 'directory', label: 'People directory', group: 'Navigation', defaults: ON },
+  {
+    key: 'directory',
+    label: 'People directory',
+    group: 'Navigation',
+    defaults: ON,
+    note: 'Switching this off does not remove My Team: seeing your own team is personal, and stays available from the avatar menu and the My Work / My Team page whatever this row says. The People directory levels below still decide how much of a teammate’s card opens there.',
+  },
   { key: 'human-resources', label: 'Human Resources', group: 'Navigation', defaults: PRIV },
   // Settings holds the budgets, the hourly rates and the API tokens, so it is
   // locked to admin rather than left configurable.
