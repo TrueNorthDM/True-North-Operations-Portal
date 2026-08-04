@@ -28,6 +28,8 @@ interface Props {
   note?: string                           // per-month narrative (shown + in the PDF)
   canEditNote?: boolean                   // admin can edit the note
   canExport?: boolean                     // privileged tiers see Export / Team Update (Part 4)
+  /** Names with hours this month but no rate, so their cost lands as zero. */
+  unratedPeople?: string[]
 }
 
 function monthLabel(ym: string): string {
@@ -36,7 +38,7 @@ function monthLabel(ym: string): string {
   return `${months[m - 1]} ${y}`
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], note = '', canEditNote = false, canExport = false }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], note = '', canEditNote = false, canExport = false, unratedPeople = [] }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -125,6 +127,27 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
 
       {/* Month narrative (also printed on the client report) */}
       {!preview && <NoteCard month={selectedMonth} note={note} canEdit={canEditNote} />}
+
+      {/*
+        Hours with no rate behind them. rateFor() returns 0 when no assignment
+        covers a person for the month, so their hours are counted and their
+        cost is not: the budget reads as less consumed than it really is. This
+        is the only place that says so, because the totals themselves look
+        perfectly ordinary (audit finding M3-1). Internal only, never printed
+        on the client report.
+      */}
+      {unratedPeople.length > 0 && (
+        <div className="rounded-[14px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-[13px] text-[#7a4e05]">
+          <div className="font-semibold">
+            {unratedPeople.length === 1 ? '1 person has hours but no rate' : `${unratedPeople.length} people have hours but no rate`}
+          </div>
+          <div className="mt-1 leading-relaxed">
+            {unratedPeople.join(', ')}. Their hours are in the totals below and their cost is counted as $0,
+            so the budget shows less used than it really is. Set a rate in{' '}
+            <a href="/directory#rates" className="underline font-semibold">People, Teams and Permissions → Rates &amp; Costs</a>.
+          </div>
+        </div>
+      )}
 
       {/* Summary chips */}
       <div className="flex flex-wrap gap-3">

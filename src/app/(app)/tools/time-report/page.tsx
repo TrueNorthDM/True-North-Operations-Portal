@@ -217,6 +217,7 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
     <>
       <I7ReportView
         data={report}
+        unratedPeople={data?.unratedPeople ?? []}
         selectedMonth={selectedMonth}
         availableMonths={availableMonths}
         projectHours={data?.projectHours ?? {}}

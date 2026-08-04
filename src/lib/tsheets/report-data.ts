@@ -14,6 +14,8 @@ import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets
 
 export interface I7ReportData {
   report: I7Report | null                 // null when the month has no hours
+  /** Names with hours this month but no rate: their cost lands as zero. */
+  unratedPeople: string[]
   projectHours: Record<string, number>
   carryover: I7Carryover | null
   stdRate: number
@@ -195,6 +197,14 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   const personRates: Record<string, number> = {}
   for (const [uid, r] of Object.entries(ratesSel)) personRates[names[Number(uid)] ?? `User ${uid}`] = r
 
+  // Anyone who logged i7 time this month with no rate covering it. Their hours
+  // are counted and their cost is zero, so the budget reads as less consumed
+  // than it is, and nothing used to say so (audit finding M3-1).
+  const unratedPeople = Object.entries(ratesSel)
+    .filter(([, rate]) => rate === 0)
+    .map(([uid]) => names[Number(uid)] ?? `User ${uid}`)
+    .sort((a, b) => a.localeCompare(b))
+
   // Budget minus cost over a run of months, the shape both the opening balance
   // and the trend's running balance need.
   const accumulate = (months: string[]) => {
@@ -242,7 +252,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     trend.push({ month: ym, hours: round2(h), cost: round2(c), budget: b, balance: round2(tB - tC) })
   }
 
-  return { report: report.totalHours > 0 ? report : null, projectHours, carryover, stdRate, personRates, trend, note }
+  return { report: report.totalHours > 0 ? report : null, unratedPeople, projectHours, carryover, stdRate, personRates, trend, note }
 }
 
 // The optional narrative for a month (empty string when none).
