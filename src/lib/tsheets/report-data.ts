@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { loadAssignmentRates } from '@/lib/hr/compensation'
+import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
 import { monthBounds } from '@/lib/tsheets/report'
 import { buildI7Report, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
@@ -20,37 +21,7 @@ export interface I7ReportData {
   note: string                            // optional per-month narrative
 }
 
-interface Assignment { userId: number; rate: number; from: string; to: string | null }
-
 const round2 = (n: number) => Math.round(n * 100) / 100
-
-/** The rate for a user during a given month (YYYY-MM), honoring rate history. */
-function rateFor(assignments: Assignment[], userId: number, ym: string): number {
-  const ms = `${ym}-01`, me = `${ym}-31`
-  let best: Assignment | null = null
-  for (const a of assignments) {
-    if (a.userId !== userId) continue
-    if (a.from > me) continue
-    if (a.to && a.to < ms) continue
-    if (!best || a.from > best.from) best = a
-  }
-  return best ? best.rate : 0
-}
-
-/** The "standard" i7 hourly rate for a month, the most common active rate. */
-function standardI7Rate(assignments: Assignment[], ym: string): number {
-  const userIds = [...new Set(assignments.map(a => a.userId))]
-  const counts = new Map<number, number>()
-  for (const uid of userIds) {
-    const r = rateFor(assignments, uid, ym)
-    if (r > 0) counts.set(r, (counts.get(r) ?? 0) + 1)
-  }
-  let best = 0, bestCount = -1
-  for (const [rate, c] of counts) {
-    if (c > bestCount || (c === bestCount && rate > best)) { best = rate; bestCount = c }
-  }
-  return best
-}
 
 // Cached i7 timesheet entries for a date range (paginated past PostgREST's cap).
 async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]> {
