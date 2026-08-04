@@ -22,6 +22,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { fetchItem, setStatusLabel } from './client'
+import { siblingItemsToApply } from './apply-links'
 
 interface SiteQueryRow {
   id: string
@@ -173,9 +174,10 @@ export async function runLinkHandler(
   // this serially and swallow individual failures so one broken item
   // doesn't block the rest. (Vercel free-tier function time budget is
   // tight; if siblings ever explode in count, batch via subscriptions.)
-  const siblingIds = (urlRows ?? [])
-    .map(r => r.monday_item_id)
-    .filter((id): id is string => !!id)
+  // Active languages only: a paused or discontinued language keeps its
+  // page_urls row, and telling Monday to apply its link would undo the pause
+  // (audit finding M5-1).
+  const siblingIds = siblingItemsToApply(urlRows ?? [], site.languages)
   const targetBoardId = site.monday_board_id ?? boardId
   const failures: string[] = []
   for (const sib of siblingIds) {
