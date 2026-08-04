@@ -37,10 +37,12 @@ describe('getAccessibleSiteIds', () => {
 })
 
 describe('canAccessSite', () => {
-  it('fails OPEN (true) when access cannot be evaluated', async () => {
+  it('fails CLOSED (false) when access cannot be evaluated', async () => {
+    // A database blip must not read as an access grant. The visible cost is
+    // an empty Projects list, which is the failure you want to notice.
     getUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
     rpc.mockResolvedValue({ data: null, error: { message: 'boom' } })
-    expect(await canAccessSite('any-site')).toBe(true)
+    expect(await canAccessSite('any-site')).toBe(false)
   })
 
   it('allows a site in the granted set and denies one outside it', async () => {

@@ -63,7 +63,7 @@ export default async function ProjectsPage() {
   if (!access.canTool('href-links')) redirect('/tools')
 
   const { accessibleCodes, readyBySite, totalReady, statsBySite } = await getProjectsOverview()
-  const visibleSites = accessibleCodes === null ? [...SITES] : SITES.filter(s => accessibleCodes.has(s.code))
+  const visibleSites = SITES.filter(s => accessibleCodes.has(s.code))
 
   return (
     <div className="space-y-8">

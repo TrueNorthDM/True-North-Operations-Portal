@@ -22,7 +22,7 @@ const DEFAULT_LANGUAGES: Record<string, string[]> = {
 
 export interface ProjectsOverview {
   /** Site codes the user can reach, or null when access can't be evaluated (fail open). */
-  accessibleCodes: Set<string> | null
+  accessibleCodes: Set<string>
   /**
    * Pages that are **ready to apply**: every site language already has a URL,
    * the page isn't set aside (not_relevant), and it isn't fully live yet, so
@@ -37,15 +37,15 @@ export async function getProjectsOverview(): Promise<ProjectsOverview> {
   const supabase = await createClient()
 
   // Access enforcement: only reachable projects. Admins + ungranted
-  // (unrestricted) projects pass; null = couldn't evaluate → fail open.
+  // (unrestricted) projects pass; null = couldn't evaluate → fail closed.
   const [{ data: siteRows }, accessibleIds] = await Promise.all([
     supabase.from('sites').select('id, code'),
     getAccessibleSiteIds(),
   ])
-  const accessibleCodes =
-    accessibleIds === null
-      ? null
-      : new Set((siteRows ?? []).filter(s => accessibleIds.has(s.id)).map(s => s.code))
+  // null means the check itself failed, so nothing is treated as reachable.
+  const accessibleCodes = new Set(
+    accessibleIds === null ? [] : (siteRows ?? []).filter(s => accessibleIds.has(s.id)).map(s => s.code),
+  )
 
   // One pass over pages with their URLs + confirmations. From it we derive both
   // the per-site progress stats AND the "ready to apply" notification list.

@@ -5,10 +5,13 @@
  * Safe rule: admins → all; a site with no grants → everyone; otherwise only
  * via a team or direct person grant. So with zero grants nothing is hidden.
  *
- * Fail OPEN on errors: if the RPC is missing (migration 016 not applied yet)
- * or fails transiently, return null = "couldn't evaluate" and callers skip
- * filtering. That matches the design rule, nothing is hidden until access is
- * deliberately granted, and avoids silently blanking the portal.
+ * Fails CLOSED on errors. If the RPC is missing or fails transiently we cannot
+ * say what this user may reach, and answering "everything" turns a database
+ * blip into an access grant. Callers get null = "couldn't evaluate" and treat
+ * it as no access.
+ *
+ * The trade-off is visible on purpose: a broken RPC empties the Projects list
+ * rather than quietly widening it, which is the failure you want to notice.
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -30,5 +33,5 @@ export async function getAccessibleSiteIds(): Promise<Set<string> | null> {
 
 export async function canAccessSite(siteId: string): Promise<boolean> {
   const ids = await getAccessibleSiteIds()
-  return ids === null ? true : ids.has(siteId)
+  return ids === null ? false : ids.has(siteId)
 }
