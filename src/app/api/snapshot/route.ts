@@ -10,7 +10,8 @@
  */
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { BOARDS } from '@/lib/boards/config'
 import { processBoard, getMondayToken, type BoardReq, type BoardSnapshot } from '@/lib/monday/snapshot'
 
 export const runtime = 'nodejs'
@@ -21,12 +22,19 @@ export const dynamic = 'force-dynamic'
 // Fallback live-fetch window when a board isn't in the store yet.
 const FALLBACK_LOG_DAYS = 180
 
-/** Anon client for the public-read monday_snapshot store. Works locally and in
- *  prod without the service-role key (the cron writes with service role). */
+/**
+ * Service-role client for the snapshot store.
+ *
+ * This used to be the anon client, described as reading a "public-read" store,
+ * and it was: monday_snapshot's policy said `FOR SELECT USING (true)` with no
+ * TO clause, which in Postgres means TO PUBLIC, which includes anon. The whole
+ * of both boards, 14 MB of item names, assignees and activity, was downloadable
+ * by anyone holding the anon key out of the JS bundle. Migration 055 locks the
+ * table to authenticated; reading it here with service_role is what lets that
+ * lock exist (audit finding M7-1).
+ */
 function readClient() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
+  return createAdminClient()
 }
 
 export async function POST(request: Request) {
@@ -39,6 +47,17 @@ export async function POST(request: Request) {
   const { boards } = body
   if (!Array.isArray(boards) || boards.length === 0) {
     return NextResponse.json({ error: 'Missing or empty "boards" in request body' }, { status: 400 })
+  }
+
+  // Only boards this portal is configured to show. The ids arrive in the
+  // request body, and a board missing from the store is fetched LIVE with the
+  // portal's own Monday token, so without this any signed-in person could name
+  // any board in the Monday account and have the portal fetch it for them
+  // (audit finding M7-2). The allowlist is the dashboard config itself, so
+  // adding a board to the product adds it here and nowhere else.
+  const unknown = boards.filter(b => !BOARDS[String(b.id)]).map(b => String(b.id))
+  if (unknown.length > 0) {
+    return NextResponse.json({ error: `Unknown board(s): ${unknown.join(', ')}` }, { status: 400 })
   }
 
   const t0 = Date.now()

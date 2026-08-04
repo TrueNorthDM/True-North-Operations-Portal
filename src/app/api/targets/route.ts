@@ -29,11 +29,16 @@ interface TargetRow {
 }
 
 export async function GET() {
+  // Read with the service role, not the anon key. publishing_targets carried
+  // the same policy defect as monday_snapshot: `FOR SELECT USING (true)` with
+  // no TO clause is TO PUBLIC, so the targets were readable by anyone with the
+  // key from the JS bundle. Migration 055 closes it, and this is what keeps
+  // this route working afterwards (audit finding M7-3).
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return NextResponse.json(
-      { error: 'Supabase env vars missing (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)' },
+      { error: 'Supabase env vars missing (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)' },
       { status: 500 },
     )
   }
