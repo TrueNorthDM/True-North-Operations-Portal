@@ -29,16 +29,28 @@ import type { FilterCond, GridColumn, SortState } from './grid/types'
 
 type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status' | 'tsheets'
 
+// Ordered to match the contact card (components/admin/RestrictedDirectory →
+// ProfileCard, the same layout as My profile), so scanning a row and reading a
+// card follow the same sequence:
+//   header      job title, team, contact type, status
+//   Employment  type, schedule
+//   Reporting   reports to
+//   Dates       joined
+// Internal rate and TSheets close the row: neither appears on the card (the
+// rate is deliberately kept off it), so they have no place in that sequence.
+//
+// The visible set is filtered THROUGH this array, so changing the order here
+// reorders every table, including column choices already saved in localStorage.
 const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
+  { id: 'job', label: 'Job title', fr: '1.2fr' },
   { id: 'team', label: 'Team', fr: '1fr' },
   { id: 'role', label: 'Contact type', fr: '1.1fr' },
-  { id: 'job', label: 'Job title', fr: '1.2fr' },
-  { id: 'reports', label: 'Reports to', fr: '1.3fr' },
+  { id: 'status', label: 'Status', fr: '0.9fr' },
   { id: 'type', label: 'Type', fr: '0.9fr' },
   { id: 'time', label: 'Schedule', fr: '0.85fr' },
+  { id: 'reports', label: 'Reports to', fr: '1.3fr' },
   { id: 'joined', label: 'Joined', fr: '1fr' },
   { id: 'rate', label: 'Internal rate', fr: '0.95fr', align: 'right' },
-  { id: 'status', label: 'Status', fr: '0.9fr' },
   { id: 'tsheets', label: 'TSheets', fr: '1fr' },
 ]
 const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'rate', 'status', 'tsheets']
