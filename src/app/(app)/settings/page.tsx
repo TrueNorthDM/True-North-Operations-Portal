@@ -156,7 +156,7 @@ export default async function SettingsPage() {
             help={<>Find it at <a href="https://auth.monday.com/users/sign_in" target="_blank" rel="noopener noreferrer" className="text-slate-700 underline">monday.com</a> → Profile picture → Developers → My Access Tokens.</>}
             changeWarning={{ title: 'Change the Monday API token?', confirm: 'I understand, let me change it', body: <p>Replacing it will <strong>break the existing Monday connection</strong> until a working token is saved.</p> }}
             clearWarning={{ title: 'Remove the Monday API token?', confirm: 'Remove token', body: <p>Removing it <strong>breaks the Monday connection</strong>. Implementation status stops syncing until a token is added again.</p> }}
-            note={<div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2"><span aria-hidden="true">⚠</span><span>Until RLS covers app_settings, this value is technically reachable via the public Supabase anon key.</span></div>}
+            note={<div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 flex gap-2"><span aria-hidden="true">🔒</span><span>Stored with row-level security: only admins can read or change it, and it is never sent to the browser.</span></div>}
             footer={<PullInfo syncedAt={mondayPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={0} label="Boards pulled" pastVerb="pulled" />}
           />
 

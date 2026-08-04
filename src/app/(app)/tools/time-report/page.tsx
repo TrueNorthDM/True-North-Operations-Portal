@@ -12,11 +12,11 @@
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
 import { GrantPassReport } from '@/components/tsheets/GrantPassReport'
@@ -140,15 +140,10 @@ async function I7Tab({ month }: { month?: string }) {
   const requested = month ?? currentYearMonth()
   const selectedMonth = months.includes(requested) ? requested : months[0]
 
-  const supabase = await createClient()
-  const { data: settings } = await supabase
-    .from('app_settings')
-    .select('tsheets_api_token, tsheets_synced_at')
-    .eq('singleton_id', 1)
-    .maybeSingle()
-
-  const token = settings?.tsheets_api_token ?? null
-  const syncedAt = settings?.tsheets_synced_at ?? null
+  // Only "is TSheets connected" and "when did it last sync" are needed here,
+  // never the token itself, so this goes through the narrow reader instead of
+  // the user's client. See lib/tsheets/status.ts.
+  const { configured, syncedAt } = await getTsheetsStatus()
 
   return (
     <div className="space-y-5">
@@ -167,7 +162,7 @@ async function I7Tab({ month }: { month?: string }) {
         <SyncStatus syncedAt={syncedAt} />
       </div>
 
-      {!token ? (
+      {!configured ? (
         <>
           <I7ReportView
             data={MOCK_I7}

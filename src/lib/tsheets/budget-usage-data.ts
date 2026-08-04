@@ -4,6 +4,7 @@
 // own left-nav sections.
 
 import { createClient } from '@/lib/supabase/server'
+import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { getCurrentProfile } from '@/lib/auth/role'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import type { ClientWithBudget } from '@/components/tsheets/settings/ClientsTab'
@@ -27,12 +28,10 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
 
   const profile = await getCurrentProfile()
   const isAdmin = profile?.role === 'admin'
-  const { data: appSettings } = await supabase
-    .from('app_settings')
-    .select('tsheets_synced_at')
-    .eq('singleton_id', 1)
-    .maybeSingle()
-  const syncedAt = appSettings?.tsheets_synced_at ?? null
+  // This function also feeds /directory, which is not admin-only, so the
+  // timestamp comes from the narrow reader rather than the user's client.
+  // That is what lets app_settings be admin-only (migration 052).
+  const { syncedAt } = await getTsheetsStatus()
 
   const [
     { data: clientsRaw },
