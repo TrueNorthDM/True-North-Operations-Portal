@@ -9,6 +9,7 @@
  */
 
 import { usePathname, useRouter } from 'next/navigation'
+import { withViewAs } from '@/components/ViewAsKeeper'
 
 const iconClass = 'w-6 h-6 shrink-0'
 
@@ -155,7 +156,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
     // router.push keeps SPA navigation. (Trade-off: no cmd/middle-click new tab.)
     <button
       type="button"
-      onClick={() => router.push(item.href)}
+      onClick={() => router.push(withViewAs(item.href))}
       aria-label={item.label}
       aria-current={active ? 'page' : undefined}
       className={`group relative mx-auto flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${
