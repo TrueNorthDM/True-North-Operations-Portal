@@ -5,6 +5,7 @@
 // revalidate the affected routes so the UI reflects the new DB state.
 
 import { createClient } from '@/lib/supabase/server'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { LanguageCode } from '@/lib/types/database.types'
@@ -298,18 +299,51 @@ export async function saveSiteWpUrls(input: {
  * readable by anyone with the public anon key. For production, gate this
  * with RLS + service_role, or migrate to Supabase Vault / env var.
  */
-export async function saveMondayApiToken(input: { token: string }): Promise<{ ok: boolean; error?: string }> {
+/**
+ * Shared write path for every credential on Settings. These sit behind an
+ * explicit admin check: RLS on app_settings is not in this repo, so the action
+ * cannot rely on the database to refuse a non-admin. Previously there was no
+ * check at all here.
+ */
+async function saveAppSecret(
+  column: 'monday_api_token' | 'tsheets_api_token' | 'monday_signing_secret',
+  raw: string,
+  alsoRevalidate: string[] = [],
+): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change this.' }
+
   const supabase = await createClient()
-  const trimmed = input.token.trim()
+  const trimmed = raw.trim()
+  const value = trimmed === '' ? null : trimmed
+  // Spelled out per column rather than a computed key: Supabase's typed client
+  // cannot check a dynamic key, and this is the one place secrets are written.
+  const patch =
+    column === 'monday_api_token' ? { monday_api_token: value }
+      : column === 'tsheets_api_token' ? { tsheets_api_token: value }
+        : { monday_signing_secret: value }
 
   const { error } = await supabase
     .from('app_settings')
-    .update({ monday_api_token: trimmed === '' ? null : trimmed, updated_at: new Date().toISOString() })
+    .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('singleton_id', 1)
 
   if (error) return { ok: false, error: error.message }
   revalidatePath('/settings')
+  for (const path of alsoRevalidate) revalidatePath(path)
   return { ok: true }
+}
+
+export async function saveMondayApiToken(input: { value: string }) {
+  return saveAppSecret('monday_api_token', input.value)
+}
+
+/**
+ * The webhook signing secret. While the webhook runs in monitor mode this only
+ * enables the check's reporting; enforcement is a separate, later switch (see
+ * api/monday/webhook), so a wrong value here cannot take the integration down.
+ */
+export async function saveMondaySigningSecret(input: { value: string }) {
+  return saveAppSecret('monday_signing_secret', input.value, ['/admin/automations'])
 }
 
 /**
@@ -317,19 +351,8 @@ export async function saveMondayApiToken(input: { token: string }): Promise<{ ok
  * Same security model as monday_api_token, full value stays server-side,
  * client only sees { exists, last4 }.
  */
-export async function saveTsheetsApiToken(input: { token: string }): Promise<{ ok: boolean; error?: string }> {
-  const supabase = await createClient()
-  const trimmed = input.token.trim()
-
-  const { error } = await supabase
-    .from('app_settings')
-    .update({ tsheets_api_token: trimmed === '' ? null : trimmed, updated_at: new Date().toISOString() })
-    .eq('singleton_id', 1)
-
-  if (error) return { ok: false, error: error.message }
-  revalidatePath('/settings')
-  revalidatePath('/tools/time-report')
-  return { ok: true }
+export async function saveTsheetsApiToken(input: { value: string }) {
+  return saveAppSecret('tsheets_api_token', input.value, ['/tools/time-report'])
 }
 
 /**

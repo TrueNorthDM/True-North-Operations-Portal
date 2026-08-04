@@ -81,19 +81,39 @@ export async function POST(req: NextRequest) {
   const signingSecret = settingsRow?.monday_signing_secret ?? ''
   const token = settingsRow?.monday_api_token ?? ''
 
-  // 5. Verify HMAC if we have a secret. If not, log and continue (initial
-  //    setup window). Once you save a secret, every payload is enforced.
+  // 5. Signature, currently in MONITOR MODE: we work out whether the delivery
+  //    would have verified and record it, but still process either way.
+  //
+  //    Why not enforce yet: nothing ever wrote monday_signing_secret until the
+  //    Settings field existed, so it is empty, and enforcing on an empty secret
+  //    would reject every delivery. Enforcing the moment a secret IS saved is
+  //    just as risky the other way, since a wrong value takes the integration
+  //    down instantly with no way to tell it apart from a real failure.
+  //
+  //    So: save the secret, watch a real delivery report `sig:verified` on
+  //    Admin -> Automations, and only then flip ENFORCE_SIGNATURE to true. That
+  //    flip also closes the no-secret case, which is the actual hole: without a
+  //    secret this endpoint accepts anyone's POST, and it runs as service_role.
+  const ENFORCE_SIGNATURE = false
+
+  let signatureNote = 'sig:no-secret'
   if (signingSecret) {
-    const result = await verifyMondayAuthHeader(
+    const check = await verifyMondayAuthHeader(
       req.headers.get('authorization'),
       signingSecret,
     )
-    if (!result.ok) {
+    signatureNote = check.ok ? 'sig:verified' : `sig:failed(${check.reason})`
+    if (ENFORCE_SIGNATURE && !check.ok) {
       return NextResponse.json(
-        { error: `unauthorized: ${result.reason}` },
+        { error: `unauthorized: ${check.reason}` },
         { status: 401 },
       )
     }
+  } else if (ENFORCE_SIGNATURE) {
+    return NextResponse.json(
+      { error: 'unauthorized: no signing secret configured' },
+      { status: 401 },
+    )
   }
 
   // 6. Persist audit row early. If our processing crashes after this
@@ -117,7 +137,10 @@ export async function POST(req: NextRequest) {
   const auditId = auditInsert?.id as string | undefined
 
   // 7. Dispatch. For now, only acknowledge, handlers land in next step.
-  const result = await dispatch(event, { token, supabase })
+  const dispatched = await dispatch(event, { token, supabase })
+  // The signature verdict rides along on the audit row, so the Automations page
+  // can show whether enforcement is safe to switch on yet.
+  const result = `${signatureNote} · ${dispatched}`
 
   // 8. Update audit row with the outcome.
   if (auditId) {

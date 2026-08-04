@@ -8,8 +8,8 @@ import { getCurrentProfile } from '@/lib/auth/role'
 import { requireSurface } from '@/lib/access/resolve'
 import { SettingsNav, type SettingsSection } from '@/components/SettingsNav'
 import { SiteCard } from '@/components/settings/SiteCard'
-import { MondayTokenField } from '@/components/MondayTokenField'
-import { TsheetsTokenField } from '@/components/TsheetsTokenField'
+import { SecretField } from '@/components/settings/SecretField'
+import { saveMondayApiToken, saveTsheetsApiToken, saveMondaySigningSecret } from '@/app/actions'
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { loadProjectDirectory } from '@/lib/tsheets/report-data'
@@ -78,7 +78,7 @@ export default async function SettingsPage() {
 
   const { data: appSettings } = await supabase
     .from('app_settings')
-    .select('monday_api_token, tsheets_api_token, tsheets_synced_at')
+    .select('monday_api_token, tsheets_api_token, monday_signing_secret, tsheets_synced_at')
     .eq('singleton_id', 1)
     .maybeSingle()
 
@@ -97,6 +97,10 @@ export default async function SettingsPage() {
   const tsheetsTokenInfo = {
     exists: !!appSettings?.tsheets_api_token,
     last4: appSettings?.tsheets_api_token ? appSettings.tsheets_api_token.slice(-4) : null,
+  }
+  const signingInfo = {
+    exists: !!appSettings?.monday_signing_secret,
+    last4: appSettings?.monday_signing_secret ? appSettings.monday_signing_secret.slice(-4) : null,
   }
 
   const enriched: SiteData[] = []
@@ -143,8 +147,40 @@ export default async function SettingsPage() {
       content: (
         <div className="space-y-8">
           <SectionHead title="APIs & tokens" desc="Connect Monday and QuickBooks Time (TSheets). Tokens are stored server-side and never exposed to the browser." />
-          <MondayTokenField tokenInfo={tokenInfo} footer={<PullInfo syncedAt={mondayPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={0} label="Boards pulled" pastVerb="pulled" />} />
-          <TsheetsTokenField tokenInfo={tsheetsTokenInfo} footer={<PullInfo syncedAt={tsheetsPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={30} label="Clients & people synced" pastVerb="synced" />} />
+          <SecretField
+            title="Monday API"
+            description="Personal API token from monday.com, used to sync page implementation status."
+            info={tokenInfo}
+            save={saveMondayApiToken}
+            placeholder="Paste your Monday personal API token…"
+            help={<>Find it at <a href="https://auth.monday.com/users/sign_in" target="_blank" rel="noopener noreferrer" className="text-slate-700 underline">monday.com</a> → Profile picture → Developers → My Access Tokens.</>}
+            changeWarning={{ title: 'Change the Monday API token?', confirm: 'I understand, let me change it', body: <p>Replacing it will <strong>break the existing Monday connection</strong> until a working token is saved.</p> }}
+            clearWarning={{ title: 'Remove the Monday API token?', confirm: 'Remove token', body: <p>Removing it <strong>breaks the Monday connection</strong>. Implementation status stops syncing until a token is added again.</p> }}
+            note={<div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2"><span aria-hidden="true">⚠</span><span>Until RLS covers app_settings, this value is technically reachable via the public Supabase anon key.</span></div>}
+            footer={<PullInfo syncedAt={mondayPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={0} label="Boards pulled" pastVerb="pulled" />}
+          />
+
+          <SecretField
+            title="Monday webhook signing secret"
+            description="Proves an incoming webhook really came from Monday. Until this is set, unsigned calls to the webhook are accepted."
+            info={signingInfo}
+            save={saveMondaySigningSecret}
+            placeholder="Paste the webhook signing secret…"
+            help={<>Monday Developer Center → your app → Basic Information → Signing Secret. Saving it does not switch enforcement on: the webhook records whether each delivery would have verified, and Admin → Automations shows the result.</>}
+            changeWarning={{ title: 'Change the signing secret?', confirm: 'I understand, let me change it', body: <p>Deliveries are still processed either way while the webhook is in monitor mode, so a wrong value shows up as a failed check rather than an outage.</p> }}
+            clearWarning={{ title: 'Remove the signing secret?', confirm: 'Remove secret', body: <p>Without it the webhook <strong>cannot tell a real Monday delivery from anyone else&apos;s</strong>, and accepts both.</p> }}
+          />
+
+          <SecretField
+            title="QuickBooks Time (TSheets) API"
+            description="Static API token, used by the Clients Reports tool to pull hours from TSheets."
+            info={tsheetsTokenInfo}
+            save={saveTsheetsApiToken}
+            placeholder="Paste your TSheets API token…"
+            changeWarning={{ title: 'Change the TSheets token?', confirm: 'I understand, let me change it', body: <p>Replacing it will <strong>break the hours sync</strong> until a working token is saved.</p> }}
+            clearWarning={{ title: 'Remove the TSheets token?', confirm: 'Remove token', body: <p>Removing it stops the hours sync; the Clients Reports page falls back to sample data.</p> }}
+            footer={<PullInfo syncedAt={tsheetsPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={30} label="Clients & people synced" pastVerb="synced" />}
+          />
         </div>
       ),
     },

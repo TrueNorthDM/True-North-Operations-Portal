@@ -97,14 +97,28 @@ async function checkMondayWebhooks(token: string, sites: SiteHook[]): Promise<Ch
 
 async function checkMondayEvents(supabase: SupabaseClient): Promise<Check> {
   try {
-    const { data, error } = await supabase.from('monday_events').select('received_at').order('received_at', { ascending: false }).limit(1)
+    const { data, error } = await supabase.from('monday_events').select('received_at, result').order('received_at', { ascending: false }).limit(1)
     if (error) return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: `Could not read event log: ${error.message}` }
-    const last = (data?.[0] as { received_at?: string } | undefined)?.received_at
+    const row = data?.[0] as { received_at?: string; result?: string | null } | undefined
+    const last = row?.received_at
     if (!last) return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: 'No Monday events recorded yet.' }
     const ageMs = Date.now() - new Date(last).getTime()
     const ageDays = Math.floor(ageMs / 86400000)
-    if (ageDays > EVENT_STALE_DAYS) return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${ageDays} days ago. Expected activity, delivery may be broken.` }
-    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${ageDays === 0 ? 'today' : `${ageDays}d ago`}.` }
+    const when = ageDays === 0 ? 'today' : `${ageDays}d ago`
+
+    // The webhook records the signature verdict on each row while it runs in
+    // monitor mode. Surfacing it here is how you know whether enforcement can
+    // be switched on: it has to read "verified" on real deliveries first.
+    const sig = /^sig:([^ ·]+)/.exec(row?.result ?? '')?.[1]
+    const sigNote =
+      sig === 'verified' ? ' Signature verified, safe to enforce.'
+        : sig === 'no-secret' ? ' Signature NOT checked: no secret saved, so unsigned calls are accepted.'
+          : sig ? ` Signature check FAILED (${sig}); the saved secret does not match.`
+            : ''
+
+    if (ageDays > EVENT_STALE_DAYS) return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${ageDays} days ago. Expected activity, delivery may be broken.${sigNote}` }
+    if (sig && sig !== 'verified') return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}.${sigNote}` }
+    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${when}.${sigNote}` }
   } catch (e) {
     return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: (e as Error).message }
   }

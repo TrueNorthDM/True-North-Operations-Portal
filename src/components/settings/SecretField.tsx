@@ -1,44 +1,66 @@
 'use client'
 
 /**
- * MondayTokenField: Monday API token input on Settings.
+ * SecretField: a write-only credential input on Settings.
  *
- * SECURITY MODEL (current):
- *   - The full token value NEVER leaves the server.
- *   - This component only receives { exists, last4 } as props.
- *   - "Change" requires the user to re-enter the full token (we don't pre-fill).
- *   - Saved state is rendered as a blurred mask, no copy, no select.
- *   - Saving sends a NEW token via Server Action (which uses the supabase-js
- *     anon client to write to `app_settings`).
+ * SECURITY MODEL
+ *   - The stored value NEVER leaves the server. This component only receives
+ *     { exists, last4 }.
+ *   - "Change" requires re-entering the whole value; nothing is pre-filled.
+ *   - The saved state renders as a blurred mask that cannot be copied or
+ *     selected.
+ *   - Saving goes through a Server Action passed in by the page, which is
+ *     where the admin check lives.
  *
- * Caveat: anyone with the public anon key + no RLS can still query
- * `app_settings` directly via the Supabase REST API. The proper fix is
- * Supabase Auth + an RLS policy "SELECT only if auth.uid() IS NOT NULL".
+ * One component for every credential on the page. MondayTokenField and
+ * TsheetsTokenField were near-identical copies of this (the second's own
+ * comment said it "mirrors MondayTokenField exactly"), and a third credential
+ * would have meant a third copy.
  */
 
 import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveMondayApiToken } from '@/app/actions'
-import { useEditing } from './settings/editing-context'
+import { useEditing } from './editing-context'
 
-interface Props {
-  tokenInfo: {
-    exists: boolean
-    last4: string | null
-  }
-  footer?: ReactNode
+export interface SecretInfo {
+  exists: boolean
+  last4: string | null
 }
 
-export function MondayTokenField({ tokenInfo, footer }: Props) {
+interface Warning {
+  title: string
+  body: ReactNode
+  /** Label for the destructive confirm button. */
+  confirm: string
+}
+
+export function SecretField({
+  title, description, info, placeholder, help, note, footer,
+  changeWarning, clearWarning, save,
+}: {
+  title: string
+  description: ReactNode
+  info: SecretInfo
+  placeholder: string
+  /** Where to find the value, shown under the input. */
+  help?: ReactNode
+  /** Optional caveat box under the field. */
+  note?: ReactNode
+  footer?: ReactNode
+  changeWarning: Warning
+  clearWarning: Warning
+  /** Server Action that persists it. Empty string clears. */
+  save: (input: { value: string }) => Promise<{ ok: boolean; error?: string }>
+}) {
   const router = useRouter()
   const editing = useEditing() // page-level Settings edit mode
-  // Default to edit mode only when no token is saved. If saved, show masked view.
-  const [isEditing, setIsEditing] = useState(!tokenInfo.exists)
+  // Start in edit mode only when nothing is saved yet.
+  const [isEditing, setIsEditing] = useState(!info.exists)
 
-  // View gating: only the page Edit mode reveals Change/Remove and the input.
-  const showMask = tokenInfo.exists && !(editing && isEditing)
-  const showInput = editing && (isEditing || !tokenInfo.exists)
-  const showEmpty = !editing && !tokenInfo.exists
+  const showMask = info.exists && !(editing && isEditing)
+  const showInput = editing && (isEditing || !info.exists)
+  const showEmpty = !editing && !info.exists
+
   const [value, setValue] = useState('')
   const [reveal, setReveal] = useState(false)
   const [saving, startSave] = useTransition()
@@ -47,61 +69,46 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
   const [warnOpen, setWarnOpen] = useState(false)
   const [clearWarnOpen, setClearWarnOpen] = useState(false)
 
-  function handleSave() {
+  function persist(next: string, onDone: () => void) {
     setError(null)
     startSave(async () => {
-      const res = await saveMondayApiToken({ token: value })
+      const res = await save({ value: next })
       if (!res.ok) {
         setError(res.error ?? 'Failed to save.')
         return
       }
-      setSavedFlash(true)
-      setTimeout(() => setSavedFlash(false), 2000)
-      setIsEditing(false)
-      setReveal(false)
-      setValue('')
+      onDone()
       router.refresh()
     })
   }
 
-  function confirmClear() {
-    setClearWarnOpen(false)
-    startSave(async () => {
-      const res = await saveMondayApiToken({ token: '' })
-      if (!res.ok) {
-        setError(res.error ?? 'Failed to clear.')
-        return
-      }
-      setIsEditing(true)
-      router.refresh()
-    })
-  }
-
-  function startChange() {
-    setWarnOpen(false)
+  const handleSave = () => persist(value, () => {
+    setSavedFlash(true)
+    setTimeout(() => setSavedFlash(false), 2000)
+    setIsEditing(false)
+    setReveal(false)
     setValue('')
-    setIsEditing(true)
+  })
+
+  const confirmClear = () => {
+    setClearWarnOpen(false)
+    persist('', () => setIsEditing(true))
   }
 
   return (
     <section className="rounded-xl bg-white border border-slate-200 p-6 space-y-4">
       <div>
-        <h2 className="text-lg font-bold text-slate-900">Monday API</h2>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Personal API token from monday.com, used (later) to sync page implementation status.
-        </p>
+        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        <p className="text-sm text-slate-500 mt-0.5">{description}</p>
       </div>
 
-      {/* Saved state, blurred mask, no copy, no select. Change/Remove appear
-          only in the page Edit mode. */}
       {showMask && (
         <div className="flex items-center gap-3 flex-wrap">
           <div
             className="flex-1 min-w-[240px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-700 flex items-center gap-2"
-            aria-label="Saved token (hidden)"
+            aria-label={`${title}, saved and hidden`}
           >
             <span
-              // blur + non-selectable + non-copyable mask
               className="select-none [-webkit-user-select:none] tracking-widest"
               style={{ filter: 'blur(4px)' }}
               onCopy={e => e.preventDefault()}
@@ -109,7 +116,7 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
             >
               ••••••••••••••••••••
             </span>
-            <span className="text-xs text-slate-400 ml-auto select-none">···{tokenInfo.last4}</span>
+            <span className="text-xs text-slate-400 ml-auto select-none">···{info.last4}</span>
           </div>
           {editing && (
             <>
@@ -132,19 +139,17 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
         </div>
       )}
 
-      {/* No token yet, view mode, nudge to Edit */}
       {showEmpty && (
         <div className="px-3 py-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 italic">
-          No token set, click <span className="font-semibold not-italic text-slate-500">Edit</span> to add one.
+          Nothing set, click <span className="font-semibold not-italic text-slate-500">Edit</span> to add it.
         </div>
       )}
 
-      {/* Edit state, enter a new token */}
       {showInput && (
         <div className="space-y-3">
-          {tokenInfo.exists && (
+          {info.exists && (
             <div className="text-xs text-slate-500">
-              You&apos;re replacing the existing token. Paste the new one below.
+              You&apos;re replacing the saved value. Paste the new one below.
             </div>
           )}
           <div className="flex items-stretch gap-2">
@@ -153,7 +158,8 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
                 type={reveal ? 'text' : 'password'}
                 value={value}
                 onChange={e => setValue(e.target.value)}
-                placeholder="Paste your Monday personal API token…"
+                placeholder={placeholder}
+                aria-label={title}
                 autoComplete="off"
                 spellCheck={false}
                 className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-400"
@@ -161,7 +167,7 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
               <button
                 type="button"
                 onClick={() => setReveal(v => !v)}
-                aria-label={reveal ? 'Hide token' : 'Show token'}
+                aria-label={reveal ? 'Hide value' : 'Show value'}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
               >
                 {reveal ? '🙈' : '👁'}
@@ -174,78 +180,64 @@ export function MondayTokenField({ tokenInfo, footer }: Props) {
             >
               {saving ? 'Saving…' : savedFlash ? '✓ Saved' : 'Save'}
             </button>
-            {tokenInfo.exists && (
+            {info.exists && (
               <button
-                onClick={() => { setIsEditing(false); setValue(''); setError(null); }}
+                onClick={() => { setIsEditing(false); setValue(''); setError(null) }}
                 className="text-sm font-medium px-3 py-2 rounded-lg text-slate-500 hover:text-slate-800"
               >
                 Cancel
               </button>
             )}
           </div>
-          <p className="text-xs text-slate-500">
-            Find your token at <a href="https://auth.monday.com/users/sign_in" target="_blank" rel="noopener noreferrer" className="text-slate-700 underline">monday.com</a> → Profile picture → Developers → My Access Tokens.
-          </p>
+          {help && <p className="text-xs text-slate-500">{help}</p>}
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
+        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
           {error}
         </div>
       )}
 
-      {/* Change warning modal */}
       {warnOpen && (
         <Modal onClose={() => setWarnOpen(false)}>
-          <h3 className="text-lg font-bold text-slate-900">Change the Monday API token?</h3>
-          <p className="text-sm text-slate-600">
-            Replacing the current token will <strong>break the existing Monday connection</strong>.
-            Any sync running with the current token will fail until you save a new one.
-          </p>
+          <h3 className="text-lg font-bold text-slate-900">{changeWarning.title}</h3>
+          <div className="text-sm text-slate-600 space-y-2">{changeWarning.body}</div>
           <p className="text-sm text-slate-500">
-            You won&apos;t see the old token again, make sure you have a new one ready before continuing.
+            You won&apos;t see the old value again, make sure you have the new one ready.
           </p>
           <div className="flex items-center justify-end gap-3 pt-2">
             <button onClick={() => setWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
-            <button onClick={startChange} className="text-sm font-medium px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white">
-              I understand, let me change it
+            <button
+              onClick={() => { setWarnOpen(false); setValue(''); setIsEditing(true) }}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {changeWarning.confirm}
             </button>
           </div>
         </Modal>
       )}
 
-      {/* Clear warning modal */}
       {clearWarnOpen && (
         <Modal onClose={() => setClearWarnOpen(false)}>
-          <h3 className="text-lg font-bold text-slate-900">Remove the Monday API token?</h3>
-          <p className="text-sm text-slate-600">
-            Removing the token will <strong>break the Monday connection</strong>. The system won&apos;t sync implementation status until a token is added again.
-          </p>
+          <h3 className="text-lg font-bold text-slate-900">{clearWarning.title}</h3>
+          <div className="text-sm text-slate-600 space-y-2">{clearWarning.body}</div>
           <div className="flex items-center justify-end gap-3 pt-2">
             <button onClick={() => setClearWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
             <button onClick={confirmClear} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white">
-              Remove token
+              {clearWarning.confirm}
             </button>
           </div>
         </Modal>
       )}
 
-      {/* Security note, informational */}
-      <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2">
-        <span aria-hidden="true">⚠</span>
-        <span>
-          Until login + RLS are in place, this token is technically reachable via the public Supabase anon key.
-          Don&apos;t treat this as production-grade storage yet.
-        </span>
-      </div>
-
+      {note}
       {footer}
     </section>
   )
 }
 
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function Modal({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
