@@ -105,6 +105,22 @@ export default function ViewStageClient({ myName }: { myName: string }) {
       <div className="flex items-center gap-3 px-5 h-14 shrink-0 bg-white border-b border-slate-200">
         <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">View Stage</span>
         <span className="text-xs text-muted hidden md:inline">the portal through each access level</span>
+        {/*
+          What this preview does and does not prove. Impersonation is resolved
+          in lib/auth/role.ts, so the tier drives the menus, the widgets and the
+          page guards, and all of that is faithful. It never reaches the
+          database: every query still runs on the signed-in admin's own session,
+          so row-level security and column privileges behave the same in every
+          column here. Without this line it is natural to read an empty screen
+          as "locked", when what it shows is "hidden".
+        */}
+        <span
+          title="Menus, widgets and page guards are faithful to the level. Database rules (row-level security, column privileges) are NOT simulated: every query still runs as your own admin login. An empty screen here means the portal hides it, not that the database refuses it."
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-[#7a4e05] cursor-help"
+        >
+          <span aria-hidden="true">⚠</span>
+          Interface only, not database rules
+        </span>
         <span className="flex-1" />
         <div className="flex items-center gap-1 bg-subtle border border-slate-200 rounded-lg p-1">
           <button onClick={() => zoom(-0.12)} className="w-7 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors">−</button>

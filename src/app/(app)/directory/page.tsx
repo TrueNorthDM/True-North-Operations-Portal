@@ -36,6 +36,9 @@ type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
   const access = await requireSurface('directory')
+  // Resolved up here, not next to the view models, because it decides which
+  // COLUMNS to read a few lines below and not just what to render.
+  const level = directoryLevel(access.can)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -47,9 +50,30 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // levels 1 and 2 the read-only, team-scoped list below.
   const mePerson = await loadCurrentPerson(supabase, user)
 
-  // People with graceful degradation, then the rest in parallel.
-  let pRes = await supabase.from('people').select(PEOPLE_FULL)
-  if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
+  // People, with graceful degradation, then the rest in parallel.
+  //
+  // Levels 1 and 2 get the narrow column set. The wide one carries personal
+  // emails, phones, dates of birth and employment history for the whole
+  // company, and those levels render a list of names and one card: their own.
+  // The old code read everything and dropped it while assembling the response,
+  // which worked but left the privacy of the screen resting on a filter 300
+  // lines away. Not reading it removes the question.
+  // Collected as rows rather than as the response object: the two selects have
+  // different shapes, and everything downstream reads through PRow anyway.
+  let pRows: unknown[] | null = null
+  if (level >= 3) {
+    const full = await supabase.from('people').select(PEOPLE_FULL)
+    if (!full.error) pRows = full.data
+  }
+  if (!pRows) {
+    const base = await supabase.from('people').select(PEOPLE_BASE)
+    pRows = base.data ?? []
+  }
+
+  // The viewer's own row in full, since their own card opens at every level.
+  const { data: selfWide } = mePerson && level < 3
+    ? await supabase.from('people').select(PEOPLE_FULL).eq('id', mePerson.id).maybeSingle()
+    : { data: null }
 
   const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, addrRes, lcRes, msRes, alRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
@@ -72,7 +96,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     supabase.from('access_log').select('id, profile_id, person_id, name, email, user_agent, accessed_at').order('accessed_at', { ascending: false }).limit(1000),
   ])
 
-  const people = (pRes.data ?? []) as unknown as PRow[]
+  const people = (pRows ?? []) as unknown as PRow[]
   const teams = tData ?? []
   // Team memberships + per-team position (040) + is_primary (048). Graceful:
   // pre-migration those columns are absent, so fall back progressively. Cast
@@ -224,10 +248,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
 
   // ── People view models ──
-  // The directory level is resolved here rather than further down because pay
-  // is now a privileged read (migration 054): at levels 1 and 2 the view model
-  // below is discarded anyway, so there is no reason to fetch rates for it.
-  const level = directoryLevel(access.can)
   const compensation = level >= 3 ? await loadCompensationByPerson() : new Map<string, { internalRate: number | null }>()
 
   const peopleView: PersonView[] = people
@@ -367,7 +387,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         const pt = primaryTeam(p.id)
         const mgrId = str(p.manager_id)
         // Only the viewer's own card carries detail, at both levels.
-        const isSelf = p.id === viewerId
+        // Own card only, and its fields come from the row fetched for exactly
+        // that purpose: at these levels `p` does not carry them at all.
+        const self = p.id === viewerId ? (selfWide as Record<string, unknown> | null) : null
         return {
           id: p.id,
           name: p.full_name,
@@ -377,14 +399,14 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           avatarUrl: avatarById.get(p.id) ?? null,
           roleType: roleTypeById.get(p.id) ?? 'user',
           status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
-          detail: isSelf
+          detail: self
             ? {
                 managerName: mgrId ? nameById.get(mgrId) ?? null : null,
-                workEmail: str(p.email_true_north) ?? str(p.email_goodnews) ?? str(p.email_coe),
-                phone: str(p.phone),
-                location: str(p.location),
-                hireDate: str(p.hire_date),
-                employmentType: str(p.employment_type),
+                workEmail: str(self.email_true_north) ?? str(self.email_goodnews) ?? str(self.email_coe),
+                phone: str(self.phone),
+                location: str(self.location),
+                hireDate: str(self.hire_date),
+                employmentType: str(self.employment_type),
               }
             : null,
         }

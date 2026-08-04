@@ -60,10 +60,32 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
     teamNames = (teams ?? []).map(t => t.name).sort((a, b) => a.localeCompare(b))
   }
 
+  // Two reads instead of one, split by who the viewer may actually open.
+  //
+  // The single wide select this replaced pulled dates of birth, personal
+  // emails and phone numbers for every teammate and then dropped them while
+  // building the response. That was never a leak, but it left the privacy of
+  // the screen resting entirely on two filters further down: move the wrong
+  // line, or return `rows` directly one day, and it becomes one, with nothing
+  // in the diff looking wrong. Not fetching what must not be shown removes the
+  // question instead of answering it.
+  const openableIds = level >= 3 ? [...personIds] : [me.id]
+
+  // Enough for the card list: name, avatar, team colour, and the manager
+  // lookup. Nothing here is private to the person.
+  // Spelled out rather than composed: the typed client can only infer the row
+  // shape from a literal, so a concatenated string erases the types.
   const { data: rows } = await supabase
     .from('people')
-    .select('id, full_name, last_name, title, avatar_url, role_type, status, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, email_true_north, email_goodnews, email_coe, email_personal, phone, whatsapp_same_number, location, date_of_birth, hire_date, left_on, employment_type, schedule, weekly_hours, onboarding_status, offboarding_status')
+    .select('id, full_name, title, avatar_url, role_type, status, manager_id')
     .in('id', [...personIds])
+
+  // The rest, only for the people whose card this viewer can open.
+  const { data: detailRows } = await supabase
+    .from('people')
+    .select('id, full_name, last_name, title, avatar_url, role_type, status, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, email_true_north, email_goodnews, email_coe, email_personal, phone, whatsapp_same_number, location, date_of_birth, hire_date, left_on, employment_type, schedule, weekly_hours, onboarding_status, offboarding_status')
+    .in('id', openableIds)
+  const detailById = new Map((detailRows ?? []).map(r => [r.id, r]))
 
   const nameById = new Map((rows ?? []).map(r => [r.id, r.full_name]))
   // The primary team drives the avatar colour; one lookup for the whole set.
@@ -86,8 +108,9 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
     .map((p): RestrictedPerson => {
       const teamName = teamNameByPerson.get(p.id) ?? null
       const mgrId = str(p.manager_id)
-      const isSelf = p.id === me.id
-      const openable = level >= 3 || isSelf
+      // `openable` is now decided by whether the private row was fetched at
+      // all, so the two can no longer disagree.
+      const d = detailById.get(p.id)
       return {
         id: p.id,
         name: p.full_name,
@@ -98,14 +121,14 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
         roleType: asRoleType(p.role_type),
         status: 'active',
         // Levels 1 and 2: only your own card opens. Level 3: everyone's.
-        detail: openable
+        detail: d
           ? {
               managerName: mgrId ? nameById.get(mgrId) ?? null : null,
-              workEmail: str(p.email_true_north) ?? str(p.email_goodnews) ?? str(p.email_coe),
-              phone: str(p.phone),
-              location: str(p.location),
-              hireDate: str(p.hire_date),
-              employmentType: str(p.employment_type),
+              workEmail: str(d.email_true_north) ?? str(d.email_goodnews) ?? str(d.email_coe),
+              phone: str(d.phone),
+              location: str(d.location),
+              hireDate: str(d.hire_date),
+              employmentType: str(d.employment_type),
             }
           : null,
       }
@@ -114,7 +137,7 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
 
   // Full cards only for the people this viewer may open, so the extra fields
   // are never sent to the browser for anyone else.
-  type Row = NonNullable<typeof rows>[number]
+  type Row = NonNullable<typeof detailRows>[number]
   const toProfile = (r: Row): FullProfile => ({
     name: r.full_name,
     lastName: str(r.last_name),
@@ -144,10 +167,11 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
     leftOn: str(r.left_on),
   })
 
+  // No level check here any more: detailRows IS the allowed set.
   const profiles: Record<string, FullProfile> = {}
-  for (const r of rows ?? []) {
+  for (const r of detailRows ?? []) {
     if (r.status === 'inactive') continue
-    if (level >= 3 || r.id === me.id) profiles[r.id] = toProfile(r)
+    profiles[r.id] = toProfile(r)
   }
 
   return { people, teamNames, profiles, selfId: me.id }
