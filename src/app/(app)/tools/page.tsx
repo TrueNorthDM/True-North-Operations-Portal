@@ -4,6 +4,7 @@
 
 import { NavCard } from '@/components/NavCard'
 import { requireSurface } from '@/lib/access/resolve'
+import { TOOLS } from '@/lib/access/tools'
 
 // Line-chart (Publishing Goals), pulses.
 const ChartIcon = (
@@ -34,53 +35,26 @@ const BudgetIcon = (
   </svg>
 )
 
+// The card visuals live here (JSX cannot sit in the plain data module), keyed by
+// the catalogue key. A tool with no icon still renders, just without one.
+const ICONS: Record<string, React.ReactNode> = {
+  publishing: ChartIcon,
+  workload: ColumnsIcon,
+  'href-links': LinkMgmtIcon,
+  'i7-budget': BudgetIcon,
+}
+
 export default async function ToolsPage() {
   const access = await requireSurface('tools')
 
-  // Which cards appear is per-team (Directory → Teams → Tool access); the keys
-  // are the catalogue's (lib/access/tools.ts).
-  const dashboards = [
-    access.canTool('publishing') && (
-      <NavCard
-        key="publishing"
-        href="/dashboards/publishing"
-        title="Publishing Goals"
-        description="Weekly publishing pace vs target, the live dashboard."
-        icon={ChartIcon}
-      />
-    ),
-    access.canTool('workload') && (
-      <NavCard
-        key="workload"
-        href="/boards-beta"
-        title="Workload"
-        description="Native rewrite (Goals, Translation, Targets). Work in progress."
-        icon={ColumnsIcon}
-        soon
-      />
-    ),
-  ].filter(Boolean)
-
-  const tools = [
-    access.canTool('href-links') && (
-      <NavCard
-        key="href-links"
-        href="/projects"
-        icon={LinkMgmtIcon}
-        title="Href Link Management"
-        description="Manage hreflang tags for a project's WordPress pages. Open a project (AAAF or HFA) to use it."
-      />
-    ),
-    access.canTool('i7-budget') && (
-      <NavCard
-        key="i7-budget"
-        href="/tools/time-report"
-        icon={BudgetIcon}
-        title="Clients Reports"
-        description="Hours, cost and budget usage per client. Includes the i7 Marketing report, with more clients coming."
-      />
-    ),
-  ].filter(Boolean)
+  // Rendered from the same catalogue the Teams tab grants from, so the two can
+  // never list different tools. Which of them appear is per team (Directory →
+  // Teams → Tool access).
+  const visible = TOOLS.filter(t => access.canTool(t.key))
+  const groups = (['Dashboards', 'Tools'] as const).map(group => ({
+    group,
+    items: visible.filter(t => t.group === group),
+  })).filter(g => g.items.length > 0)
 
   return (
     <div className="space-y-10">
@@ -89,21 +63,25 @@ export default async function ToolsPage() {
         <p className="mt-1 text-muted">Boards Review dashboards and the capabilities you use inside a project.</p>
       </div>
 
-      {dashboards.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Dashboards</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">{dashboards}</div>
+      {groups.map(({ group, items }) => (
+        <section key={group} className="space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">{group}</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {items.map(t => (
+              <NavCard
+                key={t.key}
+                href={t.href}
+                title={t.label}
+                description={t.description}
+                icon={ICONS[t.key]}
+                soon={t.soon}
+              />
+            ))}
+          </div>
         </section>
-      )}
+      ))}
 
-      {tools.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Tools</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">{tools}</div>
-        </section>
-      )}
-
-      {dashboards.length === 0 && tools.length === 0 && (
+      {groups.length === 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
           <p className="font-semibold text-tn-ink m-0">No tools yet</p>
           <p className="mt-1.5 text-sm text-muted m-0">

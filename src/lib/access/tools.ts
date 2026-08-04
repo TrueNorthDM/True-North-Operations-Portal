@@ -1,16 +1,19 @@
 /**
- * access/tools.ts: the catalogue of tools/dashboards a team can be granted
- * access to (Teams tab → "Tool access").
+ * access/tools.ts: the cards on Tools & Dashboards, which are exactly the rows
+ * a team can be granted (Directory → Teams → "Tool access").
  *
- * Curated static list (same reasoning as favorites/catalog.ts): the `key` is a
- * stable identifier stored in team_tool_grants.tool_key, so it must never change
- * once shipped, rename the label freely, but keep the key. `href` is where the
- * tool lives (used for the row link + Part 4's nav gating); `group` buckets the
- * rows in the card; `sensitive` flags surfaces that expose money/PII (the i7
- * budget) so the UI can mark them.
+ * ONE list, on purpose. The Tools & Dashboards page renders from it and the
+ * Teams tab grants from it, so a tool cannot exist in one place and be missing
+ * from the other: add an entry here and it appears in both.
  *
- * This is the DATA layer only. Enforcing these grants in the nav is Part 4,
- * until then every team effectively sees everything.
+ * The corollary matters just as much: anything NOT in this list is not a tool,
+ * and is governed solely by the access-level matrix (access/surfaces.ts). My
+ * Work used to sit here despite never being a card on Tools & Dashboards, which
+ * meant it needed a team grant nobody had thought to give.
+ *
+ * `key` is stored in team_tool_grants.tool_key, so it must never change once
+ * shipped, rename the label freely but keep the key. `sensitive` flags cards
+ * that expose money or PII so the UI can mark them.
  */
 
 export type ToolAudience = 'lead' | 'all'
@@ -20,15 +23,43 @@ export interface ToolDef {
   label: string
   href: string
   group: 'Dashboards' | 'Tools'
+  description: string
   sensitive?: boolean
+  /** Renders the card as a preview, not yet openable. */
+  soon?: boolean
 }
 
 export const TOOLS: ToolDef[] = [
-  { key: 'publishing', label: 'Publishing Goals', href: '/dashboards/publishing', group: 'Dashboards' },
-  { key: 'workload', label: 'Workload', href: '/boards-beta', group: 'Dashboards' },
-  { key: 'href-links', label: 'Href Link Management', href: '/projects', group: 'Tools' },
-  { key: 'i7-budget', label: 'Clients Reports', href: '/tools/time-report', group: 'Tools', sensitive: true },
-  { key: 'my-work', label: 'My Work', href: '/my-work', group: 'Tools' },
+  {
+    key: 'publishing',
+    label: 'Publishing Goals',
+    href: '/dashboards/publishing',
+    group: 'Dashboards',
+    description: 'Weekly publishing pace vs target, the live dashboard.',
+  },
+  {
+    key: 'workload',
+    label: 'Workload',
+    href: '/boards-beta',
+    group: 'Dashboards',
+    description: 'Native rewrite (Goals, Translation, Targets). Work in progress.',
+    soon: true,
+  },
+  {
+    key: 'href-links',
+    label: 'Href Link Management',
+    href: '/projects',
+    group: 'Tools',
+    description: "Manage hreflang tags for a project's WordPress pages. Open a project (AAAF or HFA) to use it.",
+  },
+  {
+    key: 'i7-budget',
+    label: 'Clients Reports',
+    href: '/tools/time-report',
+    group: 'Tools',
+    description: 'Hours, cost and budget usage per client. Includes the i7 Marketing report, with more clients coming.',
+    sensitive: true,
+  },
 ]
 
 /** Valid tool keys, the server action validates writes against this. */

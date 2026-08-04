@@ -22,11 +22,11 @@ export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const [org, access, me, celebPeople] = await Promise.all([getOrgChart(), loadAccess(), loadCurrentPerson(supabase, user), loadCelebrationPeople()])
-  // Budget at a glance. Needs BOTH the level's report-widget surface and the
-  // Clients Reports tool on one of their teams, so switching either off in
-  // Admin -> Access levels or on the Teams tab removes the widget here too.
+  // Budget at a glance. The widget is not a card on Tools & Dashboards, so it
+  // is not a team-grantable tool: it follows the access level alone. (Team
+  // grants govern the Clients Reports PAGE, which is such a card.)
   const month = currentYearMonth()
-  const showBudget = access.can('report-widget') && access.canTool('i7-budget')
+  const showBudget = access.can('report-widget')
   const i7Carryover = showBudget ? (await loadI7ReportData(month)).carryover : null
 
   return (

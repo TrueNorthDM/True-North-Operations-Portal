@@ -89,13 +89,7 @@ export const SURFACES: readonly Surface[] = [
   },
 
   // ── Clients Reports ───────────────────────────────────────────────────────
-  {
-    key: 'report-widget',
-    label: 'Budget widget on the Home dashboard',
-    group: 'Clients Reports',
-    defaults: PRIV,
-    note: 'Also requires the Clients Reports tool on one of their teams.',
-  },
+  { key: 'report-widget', label: 'Budget widget on the Home dashboard', group: 'Clients Reports', defaults: PRIV },
   // Exporting hands out the full budget and per-person cost detail, and the
   // note is published on the client report, so both stay with admin.
   { key: 'report-export', label: 'Export (PDF, CSV, image) and Team Update', group: 'Clients Reports', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
