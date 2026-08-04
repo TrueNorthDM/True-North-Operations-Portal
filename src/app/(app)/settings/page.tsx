@@ -9,7 +9,8 @@ import { requireSurface } from '@/lib/access/resolve'
 import { SettingsNav, type SettingsSection } from '@/components/SettingsNav'
 import { SiteCard } from '@/components/settings/SiteCard'
 import { SecretField } from '@/components/settings/SecretField'
-import { saveMondayApiToken, saveTsheetsApiToken, saveMondaySigningSecret } from '@/app/actions'
+import { WebhookUrlField } from '@/components/settings/WebhookUrlField'
+import { saveMondayApiToken, saveTsheetsApiToken, regenerateMondayWebhookSecret } from '@/app/actions'
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { loadProjectDirectory } from '@/lib/tsheets/report-data'
@@ -78,7 +79,7 @@ export default async function SettingsPage() {
 
   const { data: appSettings } = await supabase
     .from('app_settings')
-    .select('monday_api_token, tsheets_api_token, monday_signing_secret, tsheets_synced_at')
+    .select('monday_api_token, tsheets_api_token, monday_webhook_secret, tsheets_synced_at')
     .eq('singleton_id', 1)
     .maybeSingle()
 
@@ -97,10 +98,6 @@ export default async function SettingsPage() {
   const tsheetsTokenInfo = {
     exists: !!appSettings?.tsheets_api_token,
     last4: appSettings?.tsheets_api_token ? appSettings.tsheets_api_token.slice(-4) : null,
-  }
-  const signingInfo = {
-    exists: !!appSettings?.monday_signing_secret,
-    last4: appSettings?.monday_signing_secret ? appSettings.monday_signing_secret.slice(-4) : null,
   }
 
   const enriched: SiteData[] = []
@@ -160,15 +157,9 @@ export default async function SettingsPage() {
             footer={<PullInfo syncedAt={mondayPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={0} label="Boards pulled" pastVerb="pulled" />}
           />
 
-          <SecretField
-            title="Monday webhook signing secret"
-            description="Proves an incoming webhook really came from Monday. Until this is set, unsigned calls to the webhook are accepted."
-            info={signingInfo}
-            save={saveMondaySigningSecret}
-            placeholder="Paste the webhook signing secret…"
-            help={<>Monday Developer Center → your app → Basic Information → Signing Secret. Saving it does not switch enforcement on: the webhook records whether each delivery would have verified, and Admin → Automations shows the result.</>}
-            changeWarning={{ title: 'Change the signing secret?', confirm: 'I understand, let me change it', body: <p>Deliveries are still processed either way while the webhook is in monitor mode, so a wrong value shows up as a failed check rather than an outage.</p> }}
-            clearWarning={{ title: 'Remove the signing secret?', confirm: 'Remove secret', body: <p>Without it the webhook <strong>cannot tell a real Monday delivery from anyone else&apos;s</strong>, and accepts both.</p> }}
+          <WebhookUrlField
+            secret={appSettings?.monday_webhook_secret ?? null}
+            regenerate={regenerateMondayWebhookSecret}
           />
 
           <SecretField

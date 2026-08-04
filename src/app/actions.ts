@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { generateWebhookSecret } from '@/lib/monday/webhook-secret'
 import { revalidatePath } from 'next/cache'
 import type { LanguageCode } from '@/lib/types/database.types'
 
@@ -300,13 +301,14 @@ export async function saveSiteWpUrls(input: {
  * with RLS + service_role, or migrate to Supabase Vault / env var.
  */
 /**
- * Shared write path for every credential on Settings. These sit behind an
- * explicit admin check: RLS on app_settings is not in this repo, so the action
- * cannot rely on the database to refuse a non-admin. Previously there was no
- * check at all here.
+ * Shared write path for every credential on Settings. Migration 052 made
+ * app_settings admin-only at the database level, so this check is now the
+ * second lock rather than the only one, and it exists to turn a silent RLS
+ * rejection into a message the UI can show. Before today there was no check
+ * here at all and no RLS either.
  */
 async function saveAppSecret(
-  column: 'monday_api_token' | 'tsheets_api_token' | 'monday_signing_secret',
+  column: 'monday_api_token' | 'tsheets_api_token',
   raw: string,
   alsoRevalidate: string[] = [],
 ): Promise<{ ok: boolean; error?: string }> {
@@ -318,9 +320,7 @@ async function saveAppSecret(
   // Spelled out per column rather than a computed key: Supabase's typed client
   // cannot check a dynamic key, and this is the one place secrets are written.
   const patch =
-    column === 'monday_api_token' ? { monday_api_token: value }
-      : column === 'tsheets_api_token' ? { tsheets_api_token: value }
-        : { monday_signing_secret: value }
+    column === 'monday_api_token' ? { monday_api_token: value } : { tsheets_api_token: value }
 
   const { error } = await supabase
     .from('app_settings')
@@ -338,12 +338,28 @@ export async function saveMondayApiToken(input: { value: string }) {
 }
 
 /**
- * The webhook signing secret. While the webhook runs in monitor mode this only
- * enables the check's reporting; enforcement is a separate, later switch (see
- * api/monday/webhook), so a wrong value here cannot take the integration down.
+ * Generates a fresh Monday webhook secret and returns it, so Settings can show
+ * the full URL to paste into Monday.
+ *
+ * Regenerating invalidates the old URL immediately, which breaks the Href Links
+ * sync until the webhooks on the Monday side are recreated. The UI warns about
+ * that; nothing here can soften it, because two live secrets at once would
+ * defeat the point.
  */
-export async function saveMondaySigningSecret(input: { value: string }) {
-  return saveAppSecret('monday_signing_secret', input.value, ['/admin/automations'])
+export async function regenerateMondayWebhookSecret(): Promise<{ ok: boolean; secret?: string; error?: string }> {
+  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change this.' }
+
+  const secret = generateWebhookSecret()
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('app_settings')
+    .update({ monday_webhook_secret: secret, updated_at: new Date().toISOString() })
+    .eq('singleton_id', 1)
+
+  if (error) return { ok: false, error: error.message }
+  revalidatePath('/settings')
+  revalidatePath('/admin/automations')
+  return { ok: true, secret }
 }
 
 /**

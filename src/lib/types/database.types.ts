@@ -339,11 +339,12 @@ export type Database = {
         ]
       }
       app_settings: {
-        // monday_signing_secret exists since migration 002 but was never in
-        // these types, because nothing wrote it until the Settings field.
-        Row: { singleton_id: number; monday_api_token: string | null; tsheets_api_token: string | null; monday_signing_secret: string | null; tsheets_synced_at: string | null; updated_at: string }
-        Insert: { singleton_id?: number; monday_api_token?: string | null; tsheets_api_token?: string | null; monday_signing_secret?: string | null; tsheets_synced_at?: string | null; updated_at?: string }
-        Update: { monday_api_token?: string | null; tsheets_api_token?: string | null; monday_signing_secret?: string | null; tsheets_synced_at?: string | null; updated_at?: string }
+        // monday_webhook_secret (migration 053) is the random path segment that
+        // authenticates Monday deliveries. It replaced monday_signing_secret,
+        // which was for a JWT check that Monday only offers to integration apps.
+        Row: { singleton_id: number; monday_api_token: string | null; tsheets_api_token: string | null; monday_webhook_secret: string | null; tsheets_synced_at: string | null; updated_at: string }
+        Insert: { singleton_id?: number; monday_api_token?: string | null; tsheets_api_token?: string | null; monday_webhook_secret?: string | null; tsheets_synced_at?: string | null; updated_at?: string }
+        Update: { monday_api_token?: string | null; tsheets_api_token?: string | null; monday_webhook_secret?: string | null; tsheets_synced_at?: string | null; updated_at?: string }
         Relationships: []
       }
       monday_events: {

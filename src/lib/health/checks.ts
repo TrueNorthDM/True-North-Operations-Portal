@@ -106,19 +106,18 @@ async function checkMondayEvents(supabase: SupabaseClient): Promise<Check> {
     const ageDays = Math.floor(ageMs / 86400000)
     const when = ageDays === 0 ? 'today' : `${ageDays}d ago`
 
-    // The webhook records the signature verdict on each row while it runs in
-    // monitor mode. Surfacing it here is how you know whether enforcement can
-    // be switched on: it has to read "verified" on real deliveries first.
-    const sig = /^sig:([^ ·]+)/.exec(row?.result ?? '')?.[1]
-    const sigNote =
-      sig === 'verified' ? ' Signature verified, safe to enforce.'
-        : sig === 'no-secret' ? ' Signature NOT checked: no secret saved, so unsigned calls are accepted.'
-          : sig ? ` Signature check FAILED (${sig}); the saved secret does not match.`
-            : ''
+    // The webhook tags each row with the door the delivery came through. That
+    // is how you know when the unauthenticated legacy URL can be deleted: it
+    // has to stop being used first.
+    const door = /^([a-z-]+url)/.exec(row?.result ?? '')?.[1]
+    const doorNote =
+      door === 'secret-url' ? ' Arriving on the secret URL.'
+        : door === 'legacy-url' ? ' Still arriving on the OLD unauthenticated URL: recreate the webhooks in Monday with the URL from Settings.'
+          : ''
 
-    if (ageDays > EVENT_STALE_DAYS) return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${ageDays} days ago. Expected activity, delivery may be broken.${sigNote}` }
-    if (sig && sig !== 'verified') return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}.${sigNote}` }
-    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${when}.${sigNote}` }
+    if (ageDays > EVENT_STALE_DAYS) return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${ageDays} days ago. Expected activity, delivery may be broken.${doorNote}` }
+    if (door !== 'secret-url') return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}.${doorNote}` }
+    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${when}.${doorNote}` }
   } catch (e) {
     return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: (e as Error).message }
   }
