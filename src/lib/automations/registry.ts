@@ -46,10 +46,10 @@ export const AUTOMATIONS: Automation[] = [
     kind: 'webhook',
     purpose:
       'When a language item’s "Href Links" status changes to "Run Link", saves that language’s URL and flips siblings to "Apply Link"; when it changes to "Done", marks the language confirmed live and completes the page once all languages are done. Refreshes the affected project page automatically.',
-    trigger: 'Monday webhook POST to /api/monday/webhook',
-    location: 'src/app/api/monday/webhook/route.ts, src/lib/monday/handlers.ts',
+    trigger: 'Monday webhook POST to /api/monday/webhook/<secret> (the secret is the credential, see Settings)',
+    location: 'src/app/api/monday/webhook/[secret]/route.ts, src/lib/monday/webhook-handler.ts, src/lib/monday/handlers.ts',
     healthServices: ['monday_webhook', 'monday_events'],
-    since: '2026-07-20 (webhooks recreated after a stale-URL outage)',
+    since: '2026-08-04 (secret URL; the old unauthenticated /api/monday/webhook is gone)',
   },
   {
     id: 'monday-ingest',

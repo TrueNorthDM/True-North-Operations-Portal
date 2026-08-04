@@ -128,17 +128,23 @@ async function checkMondayEvents(supabase: SupabaseClient): Promise<Check> {
     const legacy = rows.filter(r => doorOf(r.result) === 'legacy-url').length
     const untagged = rows.length - secret - legacy
 
-    const counts = `Last ${rows.length} deliveries: ${secret} on the secret URL, ${legacy} on the old one${untagged ? `, ${untagged} from before tagging` : ''}.`
+    const counts = `Last ${rows.length} deliveries: ${secret} on the secret URL${legacy ? `, ${legacy} on the old one (now removed)` : ''}${untagged ? `, ${untagged} from before tagging` : ''}.`
 
     // A count alone cannot answer "is the old door still in use", because rows
     // from an earlier test stay inside the window and look identical to fresh
     // ones. The timestamp of the most recent legacy delivery can: delete a
     // webhook, trigger another change, and if this stamp has not moved, that
     // webhook was the one, and nothing else is knocking on the old door.
+    // Only a RECENT legacy delivery is a problem. The unauthenticated route was
+    // deleted, so nothing can arrive that way any more, but rows from before it
+    // went stay in the window for a while. Warning on those would leave a
+    // permanent alarm about something already fixed, which is how people learn
+    // to ignore the page.
     const lastLegacy = rows.find(r => doorOf(r.result) === 'legacy-url')?.received_at
-    if (lastLegacy) {
-      const stamp = new Date(lastLegacy).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. ${counts} Most recent one on the OLD url: ${stamp}. Delete the old webhooks in Monday; if that stamp stops moving, the legacy route can go.` }
+    const legacyIsRecent = lastLegacy != null && Date.now() - new Date(lastLegacy).getTime() < 86400000
+    if (legacyIsRecent) {
+      const stamp = new Date(lastLegacy!).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. ${counts} One arrived on the OLD unauthenticated url at ${stamp}, which should no longer be possible.` }
     }
     if (secret === 0) {
       return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. ${counts} Nothing has arrived on the secret URL yet.` }

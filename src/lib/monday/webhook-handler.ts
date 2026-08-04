@@ -1,11 +1,14 @@
 /**
  * The Monday webhook, minus the URL it arrives on.
  *
- * Two routes call this: the secret URL (/api/monday/webhook/<secret>) and the
- * legacy one (/api/monday/webhook), which stays alive only until the webhooks
- * on the Monday side have been recreated. `via` is recorded on the audit row so
- * Admin -> Automations shows which door a delivery came through, which is the
- * signal that says the legacy door can be shut.
+ * One route calls this today: the secret URL (/api/monday/webhook/<secret>).
+ *
+ * `via` is recorded on every audit row and outlived its first purpose. It
+ * existed to tell deliveries on the secret URL apart from ones still arriving
+ * on /api/monday/webhook, the unauthenticated route that used to sit here; that
+ * route is gone, and the count on Admin -> Automations is what proved it was
+ * safe to delete. The tag stays because 'legacy-url' rows are still in the
+ * event log and because a second door may exist again one day.
  *
  * Responsibilities:
  *
@@ -33,6 +36,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isChallengeBody, isEventBody, type MondayEventBody } from '@/lib/monday/types'
 import { runLinkHandler, doneHandler } from '@/lib/monday/handlers'
 
+/** 'legacy-url' is historical: that route was removed on 2026-08-04. */
 export type DeliveryDoor = 'secret-url' | 'legacy-url'
 
 export async function handleMondayWebhook(rawBody: string, via: DeliveryDoor) {
