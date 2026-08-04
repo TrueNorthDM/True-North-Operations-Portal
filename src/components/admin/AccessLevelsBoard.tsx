@@ -21,7 +21,7 @@ import { initialsOf } from '@/components/admin/people-types'
 import { LEVELS, KNOWN_GAPS } from '@/lib/access/levels'
 import { SURFACES, SURFACE_GROUPS, CONFIGURABLE_ROLES, type ConfigurableRole } from '@/lib/access/surfaces'
 import type { RoleType } from '@/lib/auth/tier'
-import { setPersonRoleType, syncAllRoleTypes } from '@/app/(app)/admin/people/actions'
+import { setPersonRoleType } from '@/app/(app)/admin/people/actions'
 import { saveSurfaceChanges } from '@/app/(app)/admin/access-levels/actions'
 
 export interface AccessPerson {
@@ -104,7 +104,7 @@ function PersonRow({ person, onChanged }: { person: AccessPerson; onChanged: () 
         setNotice(
           res.applied === 'live'
             ? 'Saved. It applies the next time they load a page.'
-            : 'Saved. It takes effect when they sign in for the first time.',
+            : 'Saved. It is applied for them the moment they first sign in.',
         )
         onChanged()
       } catch (e) {
@@ -154,44 +154,6 @@ function PersonRow({ person, onChanged }: { person: AccessPerson; onChanged: () 
           options={LEVELS.map(l => ({ value: l.key, label: l.label }))}
         />
       </div>
-    </div>
-  )
-}
-
-// One-shot repair: re-applies every level to its security role, for accounts
-// configured before the two started syncing.
-function ReapplyButton({ onDone }: { onDone: () => void }) {
-  const [pending, startTransition] = useTransition()
-  const [result, setResult] = useState<string | null>(null)
-
-  function run() {
-    setResult(null)
-    startTransition(async () => {
-      try {
-        const { updated, skippedSelf } = await syncAllRoleTypes()
-        setResult(
-          (updated === 0 ? 'Everyone was already in sync.' : `Re-applied ${updated} ${updated === 1 ? 'account' : 'accounts'}.`) +
-          (skippedSelf ? ' Your own account was left alone.' : ''),
-        )
-        onDone()
-      } catch (e) {
-        setResult(e instanceof Error ? e.message : 'Could not re-apply the levels')
-      }
-    })
-  }
-
-  return (
-    <div className="flex items-center gap-2.5 flex-wrap">
-      <button
-        type="button"
-        onClick={run}
-        disabled={pending}
-        className="inline-flex items-center gap-2 rounded-full px-[15px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] border border-slate-200 text-foreground hover:border-tn-teal hover:text-tn-teal transition-colors disabled:opacity-50"
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /></svg>
-        {pending ? 'Re-applying…' : 'Re-apply all levels'}
-      </button>
-      {result && <span className="text-[12px] text-muted">{result}</span>}
     </div>
   )
 }
@@ -391,11 +353,10 @@ export function AccessLevelsBoard({
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <h2 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">Who has which level</h2>
-            <p className="mt-1 mb-2.5 text-[13.5px] text-muted leading-relaxed">
+            <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0">
               Changing a level here sets both the interface and the security role, so it takes effect the next time
-              that person loads a page. For anyone who has never signed in, it lands on their first login.
+              that person loads a page. For anyone who has never signed in, it is applied for them the moment they do.
             </p>
-            <ReapplyButton onDone={onChanged} />
           </div>
           <div className="w-[190px]">
             <Select

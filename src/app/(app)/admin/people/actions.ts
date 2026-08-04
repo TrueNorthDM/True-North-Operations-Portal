@@ -50,8 +50,9 @@ export interface RoleTypeResult {
  * person is given is the level they get.
  *
  * profiles rows only exist after a first sign-in, so for someone who has never
- * logged in we save role_type and report 'pending': the security role lands the
- * moment they sign in, via the one-time backfill's rule (privileged → admin).
+ * logged in we save role_type and report 'pending'. Nothing else is needed: the
+ * sign-up trigger (migration 050) reads the level and creates the profile with
+ * the matching role, so the level applies by itself at first login.
  *
  * A focused counterpart to updatePerson, which needs the whole PersonInput and
  * would reset any field the caller omits.
@@ -107,60 +108,6 @@ export async function setPersonRoleType(id: string, roleType: string): Promise<R
 
   revalidate()
   return { applied: profileId ? 'live' : 'pending' }
-}
-
-/**
- * Re-apply every person's contact type to their security role, so accounts set
- * before role_type started syncing (or linked only by email, which the one-time
- * backfill in migration 038 skipped) end up consistent. Idempotent.
- *
- * The caller is skipped: an admin whose own directory entry is typed
- * team_leader/user would otherwise demote themselves mid-sweep and lose the
- * screen they'd need to undo it.
- */
-export async function syncAllRoleTypes(): Promise<{ updated: number; skippedSelf: boolean }> {
-  await requireAdmin()
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const [{ data: peopleRows }, { data: profileRows }] = await Promise.all([
-    supabase
-      .from('people')
-      .select('id, profile_id, role_type, email_true_north, email_goodnews, email_coe, email_personal')
-      .eq('status', 'active'),
-    supabase.from('profiles').select('id, email, role'),
-  ])
-
-  const profiles = profileRows ?? []
-  const byEmail = new Map<string, { id: string; role: string | null }>()
-  for (const p of profiles) {
-    const e = (p.email ?? '').trim().toLowerCase()
-    if (e) byEmail.set(e, { id: p.id, role: p.role })
-  }
-  const roleById = new Map(profiles.map(p => [p.id, p.role]))
-
-  let updated = 0
-  let skippedSelf = false
-  for (const person of peopleRows ?? []) {
-    let profileId = person.profile_id as string | null
-    if (!profileId) {
-      const emails = [person.email_true_north, person.email_goodnews, person.email_coe, person.email_personal]
-        .map(e => (e ?? '').trim().toLowerCase())
-        .filter(Boolean)
-      profileId = emails.map(e => byEmail.get(e)?.id).find(Boolean) ?? null
-    }
-    if (!profileId) continue
-
-    const wanted = PRIVILEGED_TYPES.includes(person.role_type) ? 'admin' : 'viewer'
-    if (profileId === user?.id && wanted !== 'admin') { skippedSelf = true; continue }
-    if (roleById.get(profileId) === wanted) continue
-
-    const { error } = await supabase.from('profiles').update({ role: wanted }).eq('id', profileId)
-    if (!error) updated++
-  }
-
-  revalidate()
-  return { updated, skippedSelf }
 }
 
 export interface PersonInput {
