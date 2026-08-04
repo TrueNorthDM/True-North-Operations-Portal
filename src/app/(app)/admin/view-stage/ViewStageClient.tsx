@@ -115,11 +115,10 @@ export default function ViewStageClient({ myName }: { myName: string }) {
           as "locked", when what it shows is "hidden".
         */}
         <span
-          title="Menus, widgets and page guards are faithful to the level. Database rules (row-level security, column privileges) are NOT simulated: every query still runs as your own admin login. An empty screen here means the portal hides it, not that the database refuses it."
-          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-[#7a4e05] cursor-help"
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-[#7a4e05]"
         >
           <span aria-hidden="true">⚠</span>
-          Interface only, not database rules
+          An empty screen here means hidden, not blocked
         </span>
         <span className="flex-1" />
         <div className="flex items-center gap-1 bg-subtle border border-slate-200 rounded-lg p-1">
@@ -128,6 +127,17 @@ export default function ViewStageClient({ myName }: { myName: string }) {
           <button onClick={() => zoom(0.12)} className="w-7 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors">+</button>
           <button onClick={fit} className="text-xs px-2 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors font-(family-name:--font-display) font-bold">Fit</button>
         </div>
+      </div>
+
+      {/* What the preview proves, in plain words. The badge above states the
+          conclusion; this states the reason, because the badge on its own read
+          as jargon to the person who has to act on it. */}
+      <div className="shrink-0 bg-amber-50/60 border-b border-amber-200/70 px-5 py-2.5 text-[12.5px] leading-relaxed text-[#7a4e05]">
+        Each column below shows what that access level <strong className="font-semibold">sees</strong> in the portal: its menus, its widgets, and
+        which pages turn it away. That part is accurate. What it cannot show is what someone at that level could
+        <strong className="font-semibold"> pull out of the database directly</strong>, going around the portal, because every screen here is still
+        loaded with your own admin login. So a page looking empty for a level proves the portal hides it from them.
+        It does not prove they have no way to reach the same information.
       </div>
 
       {/* canvas */}
