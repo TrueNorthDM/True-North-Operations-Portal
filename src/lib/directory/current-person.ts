@@ -19,8 +19,13 @@ export async function loadCurrentPerson(supabase: Client, user: User | null): Pr
   // View Stage: while impersonating, resolve the impersonated person directly.
   const vs = await getViewAs()
   if (vs) {
-    let r = await supabase.from('people').select('id, full_name, avatar_url, role_type').eq('id', vs.pid).limit(1)
-    if (r.error) r = await supabase.from('people').select('id, full_name').eq('id', vs.pid).limit(1) as typeof r
+    // Resolved on every request, not frozen into the token: change someone's
+    // level and the preview follows on the next load, both in who it shows and
+    // in what they can reach.
+    const pick = (sel: string) => supabase.from('people').select(sel)
+      .eq('role_type', vs.role).eq('status', 'active').order('full_name').limit(1)
+    let r = await pick('id, full_name, avatar_url, role_type') as unknown as { data: PersonRow[] | null; error: unknown }
+    if (r.error) r = await pick('id, full_name') as unknown as typeof r
     const row = r.data?.[0] as PersonRow | undefined
     return row ? { id: row.id, full_name: row.full_name, avatar_url: row.avatar_url ?? null, roleType: asRoleType(row.role_type) } : null
   }

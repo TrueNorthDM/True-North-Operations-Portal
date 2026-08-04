@@ -28,15 +28,33 @@ export default function ViewStageClient({ myName }: { myName: string }) {
   const [toks, setToks] = useState<Record<string, TokState>>({})
   const [, startTransition] = useTransition()
 
-  const load = useCallback((t: Tier) => {
+  const load = useCallback((t: Tier, force = false) => {
     if (!IMPERSONATE(t)) return
-    setToks(prev => (prev[t]?.loading || prev[t]?.token ? prev : { ...prev, [t]: { loading: true } }))
+    setToks(prev => (!force && (prev[t]?.loading || prev[t]?.token) ? prev : { ...prev, [t]: { loading: true } }))
     startTransition(async () => {
       const res = await tokenViewAs(t)
       setToks(prev => ({ ...prev, [t]: { token: res.token, name: res.name, error: res.error, loading: false } }))
     })
   }, [])
-  useEffect(() => { cols.forEach(load) }, [cols, load])
+  useEffect(() => { cols.forEach(t => load(t)) }, [cols, load])
+
+  // The columns show whoever holds each level RIGHT NOW, so re-resolve them
+  // whenever this tab regains focus: edit somebody's level elsewhere, come
+  // back, and the stage reflects it without a manual reload.
+  const [reloadNonce, setReloadNonce] = useState(0)
+  const refresh = useCallback(() => {
+    cols.forEach(t => load(t, true))
+    setReloadNonce(n => n + 1)
+  }, [cols, load])
+  useEffect(() => {
+    function onFocus() { if (document.visibilityState === 'visible') refresh() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [refresh])
 
   // ── canvas: pan + zoom ──
   const frameRef = useRef<HTMLDivElement>(null)
@@ -140,6 +158,9 @@ export default function ViewStageClient({ myName }: { myName: string }) {
                     <div style={{ width: DV.w * DV.base, height: DV.h * DV.base, overflow: 'hidden' }}>
                       {src ? (
                         <iframe
+                          // Keyed on the refresh counter so a re-resolve
+                          // remounts the frame instead of leaving a stale render.
+                          key={`${t}-${reloadNonce}`}
                           src={src}
                           title={`${LABEL[t]}, desktop`}
                           style={{ width: DV.w, height: DV.h, border: 'none', transform: `scale(${DV.base})`, transformOrigin: 'top left' }}

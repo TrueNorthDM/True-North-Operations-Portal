@@ -28,6 +28,8 @@ export async function tokenViewAs(role: ViewAsRole): Promise<{ token?: string; n
   const person = (people ?? [])[0]
   if (!person) return { error: `No active "${role.replace('_', ' ')}" to view as.` }
 
-  const token = signViewAs({ sadmin: user.id, pid: person.id, role, exp: Date.now() + 30 * 60_000 })
+  // The token names the LEVEL only; the person is resolved live per request,
+  // so `name` here is just the label for the column header.
+  const token = signViewAs({ sadmin: user.id, role, exp: Date.now() + 30 * 60_000 })
   return { token, name: person.full_name }
 }

@@ -1,8 +1,15 @@
 // view-as.ts: signed impersonation tokens for the View Stage (admin preview of
-// each permission tier). A token carries the target person + role_type and the
-// admin who signed it; it only changes what the app RENDERS (writes always use
-// the real session). HMAC-SHA256 with the server-only service-role key as the
-// secret. Node-only (crypto), client code must `import type` from here.
+// each permission tier).
+//
+// A token carries WHICH LEVEL to preview and the admin who signed it, and
+// deliberately NOT which person: the representative is resolved live on every
+// request (see current-person.ts). Freezing the person into the token made the
+// preview go stale the moment an admin changed anyone's level, showing one
+// level's interface with a person who had since moved to another.
+//
+// It only changes what the app RENDERS (writes always use the real session).
+// HMAC-SHA256 with the server-only service-role key as the secret. Node-only
+// (crypto), client code must `import type` from here.
 
 import { createHmac, timingSafeEqual } from 'crypto'
 
@@ -15,8 +22,7 @@ export const VS_HEADER = 'x-vs'
 
 export interface ViewAsPayload {
   sadmin: string   // the real admin who signed this (only they may use it)
-  pid: string      // the impersonated person's id
-  role: ViewAsRole // their tier
+  role: ViewAsRole // the level being previewed; the person is resolved live
   exp: number      // epoch ms expiry
 }
 
@@ -52,7 +58,7 @@ export function verifyViewAs(token: string | null | undefined): ViewAsPayload | 
   } catch {
     return null
   }
-  if (!p || typeof p.sadmin !== 'string' || typeof p.pid !== 'string' || typeof p.exp !== 'number') return null
+  if (!p || typeof p.sadmin !== 'string' || typeof p.exp !== 'number') return null
   if (p.exp < Date.now() || !ROLES.includes(p.role)) return null
   return p
 }

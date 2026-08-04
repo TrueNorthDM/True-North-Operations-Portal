@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { verifyViewAs, VS_HEADER, type ViewAsRole } from '@/lib/auth/view-as'
 
 export interface ViewAs {
-  pid: string
+  /** The level being previewed. The person shown is resolved live from it. */
   role: ViewAsRole
 }
 
@@ -19,5 +19,5 @@ export async function getViewAs(): Promise<ViewAs | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user || user.id !== payload.sadmin) return null // only the signing admin
-  return { pid: payload.pid, role: payload.role }
+  return { role: payload.role }
 }
