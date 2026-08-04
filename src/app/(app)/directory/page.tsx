@@ -4,6 +4,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { loadCompensationByPerson } from '@/lib/hr/compensation'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
@@ -23,7 +24,7 @@ import { TOOLS } from '@/lib/access/tools'
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
 const PEOPLE_FULL =
   'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
-  'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, manager_name_text, ' +
+  'employment_type, schedule, weekly_hours, reports_to_manager, also_reports_to_id, manager_name_text, ' +
   'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
   'date_of_birth, hire_date, left_on, employment_history'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
@@ -223,6 +224,12 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
 
   // ── People view models ──
+  // The directory level is resolved here rather than further down because pay
+  // is now a privileged read (migration 054): at levels 1 and 2 the view model
+  // below is discarded anyway, so there is no reason to fetch rates for it.
+  const level = directoryLevel(access.can)
+  const compensation = level >= 3 ? await loadCompensationByPerson() : new Map<string, { internalRate: number | null }>()
+
   const peopleView: PersonView[] = people
     .map((p): PersonView => {
       const pt = primaryTeam(p.id)
@@ -249,7 +256,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         employmentType: str(p.employment_type),
         schedule: str(p.schedule),
         weeklyHours: num(p.weekly_hours),
-        internalRate: num(p.internal_rate),
+        internalRate: compensation.get(p.id)?.internalRate ?? null,
         roleType: roleTypeById.get(p.id) ?? 'user',
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         phone: str(p.phone),
@@ -344,7 +351,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // Level 1  the People list for the teams they belong to; only their own card
   //          opens. Someone on no team sees just themselves.
   // Level 2  adds a Teams tab for those same teams, with tool access read-only.
-  const level = directoryLevel(access.can)
   if (level < 3) {
     const viewerId = mePerson?.id ?? null
 

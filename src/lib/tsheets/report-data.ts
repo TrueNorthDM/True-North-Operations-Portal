@@ -5,6 +5,7 @@
 // trend series. No live TSheets calls.
 
 import { createClient } from '@/lib/supabase/server'
+import { loadAssignmentRates } from '@/lib/hr/compensation'
 import { monthBounds } from '@/lib/tsheets/report'
 import { buildI7Report, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
@@ -104,8 +105,11 @@ async function loadI7Assignments(): Promise<Assignment[]> {
   const supabase = await createClient()
   const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
   if (!i7) return []
-  const { data } = await supabase.from('tr_assignments').select('tsheets_user_id, hourly_rate, effective_from, effective_to').eq('client_id', i7.id)
-  return (data ?? []).map(a => ({ userId: a.tsheets_user_id, rate: Number(a.hourly_rate), from: a.effective_from, to: a.effective_to }))
+  // hourly_rate is no longer readable by the `authenticated` role (migration
+  // 054). The rates never leave this function: they are multiplied into the
+  // costs the report already showed, which team leaders are meant to see.
+  const rates = await loadAssignmentRates({ clientId: i7.id })
+  return rates.map(a => ({ userId: a.tsheetsUserId, rate: a.hourlyRate, from: a.effectiveFrom ?? '', to: a.effectiveTo }))
 }
 
 export interface BudgetInputs {

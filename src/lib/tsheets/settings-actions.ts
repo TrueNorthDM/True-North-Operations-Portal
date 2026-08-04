@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { requireAdmin } from '@/lib/tsheets/require-admin'
+import { loadPersonCompensation } from '@/lib/hr/compensation'
 
 // TSheets sync actions live in ./sync-actions.ts (audit M5-2).
 
@@ -359,11 +360,9 @@ export async function savePersonCostRate(input: {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: before } = await supabase
-    .from('people')
-    .select('id, full_name, internal_rate')
-    .eq('id', input.personId)
-    .maybeSingle()
+  // internal_rate is unreadable by the `authenticated` role (migration 054),
+  // so the audit "before" snapshot comes through the privileged reader.
+  const before = await loadPersonCompensation(input.personId)
   if (!before) return { ok: false, error: 'Person not found.' }
 
   const { error: updErr } = await supabase
@@ -376,8 +375,8 @@ export async function savePersonCostRate(input: {
     entity_type: 'person_cost',
     entity_id: 0, // person is keyed by UUID; the name lives in after_data
     action: 'update',
-    before_data: { person_name: before.full_name, cost_rate: before.internal_rate },
-    after_data: { person_name: before.full_name, cost_rate: input.costRate },
+    before_data: { person_name: before.fullName, cost_rate: before.internalRate },
+    after_data: { person_name: before.fullName, cost_rate: input.costRate },
     justification: input.justification,
     changed_by: user?.id,
   })
@@ -400,11 +399,8 @@ export async function savePersonMonthlySalary(input: {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: before } = await supabase
-    .from('people')
-    .select('id, full_name, monthly_salary')
-    .eq('id', input.personId)
-    .maybeSingle()
+  // Same as savePersonCostRate: the old value is a privileged read now.
+  const before = await loadPersonCompensation(input.personId)
   if (!before) return { ok: false, error: 'Person not found.' }
 
   const { error: updErr } = await supabase
@@ -417,8 +413,8 @@ export async function savePersonMonthlySalary(input: {
     entity_type: 'person_salary',
     entity_id: 0, // person is keyed by UUID; the name lives in after_data
     action: 'update',
-    before_data: { person_name: before.full_name, monthly_salary: before.monthly_salary },
-    after_data: { person_name: before.full_name, monthly_salary: input.monthlySalary },
+    before_data: { person_name: before.fullName, monthly_salary: before.monthlySalary },
+    after_data: { person_name: before.fullName, monthly_salary: input.monthlySalary },
     justification: input.justification,
     changed_by: user?.id,
   })

@@ -5,6 +5,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
+import { loadCompensationByPerson, loadAssignmentRates, loadAuditLog } from '@/lib/hr/compensation'
 import { getCurrentProfile } from '@/lib/auth/role'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import type { ClientWithBudget } from '@/components/tsheets/settings/ClientsTab'
@@ -32,6 +33,8 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
   // timestamp comes from the narrow reader rather than the user's client.
   // That is what lets app_settings be admin-only (migration 052).
   const { syncedAt } = await getTsheetsStatus()
+  // Pay per person, read privileged and merged in below (migration 054).
+  const compensation = await loadCompensationByPerson()
 
   const [
     { data: clientsRaw },
@@ -54,34 +57,28 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       .from('tr_budgets')
       .select('id, client_id, hours_allocated, budget_amount, extra_budget, start_date, budget_end_date, extra_start_date, extra_end_date')
       .is('end_date', null),
-    // Resilient select: `hire_date` + `internal_rate` come from migration 029. If
-    // that migration isn't applied, selecting them errors and PostgREST drops the
-    // WHOLE query → People & rates renders empty ("No people linked yet"). Fall
-    // back to the guaranteed columns (exactly like the Directory's PEOPLE_FULL →
-    // PEOPLE_BASE fallback) so the tab still lists everyone; cost rate + joined-on
-    // just read null until 029 is run. The mapping already null-guards both.
+    // internal_rate and monthly_salary are gone from this select: the
+    // `authenticated` role can no longer read them (migration 054). They come
+    // back from loadCompensationByPerson() below and get merged in by id.
+    //
+    // Still resilient in two tiers, because hire_date arrives with migration
+    // 029 and selecting a missing column makes PostgREST drop the WHOLE query,
+    // which used to render People & rates as "No people linked yet".
     (async () => {
-      // Resilient in tiers so a not-yet-applied migration only drops the columns
-      // it adds: FULL needs 039 (monthly_salary), MID needs 029 (hire_date +
-      // internal_rate), BASE is always safe.
-      const FULL = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, monthly_salary, i7_projects'
-      const MID = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, internal_rate, i7_projects'
+      const WITH_HIRE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, i7_projects'
       const BASE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, i7_projects'
-      const full = await supabase.from('people').select(FULL).not('tsheets_user_id', 'is', null).order('full_name')
-      if (!full.error) return full
-      const mid = await supabase.from('people').select(MID).not('tsheets_user_id', 'is', null).order('full_name')
-      return mid.error ? await supabase.from('people').select(BASE).not('tsheets_user_id', 'is', null).order('full_name') : mid
+      const withHire = await supabase.from('people').select(WITH_HIRE).not('tsheets_user_id', 'is', null).order('full_name')
+      return withHire.error
+        ? await supabase.from('people').select(BASE).not('tsheets_user_id', 'is', null).order('full_name')
+        : withHire
     })(),
-    supabase
-      .from('tr_assignments')
-      .select('id, tsheets_user_id, client_id, hourly_rate, effective_from')
-      .is('effective_to', null)
-      .eq('active', true),
-    supabase
-      .from('tr_audit_log')
-      .select('id, entity_type, entity_id, action, before_data, after_data, justification, changed_at, changed_by')
-      .order('changed_at', { ascending: false })
-      .limit(100),
+    // Rates likewise: privileged read, merged back in below.
+    loadAssignmentRates({ activeOnly: true }).then(rows => ({
+      data: rows.map(r => ({ id: r.id, tsheets_user_id: r.tsheetsUserId, client_id: r.clientId, hourly_rate: r.hourlyRate, effective_from: r.effectiveFrom ?? '' })),
+    })),
+    // The change history repeats the pay values it recorded, so it is a
+    // privileged read for the same reason the columns are.
+    loadAuditLog(100).then(data => ({ data })),
     supabase
       .from('people')
       .select('id, full_name, title')
@@ -171,8 +168,9 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
   const people: PersonWithAssignments[] = (peopleRaw ?? []).map(p => {
     const managerId = (p as { manager_id?: string | null }).manager_id ?? null
     const teams = teamsByPerson.get(p.id) ?? []
-    const internalRate = (p as { internal_rate?: number | null }).internal_rate
-    const monthlySalary = (p as { monthly_salary?: number | null }).monthly_salary
+    const pay = compensation.get(p.id)
+    const internalRate = pay?.internalRate ?? null
+    const monthlySalary = pay?.monthlySalary ?? null
     return {
       id: p.id,
       name: p.full_name,

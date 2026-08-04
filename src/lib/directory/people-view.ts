@@ -5,6 +5,7 @@
 // version; this is a self-contained copy so it never risks that critical page).
 
 import { createClient } from '@/lib/supabase/server'
+import { loadCompensationByPerson } from '@/lib/hr/compensation'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import {
@@ -21,7 +22,7 @@ import type { TeamOption } from '@/components/admin/DirectoryTabs'
 
 const PEOPLE_FULL =
   'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
-  'employment_type, schedule, weekly_hours, internal_rate, reports_to_manager, also_reports_to_id, manager_name_text, ' +
+  'employment_type, schedule, weekly_hours, reports_to_manager, also_reports_to_id, manager_name_text, ' +
   'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
   'date_of_birth, hire_date, left_on, employment_history'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
@@ -139,6 +140,11 @@ export async function loadDirectoryPeopleView(
 
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
 
+  // Pay is a privileged read now (migration 054). The only caller of this
+  // function is /human-resources, which is already behind requireSurface plus
+  // an isPrivileged check, so the gate is upstream and unchanged.
+  const compensation = await loadCompensationByPerson()
+
   const peopleView: PersonView[] = people
     .map((p): PersonView => {
       const pt = primaryTeam(p.id)
@@ -165,7 +171,7 @@ export async function loadDirectoryPeopleView(
         employmentType: str(p.employment_type),
         schedule: str(p.schedule),
         weeklyHours: num(p.weekly_hours),
-        internalRate: num(p.internal_rate),
+        internalRate: compensation.get(p.id)?.internalRate ?? null,
         roleType: roleTypeById.get(p.id) ?? 'user',
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         phone: str(p.phone),
