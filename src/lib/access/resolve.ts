@@ -23,6 +23,7 @@ import { getCurrentTier } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { teamPositionLeads } from '@/components/admin/people-types'
 import { surfaceAllowed } from '@/lib/access/surfaces'
+import { TOOL_KEYS } from '@/lib/access/tools'
 import type { RoleType } from '@/lib/auth/tier'
 
 export interface Access {
@@ -80,6 +81,10 @@ export const loadAccess = cache(async function loadAccess(): Promise<Access> {
         .in('team_id', teamIds)
 
       for (const g of grants ?? []) {
+        // A grant for a key no longer in the catalogue grants nothing: removing
+        // a tool from Tools & Dashboards has to close its route too, not just
+        // hide its card. The stale rows stay in the table harmlessly.
+        if (!TOOL_KEYS.has(g.tool_key)) continue
         if (g.audience === 'lead' && !leadsTeam.get(g.team_id)) continue
         toolKeys.add(g.tool_key)
       }
