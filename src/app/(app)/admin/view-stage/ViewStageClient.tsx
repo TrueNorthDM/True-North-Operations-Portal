@@ -119,6 +119,11 @@ export default function ViewStageClient({ myName }: { myName: string }) {
         ref={frameRef}
         onWheel={onWheel}
         onMouseDown={onDown}
+        // The canvas pans by transform and never uses native scrolling, so any
+        // scrollLeft/Top here came from something inside an iframe focusing an
+        // element. Snap it back, otherwise the column sits offset with no way
+        // for the user to recover it.
+        onScroll={e => { const el = e.currentTarget; if (el.scrollLeft || el.scrollTop) { el.scrollLeft = 0; el.scrollTop = 0 } }}
         className="flex-1 relative overflow-hidden cursor-grab bg-subtle"
         style={{
           backgroundImage: 'linear-gradient(rgba(30,125,127,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(30,125,127,0.06) 1px, transparent 1px), radial-gradient(circle at 24% 6%, rgba(30,125,127,0.10), transparent 66%)',

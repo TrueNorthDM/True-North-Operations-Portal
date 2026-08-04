@@ -27,14 +27,19 @@ export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string
     // default outline is drawn outside the element, and this menu clips with
     // overflow-hidden, so its left and right edges were cut away and it read
     // as two stray horizontal lines rather than a focus ring.
-    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+    //
+    // preventScroll matters inside the View Stage: a plain focus() scrolls the
+    // element into view, and that scroll propagates out of the iframe into the
+    // preview canvas, shoving the whole column sideways with no way back (the
+    // canvas pans by transform and never reads scrollLeft).
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true })
     function onDown(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         setOpen(false)
-        btnRef.current?.focus() // return focus to the trigger
+        btnRef.current?.focus({ preventScroll: true }) // return focus to the trigger
       }
     }
     document.addEventListener('mousedown', onDown)
