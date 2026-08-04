@@ -5,6 +5,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { loadOwnContact } from '@/lib/hr/contact'
 import { getCurrentTier } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import {
@@ -23,16 +24,18 @@ export const dynamic = 'force-dynamic'
 // so the client can't infer the row shape, we cast to this.)
 type MeRow = Pick<PersonRow,
   'id' | 'full_name' | 'last_name' | 'title' | 'manager_id' | 'also_reports_to_id' | 'reports_to_manager'
-  | 'manager_name_text' | 'employment_type' | 'schedule' | 'weekly_hours' | 'status' | 'role_type' | 'phone'
+  | 'manager_name_text' | 'employment_type' | 'schedule' | 'weekly_hours' | 'status' | 'role_type'
   | 'location' | 'whatsapp_same_number' | 'date_of_birth'
   | 'hire_date' | 'left_on' | 'email_true_north' | 'email_goodnews' | 'email_coe' | 'email_personal'
   | 'employment_history' | 'monday_docs'>
 
 const PROFILE_COLS =
   'id, full_name, last_name, title, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, ' +
-  'employment_type, schedule, weekly_hours, status, role_type, phone, location, whatsapp_same_number, ' +
-  'date_of_birth, hire_date, left_on, ' +
-  'email_true_north, email_goodnews, email_coe, email_personal, employment_history, monday_docs'
+  // phone, date of birth and personal email are privileged reads now
+  // (migration 056); they come from loadOwnContact() below.
+  'employment_type, schedule, weekly_hours, status, role_type, location, whatsapp_same_number, ' +
+  'hire_date, left_on, ' +
+  'email_true_north, email_goodnews, email_coe, employment_history, monday_docs'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -47,6 +50,9 @@ export default async function ProfilePage() {
     ? await supabase.from('people').select(PROFILE_COLS).eq('id', current.id).maybeSingle()
     : { data: null }
   const me = row as unknown as MeRow | null
+  // Own contact details, read privileged (migration 056). Self-service: the id
+  // comes from the resolved session, never from the request.
+  const myContact = me ? await loadOwnContact(me.id) : { address: null, dateOfBirth: null, emailPersonal: null, phone: null }
 
   if (!me) {
     return (
@@ -122,11 +128,11 @@ export default async function ProfilePage() {
         <div className="px-8 pt-6 pb-6 border-b border-slate-200">
           <PersonalDetails initial={{
             lastName: me.last_name ?? '',
-            personalEmail: me.email_personal ?? '',
-            phone: me.phone ?? '',
+            personalEmail: myContact.emailPersonal ?? '',
+            phone: myContact.phone ?? '',
             whatsappSameNumber: me.whatsapp_same_number ?? '',
             location: me.location ?? '',
-            dateOfBirth: me.date_of_birth ?? '',
+            dateOfBirth: myContact.dateOfBirth ?? '',
           }} />
         </div>
 

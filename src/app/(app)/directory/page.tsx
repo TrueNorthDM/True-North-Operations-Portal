@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
+import { loadContactByPerson, type Contact } from '@/lib/hr/contact'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
@@ -25,8 +26,10 @@ import { TOOLS } from '@/lib/access/tools'
 const PEOPLE_FULL =
   'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
   'employment_type, schedule, weekly_hours, reports_to_manager, also_reports_to_id, manager_name_text, ' +
-  'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
-  'date_of_birth, hire_date, left_on, employment_history'
+  // personal email, phone, date of birth and address are privileged reads now
+  // (migration 056); they come back from lib/hr/contact.ts.
+  'email_true_north, email_goodnews, email_coe, location, whatsapp_same_number, ' +
+  'hire_date, left_on, employment_history'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
 
 const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
@@ -75,7 +78,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     ? await supabase.from('people').select(PEOPLE_FULL).eq('id', mePerson.id).maybeSingle()
     : { data: null }
 
-  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, addrRes, lcRes, msRes, alRes] = await Promise.all([
+  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, lcRes, msRes, alRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
@@ -86,8 +89,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
     // Team → tool access (037). Table may not exist yet, empty on error.
     supabase.from('team_tool_grants').select('team_id, tool_key, audience'),
-    // Isolated + graceful: address (042) may not exist yet.
-    supabase.from('people').select('id, address'),
     // Isolated + graceful: onboarding/offboarding status (043).
     supabase.from('people').select('id, onboarding_status, offboarding_status'),
     // Isolated + graceful: milestones (044).
@@ -140,8 +141,12 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
     if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
+  // Address, personal email, phone and date of birth: privileged reads now
+  // (migration 056). Only fetched at level 3, where the full cards render; at
+  // levels 1 and 2 the view model built from them is discarded anyway.
+  const contactById = level >= 3 ? await loadContactByPerson() : new Map<string, Contact>()
   const addressById = new Map<string, PersonAddress>()
-  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: PersonAddress | null }[]) if (r.address) addressById.set(r.id, r.address)
+  for (const [id, c] of contactById) if (c.address) addressById.set(id, c.address)
   const onboardingById = new Map<string, string>()
   const offboardingById = new Map<string, string>()
   if (!lcRes.error) for (const r of (lcRes.data ?? []) as { id: string; onboarding_status: string | null; offboarding_status: string | null }[]) {

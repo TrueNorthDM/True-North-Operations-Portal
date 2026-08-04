@@ -14,6 +14,7 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { loadContactByPerson } from '@/lib/hr/contact'
 import { teamKeyFromName } from '@/lib/directory/people-types'
 import { asRoleType } from '@/lib/auth/tier'
 import type { RestrictedPerson, FullProfile } from '@/components/admin/RestrictedDirectory'
@@ -83,9 +84,14 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
   // The rest, only for the people whose card this viewer can open.
   const { data: detailRows } = await supabase
     .from('people')
-    .select('id, full_name, last_name, title, avatar_url, role_type, status, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, email_true_north, email_goodnews, email_coe, email_personal, phone, whatsapp_same_number, location, date_of_birth, hire_date, left_on, employment_type, schedule, weekly_hours, onboarding_status, offboarding_status')
+    .select('id, full_name, last_name, title, avatar_url, role_type, status, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, email_true_north, email_goodnews, email_coe, whatsapp_same_number, location, hire_date, left_on, employment_type, schedule, weekly_hours, onboarding_status, offboarding_status')
     .in('id', openableIds)
   const detailById = new Map((detailRows ?? []).map(r => [r.id, r]))
+
+  // Personal email, phone and date of birth are unreadable by the signed-in
+  // role (migration 056). Fetched for the SAME id list, so the openable set
+  // still decides everything and there is no second rule to keep in step.
+  const contactById = await loadContactByPerson(openableIds)
 
   const nameById = new Map((rows ?? []).map(r => [r.id, r.full_name]))
   // The primary team drives the avatar colour; one lookup for the whole set.
@@ -125,7 +131,7 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
           ? {
               managerName: mgrId ? nameById.get(mgrId) ?? null : null,
               workEmail: str(d.email_true_north) ?? str(d.email_goodnews) ?? str(d.email_coe),
-              phone: str(d.phone),
+              phone: contactById.get(p.id)?.phone ?? null,
               location: str(d.location),
               hireDate: str(d.hire_date),
               employmentType: str(d.employment_type),
@@ -146,11 +152,11 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
     roleType: asRoleType(r.role_type),
     active: r.status !== 'inactive',
     teamNames: teamNamesByPerson.get(r.id) ?? [],
-    personalEmail: str(r.email_personal),
-    phone: str(r.phone),
+    personalEmail: contactById.get(r.id)?.emailPersonal ?? null,
+    phone: contactById.get(r.id)?.phone ?? null,
     whatsapp: str(r.whatsapp_same_number),
     location: str(r.location),
-    dateOfBirth: str(r.date_of_birth),
+    dateOfBirth: contactById.get(r.id)?.dateOfBirth ?? null,
     employmentType: str(r.employment_type),
     schedule: str(r.schedule),
     weeklyHours: r.weekly_hours ?? null,

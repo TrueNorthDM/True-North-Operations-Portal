@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
+import { loadContactByPerson } from '@/lib/hr/contact'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import {
@@ -23,8 +24,10 @@ import type { TeamOption } from '@/components/admin/DirectoryTabs'
 const PEOPLE_FULL =
   'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
   'employment_type, schedule, weekly_hours, reports_to_manager, also_reports_to_id, manager_name_text, ' +
-  'email_true_north, email_goodnews, email_coe, email_personal, phone, location, whatsapp_same_number, ' +
-  'date_of_birth, hire_date, left_on, employment_history'
+  // personal email, phone, date of birth and address are privileged reads now
+  // (migration 056); they come back from lib/hr/contact.ts.
+  'email_true_north, email_goodnews, email_coe, location, whatsapp_same_number, ' +
+  'hire_date, left_on, employment_history'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
 
 type PRow = Record<string, unknown> & { id: string; full_name: string }
@@ -35,14 +38,11 @@ export async function loadDirectoryPeopleView(
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
-  const [{ data: tData }, { data: prData }, aRes, dRes, addrRes, lcRes, msRes] = await Promise.all([
+  const [{ data: tData }, { data: prData }, aRes, dRes, lcRes, msRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('profiles').select('id, email'),
     supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
     supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
-    // Isolated select: `address` (042) may not exist yet, so a failure here must
-    // NOT drop the other columns. Left empty until the migration runs.
-    supabase.from('people').select('id, address'),
     // Isolated select: onboarding/offboarding status (043), same graceful pattern.
     supabase.from('people').select('id, onboarding_status, offboarding_status'),
     // Isolated select: milestones (044), same graceful pattern.
@@ -86,8 +86,12 @@ export async function loadDirectoryPeopleView(
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
     if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
+  // Address, personal email, phone and date of birth: privileged reads now
+  // (migration 056). The only caller is /human-resources, already behind
+  // requireSurface plus an isPrivileged check.
+  const contactById = await loadContactByPerson()
   const addressById = new Map<string, PersonAddress>()
-  if (!addrRes.error) for (const r of (addrRes.data ?? []) as { id: string; address: PersonAddress | null }[]) if (r.address) addressById.set(r.id, r.address)
+  for (const [id, c] of contactById) if (c.address) addressById.set(id, c.address)
   const onboardingById = new Map<string, string>()
   const offboardingById = new Map<string, string>()
   if (!lcRes.error) for (const r of (lcRes.data ?? []) as { id: string; onboarding_status: string | null; offboarding_status: string | null }[]) {

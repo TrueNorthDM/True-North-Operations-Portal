@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { isSecurityAdmin } from '@/lib/auth/role'
+import { loadContactByPerson } from '@/lib/hr/contact'
 import { asRoleType } from '@/lib/auth/tier'
 import { AccessLevelsBoard, type AccessPerson } from '@/components/admin/AccessLevelsBoard'
 
@@ -22,7 +23,7 @@ export default async function AccessLevelsPage() {
   const [{ data }, { data: profileRows }] = await Promise.all([
     supabase
       .from('people')
-      .select('id, full_name, title, avatar_url, role_type, profile_id, status, tsheets_only, email_true_north, email_goodnews, email_coe, email_personal')
+      .select('id, full_name, title, avatar_url, role_type, profile_id, status, tsheets_only, email_true_north, email_goodnews, email_coe')
       .eq('status', 'active')
       .order('full_name'),
     supabase.from('profiles').select('id, email, role'),
@@ -30,6 +31,9 @@ export default async function AccessLevelsPage() {
 
   // The configured matrix. Absent rows fall back to the catalogue defaults,
   // resolved in the board so a new surface needs no backfill.
+  const contacts = await loadContactByPerson()
+  const personalEmails = new Map([...contacts].map(([id, c]) => [id, c.emailPersonal]))
+
   const { data: surfaceRows } = await supabase.from('access_level_pages').select('role_type, surface_key, allowed')
   const configured: Record<string, boolean> = {}
   for (const r of surfaceRows ?? []) configured[`${r.role_type}:${r.surface_key}`] = r.allowed
@@ -50,7 +54,10 @@ export default async function AccessLevelsPage() {
   const people: AccessPerson[] = (data ?? [])
     .filter(p => !p.tsheets_only)
     .map(p => {
-      const emails = [p.email_true_north, p.email_goodnews, p.email_coe, p.email_personal]
+      // The personal mailbox is a privileged read now (migration 056) but is
+      // still part of the match: someone whose login IS their personal address
+      // would otherwise show as having no account at all.
+      const emails = [p.email_true_north, p.email_goodnews, p.email_coe, personalEmails.get(p.id)]
         .map(e => (e ?? '').trim().toLowerCase())
         .filter(Boolean)
       // The account behind this person: the explicit link if it resolves, else

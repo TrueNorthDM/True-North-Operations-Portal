@@ -3,6 +3,7 @@
 // last / this / next month window.
 
 import { createClient } from '@/lib/supabase/server'
+import { loadContactByPerson } from '@/lib/hr/contact'
 import { teamKeyFromName, type TeamKey } from '@/lib/directory/people-types'
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -42,11 +43,15 @@ export function monthWindow(now: Date): MonthTarget[] {
 
 export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
   const supabase = await createClient()
-  let pRes = await supabase.from('people').select('id, full_name, status, hire_date, date_of_birth, avatar_url')
-  if (pRes.error) pRes = (await supabase.from('people').select('id, full_name, status, hire_date, date_of_birth')) as typeof pRes
-  const [{ data: tData }, { data: mData }] = await Promise.all([
+  // date_of_birth is no longer readable by the signed-in role (migration 056),
+  // so it comes from the privileged reader and is merged in below. Everything
+  // else here is public-by-design directory material.
+  let pRes = await supabase.from('people').select('id, full_name, status, hire_date, avatar_url')
+  if (pRes.error) pRes = (await supabase.from('people').select('id, full_name, status, hire_date')) as typeof pRes
+  const [{ data: tData }, { data: mData }, birthdays] = await Promise.all([
     supabase.from('teams').select('id, name'),
     supabase.from('team_members').select('team_id, person_id'),
+    loadContactByPerson(),
   ])
 
   const teamById = new Map((tData ?? []).map(t => [t.id, t.name]))
@@ -71,7 +76,7 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
         name: p.full_name,
         avatarUrl: p.avatar_url ?? null,
         hireDate: p.hire_date,
-        dob: p.date_of_birth,
+        dob: birthdays.get(p.id)?.dateOfBirth ?? null,
         teamName: tn,
         teamKey: teamKeyFromName(tn),
       }

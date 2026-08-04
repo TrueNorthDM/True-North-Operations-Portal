@@ -8,6 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import { loadOwnContact } from '@/lib/hr/contact'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
 import type { PersonRow } from '@/lib/types/database.types'
@@ -65,7 +66,7 @@ export async function setPersonRoleType(id: string, roleType: string): Promise<R
 
   const { data: person } = await supabase
     .from('people')
-    .select('id, profile_id, email_true_north, email_goodnews, email_coe, email_personal')
+    .select('id, profile_id, email_true_north, email_goodnews, email_coe')
     .eq('id', id)
     .maybeSingle()
   if (!person) throw new Error('Person not found')
@@ -75,7 +76,11 @@ export async function setPersonRoleType(id: string, roleType: string): Promise<R
   // sign in daily are matched by email here.
   let profileId = person.profile_id as string | null
   if (!profileId) {
-    const emails = [person.email_true_north, person.email_goodnews, person.email_coe, person.email_personal]
+    // Personal mailbox via the privileged reader (migration 056); dropping it
+    // from the match would leave anyone who signs in with their personal
+    // address looking accountless.
+    const personal = (await loadOwnContact(id)).emailPersonal
+    const emails = [person.email_true_north, person.email_goodnews, person.email_coe, personal]
       .map(e => (e ?? '').trim().toLowerCase())
       .filter(Boolean)
     if (emails.length) {

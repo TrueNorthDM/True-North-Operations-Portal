@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
 import { asRoleType, type RoleType } from '@/lib/auth/tier'
 import { getViewAs } from '@/lib/auth/view-as-server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface CurrentPerson {
   id: string
@@ -41,7 +42,17 @@ const shape = (row: PersonRow): CurrentPerson => ({
  * own email). `avatar_url` (036) / `role_type` (035) degrade gracefully if the
  * migration isn't applied yet.
  */
-export async function loadCurrentPerson(supabase: Client, user: User | null): Promise<CurrentPerson | null> {
+export async function loadCurrentPerson(_supabase: Client, user: User | null): Promise<CurrentPerson | null> {
+  // Resolved with the service-role client, not the caller's.
+  //
+  // Two reasons. email_personal is one of the mailboxes a login is matched
+  // against, and it is no longer readable by the signed-in role (migration
+  // 056), so the caller's client would silently stop matching anyone whose
+  // only address is personal. And "who am I" should not be an RLS question in
+  // the first place: it is the answer every other permission check is built
+  // on. The caller still passes its client; the parameter is kept so every
+  // call site reads the same, and ignored.
+  const supabase = createAdminClient()
   // View Stage: while impersonating, resolve the impersonated person directly.
   const vs = await getViewAs()
   if (vs) {
