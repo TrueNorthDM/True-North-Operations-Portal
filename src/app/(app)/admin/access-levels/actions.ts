@@ -11,7 +11,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { SURFACE_BY_KEY, CONFIGURABLE_ROLES } from '@/lib/access/surfaces'
 
 export interface SurfaceChange {
@@ -35,7 +35,7 @@ function validate(change: SurfaceChange) {
  * nav is revalidated once instead of on every tick.
  */
 export async function saveSurfaceChanges(changes: SurfaceChange[]) {
-  if (!(await isCurrentUserAdmin())) throw new Error('Not authorized')
+  if (!(await isSecurityAdmin())) throw new Error('Not authorized')
   if (changes.length === 0) return
 
   for (const c of changes) validate(c)

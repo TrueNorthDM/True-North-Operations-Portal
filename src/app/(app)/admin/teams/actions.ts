@@ -7,7 +7,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
 import { TOOL_KEYS, type ToolAudience } from '@/lib/access/tools'
 
@@ -16,7 +16,7 @@ export type TeamPosition = 'founder' | 'manager' | 'team_leader' | 'collaborator
 const TEAM_POSITIONS: TeamPosition[] = ['founder', 'manager', 'team_leader', 'collaborator']
 
 async function requireAdmin() {
-  if (!(await isCurrentUserAdmin())) throw new Error('Not authorized')
+  if (!(await isSecurityAdmin())) throw new Error('Not authorized')
 }
 
 // ── Teams ─────────────────────────────────────────────────────────────────

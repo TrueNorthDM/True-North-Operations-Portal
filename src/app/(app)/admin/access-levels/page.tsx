@@ -9,14 +9,14 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { asRoleType } from '@/lib/auth/tier'
 import { AccessLevelsBoard, type AccessPerson } from '@/components/admin/AccessLevelsBoard'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AccessLevelsPage() {
-  if (!(await isCurrentUserAdmin())) redirect('/')
+  if (!(await isSecurityAdmin())) redirect('/')
 
   const supabase = await createClient()
   const [{ data }, { data: profileRows }] = await Promise.all([

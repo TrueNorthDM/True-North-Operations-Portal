@@ -4,7 +4,7 @@
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 
 // Each card's icon is a system-style line SVG whose animated parts carry the
@@ -113,7 +113,7 @@ function CardGrid({ cards }: { cards: readonly AdminCard[] }) {
 }
 
 export default async function AdminPage() {
-  if (!(await isCurrentUserAdmin())) redirect('/')
+  if (!(await isSecurityAdmin())) redirect('/')
 
   return (
     <div className="space-y-10">

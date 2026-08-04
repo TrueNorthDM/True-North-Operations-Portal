@@ -1,8 +1,23 @@
 /**
- * role.ts: read the signed-in user's profile/role, server-side.
+ * role.ts: who the signed-in user is, server-side.
  *
- * The profiles table + admin/viewer role came in with the merge (migration
- * 007). Used to gate the publishing-targets editor: admins edit, viewers read.
+ * The portal answers "is this person an admin?" from two different columns, and
+ * the two questions are not the same one:
+ *
+ *   isSecurityAdmin()          reads profiles.role. This is the SECURITY ROLE:
+ *                              the same column RLS checks (is_admin()), so it
+ *                              decides whether a write actually lands. Use it
+ *                              to gate mutations and the /admin area.
+ *
+ *   getCurrentTier()           reads people.role_type. This is the ACCESS
+ *                              LEVEL, the thing an admin sets on Admin →
+ *                              Access levels and the thing the screens are
+ *                              built from. Use it to decide what to RENDER.
+ *
+ * They are kept in step (setPersonRoleType writes both; the sign-up trigger
+ * applies the level at first login; the Access levels board flags any drift as
+ * "Out of sync"). Naming them apart is what keeps a caller from reaching for
+ * the rendering answer when it needs the writing one.
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -21,8 +36,12 @@ export async function getCurrentProfile(): Promise<ProfileRow | null> {
   return data ?? null
 }
 
-export async function isCurrentUserAdmin(): Promise<boolean> {
-  // View Stage: while impersonating, admin-ness follows the impersonated tier.
+/**
+ * The security role: does the database consider this user an admin? Gate writes
+ * and the /admin area on this, not on the rendered access level.
+ */
+export async function isSecurityAdmin(): Promise<boolean> {
+  // View Stage: while impersonating, admin-ness follows the previewed level.
   const vs = await getViewAs()
   if (vs) return vs.role === 'admin' || vs.role === 'admin_assistant'
   const profile = await getCurrentProfile()
@@ -30,10 +49,10 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
 }
 
 /**
- * The signed-in user's access tier (Part 4), from people.role_type. Safety net:
- * a real portal admin (profiles.role = 'admin') is always privileged, even if
- * their account isn't linked to a directory person yet, so nobody with the
- * hard admin gate is ever locked into the restricted UI by a missing link.
+ * The access level, from people.role_type, which is what the screens render
+ * from. Safety net: a real security admin is always privileged, even if their
+ * account is not linked to a directory person yet, so nobody holding the hard
+ * gate is locked into the restricted UI by a missing link.
  */
 export async function getCurrentTier(): Promise<Tier> {
   // View Stage: while impersonating, the tier IS the impersonated role.

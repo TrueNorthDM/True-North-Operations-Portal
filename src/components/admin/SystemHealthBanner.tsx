@@ -5,7 +5,7 @@
 // at the top of any page.
 
 import Link from 'next/link'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { latestHealth, HEALTH_LABEL } from '@/lib/health/checks'
 
@@ -14,7 +14,7 @@ export async function SystemHealthBanner() {
   // any failure just yields an empty list, so the banner renders nothing.
   let down: string[] = []
   try {
-    if (!(await isCurrentUserAdmin())) return null
+    if (!(await isSecurityAdmin())) return null
     const health = await latestHealth(createAdminClient())
     down = Object.values(health)
       .filter(h => !h.ok && h.status === 'down')

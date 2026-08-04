@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import ViewStageClient from './ViewStageClient'
 
@@ -14,7 +14,7 @@ export default async function ViewStagePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  if (!(await isCurrentUserAdmin())) redirect('/')
+  if (!(await isSecurityAdmin())) redirect('/')
   const me = await loadCurrentPerson(supabase, user)
   return <ViewStageClient myName={me?.full_name ?? user.email ?? 'Admin'} />
 }

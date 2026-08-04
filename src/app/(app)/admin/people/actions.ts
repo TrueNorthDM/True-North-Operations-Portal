@@ -8,7 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
 import type { PersonRow } from '@/lib/types/database.types'
 import type { PersonAddress } from '@/lib/address'
@@ -17,7 +17,7 @@ import type { PersonMilestone } from '@/lib/milestones'
 type PersonCols = Partial<Omit<PersonRow, 'id' | 'created_at' | 'updated_at'>>
 
 async function requireAdmin() {
-  if (!(await isCurrentUserAdmin())) throw new Error('Not authorized')
+  if (!(await isSecurityAdmin())) throw new Error('Not authorized')
 }
 
 function revalidate() {
@@ -41,7 +41,7 @@ export interface RoleTypeResult {
  * Set a person's contact type (people.role_type), the portal access level.
  *
  * The portal keeps TWO role fields: people.role_type drives what the interface
- * shows, and profiles.role is the hard gate (RLS + isCurrentUserAdmin). Nothing
+ * shows, and profiles.role is the hard gate (RLS + isSecurityAdmin). Nothing
  * in the database syncs them (migration 038 was a one-time backfill, explicitly
  * not a login-time sync), so writing role_type alone produced levels that only
  * half worked: a promotion granted the admin VIEW but no admin POWER, and a

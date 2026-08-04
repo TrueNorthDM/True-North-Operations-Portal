@@ -5,7 +5,7 @@
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AUTOMATIONS, type AutomationKind } from '@/lib/automations/registry'
 import { latestHealth, HEALTH_LABEL, type HealthResult, type HealthStatus } from '@/lib/health/checks'
@@ -41,7 +41,7 @@ function fmt(iso: string | undefined): string {
 }
 
 export default async function AutomationsPage() {
-  if (!(await isCurrentUserAdmin())) redirect('/')
+  if (!(await isSecurityAdmin())) redirect('/')
 
   const admin = createAdminClient()
   const health = await latestHealth(admin)

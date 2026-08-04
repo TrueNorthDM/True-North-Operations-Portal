@@ -2,10 +2,10 @@
 // maintained in the repo alongside the tracker and the tests.
 
 import { redirect } from 'next/navigation'
-import { isCurrentUserAdmin } from '@/lib/auth/role'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { SystemManual } from '@/components/SystemManual'
 
 export default async function ManualPage() {
-  if (!(await isCurrentUserAdmin())) redirect('/')
+  if (!(await isSecurityAdmin())) redirect('/')
   return <SystemManual />
 }
