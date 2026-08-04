@@ -3,7 +3,7 @@
 // last / this / next month window.
 
 import { createClient } from '@/lib/supabase/server'
-import { teamKeyFromName, type TeamKey } from '@/components/admin/people-types'
+import { teamKeyFromName, type TeamKey } from '@/lib/directory/people-types'
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MON_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

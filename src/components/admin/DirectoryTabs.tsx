@@ -13,7 +13,7 @@ import { TeamsManager, type TeamCard } from './TeamsManager'
 import { RatesCostsTab } from './RatesCostsTab'
 import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
 import { PersonModal, type ModalState } from './PersonModal'
-import type { PersonView, Account } from './people-types'
+import type { PersonView, Account } from '@/lib/directory/people-types'
 import type { PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
 type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access'

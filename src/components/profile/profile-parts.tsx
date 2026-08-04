@@ -8,7 +8,7 @@
  * component can import them.
  */
 
-import { PILL_CLASS, type Pill } from '@/components/admin/people-types'
+import { PILL_CLASS, type Pill } from '@/lib/directory/people-types'
 
 export function Badge({ pill }: { pill: Pill | null }) {
   if (!pill) return <span className="text-[13.5px] text-foreground font-semibold">-</span>

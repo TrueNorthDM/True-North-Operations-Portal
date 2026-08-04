@@ -11,7 +11,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { isCurrentUserAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
-import type { PersonAttachment } from '@/components/admin/people-types'
+import type { PersonAttachment } from '@/lib/directory/people-types'
 
 const BUCKET = 'person-files'
 

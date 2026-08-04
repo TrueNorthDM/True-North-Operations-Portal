@@ -14,7 +14,7 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { teamKeyFromName } from '@/components/admin/people-types'
+import { teamKeyFromName } from '@/lib/directory/people-types'
 import { asRoleType } from '@/lib/auth/tier'
 import type { RestrictedPerson, FullProfile } from '@/components/admin/RestrictedDirectory'
 

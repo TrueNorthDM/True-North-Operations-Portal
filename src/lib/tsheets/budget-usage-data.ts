@@ -9,8 +9,6 @@ import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import type { ClientWithBudget } from '@/components/tsheets/settings/ClientsTab'
 import type { PersonWithAssignments, DirectoryOption } from '@/components/tsheets/settings/PeopleTab'
 import type { AuditEntry } from '@/components/tsheets/settings/HistoryTab'
-import type { MonthlyBudget } from '@/components/tsheets/settings/MonthlyBudgetGrid'
-import type { ProjectMonthHours } from '@/components/tsheets/settings/ProjectHoursGrid'
 import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
 
 export interface BudgetUsageData {
@@ -20,8 +18,6 @@ export interface BudgetUsageData {
   directoryOptions: DirectoryOption[]
   syncedAt: string | null
   canSync: boolean
-  pastBudgets: MonthlyBudget[]
-  pastProjectHours: ProjectMonthHours[]
   publishingTargets: PublishingTargetRow[]
   publishingAudit: AuditLogRow[]
 }
@@ -236,8 +232,6 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     directoryOptions: directoryOptions as DirectoryOption[],
     syncedAt,
     canSync: isAdmin,
-    pastBudgets: monthlyBudgets,
-    pastProjectHours: projectMonthHours,
     publishingTargets: pubTargetsRaw ?? [],
     publishingAudit: pubAuditRaw ?? [],
   }

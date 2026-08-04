@@ -5,7 +5,7 @@
 import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
-import { formatDate, TEAM_COLOR } from '@/components/admin/people-types'
+import { formatDate, TEAM_COLOR } from '@/lib/directory/people-types'
 import { MONTHS, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
 
 interface Ann extends CelebrationPerson { years: number; day: number }

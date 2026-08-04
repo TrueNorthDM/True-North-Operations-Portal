@@ -19,7 +19,7 @@ import {
   ROLE_TYPE_LABEL,
   type PersonView,
   type Pill,
-} from './people-types'
+} from '@/lib/directory/people-types'
 import { Avatar } from '@/components/Avatar'
 import type { TeamOption } from './DirectoryTabs'
 import { FilterBar } from './grid/FilterBar'

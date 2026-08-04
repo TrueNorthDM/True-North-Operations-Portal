@@ -15,7 +15,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveTrAssignment, savePersonCostRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
-import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/components/admin/people-types'
+import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/lib/directory/people-types'
 import { FilterBar } from '@/components/admin/grid/FilterBar'
 import { SortHeader } from '@/components/admin/grid/SortHeader'
 import { applyFilters, applySort, nextSort } from '@/components/admin/grid/utils'

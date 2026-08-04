@@ -43,7 +43,7 @@ import {
   type Account,
   type Pill,
   type TeamKey,
-} from './people-types'
+} from '@/lib/directory/people-types'
 import type { TeamOption } from './DirectoryTabs'
 
 export type ModalState = null | { mode: 'view' | 'edit'; person: PersonView | null }

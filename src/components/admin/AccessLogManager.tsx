@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { TEAM_COLOR, type TeamKey } from './people-types'
+import { TEAM_COLOR, type TeamKey } from '@/lib/directory/people-types'
 import { Avatar } from '@/components/Avatar'
 import { deviceLabel } from '@/lib/user-agent'
 import { FilterBar } from './grid/FilterBar'

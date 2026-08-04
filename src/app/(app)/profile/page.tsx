@@ -10,7 +10,7 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import {
   TEAM_COLOR, initialsOf, formatDate, teamKeyFromName,
   typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill,
-} from '@/components/admin/people-types'
+} from '@/lib/directory/people-types'
 // Shared with the popup on My Team, so the two render the same card.
 import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profile/profile-parts'
 import type { PersonRow } from '@/lib/types/database.types'

@@ -1,6 +1,10 @@
-// Shared view-model types + helpers for the admin Directory UI (People tab,
-// Emails tab, Teams cards, Access rows, and the person modal). Plain module (no
-// 'use client') so both the server page and the client components can import it.
+// Shared view-model types + helpers for the People directory: the row shapes the
+// server builds, and the pill/label helpers the screens render them with.
+//
+// Lives in lib because lib modules (access/resolve, directory/my-team,
+// directory/people-view, hr/celebrations) need it, and lib must not reach up
+// into components. Plain module (no 'use client'), so server pages and client
+// components both import it.
 
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'

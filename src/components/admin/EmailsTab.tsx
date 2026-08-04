@@ -8,7 +8,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { TEAM_COLOR, initialsOf, type PersonView } from './people-types'
+import { TEAM_COLOR, initialsOf, type PersonView } from '@/lib/directory/people-types'
 import { FilterBar } from './grid/FilterBar'
 import { SortHeader } from './grid/SortHeader'
 import { applyFilters, applySort, nextSort } from './grid/utils'

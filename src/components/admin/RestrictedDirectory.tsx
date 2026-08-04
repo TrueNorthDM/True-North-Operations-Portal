@@ -18,7 +18,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, statusPill, formatDate, teamKeyFromName, typePill, timePill, ynPill, lifecyclePill, PILL_CLASS, TEAM_COLOR, type TeamKey } from './people-types'
+import { roleTypePill, statusPill, formatDate, teamKeyFromName, typePill, timePill, ynPill, lifecyclePill, PILL_CLASS, TEAM_COLOR, type TeamKey } from '@/lib/directory/people-types'
 import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profile/profile-parts'
 
 export interface RestrictedPersonDetail {

@@ -17,7 +17,7 @@
 import { Fragment, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
-import { initialsOf } from '@/components/admin/people-types'
+import { initialsOf } from '@/lib/directory/people-types'
 import { LEVELS, KNOWN_GAPS } from '@/lib/access/levels'
 import { SURFACES, SURFACE_GROUPS, CONFIGURABLE_ROLES, type ConfigurableRole } from '@/lib/access/surfaces'
 import type { RoleType } from '@/lib/auth/tier'

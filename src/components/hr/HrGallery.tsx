@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import { PersonModal, type ModalState } from '@/components/admin/PersonModal'
-import { TEAM_COLOR, type PersonView, type Account, type TeamKey } from '@/components/admin/people-types'
+import { TEAM_COLOR, type PersonView, type Account, type TeamKey } from '@/lib/directory/people-types'
 import type { TeamOption } from '@/components/admin/DirectoryTabs'
 import type { Milestone } from '@/lib/tenure'
 

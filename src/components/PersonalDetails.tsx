@@ -8,7 +8,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateMyProfile, type MyProfileInput } from '@/app/(app)/profile/profile-actions'
-import { formatDate, ynPill, PILL_CLASS } from '@/components/admin/people-types'
+import { formatDate, ynPill, PILL_CLASS } from '@/lib/directory/people-types'
 
 export interface PersonalFields {
   lastName: string

@@ -1,11 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { I7_PROJECTS } from '@/lib/tsheets/i7report'
-import { PastScheduleTables } from './PastSchedule'
-import { PILL_CLASS, initialsOf, type PillKind } from '@/components/admin/people-types'
-import type { MonthlyBudget } from './MonthlyBudgetGrid'
-import type { ProjectMonthHours } from './ProjectHoursGrid'
+import { PILL_CLASS, initialsOf, type PillKind } from '@/lib/directory/people-types'
 
 export interface AuditEntry {
   id: number
@@ -20,12 +16,6 @@ export interface AuditEntry {
   actorName: string | null
   /** What was changed, the client/entity name, resolved server-side. */
   entityLabel: string | null
-}
-
-interface Props {
-  entries: AuditEntry[]
-  pastBudgets: MonthlyBudget[]
-  pastProjectHours: ProjectMonthHours[]
 }
 
 const RECENT_LIMIT = 10
@@ -174,15 +164,6 @@ export function ChangeHistory({ entries }: { entries: AuditEntry[] }) {
         </>
       )}
       {showAll && <AllHistoryModal entries={entries} onClose={() => setShowAll(false)} />}
-    </div>
-  )
-}
-
-export function HistoryTab({ entries, pastBudgets, pastProjectHours }: Props) {
-  return (
-    <div className="space-y-8">
-      <PastScheduleTables budgets={pastBudgets} hours={pastProjectHours} projects={I7_PROJECTS} />
-      <ChangeHistory entries={entries} />
     </div>
   )
 }

@@ -9,7 +9,6 @@
 
 import { useState, useEffect, type ReactNode } from 'react'
 import { EditingContext } from './settings/editing-context'
-import { HistoryContext } from './settings/history-context'
 
 export interface SettingsSection {
   id: string
@@ -20,19 +19,15 @@ export interface SettingsSection {
   editable?: boolean
 }
 
-const HISTORY = '__history__'
 
 export function SettingsNav({
   signedIn,
   sections,
-  historyContent,
 }: {
   signedIn: { name: string; role: string }
   sections: SettingsSection[]
-  historyContent?: ReactNode
 }) {
   const [active, setActive] = useState(sections[0]?.id)
-  const [beforeHistory, setBeforeHistory] = useState<string | undefined>(undefined)
   const [editing, setEditing] = useState(false)
 
   // Deep-link support: /settings#people opens that section (e.g. from Directory).
@@ -47,13 +42,8 @@ export function SettingsNav({
     if (typeof window !== 'undefined') history.replaceState(null, '', `#${id}`)
   }
 
-  function toggleHistory() {
-    if (active === HISTORY) setActive(beforeHistory ?? sections[0]?.id)
-    else { setBeforeHistory(active); setActive(HISTORY) }
-  }
-
   const activeSection = sections.find(s => s.id === active)
-  const showEdit = active !== HISTORY && activeSection?.editable !== false
+  const showEdit = activeSection?.editable !== false
 
   return (
     <div className="space-y-6">
@@ -86,11 +76,9 @@ export function SettingsNav({
         {/* panel, only the active section mounts (like the previous tabbed
             settings), so inactive editors' heavy grids don't render up front. */}
         <section className="min-w-0">
-          <HistoryContext.Provider value={{ isHistory: active === HISTORY, toggle: toggleHistory }}>
-            <EditingContext.Provider value={editing}>
-              {active === HISTORY ? historyContent : activeSection?.content}
-            </EditingContext.Provider>
-          </HistoryContext.Provider>
+          <EditingContext.Provider value={editing}>
+            {activeSection?.content}
+          </EditingContext.Provider>
 
           {showEdit && (
             <div className="flex justify-end mt-6 pt-5 border-t border-slate-200">

@@ -2,7 +2,7 @@
 // self-contained block so it can sit side by side with Work anniversaries.
 
 import { Avatar } from '@/components/Avatar'
-import { TEAM_COLOR } from '@/components/admin/people-types'
+import { TEAM_COLOR } from '@/lib/directory/people-types'
 import { MONTHS, formatMonthDay, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
 
 interface Bd extends CelebrationPerson { day: number }

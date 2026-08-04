@@ -13,7 +13,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { BOARDS, PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
 import { saveTargetValue, addTarget, deleteTarget } from '@/app/(app)/boards-beta/targets/actions'
-import { initialsOf, PILL_CLASS, type PillKind } from '@/components/admin/people-types'
+import { initialsOf, PILL_CLASS, type PillKind } from '@/lib/directory/people-types'
 import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
 
 // ── Language dots, flag colours, keyed by the Monday label text ─────────────

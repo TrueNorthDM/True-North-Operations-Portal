@@ -1,7 +1,7 @@
 // Avatar: the person's photo if they have one, else their initials on a team
 // colour. No hooks, so it renders in both server and client components.
 
-import { initialsOf } from '@/components/admin/people-types'
+import { initialsOf } from '@/lib/directory/people-types'
 
 export function Avatar({ name, avatarUrl, size = 38, color = '#8593a4', dimmed = false, className = '' }: {
   name: string | null

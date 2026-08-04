@@ -16,7 +16,7 @@ import {
   type PersonTeam,
   type Account,
   type TeamKey,
-} from '@/components/admin/people-types'
+} from '@/lib/directory/people-types'
 import type { TeamOption } from '@/components/admin/DirectoryTabs'
 
 const PEOPLE_FULL =
