@@ -26,8 +26,15 @@ export interface Automation {
   schedule?: string
   /** Where it lives in the codebase. */
   location: string
-  /** system_health_checks service key, if this automation is monitored. */
-  healthService?: string
+  /**
+   * system_health_checks service keys, if this automation is monitored. A list
+   * because one automation can have several independent signals: the Monday
+   * webhook is both "is it still registered" and "are deliveries signed".
+   * Every key listed here counts toward the page's overall status, so a signal
+   * that is not on a card cannot quietly sit at warn while the header says
+   * everything is operational.
+   */
+  healthServices?: string[]
   /** When it was added/last materially changed (absolute date). */
   since?: string
 }
@@ -41,7 +48,7 @@ export const AUTOMATIONS: Automation[] = [
       'When a language item’s "Href Links" status changes to "Run Link", saves that language’s URL and flips siblings to "Apply Link"; when it changes to "Done", marks the language confirmed live and completes the page once all languages are done. Refreshes the affected project page automatically.',
     trigger: 'Monday webhook POST to /api/monday/webhook',
     location: 'src/app/api/monday/webhook/route.ts, src/lib/monday/handlers.ts',
-    healthService: 'monday_webhook',
+    healthServices: ['monday_webhook', 'monday_events'],
     since: '2026-07-20 (webhooks recreated after a stale-URL outage)',
   },
   {
@@ -52,7 +59,7 @@ export const AUTOMATIONS: Automation[] = [
     trigger: 'Vercel Cron',
     schedule: 'Every 4 hours (0 1,5,9,13,17,21 * * *)',
     location: 'src/app/api/cron/ingest/route.ts',
-    healthService: 'monday_api',
+    healthServices: ['monday_api'],
   },
   {
     id: 'tsheets-sync',
@@ -62,7 +69,7 @@ export const AUTOMATIONS: Automation[] = [
     trigger: 'Vercel Cron',
     schedule: 'Every 4 hours (30 1,5,9,13,17,21 * * *)',
     location: 'src/app/api/cron/tsheets-sync/route.ts',
-    healthService: 'tsheets_api',
+    healthServices: ['tsheets_api'],
   },
   {
     id: 'health-check',
@@ -72,7 +79,7 @@ export const AUTOMATIONS: Automation[] = [
     trigger: 'Vercel Cron',
     schedule: 'Every 2 days (0 9 */2 * *)',
     location: 'src/app/api/cron/health/route.ts, src/lib/health/checks.ts',
-    healthService: 'monday_api',
+    healthServices: ['monday_api'],
     since: '2026-07-20',
   },
   {

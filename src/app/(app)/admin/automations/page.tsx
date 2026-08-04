@@ -48,9 +48,11 @@ export default async function AutomationsPage() {
   const anyHealth = Object.keys(health).length > 0
   const lastChecked = Object.values(health).map(h => h.checked_at).sort().at(-1)
 
-  const monitored = AUTOMATIONS.filter(a => a.healthService)
-  const downCount = monitored.filter(a => { const h = health[a.healthService as string]; return h && !h.ok && h.status === 'down' }).length
-  const warnCount = monitored.filter(a => { const h = health[a.healthService as string]; return h && h.status === 'warn' && !h.ok }).length
+  // Every monitored signal, flattened: the rollup counts signals, not cards, so
+  // an automation with two signals can be down on one and fine on the other.
+  const monitored = AUTOMATIONS.flatMap(a => a.healthServices ?? []).map(k => health[k]).filter(Boolean)
+  const downCount = monitored.filter(h => !h.ok && h.status === 'down').length
+  const warnCount = monitored.filter(h => !h.ok && h.status === 'warn').length
 
   const overall: HealthStatus | 'unknown' = !anyHealth ? 'unknown' : downCount > 0 ? 'down' : warnCount > 0 ? 'warn' : 'ok'
   const overallText = !anyHealth ? 'No checks recorded yet' : downCount > 0 ? `${downCount} integration${downCount > 1 ? 's' : ''} down` : warnCount > 0 ? `${warnCount} warning${warnCount > 1 ? 's' : ''}` : 'All integrations operational'
@@ -97,8 +99,12 @@ export default async function AutomationsPage() {
       {/* Automation cards */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {AUTOMATIONS.map(a => {
-          const monitoredFlag = !!a.healthService
-          const h = a.healthService ? health[a.healthService] : undefined
+          const keys = a.healthServices ?? []
+          const monitoredFlag = keys.length > 0
+          const signals = keys.map(k => health[k]).filter(Boolean)
+          // The card's dot shows the worst of its signals, so a green webhook
+          // registration can't mask an unverified signature next to it.
+          const h = signals.find(s => !s.ok && s.status === 'down') ?? signals.find(s => !s.ok) ?? signals[0]
           const st = statusText(h, monitoredFlag)
           const kind = KIND_STYLE[a.kind]
           return (
@@ -122,7 +128,15 @@ export default async function AutomationsPage() {
                 <div className="flex gap-2"><dt className="text-muted w-[74px] shrink-0">Code</dt><dd className="text-foreground font-mono text-[11.5px] break-all">{a.location}</dd></div>
                 {a.since && <div className="flex gap-2"><dt className="text-muted w-[74px] shrink-0">Since</dt><dd className="text-foreground">{a.since}</dd></div>}
                 {monitoredFlag && (
-                  <div className="flex gap-2"><dt className="text-muted w-[74px] shrink-0">Health</dt><dd className="text-foreground">{HEALTH_LABEL[a.healthService as string] ?? a.healthService}{h?.detail ? `: ${h.detail}` : ''}{h?.checked_at ? ` (${fmt(h.checked_at)})` : ''}</dd></div>
+                  <div className="flex gap-2">
+                    <dt className="text-muted w-[74px] shrink-0">Health</dt>
+                    <dd className="text-foreground space-y-0.5">
+                      {keys.map(k => {
+                        const s = health[k]
+                        return <div key={k}>{HEALTH_LABEL[k] ?? k}{s?.detail ? `: ${s.detail}` : ''}{s?.checked_at ? ` (${fmt(s.checked_at)})` : ''}</div>
+                      })}
+                    </dd>
+                  </div>
                 )}
               </dl>
             </div>
