@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { requireSurface } from '@/lib/access/resolve'
 // How the i7 Budget Usage Report is built, a plain-language explainer linked
 // from the info icon in Settings. Static content (the July 2026 numbers are an
 // illustrative worked example).
@@ -39,7 +41,11 @@ const PROOF = [
   { p: 'Wagner Meters (WM)', hrs: '308', used: '75.75', avail: '232.25', bavail: '$22,064', bused: '$7,196' },
 ]
 
-export default function ReportGuidePage() {
+export default async function ReportGuidePage() {
+  // Explains the Clients Reports figures, so it follows the report itself.
+  const access = await requireSurface('tools')
+  if (!access.canTool('i7-budget')) redirect('/tools')
+
   return (
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}

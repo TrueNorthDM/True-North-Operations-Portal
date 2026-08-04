@@ -4,12 +4,19 @@
 // off to the client editor. Admins edit; viewers see read-only. RLS on
 // publishing_targets / audit_log enforces the same on the database side.
 
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { requireSurface } from '@/lib/access/resolve'
 import { getCurrentProfile } from '@/lib/auth/role'
 import { TargetsEditor } from '@/components/boards/TargetsEditor'
 import { BoardsTabs } from '@/components/boards/BoardsTabs'
 
 export default async function TargetsPage() {
+  // Same pair as the card that leads here: the area from the access level, the
+  // tool from the team. /boards-beta was guarded but this child was not.
+  const access = await requireSurface('tools')
+  if (!access.canTool('workload')) redirect('/tools')
+
   const profile = await getCurrentProfile()
   const isAdmin = profile?.role === 'admin'
 

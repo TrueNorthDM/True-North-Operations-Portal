@@ -9,7 +9,16 @@
  * cookie flows, so the auth-gated page loads inside the frame.
  */
 
-export default function PublishingDashboardPage() {
+import { redirect } from 'next/navigation'
+import { requireSurface } from '@/lib/access/resolve'
+
+export default async function PublishingDashboardPage() {
+  // Same pair as the card that leads here: the area from the access level, the
+  // tool from the team. /dashboards was guarded but this child was not, so the
+  // parent's guard was bypassed by typing the URL.
+  const access = await requireSurface('tools')
+  if (!access.canTool('publishing')) redirect('/tools')
+
   // MainContent gives this route a full-height, edge-to-edge wrapper, so the
   // iframe fills the entire content area, no padding, border, or viewport math.
   return (
