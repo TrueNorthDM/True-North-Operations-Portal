@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { monthBounds, monthsBetween } from './report'
+import { monthBounds, monthsBetween, firstOfNextMonth } from './report'
 
 describe('monthBounds', () => {
   it('gives the first and last day of a 31-day month', () => {
@@ -54,5 +54,34 @@ describe('monthsBetween', () => {
 
   it('pads single-digit months so the strings still sort', () => {
     expect(monthsBetween('2026-08', '2026-11')).toEqual(['2026-08', '2026-09', '2026-10'])
+  })
+})
+
+describe('firstOfNextMonth', () => {
+  it('moves to the first of the following month', () => {
+    expect(firstOfNextMonth('2026-08-04')).toBe('2026-09-01')
+  })
+
+  it('works from the first of a month', () => {
+    expect(firstOfNextMonth('2026-08-01')).toBe('2026-09-01')
+  })
+
+  it('works from the last day of a month', () => {
+    expect(firstOfNextMonth('2026-08-31')).toBe('2026-09-01')
+  })
+
+  it('rolls December into the next January', () => {
+    expect(firstOfNextMonth('2026-12-15')).toBe('2027-01-01')
+  })
+
+  it('pads the month so the string still sorts', () => {
+    // rateFor compares these as strings; an unpadded "2026-9-01" would sort
+    // after "2026-10-01" and silently pick the wrong rate.
+    expect(firstOfNextMonth('2026-08-04')).toBe('2026-09-01')
+    expect(firstOfNextMonth('2026-01-31')).toBe('2026-02-01')
+  })
+
+  it('does not care that February is short', () => {
+    expect(firstOfNextMonth('2026-02-28')).toBe('2026-03-01')
   })
 })

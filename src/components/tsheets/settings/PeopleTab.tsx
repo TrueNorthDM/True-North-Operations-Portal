@@ -15,6 +15,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveTrAssignment, savePersonCostRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
+import { firstOfNextMonth } from '@/lib/tsheets/report'
 import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/lib/directory/people-types'
 import { FilterBar } from '@/components/admin/grid/FilterBar'
 import { SortHeader } from '@/components/admin/grid/SortHeader'
@@ -74,6 +75,13 @@ function TeamBadge({ team }: { team: string | null }) {
   )
 }
 
+/** 'August 2026' from a YYYY-MM-DD, for the rate-start dialog. */
+function monthName(iso: string): string {
+  const [y, m] = iso.split('-').map(Number)
+  const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  return `${names[m - 1]} ${y}`
+}
+
 const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px] gap-3.5 items-center'
 
 export function PeopleTab({ people, allClients }: Props) {
@@ -90,6 +98,12 @@ export function PeopleTab({ people, allClients }: Props) {
     }
     return p.assignments[0]?.hourlyRate ?? null
   }
+
+  // When a client rate changes, the admin picks which month it starts in. A
+  // rate resolves to one value per month, so "from today" reprices this whole
+  // month, hours already logged included (audit finding M3-2). The choice was
+  // never offered before: every save silently took the "from today" branch.
+  const [pendingRates, setPendingRates] = useState<{ name: string; from: number | null; to: number }[] | null>(null)
 
   const [editing, setEditing] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string; salary: string }>>({})
@@ -152,7 +166,28 @@ export function PeopleTab({ people, allClients }: Props) {
     setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? { client: '', cost: '', salary: '' }), [field]: val } }))
   }
 
-  async function save() {
+  /** The client-rate changes in the current drafts, for the confirm dialog. */
+  function changedRates() {
+    const out: { name: string; from: number | null; to: number }[] = []
+    for (const p of people) {
+      const d = drafts[p.id]
+      if (!d) continue
+      const v = d.client.trim() === '' ? null : Number(d.client)
+      if (v != null && v > 0 && v !== rateOf(p)) out.push({ name: p.name, from: rateOf(p), to: v })
+    }
+    return out
+  }
+
+  /** Asks first when a client rate moved, since that decides which month it hits. */
+  function save() {
+    setError(null)
+    const rates = changedRates()
+    if (rates.length > 0) { setPendingRates(rates); return }
+    void commit(today)
+  }
+
+  async function commit(effectiveFrom: string) {
+    setPendingRates(null)
     setSaving(true)
     setError(null)
     const ops: Promise<{ ok: boolean; error?: string }>[] = []
@@ -163,7 +198,7 @@ export function PeopleTab({ people, allClients }: Props) {
       const newClient = d.client.trim() === '' ? null : Number(d.client)
       if (newClient != null && newClient > 0 && newClient !== rateOf(p)) {
         if (i7ClientId == null) { setError('No i7 client found to attach the rate to.'); setSaving(false); return }
-        ops.push(saveTrAssignment({ tsheetsUserId: p.tsheetsUserId, clientId: i7ClientId, hourlyRate: newClient, effectiveFrom: today, justification: AUTO_REASON }))
+        ops.push(saveTrAssignment({ tsheetsUserId: p.tsheetsUserId, clientId: i7ClientId, hourlyRate: newClient, effectiveFrom, justification: AUTO_REASON }))
       }
       // Cost rate, only when it changed.
       const newCost = d.cost.trim() === '' ? null : Number(d.cost)
@@ -345,6 +380,57 @@ export function PeopleTab({ people, allClients }: Props) {
           </button>
         )}
       </div>
+
+      {/*
+        Which month does the new rate start in. A rate resolves to one value per
+        month, so "from today" is not "from today": it reprices every hour
+        already logged this month, and any report already sent for it. The old
+        code always took that branch without asking.
+      */}
+      {pendingRates && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={() => setPendingRates(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-slate-900">When does the new rate start?</h3>
+
+            <ul className="text-sm text-slate-700 space-y-1">
+              {pendingRates.map(r => (
+                <li key={r.name}>
+                  <span className="font-semibold">{r.name}</span>{' '}
+                  {r.from != null ? `$${r.from.toFixed(2)} → ` : ''}<span className="font-semibold">${r.to.toFixed(2)}</span>/h
+                </li>
+              ))}
+            </ul>
+
+            <p className="text-sm text-slate-600 leading-relaxed">
+              A rate applies to a whole month, so starting it now also reprices the hours already logged in{' '}
+              <strong className="font-semibold text-slate-800">{monthName(today)}</strong>, and changes any report already sent for it.
+            </p>
+
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                onClick={() => void commit(firstOfNextMonth(today))}
+                className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors text-left"
+              >
+                Start on 1 {monthName(firstOfNextMonth(today))}
+                <span className="block text-xs font-normal text-slate-300 mt-0.5">Leaves {monthName(today)} exactly as it is.</span>
+              </button>
+              <button
+                onClick={() => void commit(today)}
+                className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg border border-amber-300 bg-amber-50 text-[#7a4e05] hover:bg-amber-100 transition-colors text-left"
+              >
+                Apply to {monthName(today)} as well
+                <span className="block text-xs font-normal mt-0.5">Recalculates this month at the new rate.</span>
+              </button>
+              <button
+                onClick={() => setPendingRates(null)}
+                className="w-full text-sm font-medium px-4 py-2 text-slate-500 hover:text-slate-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

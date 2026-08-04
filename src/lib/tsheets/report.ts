@@ -36,3 +36,18 @@ export function monthsBetween(fromYm: string, toYm: string): string[] {
   }
   return out
 }
+
+/**
+ * The first day of the month after `isoDate` (YYYY-MM-DD → YYYY-MM-DD).
+ *
+ * A rate resolves to one value per month, so a rate dated today applies to the
+ * whole of this month, including hours already logged and possibly already
+ * reported. This gives the other option: start clean next month and leave the
+ * closed one alone (audit finding M3-2).
+ */
+export function firstOfNextMonth(isoDate: string): string {
+  const [y, m] = isoDate.split('-').map(Number)
+  const ny = m === 12 ? y + 1 : y
+  const nm = m === 12 ? 1 : m + 1
+  return `${ny}-${String(nm).padStart(2, '0')}-01`
+}
