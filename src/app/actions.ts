@@ -72,6 +72,17 @@ export async function deletePage(input: {
   return { ok: true }
 }
 
+// ── Site configuration ──────────────────────────────────────────────────────
+// The four actions below back the Sites & languages card on Settings, which is
+// an admin-only surface. Three of them had no server-side check at all, and the
+// fourth was miscounted as gated during the audit (the sweep read the following
+// non-exported function's guard as its own).
+//
+// Page gating alone was not enough: a server action is reachable by its id out
+// of the client bundle, which is a public static asset, so "the page redirects
+// you" is not the same as "the action refuses you". Changing a site's Monday
+// board id from here would silently break the Href Links sync.
+
 /**
  * Updates a site's `languages` array AND flags every page that already has at
  * least one saved URL as `needs_hreflang_update = TRUE`. Empty pages are left
@@ -86,6 +97,8 @@ export async function updateSiteLanguages(input: {
   siteCode: SiteCode
   newLanguages: string[]
 }): Promise<{ ok: boolean; error?: string; flaggedPagesCount?: number }> {
+  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+
   const supabase = await createClient()
 
   // Validate
@@ -158,6 +171,8 @@ export async function setLanguagePaused(input: {
   language: string
   paused: boolean
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+
   const supabase = await createClient()
 
   const lang = input.language.trim().toLowerCase()
@@ -234,6 +249,8 @@ export async function saveMondayBoardId(input: {
   siteCode: SiteCode
   boardId: string
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+
   const supabase = await createClient()
   const trimmed = input.boardId.trim()
   // Monday board IDs are all-digit. Empty string clears the value.
@@ -259,6 +276,8 @@ export async function saveSiteWpUrls(input: {
   devUrl: string
   liveUrl: string
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+
   const supabase = await createClient()
 
   function normalize(raw: string): string | null | { error: string } {
