@@ -191,9 +191,10 @@ export async function saveEntry(input: {
 
   if (input.id) {
     const { data: before } = await ctx.supabase
-      .from('tc_entries').select('*').eq('id', input.id).maybeSingle()
+        .from('tc_entries').select('*').eq('id', input.id).eq('person_id', ctx.me.id).maybeSingle()
     const { error, count } = await ctx.supabase
-      .from('tc_entries').update(row, { count: 'exact' }).eq('id', input.id)
+      .from('tc_entries').update(row, { count: 'exact' })
+      .eq('id', input.id).eq('person_id', ctx.me.id)
     if (error) return fail(error.message)
     // RLS does not raise on an update that matches nothing, it just changes
     // nothing. Without this check, editing a submitted entry would look like it
@@ -216,9 +217,9 @@ export async function deleteEntry(id: number): Promise<Result> {
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
   const { data: before } = await ctx.supabase
-    .from('tc_entries').select('*').eq('id', id).maybeSingle()
+    .from('tc_entries').select('*').eq('id', id).eq('person_id', ctx.me.id).maybeSingle()
   const { error, count } = await ctx.supabase
-    .from('tc_entries').delete({ count: 'exact' }).eq('id', id)
+    .from('tc_entries').delete({ count: 'exact' }).eq('id', id).eq('person_id', ctx.me.id)
   if (error) return fail(error.message)
   if (!count) return fail('That entry can no longer be deleted. It has been submitted or approved.')
 

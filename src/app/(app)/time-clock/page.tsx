@@ -3,9 +3,11 @@
 // Phase 2: people can track time here, in parallel with QuickBooks Time, which
 // is still the system of record. Nothing on this page writes anywhere else.
 //
-// Everything is scoped to the signed-in person by RLS (migration 058), not by
-// the queries below. The queries read as if they could see everything, and the
-// database is what makes sure they cannot.
+// Scoped to the signed-in person twice over, and both are needed. Migration
+// 058's policy is the floor nobody can get under. The explicit person_id filter
+// below is what the page MEANS: policies combine with OR, so an admin's blanket
+// policy from 057 also satisfies the read, and without the filter this page
+// showed the whole company's week under the title "My Time".
 
 import Link from 'next/link'
 import { requireSurface } from '@/lib/access/resolve'
@@ -68,7 +70,12 @@ export default async function TimeClockPage({
       supabase.from('tc_jobcodes').select('id, name, kind, parent_id, active').eq('active', true).order('name'),
       supabase.from('tc_fields').select('id, name, required, position, active').eq('active', true).order('position'),
       supabase.from('tc_field_options').select('id, field_id, label, active').eq('active', true).order('label'),
+      // Scoped to me explicitly, and not left to RLS. Policies combine with OR,
+      // so an admin's blanket policy from 057 satisfies the read as well and
+      // this page would quietly show the whole company's week. "My Time" means
+      // mine by definition, not "everything I happen to be allowed to see".
       supabase.from('tc_entries').select('*')
+        .eq('person_id', me.id)
         .gte('entry_date', bounds.start).lte('entry_date', bounds.end)
         .order('entry_date').order('started_at', { nullsFirst: false }),
     ])
