@@ -103,8 +103,7 @@ const myWorkNav: Item = {
   match: p => p === '/my-work',
 }
 
-// My Time: the person's own clock. The hand sweeps, since the whole point of
-// the page is time that is running.
+// My Hours: the person's own clock.
 const ClockIcon = (
   <svg className="w-[21px] h-[21px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="9" />
@@ -113,11 +112,29 @@ const ClockIcon = (
   </svg>
 )
 
-const timeClockNav: Item = {
-  href: '/time-clock',
-  label: 'My Time',
+const myHoursNav: Item = {
+  href: '/hours',
+  label: 'My Hours',
   icon: ClockIcon,
-  match: p => p === '/time-clock' || p.startsWith('/time-clock/'),
+  match: p => p === '/hours' || p.startsWith('/hours/'),
+}
+
+// Clocky, the module behind it: rules, migration, and later approvals. A dial
+// rather than a clock face, so the two are not mistaken for each other at a
+// glance in a rail of monochrome icons.
+const ClockyIcon = (
+  <svg className="w-[21px] h-[21px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+    <path d="M3.5 9.5h2M18.5 9.5h2" />
+  </svg>
+)
+
+const clockyNav: Item = {
+  href: '/clocky',
+  label: 'Clocky',
+  icon: ClockyIcon,
+  match: p => p === '/clocky' || p.startsWith('/clocky/'),
 }
 
 // Directory: the People & Teams directory (its own top-level page). Admin-only,
@@ -159,10 +176,11 @@ const NAV: readonly { key: string; item: Item }[] = [
   { key: 'home', item: home },
   { key: 'tools', item: toolsDash },
   { key: 'my-work', item: myWorkNav },
-  { key: 'time-clock', item: timeClockNav },
+  { key: 'my-hours', item: myHoursNav },
   { key: 'directory', item: directoryNav },
   { key: 'human-resources', item: hrNav },
   { key: 'admin', item: adminNav },
+  { key: 'clocky', item: clockyNav },
   { key: 'settings', item: settingsNav },
 ]
 

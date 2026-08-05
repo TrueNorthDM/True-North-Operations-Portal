@@ -1,4 +1,4 @@
-// My Time, the portal's own clock.
+// My Hours, a person's own clock. The module around it is Clocky.
 //
 // Phase 2: people can track time here, in parallel with QuickBooks Time, which
 // is still the system of record. Nothing on this page writes anywhere else.
@@ -14,11 +14,11 @@ import { requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
-import { TimeClockClient } from './TimeClockClient'
+import { HoursClient } from './HoursClient'
 import type { TcEntryRow } from '@/lib/types/database.types'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'My Time' }
+export const metadata = { title: 'My Hours' }
 
 export interface Jobcode { id: number; label: string; kind: string }
 export interface Field { id: number; name: string; required: boolean; options: string[] }
@@ -36,10 +36,10 @@ export interface Entry {
   editable: boolean
 }
 
-export default async function TimeClockPage({
+export default async function MyHoursPage({
   searchParams,
 }: { searchParams: Promise<{ week?: string }> }) {
-  await requireSurface('time-clock')
+  await requireSurface('my-hours')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const me = await loadCurrentPerson(supabase, user)
@@ -122,16 +122,16 @@ export default async function TimeClockPage({
         <div className="flex items-center gap-2 text-sm text-muted mb-1">
           <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
           <span>/</span>
-          <span className="text-foreground font-semibold">My Time</span>
+          <span className="text-foreground font-semibold">My Hours</span>
         </div>
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">My Time</h1>
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">My Hours</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           Track your hours here. QuickBooks Time is still the official record for now,
           so keep logging there until we say otherwise.
         </p>
       </div>
 
-      <TimeClockClient
+      <HoursClient
         timezone={timezone}
         today={today}
         weekStartDate={bounds.start}

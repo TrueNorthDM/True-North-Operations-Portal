@@ -55,11 +55,11 @@ export const SURFACES: readonly Surface[] = [
   },
   { key: 'my-work', label: 'My Work / My Team', group: 'Navigation', defaults: ON },
   {
-    key: 'time-clock',
-    label: 'My Time (the clock)',
+    key: 'my-hours',
+    label: 'My Hours',
     group: 'Navigation',
     defaults: ON,
-    note: 'Where a person tracks their own hours. Everyone sees only their own: it is enforced by the database, not by the screen. Being built; QuickBooks Time is still the official record.',
+    note: 'Where a person tracks their own hours. Everyone sees only their own, and that is enforced by the database rather than by the screen. Being built; QuickBooks Time is still the official record, so anything logged here does not count yet.',
   },
   {
     key: 'directory',
@@ -73,6 +73,11 @@ export const SURFACES: readonly Surface[] = [
   // locked to admin rather than left configurable.
   { key: 'settings', label: 'Settings', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
   { key: 'admin', label: 'Admin', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
+  // Clocky is the module behind My Hours: the rules, the migration from
+  // QuickBooks Time, and later the approvals and payroll. Admin only while it
+  // is being built, and locked rather than configurable so nobody can hand out
+  // the migration controls by ticking a box.
+  { key: 'clocky', label: 'Clocky (time module)', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
 
   // ── People directory ──────────────────────────────────────────────────────
   // Three cumulative levels rather than independent switches, because that is

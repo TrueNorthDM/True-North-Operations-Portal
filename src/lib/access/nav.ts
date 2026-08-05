@@ -11,9 +11,11 @@ export const NAV_SURFACES: readonly string[] = [
   'home',
   'tools',
   'my-work',
+  'my-hours',
   'directory',
   'human-resources',
   'admin',
+  'clocky',
   'settings',
 ]
 
@@ -24,6 +26,8 @@ export const NAV_SURFACES: readonly string[] = [
  */
 const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
   { prefix: '/admin', surface: 'admin' },
+  { prefix: '/clocky', surface: 'clocky' },
+  { prefix: '/hours', surface: 'my-hours' },
   { prefix: '/settings', surface: 'settings' },
   { prefix: '/human-resources', surface: 'human-resources' },
   { prefix: '/directory', surface: 'directory' },

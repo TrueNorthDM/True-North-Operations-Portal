@@ -103,7 +103,7 @@ export async function startClock(input: {
   }
 
   await audit(ctx, 'create', null, null, { started_at: draft.startedAt, jobcode_id: input.jobcodeId })
-  revalidatePath('/time-clock')
+  revalidatePath('/hours')
   return OK
 }
 
@@ -133,7 +133,7 @@ export async function stopClock(): Promise<Result> {
   if (error) return fail(error.message)
 
   await audit(ctx, 'update', running.id, { ended_at: null }, { ended_at: now, duration_seconds: seconds })
-  revalidatePath('/time-clock')
+  revalidatePath('/hours')
   return OK
 }
 
@@ -208,7 +208,7 @@ export async function saveEntry(input: {
     await audit(ctx, 'create', (data as { id: number }).id, null, row)
   }
 
-  revalidatePath('/time-clock')
+  revalidatePath('/hours')
   return OK
 }
 
@@ -224,6 +224,6 @@ export async function deleteEntry(id: number): Promise<Result> {
   if (!count) return fail('That entry can no longer be deleted. It has been submitted or approved.')
 
   await audit(ctx, 'delete', null, before, null)
-  revalidatePath('/time-clock')
+  revalidatePath('/hours')
   return OK
 }
