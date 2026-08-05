@@ -96,6 +96,16 @@ export const SURFACES: readonly Surface[] = [
 
   // ── Clients Reports ───────────────────────────────────────────────────────
   { key: 'report-widget', label: 'Budget widget on the Home dashboard', group: 'Clients Reports', defaults: PRIV },
+  // Written as a capability someone HAS rather than a restriction they suffer,
+  // like every other row here, so the matrix reads one way throughout: a tick
+  // always means more.
+  {
+    key: 'report-full',
+    label: 'See the whole client report',
+    group: 'Clients Reports',
+    defaults: PRIV,
+    note: 'Without this the report still opens, with the budget columns (Budget hrs, Hrs avail., Budget avail., Budget used) hidden and only their own teammates in the per-person hour columns. The totals stay honest: Hours used is still the figure for everyone, not the sum of the columns they can see, so nobody reads a partial number as the whole.',
+  },
   // Exporting hands out the full budget and per-person cost detail, and the
   // note is published on the client report, so both stay with admin.
   { key: 'report-export', label: 'Export (PDF, CSV, image) and Team Update', group: 'Clients Reports', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },

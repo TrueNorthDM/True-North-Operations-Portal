@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { I7Charts } from './I7Charts'
 import { ProjectRows } from './I7ProjectRows'
-import { ExportMenu, ExportImageButton, NoteCard } from './I7ReportParts'
+import { ExportMenu, ExportImageButton } from './I7ReportParts'
 import { CarryoverPanel } from './I7CarryoverPanel'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
@@ -25,11 +25,22 @@ interface Props {
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
   trend?: I7TrendPoint[]                  // Jan → selected month, for the charts
-  note?: string                           // per-month narrative (shown + in the PDF)
-  canEditNote?: boolean                   // admin can edit the note
   canExport?: boolean                     // privileged tiers see Export / Team Update (Part 4)
   /** Names with hours this month but no rate, so their cost lands as zero. */
   unratedPeople?: string[]
+  /**
+   * Restricted view, for a level without 'report-full'. Hides every budget and
+   * money column and narrows the per-person columns to `visiblePeople`.
+   *
+   * What it deliberately does NOT touch: the totals. Hours used per row is the
+   * project's own figure and the footer is data.totalHours, both computed from
+   * every entry in the month. Someone seeing three columns still reads the real
+   * 43.25, not the 12 they can add up, so a partial view never reads as a whole
+   * one.
+   */
+  restricted?: boolean
+  /** First names allowed in the per-person columns while restricted. */
+  visiblePeople?: readonly string[]
 }
 
 function monthLabel(ym: string): string {
@@ -38,7 +49,7 @@ function monthLabel(ym: string): string {
   return `${months[m - 1]} ${y}`
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], note = '', canEditNote = false, canExport = false, unratedPeople = [] }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], canExport = false, unratedPeople = [], restricted = false, visiblePeople }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -59,9 +70,11 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
     setOpenCodes(new Set())
   }
 
-  const people = data.people
-  const showCost = data.hasRates
-  const showBudget = Object.keys(projectHours).length > 0
+  const people = restricted && visiblePeople
+    ? data.people.filter(n => visiblePeople.includes(n))
+    : data.people
+  const showCost = data.hasRates && !restricted
+  const showBudget = Object.keys(projectHours).length > 0 && !restricted
   const showBudgetAvail = showBudget && showCost && stdRate > 0   // $ available needs a rate
   const totalBudgetHours = Object.values(projectHours).reduce((s, h) => s + h, 0)
   const totalHrsAvail = totalBudgetHours - data.totalHours
@@ -125,8 +138,11 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       {/* Carryover: bank-account running balance */}
       {carryover && <CarryoverPanel c={carryover} month={selectedMonth} />}
 
-      {/* Month narrative (also printed on the client report) */}
-      {!preview && <NoteCard month={selectedMonth} note={note} canEdit={canEditNote} />}
+      {/*
+        The month note card was here too. It is still printed on the client PDF
+        as "Highlights"; what moved is only where it gets written, since the
+        report page is for reading the month, not editing it.
+      */}
 
       {/*
         Hours with no rate behind them. rateFor() returns 0 when no assignment
@@ -149,15 +165,12 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         </div>
       )}
 
-      {/* Summary chips */}
-      <div className="flex flex-wrap gap-3">
-        <Chip label="Total hours" value={data.totalHours.toFixed(2)} />
-        {showCost && <Chip label="Total cost" value={money(data.totalCost)} />}
-        <Chip label="Projects" value={String(data.projects.length)} />
-        <Chip label="People" value={String(people.length)} />
-      </div>
-
-      {/* Pivot table, 3 row levels, one HOURS column per person */}
+      {/*
+        The summary chips (Total hours, Total cost, Projects, People) used to
+        sit here. Every one of them is the table's own footer row restated a few
+        centimetres above it, so they added a second place for the same number
+        to be read from, and one more thing to keep in step.
+      */}
       <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
         <table className="min-w-full text-sm">
           <thead>
@@ -225,11 +238,3 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
   )
 }
 
-function Chip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-subtle text-sm">
-      <span className="text-muted">{label}</span>
-      <span className="font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">{value}</span>
-    </div>
-  )
-}

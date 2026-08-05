@@ -13,7 +13,9 @@ import { WebhookUrlField } from '@/components/settings/WebhookUrlField'
 import { saveMondayApiToken, saveTsheetsApiToken, regenerateMondayWebhookSecret } from '@/app/actions'
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
-import { loadProjectDirectory } from '@/lib/tsheets/report-data'
+import { loadProjectDirectory, loadReportNote } from '@/lib/tsheets/report-data'
+import { NoteCard } from '@/components/tsheets/I7ReportParts'
+import { currentYearMonth } from '@/lib/tsheets/report'
 import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
 import { ClientsProjectsTab } from '@/components/tsheets/settings/ClientsProjectsTab'
 import { ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
@@ -128,6 +130,12 @@ export default async function SettingsPage() {
   // Clients → Projects → Job codes directory + the auto avg rate (current month).
   const projectDirectory = await loadProjectDirectory(new Date().toISOString().slice(0, 7))
 
+  // The month note printed on the client PDF. It used to be edited from the
+  // report page itself; that page is for reading the month, and this is where
+  // the rest of what shapes the report already lives.
+  const noteMonth = currentYearMonth()
+  const reportNote = await loadReportNote(noteMonth)
+
   // "Signed in as", the current user's directory name (fallback to email).
   const profile = await getCurrentProfile()
   const { data: me } = profile
@@ -200,6 +208,12 @@ export default async function SettingsPage() {
                 (Church + School) with no dollar budget and no QuickBooks Time
                 feed, so it doesn't fit the budget table above. This reserves the
                 spot until the data source is confirmed. */}
+            {/* The month note printed on the client PDF as "Highlights". Its
+                editor used to sit on the report page; the report page is for
+                reading the month, and this section already owns everything else
+                that shapes what the client receives. */}
+            <NoteCard month={noteMonth} note={reportNote} canEdit />
+
             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-4">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Setup pending</span>
@@ -208,8 +222,8 @@ export default async function SettingsPage() {
               <p className="mt-1.5 text-sm text-muted leading-relaxed m-0">
                 Grant Pass (Church and School) is an hours-based retainer tracked with a monthly
                 carryover, not a dollar budget, and it is not logged in QuickBooks Time. Once the
-                data source is confirmed, its setup will live here and it will appear as a tab in
-                the Clients Reports page.
+                data source is confirmed, its setup will live here. Its report already has its
+                own page and its own access grant.
               </p>
             </div>
           </div>

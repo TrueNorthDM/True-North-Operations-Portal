@@ -13,6 +13,8 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
+import { createClient } from '@/lib/supabase/server'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
@@ -102,6 +104,35 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
   )
 }
 
+/**
+ * The first names of everyone on the viewer's own teams, which is what the
+ * restricted view allows in the per-person columns.
+ *
+ * First names because that is what the report's columns are: loadNames() keys
+ * them by the first word of full_name. Two Amys would both show, which is the
+ * same collision the report already lives with and not worth solving twice.
+ */
+async function myTeammateFirstNames(): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const me = await loadCurrentPerson(supabase, user)
+  if (!me) return []
+
+  const { data: mine } = await supabase.from('team_members').select('team_id').eq('person_id', me.id)
+  const teamIds = (mine ?? []).map(m => m.team_id)
+  // No team means no teammates, so no columns. Their own hours still show,
+  // because they are on their own team; someone on no team sees none, which
+  // matches the rest of the portal's "absent team = nothing" rule.
+  if (teamIds.length === 0) return []
+
+  const { data: peers } = await supabase.from('team_members').select('person_id').in('team_id', teamIds)
+  const ids = [...new Set((peers ?? []).map(p => p.person_id))]
+  if (ids.length === 0) return []
+
+  const { data: rows } = await supabase.from('people').select('full_name').in('id', ids)
+  return [...new Set((rows ?? []).map(r => (r.full_name || '').split(' ')[0]).filter(Boolean))]
+}
+
 // The report body, still its own function: the month resolution and the sync
 // status only make sense for the cached i7 data.
 async function I7Tab({ month }: { month?: string }) {
@@ -175,6 +206,12 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
 
   const access = await loadAccess()
 
+  // Without 'report-full' the report still opens: budget and money columns are
+  // hidden and the per-person columns narrow to the viewer's own teammates.
+  // Only resolved when it is actually needed, so the full view costs nothing.
+  const restricted = !access.can('report-full')
+  const visiblePeople = restricted ? await myTeammateFirstNames() : undefined
+
   // A month with no logged hours still shows the full report (month picker,
   // budget/carryover, charts), just with an empty hours table, instead of a
   // dead-end message. This keeps the report reachable and the month filter
@@ -193,9 +230,9 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
         carryover={data?.carryover ?? null}
         stdRate={data?.stdRate ?? 0}
         trend={data?.trend ?? []}
-        note={data?.note ?? ''}
-        canEditNote={access.can('report-note')}
         canExport={access.can('report-export')}
+        restricted={restricted}
+        visiblePeople={visiblePeople}
       />
       <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
     </>

@@ -256,7 +256,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
 }
 
 // The optional narrative for a month (empty string when none).
-async function loadReportNote(month: string): Promise<string> {
+export async function loadReportNote(month: string): Promise<string> {
   const supabase = await createClient()
   const { data } = await supabase.from('i7_report_notes').select('note').eq('month', `${month}-01`).maybeSingle()
   return data?.note ?? ''
