@@ -194,6 +194,16 @@ export default function ViewStageClient({ myName }: { myName: string }) {
                           key={`${t}-${reloadNonce}`}
                           src={src}
                           title={`${LABEL[t]}, desktop`}
+                          // The first click on an unfocused frame is spent
+                          // focusing it, so it never reaches the page: the
+                          // avatar menu needed two clicks to open, which reads
+                          // as "the menu does not work". Focusing on hover
+                          // means the click you make is the click that counts.
+                          // contentWindow.focus() focuses the FRAME, not an
+                          // element inside it, so it cannot scroll a child into
+                          // view and shove the canvas sideways the way an
+                          // element focus() did.
+                          onMouseEnter={e => e.currentTarget.contentWindow?.focus()}
                           style={{ width: DV.w, height: DV.h, border: 'none', transform: `scale(${DV.base})`, transformOrigin: 'top left' }}
                         />
                       ) : (

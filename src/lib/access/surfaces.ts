@@ -81,10 +81,10 @@ export const SURFACES: readonly Surface[] = [
   },
   {
     key: 'dir-teams-config',
-    label: 'Level 2, also see tool access on their teams',
+    label: 'Level 2, the whole company list, read-only',
     group: 'People directory',
     defaults: PRIV,
-    note: 'Adds the Teams tab for their own teams, including who can open which tool, read-only. Still no Emails, Rates & Costs or Access log.',
+    note: 'In the Directory, widens the People list from their own teams to everyone, the same list an admin sees, and adds a Teams tab covering every team with who can open which tool. All of it read-only, and still only their OWN card opens. No Emails, Rates & Costs or Access log. My Team stays scoped to their own teams for everyone: that page answers "who do I work with", not "who works here".',
   },
   {
     key: 'dir-full',

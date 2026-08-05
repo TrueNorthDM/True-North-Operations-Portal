@@ -371,11 +371,18 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  // ── Levels 1 and 2: read-only, scoped to the viewer's own teams ──
-  // Level 3 ('dir-full') falls through to the full DirectoryTabs below.
-  // Level 1  the People list for the teams they belong to; only their own card
-  //          opens. Someone on no team sees just themselves.
-  // Level 2  adds a Teams tab for those same teams, with tool access read-only.
+  // ── Levels 1 and 2: read-only. Level 3 falls through to the full tabs. ──
+  //
+  // Level 1  their own teams, and only their own card opens. Someone on no team
+  //          sees just themselves.
+  // Level 2  the whole company list, same as an admin sees, and every team,
+  //          read-only. Still only their own card opens.
+  //
+  // The ladder is about REACH, not about detail: level 2 widens who you can see
+  // exists and how the teams are arranged, and widens nothing about any
+  // individual. My Team (the page and the My Work tab) is a different question,
+  // "who do I work with", and stays scoped to the viewer's own teams for
+  // everyone at every level.
   if (level < 3) {
     const viewerId = mePerson?.id ?? null
 
@@ -385,9 +392,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     )
     const visible = new Set<string>(viewerId ? [viewerId] : [])
     for (const m of members) if (myTeamIds.has(m.team_id)) visible.add(m.person_id)
+    const seesEveryone = level >= 2
 
     const dirPeople: RestrictedPerson[] = people
-      .filter(p => p.status !== 'inactive' && visible.has(p.id))
+      .filter(p => p.status !== 'inactive' && (seesEveryone || visible.has(p.id)))
       .map((p): RestrictedPerson => {
         const pt = primaryTeam(p.id)
         const mgrId = str(p.manager_id)
@@ -422,7 +430,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     // unknown/retired key never leaks a raw slug into the UI.
     const toolLabel = new Map(TOOLS.map(t => [t.key, t.label]))
     const dirTeams: RestrictedTeam[] = teams
-      .filter(t => myTeamIds.has(t.id))
+      .filter(t => seesEveryone || myTeamIds.has(t.id))
       .map((t): RestrictedTeam => ({
         id: t.id,
         name: t.name,
