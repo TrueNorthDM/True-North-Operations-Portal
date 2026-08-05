@@ -201,6 +201,57 @@ export async function GET(request: Request) {
     }
   }
 
+  // Why a month does not reconcile. Compares OUR stored rows against a fresh
+  // pull, entry by entry, and prints only the ones that disagree.
+  if (part === 'compare' && url.searchParams.get('month')) {
+    const month = url.searchParams.get('month')!
+    const [y, m] = month.split('-').map(Number)
+    const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+    head(`COMPARE ${month}`)
+
+    const source = await all<Record<string, unknown>>(
+      '/timesheets', { start_date: `${month}-01`, end_date: end }, 'timesheets')
+
+    const mine = new Map<number, number>()
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from('tc_entries')
+        .select('external_id, duration_seconds')
+        .eq('source', 'tsheets').gte('entry_date', `${month}-01`).lte('entry_date', end)
+        .range(from, from + 999)
+      const rows = (data ?? []) as { external_id: number | null; duration_seconds: number }[]
+      for (const r of rows) if (r.external_id != null) mine.set(r.external_id, r.duration_seconds)
+      if (rows.length < 1000) break
+    }
+
+    const seen = new Map<number, number>()
+    let dupes = 0
+    for (const t of source) {
+      const id = Number(t.id)
+      if (seen.has(id)) dupes++
+      seen.set(id, Number(t.duration ?? 0))
+    }
+
+    say(`source rows returned ${source.length}, distinct ids ${seen.size}, repeats within the pull ${dupes}`)
+    say(`stored here ${mine.size}`)
+    say(`source seconds (as summed by the import) ${source.reduce((s, t) => s + Number(t.duration ?? 0), 0)}`)
+    say(`source seconds (distinct ids only)      ${[...seen.values()].reduce((s, v) => s + v, 0)}`)
+    say(`stored seconds                          ${[...mine.values()].reduce((s, v) => s + v, 0)}`)
+
+    say('\nids in the pull but not stored here:')
+    const missing = [...seen.keys()].filter(id => !mine.has(id))
+    say(missing.length ? missing.join(', ') : '  none')
+
+    say('\nstored with a different duration:')
+    const differing = [...seen.entries()].filter(([id, d]) => mine.has(id) && mine.get(id) !== d)
+    say(differing.length
+      ? differing.map(([id, d]) => `  ${id}: source ${d}s, here ${mine.get(id)}s`).join('\n')
+      : '  none')
+
+    say('\nstored here but not in the pull:')
+    const extra = [...mine.keys()].filter(id => !seen.has(id))
+    say(extra.length ? extra.join(', ') : '  none')
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },

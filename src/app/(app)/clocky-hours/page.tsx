@@ -187,7 +187,14 @@ export default async function ClockyHoursPage() {
                         <td className="px-3 py-2.5">
                           {ok
                             ? <span className="text-[#1f8a5b]">match</span>
-                            : <span className="text-[#c2410c] font-semibold">off by {Math.abs(r.tsheets_entries - r.portal_entries)} entries</span>}
+                            : <span className="text-[#c2410c] font-semibold">
+                                {/* Name what actually differs. "off by 0 entries" is what
+                                    this said when the counts agreed and the hours did not,
+                                    which is the harder case, not the trivial one. */}
+                                {r.tsheets_entries !== r.portal_entries
+                                  ? `${Math.abs(r.tsheets_entries - r.portal_entries)} entries missing`
+                                  : `same entries, ${hours(Math.abs(r.tsheets_seconds - r.portal_seconds))} h apart`}
+                              </span>}
                         </td>
                       </tr>
                     )
