@@ -238,10 +238,10 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
     ? [...new Set(myTeams.flatMap(t => t.members))]
     : undefined
 
-  // A restricted viewer filters within their own teams. Offering the whole list
-  // would not leak anything (the names are already narrowed downstream), but it
-  // would offer choices that change nothing on screen.
-  const filterTeams = restricted ? myTeams : teams
+  // No team filter on the restricted level. Its columns are already the
+  // viewer's own teams and nothing else, so the control would only offer to
+  // re-cut a list that is already cut.
+  const filterTeams = restricted ? [] : teams
   const selectedTeam = filterTeams.some(t => t.id === team) ? team! : ''
 
   // A month with no logged hours still shows the full report (month picker,

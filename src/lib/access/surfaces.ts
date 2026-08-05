@@ -104,7 +104,7 @@ export const SURFACES: readonly Surface[] = [
     label: 'See the whole client report',
     group: 'Clients Reports',
     defaults: PRIV,
-    note: 'Without this the report still opens, with the budget columns (Budget hrs, Hrs avail., Budget avail., Budget used) hidden and only their own teammates in the per-person hour columns. The totals stay honest: Hours used is still the figure for everyone, not the sum of the columns they can see, so nobody reads a partial number as the whole.',
+    note: 'Without this the report still opens, with two columns hidden (Budget hrs and Budget used) and only their own teammates in the per-person hour columns. Hrs avail. and Budget avail. stay visible, and the team filter is not shown, since the columns are already their own team. The totals stay honest: Hours used is still the figure for everyone, not the sum of the columns they can see, so nobody reads a partial number as the whole.',
   },
   // Exporting hands out the full budget and per-person cost detail, and the
   // note is published on the client report, so both stay with admin.

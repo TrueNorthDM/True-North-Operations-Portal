@@ -29,8 +29,10 @@ interface Props {
   /** Names with hours this month but no rate, so their cost lands as zero. */
   unratedPeople?: string[]
   /**
-   * Restricted view, for a level without 'report-full'. Hides every budget and
-   * money column and narrows the per-person columns to `visiblePeople`.
+   * Restricted view, for a level without 'report-full'. Hides two columns,
+   * Budget hrs and Budget used, and narrows the per-person columns to
+   * `visiblePeople`. Hrs avail. and Budget avail. stay: what is left to spend
+   * is what the level is meant to plan against.
    *
    * What it deliberately does NOT touch: the totals. Hours used per row is the
    * project's own figure and the footer is data.totalHours, both computed from
@@ -85,12 +87,18 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
     (!restricted || !visiblePeople || visiblePeople.includes(n)) &&
     (!teamPeople || teamPeople.includes(n))
   )
+  // Four columns, four separate decisions. The restricted level hides exactly
+  // two of them, Budget hrs and Budget used, and keeps Hrs avail. and Budget
+  // avail.: what is left to spend is what a team leader plans against, and it
+  // was never part of what should be hidden.
+  const hasBudget = Object.keys(projectHours).length > 0
+  const showBudgetHrs = hasBudget && !restricted
+  const showHrsAvail = hasBudget
+  const showBudgetAvail = hasBudget && data.hasRates && stdRate > 0   // $ available needs a rate
   const showCost = data.hasRates && !restricted
-  const showBudget = Object.keys(projectHours).length > 0 && !restricted
-  const showBudgetAvail = showBudget && showCost && stdRate > 0   // $ available needs a rate
   const totalBudgetHours = Object.values(projectHours).reduce((s, h) => s + h, 0)
   const totalHrsAvail = totalBudgetHours - data.totalHours
-  const projectOnlyCols = (showBudget ? 2 : 0) + (showBudgetAvail ? 1 : 0)
+  const projectOnlyCols = (showBudgetHrs ? 1 : 0) + (showHrsAvail ? 1 : 0) + (showBudgetAvail ? 1 : 0)
   const cols = 1 + people.length + 1 + projectOnlyCols + (showCost ? 1 : 0)
 
   // Per-person totals across the whole report (footer row).
@@ -105,6 +113,12 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
     const team = patch.team ?? selectedTeam
     router.push(`/tools/time-report?month=${month}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
   }
+
+  // The line that closes the budget block sits on whichever of its columns is
+  // last, since which one that is now depends on the level looking at it.
+  const sep = 'border-r border-[rgba(1,35,88,0.1)]'
+  const availSep = !showCost && showBudgetAvail ? ` ${sep}` : ''
+  const hrsAvailSep = !showCost && !showBudgetAvail ? ` ${sep}` : ''
 
   const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-3 whitespace-nowrap'
   const selectCls = 'px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20'
@@ -220,10 +234,10 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           <thead>
             <tr className="bg-subtle border-b border-slate-200">
               <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10">Project · Job code · Activity</th>
-              {showBudget && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget hrs</th>}
-              {showBudget && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Hrs avail.</th>}
-              {showBudgetAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget avail.</th>}
-              {showCost && <th className={`${thNum} bg-[rgba(30,125,127,0.06)] border-r border-[rgba(1,35,88,0.1)]`}>Budget used</th>}
+              {showBudgetHrs && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget hrs</th>}
+              {showHrsAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${hrsAvailSep}`}>Hrs avail.</th>}
+              {showBudgetAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${availSep}`}>Budget avail.</th>}
+              {showCost && <th className={`${thNum} bg-[rgba(30,125,127,0.06)] ${sep}`}>Budget used</th>}
               {people.map(name => <th key={name} className={thNum}>{name}</th>)}
               <th className={`${thNum} bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]`}>Hours used</th>
             </tr>
@@ -240,7 +254,8 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
                 pOpen={openProjects.has(p.project)}
                 openCodes={openCodes}
                 showCost={showCost}
-                showBudget={showBudget}
+                showBudgetHrs={showBudgetHrs}
+                showHrsAvail={showHrsAvail}
                 showBudgetAvail={showBudgetAvail}
                 stdRate={stdRate}
                 budgetHours={projectHours[p.project] ?? null}
@@ -252,10 +267,10 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           <tfoot>
             <tr className="border-t-2 border-slate-300 bg-subtle">
               <td className="px-4 py-3 font-(family-name:--font-display) font-extrabold text-tn-ink sticky left-0 bg-subtle z-10">Total</td>
-              {showBudget && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)]">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '-'}</td>}
-              {showBudget && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '-'}</td>}
-              {showBudgetAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)] ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '-'}</td>}
-              {showCost && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)] border-r border-[rgba(1,35,88,0.1)]">{money(data.totalCost)}</td>}
+              {showBudgetHrs && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)]">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '-'}</td>}
+              {showHrsAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)]${hrsAvailSep} ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '-'}</td>}
+              {showBudgetAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)]${availSep} ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '-'}</td>}
+              {showCost && <td className={`px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)] ${sep}`}>{money(data.totalCost)}</td>}
               {people.map(name => (
                 <td key={name} className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">-</span>}</td>
               ))}
@@ -267,7 +282,8 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-xs text-muted leading-relaxed">
-          Hours pulled from QuickBooks Time · grouped by the “1 - i7 Code” &amp; “3 Activity” fields · one hours column per person · Budget used = hours × each person&apos;s rate
+          Hours pulled from QuickBooks Time · grouped by the “1 - i7 Code” &amp; “3 Activity” fields · one hours column per person
+          {showCost && <> · Budget used = hours × each person&apos;s rate</>}
           {showBudgetAvail && <> · Budget avail. = hours available × the i7 rate (${stdRate}/h)</>}
         </p>
         <div className="flex gap-2 text-xs font-(family-name:--font-display) font-bold">
