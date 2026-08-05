@@ -333,8 +333,14 @@ export async function submitPeriod(month: string): Promise<Result> {
 
   // The entries freeze with it. Without this the month could be sent and then
   // quietly rewritten underneath the person about to sign it.
+  //
+  // Only the ones born here. Imported hours belong to QuickBooks Time and were
+  // never editable anyway, and the policy that governs a regular person already
+  // refuses them. Leaving them out makes the behaviour the same for everybody:
+  // without this clause an admin froze the imported rows too, because the
+  // blanket admin policy let the update through, and nobody else did.
   await ctx.supabase.from('tc_entries').update({ state: 'submitted', updated_at: now })
-    .eq('person_id', ctx.me.id).eq('state', 'open')
+    .eq('person_id', ctx.me.id).eq('state', 'open').eq('source', 'portal')
     .gte('entry_date', start).lte('entry_date', end)
 
   revalidatePath('/hours')
@@ -373,7 +379,7 @@ export async function decidePeriod(input: {
 
   await ctx.supabase.from('tc_entries')
     .update({ state: input.decision === 'approve' ? 'approved' : 'open', updated_at: now })
-    .eq('person_id', input.personId).eq('state', 'submitted')
+    .eq('person_id', input.personId).eq('state', 'submitted').eq('source', 'portal')
     .gte('entry_date', start).lte('entry_date', end)
 
   revalidatePath('/hours')
@@ -407,9 +413,12 @@ export async function reopenPeriod(personId: string, month: string): Promise<Res
     .eq('person_id', personId).eq('period_id', (period as { id: number }).id)
   if (error) return fail(error.message)
 
+  // Everything in the month, imported rows included. Reopening is the escape
+  // hatch, and an escape hatch that cannot undo what an earlier version of this
+  // code did is not one. Imported states are re-read from QuickBooks Time on
+  // the next delta anyway.
   await admin.from('tc_entries').update({ state: 'open', updated_at: now })
     .eq('person_id', personId).in('state', ['submitted', 'approved'])
-    .eq('source', 'portal')
     .gte('entry_date', start).lte('entry_date', end)
 
   await audit(ctx, 'update', null, { period: month, personId }, { reopenedBy: ctx.me.id })
