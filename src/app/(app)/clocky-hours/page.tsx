@@ -44,6 +44,22 @@ interface Recon {
 
 const hours = (s: number) => (s / 3600).toFixed(2)
 
+/**
+ * What a run row actually means now.
+ *
+ * A slice killed by the platform never gets to mark itself finished, so
+ * "running" outlives the run and the header claims an import is in flight days
+ * later. Anything idle for an hour is over, whatever the row says.
+ *
+ * Outside the component on purpose: reading the clock during a render is the
+ * kind of impurity React rightly complains about, and a plain function that
+ * takes a row and answers a question is easier to trust anyway.
+ */
+function runState(run: { state: string; started_at: string | null }): string {
+  if (run.state !== 'running' || !run.started_at) return run.state
+  return Date.now() - Date.parse(run.started_at) > 3600_000 ? 'stopped' : run.state
+}
+
 export default async function ClockyHoursPage() {
   if (!(await isSecurityAdmin())) redirect('/')
   const supabase = createAdminClient()
@@ -141,12 +157,7 @@ export default async function ClockyHoursPage() {
             <span>
               <span className="text-muted">Last run:</span>{' '}
               <strong>{run.kind}</strong>,{' '}
-              {/* A slice killed by the platform never gets to mark itself
-                  finished, so "running" outlives the run. Anything idle for an
-                  hour is over, whatever the row says. */}
-              {run.state === 'running' && run.started_at && Date.now() - Date.parse(run.started_at) > 3600_000
-                ? 'stopped'
-                : run.state}
+              {runState(run)}
               {run.cursor_date ? `, at ${run.cursor_date.slice(0, 7)}` : ''}
             </span>
           )}
