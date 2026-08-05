@@ -12,8 +12,9 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { formatHM, decimalHours, daysOfWeek, shiftWeek, durationSeconds } from '@/lib/timeclock/clock'
-import { startClock, stopClock, saveEntry, deleteEntry } from './actions'
-import type { Jobcode, Field, Entry } from './page'
+import { startClock, stopClock, saveEntry, deleteEntry, submitPeriod, decidePeriod } from './actions'
+import { monthName, whatCanIDo, type SubmissionState } from '@/lib/timeclock/periods'
+import type { Jobcode, Field, Entry, Waiting } from './page'
 
 interface Props {
   timezone: string
@@ -23,6 +24,11 @@ interface Props {
   jobcodes: Jobcode[]
   fields: Field[]
   entries: Entry[]
+  month: string
+  monthSeconds: number
+  submissionState: SubmissionState | null
+  submissionNote: string
+  waiting: Waiting[]
   running: { id: number; startedAt: string; jobcodeId: number | null } | null
 }
 
@@ -43,7 +49,13 @@ function hhmm(iso: string | null, timeZone: string): string {
 }
 
 export function HoursClient(props: Props) {
-  const { timezone, today, weekStartDate, weekEndDate, jobcodes, fields, entries, running } = props
+  const {
+    timezone, today, weekStartDate, weekEndDate, jobcodes, fields, entries, running,
+    month, monthSeconds, submissionState, submissionNote, waiting,
+  } = props
+  const period = whatCanIDo(submissionState)
+  const [returning, setReturning] = useState<string | null>(null)
+  const [returnNote, setReturnNote] = useState('')
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -140,9 +152,108 @@ export function HoursClient(props: Props) {
         <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
+      {/* ── The month, and whether it is still yours ──────────────────────── */}
+      <section className={`${card} flex items-center gap-4 flex-wrap`}>
+        <div>
+          <div className={labelCls}>{monthName(month)}</div>
+          <div className="font-(family-name:--font-display) font-extrabold text-[22px] tabular-nums text-tn-ink leading-tight">
+            {formatHM(monthSeconds)} <span className="text-sm font-normal text-muted">({decimalHours(monthSeconds)} h)</span>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
+            submissionState === 'approved' ? 'bg-[#e7f5ee] text-[#1f8a5b]'
+              : submissionState === 'submitted' ? 'bg-[#eef2fb] text-tn-primary'
+              : submissionState === 'returned' ? 'bg-amber-50 text-[#b45309]'
+              : 'bg-subtle text-muted'
+          }`}>{period.label}</span>
+          <p className="text-sm text-muted m-0 mt-1 leading-relaxed">{period.hint}</p>
+          {submissionNote && submissionState === 'returned' && (
+            <p className="text-sm text-[#b45309] m-0 mt-1">Note: {submissionNote}</p>
+          )}
+        </div>
+        {period.canSubmit && (
+          <button
+            onClick={() => run(() => submitPeriod(month))}
+            disabled={pending || monthSeconds === 0}
+            className="ml-auto px-5 py-2.5 rounded-[10px] bg-tn-primary text-white font-(family-name:--font-display) font-bold disabled:opacity-50 transition-transform hover:-translate-y-0.5 disabled:translate-y-0"
+          >
+            {pending ? 'Sending…' : `Submit ${monthName(month)}`}
+          </button>
+        )}
+      </section>
+
+      {/* ── Waiting on me ─────────────────────────────────────────────────── */}
+      {waiting.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">
+            Waiting for you
+          </h2>
+          <div className="rounded-[14px] border border-slate-200 bg-white overflow-hidden">
+            {waiting.map(w => (
+              <div key={w.personId} className="border-b border-slate-100 last:border-b-0">
+                <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
+                  <span className="font-semibold text-tn-ink">{w.name}</span>
+                  <span className="text-sm text-muted tabular-nums">{formatHM(w.seconds)} ({decimalHours(w.seconds)} h) · {w.entries} entries</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    w.state === 'approved' ? 'bg-[#e7f5ee] text-[#1f8a5b]'
+                      : w.state === 'submitted' ? 'bg-[#eef2fb] text-tn-primary'
+                      : 'bg-amber-50 text-[#b45309]'
+                  }`}>{w.state}</span>
+                  {w.state === 'submitted' && (
+                    <span className="ml-auto flex gap-2">
+                      <button
+                        onClick={() => run(() => decidePeriod({ personId: w.personId, month: w.month, decision: 'approve' }))}
+                        disabled={pending}
+                        className="px-3.5 py-1.5 rounded-[9px] bg-[#1f8a5b] text-white font-(family-name:--font-display) font-bold text-sm disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => { setReturning(returning === w.personId ? null : w.personId); setReturnNote('') }}
+                        disabled={pending}
+                        className="px-3.5 py-1.5 rounded-[9px] border border-slate-200 text-tn-ink font-(family-name:--font-display) font-bold text-sm disabled:opacity-50 hover:border-[#c2410c]"
+                      >
+                        Hand back
+                      </button>
+                    </span>
+                  )}
+                </div>
+                {returning === w.personId && (
+                  <div className="flex gap-2 px-4 pb-3 flex-wrap items-center">
+                    {/* A month handed back without a reason is a month that comes
+                        straight back, so the note is the point of the button. */}
+                    <input
+                      value={returnNote}
+                      onChange={e => setReturnNote(e.target.value)}
+                      placeholder="What needs fixing?"
+                      className={`${inputCls} grow min-w-[240px]`}
+                    />
+                    <button
+                      onClick={() => run(
+                        () => decidePeriod({ personId: w.personId, month: w.month, decision: 'return', note: returnNote }),
+                        () => setReturning(null),
+                      )}
+                      disabled={pending || !returnNote.trim()}
+                      className="px-4 py-2 rounded-[9px] bg-[#c2410c] text-white font-(family-name:--font-display) font-bold text-sm disabled:opacity-50"
+                    >
+                      Send it back
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── The clock ─────────────────────────────────────────────────────── */}
       <section className={card}>
-        {running ? (
+        {!period.canEdit && !running ? (
+          <p className="text-sm text-muted m-0">
+            {monthName(month)} is closed to changes, so there is nothing to clock into for it.
+          </p>
+        ) : running ? (
           <div className="flex items-center gap-6 flex-wrap">
             <div>
               <div className={labelCls}>On the clock</div>
@@ -208,6 +319,7 @@ export function HoursClient(props: Props) {
           </span>
           <button
             onClick={() => { resetDraft(); setShowForm(v => !v) }}
+            disabled={!period.canEdit}
             className="px-4 py-2 rounded-[10px] border border-slate-200 bg-white text-tn-ink font-(family-name:--font-display) font-bold text-sm hover:border-tn-teal transition-colors"
           >
             {showForm ? 'Close' : 'Add by hand'}
@@ -309,7 +421,7 @@ export function HoursClient(props: Props) {
                       <span className="text-[10px] font-bold uppercase tracking-wide text-muted">{e.state}</span>
                     )}
                     <span className="ml-auto tabular-nums font-semibold text-tn-ink">{formatHM(e.durationSeconds)}</span>
-                    {e.editable && (
+                    {e.editable && period.canEdit && (
                       <span className="flex gap-2 text-xs">
                         <button onClick={() => edit(e)} className="text-tn-teal hover:underline underline-offset-2">Edit</button>
                         <button onClick={() => run(() => deleteEntry(e.id))} className="text-[#c2410c] hover:underline underline-offset-2">Delete</button>

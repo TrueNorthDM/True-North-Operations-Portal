@@ -14,6 +14,7 @@ import { requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
+import { periodFor, type SubmissionState } from '@/lib/timeclock/periods'
 import { HoursClient } from './HoursClient'
 import type { TcEntryRow } from '@/lib/types/database.types'
 
@@ -22,6 +23,18 @@ export const metadata = { title: 'My Hours' }
 
 export interface Jobcode { id: number; label: string; kind: string }
 export interface Field { id: number; name: string; required: boolean; options: string[] }
+/** Somebody else's month, waiting on me. */
+export interface Waiting {
+  personId: string
+  name: string
+  month: string
+  state: SubmissionState
+  seconds: number
+  entries: number
+  submittedAt: string | null
+  note: string
+}
+
 export interface Entry {
   id: number
   entryDate: string
@@ -96,6 +109,46 @@ export default async function MyHoursPage({
     options: (optionRows ?? []).filter(o => o.field_id === f.id).map(o => o.label),
   }))
 
+  // ── The month, and where it stands ──────────────────────────────────────
+  const period = periodFor(bounds.start)
+  const { data: periodRow } = await supabase
+    .from('tc_periods').select('id').eq('start_date', period.start).eq('end_date', period.end).maybeSingle()
+
+  // Everyone's rows for this period that RLS lets through: mine, plus anyone I
+  // sign for. One query, and the database decides which of the two each row is.
+  const { data: subRows } = periodRow
+    ? await supabase.from('tc_submissions').select('*').eq('period_id', (periodRow as { id: number }).id)
+    : { data: [] }
+  const subs = (subRows ?? []) as { person_id: string; state: SubmissionState; submitted_at: string | null; note: string | null }[]
+  const mySubmission = subs.find(r => r.person_id === me.id) ?? null
+  const others = subs.filter(r => r.person_id !== me.id)
+
+  // The month's own totals, which is what the button is about, not the week's.
+  const { data: monthRows } = await supabase
+    .from('tc_entries').select('person_id, duration_seconds')
+    .gte('entry_date', period.start).lte('entry_date', period.end)
+  const monthAll = (monthRows ?? []) as { person_id: string; duration_seconds: number }[]
+  const mineThisMonth = monthAll.filter(r => r.person_id === me.id)
+
+  const { data: nameRows } = others.length
+    ? await supabase.from('people').select('id, full_name').in('id', others.map(o => o.person_id))
+    : { data: [] }
+  const nameById = new Map(((nameRows ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
+
+  const waiting: Waiting[] = others.map(o => {
+    const theirs = monthAll.filter(r => r.person_id === o.person_id)
+    return {
+      personId: o.person_id,
+      name: nameById.get(o.person_id) ?? 'Someone',
+      month: period.month,
+      state: o.state,
+      seconds: theirs.reduce((s, r) => s + r.duration_seconds, 0),
+      entries: theirs.length,
+      submittedAt: o.submitted_at,
+      note: o.note ?? '',
+    }
+  }).sort((a, b) => a.name.localeCompare(b.name))
+
   const rows = (entryRows ?? []) as TcEntryRow[]
   const entries: Entry[] = rows.map(r => ({
     id: r.id,
@@ -139,6 +192,11 @@ export default async function MyHoursPage({
         jobcodes={jobcodes}
         fields={fields}
         entries={entries}
+        month={period.month}
+        monthSeconds={mineThisMonth.reduce((s, r) => s + r.duration_seconds, 0)}
+        submissionState={mySubmission?.state ?? null}
+        submissionNote={mySubmission?.note ?? ''}
+        waiting={waiting}
         running={running && {
           id: running.id,
           startedAt: running.started_at!,

@@ -73,7 +73,7 @@ export default async function ClockyHoursPage() {
 
   const s = settingsRes.data as Settings | null
   const recon = (reconRes.data ?? []) as Recon[]
-  const run = runRes.data as { kind: string; state: string; cursor_date: string | null; entries_written: number; finished_at: string | null; error: string | null } | null
+  const run = runRes.data as { kind: string; state: string; cursor_date: string | null; entries_written: number; started_at: string | null; finished_at: string | null; error: string | null } | null
 
   const mismatched = recon.filter(r => r.tsheets_entries !== r.portal_entries || r.tsheets_seconds !== r.portal_seconds)
   // The target comes from the reconciliation, not from a number typed in here.
@@ -140,7 +140,13 @@ export default async function ClockyHoursPage() {
           {run && (
             <span>
               <span className="text-muted">Last run:</span>{' '}
-              <strong>{run.kind}</strong>, {run.state}
+              <strong>{run.kind}</strong>,{' '}
+              {/* A slice killed by the platform never gets to mark itself
+                  finished, so "running" outlives the run. Anything idle for an
+                  hour is over, whatever the row says. */}
+              {run.state === 'running' && run.started_at && Date.now() - Date.parse(run.started_at) > 3600_000
+                ? 'stopped'
+                : run.state}
               {run.cursor_date ? `, at ${run.cursor_date.slice(0, 7)}` : ''}
             </span>
           )}

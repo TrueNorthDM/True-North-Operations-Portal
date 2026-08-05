@@ -10,8 +10,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { dateInZone, durationSeconds, validateDraft, wallToInstant, type Draft } from '@/lib/timeclock/clock'
+import { periodFor } from '@/lib/timeclock/periods'
 
 export interface Result { ok: boolean; error?: string }
 
@@ -224,6 +226,117 @@ export async function deleteEntry(id: number): Promise<Result> {
   if (!count) return fail('That entry can no longer be deleted. It has been submitted or approved.')
 
   await audit(ctx, 'delete', null, before, null)
+  revalidatePath('/hours')
+  return OK
+}
+
+// ─── Submitting and approving ───────────────────────────────────────────────
+//
+// The flow that today happens by email. The point of moving it here is not
+// speed, it is that the decision leaves a record: who signed off on which
+// month, when, and what they said when they handed it back.
+
+/** The period row for a month, created on first use. */
+async function periodId(
+  ctx: NonNullable<Awaited<ReturnType<typeof context>>>,
+  month: string,
+): Promise<number | null> {
+  const { start, end } = periodFor(`${month}-01`)
+  const { data: found } = await ctx.supabase
+    .from('tc_periods').select('id').eq('start_date', start).eq('end_date', end).maybeSingle()
+  if (found) return (found as { id: number }).id
+
+  // Created by whoever submits first. Insert is admin-only under 057, so this
+  // uses the service role: a period is a calendar fact, not a permission, and
+  // the alternative is a person unable to submit until an admin creates a row.
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('tc_periods').insert({ start_date: start, end_date: end }).select('id').single()
+  if (error) return null
+  return (data as { id: number }).id
+}
+
+export async function submitPeriod(month: string): Promise<Result> {
+  const ctx = await context()
+  if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
+
+  const { start, end } = periodFor(`${month}-01`)
+  const pid = await periodId(ctx, month)
+  if (!pid) return fail('Could not open that pay period.')
+
+  // Refusing an empty month on purpose. A submitted month with nothing in it
+  // reads as "I worked nothing", and that is almost never what happened; it is
+  // somebody who logged their hours elsewhere and pressed the button here.
+  const { count } = await ctx.supabase
+    .from('tc_entries').select('id', { count: 'exact', head: true })
+    .eq('person_id', ctx.me.id).gte('entry_date', start).lte('entry_date', end)
+  if (!count) return fail('There is nothing logged in that month yet.')
+
+  const { data: existing } = await ctx.supabase
+    .from('tc_submissions').select('id, state').eq('person_id', ctx.me.id).eq('period_id', pid).maybeSingle()
+  const row = existing as { id: number; state: string } | null
+  if (row?.state === 'submitted') return fail('That month has already been sent.')
+  if (row?.state === 'approved') return fail('That month is already approved.')
+
+  const now = new Date().toISOString()
+  if (row) {
+    const { error, count: hit } = await ctx.supabase
+      .from('tc_submissions').update({ state: 'submitted', submitted_at: now }, { count: 'exact' })
+      .eq('id', row.id)
+    if (error) return fail(error.message)
+    if (!hit) return fail('That month can no longer be sent.')
+  } else {
+    const { error } = await ctx.supabase.from('tc_submissions').insert({
+      person_id: ctx.me.id, period_id: pid, state: 'submitted', submitted_at: now,
+    })
+    if (error) return fail(error.message)
+  }
+
+  // The entries freeze with it. Without this the month could be sent and then
+  // quietly rewritten underneath the person about to sign it.
+  await ctx.supabase.from('tc_entries').update({ state: 'submitted', updated_at: now })
+    .eq('person_id', ctx.me.id).eq('state', 'open')
+    .gte('entry_date', start).lte('entry_date', end)
+
+  revalidatePath('/hours')
+  return OK
+}
+
+export async function decidePeriod(input: {
+  personId: string
+  month: string
+  decision: 'approve' | 'return'
+  note?: string
+}): Promise<Result> {
+  const ctx = await context()
+  if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
+  if (input.personId === ctx.me.id) return fail('You cannot approve your own hours.')
+
+  const { start, end } = periodFor(`${input.month}-01`)
+  const pid = await periodId(ctx, input.month)
+  if (!pid) return fail('Could not open that pay period.')
+
+  const now = new Date().toISOString()
+  const { error, count } = await ctx.supabase
+    .from('tc_submissions')
+    .update({
+      state: input.decision === 'approve' ? 'approved' : 'returned',
+      approved_at: input.decision === 'approve' ? now : null,
+      approved_by: ctx.me.id,
+      note: input.note || null,
+    }, { count: 'exact' })
+    .eq('person_id', input.personId).eq('period_id', pid)
+  if (error) return fail(error.message)
+  // The policy allows the update only when the row is still 'submitted' and the
+  // caller may sign for that person, and it refuses by changing nothing rather
+  // than by raising. Zero rows is the refusal.
+  if (!count) return fail('That month is not waiting for you. It may have been decided already.')
+
+  await ctx.supabase.from('tc_entries')
+    .update({ state: input.decision === 'approve' ? 'approved' : 'open', updated_at: now })
+    .eq('person_id', input.personId).eq('state', 'submitted')
+    .gte('entry_date', start).lte('entry_date', end)
+
   revalidatePath('/hours')
   return OK
 }
