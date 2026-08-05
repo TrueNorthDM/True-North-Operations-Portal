@@ -62,13 +62,23 @@ export async function importJobcodes(supabase: Client, token: string): Promise<n
     if (error) throw new Error(`tc_jobcodes upsert: ${error.message}`)
   }
 
+  // Parents are set by group, not one row at a time. 545 sequential UPDATEs is
+  // 545 round trips to the database, which took longer than the whole month of
+  // timesheets that follows it. Grouping by parent turns it into about fifty.
   const byExternal = await loadJobcodeMap(supabase)
+  const childrenOf = new Map<number | null, number[]>()
   for (const j of source) {
-    const parent = j.parent_id ? byExternal.get(j.parent_id) : null
     const mine = byExternal.get(j.id)
     if (!mine) continue
-    const { error } = await supabase.from('tc_jobcodes').update({ parent_id: parent ?? null }).eq('id', mine)
-    if (error) throw new Error(`tc_jobcodes parent: ${error.message}`)
+    const parent = j.parent_id ? byExternal.get(j.parent_id) ?? null : null
+    childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), mine])
+  }
+  for (const [parent, ids] of childrenOf) {
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const { error } = await supabase
+        .from('tc_jobcodes').update({ parent_id: parent }).in('id', ids.slice(i, i + BATCH))
+      if (error) throw new Error(`tc_jobcodes parent: ${error.message}`)
+    }
   }
   return source.length
 }

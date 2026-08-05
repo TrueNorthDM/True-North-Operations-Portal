@@ -96,11 +96,17 @@ export async function runImport(
     const settings = await loadSettings(supabase)
     const cutoff = cutoffMonth(settings)
 
-    // The catalog is cheap and has to be current before entries reference it.
-    // On a resumed run it costs a few seconds and keeps late additions honest.
-    await importJobcodes(supabase, token)
-    await importFields(supabase, token)
-    await importPeople(supabase, token)
+    // The catalog is imported once per run, not once per slice. It is not free:
+    // 545 job codes, nine option lists and 70 people. Repeating it on every
+    // resume ate most of the time budget before a single timesheet was read,
+    // and pushed the slice past the platform's own limit, so the work landed
+    // but the answer never came back.
+    const freshRun = !run!.cursor_date
+    if (freshRun || opts.kind === 'delta') {
+      await importJobcodes(supabase, token)
+      await importFields(supabase, token)
+      await importPeople(supabase, token)
+    }
 
     const maps = await loadMaps(supabase)
     const kinds = await jobcodeKindMap(supabase)
