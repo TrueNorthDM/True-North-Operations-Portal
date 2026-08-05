@@ -119,9 +119,9 @@ const myHoursNav: Item = {
   match: p => p === '/hours' || p.startsWith('/hours/'),
 }
 
-// Clocky, the module behind it: rules, migration, and later approvals. A dial
-// rather than a clock face, so the two are not mistaken for each other at a
-// glance in a rail of monochrome icons.
+// Clocky Hours, the module behind it: rules, migration, and later approvals. A
+// dial rather than a clock face, so the two are not mistaken for each other at
+// a glance in a rail of monochrome icons.
 const ClockyIcon = (
   <svg className="w-[21px] h-[21px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="9" />
@@ -130,11 +130,11 @@ const ClockyIcon = (
   </svg>
 )
 
-const clockyNav: Item = {
-  href: '/clocky',
-  label: 'Clocky',
+const clockyHoursNav: Item = {
+  href: '/clocky-hours',
+  label: 'Clocky Hours',
   icon: ClockyIcon,
-  match: p => p === '/clocky' || p.startsWith('/clocky/'),
+  match: p => p === '/clocky-hours' || p.startsWith('/clocky-hours/'),
 }
 
 // Directory: the People & Teams directory (its own top-level page). Admin-only,
@@ -180,7 +180,7 @@ const NAV: readonly { key: string; item: Item }[] = [
   { key: 'directory', item: directoryNav },
   { key: 'human-resources', item: hrNav },
   { key: 'admin', item: adminNav },
-  { key: 'clocky', item: clockyNav },
+  { key: 'clocky-hours', item: clockyHoursNav },
   { key: 'settings', item: settingsNav },
 ]
 
