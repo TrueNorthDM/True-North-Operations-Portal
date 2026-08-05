@@ -106,16 +106,16 @@ export async function GET(request: Request) {
     for (const f of fields) {
       say(`  ${String(f.name).padEnd(24)} id=${f.id}  type=${f.type}  applies_to=${f.applies_to}  required=${f.required}  active=${f.active}  ui=${f.ui_preference}`)
     }
-    const items = await getAll('/customfielditems', { active: 'both' }, 'customfielditems')
-    const byField = new Map<string, string[]>()
-    for (const i of items) {
-      const k = String(i.customfield_id)
-      byField.set(k, [...(byField.get(k) ?? []), `${i.name}${i.active ? '' : ' (inactive)'}`])
-    }
-    for (const [id, names] of byField) {
-      const f = fields.find(x => String(x.id) === id)
-      say(`\n  ${f?.name ?? id}, ${names.length} values:`)
-      say('    ' + names.sort().join(' · '))
+    // One call per field: /customfielditems answers 404 unless it is told which
+    // field to list, which is why asking for all of them at once came back empty.
+    for (const f of fields) {
+      const items = await getAll('/customfielditems', { customfield_id: String(f.id), active: 'both' }, 'customfielditems')
+      const names = items
+        .filter(i => !i.__error)
+        .map(i => `${i.name}${i.active === false ? ' (off)' : ''}`)
+        .sort()
+      say(`\n  ${f.name}, ${names.length} values:`)
+      say(names.length ? '    ' + names.join(' · ') : `    ${JSON.stringify(items[0] ?? {})}`)
     }
 
     head('TIME OFF')
