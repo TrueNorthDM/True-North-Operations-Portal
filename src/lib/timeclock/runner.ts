@@ -77,20 +77,34 @@ export async function runImport(
   let written = 0
   let deleted = 0
 
-  // Resume an unfinished run of the same kind rather than starting beside it.
-  const { data: open } = await supabase
-    .from('tc_import_runs').select('*')
-    .eq('kind', opts.kind).eq('state', 'running')
-    .order('id', { ascending: false }).limit(1).maybeSingle()
+  // A re-check is not an import: it writes no cursor and keeps no place, so it
+  // gets no run row. It also cannot have one, because tc_import_runs only
+  // accepts 'full' and 'delta', and that insert used to happen OUTSIDE the try
+  // below, so the constraint error escaped as an empty 500 with nothing in it
+  // to read. Bookkeeping for work that has no state to keep was the mistake;
+  // the opaque failure was just how it surfaced.
+  const bookkeep = opts.kind !== 'recheck'
 
-  let run = open as { id: number; cursor_date: string | null; entries_written: number; entries_deleted: number } | null
-  if (!run) {
-    const { data, error } = await supabase
-      .from('tc_import_runs').insert({ kind: opts.kind, state: 'running' }).select().single()
-    if (error) throw new Error(`tc_import_runs insert: ${error.message}`)
-    run = data as typeof run
+  type RunRow = { id: number; cursor_date: string | null; entries_written: number; entries_deleted: number }
+  let run: RunRow | null = null
+  if (bookkeep) {
+    const { data: open } = await supabase
+      .from('tc_import_runs').select('*')
+      .eq('kind', opts.kind).eq('state', 'running')
+      .order('id', { ascending: false }).limit(1).maybeSingle()
+    run = (open ?? null) as RunRow | null
+    if (!run) {
+      const { data, error } = await supabase
+        .from('tc_import_runs').insert({ kind: opts.kind, state: 'running' }).select().single()
+      if (error) return {
+        runId: 0, kind: opts.kind, state: 'failed', monthsDone: [],
+        entriesWritten: 0, entriesDeleted: 0, nextMonth: null,
+        error: `tc_import_runs insert: ${error.message}`, elapsedMs: Date.now() - t0,
+      }
+      run = data as RunRow
+    }
   }
-  const runId = run!.id
+  const runId = run?.id ?? 0
 
   try {
     const settings = await loadSettings(supabase)
@@ -101,7 +115,7 @@ export async function runImport(
     // resume ate most of the time budget before a single timesheet was read,
     // and pushed the slice past the platform's own limit, so the work landed
     // but the answer never came back.
-    const freshRun = !run!.cursor_date
+    const freshRun = !run?.cursor_date
     if (freshRun || opts.kind === 'delta') {
       await importJobcodes(supabase, token)
       await importFields(supabase, token)
@@ -133,14 +147,14 @@ export async function runImport(
       }
     } else if (opts.kind === 'full') {
       const all = monthsToImport(FIRST_MONTH, cutoff)
-      const resumeFrom = run!.cursor_date ? run!.cursor_date.slice(0, 7) : all[0]
+      const resumeFrom = run?.cursor_date ? run.cursor_date.slice(0, 7) : all[0]
       const pending = all.slice(all.indexOf(resumeFrom) >= 0 ? all.indexOf(resumeFrom) : 0)
 
       for (const month of pending) {
         if (Date.now() - t0 > budget) {
           await supabase.from('tc_import_runs').update({
             cursor_date: `${month}-01`,
-            entries_written: run!.entries_written + written,
+            entries_written: (run?.entries_written ?? 0) + written,
           }).eq('id', runId)
           return {
             runId, kind: opts.kind, state: 'running', monthsDone,
@@ -154,7 +168,7 @@ export async function runImport(
         await supabase.from('tc_import_runs').update({
           cursor_date: `${month}-01`,
           entries_seen: res.sourceEntries,
-          entries_written: run!.entries_written + written,
+          entries_written: (run?.entries_written ?? 0) + written,
         }).eq('id', runId)
       }
     } else {
@@ -184,12 +198,14 @@ export async function runImport(
       }
     }
 
-    await supabase.from('tc_import_runs').update({
-      state: 'done',
-      finished_at: new Date().toISOString(),
-      entries_written: run!.entries_written + written,
-      entries_deleted: run!.entries_deleted + deleted,
-    }).eq('id', runId)
+    if (bookkeep) {
+      await supabase.from('tc_import_runs').update({
+        state: 'done',
+        finished_at: new Date().toISOString(),
+        entries_written: (run?.entries_written ?? 0) + written,
+        entries_deleted: (run?.entries_deleted ?? 0) + deleted,
+      }).eq('id', runId)
+    }
 
     return {
       runId, kind: opts.kind, state: 'done', monthsDone,
@@ -198,9 +214,11 @@ export async function runImport(
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    await supabase.from('tc_import_runs').update({
-      state: 'failed', error: message, finished_at: new Date().toISOString(),
-    }).eq('id', runId)
+    if (bookkeep) {
+      await supabase.from('tc_import_runs').update({
+        state: 'failed', error: message, finished_at: new Date().toISOString(),
+      }).eq('id', runId)
+    }
     return {
       runId, kind: opts.kind, state: 'failed', monthsDone,
       entriesWritten: written, entriesDeleted: deleted,

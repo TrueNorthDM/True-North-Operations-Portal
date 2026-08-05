@@ -43,6 +43,16 @@ export async function POST(request: Request) {
   // started its last month at 229s was still running at 300s and got killed by
   // the platform: the work landed and the cursor was written, but the caller
   // never got an answer and had no way to tell that from a real failure.
-  const report = await runImport(supabase, token, { kind, budgetMs: 120_000 })
-  return NextResponse.json(report, { status: report.state === 'failed' ? 500 : 200 })
+  // Anything that escapes runImport still comes back as words. An empty 500 is
+  // the one answer a caller cannot act on, and it is what this returned when a
+  // database constraint fired before the work even started.
+  try {
+    const report = await runImport(supabase, token, { kind, budgetMs: 120_000 })
+    return NextResponse.json(report, { status: report.state === 'failed' ? 500 : 200 })
+  } catch (e) {
+    return NextResponse.json(
+      { state: 'failed', error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    )
+  }
 }
