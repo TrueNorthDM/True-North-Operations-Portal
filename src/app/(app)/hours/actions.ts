@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { dateInZone, durationSeconds, validateDraft, wallToInstant, type Draft } from '@/lib/timeclock/clock'
 import { periodFor } from '@/lib/timeclock/periods'
 
@@ -230,6 +231,38 @@ export async function deleteEntry(id: number): Promise<Result> {
   return OK
 }
 
+/**
+ * Who can sign off for me: my manager on the org chart, and the leader of any
+ * team I am on. Mirrors tc_approves_for() in migration 059, and is read with
+ * the service role for the same reason the current person is: "who is my boss"
+ * is not a question the caller should have to be allowed to ask.
+ */
+export async function myApprovers(
+  ctx: NonNullable<Awaited<ReturnType<typeof context>>>,
+): Promise<{ id: string; name: string }[]> {
+  const admin = createAdminClient()
+  const [{ data: mine }, { data: memberships }] = await Promise.all([
+    admin.from('people').select('manager_id').eq('id', ctx.me.id).maybeSingle(),
+    admin.from('team_members').select('team_id').eq('person_id', ctx.me.id),
+  ])
+  const teamIds = ((memberships ?? []) as { team_id: string }[]).map(t => t.team_id)
+  const { data: teams } = teamIds.length
+    ? await admin.from('teams').select('leader_person_id').in('id', teamIds)
+    : { data: [] }
+
+  const ids = new Set<string>()
+  const managerId = (mine as { manager_id: string | null } | null)?.manager_id
+  if (managerId) ids.add(managerId)
+  for (const t of (teams ?? []) as { leader_person_id: string | null }[]) {
+    if (t.leader_person_id) ids.add(t.leader_person_id)
+  }
+  ids.delete(ctx.me.id)          // nobody approves their own hours
+  if (!ids.size) return []
+
+  const { data: people } = await admin.from('people').select('id, full_name').in('id', [...ids])
+  return ((people ?? []) as { id: string; full_name: string }[]).map(p => ({ id: p.id, name: p.full_name }))
+}
+
 // ─── Submitting and approving ───────────────────────────────────────────────
 //
 // The flow that today happens by email. The point of moving it here is not
@@ -271,6 +304,12 @@ export async function submitPeriod(month: string): Promise<Result> {
     .from('tc_entries').select('id', { count: 'exact', head: true })
     .eq('person_id', ctx.me.id).gte('entry_date', start).lte('entry_date', end)
   if (!count) return fail('There is nothing logged in that month yet.')
+
+  // Somebody has to be able to receive it. Without this the button is a
+  // one-way door for anyone with no manager and no team leader.
+  if (!(await myApprovers(ctx)).length) {
+    return fail('Nobody is set up to approve your hours yet, so this would go nowhere. Ask an admin to set your manager or a team leader.')
+  }
 
   const { data: existing } = await ctx.supabase
     .from('tc_submissions').select('id, state').eq('person_id', ctx.me.id).eq('period_id', pid).maybeSingle()
@@ -337,6 +376,43 @@ export async function decidePeriod(input: {
     .eq('person_id', input.personId).eq('state', 'submitted')
     .gte('entry_date', start).lte('entry_date', end)
 
+  revalidatePath('/hours')
+  return OK
+}
+
+/**
+ * Put a submitted month back in a person's hands.
+ *
+ * Admin only, and it exists because submitting is otherwise a one-way door.
+ * Somebody with no manager and no team leader has nobody who can approve or
+ * hand back their month, so without this their timesheet is stuck the moment
+ * they press the button. The page refuses to submit in that case, but a person
+ * can lose their approver AFTER submitting, which no check at submit time can
+ * prevent.
+ */
+export async function reopenPeriod(personId: string, month: string): Promise<Result> {
+  const ctx = await context()
+  if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
+  if (!(await isSecurityAdmin())) return fail('Only an admin can reopen a month.')
+
+  const { start, end } = periodFor(`${month}-01`)
+  const admin = createAdminClient()
+  const { data: period } = await admin
+    .from('tc_periods').select('id').eq('start_date', start).eq('end_date', end).maybeSingle()
+  if (!period) return fail('That pay period does not exist.')
+
+  const now = new Date().toISOString()
+  const { error } = await admin.from('tc_submissions')
+    .update({ state: 'draft', submitted_at: null, approved_at: null, approved_by: null })
+    .eq('person_id', personId).eq('period_id', (period as { id: number }).id)
+  if (error) return fail(error.message)
+
+  await admin.from('tc_entries').update({ state: 'open', updated_at: now })
+    .eq('person_id', personId).in('state', ['submitted', 'approved'])
+    .eq('source', 'portal')
+    .gte('entry_date', start).lte('entry_date', end)
+
+  await audit(ctx, 'update', null, { period: month, personId }, { reopenedBy: ctx.me.id })
   revalidatePath('/hours')
   return OK
 }

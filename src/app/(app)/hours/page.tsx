@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
 import { periodFor, type SubmissionState } from '@/lib/timeclock/periods'
+import { isSecurityAdmin } from '@/lib/auth/role'
 import { HoursClient } from './HoursClient'
 import type { TcEntryRow } from '@/lib/types/database.types'
 
@@ -149,6 +150,31 @@ export default async function MyHoursPage({
     }
   }).sort((a, b) => a.name.localeCompare(b.name))
 
+  // Who would receive this month, named on the button. A person should know
+  // where their timesheet is going before they send it, and if the answer is
+  // nowhere they should find that out now rather than after.
+  const [{ data: meRow }, { data: myTeams }] = await Promise.all([
+    supabase.from('people').select('manager_id').eq('id', me.id).maybeSingle(),
+    supabase.from('team_members').select('team_id').eq('person_id', me.id),
+  ])
+  const teamIds = ((myTeams ?? []) as { team_id: string }[]).map(t => t.team_id)
+  const { data: leaderRows } = teamIds.length
+    ? await supabase.from('teams').select('leader_person_id').in('id', teamIds)
+    : { data: [] }
+  const approverIds = new Set<string>()
+  const mgr = (meRow as { manager_id: string | null } | null)?.manager_id
+  if (mgr) approverIds.add(mgr)
+  for (const t of (leaderRows ?? []) as { leader_person_id: string | null }[]) {
+    if (t.leader_person_id) approverIds.add(t.leader_person_id)
+  }
+  approverIds.delete(me.id)
+  const { data: approverRows } = approverIds.size
+    ? await supabase.from('people').select('id, full_name').in('id', [...approverIds])
+    : { data: [] }
+  const approvers = ((approverRows ?? []) as { id: string; full_name: string }[]).map(p => p.full_name)
+
+  const isAdmin = await isSecurityAdmin()
+
   const rows = (entryRows ?? []) as TcEntryRow[]
   const entries: Entry[] = rows.map(r => ({
     id: r.id,
@@ -197,6 +223,9 @@ export default async function MyHoursPage({
         submissionState={mySubmission?.state ?? null}
         submissionNote={mySubmission?.note ?? ''}
         waiting={waiting}
+        approvers={approvers}
+        isAdmin={isAdmin}
+        myPersonId={me.id}
         running={running && {
           id: running.id,
           startedAt: running.started_at!,

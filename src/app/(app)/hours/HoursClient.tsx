@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { formatHM, decimalHours, daysOfWeek, shiftWeek, durationSeconds } from '@/lib/timeclock/clock'
-import { startClock, stopClock, saveEntry, deleteEntry, submitPeriod, decidePeriod } from './actions'
+import { startClock, stopClock, saveEntry, deleteEntry, submitPeriod, decidePeriod, reopenPeriod } from './actions'
 import { monthName, whatCanIDo, type SubmissionState } from '@/lib/timeclock/periods'
 import type { Jobcode, Field, Entry, Waiting } from './page'
 
@@ -29,6 +29,9 @@ interface Props {
   submissionState: SubmissionState | null
   submissionNote: string
   waiting: Waiting[]
+  approvers: string[]
+  isAdmin: boolean
+  myPersonId: string
   running: { id: number; startedAt: string; jobcodeId: number | null } | null
 }
 
@@ -52,6 +55,7 @@ export function HoursClient(props: Props) {
   const {
     timezone, today, weekStartDate, weekEndDate, jobcodes, fields, entries, running,
     month, monthSeconds, submissionState, submissionNote, waiting,
+    approvers, isAdmin, myPersonId,
   } = props
   const period = whatCanIDo(submissionState)
   const [returning, setReturning] = useState<string | null>(null)
@@ -173,12 +177,30 @@ export function HoursClient(props: Props) {
           )}
         </div>
         {period.canSubmit && (
+          <div className="ml-auto text-right">
+            <button
+              onClick={() => run(() => submitPeriod(month))}
+              disabled={pending || monthSeconds === 0 || approvers.length === 0}
+              className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white font-(family-name:--font-display) font-bold disabled:opacity-50 transition-transform hover:-translate-y-0.5 disabled:translate-y-0"
+            >
+              {pending ? 'Sending…' : `Submit ${monthName(month)}`}
+            </button>
+            <p className="text-xs text-muted m-0 mt-1.5">
+              {approvers.length
+                ? `Goes to ${approvers.join(' or ')}`
+                : 'Nobody is set up to approve your hours yet'}
+            </p>
+          </div>
+        )}
+        {/* Submitting is otherwise a one-way door: a person whose approver goes
+            away afterwards has a month nobody can move. */}
+        {isAdmin && !period.canEdit && (
           <button
-            onClick={() => run(() => submitPeriod(month))}
-            disabled={pending || monthSeconds === 0}
-            className="ml-auto px-5 py-2.5 rounded-[10px] bg-tn-primary text-white font-(family-name:--font-display) font-bold disabled:opacity-50 transition-transform hover:-translate-y-0.5 disabled:translate-y-0"
+            onClick={() => run(() => reopenPeriod(myPersonId, month))}
+            disabled={pending}
+            className="ml-auto px-4 py-2 rounded-[10px] border border-slate-200 text-tn-ink font-(family-name:--font-display) font-bold text-sm disabled:opacity-50 hover:border-[#c2410c]"
           >
-            {pending ? 'Sending…' : `Submit ${monthName(month)}`}
+            Reopen (admin)
           </button>
         )}
       </section>
