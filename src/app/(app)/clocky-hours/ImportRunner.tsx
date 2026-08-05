@@ -20,13 +20,15 @@ interface Report {
   elapsedMs: number
 }
 
-export function ImportRunner({ hasCutoff }: { hasCutoff: boolean }) {
+type Kind = 'full' | 'delta' | 'recheck'
+
+export function ImportRunner({ hasCutoff, mismatched }: { hasCutoff: boolean; mismatched: number }) {
   const router = useRouter()
-  const [busy, setBusy] = useState<'full' | 'delta' | null>(null)
+  const [busy, setBusy] = useState<Kind | null>(null)
   const [lines, setLines] = useState<string[]>([])
   const [written, setWritten] = useState(0)
 
-  async function run(kind: 'full' | 'delta') {
+  async function run(kind: Kind) {
     setBusy(kind)
     setLines([])
     setWritten(0)
@@ -97,6 +99,15 @@ export function ImportRunner({ hasCutoff }: { hasCutoff: boolean }) {
         >
           {busy === 'delta' ? 'Catching up…' : 'Catch up (delta)'}
         </button>
+        {mismatched > 0 && (
+          <button
+            onClick={() => run('recheck')}
+            disabled={busy !== null}
+            className="px-4 py-2.5 rounded-[10px] border border-[#c2410c]/40 bg-white text-[#c2410c] font-(family-name:--font-display) font-bold text-sm disabled:opacity-50 hover:border-[#c2410c] transition-colors"
+          >
+            {busy === 'recheck' ? 'Re-checking…' : `Re-check ${mismatched} month${mismatched === 1 ? '' : 's'}`}
+          </button>
+        )}
         {busy && <span className="text-sm text-muted tabular-nums">{written.toLocaleString()} entries so far</span>}
       </div>
 

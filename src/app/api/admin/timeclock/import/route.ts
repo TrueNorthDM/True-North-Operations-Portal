@@ -29,7 +29,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Admins only.' }, { status: 403 })
   }
 
-  const kind = new URL(request.url).searchParams.get('kind') === 'delta' ? 'delta' : 'full'
+  const asked = new URL(request.url).searchParams.get('kind')
+  const kind = asked === 'delta' ? 'delta' : asked === 'recheck' ? 'recheck' : 'full'
 
   const supabase = createAdminClient()
   const { data } = await supabase

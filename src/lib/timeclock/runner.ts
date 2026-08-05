@@ -27,7 +27,7 @@ export function endOfMonth(month: string): string {
 
 export interface RunReport {
   runId: number
-  kind: 'full' | 'delta'
+  kind: 'full' | 'delta' | 'recheck'
   state: 'running' | 'done' | 'failed'
   monthsDone: string[]
   entriesWritten: number
@@ -69,7 +69,7 @@ async function jobcodeKindMap(supabase: Client): Promise<Map<number, string>> {
 export async function runImport(
   supabase: Client,
   token: string,
-  opts: { kind: 'full' | 'delta'; budgetMs?: number },
+  opts: { kind: 'full' | 'delta' | 'recheck'; budgetMs?: number },
 ): Promise<RunReport> {
   const t0 = Date.now()
   const budget = opts.budgetMs ?? 200_000
@@ -111,7 +111,27 @@ export async function runImport(
     const maps = await loadMaps(supabase)
     const kinds = await jobcodeKindMap(supabase)
 
-    if (opts.kind === 'full') {
+    if (opts.kind === 'recheck') {
+      // Only the months that currently disagree, pulled fresh and counted again.
+      //
+      // A reconciliation row is a snapshot, and a snapshot taken while anything
+      // was still writing records a number that was never true for long. That
+      // is what happened to May 2022: two import slices ran at once, one counted
+      // our rows mid-write, and the row kept the half-written total long after
+      // the data had converged. Re-checking is how you tell a stale snapshot
+      // from a real gap, and there was no way to do it without re-importing ten
+      // years, which is too expensive to ever actually run.
+      const { data: rows } = await supabase.from('tc_reconciliation').select('*').order('month')
+      const off = ((rows ?? []) as { month: string; tsheets_entries: number; portal_entries: number; tsheets_seconds: number; portal_seconds: number }[])
+        .filter(r => r.tsheets_entries !== r.portal_entries || r.tsheets_seconds !== r.portal_seconds)
+
+      for (const r of off) {
+        if (Date.now() - t0 > budget) break
+        const res = await importMonth(supabase, token, r.month, maps, kinds)
+        written += res.written
+        monthsDone.push(r.month)
+      }
+    } else if (opts.kind === 'full') {
       const all = monthsToImport(FIRST_MONTH, cutoff)
       const resumeFrom = run!.cursor_date ? run!.cursor_date.slice(0, 7) : all[0]
       const pending = all.slice(all.indexOf(resumeFrom) >= 0 ? all.indexOf(resumeFrom) : 0)

@@ -147,7 +147,7 @@ export default async function ClockyHoursPage() {
         </div>
         {run?.error && <p className="text-sm text-red-600 font-mono m-0">{run.error}</p>}
 
-        <ImportRunner hasCutoff={Boolean(s?.import_cutoff_date)} />
+        <ImportRunner hasCutoff={Boolean(s?.import_cutoff_date)} mismatched={mismatched.length} />
       </section>
 
       {/* The part that decides whether phase 1 is finished. */}
