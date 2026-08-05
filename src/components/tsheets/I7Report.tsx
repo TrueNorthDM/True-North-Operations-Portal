@@ -41,6 +41,13 @@ interface Props {
   restricted?: boolean
   /** First names allowed in the per-person columns while restricted. */
   visiblePeople?: readonly string[]
+  /**
+   * Teams offered by the filter beside the pay period, straight from the
+   * Directory's Teams tab, with the first names of their members.
+   */
+  teams?: readonly { id: string; name: string; members: readonly string[] }[]
+  /** Selected team id, or '' for everyone. Lives in the URL, like the month. */
+  selectedTeam?: string
 }
 
 function monthLabel(ym: string): string {
@@ -49,7 +56,7 @@ function monthLabel(ym: string): string {
   return `${months[m - 1]} ${y}`
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], canExport = false, unratedPeople = [], restricted = false, visiblePeople }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], canExport = false, unratedPeople = [], restricted = false, visiblePeople, teams = [], selectedTeam = '' }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -70,9 +77,14 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
     setOpenCodes(new Set())
   }
 
-  const people = restricted && visiblePeople
-    ? data.people.filter(n => visiblePeople.includes(n))
-    : data.people
+  // Two independent narrowings of the same list of columns, and both apply. The
+  // permission is a floor the filter cannot lift: picking a team can only take
+  // names away from what the viewer was already allowed to see, never add one.
+  const teamPeople = teams.find(t => t.id === selectedTeam)?.members ?? null
+  const people = data.people.filter(n =>
+    (!restricted || !visiblePeople || visiblePeople.includes(n)) &&
+    (!teamPeople || teamPeople.includes(n))
+  )
   const showCost = data.hasRates && !restricted
   const showBudget = Object.keys(projectHours).length > 0 && !restricted
   const showBudgetAvail = showBudget && showCost && stdRate > 0   // $ available needs a rate
@@ -84,6 +96,15 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
   // Per-person totals across the whole report (footer row).
   const totalByPerson: PersonHours = {}
   for (const p of data.projects) for (const [name, h] of Object.entries(p.byPerson)) totalByPerson[name] = (totalByPerson[name] ?? 0) + h
+
+  // Both filters live in the URL together, so changing one keeps the other and
+  // the address stays shareable. Empty team drops the param instead of sending
+  // an empty one.
+  function go(patch: { month?: string; team?: string }) {
+    const month = patch.month ?? selectedMonth
+    const team = patch.team ?? selectedTeam
+    router.push(`/tools/time-report?month=${month}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
+  }
 
   const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-3 whitespace-nowrap'
   const selectCls = 'px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20'
@@ -98,18 +119,31 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         </div>
       )}
 
-      {/* Month selector */}
+      {/* Month and team selectors */}
       <div className="flex items-center gap-3 flex-wrap">
         <label htmlFor="month-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</label>
         <Select
           id="month-select"
           value={selectedMonth}
-          onChange={v => router.push(`/tools/time-report?month=${v}`)}
+          onChange={v => go({ month: v })}
           options={availableMonths.map(ym => ({ value: ym, label: monthLabel(ym) }))}
           ariaLabel="Pay period"
           className={selectCls}
         />
         <span className="text-sm text-muted ml-1 tabular-nums">{data.startDate} → {data.endDate}</span>
+        {teams.length > 0 && (
+          <>
+            <label htmlFor="team-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</label>
+            <Select
+              id="team-select"
+              value={selectedTeam}
+              onChange={v => go({ team: v })}
+              options={[{ value: '', label: 'All teams' }, ...teams.map(t => ({ value: t.id, label: t.name }))]}
+              ariaLabel="Team"
+              className={selectCls}
+            />
+          </>
+        )}
         {canExport && (
           <div className="ml-auto flex items-center gap-2.5">
             <ExportImageButton month={selectedMonth} />
@@ -117,6 +151,16 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           </div>
         )}
       </div>
+
+      {/* The filter changes which columns are shown, never what the report says
+          the month cost. Saying so on screen is cheaper than someone adding up
+          three columns and reporting the difference as a discrepancy. */}
+      {teamPeople && (
+        <p className="text-sm text-muted m-0">
+          Showing the hour columns for <span className="font-semibold text-tn-ink">{teams.find(t => t.id === selectedTeam)?.name}</span> only.
+          Hours used, cost and budget stay the figures for everyone.
+        </p>
+      )}
 
       {/* View tabs, the same month's data as a table (In Numbers) or charts (In Graphics) */}
       <div className="flex gap-1 border-b border-slate-200">

@@ -63,15 +63,19 @@ const MOCK_TREND: I7TrendPoint[] = [
   { month: '2026-06', hours: 340, cost: 41000, budget: 45000, balance: 53000 },
 ]
 
+// Next validates a page's exports, so this stays local to the file.
+/** A team as the report's filter needs it: a name, and who is in it. */
+interface TeamRoster { id: string; name: string; members: string[] }
+
 interface Props {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; team?: string }>
 }
 
 export default async function ClientsReportsPage({ searchParams }: Props) {
   // The area comes from the level, the report itself from the team tool grant.
   const access = await requireSurface('tools')
   if (!access.canTool('i7-budget')) redirect('/tools')
-  const { month } = await searchParams
+  const { month, team } = await searchParams
 
   return (
     <div className="space-y-8">
@@ -99,43 +103,58 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      <I7Tab month={month} />
+      <I7Tab month={month} team={team} />
     </div>
   )
 }
 
 /**
- * The first names of everyone on the viewer's own teams, which is what the
- * restricted view allows in the per-person columns.
+ * Every team with the first names of its members, plus which of them the viewer
+ * belongs to.
+ *
+ * One loader for two jobs that ask the same question: the team filter beside the
+ * pay period, and the restricted view's "only your own teammates". Splitting
+ * them would have meant two ways to decide who counts as a teammate.
  *
  * First names because that is what the report's columns are: loadNames() keys
- * them by the first word of full_name. Two Amys would both show, which is the
- * same collision the report already lives with and not worth solving twice.
+ * them by the first word of full_name. Two Amys would both show, the same
+ * collision the report already lives with and not worth solving twice.
  */
-async function myTeammateFirstNames(): Promise<string[]> {
+async function loadTeamRoster(): Promise<{ teams: TeamRoster[]; myTeamIds: Set<string> }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const me = await loadCurrentPerson(supabase, user)
-  if (!me) return []
 
-  const { data: mine } = await supabase.from('team_members').select('team_id').eq('person_id', me.id)
-  const teamIds = (mine ?? []).map(m => m.team_id)
-  // No team means no teammates, so no columns. Their own hours still show,
-  // because they are on their own team; someone on no team sees none, which
-  // matches the rest of the portal's "absent team = nothing" rule.
-  if (teamIds.length === 0) return []
+  const [{ data: teamRows }, { data: memberRows }, { data: peopleRows }] = await Promise.all([
+    supabase.from('teams').select('id, name').order('name'),
+    supabase.from('team_members').select('team_id, person_id'),
+    supabase.from('people').select('id, full_name'),
+  ])
 
-  const { data: peers } = await supabase.from('team_members').select('person_id').in('team_id', teamIds)
-  const ids = [...new Set((peers ?? []).map(p => p.person_id))]
-  if (ids.length === 0) return []
+  const firstNameById = new Map((peopleRows ?? []).map(p => [p.id, (p.full_name || '').split(' ')[0]]))
+  const byTeam = new Map<string, string[]>()
+  const myTeamIds = new Set<string>()
+  for (const m of memberRows ?? []) {
+    const first = firstNameById.get(m.person_id)
+    if (first) {
+      const list = byTeam.get(m.team_id) ?? []
+      if (!list.includes(first)) list.push(first)
+      byTeam.set(m.team_id, list)
+    }
+    if (me && m.person_id === me.id) myTeamIds.add(m.team_id)
+  }
 
-  const { data: rows } = await supabase.from('people').select('full_name').in('id', ids)
-  return [...new Set((rows ?? []).map(r => (r.full_name || '').split(' ')[0]).filter(Boolean))]
+  const teams: TeamRoster[] = (teamRows ?? []).map(t => ({
+    id: t.id,
+    name: t.name,
+    members: (byTeam.get(t.id) ?? []).sort((a, b) => a.localeCompare(b)),
+  }))
+  return { teams, myTeamIds }
 }
 
 // The report body, still its own function: the month resolution and the sync
 // status only make sense for the cached i7 data.
-async function I7Tab({ month }: { month?: string }) {
+async function I7Tab({ month, team }: { month?: string; team?: string }) {
   const months = availableMonths(new Date())      // Jan 2026 … current (rolling 24-mo window)
   const requested = month ?? currentYearMonth()
   const selectedMonth = months.includes(requested) ? requested : months[0]
@@ -177,13 +196,13 @@ async function I7Tab({ month }: { month?: string }) {
           <ClientFullHistory trend={MOCK_TREND} currentMonth="2026-06" />
         </>
       ) : (
-        <ReportView selectedMonth={selectedMonth} availableMonths={months} />
+        <ReportView selectedMonth={selectedMonth} availableMonths={months} team={team} />
       )}
     </div>
   )
 }
 
-async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: string; availableMonths: string[] }) {
+async function ReportView({ selectedMonth, availableMonths, team }: { selectedMonth: string; availableMonths: string[]; team?: string }) {
   let data: Awaited<ReturnType<typeof loadI7ReportData>> | null = null
   let fetchError: string | null = null
   try {
@@ -210,7 +229,20 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
   // hidden and the per-person columns narrow to the viewer's own teammates.
   // Only resolved when it is actually needed, so the full view costs nothing.
   const restricted = !access.can('report-full')
-  const visiblePeople = restricted ? await myTeammateFirstNames() : undefined
+
+  // The same roster answers both questions, so it is read once either way: which
+  // teams the filter offers, and (when restricted) who the viewer may see at all.
+  const { teams, myTeamIds } = await loadTeamRoster()
+  const myTeams = teams.filter(t => myTeamIds.has(t.id))
+  const visiblePeople = restricted
+    ? [...new Set(myTeams.flatMap(t => t.members))]
+    : undefined
+
+  // A restricted viewer filters within their own teams. Offering the whole list
+  // would not leak anything (the names are already narrowed downstream), but it
+  // would offer choices that change nothing on screen.
+  const filterTeams = restricted ? myTeams : teams
+  const selectedTeam = filterTeams.some(t => t.id === team) ? team! : ''
 
   // A month with no logged hours still shows the full report (month picker,
   // budget/carryover, charts), just with an empty hours table, instead of a
@@ -233,6 +265,8 @@ async function ReportView({ selectedMonth, availableMonths }: { selectedMonth: s
         canExport={access.can('report-export')}
         restricted={restricted}
         visiblePeople={visiblePeople}
+        teams={filterTeams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
+        selectedTeam={selectedTeam}
       />
       <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
     </>
