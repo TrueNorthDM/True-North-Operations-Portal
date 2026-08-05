@@ -1,14 +1,14 @@
-// Clients Reports, a tabbed page with one tab per client.
+// Client Report, i7 Marketing.
 //
-// The i7 tab renders the Project → Job code → Activity tree from the LOCAL cache
-// of i7 timesheets (table tsheets_timesheets), which the background sync keeps
-// fresh, so it makes no live TSheets calls and renders instantly (data loading
-// lives in report-data.ts, shared with the print/PDF page). The Grant Pass tab
-// is a framework placeholder for now (see GrantPassReport), because Grant Pass
-// is not tracked in QuickBooks Time.
+// Renders the Project → Job code → Activity tree from the LOCAL cache of i7
+// timesheets (table tsheets_timesheets), which the background sync keeps fresh,
+// so it makes no live TSheets calls and renders instantly (data loading lives
+// in report-data.ts, shared with the print/PDF page).
 //
-// Tabs are driven by the `client` search param (?client=i7 | grant-pass), which
-// keeps the page a server component and leaves the i7 route/exports unchanged.
+// One client per page and per tool grant. This used to be one page with a tab
+// per client, which meant one permission for all of them: whoever could see i7
+// could see every client added later, without anyone deciding that. Grant Pass
+// now lives at ./grant-pass with its own key.
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -19,16 +19,8 @@ import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
-import { GrantPassReport } from '@/components/tsheets/GrantPassReport'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
-
-// One tab per client. `key` is the ?client= value; keep keys stable.
-const CLIENT_TABS = [
-  { key: 'i7', label: 'i7 Marketing' },
-  { key: 'grant-pass', label: 'Grant Pass' },
-] as const
-type ClientKey = (typeof CLIENT_TABS)[number]['key']
 
 // Sample tree shown when no API token is configured, so the structure is visible.
 const MOCK_I7: I7Report = {
@@ -70,15 +62,14 @@ const MOCK_TREND: I7TrendPoint[] = [
 ]
 
 interface Props {
-  searchParams: Promise<{ month?: string; client?: string }>
+  searchParams: Promise<{ month?: string }>
 }
 
 export default async function ClientsReportsPage({ searchParams }: Props) {
   // The area comes from the level, the report itself from the team tool grant.
   const access = await requireSurface('tools')
   if (!access.canTool('i7-budget')) redirect('/tools')
-  const { month, client } = await searchParams
-  const active: ClientKey = CLIENT_TABS.some(t => t.key === client) ? (client as ClientKey) : 'i7'
+  const { month } = await searchParams
 
   return (
     <div className="space-y-8">
@@ -89,11 +80,11 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
             <span>/</span>
             <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools</Link>
             <span>/</span>
-            <span className="text-foreground font-semibold">Clients Reports</span>
+            <span className="text-foreground font-semibold">Client Report · i7</span>
           </div>
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clients Reports</h1>
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Client Report · i7</h1>
           <p className="mt-1.5 text-muted leading-relaxed">
-            Hours, cost and budget usage per client. Pick a client below.
+            Hours, cost and budget usage for i7 Marketing.
           </p>
         </div>
         <Link
@@ -106,35 +97,13 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      {/* Client tabs. Each is a plain link so the page stays a server component. */}
-      <div className="border-b border-slate-200 flex items-center gap-1">
-        {CLIENT_TABS.map(t => {
-          const isActive = t.key === active
-          return (
-            <Link
-              key={t.key}
-              href={t.key === 'i7' ? '/tools/time-report' : `/tools/time-report?client=${t.key}`}
-              aria-current={isActive ? 'page' : undefined}
-              className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
-                isActive
-                  ? 'border-tn-teal text-tn-ink'
-                  : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
-              }`}
-            >
-              {t.label}
-            </Link>
-          )
-        })}
-      </div>
-
-      {active === 'i7' ? <I7Tab month={month} /> : <GrantPassReport />}
+      <I7Tab month={month} />
     </div>
   )
 }
 
-// The i7 client tab: the existing i7 Budget Usage Report, with its own guide
-// link and sync status (both i7-specific), plus the month resolution that only
-// applies to the cached i7 data.
+// The report body, still its own function: the month resolution and the sync
+// status only make sense for the cached i7 data.
 async function I7Tab({ month }: { month?: string }) {
   const months = availableMonths(new Date())      // Jan 2026 … current (rolling 24-mo window)
   const requested = month ?? currentYearMonth()

@@ -42,6 +42,8 @@ const ICONS: Record<string, React.ReactNode> = {
   workload: ColumnsIcon,
   'href-links': LinkMgmtIcon,
   'i7-budget': BudgetIcon,
+  // Same glyph: both are the same kind of thing, one per client.
+  'grant-pass-report': BudgetIcon,
 }
 
 export default async function ToolsPage() {

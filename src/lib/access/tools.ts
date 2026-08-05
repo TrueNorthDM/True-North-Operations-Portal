@@ -52,12 +52,28 @@ export const TOOLS: ToolDef[] = [
     group: 'Tools',
     description: "Manage hreflang tags for a project's WordPress pages. Open a project (AAAF or HFA) to use it.",
   },
+  // One entry per client, not one entry for "reports". Each client's numbers
+  // are a separate thing to trust someone with, so each is a separate grant on
+  // the Directory's Teams tab.
+  //
+  // The i7 key stays 'i7-budget'. It is internal, nobody sees it, and every
+  // existing team grant is stored under it: renaming it would silently revoke
+  // access for whoever already has it, because the resolver drops grants whose
+  // key has left this catalogue.
   {
     key: 'i7-budget',
-    label: 'Clients Reports',
+    label: 'Client Report - i7',
     href: '/tools/time-report',
     group: 'Tools',
-    description: 'Hours, cost and budget usage per client. Includes the i7 Marketing report, with more clients coming.',
+    description: 'Hours, cost and budget usage for i7 Marketing, from QuickBooks Time.',
+    sensitive: true,
+  },
+  {
+    key: 'grant-pass-report',
+    label: 'Client Report - Grant Pass',
+    href: '/tools/time-report/grant-pass',
+    group: 'Tools',
+    description: 'Hours and budget usage for Grant Pass. Waiting on its data source in QuickBooks Time.',
     sensitive: true,
   },
 ]
