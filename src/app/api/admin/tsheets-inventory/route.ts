@@ -209,8 +209,7 @@ export async function GET(request: Request) {
     const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
     head(`COMPARE ${month}`)
 
-    const source = await all<Record<string, unknown>>(
-      '/timesheets', { start_date: `${month}-01`, end_date: end }, 'timesheets')
+    const source = await getAll('/timesheets', { start_date: `${month}-01`, end_date: end }, 'timesheets')
 
     const mine = new Map<number, number>()
     for (let from = 0; ; from += 1000) {
@@ -233,7 +232,7 @@ export async function GET(request: Request) {
 
     say(`source rows returned ${source.length}, distinct ids ${seen.size}, repeats within the pull ${dupes}`)
     say(`stored here ${mine.size}`)
-    say(`source seconds (as summed by the import) ${source.reduce((s, t) => s + Number(t.duration ?? 0), 0)}`)
+    say(`source seconds (as summed by the import) ${source.reduce((acc: number, t) => acc + Number(t.duration ?? 0), 0)}`)
     say(`source seconds (distinct ids only)      ${[...seen.values()].reduce((s, v) => s + v, 0)}`)
     say(`stored seconds                          ${[...mine.values()].reduce((s, v) => s + v, 0)}`)
 
