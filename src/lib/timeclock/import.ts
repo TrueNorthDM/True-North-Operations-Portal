@@ -1,0 +1,356 @@
+// The migration: QuickBooks Time → the portal's own tables.
+//
+// Built as an importer rather than a one-off script, because it has to run many
+// times. A copy is made once and starts ageing the next second; a migration
+// converges. Every imported row carries its TSheets id in external_id with a
+// unique index, so re-running upserts instead of duplicating, and the last run
+// before the cutover is the only one that is final.
+//
+// Three things change upstream between now and the cutover, and all three are
+// handled: new and edited entries (modified_since), retroactive approvals (they
+// move last_modified, so modified_since catches them), and deletions (which
+// modified_since cannot see, hence /timesheets_deleted).
+//
+// Rows born in the portal have no external_id and are never touched here.
+
+import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  fetchAllJobcodes, fetchAllUsers, fetchFields, fetchFieldOptions,
+  fetchTimesheetRange, fetchDeletedIds,
+  type SourceTimesheet,
+} from './source'
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Client = SupabaseClient<any, any, any>
+
+export interface Maps {
+  jobcodeByExternal: Map<number, number>
+  personByTsheetsUser: Map<number, string>
+  fieldByExternal: Map<number, number>
+}
+
+const BATCH = 500
+
+/** TSheets job code types → ours. Anything unpaid is still absence, not work. */
+function jobcodeKind(type: string): 'regular' | 'pto' | 'unpaid' {
+  if (type === 'pto' || type === 'paid_holiday') return 'pto'
+  if (type === 'unpaid_time_off' || type === 'unpaid_holiday') return 'unpaid'
+  return 'regular'
+}
+
+// ─── Catalog: job codes, fields, people ─────────────────────────────────────
+
+/**
+ * The job code tree, all 545 of them.
+ *
+ * Two passes: rows first, parents second. A child can arrive before its parent,
+ * and a self-referencing foreign key does not forgive that.
+ */
+export async function importJobcodes(supabase: Client, token: string): Promise<number> {
+  const source = await fetchAllJobcodes(token)
+
+  for (let i = 0; i < source.length; i += BATCH) {
+    const rows = source.slice(i, i + BATCH).map(j => ({
+      external_id: j.id,
+      name: j.name,
+      kind: jobcodeKind(j.type),
+      billable: Boolean(j.billable),
+      active: Boolean(j.active),
+      imported_at: new Date().toISOString(),
+    }))
+    const { error } = await supabase.from('tc_jobcodes').upsert(rows, { onConflict: 'external_id' })
+    if (error) throw new Error(`tc_jobcodes upsert: ${error.message}`)
+  }
+
+  const byExternal = await loadJobcodeMap(supabase)
+  for (const j of source) {
+    const parent = j.parent_id ? byExternal.get(j.parent_id) : null
+    const mine = byExternal.get(j.id)
+    if (!mine) continue
+    const { error } = await supabase.from('tc_jobcodes').update({ parent_id: parent ?? null }).eq('id', mine)
+    if (error) throw new Error(`tc_jobcodes parent: ${error.message}`)
+  }
+  return source.length
+}
+
+/** The entry form: the six custom fields and every one of their values. */
+export async function importFields(supabase: Client, token: string): Promise<number> {
+  const fields = await fetchFields(token)
+  const { error } = await supabase.from('tc_fields').upsert(
+    fields.map((f, i) => ({
+      external_id: f.id,
+      name: f.name,
+      position: i,
+      required: Boolean(f.required),
+      active: Boolean(f.active),
+    })),
+    { onConflict: 'external_id' },
+  )
+  if (error) throw new Error(`tc_fields upsert: ${error.message}`)
+
+  const { data: mine } = await supabase.from('tc_fields').select('id, external_id')
+  const idByExternal = new Map<number, number>()
+  for (const r of (mine ?? []) as { id: number; external_id: number | null }[]) {
+    if (r.external_id != null) idByExternal.set(r.external_id, r.id)
+  }
+
+  let options = 0
+  for (const f of fields) {
+    const fieldId = idByExternal.get(f.id)
+    if (!fieldId) continue
+    const items = await fetchFieldOptions(token, f.id)
+    if (!items.length) continue
+    const { error: optErr } = await supabase.from('tc_field_options').upsert(
+      items.map((o, i) => ({
+        field_id: fieldId,
+        external_id: o.id,
+        label: o.name,
+        position: i,
+        active: Boolean(o.active),
+      })),
+      { onConflict: 'field_id,label' },
+    )
+    if (optErr) throw new Error(`tc_field_options upsert (${f.name}): ${optErr.message}`)
+    options += items.length
+  }
+  return options
+}
+
+/**
+ * People.
+ *
+ * Links through people.tsheets_user_id, which the existing sync already fills in
+ * for everyone active. Anyone left over is a former employee who was never in
+ * the directory, and is created as tsheets_only + inactive so their decade of
+ * hours has an owner without cluttering the Directory. If one of them turns out
+ * to be someone who is already in the directory under another spelling, the
+ * existing "link to person" action in Settings merges them.
+ */
+export async function importPeople(supabase: Client, token: string): Promise<{ linked: number; created: number }> {
+  const users = await fetchAllUsers(token)
+  const { data: existing, error } = await supabase.from('people').select('id, tsheets_user_id')
+  if (error) throw new Error(`people read: ${error.message}`)
+
+  const known = new Set<number>()
+  for (const p of (existing ?? []) as { id: string; tsheets_user_id: number | null }[]) {
+    if (p.tsheets_user_id != null) known.add(p.tsheets_user_id)
+  }
+
+  let created = 0
+  for (const u of users) {
+    if (known.has(u.id)) continue
+    const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ').trim()
+    if (!fullName) continue
+    const { error: insErr } = await supabase.from('people').insert({
+      full_name: fullName,
+      tsheets_user_id: u.id,
+      tsheets_only: true,
+      status: u.active ? 'active' : 'inactive',
+    })
+    if (insErr) throw new Error(`people insert (${fullName}): ${insErr.message}`)
+    created++
+  }
+  return { linked: known.size, created }
+}
+
+// ─── Maps ───────────────────────────────────────────────────────────────────
+
+async function loadJobcodeMap(supabase: Client): Promise<Map<number, number>> {
+  const map = new Map<number, number>()
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('tc_jobcodes').select('id, external_id').range(from, from + 999)
+    if (error) throw new Error(`tc_jobcodes read: ${error.message}`)
+    for (const r of (data ?? []) as { id: number; external_id: number | null }[]) {
+      if (r.external_id != null) map.set(r.external_id, r.id)
+    }
+    if (!data || data.length < 1000) break
+  }
+  return map
+}
+
+export async function loadMaps(supabase: Client): Promise<Maps> {
+  const jobcodeByExternal = await loadJobcodeMap(supabase)
+
+  const personByTsheetsUser = new Map<number, string>()
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from('people').select('id, tsheets_user_id').not('tsheets_user_id', 'is', null).range(from, from + 999)
+    for (const r of (data ?? []) as { id: string; tsheets_user_id: number }[]) {
+      personByTsheetsUser.set(r.tsheets_user_id, r.id)
+    }
+    if (!data || data.length < 1000) break
+  }
+
+  const fieldByExternal = new Map<number, number>()
+  const { data: fields } = await supabase.from('tc_fields').select('id, external_id')
+  for (const r of (fields ?? []) as { id: number; external_id: number | null }[]) {
+    if (r.external_id != null) fieldByExternal.set(r.external_id, r.id)
+  }
+
+  return { jobcodeByExternal, personByTsheetsUser, fieldByExternal }
+}
+
+// ─── Entries ────────────────────────────────────────────────────────────────
+
+/**
+ * One TSheets timesheet as one of ours.
+ *
+ * Returns null when the entry cannot be given an owner, which is the one thing
+ * worth dropping loudly rather than storing half of.
+ */
+export function toEntry(t: SourceTimesheet, maps: Maps, jobcodeKinds: Map<number, string>) {
+  const personId = maps.personByTsheetsUser.get(t.user_id)
+  if (!personId) return null
+
+  const jobcodeId = maps.jobcodeByExternal.get(t.jobcode_id) ?? null
+  const kindOfCode = jobcodeId ? jobcodeKinds.get(jobcodeId) : undefined
+
+  // Absence wins over how it was typed: an 8-hour manual entry against Vacation
+  // is absence, not work, whatever the entry method was.
+  const kind = kindOfCode === 'pto' || kindOfCode === 'unpaid'
+    ? 'absence'
+    : (t.type === 'manual' ? 'manual' : 'clock')
+
+  const state = t.locked
+    ? 'locked'
+    : t.state === 'APPROVED' ? 'approved'
+    : t.state === 'SUBMITTED' ? 'submitted'
+    : 'open'
+
+  const fields: Record<string, string> = {}
+  for (const [externalId, value] of Object.entries(t.customfields ?? {})) {
+    if (!value) continue
+    const mine = maps.fieldByExternal.get(Number(externalId))
+    if (mine) fields[String(mine)] = value
+  }
+
+  return {
+    external_id: t.id,
+    person_id: personId,
+    jobcode_id: jobcodeId,
+    started_at: t.start || null,
+    ended_at: t.end || null,
+    duration_seconds: Math.max(0, t.duration ?? 0),
+    entry_date: t.date,
+    kind,
+    state,
+    notes: t.notes || null,
+    fields,
+    source: 'tsheets' as const,
+    created_by: t.created_by_user_id ? maps.personByTsheetsUser.get(t.created_by_user_id) ?? null : null,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+export interface MonthResult {
+  month: string
+  sourceEntries: number
+  sourceSeconds: number
+  written: number
+  skipped: number
+}
+
+/** One month, pulled and upserted, then reconciled against what we now hold. */
+export async function importMonth(
+  supabase: Client,
+  token: string,
+  month: string,                     // 'YYYY-MM'
+  maps: Maps,
+  jobcodeKinds: Map<number, string>,
+  modifiedSince?: string,
+): Promise<MonthResult> {
+  const [y, m] = month.split('-').map(Number)
+  const start = `${month}-01`
+  const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+
+  const source = await fetchTimesheetRange(token, start, end, modifiedSince)
+  const rows = source.map(t => toEntry(t, maps, jobcodeKinds)).filter(Boolean) as NonNullable<ReturnType<typeof toEntry>>[]
+
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const { error } = await supabase
+      .from('tc_entries').upsert(rows.slice(i, i + BATCH), { onConflict: 'external_id' })
+    if (error) throw new Error(`tc_entries upsert (${month}): ${error.message}`)
+  }
+
+  await reconcileMonth(supabase, month, source.length, source.reduce((s, t) => s + (t.duration ?? 0), 0))
+
+  return {
+    month,
+    sourceEntries: source.length,
+    sourceSeconds: source.reduce((s, t) => s + (t.duration ?? 0), 0),
+    written: rows.length,
+    skipped: source.length - rows.length,
+  }
+}
+
+/**
+ * Their number against ours, for one month.
+ *
+ * Counting what we hold rather than what we just wrote, on purpose: this has to
+ * be able to catch a row that failed to land, and "I wrote 412" cannot.
+ */
+export async function reconcileMonth(
+  supabase: Client,
+  month: string,
+  tsheetsEntries: number,
+  tsheetsSeconds: number,
+): Promise<void> {
+  const [y, m] = month.split('-').map(Number)
+  const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+
+  let portalEntries = 0
+  let portalSeconds = 0
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('tc_entries')
+      .select('duration_seconds')
+      .eq('source', 'tsheets')
+      .gte('entry_date', `${month}-01`)
+      .lte('entry_date', end)
+      .range(from, from + 999)
+    if (error) throw new Error(`reconcile read (${month}): ${error.message}`)
+    const rows = (data ?? []) as { duration_seconds: number }[]
+    portalEntries += rows.length
+    portalSeconds += rows.reduce((s, r) => s + r.duration_seconds, 0)
+    if (rows.length < 1000) break
+  }
+
+  const { error } = await supabase.from('tc_reconciliation').upsert({
+    month,
+    tsheets_entries: tsheetsEntries,
+    tsheets_seconds: tsheetsSeconds,
+    portal_entries: portalEntries,
+    portal_seconds: portalSeconds,
+    checked_at: new Date().toISOString(),
+  }, { onConflict: 'month' })
+  if (error) throw new Error(`reconcile write (${month}): ${error.message}`)
+}
+
+/** Entries deleted upstream, removed here so we do not keep an hour that is gone. */
+export async function applyDeletions(supabase: Client, token: string, since: string): Promise<number> {
+  const ids = await fetchDeletedIds(token, since)
+  if (!ids.length) return 0
+  let removed = 0
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const chunk = ids.slice(i, i + BATCH)
+    const { error, count } = await supabase
+      .from('tc_entries').delete({ count: 'exact' }).in('external_id', chunk)
+    if (error) throw new Error(`delete: ${error.message}`)
+    removed += count ?? 0
+  }
+  return removed
+}
+
+/** Every month from the first with data up to the cutoff, oldest first. */
+export function monthsToImport(firstMonth: string, cutoff: string): string[] {
+  const out: string[] = []
+  const [fy, fm] = firstMonth.split('-').map(Number)
+  const [cy, cm] = cutoff.split('-').map(Number)
+  for (let y = fy, m = fm; y < cy || (y === cy && m <= cm); m++) {
+    if (m > 12) { m = 1; y++ }
+    if (y > cy || (y === cy && m > cm)) break
+    out.push(`${y}-${String(m).padStart(2, '0')}`)
+  }
+  return out
+}
