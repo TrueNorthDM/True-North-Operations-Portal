@@ -72,6 +72,10 @@ export default async function TimeClockAdminPage() {
   const run = runRes.data as { kind: string; state: string; cursor_date: string | null; entries_written: number; finished_at: string | null; error: string | null } | null
 
   const mismatched = recon.filter(r => r.tsheets_entries !== r.portal_entries || r.tsheets_seconds !== r.portal_seconds)
+  // The target comes from the reconciliation, not from a number typed in here.
+  // A constant would be right on the day it was written and wrong the next
+  // morning, since people keep logging time while the migration runs.
+  const sourceTotal = recon.reduce((s, r) => s + r.tsheets_entries, 0)
   const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
   const card = 'rounded-[14px] border border-slate-200 bg-white p-5'
@@ -127,8 +131,8 @@ export default async function TimeClockAdminPage() {
       <section className="space-y-3">
         <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Migration</h2>
         <div className="flex items-center gap-6 flex-wrap text-sm">
-          <span><span className="text-muted">Entries here:</span> <strong className="tabular-nums">{(entriesRes.count ?? 0).toLocaleString()}</strong> of 136,167</span>
-          <span><span className="text-muted">Job codes:</span> <strong className="tabular-nums">{(jobcodesRes.count ?? 0).toLocaleString()}</strong> of 545</span>
+          <span><span className="text-muted">Entries here:</span> <strong className="tabular-nums">{(entriesRes.count ?? 0).toLocaleString()}</strong>{sourceTotal > 0 && <> of <span className="tabular-nums">{sourceTotal.toLocaleString()}</span> in QuickBooks Time</>}</span>
+          <span><span className="text-muted">Job codes:</span> <strong className="tabular-nums">{(jobcodesRes.count ?? 0).toLocaleString()}</strong></span>
           {run && (
             <span>
               <span className="text-muted">Last run:</span>{' '}

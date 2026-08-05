@@ -37,7 +37,13 @@ export function ImportRunner({ hasCutoff }: { hasCutoff: boolean }) {
     for (let call = 1; call <= 120; call++) {
       let report: Report
       try {
-        const res = await fetch(`/api/admin/timeclock/import?kind=${kind}`, { method: 'POST' })
+        // With no timeout, a reply that never arrives blocks the loop forever:
+        // the server carries on importing, the screen sits still, and the two
+        // disagree with nobody able to tell. 200s is past any healthy slice.
+        const res = await fetch(`/api/admin/timeclock/import?kind=${kind}`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(200_000),
+        })
         report = await res.json()
         misses = 0
       } catch (e) {
