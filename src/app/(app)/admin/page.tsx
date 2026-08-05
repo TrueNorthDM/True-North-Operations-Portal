@@ -60,6 +60,15 @@ const AutomationsIcon = (
   </svg>
 )
 
+// Time Clock: a clock whose hand sweeps, since the point of it is running time.
+const TimeClockIcon = (
+  <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path className="tn-anim" d="M12 12V7" style={{ transformBox: 'fill-box', transformOrigin: 'bottom', animation: 'tn-dot-pulse 2.8s ease-in-out infinite' }} />
+    <path d="M12 12h4" />
+  </svg>
+)
+
 // Shield with a key-hole; the shield outline draws itself in on a loop.
 const AccessIcon = (
   <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -82,6 +91,7 @@ const IN_CONSTRUCTION = [
   { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
   { href: '/admin/automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },
   { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
+  { href: '/admin/time-clock', title: 'Time Clock', icon: TimeClockIcon, description: 'The portal\u2019s own clock, being built. The migration from QuickBooks Time and the reconciliation that checks it.' },
 ] as const
 
 type AdminCard = (typeof ACTIVE)[number] | (typeof IN_CONSTRUCTION)[number]
