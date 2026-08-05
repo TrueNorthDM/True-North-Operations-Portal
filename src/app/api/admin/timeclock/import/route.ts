@@ -37,8 +37,11 @@ export async function POST(request: Request) {
   const token = (data as { tsheets_api_token?: string | null } | null)?.tsheets_api_token
   if (!token) return NextResponse.json({ error: 'No TSheets token configured.' }, { status: 500 })
 
-  // Short of maxDuration, so the month in flight can finish and the cursor can
-  // be written before the platform pulls the plug.
-  const report = await runImport(supabase, token, { kind, budgetMs: 230_000 })
+  // Well short of maxDuration, because the budget is only checked BETWEEN
+  // months and a single month can take three minutes. At 230s a slice that
+  // started its last month at 229s was still running at 300s and got killed by
+  // the platform: the work landed and the cursor was written, but the caller
+  // never got an answer and had no way to tell that from a real failure.
+  const report = await runImport(supabase, token, { kind, budgetMs: 120_000 })
   return NextResponse.json(report, { status: report.state === 'failed' ? 500 : 200 })
 }

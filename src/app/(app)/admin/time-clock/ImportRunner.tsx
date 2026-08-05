@@ -33,14 +33,24 @@ export function ImportRunner({ hasCutoff }: { hasCutoff: boolean }) {
     let total = 0
 
     // Bounded so a server that always answers "more to do" cannot spin forever.
-    for (let call = 1; call <= 60; call++) {
+    let misses = 0
+    for (let call = 1; call <= 120; call++) {
       let report: Report
       try {
         const res = await fetch(`/api/admin/timeclock/import?kind=${kind}`, { method: 'POST' })
         report = await res.json()
+        misses = 0
       } catch (e) {
-        setLines(l => [...l, `Call ${call} failed to reach the server: ${e instanceof Error ? e.message : e}`])
-        break
+        // A call that dies on the platform's own time limit still did its work
+        // and still moved the cursor, so the right answer is to call again, not
+        // to stop. Only a run of failures means something is actually wrong.
+        misses++
+        setLines(l => [...l, `Call ${call} came back empty (${e instanceof Error ? e.message : e}). Continuing from the saved cursor.`])
+        if (misses >= 3) {
+          setLines(l => [...l, 'Three calls in a row failed. Stopping.'])
+          break
+        }
+        continue
       }
 
       total += report.entriesWritten
