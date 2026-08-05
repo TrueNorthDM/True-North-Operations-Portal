@@ -103,6 +103,23 @@ const myWorkNav: Item = {
   match: p => p === '/my-work',
 }
 
+// My Time: the person's own clock. The hand sweeps, since the whole point of
+// the page is time that is running.
+const ClockIcon = (
+  <svg className="w-[21px] h-[21px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 12V7" />
+    <path d="M12 12h4" />
+  </svg>
+)
+
+const timeClockNav: Item = {
+  href: '/time-clock',
+  label: 'My Time',
+  icon: ClockIcon,
+  match: p => p === '/time-clock' || p.startsWith('/time-clock/'),
+}
+
 // Directory: the People & Teams directory (its own top-level page). Admin-only,
 // like Admin; the /directory route also guards server-side.
 const directoryNav: Item = {
@@ -142,6 +159,7 @@ const NAV: readonly { key: string; item: Item }[] = [
   { key: 'home', item: home },
   { key: 'tools', item: toolsDash },
   { key: 'my-work', item: myWorkNav },
+  { key: 'time-clock', item: timeClockNav },
   { key: 'directory', item: directoryNav },
   { key: 'human-resources', item: hrNav },
   { key: 'admin', item: adminNav },

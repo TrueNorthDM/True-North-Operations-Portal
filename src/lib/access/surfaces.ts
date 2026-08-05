@@ -55,6 +55,13 @@ export const SURFACES: readonly Surface[] = [
   },
   { key: 'my-work', label: 'My Work / My Team', group: 'Navigation', defaults: ON },
   {
+    key: 'time-clock',
+    label: 'My Time (the clock)',
+    group: 'Navigation',
+    defaults: ON,
+    note: 'Where a person tracks their own hours. Everyone sees only their own: it is enforced by the database, not by the screen. Being built; QuickBooks Time is still the official record.',
+  },
+  {
     key: 'directory',
     label: 'People directory',
     group: 'Navigation',

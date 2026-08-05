@@ -281,6 +281,106 @@ export type AccessLogRow = {
   accessed_at: string
 }
 
+
+// ── Time Clock rows (migrations 057, 058) ───────────────────────────────────
+//
+// Declared as `type`, not `interface`, and that is load-bearing. postgrest-js
+// constrains a table's Insert and Update to Record<string, unknown>. A type
+// alias gets an implicit index signature and satisfies it; an interface does
+// not, so Partial<SomeInterface> fails the constraint and the SDK silently
+// resolves EVERY query in the app to `never`, not just this table's.
+
+export type TcSettingsRow = {
+  singleton_id: number
+  timezone: string
+  week_start: number
+  period_type: string
+  round_enabled: boolean
+  round_minutes: number
+  round_direction: string
+  auto_clockout_hours: number | null
+  split_at_midnight: boolean
+  calculate_overtime: boolean
+  daily_regular_hours: number
+  weekly_regular_hours: number
+  import_cutoff_date: string | null
+  updated_at: string
+}
+
+export type TcJobcodeRow = {
+  id: number
+  external_id: number | null
+  parent_id: number | null
+  name: string
+  kind: 'regular' | 'pto' | 'unpaid'
+  billable: boolean
+  active: boolean
+  imported_at: string | null
+  created_at: string
+}
+
+export type TcFieldRow = {
+  id: number
+  external_id: number | null
+  name: string
+  position: number
+  required: boolean
+  active: boolean
+  created_at: string
+}
+
+export type TcFieldOptionRow = {
+  id: number
+  field_id: number
+  external_id: number | null
+  label: string
+  position: number
+  active: boolean
+}
+
+export type TcEntryRow = {
+  id: number
+  external_id: number | null
+  person_id: string
+  jobcode_id: number | null
+  started_at: string | null
+  ended_at: string | null
+  duration_seconds: number
+  entry_date: string
+  kind: 'clock' | 'manual' | 'absence'
+  state: 'open' | 'submitted' | 'approved' | 'locked'
+  notes: string | null
+  fields: Record<string, string>
+  source: 'portal' | 'tsheets'
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TcEntryAuditRow = {
+  id: number
+  entry_id: number | null
+  action: 'create' | 'update' | 'delete'
+  changed_by: string | null
+  changed_at: string
+  before: unknown
+  after: unknown
+}
+
+export type TcImportRunRow = {
+  id: number
+  kind: 'full' | 'delta'
+  state: 'running' | 'done' | 'failed'
+  cursor_date: string | null
+  modified_since: string | null
+  entries_seen: number
+  entries_written: number
+  entries_deleted: number
+  error: string | null
+  started_at: string
+  finished_at: string | null
+}
+
 // ── Database type (used by createBrowserClient / createServerClient) ─
 //
 // Each table requires a `Relationships` array to satisfy GenericTable in
@@ -528,6 +628,82 @@ export type Database = {
           changed_by?: string | null
         }
         Update: Partial<Omit<TrAuditLogRow, 'id' | 'changed_at'>>
+        Relationships: []
+      }
+      // ── Time Clock (migrations 057, 058) ───────────────────────────────
+      // The portal's own clock. Written by hand like the rest of this file, so
+      // adding a column to one of these tables means adding it here too or the
+      // SDK starts returning `never` for the whole query.
+      tc_settings: {
+        Row: TcSettingsRow
+        Insert: Partial<TcSettingsRow>
+        Update: Partial<TcSettingsRow>
+        Relationships: []
+      }
+      tc_jobcodes: {
+        Row: TcJobcodeRow
+        Insert: Partial<Omit<TcJobcodeRow, 'id'>>
+        Update: Partial<Omit<TcJobcodeRow, 'id'>>
+        Relationships: []
+      }
+      tc_fields: {
+        Row: TcFieldRow
+        Insert: Partial<Omit<TcFieldRow, 'id'>>
+        Update: Partial<Omit<TcFieldRow, 'id'>>
+        Relationships: []
+      }
+      tc_field_options: {
+        Row: TcFieldOptionRow
+        Insert: Partial<Omit<TcFieldOptionRow, 'id'>> & { field_id: number; label: string }
+        Update: Partial<Omit<TcFieldOptionRow, 'id'>>
+        Relationships: []
+      }
+      tc_entries: {
+        Row: TcEntryRow
+        Insert: Partial<Omit<TcEntryRow, 'id' | 'created_at'>> & { person_id: string; entry_date: string }
+        Update: Partial<Omit<TcEntryRow, 'id' | 'created_at'>>
+        Relationships: []
+      }
+      tc_entry_audit: {
+        Row: TcEntryAuditRow
+        Insert: Partial<Omit<TcEntryAuditRow, 'id' | 'changed_at'>> & { action: string }
+        Update: Partial<Omit<TcEntryAuditRow, 'id'>>
+        Relationships: []
+      }
+      tc_periods: {
+        Row: { id: number; start_date: string; end_date: string; closed_at: string | null }
+        Insert: { id?: number; start_date: string; end_date: string; closed_at?: string | null }
+        Update: Partial<{ start_date: string; end_date: string; closed_at: string | null }>
+        Relationships: []
+      }
+      tc_submissions: {
+        Row: { id: number; person_id: string; period_id: number; state: string; submitted_at: string | null; approved_at: string | null; approved_by: string | null; note: string | null }
+        Insert: { id?: number; person_id: string; period_id: number; state?: string; submitted_at?: string | null; approved_at?: string | null; approved_by?: string | null; note?: string | null }
+        Update: Partial<{ state: string; submitted_at: string | null; approved_at: string | null; approved_by: string | null; note: string | null }>
+        Relationships: []
+      }
+      tc_absence_requests: {
+        Row: { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }
+        Insert: { id?: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day?: number; state?: string; reason?: string | null; requested_at?: string; decided_by?: string | null; decided_at?: string | null; decision_note?: string | null }
+        Update: Partial<{ state: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; start_date: string; end_date: string; hours_per_day: number; reason: string | null }>
+        Relationships: []
+      }
+      tc_absence_balances: {
+        Row: { id: number; person_id: string; jobcode_id: number; year: number; accrued_hours: number; used_hours: number; carried_hours: number }
+        Insert: { id?: number; person_id: string; jobcode_id: number; year: number; accrued_hours?: number; used_hours?: number; carried_hours?: number }
+        Update: Partial<{ accrued_hours: number; used_hours: number; carried_hours: number }>
+        Relationships: []
+      }
+      tc_import_runs: {
+        Row: TcImportRunRow
+        Insert: Partial<Omit<TcImportRunRow, 'id'>> & { kind: string }
+        Update: Partial<Omit<TcImportRunRow, 'id'>>
+        Relationships: []
+      }
+      tc_reconciliation: {
+        Row: { id: number; month: string; tsheets_entries: number; tsheets_seconds: number; portal_entries: number; portal_seconds: number; checked_at: string }
+        Insert: { id?: number; month: string; tsheets_entries?: number; tsheets_seconds?: number; portal_entries?: number; portal_seconds?: number; checked_at?: string }
+        Update: Partial<{ tsheets_entries: number; tsheets_seconds: number; portal_entries: number; portal_seconds: number; checked_at: string }>
         Relationships: []
       }
       tsheets_timesheets: {
