@@ -1,8 +1,28 @@
-// Rolling data-retention window for the cached i7 timesheets.
+// Rolling window for the client report's month picker.
 //
-// The user asked to keep TSheets data for a rolling 2 years, but never earlier
-// than January 2026 (the first month we ever pulled). So the earliest kept month
-// is the LATER of Jan 2026 and (current month − 23):
+// It began as a retention rule for the old tsheets_timesheets cache: keep a
+// rolling two years, never earlier than January 2026, the first month we ever
+// pulled. The report no longer reads that cache, so the rule now decides one
+// thing only: which months the picker offers.
+//
+// WHY IT STILL STOPS AT JANUARY 2026, decided in August 2026 after checking
+// rather than assuming. Clocky Hours holds i7 hours back to 2022, 25,543 of
+// them. But i7_monthly_budget holds twelve rows, all 2026, and every one of the
+// forty rate assignments starts on 2026-01-01 or later. So an earlier month
+// would render real hours beside a budget of zero, a cost of zero and a
+// per-person cost of zero, and zero is not the same as unknown: it states that
+// 650 hours of work cost nothing.
+//
+// The carryover itself would survive, which was my first guess and it was
+// wrong. It accumulates budget minus cost, and before 2026 both sides are zero,
+// so the balance would read exactly as it does now.
+//
+// Opening it up therefore needs one of two things first: rates and budgets
+// backfilled for 2022-2025, or the money columns taught to say "no rate on
+// file" instead of a number. Neither was worth doing for months nobody asked
+// to see.
+//
+// The earliest offered month is the LATER of Jan 2026 and (current month − 23):
 //   Jul 2026 → floor Jan 2026 (rolling would be Aug 2024, but that predates our data)
 //   Dec 2027 → floor Jan 2026 (24 months: Jan 26 … Dec 27)
 //   Jan 2028 → floor Feb 2026 (24 months: Feb 26 … Jan 28)
@@ -10,7 +30,8 @@
 // Both the month dropdown (what the user can pick) and the sync's prune step
 // (what we keep in the cache) derive from this single rule.
 
-// The first month we have any data for, never keep/offer anything before this.
+// The first month with rates and budgets behind it, which is what makes a month
+// worth offering. Not the first month with hours: that is 2022.
 export const DATA_START = '2026-01'
 
 function pad2(n: number): string {
