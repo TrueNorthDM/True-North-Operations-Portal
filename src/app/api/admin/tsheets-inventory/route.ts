@@ -22,6 +22,7 @@
 
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -305,6 +306,50 @@ export async function GET(request: Request) {
     const keys = new Set<string>()
     for (const u of users) for (const k of Object.keys((u.pto_balances ?? {}) as object)) keys.add(k)
     say('  ' + ([...keys].join(', ') || 'none'))
+  }
+
+  // The old cache against the new source, for one month, before the report is
+  // pointed at the second one. Same discipline as the import reconciliation:
+  // a swap you cannot check is a swap you have to trust.
+  if (part === 'report' && url.searchParams.get('month')) {
+    const month = url.searchParams.get('month')!
+    const [y, m] = month.split('-').map(Number)
+    const start = `${month}-01`
+    const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+    head(`REPORT SOURCES, ${month}`)
+
+    type Row = { user_id: number; duration: number; date: string; i7Code: string; activity: string }
+    const cached: Row[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('tsheets_timesheets').select('user_id, duration, date, i7_code, activity')
+        .gte('date', start).lte('date', end).order('id', { ascending: true }).range(from, from + 999)
+      const rows = (data ?? []) as { user_id: number; duration: number; date: string; i7_code: string | null; activity: string | null }[]
+      for (const r of rows) cached.push({ user_id: r.user_id, duration: r.duration, date: r.date, i7Code: r.i7_code ?? '', activity: r.activity ?? '' })
+      if (rows.length < 1000) break
+    }
+    const fresh = await loadI7EntriesHere(supabase, start, end)
+
+    const sum = (rows: Row[]) => rows.reduce((a, r) => a + r.duration, 0)
+    say(`old cache : ${cached.length} entries, ${sum(cached)} seconds`)
+    say(`clocky    : ${fresh.length} entries, ${sum(fresh)} seconds`)
+
+    // Compared as buckets rather than row by row: the two have no shared id, and
+    // what the report actually renders is the bucket, not the row.
+    const key = (r: Row) => `${r.date}|${r.user_id}|${r.i7Code}|${r.activity}`
+    const bucket = (rows: Row[]) => {
+      const m = new Map<string, number>()
+      for (const r of rows) m.set(key(r), (m.get(key(r)) ?? 0) + r.duration)
+      return m
+    }
+    const a = bucket(cached), b = bucket(fresh)
+    const keys = new Set([...a.keys(), ...b.keys()])
+    const off = [...keys].filter(k => (a.get(k) ?? 0) !== (b.get(k) ?? 0))
+    say(`\n${keys.size} buckets (day + person + code + activity), ${off.length} disagree`)
+    for (const k of off.slice(0, 25)) {
+      say(`  ${k}  old ${a.get(k) ?? 0}s  clocky ${b.get(k) ?? 0}s`)
+    }
+    if (off.length > 25) say(`  ... and ${off.length - 25} more`)
   }
 
   say(`\n\n${calls} API calls, all GET.`)
