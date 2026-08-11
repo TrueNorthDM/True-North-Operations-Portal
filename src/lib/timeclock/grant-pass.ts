@@ -94,40 +94,67 @@ export async function loadGrantPassData(supabase: Client): Promise<GrantPassData
   let totalChurch = 0
   let entries = 0
 
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('tc_entries')
-      .select('person_id, jobcode_id, duration_seconds, entry_date, fields')
-      .order('id', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    const rows = (data ?? []) as {
-      person_id: string; jobcode_id: number | null; duration_seconds: number
-      entry_date: string; fields: Record<string, string> | null
-    }[]
+  type Row = {
+    id: number; person_id: string; jobcode_id: number | null
+    duration_seconds: number; entry_date: string; fields: Record<string, string> | null
+  }
+  const SELECT = 'id, person_id, jobcode_id, duration_seconds, entry_date, fields'
 
-    for (const r of rows) {
-      const f = r.fields ?? {}
-      const side = (r.jobcode_id != null ? sideByJobcode.get(r.jobcode_id) : undefined)
-        ?? (projectKey ? sideFromText(f[String(projectKey)] ?? '') : null)
-      if (!side) continue
+  // Asked for, not filtered out of everything. Scanning all 136,000 entries to
+  // find seven hundred was a hundred and thirty-seven round trips and froze the
+  // page; the same mistake this module's sibling made an hour earlier. Two
+  // narrow queries return the same rows.
+  const seen = new Map<number, Row>()
 
-      entries++
-      const secs = r.duration_seconds
-      if (side === 'School') totalSchool += secs
-      else totalChurch += secs
-
-      const ym = r.entry_date.slice(0, 7)
-      const m = months.get(ym) ?? { month: ym, schoolSeconds: 0, churchSeconds: 0 }
-      if (side === 'School') m.schoolSeconds += secs
-      else m.churchSeconds += secs
-      months.set(ym, m)
-
-      add(byPerson, nameById.get(r.person_id) ?? 'Unknown', side, secs)
-      const activity = (activityKey ? f[String(activityKey)] : '')?.trim() || 'Not specified'
-      add(byActivity, activity, side, secs)
+  if (sideByJobcode.size) {
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('tc_entries').select(SELECT)
+        .in('jobcode_id', [...sideByJobcode.keys()])
+        .order('id', { ascending: true }).range(from, from + PAGE - 1)
+      if (error) throw new Error(error.message)
+      const rows = (data ?? []) as Row[]
+      for (const r of rows) seen.set(r.id, r)
+      if (rows.length < PAGE) break
     }
-    if (rows.length < PAGE) break
+  }
+
+  if (projectKey) {
+    // ilike rather than an exact list: the option list holds 'GP School' and
+    // 'GP church', with that lowercase c, and matching on case would silently
+    // drop thirteen entries. sideFromText decides for certain afterwards.
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('tc_entries').select(SELECT)
+        .ilike(`fields->>${projectKey}`, 'gp %')
+        .order('id', { ascending: true }).range(from, from + PAGE - 1)
+      if (error) throw new Error(error.message)
+      const rows = (data ?? []) as Row[]
+      for (const r of rows) seen.set(r.id, r)
+      if (rows.length < PAGE) break
+    }
+  }
+
+  for (const r of seen.values()) {
+    const f = r.fields ?? {}
+    const side = (r.jobcode_id != null ? sideByJobcode.get(r.jobcode_id) : undefined)
+      ?? (projectKey ? sideFromText(f[String(projectKey)] ?? '') : null)
+    if (!side) continue
+
+    entries++
+    const secs = r.duration_seconds
+    if (side === 'School') totalSchool += secs
+    else totalChurch += secs
+
+    const ym = r.entry_date.slice(0, 7)
+    const m = months.get(ym) ?? { month: ym, schoolSeconds: 0, churchSeconds: 0 }
+    if (side === 'School') m.schoolSeconds += secs
+    else m.churchSeconds += secs
+    months.set(ym, m)
+
+    add(byPerson, nameById.get(r.person_id) ?? 'Unknown', side, secs)
+    const activity = (activityKey ? f[String(activityKey)] : '')?.trim() || 'Not specified'
+    add(byActivity, activity, side, secs)
   }
 
   const sorted = [...months.values()].sort((a, b) => a.month.localeCompare(b.month))
