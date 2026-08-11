@@ -15,6 +15,7 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { dateInZone, durationSeconds, validateDraft, wallToInstant, type Draft } from '@/lib/timeclock/clock'
 import { periodFor } from '@/lib/timeclock/periods'
+import { workingDays, validateAbsence, absenceOverlaps } from '@/lib/timeclock/absence'
 
 export interface Result { ok: boolean; error?: string }
 
@@ -422,6 +423,158 @@ export async function reopenPeriod(personId: string, month: string): Promise<Res
     .gte('entry_date', start).lte('entry_date', end)
 
   await audit(ctx, 'update', null, { period: month, personId }, { reopenedBy: ctx.me.id })
+  revalidatePath('/hours')
+  return OK
+}
+
+// ─── Time off ───────────────────────────────────────────────────────────────
+//
+// An approved request GENERATES the entries. That is the whole point: today
+// somebody types eight hours against "Vacation" by hand and the request that
+// justified it exists only in an inbox. Here the request is the record, and the
+// hours are its consequence.
+
+/** The entries an approved request stands for, one per working day. */
+async function generateAbsenceEntries(
+  ctx: NonNullable<Awaited<ReturnType<typeof context>>>,
+  req: { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number },
+) {
+  const days = workingDays(req.start_date, req.end_date)
+  if (!days.length) return
+
+  const admin = createAdminClient()
+  const now = new Date().toISOString()
+  const rows = days.map(day => ({
+    person_id: req.person_id,
+    jobcode_id: req.jobcode_id,
+    started_at: null,
+    ended_at: null,
+    duration_seconds: Math.round(req.hours_per_day * 3600),
+    entry_date: day,
+    kind: 'absence' as const,
+    state: 'open' as const,
+    notes: `Time off request #${req.id}`,
+    fields: {},
+    source: 'portal' as const,
+    created_by: ctx.me.id,
+    updated_at: now,
+  }))
+  await admin.from('tc_entries').insert(rows)
+}
+
+/**
+ * Entries an approval created, removed again when it is undone.
+ *
+ * Matched by the note carrying the request id. Not elegant, but the alternative
+ * is a column on tc_entries that exists for one feature, and the note is what a
+ * person reading the timesheet needs to see anyway.
+ */
+async function removeAbsenceEntries(requestId: number, personId: string) {
+  const admin = createAdminClient()
+  await admin.from('tc_entries').delete()
+    .eq('person_id', personId).eq('kind', 'absence').eq('source', 'portal')
+    .eq('notes', `Time off request #${requestId}`)
+}
+
+export async function requestAbsence(input: {
+  jobcodeId: number
+  startDate: string
+  endDate: string
+  hoursPerDay: number
+  reason: string
+}): Promise<Result> {
+  const ctx = await context()
+  if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
+
+  const problem = validateAbsence({
+    jobcodeId: input.jobcodeId,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    hoursPerDay: input.hoursPerDay,
+    reason: input.reason,
+  })
+  if (problem) return fail(problem)
+
+  if (!(await myApprovers(ctx)).length) {
+    return fail('Nobody is set up to approve your time off yet. Ask an admin to set your manager or a team leader.')
+  }
+
+  // Booking the same day twice is a mistake nobody notices until payroll.
+  const { data: mine } = await ctx.supabase
+    .from('tc_absence_requests').select('start_date, end_date, state')
+    .eq('person_id', ctx.me.id).in('state', ['pending', 'approved'])
+  const clash = ((mine ?? []) as { start_date: string; end_date: string }[])
+    .find(r => absenceOverlaps(
+      { startDate: r.start_date, endDate: r.end_date },
+      { startDate: input.startDate, endDate: input.endDate },
+    ))
+  if (clash) return fail(`You already have time off booked from ${clash.start_date} to ${clash.end_date}.`)
+
+  const { error } = await ctx.supabase.from('tc_absence_requests').insert({
+    person_id: ctx.me.id,
+    jobcode_id: input.jobcodeId,
+    start_date: input.startDate,
+    end_date: input.endDate,
+    hours_per_day: input.hoursPerDay,
+    state: 'pending',
+    reason: input.reason || null,
+  })
+  if (error) return fail(error.message)
+
+  revalidatePath('/hours')
+  return OK
+}
+
+export async function decideAbsence(input: {
+  id: number
+  decision: 'approve' | 'deny'
+  note?: string
+}): Promise<Result> {
+  const ctx = await context()
+  if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
+
+  const { data: found } = await ctx.supabase
+    .from('tc_absence_requests').select('*').eq('id', input.id).maybeSingle()
+  const req = found as {
+    id: number; person_id: string; jobcode_id: number
+    start_date: string; end_date: string; hours_per_day: number; state: string
+  } | null
+  if (!req) return fail('That request is not there any more.')
+  if (req.person_id === ctx.me.id) return fail('You cannot decide your own time off.')
+
+  const { error, count } = await ctx.supabase
+    .from('tc_absence_requests')
+    .update({
+      state: input.decision === 'approve' ? 'approved' : 'denied',
+      decided_by: ctx.me.id,
+      decided_at: new Date().toISOString(),
+      decision_note: input.note || null,
+    }, { count: 'exact' })
+    .eq('id', input.id)
+  if (error) return fail(error.message)
+  // The policy refuses by changing nothing rather than by raising, so zero rows
+  // is the refusal: either it is no longer pending, or this is not yours to
+  // decide.
+  if (!count) return fail('That request is not waiting for you. It may have been decided already.')
+
+  if (input.decision === 'approve') await generateAbsenceEntries(ctx, req)
+  revalidatePath('/hours')
+  return OK
+}
+
+export async function cancelAbsence(id: number): Promise<Result> {
+  const ctx = await context()
+  if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
+
+  const { error, count } = await ctx.supabase
+    .from('tc_absence_requests').update({ state: 'cancelled' }, { count: 'exact' })
+    .eq('id', id).eq('person_id', ctx.me.id)
+  if (error) return fail(error.message)
+  if (!count) return fail('That request can no longer be cancelled.')
+
+  // Cancelling an approved request has to take its hours back out, or the
+  // month keeps counting days off that are not happening.
+  await removeAbsenceEntries(id, ctx.me.id)
   revalidatePath('/hours')
   return OK
 }

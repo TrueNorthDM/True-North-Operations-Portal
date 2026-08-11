@@ -12,9 +12,10 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { formatHM, decimalHours, daysOfWeek, shiftWeek, durationSeconds } from '@/lib/timeclock/clock'
-import { startClock, stopClock, saveEntry, deleteEntry, submitPeriod, decidePeriod, reopenPeriod } from './actions'
+import { startClock, stopClock, saveEntry, deleteEntry, submitPeriod, decidePeriod, reopenPeriod, requestAbsence, decideAbsence, cancelAbsence } from './actions'
 import { monthName, whatCanIDo, type SubmissionState } from '@/lib/timeclock/periods'
-import type { Jobcode, Field, Entry, Waiting } from './page'
+import { absenceStatus } from '@/lib/timeclock/absence'
+import type { Jobcode, Field, Entry, Waiting, Absence } from './page'
 
 interface Props {
   timezone: string
@@ -32,6 +33,8 @@ interface Props {
   approvers: string[]
   isAdmin: boolean
   myPersonId: string
+  timeOff: Absence[]
+  timeOffKinds: { id: number; label: string }[]
   running: { id: number; startedAt: string; jobcodeId: number | null } | null
 }
 
@@ -55,8 +58,21 @@ export function HoursClient(props: Props) {
   const {
     timezone, today, weekStartDate, weekEndDate, jobcodes, fields, entries, running,
     month, monthSeconds, submissionState, submissionNote, waiting,
-    approvers, isAdmin, myPersonId,
+    approvers, isAdmin, myPersonId, timeOff, timeOffKinds,
   } = props
+
+  // Time off form
+  const [showTimeOff, setShowTimeOff] = useState(false)
+  const [kindId, setKindId] = useState('')
+  const [offFrom, setOffFrom] = useState(today)
+  const [offTo, setOffTo] = useState(today)
+  const [offHours, setOffHours] = useState('8')
+  const [offReason, setOffReason] = useState('')
+  const [denying, setDenying] = useState<number | null>(null)
+  const [denyNote, setDenyNote] = useState('')
+
+  const myTimeOff = timeOff.filter(a => a.mine)
+  const theirTimeOff = timeOff.filter(a => !a.mine && a.state === 'pending')
   const period = whatCanIDo(submissionState)
   const [returning, setReturning] = useState<string | null>(null)
   const [returnNote, setReturnNote] = useState('')
@@ -268,6 +284,159 @@ export function HoursClient(props: Props) {
           </div>
         </section>
       )}
+
+      {/* ── Time off ──────────────────────────────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Time off</h2>
+          {theirTimeOff.length > 0 && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-50 text-[#b45309]">
+              {theirTimeOff.length} waiting for you
+            </span>
+          )}
+          <button
+            onClick={() => setShowTimeOff(v => !v)}
+            className="ml-auto px-4 py-2 rounded-[10px] border border-slate-200 bg-white text-tn-ink font-(family-name:--font-display) font-bold text-sm hover:border-tn-teal transition-colors"
+          >
+            {showTimeOff ? 'Close' : 'Request time off'}
+          </button>
+        </div>
+
+        {showTimeOff && (
+          <div className={`${card} space-y-4`}>
+            <div className="flex gap-3 flex-wrap items-end">
+              <div className="flex flex-col gap-1 min-w-[190px]">
+                <label className={labelCls} htmlFor="off-kind">Kind <span className="text-[#c2410c]">*</span></label>
+                <Select
+                  id="off-kind"
+                  value={kindId}
+                  onChange={setKindId}
+                  options={[{ value: '', label: '—' }, ...timeOffKinds.map(k => ({ value: String(k.id), label: k.label }))]}
+                  ariaLabel="Kind of time off"
+                  className={inputCls}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className={labelCls} htmlFor="off-from">First day</label>
+                <input id="off-from" type="date" value={offFrom} onChange={e => setOffFrom(e.target.value)} className={inputCls} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className={labelCls} htmlFor="off-to">Last day</label>
+                <input id="off-to" type="date" value={offTo} onChange={e => setOffTo(e.target.value)} className={inputCls} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className={labelCls} htmlFor="off-hours">Hours a day</label>
+                <input id="off-hours" type="number" step="0.5" min="0.5" max="24" value={offHours} onChange={e => setOffHours(e.target.value)} className={`${inputCls} w-24`} />
+              </div>
+              <div className="flex flex-col gap-1 grow min-w-[200px]">
+                <label className={labelCls} htmlFor="off-why">Reason</label>
+                <input id="off-why" value={offReason} onChange={e => setOffReason(e.target.value)} className={inputCls} placeholder="Optional" />
+              </div>
+              <button
+                onClick={() => run(
+                  () => requestAbsence({
+                    jobcodeId: Number(kindId), startDate: offFrom, endDate: offTo,
+                    hoursPerDay: Number(offHours) || 0, reason: offReason,
+                  }),
+                  () => { setShowTimeOff(false); setKindId(''); setOffReason('') },
+                )}
+                disabled={pending || !kindId}
+                className="px-5 py-2.5 rounded-[10px] bg-tn-primary text-white font-(family-name:--font-display) font-bold disabled:opacity-50"
+              >
+                {pending ? 'Sending…' : 'Ask'}
+              </button>
+            </div>
+            <p className="text-xs text-muted m-0">
+              Weekends are left out, so Friday to Monday is two days. Once approved, the hours
+              appear on your timesheet by themselves.
+            </p>
+          </div>
+        )}
+
+        {theirTimeOff.length > 0 && (
+          <div className="rounded-[14px] border border-slate-200 bg-white overflow-hidden">
+            {theirTimeOff.map(a => (
+              <div key={a.id} className="border-b border-slate-100 last:border-b-0">
+                <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
+                  <span className="font-semibold text-tn-ink">{a.personName}</span>
+                  <span className="text-sm">{a.kindLabel}</span>
+                  <span className="text-sm text-muted tabular-nums">
+                    {a.startDate} → {a.endDate} · {a.days} day{a.days === 1 ? '' : 's'} · {a.days * a.hoursPerDay} h
+                  </span>
+                  {a.reason && <span className="text-xs text-muted italic">{a.reason}</span>}
+                  <span className="ml-auto flex gap-2">
+                    <button
+                      onClick={() => run(() => decideAbsence({ id: a.id, decision: 'approve' }))}
+                      disabled={pending}
+                      className="px-3.5 py-1.5 rounded-[9px] bg-[#1f8a5b] text-white font-(family-name:--font-display) font-bold text-sm disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => { setDenying(denying === a.id ? null : a.id); setDenyNote('') }}
+                      disabled={pending}
+                      className="px-3.5 py-1.5 rounded-[9px] border border-slate-200 text-tn-ink font-(family-name:--font-display) font-bold text-sm disabled:opacity-50 hover:border-[#c2410c]"
+                    >
+                      Deny
+                    </button>
+                  </span>
+                </div>
+                {denying === a.id && (
+                  <div className="flex gap-2 px-4 pb-3 flex-wrap items-center">
+                    <input
+                      value={denyNote}
+                      onChange={e => setDenyNote(e.target.value)}
+                      placeholder="Why not?"
+                      className={`${inputCls} grow min-w-[240px]`}
+                    />
+                    <button
+                      onClick={() => run(
+                        () => decideAbsence({ id: a.id, decision: 'deny', note: denyNote }),
+                        () => setDenying(null),
+                      )}
+                      disabled={pending || !denyNote.trim()}
+                      className="px-4 py-2 rounded-[9px] bg-[#c2410c] text-white font-(family-name:--font-display) font-bold text-sm disabled:opacity-50"
+                    >
+                      Deny it
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {myTimeOff.length > 0 && (
+          <div className="rounded-[14px] border border-slate-200 bg-white overflow-hidden">
+            {myTimeOff.map(a => {
+              const st = absenceStatus(a.state)
+              return (
+                <div key={a.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-b-0 flex-wrap">
+                  <span className="font-semibold text-tn-ink">{a.kindLabel}</span>
+                  <span className="text-sm text-muted tabular-nums">
+                    {a.startDate} → {a.endDate} · {a.days} day{a.days === 1 ? '' : 's'} · {a.days * a.hoursPerDay} h
+                  </span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    a.state === 'approved' ? 'bg-[#e7f5ee] text-[#1f8a5b]'
+                      : a.state === 'pending' ? 'bg-[#eef2fb] text-tn-primary'
+                      : 'bg-subtle text-muted'
+                  }`}>{st.label}</span>
+                  {a.decisionNote && <span className="text-xs text-[#b45309]">{a.decisionNote}</span>}
+                  {st.canCancel && (
+                    <button
+                      onClick={() => run(() => cancelAbsence(a.id))}
+                      disabled={pending}
+                      className="ml-auto text-xs text-[#c2410c] hover:underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       {/* ── The clock ─────────────────────────────────────────────────────── */}
       <section className={card}>

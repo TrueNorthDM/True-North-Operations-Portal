@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
 import { periodFor, type SubmissionState } from '@/lib/timeclock/periods'
+import { workingDays } from '@/lib/timeclock/absence'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { HoursClient } from './HoursClient'
 import type { TcEntryRow } from '@/lib/types/database.types'
@@ -34,6 +35,23 @@ export interface Waiting {
   entries: number
   submittedAt: string | null
   note: string
+}
+
+/** A request for time off, mine or one waiting on me. */
+export interface Absence {
+  id: number
+  personId: string
+  personName: string
+  jobcodeId: number
+  kindLabel: string
+  startDate: string
+  endDate: string
+  hoursPerDay: number
+  days: number
+  state: 'pending' | 'approved' | 'denied' | 'cancelled'
+  reason: string
+  decisionNote: string
+  mine: boolean
 }
 
 export interface Entry {
@@ -175,6 +193,47 @@ export default async function MyHoursPage({
 
   const isAdmin = await isSecurityAdmin()
 
+  // ── Time off ────────────────────────────────────────────────────────────
+  // RLS returns mine and anyone I sign for in one query, the same shape as the
+  // submissions above.
+  const { data: absRows } = await supabase
+    .from('tc_absence_requests').select('*')
+    .order('start_date', { ascending: false }).limit(60)
+  const absences = (absRows ?? []) as {
+    id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string
+    hours_per_day: number; state: Absence['state']; reason: string | null; decision_note: string | null
+  }[]
+
+  const absentIds = [...new Set(absences.map(a => a.person_id))].filter(id => id !== me.id)
+  const { data: absNames } = absentIds.length
+    ? await supabase.from('people').select('id, full_name').in('id', absentIds)
+    : { data: [] }
+  const absNameById = new Map(((absNames ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
+
+  // Only the kinds somebody may still pick. The deactivated ones stay readable
+  // on old entries, as everywhere else in this module.
+  const { data: ptoRows } = await supabase
+    .from('tc_jobcodes').select('id, name, kind').in('kind', ['pto', 'unpaid']).eq('active', true).order('name')
+  const timeOffKinds = ((ptoRows ?? []) as { id: number; name: string; kind: string }[])
+    .map(j => ({ id: j.id, label: j.kind === 'unpaid' ? `${j.name} (unpaid)` : j.name }))
+  const kindById = new Map(timeOffKinds.map(k => [k.id, k.label]))
+
+  const timeOff: Absence[] = absences.map(a => ({
+    id: a.id,
+    personId: a.person_id,
+    personName: a.person_id === me.id ? 'You' : (absNameById.get(a.person_id) ?? 'Someone'),
+    jobcodeId: a.jobcode_id,
+    kindLabel: kindById.get(a.jobcode_id) ?? 'Time off',
+    startDate: a.start_date,
+    endDate: a.end_date,
+    hoursPerDay: Number(a.hours_per_day),
+    days: workingDays(a.start_date, a.end_date).length,
+    state: a.state,
+    reason: a.reason ?? '',
+    decisionNote: a.decision_note ?? '',
+    mine: a.person_id === me.id,
+  }))
+
   const rows = (entryRows ?? []) as TcEntryRow[]
   const entries: Entry[] = rows.map(r => ({
     id: r.id,
@@ -226,6 +285,8 @@ export default async function MyHoursPage({
         approvers={approvers}
         isAdmin={isAdmin}
         myPersonId={me.id}
+        timeOff={timeOff}
+        timeOffKinds={timeOffKinds}
         running={running && {
           id: running.id,
           startedAt: running.started_at!,
