@@ -180,7 +180,23 @@ export async function runImport(
       const since = (lastFull as { finished_at?: string } | null)?.finished_at
         ?? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
 
-      const changed = await fetchTimesheetRange(token, `${FIRST_MONTH}-01`, endOfMonth(cutoff), since)
+      // Year by year, not a single ten-year window. TSheets answers 417 to a
+      // range that wide, which is how this failed the first time it was ever
+      // actually run: the delta had been written and deployed but never
+      // exercised, because until now there had been nothing to catch up on.
+      //
+      // Still asking about every year rather than just the recent ones. Each
+      // call returns only what changed, so an untouched year costs one request
+      // and comes back empty, and a retroactive approval on 2019 is exactly the
+      // thing a cheap shortcut would miss.
+      const firstYear = Number(FIRST_MONTH.slice(0, 4))
+      const lastYear = Number(cutoff.slice(0, 4))
+      const changed: { date: string }[] = []
+      for (let y = firstYear; y <= lastYear; y++) {
+        const from = y === firstYear ? `${FIRST_MONTH}-01` : `${y}-01-01`
+        const to = y === lastYear ? endOfMonth(cutoff) : `${y}-12-31`
+        changed.push(...await fetchTimesheetRange(token, from, to, since))
+      }
       const touched = [...new Set(changed.map(t => t.date.slice(0, 7)))].sort()
 
       // Deletions first, so the re-import below counts a month that has already
