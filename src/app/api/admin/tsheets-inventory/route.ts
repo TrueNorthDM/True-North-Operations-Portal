@@ -251,6 +251,31 @@ export async function GET(request: Request) {
     say(extra.length ? extra.join(', ') : '  none')
   }
 
+  // Which parameter combinations /timesheets actually accepts. Written because
+  // the delta answered 417 and every explanation for it was a guess.
+  if (part === 'probe') {
+    head('WHICH TIMESHEET QUERIES ARE ACCEPTED')
+    const since = url.searchParams.get('since') ?? '2026-08-01T00:00:00+00:00'
+    const tries: [string, Record<string, string>][] = [
+      ['one month, no watermark', { start_date: '2026-08-01', end_date: '2026-08-31' }],
+      ['one month + modified_since', { start_date: '2026-08-01', end_date: '2026-08-31', modified_since: since }],
+      ['one year + modified_since', { start_date: '2026-01-01', end_date: '2026-12-31', modified_since: since }],
+      ['modified_since alone', { modified_since: since }],
+      ['one month + modified_since + per_page', { start_date: '2026-08-01', end_date: '2026-08-31', modified_since: since, per_page: '200' }],
+      ['one year, no watermark', { start_date: '2026-01-01', end_date: '2026-12-31' }],
+      ['ten years, no watermark', { start_date: '2017-01-01', end_date: '2026-12-31' }],
+    ]
+    for (const [label, params] of tries) {
+      const r = await get('/timesheets', { ...params, page: '1' })
+      const results = (r.results ?? {}) as Record<string, Record<string, Json>>
+      const n = Object.keys(results.timesheets ?? {}).length
+      say(`  ${label.padEnd(38)} ${r.__error ? `ERROR ${r.__error}` : `ok, ${n} rows, more=${r.more}`}`)
+    }
+    say('\nAnd the deleted list, which the delta also needs:')
+    const d = await get('/timesheets_deleted', { modified_since: since, page: '1' })
+    say(`  timesheets_deleted + modified_since    ${d.__error ? `ERROR ${d.__error}` : 'ok'}`)
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
