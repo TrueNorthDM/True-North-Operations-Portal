@@ -135,9 +135,20 @@ export async function loadI7EntriesHere(
   return out
 }
 
-/** Every i7 code and person ever seen here: the scaffold the report always shows. */
+/**
+ * Every i7 code and person seen since `since`: the scaffold that keeps zero-hour
+ * projects, codes and people on screen.
+ *
+ * Bounded on purpose. The old cache held about five thousand rows because the
+ * sync pruned it to a rolling window, so scanning all of it cost five queries.
+ * tc_entries holds 136,000, and scanning all of THAT costs a hundred and
+ * thirty-seven, which froze the page. The window is what makes the two
+ * equivalent: the scaffold means "codes and people currently in play", and a
+ * code last used in 2018 is not that.
+ */
 export async function loadI7UniverseHere(
   supabase: Client,
+  since: string,
 ): Promise<{ jobcodes: string[]; userIds: number[] }> {
   const [keys, jobcodeIds, people] = await Promise.all([
     fieldKeys(supabase),
@@ -150,6 +161,7 @@ export async function loadI7UniverseHere(
   for (let from = 0; ; from += PAGE) {
     const { data } = await supabase
       .from('tc_entries').select('person_id, jobcode_id, fields')
+      .gte('entry_date', since)
       .order('id', { ascending: true }).range(from, from + PAGE - 1)
     const rows = (data ?? []) as {
       person_id: string; jobcode_id: number | null; fields: Record<string, string> | null

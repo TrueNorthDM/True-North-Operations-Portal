@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { loadI7EntriesHere, loadI7UniverseHere } from '@/lib/timeclock/report-source'
+import { retentionFloorDate } from './retention'
 import { loadAssignmentRates } from '@/lib/hr/compensation'
 import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
 import { monthBounds, monthsBetween } from '@/lib/tsheets/report'
@@ -49,7 +50,9 @@ async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]>
 // zero-hour projects and codes on screen), from the same source as the entries.
 async function loadUniverse(): Promise<{ jobcodes: string[]; userIds: number[] }> {
   const supabase = await createClient()
-  return loadI7UniverseHere(supabase)
+  // The same window the month picker offers, which is what the old cache
+  // effectively scanned: it was pruned to exactly this range.
+  return loadI7UniverseHere(supabase, retentionFloorDate(new Date()))
 }
 
 // tsheets_user_id → display (first) name, from the synced directory.
