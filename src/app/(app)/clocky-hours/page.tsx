@@ -17,22 +17,12 @@ import { redirect } from 'next/navigation'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ImportRunner } from './ImportRunner'
+import { RulesForm, type Rules } from './RulesForm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Clocky Hours' }
 
-interface Settings {
-  timezone: string
-  week_start: number
-  period_type: string
-  round_enabled: boolean
-  round_minutes: number
-  round_direction: string
-  auto_clockout_hours: number | null
-  split_at_midnight: boolean
-  calculate_overtime: boolean
-  import_cutoff_date: string | null
-}
+type Settings = Rules
 
 interface Recon {
   month: string
@@ -142,9 +132,11 @@ export default async function ClockyHoursPage() {
             <div className="mt-1 font-semibold text-tn-ink capitalize">{s?.period_type}</div>
             <div className="text-xs text-muted mt-0.5">
               {s?.auto_clockout_hours ? `Auto clock-out after ${s.auto_clockout_hours}h` : 'No auto clock-out'}
+              {s?.import_cutoff_date ? ` · import stops at ${s.import_cutoff_date}` : ''}
             </div>
           </div>
         </div>
+        {s && <RulesForm rules={s} />}
       </section>
 
       {/* Phase 1: the migration. */}
