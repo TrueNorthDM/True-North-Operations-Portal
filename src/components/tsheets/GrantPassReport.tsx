@@ -1,56 +1,149 @@
-// Grant Pass client report.
+// Client Report, Grant Pass.
 //
-// FRAMEWORK / PLACEHOLDER. Grant Pass is not tracked in QuickBooks Time the way
-// i7 is: its job codes ("GP Church" #1606222 and "GP School" #1606224, under the
-// archived "Client" parent #5225333) are inactive, and no time is logged against
-// them. The only figures we have live in the "2026 Project Hours Detail"
-// spreadsheet, hours-only with a monthly carryover, no dollar budget.
+// Deliberately not the i7 report with different data in it. That one exists to
+// manage a budget: it has hours available, money left, a carryover balance. This
+// client has no budget in the portal and about 470 hours across nine years, so
+// what it needs is a history somebody can read in one screen.
 //
-// This component reserves the tab and lays out the intended shape (two
-// sub-clients, carryover → worked → remaining) so that once the data source is
-// confirmed, we swap this empty state for the wired-up table without touching
-// the page or the tab bar.
+// School and Church are shown side by side rather than as two reports, because
+// the question people actually ask is how the two compare.
 
-const SUBCLIENTS = ['Grants Pass Church', 'Grants Pass School'] as const
+import { formatHM, decimalHours } from '@/lib/timeclock/clock'
+import type { GrantPassData, GrantPassSlice } from '@/lib/timeclock/grant-pass'
 
-export function GrantPassReport() {
+const card = 'rounded-[14px] border border-slate-200 bg-white p-5'
+const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
+const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-3 whitespace-nowrap'
+
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, 1))
+    .toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+}
+
+function SliceTable({ title, rows, note }: { title: string; rows: GrantPassSlice[]; note: string }) {
+  const total = rows.reduce((s, r) => s + r.schoolSeconds + r.churchSeconds, 0)
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-        <p className="font-semibold text-amber-900 m-0">Setup in progress</p>
-        <p className="mt-1 text-sm text-amber-800 leading-relaxed m-0">
-          Grant Pass is an hours based retainer (Church and School), tracked with a monthly
-          carryover rather than a dollar budget. Unlike i7, it is not logged in QuickBooks Time,
-          so this tab will be filled once the data source is confirmed. The layout below is the
-          shape it will take.
-        </p>
-      </div>
-
-      {/* Skeleton of the intended hours table, shown disabled so the structure is visible. */}
-      <div className="rounded-xl border border-slate-200 overflow-hidden opacity-60 select-none" aria-hidden="true">
-        <table className="w-full text-sm">
+    <div className="space-y-2 min-w-0">
+      <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink m-0">{title}</h3>
+      <p className="text-sm text-muted m-0">{note}</p>
+      <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+        <table className="min-w-full text-sm">
           <thead>
-            <tr className="bg-slate-50 text-left text-muted">
-              <th className="px-4 py-3 font-semibold">Sub-client</th>
-              <th className="px-4 py-3 font-semibold text-right">Carryover</th>
-              <th className="px-4 py-3 font-semibold text-right">Hours this month</th>
-              <th className="px-4 py-3 font-semibold text-right">Remaining</th>
+            <tr className="bg-subtle border-b border-slate-200">
+              <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3">{title}</th>
+              <th className={thNum}>School</th>
+              <th className={thNum}>Church</th>
+              <th className={thNum}>Total</th>
             </tr>
           </thead>
           <tbody>
-            {SUBCLIENTS.map((name) => (
-              <tr key={name} className="border-t border-slate-100">
-                <td className="px-4 py-3 font-medium text-tn-ink">{name}</td>
-                {[0, 1, 2].map((i) => (
-                  <td key={i} className="px-4 py-3 text-right">
-                    <span className="inline-block h-3 w-12 rounded bg-slate-200 align-middle" />
-                  </td>
-                ))}
+            {rows.length === 0 && (
+              <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-400">Nothing logged.</td></tr>
+            )}
+            {rows.map(r => (
+              <tr key={r.label} className="border-b border-slate-100 last:border-b-0">
+                <td className="px-4 py-2.5 text-tn-ink">{r.label}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{r.schoolSeconds ? formatHM(r.schoolSeconds) : <span className="text-slate-300">-</span>}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{r.churchSeconds ? formatHM(r.churchSeconds) : <span className="text-slate-300">-</span>}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-tn-ink">{formatHM(r.schoolSeconds + r.churchSeconds)}</td>
               </tr>
             ))}
           </tbody>
+          {rows.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 border-slate-300 bg-subtle">
+                <td className="px-4 py-2.5 font-(family-name:--font-display) font-extrabold text-tn-ink">Total</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-extrabold">{formatHM(rows.reduce((s, r) => s + r.schoolSeconds, 0))}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-extrabold">{formatHM(rows.reduce((s, r) => s + r.churchSeconds, 0))}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-extrabold text-tn-ink">{formatHM(total)}</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
+    </div>
+  )
+}
+
+export function GrantPassReport({ data }: { data: GrantPassData }) {
+  const total = data.totalSchool + data.totalChurch
+
+  if (!data.entries) {
+    return (
+      <div className="rounded-[12px] border border-amber-300/60 bg-amber-50 p-5 text-sm text-[#8a6d1a]">
+        No Grant Pass hours found. They are recognised two ways, by the deactivated GP Church and
+        GP School job codes and by the &ldquo;2 Project&rdquo; field, so an empty report here means
+        neither is in use rather than that the report is broken.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className={card}>
+          <div className={label}>Total</div>
+          <div className="mt-1 font-(family-name:--font-display) font-extrabold text-[26px] text-tn-ink tabular-nums leading-tight">{formatHM(total)}</div>
+          <div className="text-xs text-muted mt-0.5">{decimalHours(total)} h over {data.entries} entries</div>
+        </div>
+        <div className={card}>
+          <div className={label}>School</div>
+          <div className="mt-1 font-(family-name:--font-display) font-extrabold text-[26px] text-tn-ink tabular-nums leading-tight">{formatHM(data.totalSchool)}</div>
+          <div className="text-xs text-muted mt-0.5">{total ? Math.round((data.totalSchool / total) * 100) : 0}% of the time</div>
+        </div>
+        <div className={card}>
+          <div className={label}>Church</div>
+          <div className="mt-1 font-(family-name:--font-display) font-extrabold text-[26px] text-tn-ink tabular-nums leading-tight">{formatHM(data.totalChurch)}</div>
+          <div className="text-xs text-muted mt-0.5">{total ? Math.round((data.totalChurch / total) * 100) : 0}% of the time</div>
+        </div>
+        <div className={card}>
+          <div className={label}>Covering</div>
+          <div className="mt-1 font-(family-name:--font-display) font-extrabold text-[20px] text-tn-ink leading-tight">
+            {data.firstMonth ? monthLabel(data.firstMonth) : '—'}
+          </div>
+          <div className="text-xs text-muted mt-0.5">to {data.lastMonth ? monthLabel(data.lastMonth) : '—'}</div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink m-0">Month by month</h3>
+        <p className="text-sm text-muted m-0">Only months with hours. The gaps are real gaps.</p>
+        <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white max-h-[420px] overflow-y-auto">
+          <table className="min-w-full text-sm">
+            <thead className="sticky top-0">
+              <tr className="bg-subtle border-b border-slate-200">
+                <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 bg-subtle">Month</th>
+                <th className={`${thNum} bg-subtle`}>School</th>
+                <th className={`${thNum} bg-subtle`}>Church</th>
+                <th className={`${thNum} bg-subtle`}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.months.map(m => (
+                <tr key={m.month} className="border-b border-slate-100 last:border-b-0">
+                  <td className="px-4 py-2.5 font-semibold text-tn-ink tabular-nums">{monthLabel(m.month)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{m.schoolSeconds ? formatHM(m.schoolSeconds) : <span className="text-slate-300">-</span>}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{m.churchSeconds ? formatHM(m.churchSeconds) : <span className="text-slate-300">-</span>}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-tn-ink">{formatHM(m.schoolSeconds + m.churchSeconds)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <SliceTable title="Who" rows={data.byPerson} note="Everyone who has logged time on this client." />
+        <SliceTable title="What" rows={data.byActivity} note="From the “3 Activity” field on each entry." />
+      </div>
+
+      <p className="text-xs text-muted leading-relaxed">
+        Grant Pass hours are recognised two ways, and both are counted: the deactivated
+        <span className="font-semibold"> GP Church</span> and <span className="font-semibold">GP School</span> job
+        codes, used until 2022, and the <span className="font-semibold">“2 Project”</span> field, used since. No entry
+        carries both, so nothing here is counted twice.
+      </p>
     </div>
   )
 }

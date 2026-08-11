@@ -4,15 +4,20 @@
 // i7. One permission per client: whoever is trusted with one client's hours and
 // budget has not thereby been trusted with every client added later.
 //
-// The body is still the framework placeholder. Grant Pass time is not reachable
-// from the portal's copy of QuickBooks Time yet: the timesheet sync only pulls
-// entries under the i7 client tree, and "GP School" / "GP Church" are values of
-// the "1 - i7 Code" custom field rather than TSheets job codes, so they never
-// arrive. That is a data-source decision, not a missing screen.
+// The body was a placeholder for months because nobody knew where these hours
+// were. Counting settled it: until 2022 they were tagged with the GP Church and
+// GP School job codes, which were later deactivated, and since 2023 with the
+// "2 Project" field. Both are read here, and no entry carries both, so the union
+// is the client's history without double counting.
+//
+// My earlier guess that they were values of "1 - i7 Code" was wrong. It is
+// "2 Project".
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
+import { createClient } from '@/lib/supabase/server'
+import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
 import { GrantPassReport } from '@/components/tsheets/GrantPassReport'
 
 export const metadata = { title: 'Client Report · Grant Pass' }
@@ -22,6 +27,9 @@ export default async function GrantPassReportPage() {
   // The area comes from the level, the client from its own team tool grant.
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/tools')
+
+  const supabase = await createClient()
+  const data = await loadGrantPassData(supabase)
 
   return (
     <div className="space-y-8">
@@ -37,11 +45,11 @@ export default async function GrantPassReportPage() {
           Client Report · Grant Pass
         </h1>
         <p className="mt-1.5 text-muted leading-relaxed">
-          Hours and budget usage for Grant Pass, Church and School.
+          Every hour logged for Grant Pass, Church and School, since 2017.
         </p>
       </div>
 
-      <GrantPassReport />
+      <GrantPassReport data={data} />
     </div>
   )
 }

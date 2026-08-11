@@ -13,6 +13,9 @@ import type { TsheetsJobcode, I7Entry, I7Report, I7Project, I7Jobcode, I7Activit
 export const I7_PARENT_JOBCODE_ID = 21152466
 export const I7_CODE_CF = '129628'
 export const ACTIVITY_CF = '19156'
+// "2 Project", where work outside the i7 tree is tagged. Grant Pass lives here
+// from 2023 onward, and in the deactivated GP job codes before that.
+export const PROJECT_CF = '129636'
 
 // The four i7 projects (top level of the report + budget-hours guide targets).
 export const I7_PROJECTS = ['i7 Marketing', 'Moisture Meters (MME)', 'Wagner Meters (WM)', 'Bessemeter'] as const
