@@ -271,6 +271,19 @@ export async function GET(request: Request) {
       const n = Object.keys(results.timesheets ?? {}).length
       say(`  ${label.padEnd(38)} ${r.__error ? `ERROR ${r.__error}` : `ok, ${n} rows, more=${r.more}`}`)
     }
+    say('\nSame query, different shapes of the same instant:')
+    const shapes: [string, string][] = [
+      ['clean, +00:00', '2026-08-01T00:00:00+00:00'],
+      ['milliseconds + Z', '2026-08-01T00:00:00.000Z'],
+      ['microseconds + 00 (what Postgres returns)', '2026-08-01T00:00:00.123456+00:00'],
+      ['seconds + Z', '2026-08-01T00:00:00Z'],
+      ['date only', '2026-08-01'],
+    ]
+    for (const [label, value] of shapes) {
+      const r = await get('/timesheets', { start_date: '2026-08-01', end_date: '2026-08-31', modified_since: value, page: '1' })
+      say(`  ${label.padEnd(42)} ${r.__error ? `ERROR ${r.__error}` : 'ok'}`)
+    }
+
     say('\nAnd the deleted list, which the delta also needs:')
     const d = await get('/timesheets_deleted', { modified_since: since, page: '1' })
     say(`  timesheets_deleted + modified_since    ${d.__error ? `ERROR ${d.__error}` : 'ok'}`)
