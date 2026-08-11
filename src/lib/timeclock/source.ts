@@ -67,6 +67,24 @@ interface Page {
   more?: boolean
 }
 
+/**
+ * An instant in the only shape TSheets accepts as a watermark.
+ *
+ * It answers 417 to any fractional seconds, which rules out both obvious
+ * sources: Postgres hands back microseconds ('...T17:12:33.123456+00:00') and
+ * toISOString() gives milliseconds ('...T17:12:33.123Z'). Whole seconds with a
+ * Z is accepted, and so is +00:00.
+ *
+ * Here rather than at the call sites because this is the one place a timestamp
+ * turns into a query parameter, and a rule enforced anywhere else is a rule
+ * somebody will route around by accident.
+ */
+export function watermark(instant: string): string {
+  const t = Date.parse(instant)
+  if (Number.isNaN(t)) return new Date().toISOString().replace(/\.\d+Z$/, 'Z')
+  return new Date(t).toISOString().replace(/\.\d+Z$/, 'Z')
+}
+
 async function get(token: string, path: string, params: Record<string, string>): Promise<Page> {
   const qs = new URLSearchParams(params).toString()
   const res = await fetch(`${BASE}${path}${qs ? `?${qs}` : ''}`, {
@@ -123,7 +141,7 @@ export function fetchTimesheetRange(
   modifiedSince?: string,
 ): Promise<SourceTimesheet[]> {
   const params: Record<string, string> = { start_date: startDate, end_date: endDate }
-  if (modifiedSince) params.modified_since = modifiedSince
+  if (modifiedSince) params.modified_since = watermark(modifiedSince)
   return all<SourceTimesheet>(token, '/timesheets', params, 'timesheets')
 }
 
@@ -135,7 +153,7 @@ export function fetchTimesheetRange(
  */
 export async function fetchDeletedIds(token: string, modifiedSince: string): Promise<number[]> {
   const rows = await all<{ id: number }>(
-    token, '/timesheets_deleted', { modified_since: modifiedSince }, 'timesheets_deleted',
+    token, '/timesheets_deleted', { modified_since: watermark(modifiedSince) }, 'timesheets_deleted',
   )
   return rows.map(r => r.id).filter(Boolean)
 }
