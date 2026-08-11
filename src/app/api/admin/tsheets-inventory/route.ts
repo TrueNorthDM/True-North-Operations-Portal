@@ -24,6 +24,7 @@ import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
 import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
+import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -443,6 +444,17 @@ export async function GET(request: Request) {
   // fixing it.
   if (part === 'gpdata') {
     head('GRANT PASS LOADER')
+    // Run it exactly as the page does, on the caller's own client, because the
+    // only difference between this working here and failing there is RLS.
+    try {
+      const asMe = await createClient()
+      const t1 = Date.now()
+      const d1 = await loadGrantPassData(asMe)
+      say(`as the signed-in user: ok in ${Date.now() - t1}ms, ${d1.entries} entries`)
+    } catch (e) {
+      say('as the signed-in user: FAILED')
+      say(e instanceof Error ? `${e.name}: ${e.message}` : String(e))
+    }
     try {
       const t0 = Date.now()
       const d = await loadGrantPassData(supabase)
