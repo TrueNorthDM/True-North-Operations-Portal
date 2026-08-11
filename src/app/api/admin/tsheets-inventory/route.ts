@@ -289,6 +289,24 @@ export async function GET(request: Request) {
     say(`  timesheets_deleted + modified_since    ${d.__error ? `ERROR ${d.__error}` : 'ok'}`)
   }
 
+  // What a PTO balance actually looks like on a user, before building anything
+  // that reads one.
+  if (part === 'pto') {
+    head('PTO BALANCES, as the account holds them')
+    const users = await getAll('/users', { active: 'yes' }, 'users')
+    const withBalances = users.filter(u => u.pto_balances && Object.keys(u.pto_balances as object).length)
+    say(`${withBalances.length} of ${users.length} active users carry a balance\n`)
+    for (const u of withBalances.slice(0, 8)) {
+      say(`  ${`${u.first_name} ${u.last_name}`.padEnd(24)} ${JSON.stringify(u.pto_balances)}`)
+    }
+    say('\nthe raw shape of one:')
+    say(JSON.stringify(withBalances[0]?.pto_balances ?? users[0]?.pto_balances ?? null, null, 1))
+    say('\nkeys seen across everyone (these should be jobcode ids):')
+    const keys = new Set<string>()
+    for (const u of users) for (const k of Object.keys((u.pto_balances ?? {}) as object)) keys.add(k)
+    say('  ' + ([...keys].join(', ') || 'none'))
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
