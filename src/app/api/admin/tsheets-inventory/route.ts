@@ -363,6 +363,80 @@ export async function GET(request: Request) {
     for (const k of onlyNew.slice(0, 10)) say(`  ${k}  ${b.get(k)}s`)
   }
 
+  // Grant Pass is identifiable two ways: the "2 Project" field carries
+  // 'GP School' / 'GP church', and there are deactivated job codes of the same
+  // names with children. Which one people actually use, and when, decides what
+  // the report means. Counting beats choosing.
+  if (part === 'grantpass') {
+    head('GRANT PASS, HOW IT IS TAGGED')
+
+    const { data: fieldRows } = await supabase
+      .from('tc_fields').select('id, external_id, name')
+    const fields = (fieldRows ?? []) as { id: number; external_id: number | null; name: string }[]
+    const projectField = fields.find(f => String(f.external_id) === '129636')
+    say(`the "2 Project" field is tc_fields id ${projectField?.id ?? 'MISSING'}`)
+
+    const { data: jcRows } = await supabase
+      .from('tc_jobcodes').select('id, name, parent_id, active, external_id')
+    const jcs = (jcRows ?? []) as { id: number; name: string; parent_id: number | null; active: boolean; external_id: number | null }[]
+    const roots = jcs.filter(j => /^GP (Church|School)$/i.test(j.name))
+    say(`\njob codes named GP Church / GP School: ${roots.length}`)
+    const gpIds = new Set<number>()
+    for (const r of roots) {
+      gpIds.add(r.id)
+      say(`  ${r.name} (id ${r.id}, external ${r.external_id}, active=${r.active})`)
+      for (const c of jcs.filter(j => j.parent_id === r.id)) {
+        gpIds.add(c.id)
+        say(`    - ${c.name} (id ${c.id}, active=${c.active})`)
+      }
+    }
+
+    const key = projectField ? String(projectField.id) : null
+    const byYear = new Map<string, { field: number; jobcode: number; both: number; fieldSecs: number; jobcodeSecs: number }>()
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('tc_entries').select('entry_date, jobcode_id, duration_seconds, fields')
+        .order('id', { ascending: true }).range(from, from + 999)
+      const rows = (data ?? []) as { entry_date: string; jobcode_id: number | null; duration_seconds: number; fields: Record<string, string> | null }[]
+      for (const r of rows) {
+        const value = key ? (r.fields ?? {})[key] ?? '' : ''
+        const byField = /^gp (school|church)$/i.test(value.trim())
+        const byJobcode = r.jobcode_id != null && gpIds.has(r.jobcode_id)
+        if (!byField && !byJobcode) continue
+        const y = r.entry_date.slice(0, 4)
+        const cur = byYear.get(y) ?? { field: 0, jobcode: 0, both: 0, fieldSecs: 0, jobcodeSecs: 0 }
+        if (byField) { cur.field++; cur.fieldSecs += r.duration_seconds }
+        if (byJobcode) { cur.jobcode++; cur.jobcodeSecs += r.duration_seconds }
+        if (byField && byJobcode) cur.both++
+        byYear.set(y, cur)
+      }
+      if (rows.length < 1000) break
+    }
+
+    say('\nyear   by "2 Project"      by job code         both')
+    for (const y of [...byYear.keys()].sort()) {
+      const c = byYear.get(y)!
+      say(`  ${y}  ${String(c.field).padStart(5)} (${(c.fieldSecs/3600).toFixed(0).padStart(5)} h)  ${String(c.jobcode).padStart(5)} (${(c.jobcodeSecs/3600).toFixed(0).padStart(5)} h)  ${String(c.both).padStart(5)}`)
+    }
+
+    // Which exact values appear in the field, spelling included: 'GP church' is
+    // lowercase in the option list and that is easy to miss.
+    if (key) {
+      const seen = new Map<string, number>()
+      for (let from = 0; ; from += 1000) {
+        const { data } = await supabase.from('tc_entries').select('fields').order('id', { ascending: true }).range(from, from + 999)
+        const rows = (data ?? []) as { fields: Record<string, string> | null }[]
+        for (const r of rows) {
+          const v = ((r.fields ?? {})[key] ?? '').trim()
+          if (/gp/i.test(v)) seen.set(v, (seen.get(v) ?? 0) + 1)
+        }
+        if (rows.length < 1000) break
+      }
+      say('\nexact values seen containing "gp":')
+      for (const [v, n] of seen) say(`  '${v}' × ${n}`)
+    }
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
