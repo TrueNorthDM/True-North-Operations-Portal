@@ -350,6 +350,17 @@ export async function GET(request: Request) {
       say(`  ${k}  old ${a.get(k) ?? 0}s  clocky ${b.get(k) ?? 0}s`)
     }
     if (off.length > 25) say(`  ... and ${off.length - 25} more`)
+
+    // Equal totals with unequal row counts is the case a value comparison
+    // cannot see: two buckets holding zero seconds each look identical whether
+    // one of them exists or not. Named explicitly so it cannot pass as a match.
+    say(`\nzero-second rows: old ${cached.filter(r => !r.duration).length}, clocky ${fresh.filter(r => !r.duration).length}`)
+    const onlyOld = [...a.keys()].filter(k => !b.has(k))
+    const onlyNew = [...b.keys()].filter(k => !a.has(k))
+    say(`buckets only in the old cache: ${onlyOld.length}`)
+    for (const k of onlyOld.slice(0, 10)) say(`  ${k}  ${a.get(k)}s`)
+    say(`buckets only in clocky: ${onlyNew.length}`)
+    for (const k of onlyNew.slice(0, 10)) say(`  ${k}  ${b.get(k)}s`)
   }
 
   say(`\n\n${calls} API calls, all GET.`)
