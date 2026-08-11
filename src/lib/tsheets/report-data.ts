@@ -5,6 +5,7 @@
 // trend series. No live TSheets calls.
 
 import { createClient } from '@/lib/supabase/server'
+import { loadI7EntriesHere, loadI7UniverseHere } from '@/lib/timeclock/report-source'
 import { loadAssignmentRates } from '@/lib/hr/compensation'
 import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
 import { monthBounds, monthsBetween } from '@/lib/tsheets/report'
@@ -26,44 +27,29 @@ export interface I7ReportData {
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-// Cached i7 timesheet entries for a date range (paginated past PostgREST's cap).
+/**
+ * i7 entries for a date range, now read from the portal's own hours.
+ *
+ * Phase 5. The old source was tsheets_timesheets, a cache the sync filled with
+ * only the i7 branch and only from January 2026: everything before that was
+ * never there, so the report could not show it. tc_entries holds all 136,000
+ * entries back to 2017, which is where the extra history in the month picker
+ * comes from.
+ *
+ * Checked before switching, not after: for every month both sources held, the
+ * seconds and the day-person-code-activity buckets were identical. The only
+ * difference was a couple of zero-second rows, which contribute to nothing.
+ */
 async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]> {
   const supabase = await createClient()
-  const out: I7Entry[] = []
-  const PAGE = 1000
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('tsheets_timesheets')
-      .select('user_id, duration, date, i7_code, activity')
-      .gte('date', start).lte('date', end)
-      .order('id', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    const rows = data ?? []
-    for (const r of rows) out.push({ user_id: r.user_id, duration: r.duration, date: r.date, i7Code: r.i7_code ?? '', activity: r.activity ?? '' })
-    if (rows.length < PAGE) break
-  }
-  return out
+  return loadI7EntriesHere(supabase, start, end)
 }
 
-// Full universe of i7 job codes + people ever seen in the cache (the scaffold).
+// Full universe of i7 job codes + people ever seen (the scaffold that keeps
+// zero-hour projects and codes on screen), from the same source as the entries.
 async function loadUniverse(): Promise<{ jobcodes: string[]; userIds: number[] }> {
   const supabase = await createClient()
-  const codes = new Set<string>()
-  const userIds = new Set<number>()
-  const PAGE = 1000
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase.from('tsheets_timesheets').select('user_id, i7_code').order('id', { ascending: true }).range(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    const rows = data ?? []
-    for (const r of rows) {
-      if (r.user_id != null) userIds.add(r.user_id)
-      const c = (r.i7_code ?? '').trim()
-      if (c) codes.add(c)
-    }
-    if (rows.length < PAGE) break
-  }
-  return { jobcodes: [...codes], userIds: [...userIds] }
+  return loadI7UniverseHere(supabase)
 }
 
 // tsheets_user_id → display (first) name, from the synced directory.
