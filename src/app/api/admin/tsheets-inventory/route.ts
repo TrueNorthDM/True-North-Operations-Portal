@@ -23,6 +23,7 @@
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
+import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -434,6 +435,25 @@ export async function GET(request: Request) {
       }
       say('\nexact values seen containing "gp":')
       for (const [v, n] of seen) say(`  '${v}' × ${n}`)
+    }
+  }
+
+  // The loader itself, with its error in words. The page shows "Something went
+  // wrong" and a reference number, which is right for a person and useless for
+  // fixing it.
+  if (part === 'gpdata') {
+    head('GRANT PASS LOADER')
+    try {
+      const t0 = Date.now()
+      const d = await loadGrantPassData(supabase)
+      say(`ok in ${Date.now() - t0}ms`)
+      say(`${d.entries} entries, school ${(d.totalSchool / 3600).toFixed(2)} h, church ${(d.totalChurch / 3600).toFixed(2)} h`)
+      say(`${d.months.length} months, ${d.firstMonth} to ${d.lastMonth}`)
+      say(`people: ${d.byPerson.map(p => p.label).join(', ')}`)
+    } catch (e) {
+      say('FAILED')
+      say(e instanceof Error ? `${e.name}: ${e.message}` : String(e))
+      if (e instanceof Error && e.stack) say(e.stack.split('\n').slice(0, 6).join('\n'))
     }
   }
 
