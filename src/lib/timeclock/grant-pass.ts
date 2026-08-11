@@ -66,10 +66,11 @@ function add(map: Map<string, GrantPassSlice>, label: string, side: Side, second
 
 export async function loadGrantPassData(supabase: Client): Promise<GrantPassData> {
   // The two ways a Grant Pass hour is marked, resolved once.
-  const [{ data: fieldRows }, { data: jcRows }, { data: peopleRows }] = await Promise.all([
+  const [{ data: fieldRows }, { data: jcRows }, { data: peopleRows }, { data: optionRows }] = await Promise.all([
     supabase.from('tc_fields').select('id, external_id'),
     supabase.from('tc_jobcodes').select('id, name, parent_id'),
     supabase.from('people').select('id, full_name'),
+    supabase.from('tc_field_options').select('field_id, label'),
   ])
 
   const fields = (fieldRows ?? []) as { id: number; external_id: number | null }[]
@@ -119,19 +120,28 @@ export async function loadGrantPassData(supabase: Client): Promise<GrantPassData
     }
   }
 
+  // The exact labels to look for, read from the option list rather than typed
+  // here, so a new spelling starts counting the day somebody adds it.
+  const gpLabels = ((optionRows ?? []) as { field_id: number; label: string }[])
+    .filter(o => o.field_id === projectKey && sideFromText(o.label))
+    .map(o => o.label)
+
+  // One containment query per label. NOT a `fields->>key` filter: PostgREST
+  // reads a numeric key after -> as an ARRAY INDEX, and ours are numeric, so
+  // that syntax asks for element nine of an object and fails. Containment is
+  // also what the GIN index on fields can actually answer.
   if (projectKey) {
-    // ilike rather than an exact list: the option list holds 'GP School' and
-    // 'GP church', with that lowercase c, and matching on case would silently
-    // drop thirteen entries. sideFromText decides for certain afterwards.
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabase
-        .from('tc_entries').select(SELECT)
-        .ilike(`fields->>${projectKey}`, 'gp %')
-        .order('id', { ascending: true }).range(from, from + PAGE - 1)
-      if (error) throw new Error(error.message)
-      const rows = (data ?? []) as Row[]
-      for (const r of rows) seen.set(r.id, r)
-      if (rows.length < PAGE) break
+    for (const value of gpLabels) {
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('tc_entries').select(SELECT)
+          .contains('fields', { [String(projectKey)]: value })
+          .order('id', { ascending: true }).range(from, from + PAGE - 1)
+        if (error) throw new Error(error.message)
+        const rows = (data ?? []) as Row[]
+        for (const r of rows) seen.set(r.id, r)
+        if (rows.length < PAGE) break
+      }
     }
   }
 
