@@ -72,6 +72,16 @@ export const AUTOMATIONS: Automation[] = [
     healthServices: ['tsheets_api'],
   },
   {
+    id: 'clocky-delta',
+    name: 'Clocky Hours catch-up',
+    kind: 'cron',
+    purpose: 'Keeps the portal\u2019s copy of QuickBooks Time current while both run in parallel: new entries, edits, retroactive approvals and deletions. Skips itself if an import is already going, and stops mattering the day the portal becomes the clock.',
+    trigger: 'Vercel Cron',
+    schedule: 'Every 4 hours (45 1,5,9,13,17,21 * * *)',
+    location: 'src/app/api/cron/clocky-delta/route.ts',
+    healthServices: ['tsheets_api'],
+  },
+  {
     id: 'health-check',
     name: 'Integration health check',
     kind: 'cron',
