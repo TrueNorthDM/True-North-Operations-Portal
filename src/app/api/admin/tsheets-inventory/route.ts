@@ -469,6 +469,53 @@ export async function GET(request: Request) {
     }
   }
 
+  // What opening the month picker back to 2017 would actually do to the
+  // carryover, which depends on two things: when the budgets start, and when
+  // the hourly rates start.
+  if (part === 'history-cost') {
+    head('WHAT PRE-2026 MONTHS WOULD DO TO THE BALANCE')
+
+    const { data: budgets } = await supabase.from('i7_monthly_budget').select('month').order('month')
+    const bMonths = ((budgets ?? []) as { month: string }[]).map(b => String(b.month).slice(0, 7))
+    say(`budget rows: ${bMonths.length}, from ${bMonths[0] ?? '-'} to ${bMonths[bMonths.length - 1] ?? '-'}`)
+
+    const { data: asg } = await supabase
+      .from('tr_assignments').select('effective_from, effective_to').order('effective_from')
+    const rows = (asg ?? []) as { effective_from: string | null; effective_to: string | null }[]
+    const froms = rows.map(r => r.effective_from).filter(Boolean).sort() as string[]
+    say(`rate assignments: ${rows.length}, earliest starts ${froms[0] ?? '-'}, latest starts ${froms[froms.length - 1] ?? '-'}`)
+    say(`assignments starting before 2026: ${froms.filter(f => f < '2026-01-01').length}`)
+
+    // i7 hours per year, to size what would be added to the picker.
+    const { data: jc } = await supabase.from('tc_jobcodes').select('id, parent_id, external_id')
+    const all = (jc ?? []) as { id: number; parent_id: number | null; external_id: number | null }[]
+    const root = all.find(j => j.external_id === 21152466)
+    const ids = new Set<number>()
+    if (root) {
+      const q = [root.id]; ids.add(root.id)
+      while (q.length) { const n = q.shift()!; for (const c of all.filter(x => x.parent_id === n)) { if (!ids.has(c.id)) { ids.add(c.id); q.push(c.id) } } }
+    }
+    const perYear = new Map<string, number>()
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from('tc_entries').select('entry_date, duration_seconds, jobcode_id')
+        .lt('entry_date', '2026-01-01').order('id', { ascending: true }).range(from, from + 999)
+      const rs = (data ?? []) as { entry_date: string; duration_seconds: number; jobcode_id: number | null }[]
+      for (const r of rs) {
+        if (r.jobcode_id == null || !ids.has(r.jobcode_id)) continue
+        const y = r.entry_date.slice(0, 4)
+        perYear.set(y, (perYear.get(y) ?? 0) + r.duration_seconds)
+      }
+      if (rs.length < 1000) break
+    }
+    say('\ni7 hours the picker would gain, by year:')
+    let total = 0
+    for (const y of [...perYear.keys()].sort()) {
+      total += perYear.get(y)!
+      say(`  ${y}: ${(perYear.get(y)! / 3600).toFixed(0)} h`)
+    }
+    say(`  total: ${(total / 3600).toFixed(0)} h across ${perYear.size} years`)
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
