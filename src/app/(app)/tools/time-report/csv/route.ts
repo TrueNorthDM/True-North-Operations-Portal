@@ -91,10 +91,11 @@ export async function GET(request: Request) {
       const inv = isMME(p.project) ? 'MME invoice' : 'i7 invoice'
       for (const jc of p.jobcodes) {
         if (jc.hours <= 0) continue
-        lines.push(row([inv, p.project, jc.code, jc.hours, Math.round(jc.cost), pct(jc.cost, total)]))
+        // Two decimals, not whole dollars: this file is opened by accounting.
+        lines.push(row([inv, p.project, jc.code, jc.hours, round2(jc.cost).toFixed(2), pct(jc.cost, total)]))
       }
     }
-    lines.push(row(['', 'TOTAL', '', report.totalHours, Math.round(total), 100]))
+    lines.push(row(['', 'TOTAL', '', report.totalHours, round2(total).toFixed(2), 100]))
   }
 
   // BOM so Excel reads UTF-8 (accented names, the em dash) correctly.
