@@ -644,6 +644,33 @@ export async function GET(request: Request) {
       return secs / 3600
     }
 
+    // HFA three ways, because the job code alone was short every month and the
+    // cross-tab showed the work sitting under two different job codes joined by
+    // the project value.
+    say('Hope for Africa, by definition')
+    for (const month of months) {
+      const [yy, mm] = month.split('-').map(Number)
+      const end = new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10)
+      const sumWhere = async (fn: (q: any) => any) => {
+        let secs = 0
+        for (let from = 0; ; from += 1000) {
+          const { data } = await fn(supabase.from('tc_entries').select('duration_seconds'))
+            .gte('entry_date', `${month}-01`).lte('entry_date', end)
+            .order('id', { ascending: true }).range(from, from + 999)
+          const rs = (data ?? []) as { duration_seconds: number }[]
+          for (const r of rs) secs += r.duration_seconds
+          if (rs.length < 1000) break
+        }
+        return secs / 3600
+      }
+      const byCode = hfaIds.size ? await sumWhere(q => q.in('jobcode_id', [...hfaIds])) : 0
+      const byProject = projectKey ? await sumWhere(q => q.contains('fields', { [String(projectKey)]: 'Africa' })) : 0
+      const her = hers['Hope for Africa'][month] ?? 0
+      const mark = Math.abs(byProject - her) < 0.02 ? 'PROJECT MATCHES' : `project off by ${(byProject - her).toFixed(2)}`
+      say(`  ${month}  hers ${her.toFixed(2).padStart(8)}   job code ${byCode.toFixed(2).padStart(8)}   project 'Africa' ${byProject.toFixed(2).padStart(8)}   ${mark}`)
+    }
+    say('')
+
     for (const label of ['AAAF', 'GP church', 'GP School', 'Hope for Africa']) {
       say(`${label}`)
       for (const month of months) {
