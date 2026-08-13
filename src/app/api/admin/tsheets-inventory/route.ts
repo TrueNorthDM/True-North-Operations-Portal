@@ -541,6 +541,44 @@ export async function GET(request: Request) {
     }
   }
 
+  // Grant Pass is not a client tree, it is a value of "2 Project" under True
+  // North. So are twelve other things. This counts them, because whether any of
+  // the others deserves a report is a question about size, not about structure.
+  if (part === 'projects') {
+    head('EVERY VALUE OF "2 PROJECT", BY HOURS')
+
+    const { data: fieldRows } = await supabase.from('tc_fields').select('id, external_id')
+    const key = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
+      .find(f => String(f.external_id) === '129636')?.id
+    if (!key) { say('the "2 Project" field is not imported'); }
+    else {
+      const { data: optRows } = await supabase
+        .from('tc_field_options').select('label, active').eq('field_id', key).order('label')
+      const opts = (optRows ?? []) as { label: string; active: boolean }[]
+
+      const rows: string[] = []
+      for (const o of opts) {
+        let secs = 0, n = 0, first = '', last = ''
+        for (let from = 0; ; from += 1000) {
+          const { data } = await supabase
+            .from('tc_entries').select('entry_date, duration_seconds')
+            .contains('fields', { [String(key)]: o.label })
+            .order('entry_date', { ascending: true }).range(from, from + 999)
+          const rs = (data ?? []) as { entry_date: string; duration_seconds: number }[]
+          for (const r of rs) {
+            secs += r.duration_seconds; n++
+            if (!first) first = r.entry_date
+            last = r.entry_date
+          }
+          if (rs.length < 1000) break
+        }
+        rows.push(`  ${(o.label + (o.active ? '' : ' (off)')).padEnd(26)}${(secs / 3600).toFixed(0).padStart(8)} h  ${String(n).padStart(6)} entries   ${first || '-'} → ${last || '-'}`)
+      }
+      say('  project                        hours   entries   covering')
+      for (const r of rows) say(r)
+    }
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
