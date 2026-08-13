@@ -70,7 +70,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     key: 'grant-pass-report',
-    label: 'Client Report - Grant Pass',
+    label: 'Client Report - Project Hours (AAAF, Grants Pass, HFA)',
     href: '/tools/time-report/grant-pass',
     group: 'Tools',
     description: 'Hours and budget usage for Grant Pass. Waiting on its data source in QuickBooks Time.',

@@ -651,7 +651,8 @@ export async function GET(request: Request) {
     for (const month of months) {
       const [yy, mm] = month.split('-').map(Number)
       const end = new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10)
-      const sumWhere = async (fn: (q: any) => any) => {
+      type Q = ReturnType<ReturnType<typeof supabase.from>['select']>
+      const sumWhere = async (fn: (q: Q) => Q) => {
         let secs = 0
         for (let from = 0; ; from += 1000) {
           const { data } = await fn(supabase.from('tc_entries').select('duration_seconds'))

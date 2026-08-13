@@ -700,6 +700,12 @@ export type Database = {
         Update: Partial<Omit<TcImportRunRow, 'id'>>
         Relationships: []
       }
+      tc_project_purchases: {
+        Row: { id: number; project_label: string; month: string; hours: number; amount_usd: number | null; rate_usd: number | null; note: string | null; created_at: string; updated_at: string }
+        Insert: { id?: number; project_label: string; month: string; hours: number; amount_usd?: number | null; rate_usd?: number | null; note?: string | null }
+        Update: Partial<{ project_label: string; month: string; hours: number; amount_usd: number | null; rate_usd: number | null; note: string | null; updated_at: string }>
+        Relationships: []
+      }
       tc_reconciliation: {
         Row: { id: number; month: string; tsheets_entries: number; tsheets_seconds: number; portal_entries: number; portal_seconds: number; checked_at: string }
         Insert: { id?: number; month: string; tsheets_entries?: number; tsheets_seconds?: number; portal_entries?: number; portal_seconds?: number; checked_at?: string }
