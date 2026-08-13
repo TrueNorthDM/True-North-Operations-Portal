@@ -24,6 +24,7 @@ import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
 import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
+import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -514,6 +515,30 @@ export async function GET(request: Request) {
       say(`  ${y}: ${(perYear.get(y)! / 3600).toFixed(0)} h`)
     }
     say(`  total: ${(total / 3600).toFixed(0)} h across ${perYear.size} years`)
+  }
+
+  // Every money figure the report computes, at full precision, to compare
+  // against what accounting has on the invoice. The screen rounds to whole
+  // dollars, which is the thing under question, so this deliberately does not.
+  if (part === 'invoice' && url.searchParams.get('month')) {
+    const month = url.searchParams.get('month')!
+    head(`MONEY AT FULL PRECISION, ${month}`)
+    const d = await loadI7ReportData(month)
+    const r = d.report
+    if (!r) { say('no report for that month') } else {
+      say('project'.padEnd(28) + 'hours'.padStart(10) + 'cost'.padStart(16) + 'shown as'.padStart(12))
+      for (const p of r.projects) {
+        say(p.project.padEnd(28) + String(p.hours).padStart(10) + p.cost.toFixed(4).padStart(16) + ('$' + Math.round(p.cost)).padStart(12))
+      }
+      say(''.padEnd(28, '-') + '-'.repeat(38))
+      say('TOTAL'.padEnd(28) + String(r.totalHours).padStart(10) + r.totalCost.toFixed(4).padStart(16) + ('$' + Math.round(r.totalCost)).padStart(12))
+      const mme = r.projects.find(p => /moisture/i.test(p.project))
+      const rest = r.projects.filter(p => !/moisture/i.test(p.project))
+      say('')
+      say(`everything except MME: ${rest.reduce((s2, p) => s2 + p.cost, 0).toFixed(2)}`)
+      say(`MME alone:             ${(mme?.cost ?? 0).toFixed(2)}`)
+      say(`standard rate this month: ${d.stdRate}`)
+    }
   }
 
   say(`\n\n${calls} API calls, all GET.`)
