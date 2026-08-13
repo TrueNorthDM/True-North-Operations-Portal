@@ -72,9 +72,10 @@ export function GrantPassReport({ data }: { data: GrantPassData }) {
   if (!data.entries) {
     return (
       <div className="rounded-[12px] border border-amber-300/60 bg-amber-50 p-5 text-sm text-[#8a6d1a]">
-        No Grant Pass hours found. They are recognised two ways, by the deactivated GP Church and
-        GP School job codes and by the &ldquo;2 Project&rdquo; field, so an empty report here means
-        neither is in use rather than that the report is broken.
+        No Grant Pass hours found. They are recognised two ways: the deactivated GP Church and GP
+        School job codes from when it was a client of its own, and the &ldquo;2 Project&rdquo; field
+        it has been tagged with since 2022. An empty report means neither is in use, rather than
+        that the report is broken.
       </div>
     )
   }
@@ -138,12 +139,22 @@ export function GrantPassReport({ data }: { data: GrantPassData }) {
         <SliceTable title="What" rows={data.byActivity} note="From the “3 Activity” field on each entry." />
       </div>
 
-      <p className="text-xs text-muted leading-relaxed">
-        Grant Pass hours are recognised two ways, and both are counted: the deactivated
-        <span className="font-semibold"> GP Church</span> and <span className="font-semibold">GP School</span> job
-        codes, used until 2022, and the <span className="font-semibold">“2 Project”</span> field, used since. No entry
-        carries both, so nothing here is counted twice.
-      </p>
+      {/* The drop in 2022 is not a data problem, and a reader who is not told
+          will read it as one. Grant Pass stopped being a client and became a
+          line item, which is why the two halves look nothing alike. */}
+      <div className="rounded-[12px] border border-slate-200 bg-subtle p-4 text-sm text-foreground leading-relaxed space-y-2">
+        <p className="m-0">
+          <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Why the shape changes in 2022.</strong>{' '}
+          Until then Grant Pass was a client of its own, with its own job codes for Content Development,
+          Meetings, Reports, SEO and Web Development. That accounts for the first 444 hours.
+          Since 2022 it is a <span className="font-semibold">project under True North</span>, picked in the
+          “2 Project” field beside AAAF, Africa and the rest, and it comes to about 30 hours.
+        </p>
+        <p className="m-0 text-muted">
+          Both are counted here and no entry carries both tags, so nothing is doubled. The near-empty
+          months after 2022 are a real change in the relationship, not hours that went missing.
+        </p>
+      </div>
     </div>
   )
 }

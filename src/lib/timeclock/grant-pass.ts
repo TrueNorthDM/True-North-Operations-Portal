@@ -12,6 +12,12 @@
 // No entry is ever tagged both ways, in any year, so the union double-counts
 // nothing. That is why this reads both and does not have to choose one.
 //
+// The split is not a tagging quirk, it is the relationship changing. Grant Pass
+// was a client with its own job code tree until 2021, and since 2022 it is one
+// value of "2 Project" under True North, sitting beside AAAF (58,636 hours) and
+// In-House (74,615). That is why the recent months look nearly empty: 30 hours
+// in four years, against 444 in the five before.
+//
 // The volume is the other thing worth knowing: about 470 hours across nine
 // years, and roughly six a year lately. This is a history to look back at, not
 // a budget to manage, and the shape of the report follows from that.
