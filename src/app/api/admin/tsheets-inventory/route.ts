@@ -579,6 +579,84 @@ export async function GET(request: Request) {
     }
   }
 
+  // The four projects on Tina's tracking sheet, against her own figures for
+  // Jan-Jul 2026. Built before the report, not after: she has seven months of
+  // reconciled numbers, which is the only chance to find out whether our
+  // definitions of these projects are hers.
+  if (part === 'tracking') {
+    head('THE TRACKING SHEET, HERS AGAINST OURS')
+
+    const { data: fieldRows } = await supabase.from('tc_fields').select('id, external_id')
+    const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
+      .find(f => String(f.external_id) === '129636')?.id
+
+    // HFA is a job code, not a project value. The process note is explicit:
+    // "Adventist Messenger/HFA (hope for Africa) is under job code 1".
+    const { data: jcRows } = await supabase.from('tc_jobcodes').select('id, name, parent_id')
+    const jcs = (jcRows ?? []) as { id: number; name: string; parent_id: number | null }[]
+    const hfaRoot = jcs.find(j => /adventist messengers.*hfa/i.test(j.name))
+    const hfaIds = new Set<number>()
+    if (hfaRoot) {
+      hfaIds.add(hfaRoot.id)
+      const q = [hfaRoot.id]
+      while (q.length) {
+        const n = q.shift()!
+        for (const c of jcs.filter(x => x.parent_id === n)) if (!hfaIds.has(c.id)) { hfaIds.add(c.id); q.push(c.id) }
+      }
+    }
+    say(`HFA job code: ${hfaRoot ? `${hfaRoot.name} (id ${hfaRoot.id}), ${hfaIds.size} codes with children` : 'NOT FOUND'}`)
+    say(`"2 Project" field: tc_fields id ${projectKey ?? 'MISSING'}\n`)
+
+    const months = ['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07']
+    // Her "hours worked this month", read off the sheet.
+    const hers: Record<string, Record<string, number | null>> = {
+      'AAAF':        { '2026-01': 914.13, '2026-02': 921.40, '2026-03': null, '2026-04': 847.98, '2026-05': null, '2026-06': 1075.63, '2026-07': 854.25 },
+      'GP church':   { '2026-01': 0, '2026-02': 0, '2026-03': 0, '2026-04': 0, '2026-05': 0, '2026-06': 3.25, '2026-07': 0 },
+      'GP School':   { '2026-01': 0, '2026-02': 0, '2026-03': 1, '2026-04': 1, '2026-05': 0, '2026-06': 0, '2026-07': 0 },
+      'Hope for Africa': { '2026-01': 680.00, '2026-02': 644.69, '2026-03': 655.25, '2026-04': 669.36, '2026-05': 683.85, '2026-06': 705.36, '2026-07': 625.11 },
+    }
+
+    const oursFor = async (month: string, label: string) => {
+      const [y, m] = month.split('-').map(Number)
+      const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+      let secs = 0
+      if (label === 'Hope for Africa') {
+        if (!hfaIds.size) return 0
+        for (let from = 0; ; from += 1000) {
+          const { data } = await supabase.from('tc_entries').select('duration_seconds')
+            .in('jobcode_id', [...hfaIds]).gte('entry_date', `${month}-01`).lte('entry_date', end)
+            .order('id', { ascending: true }).range(from, from + 999)
+          const rs = (data ?? []) as { duration_seconds: number }[]
+          for (const r of rs) secs += r.duration_seconds
+          if (rs.length < 1000) break
+        }
+      } else if (projectKey) {
+        for (let from = 0; ; from += 1000) {
+          const { data } = await supabase.from('tc_entries').select('duration_seconds')
+            .contains('fields', { [String(projectKey)]: label })
+            .gte('entry_date', `${month}-01`).lte('entry_date', end)
+            .order('id', { ascending: true }).range(from, from + 999)
+          const rs = (data ?? []) as { duration_seconds: number }[]
+          for (const r of rs) secs += r.duration_seconds
+          if (rs.length < 1000) break
+        }
+      }
+      return secs / 3600
+    }
+
+    for (const label of ['AAAF', 'GP church', 'GP School', 'Hope for Africa']) {
+      say(`${label}`)
+      for (const month of months) {
+        const ours = await oursFor(month, label)
+        const her = hers[label][month]
+        const mark = her == null ? '(not read off the sheet)'
+          : Math.abs(ours - her) < 0.02 ? 'match' : `DIFFERS by ${(ours - her).toFixed(2)}`
+        say(`  ${month}  hers ${(her ?? 0).toFixed(2).padStart(9)}   ours ${ours.toFixed(2).padStart(9)}   ${mark}`)
+      }
+      say('')
+    }
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
