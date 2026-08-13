@@ -657,6 +657,54 @@ export async function GET(request: Request) {
     }
   }
 
+  // HFA is short by 135-190 hours every month against the tracking sheet, which
+  // is systematic rather than drift, so the definition is wrong. This crosses
+  // the job code against the project value to find where the rest is.
+  if (part === 'hfa') {
+    head('WHERE THE MISSING HOPE FOR AFRICA HOURS ARE')
+    const month = url.searchParams.get('month') ?? '2026-03'
+    const [y, m] = month.split('-').map(Number)
+    const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+
+    const { data: fieldRows } = await supabase.from('tc_fields').select('id, external_id')
+    const pk = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
+      .find(f => String(f.external_id) === '129636')?.id
+    const { data: jcRows } = await supabase.from('tc_jobcodes').select('id, name, parent_id')
+    const jcs = (jcRows ?? []) as { id: number; name: string; parent_id: number | null }[]
+    const nameOf = new Map(jcs.map(j => [j.id, j.name]))
+    const parentOf = new Map(jcs.map(j => [j.id, j.parent_id]))
+    const topName = (id: number | null): string => {
+      let cur = id
+      while (cur != null && parentOf.get(cur) != null) cur = parentOf.get(cur)!
+      return cur != null ? (nameOf.get(cur) ?? '?') : '(no job code)'
+    }
+
+    const rows: { jobcode_id: number | null; duration_seconds: number; fields: Record<string, string> | null }[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from('tc_entries')
+        .select('jobcode_id, duration_seconds, fields')
+        .gte('entry_date', `${month}-01`).lte('entry_date', end)
+        .order('id', { ascending: true }).range(from, from + 999)
+      const rs = (data ?? []) as typeof rows
+      rows.push(...rs)
+      if (rs.length < 1000) break
+    }
+    say(`${month}: ${rows.length} entries in the month\n`)
+
+    // Every combination of top-level job code and project value, by hours.
+    const combo = new Map<string, number>()
+    for (const r of rows) {
+      const proj = pk ? ((r.fields ?? {})[String(pk)] ?? '').trim() || '(no project)' : '(no field)'
+      const key = `${topName(r.jobcode_id)}  ||  ${proj}`
+      combo.set(key, (combo.get(key) ?? 0) + r.duration_seconds)
+    }
+    const sorted = [...combo.entries()].sort((a, b) => b[1] - a[1])
+    say('top-level job code  ||  2 Project'.padEnd(62) + 'hours')
+    for (const [k, secs] of sorted.slice(0, 22)) {
+      say(`${k.padEnd(62)}${(secs / 3600).toFixed(2).padStart(9)}`)
+    }
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
