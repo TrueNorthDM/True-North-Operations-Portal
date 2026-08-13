@@ -751,6 +751,42 @@ export async function GET(request: Request) {
     }
   }
 
+  // The 2025 comparison column is short for AAAF. "AAAF - ECD" is a separate
+  // project value that ran until May 2025, and if the old sheet counted the two
+  // together that is the gap.
+  if (part === 'aaaf2025') {
+    head('AAAF AND AAAF - ECD THROUGH 2025')
+    const { data: fieldRows } = await supabase.from('tc_fields').select('id, external_id')
+    const pk = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
+      .find(f => String(f.external_id) === '129636')?.id
+    const hers: Record<string, number | null> = {
+      '2025-01': 1364.00, '2025-02': 1302.50, '2025-03': null,
+      '2025-04': 1400.75, '2025-05': null, '2025-06': 1208.75, '2025-07': 1115.00,
+    }
+    const sum = async (label: string, month: string) => {
+      const [y, m] = month.split('-').map(Number)
+      const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+      let secs = 0
+      for (let from = 0; ; from += 1000) {
+        const { data } = await supabase.from('tc_entries').select('duration_seconds')
+          .contains('fields', { [String(pk)]: label })
+          .gte('entry_date', `${month}-01`).lte('entry_date', end)
+          .order('id', { ascending: true }).range(from, from + 999)
+        const rs = (data ?? []) as { duration_seconds: number }[]
+        for (const r of rs) secs += r.duration_seconds
+        if (rs.length < 1000) break
+      }
+      return secs / 3600
+    }
+    say('month      AAAF     AAAF-ECD      both        hers      both - hers')
+    for (const month of Object.keys(hers)) {
+      const a = await sum('AAAF', month)
+      const e = await sum('AAAF - ECD', month)
+      const her = hers[month]
+      say(`${month}  ${a.toFixed(2).padStart(9)}${e.toFixed(2).padStart(11)}${(a + e).toFixed(2).padStart(11)}${(her ?? 0).toFixed(2).padStart(12)}${her == null ? '   (not read)' : (a + e - her).toFixed(2).padStart(13)}`)
+    }
+  }
+
   say(`\n\n${calls} API calls, all GET.`)
   return new Response(out.join('\n'), {
     headers: { 'content-type': 'text/plain; charset=utf-8' },
