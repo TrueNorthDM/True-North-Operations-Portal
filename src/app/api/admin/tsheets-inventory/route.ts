@@ -25,6 +25,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
 import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { loadProjectTracking } from '@/lib/timeclock/projects'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -730,6 +731,23 @@ export async function GET(request: Request) {
     say('top-level job code  ||  2 Project'.padEnd(62) + 'hours')
     for (const [k, secs] of sorted.slice(0, 22)) {
       say(`${k.padEnd(62)}${(secs / 3600).toFixed(2).padStart(9)}`)
+    }
+  }
+
+  // Every row the report will render, for the seven months accounting already
+  // closed by hand. This is the check that decides whether it can be sent to
+  // them, and it runs the report itself rather than a copy of its logic.
+  if (part === 'tracking-full') {
+    head('THE REPORT, MONTH BY MONTH')
+    for (const month of ['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07']) {
+      const d = await loadProjectTracking(supabase, month)
+      say(`\n${month}`)
+      say('  project'.padEnd(30) + 'carried'.padStart(9) + 'bought'.padStart(9) + 'remain'.padStart(9) + 'worked'.padStart(10) + 'ytd'.padStart(11) + 'lastyr'.padStart(10))
+      for (const r of d.rows) {
+        const f = (v: number | null) => v == null ? '' : v.toFixed(2)
+        say(`  ${r.name.padEnd(28)}${f(r.carriedIn).padStart(9)}${f(r.boughtThisMonth).padStart(9)}${f(r.remaining).padStart(9)}${r.workedThisMonth.toFixed(2).padStart(10)}${r.yearToDate.toFixed(2).padStart(11)}${r.sameMonthLastYear.toFixed(2).padStart(10)}`)
+      }
+      say(`  ${'TOTAL'.padEnd(28)}${''.padStart(27)}${d.totals.workedThisMonth.toFixed(2).padStart(10)}${d.totals.yearToDate.toFixed(2).padStart(11)}${d.totals.sameMonthLastYear.toFixed(2).padStart(10)}`)
     }
   }
 
