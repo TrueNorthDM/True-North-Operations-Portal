@@ -3,6 +3,7 @@
 // stays in the admin Directory. Deliberately omits internal cost rate.
 
 import Link from 'next/link'
+import { leadsTeam, TIE_RANK, type TeamTie } from '@/lib/directory/team-of'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadOwnContact } from '@/lib/hr/contact'
@@ -74,8 +75,11 @@ export default async function ProfilePage() {
   const relIds = [me.manager_id, me.also_reports_to_id].filter(Boolean) as string[]
   const [relRes, tmRes, reportsRes, attRes] = await Promise.all([
     relIds.length ? supabase.from('people').select('id, full_name').in('id', relIds) : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
-    supabase.from('team_members').select('team_id').eq('person_id', me.id),
-    supabase.from('people').select('id, full_name, title').eq('manager_id', me.id),
+    supabase.from('team_members').select('team_id, position').eq('person_id', me.id),
+    // Solid line and dotted line in one pass; the teams this person leads are
+    // added below, once we know which those are.
+    supabase.from('people').select('id, full_name, title, manager_id, also_reports_to_id')
+      .or(`manager_id.eq.${me.id},also_reports_to_id.eq.${me.id}`),
     supabase.from('person_attachments').select('id, file_name').eq('person_id', me.id),
   ])
   const nameById = new Map((relRes.data ?? []).map(r => [r.id, r.full_name]))
@@ -83,7 +87,45 @@ export default async function ProfilePage() {
   const { data: teamRows } = teamIds.length ? await supabase.from('teams').select('id, name').in('id', teamIds) : { data: [] as { id: string; name: string }[] }
   const teamName = (teamRows ?? [])[0]?.name ?? null
   const teamKey = teamKeyFromName(teamName)
-  const reports = reportsRes.data ?? []
+  // Team members: the same rule the Directory card uses, from lib/directory/team-of.
+  // manager_id alone was leaving out anybody whose reporting line runs through a
+  // different team than the one they work on.
+  type Mate = { id: string; full_name: string; title: string | null; via: TeamTie; teamName: string | null }
+  const ledTeamIds = new Set(
+    ((tmRes.data ?? []) as { team_id: string; position?: string | null }[])
+      .filter(m => leadsTeam(m.position)).map(m => m.team_id))
+
+  const byId = new Map<string, Mate>()
+  for (const r of (reportsRes.data ?? []) as { id: string; full_name: string; title: string | null; manager_id: string | null; also_reports_to_id: string | null }[]) {
+    if (r.id === me.id) continue
+    byId.set(r.id, {
+      id: r.id, full_name: r.full_name, title: r.title,
+      via: r.manager_id === me.id ? 'solid' : 'dotted', teamName: null,
+    })
+  }
+
+  if (ledTeamIds.size) {
+    const { data: mateRows } = await supabase
+      .from('team_members').select('person_id, team_id').in('team_id', [...ledTeamIds])
+    const teamOf = new Map<string, string>()
+    for (const m of (mateRows ?? []) as { person_id: string; team_id: string }[]) {
+      if (m.person_id !== me.id && !byId.has(m.person_id) && !teamOf.has(m.person_id)) teamOf.set(m.person_id, m.team_id)
+    }
+    if (teamOf.size) {
+      const { data: mates } = await supabase
+        .from('people').select('id, full_name, title').in('id', [...teamOf.keys()])
+      const ledNames = new Map((teamRows ?? []).map(t => [t.id, t.name]))
+      for (const m of (mates ?? []) as { id: string; full_name: string; title: string | null }[]) {
+        byId.set(m.id, {
+          id: m.id, full_name: m.full_name, title: m.title,
+          via: 'team', teamName: ledNames.get(teamOf.get(m.id) ?? '') ?? null,
+        })
+      }
+    }
+  }
+
+  const reports = [...byId.values()].sort((a, b) =>
+    TIE_RANK[a.via] - TIE_RANK[b.via] || a.full_name.localeCompare(b.full_name))
   const attachments = attRes.data ?? []
 
   // Avatar fetched separately + gracefully (avatar_url is migration 036).
@@ -186,7 +228,14 @@ export default async function ProfilePage() {
                   <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px]" style={{ width: 30, height: 30, background: TEAM_COLOR[teamKey] }}>{initialsOf(m.full_name)}</span>
                   <span className="min-w-0">
                     <span className="block text-[13.5px] font-bold text-tn-ink truncate">{m.full_name}</span>
-                    <span className="block text-xs text-muted truncate">{m.title ?? '-'}</span>
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs text-muted truncate">{m.title ?? '-'}</span>
+                      {m.via !== 'solid' && (
+                        <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-wide text-tn-teal">
+                          {m.via === 'dotted' ? 'dotted line' : m.teamName}
+                        </span>
+                      )}
+                    </span>
                   </span>
                 </div>
               ))}
