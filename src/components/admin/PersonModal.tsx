@@ -314,8 +314,37 @@ function GroupTitle({ children, right, className = '' }: { children: ReactNode; 
 }
 
 // ── VIEW ──
+
+/** Direct reports first, then the dotted line, then the rest of the team. */
+const VIA_RANK: Record<'solid' | 'dotted' | 'team', number> = { solid: 0, dotted: 1, team: 2 }
+
 function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
-  const reports = people.filter(x => x.manager_id === p.id)
+  // My Team, the three ways somebody belongs to it, strongest first.
+  //
+  // Reading manager_id alone was leaving people out, and the ones it left out
+  // were exactly the ones this section exists to show. Cheyenne Wilson works on
+  // Graphics under Stephanie and is on the team tab under her, but her solid
+  // line goes to Writers, so a filter on manager_id could not see her. The
+  // reporting line and the team are two different facts and a team leader needs
+  // both.
+  //
+  // Each row says which one brought it here, so this does not quietly promote a
+  // dotted line into a direct report.
+  const ledTeamIds = new Set(p.teams.filter(t => t.position !== 'collaborator').map(t => t.teamId))
+  const reports = people
+    .filter(x => x.id !== p.id)
+    .map(x => {
+      const via: 'solid' | 'dotted' | 'team' | null =
+        x.manager_id === p.id ? 'solid'
+        : x.alsoReportsToId === p.id ? 'dotted'
+        : x.teams.some(t => ledTeamIds.has(t.teamId)) ? 'team'
+        : null
+      const team = via === 'team' ? x.teams.find(t => ledTeamIds.has(t.teamId)) : undefined
+      return { person: x, via, teamName: team?.teamName ?? null }
+    })
+    .filter((m): m is { person: PersonView; via: 'solid' | 'dotted' | 'team'; teamName: string | null } => m.via !== null)
+    .sort((a, b) =>
+      VIA_RANK[a.via] - VIA_RANK[b.via] || a.person.full_name.localeCompare(b.person.full_name))
   const item = (label: string, node: ReactNode) => (
     <div className="flex items-center justify-between gap-3.5">
       <span className="text-[12.5px] text-muted font-semibold shrink-0">{label}</span>
@@ -482,14 +511,21 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
 
       {reports.length > 0 && (
         <div className="mt-6">
-          <GroupTitle right={`${reports.length} ${reports.length === 1 ? 'report' : 'reports'}`}>My Team</GroupTitle>
+          <GroupTitle right={`${reports.length} ${reports.length === 1 ? 'person' : 'people'}`}>My Team</GroupTitle>
           <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
-            {reports.map(m => (
+            {reports.map(({ person: m, via, teamName }) => (
               <div key={m.id} className="flex items-center gap-2.5">
-                <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px]" style={{ width: 30, height: 30, background: TEAM_COLOR[m.teamKey] }}>{initialsOf(m.full_name)}</span>
+                <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px] shrink-0" style={{ width: 30, height: 30, background: TEAM_COLOR[m.teamKey] }}>{initialsOf(m.full_name)}</span>
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-bold text-tn-ink truncate">{m.full_name}</span>
-                  <span className="block text-xs text-muted truncate">{m.title ?? '-'}</span>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs text-muted truncate">{m.title ?? '-'}</span>
+                    {via !== 'solid' && (
+                      <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-wide text-tn-teal">
+                        {via === 'dotted' ? 'dotted line' : teamName}
+                      </span>
+                    )}
+                  </span>
                 </span>
               </div>
             ))}
