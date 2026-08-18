@@ -113,7 +113,14 @@ export async function syncPeopleCore(supabase: Client, token: string): Promise<{
     if (readErr) return { ok: false, linked: 0, imported: 0, error: readErr.message }
 
     const rows = (allPeople ?? []) as { id: string; full_name: string; tsheets_user_id: number | null; tsheets_only: boolean }[]
-    const linkedIds = new Set(rows.filter(p => p.tsheets_user_id != null).map(p => p.tsheets_user_id))
+
+    // Known accounts come from tc_user_links, not from the person column: a
+    // person can own more than one TSheets account and only the primary is on
+    // the row, so reading the column re-imported the others as new people.
+    const { data: linkRows, error: linkReadErr } = await supabase
+      .from('tc_user_links').select('tsheets_user_id')
+    if (linkReadErr) return { ok: false, linked: 0, imported: 0, error: linkReadErr.message }
+    const linkedIds = new Set((linkRows ?? []).map((l: { tsheets_user_id: number }) => l.tsheets_user_id))
     // Match targets = real directory people (not TSheets-only imports) with no link yet.
     const pool = rows.filter(p => p.tsheets_user_id == null && !p.tsheets_only)
 
@@ -133,16 +140,23 @@ export async function syncPeopleCore(supabase: Client, token: string): Promise<{
         const match = pool[matchIdx]
         const { error } = await supabase.from('people').update({ tsheets_user_id: user.id }).eq('id', match.id)
         if (error) return { ok: false, linked, imported, error: `Link failed for ${fullName}: ${error.message}` }
+        // The person had no link, so this account becomes their primary.
+        const { error: linkErr } = await supabase.from('tc_user_links')
+          .insert({ tsheets_user_id: user.id, person_id: match.id, is_primary: true })
+        if (linkErr) return { ok: false, linked, imported, error: `Link record failed for ${fullName}: ${linkErr.message}` }
         pool.splice(matchIdx, 1)               // don't match the same directory person twice
         linkedIds.add(user.id)
         linked++
       } else {
-        const { error } = await supabase.from('people').insert({
+        const { data: created, error } = await supabase.from('people').insert({
           full_name: fullName,
           tsheets_user_id: user.id,
           tsheets_only: true,
-        })
+        }).select('id').single()
         if (error) return { ok: false, linked, imported, error: `Import failed for ${fullName}: ${error.message}` }
+        const { error: linkErr } = await supabase.from('tc_user_links')
+          .insert({ tsheets_user_id: user.id, person_id: (created as { id: string }).id, is_primary: true })
+        if (linkErr) return { ok: false, linked, imported, error: `Link record failed for ${fullName}: ${linkErr.message}` }
         linkedIds.add(user.id)
         imported++
       }

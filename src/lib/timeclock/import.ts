@@ -129,38 +129,57 @@ export async function importFields(supabase: Client, token: string): Promise<num
 /**
  * People.
  *
- * Links through people.tsheets_user_id, which the existing sync already fills in
- * for everyone active. Anyone left over is a former employee who was never in
- * the directory, and is created as tsheets_only + inactive so their decade of
- * hours has an owner without cluttering the Directory. If one of them turns out
- * to be someone who is already in the directory under another spelling, the
- * existing "link to person" action in Settings merges them.
+ * Recognition goes through tc_user_links, not people.tsheets_user_id. One person
+ * can own several TSheets accounts (an old one and a current one), and the
+ * person row only carries the primary, so reading that column meant the import
+ * did not recognise the second account and created a duplicate person for it.
+ * Fifteen of those were merged in migration 063.
+ *
+ * Anyone genuinely unknown is a former employee who was never in the directory,
+ * and is created as tsheets_only + inactive so their decade of hours has an
+ * owner without cluttering the Directory. If one turns out to be someone who is
+ * already there under another spelling, "link to person" in Settings merges them.
  */
+/** Every TSheets account the portal already owns, across all its people. */
+async function loadKnownAccounts(supabase: Client): Promise<Set<number>> {
+  const known = new Set<number>()
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('tc_user_links').select('tsheets_user_id').range(from, from + 999)
+    if (error) throw new Error(`tc_user_links read: ${error.message}`)
+    const rows = (data ?? []) as { tsheets_user_id: number }[]
+    for (const r of rows) known.add(r.tsheets_user_id)
+    if (rows.length < 1000) break
+  }
+  return known
+}
+
 export async function importPeople(supabase: Client, token: string): Promise<{ linked: number; created: number }> {
   const users = await fetchAllUsers(token)
-  const { data: existing, error } = await supabase.from('people').select('id, tsheets_user_id')
-  if (error) throw new Error(`people read: ${error.message}`)
-
-  const known = new Set<number>()
-  for (const p of (existing ?? []) as { id: string; tsheets_user_id: number | null }[]) {
-    if (p.tsheets_user_id != null) known.add(p.tsheets_user_id)
-  }
+  const known = await loadKnownAccounts(supabase)
 
   let created = 0
   for (const u of users) {
     if (known.has(u.id)) continue
     const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ').trim()
     if (!fullName) continue
-    const { error: insErr } = await supabase.from('people').insert({
+    const { data: person, error: insErr } = await supabase.from('people').insert({
       full_name: fullName,
       tsheets_user_id: u.id,
       tsheets_only: true,
       status: u.active ? 'active' : 'inactive',
-    })
+    }).select('id').single()
     if (insErr) throw new Error(`people insert (${fullName}): ${insErr.message}`)
+    const { error: linkErr } = await supabase.from('tc_user_links').insert({
+      tsheets_user_id: u.id,
+      person_id: (person as { id: string }).id,
+      is_primary: true,
+    })
+    if (linkErr) throw new Error(`tc_user_links insert (${fullName}): ${linkErr.message}`)
+    known.add(u.id)
     created++
   }
-  return { linked: known.size, created }
+  return { linked: known.size - created, created }
 }
 
 // ─── Maps ───────────────────────────────────────────────────────────────────
@@ -182,14 +201,15 @@ async function loadJobcodeMap(supabase: Client): Promise<Map<number, number>> {
 export async function loadMaps(supabase: Client): Promise<Maps> {
   const jobcodeByExternal = await loadJobcodeMap(supabase)
 
+  // Account to person, from the link table: a timesheet belonging to somebody's
+  // second TSheets account has to land on the same person as their first.
   const personByTsheetsUser = new Map<number, string>()
   for (let from = 0; ; from += 1000) {
     const { data } = await supabase
-      .from('people').select('id, tsheets_user_id').not('tsheets_user_id', 'is', null).range(from, from + 999)
-    for (const r of (data ?? []) as { id: string; tsheets_user_id: number }[]) {
-      personByTsheetsUser.set(r.tsheets_user_id, r.id)
-    }
-    if (!data || data.length < 1000) break
+      .from('tc_user_links').select('tsheets_user_id, person_id').range(from, from + 999)
+    const rows = (data ?? []) as { tsheets_user_id: number; person_id: string }[]
+    for (const r of rows) personByTsheetsUser.set(r.tsheets_user_id, r.person_id)
+    if (rows.length < 1000) break
   }
 
   const fieldByExternal = new Map<number, number>()

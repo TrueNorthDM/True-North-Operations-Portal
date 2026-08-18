@@ -664,6 +664,21 @@ export type Database = {
         Update: Partial<Omit<TcEntryRow, 'id' | 'created_at'>>
         Relationships: []
       }
+      // A person's TSheets accounts. Several rows can share a person_id: the
+      // same human had an old account and a current one (migration 063).
+      tc_user_links: {
+        Row: { tsheets_user_id: number; person_id: string; is_primary: boolean; created_at: string }
+        Insert: { tsheets_user_id: number; person_id: string; is_primary?: boolean }
+        Update: Partial<{ tsheets_user_id: number; person_id: string; is_primary: boolean }>
+        Relationships: []
+      }
+      // What a merge moved, and the only record the losing row ever existed.
+      people_merges: {
+        Row: { id: number; winner_id: string; loser_id: string; loser_name: string; loser_tsheets_user_id: number | null; moved: Record<string, number>; merged_at: string }
+        Insert: { winner_id: string; loser_id: string; loser_name: string; loser_tsheets_user_id?: number | null; moved: Record<string, number> }
+        Update: never
+        Relationships: []
+      }
       tc_entry_audit: {
         Row: TcEntryAuditRow
         Insert: Partial<Omit<TcEntryAuditRow, 'id' | 'changed_at'>> & { action: string }
@@ -745,6 +760,13 @@ export type Database = {
       accessible_site_ids: {
         Args: { uid: string }
         Returns: { site_id: string }[]
+      }
+      // merge_people(winner, loser), migration 063. Moves everything that points
+      // at the loser onto the winner, keeps both TSheets accounts, deletes the
+      // loser. Returns a count per table of what moved.
+      merge_people: {
+        Args: { winner: string; loser: string }
+        Returns: Record<string, number>
       }
     }
     Enums: Record<string, never>

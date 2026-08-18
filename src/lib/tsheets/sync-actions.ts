@@ -28,25 +28,20 @@ export async function linkTsheetsPersonToDirectory(input: {
 
   const supabase = await createClient()
 
-  // Read the TSheets link off the imported row.
-  const { data: src, error: srcErr } = await supabase
-    .from('people')
-    .select('id, tsheets_user_id')
-    .eq('id', input.tsheetsOnlyPersonId)
-    .maybeSingle()
-  if (srcErr) return { ok: false, error: srcErr.message }
-  if (!src || src.tsheets_user_id == null) return { ok: false, error: 'That person has no TSheets link to move.' }
-
-  // Delete the import first to free the unique tsheets_user_id, then assign it
-  // to the real person. Rates (keyed by tsheets_user_id) follow automatically.
-  const { error: delErr } = await supabase.from('people').delete().eq('id', input.tsheetsOnlyPersonId)
-  if (delErr) return { ok: false, error: delErr.message }
-
-  const { error: updErr } = await supabase
-    .from('people')
-    .update({ tsheets_user_id: src.tsheets_user_id })
-    .eq('id', input.directoryPersonId)
-  if (updErr) return { ok: false, error: updErr.message }
+  // Hands the whole thing to merge_people (migration 063). What this used to do
+  // was delete the imported row and then move its TSheets id across, in two
+  // statements with no transaction between them. That cannot work any more and
+  // should not have worked before: the delete is refused outright once the
+  // person has hours, ON DELETE RESTRICT; and when it did go through, anything
+  // hanging off the imported row (team membership, submissions, absences) was
+  // cascaded away in silence while grants, which have no foreign key, were left
+  // pointing at somebody who no longer existed. The function moves all of it,
+  // records what it moved, and keeps every TSheets account the two rows had.
+  const { error } = await supabase.rpc('merge_people', {
+    winner: input.directoryPersonId,
+    loser: input.tsheetsOnlyPersonId,
+  })
+  if (error) return { ok: false, error: error.message }
 
   revalidatePath('/settings')
   revalidatePath('/admin/people')
