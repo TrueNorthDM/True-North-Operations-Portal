@@ -67,9 +67,16 @@ export default async function ProjectsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Page header */}
+      {/* Page header. The trail names where this lives rather than where the
+          reader came from: it is a tool inside Tools & Dashboards, and the two
+          site pages hang off it. */}
       <div>
-        <h1 className="text-2xl font-extrabold text-tn-ink">Projects</h1>
+        <div className="flex items-center gap-2 text-sm text-muted mb-1">
+          <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools &amp; Dashboards</Link>
+          <span>/</span>
+          <span className="text-foreground">Href Link Management</span>
+        </div>
+        <h1 className="text-2xl font-extrabold text-tn-ink">Href Link Management</h1>
         <p className="text-muted mt-1">
           Manage hreflang tag workflows for AAAF and HFA WordPress sites.
         </p>

@@ -158,7 +158,9 @@ export function PageDetail({
       {/* Header + at-a-glance status */}
       <div>
         <div className="flex items-center gap-2 text-sm text-muted mb-1">
-          <Link href="/" className="hover:text-tn-ink transition-colors">Dashboard</Link>
+          <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools &amp; Dashboards</Link>
+          <span>/</span>
+          <Link href="/projects" className="hover:text-tn-ink transition-colors">Href Link Management</Link>
           <span>/</span>
           <Link href={`/${siteCode}`} className="hover:text-tn-ink transition-colors uppercase">{siteCode}</Link>
           <span>/</span>
