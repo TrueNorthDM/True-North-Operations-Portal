@@ -16,6 +16,7 @@
  */
 
 import Link from 'next/link'
+import { SearchField } from '@/components/ui/SearchField'
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { roleTypePill, statusPill, formatDate, teamKeyFromName, typePill, timePill, ynPill, lifecyclePill, PILL_CLASS, TEAM_COLOR, type TeamKey } from '@/lib/directory/people-types'
@@ -161,12 +162,11 @@ export function RestrictedDirectory({
       {showTeams && tab === 'teams' && <TeamsView teams={teams} />}
 
       <div className={showTeams && tab === 'teams' ? 'hidden' : 'contents'}>
-      <input
-        type="text"
+      <SearchField
         value={q}
-        onChange={e => setQ(e.target.value)}
+        onChange={setQ}
         placeholder="Search people…"
-        className="w-full max-w-[420px] text-[14px] text-tn-ink bg-white border border-slate-200 rounded-[12px] px-4 py-2.5 focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20"
+        className="w-full max-w-[420px]"
       />
 
       <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">

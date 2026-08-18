@@ -13,6 +13,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { SearchField } from '@/components/ui/SearchField'
 import { useRouter } from 'next/navigation'
 import { saveTrAssignment, savePersonCostRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
@@ -266,16 +267,12 @@ export function PeopleTab({ people, allClients }: Props) {
     <div>
       {/* toolbar */}
       <div className="flex items-center gap-3.5 flex-wrap mb-[18px]">
-        <div className="relative flex-1 min-w-[230px] max-w-[340px]">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="absolute left-[13px] top-1/2 -translate-y-1/2 text-muted"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-          <input
-            type="text"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder="Search people…"
-            className="w-full text-sm text-tn-ink bg-white border border-slate-200 rounded-[11px] pl-[38px] pr-3.5 py-[11px] focus:outline-none focus:border-tn-teal"
-          />
-        </div>
+        <SearchField
+          value={q}
+          onChange={setQ}
+          placeholder="Search people…"
+          className="flex-1 min-w-[230px] max-w-[340px]"
+        />
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
       </div>
 

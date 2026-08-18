@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import { SearchField } from '@/components/ui/SearchField'
 import { Select } from '@/components/ui/Select'
 import { BOARDS } from '@/lib/boards/config'
 import { fetchSnapshot } from '@/lib/boards/data'
@@ -150,11 +151,12 @@ export function TranslationView() {
 
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
-            <input
+            <SearchField
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={setQuery}
               placeholder="Search items, people, stage…"
-              className="flex-1 min-w-[200px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="flex-1 min-w-[200px]"
+              focus="focus:ring-2 focus:ring-slate-400"
             />
             <Select
               value={boardFilter}

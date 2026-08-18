@@ -9,6 +9,7 @@
  */
 
 import Link from 'next/link'
+import { SearchField } from '@/components/ui/SearchField'
 import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Tooltip, Popover, PopoverItem, SortHeader } from './PageListParts'
@@ -286,31 +287,13 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     <>
       {/* Toolbar: search + filter dropdowns + counts. */}
       <div className="rounded-xl bg-white border border-slate-200 p-4 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${rows.length} pages by name…`}
-            className={`w-full pl-9 pr-9 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 ${a.ring}`}
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors text-base leading-none"
-            >
-              ×
-            </button>
-          )}
-        </div>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder={`Search ${rows.length} pages by name…`}
+          className="flex-1 min-w-[240px]"
+          focus={`focus:ring-2 ${a.ring}`}
+        />
 
         {/* Status dropdown, single select. Button shows the active value
             so users don't have to open the menu to remember. */}

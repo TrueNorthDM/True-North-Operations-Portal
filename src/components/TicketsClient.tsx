@@ -8,6 +8,7 @@
  */
 
 import Link from 'next/link'
+import { SearchField } from '@/components/ui/SearchField'
 import { useMemo, useState } from 'react'
 import { Select } from '@/components/ui/Select'
 import {
@@ -145,18 +146,12 @@ export function TicketsClient() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px] max-w-[340px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search tickets…"
-            className="w-full rounded-[10px] border border-slate-200 pl-9 pr-3 py-2.5 text-[13.5px] text-tn-ink placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-tn-teal/30"
-          />
-        </div>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Search tickets…"
+          className="flex-1 min-w-[220px] max-w-[340px]"
+        />
         <Select
           value={filType}
           onChange={v => setFilType(v as TicketType | '')}

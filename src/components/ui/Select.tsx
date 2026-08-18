@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { SearchField } from '@/components/ui/SearchField'
 import { createPortal } from 'react-dom'
 
 export interface SelectOption { value: string; label: string; disabled?: boolean }
@@ -104,13 +105,15 @@ export function Select({
         >
           {searchable && (
             <div className="sticky top-0 -mx-1.5 -mt-1.5 mb-1.5 px-1.5 pt-1.5 pb-1 bg-white">
-              <input
-                ref={searchRef}
-                type="text"
+              {/* Escape clears the filter first and closes the menu on the
+                  second press, which is how a combobox is expected to behave. */}
+              <SearchField
+                inputRef={searchRef}
+                size="sm"
                 value={query}
-                onChange={e => setQuery(e.target.value)}
+                onChange={setQuery}
                 placeholder="Search…"
-                className="w-full text-[13px] text-tn-ink bg-subtle border border-slate-200 rounded-[8px] px-2.5 py-1.5 focus:outline-none focus:border-tn-teal"
+                focus="focus:border-tn-teal"
               />
             </div>
           )}
