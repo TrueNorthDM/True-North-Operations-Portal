@@ -149,31 +149,31 @@ export async function loadI7EntriesHere(
 export async function loadI7UniverseHere(
   supabase: Client,
   since: string,
-): Promise<{ jobcodes: string[]; userIds: number[] }> {
-  const [keys, jobcodeIds, people] = await Promise.all([
+): Promise<{ jobcodes: string[] }> {
+  const [keys, jobcodeIds] = await Promise.all([
     fieldKeys(supabase),
     i7JobcodeIdsHere(supabase),
-    userIdByPerson(supabase),
   ])
 
+  // The roster used to be collected here too, to hold a column open for
+  // everyone who had touched i7 in the window. Columns now follow the month
+  // being read, so this no longer resolves people at all: one query fewer, and
+  // no list that looks like it still decides something.
   const codes = new Set<string>()
-  const userIds = new Set<number>()
   for (let from = 0; ; from += PAGE) {
     const { data } = await supabase
-      .from('tc_entries').select('person_id, jobcode_id, fields')
+      .from('tc_entries').select('jobcode_id, fields')
       .gte('entry_date', since)
       .order('id', { ascending: true }).range(from, from + PAGE - 1)
     const rows = (data ?? []) as {
-      person_id: string; jobcode_id: number | null; fields: Record<string, string> | null
+      jobcode_id: number | null; fields: Record<string, string> | null
     }[]
     for (const r of rows) {
       if (r.jobcode_id == null || !jobcodeIds.has(r.jobcode_id)) continue
-      const userId = people.get(r.person_id)
-      if (userId != null) userIds.add(userId)
       const code = (keys.code ? (r.fields ?? {})[keys.code] : '')?.trim()
       if (code) codes.add(code)
     }
     if (rows.length < PAGE) break
   }
-  return { jobcodes: [...codes], userIds: [...userIds] }
+  return { jobcodes: [...codes] }
 }

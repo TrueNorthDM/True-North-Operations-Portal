@@ -45,6 +45,33 @@ describe('buildI7Report', () => {
     expect(r.people).toEqual(expect.arrayContaining(['Alice', 'Bob']))
   })
 
+  // A column is a person, and a person with no hours this month has no column.
+  // The rows behave the other way round on purpose: a budgeted project that was
+  // not worked still shows, reading zero.
+  it('gives a column only to people with hours in the month', () => {
+    const r = buildI7Report(entries, rates, { ...names, 3: 'Barack' }, '2026-07-01')
+    expect(r.people).toEqual(['Alice', 'Bob'])
+    expect(r.people).not.toContain('Barack')
+  })
+
+  it('keeps a budgeted project without hours, as a row reading zero', () => {
+    const r = buildI7Report(entries, rates, names, '2026-07-01', {
+      projects: ['Wagner Meters (WM)', 'Bessemeter', 'Moisture Meters (MME)'],
+      jobcodesByProject: { 'Moisture Meters (MME)': ['MME-X'] },
+    })
+    const mme = r.projects.find(p => p.project === 'Moisture Meters (MME)')!
+    expect(mme.hours).toBe(0)
+    expect(r.people).toEqual(['Alice', 'Bob'])   // and still no empty columns
+  })
+
+  it('does not buy a column with an entry that rounds to nothing', () => {
+    const r = buildI7Report(
+      [...entries, { user_id: 3, duration: 1, date: '2026-07-04', i7Code: 'WM-SEO', activity: 'SEO: Routine' }],
+      rates, { ...names, 3: 'Barack' }, '2026-07-01',
+    )
+    expect(r.people).not.toContain('Barack')
+  })
+
   it('sets hasRates only when a rate is present', () => {
     expect(buildI7Report(entries, {}, names, '2026-07-01').hasRates).toBe(false)
     expect(buildI7Report(entries, rates, names, '2026-07-01').hasRates).toBe(true)

@@ -59,12 +59,18 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-// The fixed structure to always render, so every project / job code / person
-// shows every month even with zero hours (only activities stay conditional).
+// The fixed structure to always render, so every project and job code shows
+// every month even with zero hours (activities stay conditional).
+//
+// People are NOT in here, and that is the point. The rows are a plan: a project
+// budgeted and not worked is information, so its row stays and reads zero. A
+// column is a person, and a person who logged nothing that month is not a zero,
+// it is an absence. Carrying the whole roster meant August showed columns for
+// everyone who had touched i7 in the retention window, most of them empty,
+// pushing the people who did work off the side of the page.
 export interface I7Universe {
   projects: string[]                          // all projects, always shown
   jobcodesByProject: Record<string, string[]> // project → its job codes, always shown
-  people: string[]                            // full person roster (column headers)
 }
 
 export function buildI7Report(
@@ -110,7 +116,8 @@ export function buildI7Report(
   }
 
   const projects: I7Project[] = []
-  const allPeople = new Set<string>()
+  // Name → hours this month, which is what decides whether they get a column.
+  const personTotals = new Map<string, number>()
   let totalHours = 0
   let totalCost = 0
 
@@ -134,7 +141,7 @@ export function buildI7Report(
         const aByPerson = new Map<string, number>()
         for (const [userId, leaf] of ppl) {
           const name = namesByUser[userId] ?? `User ${userId}`
-          allPeople.add(name)
+          personTotals.set(name, (personTotals.get(name) ?? 0) + leaf.hours)
           aByPerson.set(name, (aByPerson.get(name) ?? 0) + leaf.hours)
           cByPerson.set(name, (cByPerson.get(name) ?? 0) + leaf.hours)
           pByPerson.set(name, (pByPerson.get(name) ?? 0) + leaf.hours)
@@ -156,8 +163,13 @@ export function buildI7Report(
     totalCost += pCost
   }
   projects.sort((a, b) => a.project.localeCompare(b.project))
-  // Column set = the full roster (universe) ∪ anyone who logged hours this month.
-  const people = [...new Set([...(universe?.people ?? []), ...allPeople])].sort((a, b) => a.localeCompare(b))
+  // Column set = whoever logged hours in this month, and nobody else. Rounded
+  // before the test so an entry of a few seconds does not buy a column that
+  // then reads as a dash.
+  const people = [...personTotals.entries()]
+    .filter(([, hours]) => round2(hours) > 0)
+    .map(([name]) => name)
+    .sort((a, b) => a.localeCompare(b))
 
   const [year, monthIdx] = startDate.split('-').map(Number)
   const month = `${MONTH_NAMES[monthIdx - 1]} ${year}`

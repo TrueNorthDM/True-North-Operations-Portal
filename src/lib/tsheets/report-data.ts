@@ -46,9 +46,9 @@ async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]>
   return loadI7EntriesHere(supabase, start, end)
 }
 
-// Full universe of i7 job codes + people ever seen (the scaffold that keeps
+// Full universe of i7 job codes ever seen (the scaffold that keeps
 // zero-hour projects and codes on screen), from the same source as the entries.
-async function loadUniverse(): Promise<{ jobcodes: string[]; userIds: number[] }> {
+async function loadUniverse(): Promise<{ jobcodes: string[] }> {
   const supabase = await createClient()
   // The same window the month picker offers, which is what the old cache
   // effectively scanned: it was pruned to exactly this range.
@@ -162,7 +162,6 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   // per-person TSheets hours × their Rate/client (report.totalCost, below).
   const monthlyBudgets: Record<string, number> = { ...budgetInputs.flat }
 
-  const rosterIds = new Set<number>([...universe.userIds, ...assignments.map(a => a.userId)])
   const jobcodesByProject: Record<string, string[]> = {}
   const projSet = new Set<string>(I7_PROJECTS)
   for (const code of universe.jobcodes) {
@@ -170,11 +169,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     projSet.add(proj)
     ;(jobcodesByProject[proj] ??= []).push(code)
   }
-  const universeArg = {
-    projects: [...projSet],
-    jobcodesByProject,
-    people: [...new Set([...rosterIds].map(id => names[id] ?? `User ${id}`))],
-  }
+  const universeArg = { projects: [...projSet], jobcodesByProject }
 
   const selEntries = entries.filter(e => e.date.slice(0, 7) === selectedMonth)
   const ratesSel: Record<number, number> = {}
