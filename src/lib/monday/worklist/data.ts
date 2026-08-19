@@ -31,6 +31,22 @@ const PAGE = 1000
  */
 const UNFILTERED_CAP = 5000
 
+/**
+ * How far back finished work is kept on the page.
+ *
+ * Everything ever assigned is in the database and none of it is deleted, but a
+ * work list that opens on nine years of finished steps is not a work list. Six
+ * months is the span in which "did we do that?" is still a live question:
+ * long enough to cover a quarter and the one before it, short enough that the
+ * finished block stays readable.
+ *
+ * Measured on when the ITEM last changed in Monday, because a step does not
+ * record when it was completed. That is an approximation and the page says so:
+ * an item touched for an unrelated reason keeps its finished steps in view
+ * longer than they deserve.
+ */
+export const COMPLETED_MONTHS = 6
+
 export interface WorkRow {
   id: number
   boardId: number
@@ -57,6 +73,12 @@ export interface WorkRow {
   dueLabel: string | null
   /** Straight to the item in Monday. Null only while the slug is unknown. */
   url: string | null
+  /**
+   * Whether the Monday account behind this row is a person we know. False for
+   * deleted accounts and anyone not linked yet, which is what the Unknown user
+   * block collects: their work is real, it just has nobody to file it under.
+   */
+  assigneeKnown: boolean
   mondayUserId: number
   who: string
   itemUpdatedAt: string | null
@@ -183,11 +205,19 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     due_date: string | null; item_updated_at: string | null
     parent_item_id: number | null; parent_board_id: number | null
   }
+  const since = new Date()
+  since.setMonth(since.getMonth() - COMPLETED_MONTHS)
+  const sinceIso = since.toISOString()
+
   const SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at'
   const applyFilters = (q: any): any => {
     let out = q
     if (onlyAccounts) out = out.in('monday_user_id', onlyAccounts)
-    if (!f.includeDone) out = out.or('status_done.is.null,status_done.eq.false')
+    if (!f.includeDone) {
+      // Open work, plus finished work from the recent past. Both are wanted on
+      // the page; the difference is which block they land in.
+      out = out.or(`status_done.is.null,status_done.eq.false,item_updated_at.gte.${sinceIso}`)
+    }
     return out
   }
 
@@ -251,6 +281,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       dueSuspect: a.due_date != null && !plausible(a.due_date),
       dueLabel: b.date_title ?? null,
       url: itemUrl(a),
+      assigneeKnown: pid != null,
       mondayUserId: a.monday_user_id,
       who: (pid ? personName.get(pid) : undefined) ?? mondayName.get(a.monday_user_id) ?? `User ${a.monday_user_id}`,
       itemUpdatedAt: a.item_updated_at,

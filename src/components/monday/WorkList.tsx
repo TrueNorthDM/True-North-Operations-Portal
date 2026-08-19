@@ -17,7 +17,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { PullInfo } from '@/components/PullInfo'
+import { COMPLETED_MONTHS } from '@/lib/monday/worklist/data'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
+
+interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: string }
 
 interface Option { value: string; label: string }
 
@@ -219,6 +222,157 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
   )
 }
 
+/**
+ * One collapsible block of rows.
+ *
+ * Three of them, because the rows answer three different questions and mixing
+ * them makes each one harder to read: work with nobody behind it needs an
+ * admin, open work needs doing, and finished work is only there to be checked
+ * against. Each keeps its own open/closed state so the page can start with the
+ * one you want.
+ */
+function Block({
+  title, note, rows, open, onToggle, onPick, tone = 'default',
+}: {
+  title: string
+  note?: string
+  rows: Prepared[]
+  open: boolean
+  onToggle: () => void
+  onPick: (r: WorkRow) => void
+  tone?: 'default' | 'quiet'
+}) {
+  return (
+    <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-amber-300/60' : 'border-slate-200'} bg-white overflow-hidden`}>
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors ${tone === 'quiet' ? 'bg-amber-50 hover:bg-amber-100/60' : 'hover:bg-subtle'}`}
+      >
+        <span className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden="true">›</span>
+        <span className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[15px]">{title}</span>
+        <span className="text-xs font-bold text-muted">{rows.length}</span>
+        {note && <span className="text-xs text-muted ml-auto text-right">{note}</span>}
+      </button>
+
+      {open && rows.length === 0 && (
+        <div className="px-5 py-8 text-center text-sm text-muted border-t border-slate-100">Nothing here.</div>
+      )}
+
+      {open && rows.length > 0 && (
+        <div className="border-t border-slate-100 overflow-x-auto">
+      <div className="rounded-[14px] border border-slate-200 bg-white overflow-x-auto">
+        {/* Fixed layout so a long item name cannot starve the columns after
+            it. Text wraps to two lines; the date does not, because a broken
+            date is unreadable in a way a broken title is not. */}
+        <table className="w-full min-w-[1180px] text-sm table-fixed">
+          <colgroup>
+            <col className="w-[16%]" />
+            <col className="w-[11%]" />
+            <col className="w-[11%]" />
+            <col className="w-[9%]" />
+            <col className="w-[11%]" />
+            <col className="w-[10%]" />
+            <col className="w-[11%]" />
+            <col className="w-[8%]" />
+            <col className="w-[7%]" />
+            <col className="w-[6%]" />
+            <col className="w-[4%]" />
+          </colgroup>
+          <thead>
+            <tr className="bg-subtle border-b border-slate-200 text-left">
+            <th className={th}>Item</th>
+            <th className={th}>Parent item</th>
+            <th className={th}>Board</th>
+            <th className={th}>Workspace</th>
+            <th className={th}>Assignee</th>
+            <th className={th}>Step</th>
+            <th className={th}>Status</th>
+            <th className={`${th} text-right`}>Due</th>
+            <th className={`${th} text-right`}>Time</th>
+            <th className={th}>&nbsp;</th>
+            <th className={`${th} text-right`}>Monday</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ row: r, due: d }) => (
+            <tr
+              key={r.id}
+              onClick={() => onPick(r)}
+              className="border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors cursor-pointer"
+            >
+              <td className="px-4 py-2.5 font-semibold text-tn-ink align-top">
+                <span className="block line-clamp-2 break-words" title={r.itemName}>{r.itemName}</span>
+              </td>
+              {/* Only a subitem has one, and the parent is the name a
+                  person recognises: "Portuguese" means nothing without
+                  the page it belongs to. */}
+              <td className="px-4 py-2.5 text-muted align-top">
+                {r.parentItemName
+                  ? <span className="block line-clamp-2 break-words" title={r.parentItemName}>{r.parentItemName}</span>
+                  : <span className="text-slate-300">-</span>}
+              </td>
+              <td className="px-4 py-2.5 text-muted align-top">
+                <span className="block line-clamp-2 break-words" title={r.boardName}>{r.boardName}</span>
+              </td>
+              <td className="px-4 py-2.5 text-muted align-top">
+                <span className="block line-clamp-2 break-words">{r.workspaceName ?? '-'}</span>
+              </td>
+              <td className="px-4 py-2.5 text-tn-ink align-top">
+                <span className="block line-clamp-2 break-words">{r.who}</span>
+              </td>
+              <td className="px-4 py-2.5 text-muted align-top">
+                <span className="block line-clamp-2 break-words">{r.stepName}</span>
+              </td>
+              <td className="px-4 py-2.5 align-top">
+                {r.statusText
+                  ? <StatusChip text={r.statusText} colour={r.statusColor} />
+                  : <span className="text-slate-300">-</span>}
+              </td>
+              {(() => (
+                  <>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap text-tn-ink align-top">
+                    {d ? d.date : <span className="text-slate-300">-</span>}
+                  </td>
+                  <td className={`px-4 py-2.5 text-right text-xs align-top ${d ? DUE_TIME[d.state] : ''}`}>
+                    {d?.time || (d ? '' : <span className="text-slate-300">-</span>)}
+                  </td>
+                  <td className="px-4 py-2.5 align-top">
+                    {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
+                  </td>
+                  </>
+              ))()}
+              <td className="px-4 py-2.5 text-right align-top">
+                {r.url ? (
+                  <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  // The row opens the history; this opens Monday. The
+                  // inner target has to stop the outer one or a click
+                  // does both.
+                  onClick={e => e.stopPropagation()}
+                  aria-label={`Open ${r.itemName} in Monday`}
+                  title="Open in Monday"
+                  className="inline-flex items-center justify-center p-1.5 rounded text-muted hover:text-tn-teal hover:bg-slate-100 transition-colors"
+                  >
+                  <EyeIcon />
+                  </a>
+                ) : (
+                  <span className="text-slate-300">-</span>
+                )}
+              </td>
+            </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function WorkList({
   data, people, teams, selfPersonId, isAdmin = false,
 }: {
@@ -236,6 +390,9 @@ export function WorkList({
   // decide which rows are fetched, and typing would re-query the database on
   // every keystroke to narrow rows the browser already has.
   const [q, setQ] = useState('')
+  // Unknown user starts closed: it is an admin's queue, not the reader's work,
+  // and it should not be the first thing between somebody and their list.
+  const [openBlocks, setOpenBlocks] = useState({ unknown: false, ongoing: true, completed: false })
 
   const person = params.get('person') ?? selfPersonId ?? ''
   const team = params.get('team') ?? ''
@@ -278,6 +435,14 @@ export function WorkList({
   const needle = q.trim().toLowerCase()
   const rows = needle ? prepared.filter(p2 => p2.hay.includes(needle)) : prepared
 
+  // Nobody behind the account comes first as a category, because those rows
+  // cannot be filtered by team and would otherwise sit unexplained among work
+  // that can.
+  const unknown = rows.filter(r => !r.row.assigneeKnown)
+  const known = rows.filter(r => r.row.assigneeKnown)
+  const ongoing = known.filter(r => r.row.statusDone !== true)
+  const completed = known.filter(r => r.row.statusDone === true)
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3 flex-wrap">
@@ -307,7 +472,7 @@ export function WorkList({
             includeDone ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.06)]' : 'border-slate-200 text-muted hover:text-tn-ink'
           }`}
         >
-          {includeDone ? 'Showing finished steps' : 'Open steps only'}
+          {includeDone ? `Finished work: all of it` : `Finished work: ${COMPLETED_MONTHS} months`}
         </button>
         <span className="text-sm text-muted ml-auto">
           {needle
@@ -359,125 +524,39 @@ export function WorkList({
         </div>
       )}
 
-      {rows.length === 0 && (
-        <div className="rounded-[14px] border border-slate-200 bg-white px-6 py-12 text-center text-sm text-muted">
-          {needle ? `Nothing matches "${q}".` : 'Nothing open here.'}
-          {needle && data.truncated && (
-            <div className="mt-2 text-xs">
-              {`Searching within the first ${data.total} of ${data.matching} steps. Pick a person or a team to search all of theirs.`}
-            </div>
-          )}
-        </div>
-      )}
+      <Block
+        title="Unknown user"
+        note="Work on a Monday account with nobody behind it"
+        rows={unknown}
+        open={openBlocks.unknown}
+        onToggle={() => setOpenBlocks(b => ({ ...b, unknown: !b.unknown }))}
+        onPick={setOpenRow}
+        tone="quiet"
+      />
 
-      {rows.length > 0 && (
-        <div className="rounded-[14px] border border-slate-200 bg-white overflow-x-auto">
-          {/* Fixed layout so a long item name cannot starve the columns after
-              it. Text wraps to two lines; the date does not, because a broken
-              date is unreadable in a way a broken title is not. */}
-          <table className="w-full min-w-[1180px] text-sm table-fixed">
-            <colgroup>
-              <col className="w-[16%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[9%]" />
-              <col className="w-[11%]" />
-              <col className="w-[10%]" />
-              <col className="w-[11%]" />
-              <col className="w-[8%]" />
-              <col className="w-[7%]" />
-              <col className="w-[6%]" />
-              <col className="w-[4%]" />
-            </colgroup>
-            <thead>
-              <tr className="bg-subtle border-b border-slate-200 text-left">
-                <th className={th}>Item</th>
-                <th className={th}>Parent item</th>
-                <th className={th}>Board</th>
-                <th className={th}>Workspace</th>
-                <th className={th}>Assignee</th>
-                <th className={th}>Step</th>
-                <th className={th}>Status</th>
-                <th className={`${th} text-right`}>Due</th>
-                <th className={`${th} text-right`}>Time</th>
-                <th className={th}>&nbsp;</th>
-                <th className={`${th} text-right`}>Monday</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ row: r, due: d }) => (
-                <tr
-                  key={r.id}
-                  onClick={() => setOpenRow(r)}
-                  className="border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors cursor-pointer"
-                >
-                  <td className="px-4 py-2.5 font-semibold text-tn-ink align-top">
-                    <span className="block line-clamp-2 break-words" title={r.itemName}>{r.itemName}</span>
-                  </td>
-                  {/* Only a subitem has one, and the parent is the name a
-                      person recognises: "Portuguese" means nothing without
-                      the page it belongs to. */}
-                  <td className="px-4 py-2.5 text-muted align-top">
-                    {r.parentItemName
-                      ? <span className="block line-clamp-2 break-words" title={r.parentItemName}>{r.parentItemName}</span>
-                      : <span className="text-slate-300">-</span>}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted align-top">
-                    <span className="block line-clamp-2 break-words" title={r.boardName}>{r.boardName}</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted align-top">
-                    <span className="block line-clamp-2 break-words">{r.workspaceName ?? '-'}</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-tn-ink align-top">
-                    <span className="block line-clamp-2 break-words">{r.who}</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted align-top">
-                    <span className="block line-clamp-2 break-words">{r.stepName}</span>
-                  </td>
-                  <td className="px-4 py-2.5 align-top">
-                    {r.statusText
-                      ? <StatusChip text={r.statusText} colour={r.statusColor} />
-                      : <span className="text-slate-300">-</span>}
-                  </td>
-                  {(() => (
-                      <>
-                        <td className="px-4 py-2.5 text-right whitespace-nowrap text-tn-ink align-top">
-                          {d ? d.date : <span className="text-slate-300">-</span>}
-                        </td>
-                        <td className={`px-4 py-2.5 text-right text-xs align-top ${d ? DUE_TIME[d.state] : ''}`}>
-                          {d?.time || (d ? '' : <span className="text-slate-300">-</span>)}
-                        </td>
-                        <td className="px-4 py-2.5 align-top">
-                          {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
-                        </td>
-                      </>
-                  ))()}
-                  <td className="px-4 py-2.5 text-right align-top">
-                    {r.url ? (
-                      <a
-                        href={r.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        // The row opens the history; this opens Monday. The
-                        // inner target has to stop the outer one or a click
-                        // does both.
-                        onClick={e => e.stopPropagation()}
-                        aria-label={`Open ${r.itemName} in Monday`}
-                        title="Open in Monday"
-                        className="inline-flex items-center justify-center p-1.5 rounded text-muted hover:text-tn-teal hover:bg-slate-100 transition-colors"
-                      >
-                        <EyeIcon />
-                      </a>
-                    ) : (
-                      <span className="text-slate-300">-</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Block
+        title="On-going"
+        note="Steps still open"
+        rows={ongoing}
+        open={openBlocks.ongoing}
+        onToggle={() => setOpenBlocks(b => ({ ...b, ongoing: !b.ongoing }))}
+        onPick={setOpenRow}
+      />
+
+      <Block
+        title="Completed"
+        note={includeDone
+          ? 'Finished, all of it'
+          : `Finished, item touched in the last ${COMPLETED_MONTHS} months`}
+        rows={completed}
+        open={openBlocks.completed}
+        onToggle={() => setOpenBlocks(b => ({ ...b, completed: !b.completed }))}
+        onPick={setOpenRow}
+      />
+
+      <p className="text-xs text-muted leading-relaxed m-0">
+        {`Completed shows steps finished where the item was last changed in Monday within ${COMPLETED_MONTHS} months, which the filter above can widen to everything. Nothing is deleted: older finished work stays in the database and out of this page, because a work list that opens on nine years of finished steps is not a work list. Monday does not record when a step was completed, so the item's last change is used instead, which keeps a step in view a little longer when the item was touched for some other reason.`}
+      </p>
 
       {openRow && <HistoryPanel row={openRow} onClose={() => setOpenRow(null)} />}
     </div>

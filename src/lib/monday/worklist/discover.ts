@@ -225,19 +225,31 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     })(),
     synced_at: now,
   }))
+  // Read before the upsert overwrites it: the comparison is against what the
+  // board was reading a moment ago.
+  const { data: before } = await supabase.from('monday_boards').select('id, date_col')
+  const wasUsing = new Map(((before ?? []) as { id: number; date_col: string | null }[])
+    .map(b => [b.id, b.date_col]))
+
   for (let i = 0; i < boardRows.length; i += 200) {
     const { error } = await supabase.from('monday_boards').upsert(boardRows.slice(i, i + 200), { onConflict: 'id' })
     if (error) throw new Error(`monday_boards upsert: ${error.message}`)
   }
 
-  // A board that just lost its date column still carries the dates that column
-  // produced. Clearing them here rather than waiting for the board's turn in
-  // the ingest queue: a wrong deadline should stop being shown the moment it is
-  // known to be wrong, not hours later.
-  const dropped = boardRows.filter(b => b.date_col == null).map(b => b.id)
-  for (let i = 0; i < dropped.length; i += 200) {
+  // Dates that came from a column this board no longer reads.
+  //
+  // The first version of this only cleared boards that lost their date column
+  // outright, and missed the case that actually mattered: a board that SWAPPED
+  // one column for another kept showing the old column's values, so BM -
+  // General Audits switched from "Published On" to "Audit By" and went on
+  // reporting year 202 as though nothing had changed. Any change of source
+  // invalidates what the old source produced, not just its removal.
+  const changed = boardRows
+    .filter(b => wasUsing.has(b.id) && wasUsing.get(b.id) !== b.date_col)
+    .map(b => b.id)
+  for (let i = 0; i < changed.length; i += 200) {
     await supabase.from('monday_assignments')
-      .update({ due_date: null }).in('board_id', dropped.slice(i, i + 200)).not('due_date', 'is', null)
+      .update({ due_date: null }).in('board_id', changed.slice(i, i + 200)).not('due_date', 'is', null)
   }
 
   const withPeople = boards.filter(b => (b.columns ?? []).some(c => PEOPLE_TYPES.has(c.type)))

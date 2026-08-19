@@ -154,6 +154,7 @@ export const MANUAL: ManualSection[] = [
         'Budget Usage Report Phase 2, budget hours + cost variance stored in portal DB (replaces the Google Sheet).',
         'My Work, everything you\'re working on across the whole Monday account (the Home widget + a full view; TN-019 / TN-022). This would be the third Monday use.',
         'My Team, a team-at-a-glance view on Home.',
+        'My Work, every step assigned to somebody across all 262 Monday boards, in three blocks. Unknown user is work on a Monday account with nobody behind it in the Directory: it cannot be filtered by team, and an admin resolves it under Admin → Monday accounts. On-going is every step still open. Completed shows finished steps where the item was last changed in Monday within the last 6 months, which the filter widens to everything on request. Nothing is deleted: older finished work stays in the database and out of the page, because a work list that opens on nine years of finished steps is not a work list. Monday does not record when a step was completed, so the item\u2019s last change stands in for it, which keeps a step in view a little longer when the item was touched for an unrelated reason.',
         'Custom SMTP (Resend) for production login (to lift the email rate limit).',
       ] },
     ],
