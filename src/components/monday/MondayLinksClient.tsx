@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { linkAccount, markExternal, clearAccount } from '@/app/(app)/admin/monday-links/actions'
 import type { LinkBoard } from '@/lib/monday/worklist/links'
+import type { AccountProfile } from '@/lib/monday/worklist/account'
 
 interface Option { value: string; label: string }
 
@@ -15,11 +16,86 @@ const title = 'font-(family-name:--font-display) font-extrabold text-tn-ink text
 const chip = 'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
 const btn = 'text-xs font-bold px-2.5 py-1.5 rounded-[8px] border transition-colors whitespace-nowrap'
 
+/**
+ * The evidence for "who was this", where the decision is made.
+ *
+ * For an account Monday has deleted there is no name to look up, so the answer
+ * has to be reconstructed from the work: which boards, which steps, over which
+ * years, and who else was on the same items. That last one usually settles it.
+ */
+function WhoIsThis({ id }: { id: number }) {
+  const [p, setP] = useState<AccountProfile | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    fetch(`/api/admin/monday-account?id=${id}`)
+      .then(r => r.json())
+      .then(d => { if (alive) { if (d.error) setErr(d.error); else setP(d) } })
+      .catch(e => { if (alive) setErr(String(e)) })
+    return () => { alive = false }
+  }, [id])
+
+  if (err) return <div className="text-sm text-red-700">{err}</div>
+  if (!p) return <div className="text-sm text-muted">Looking…</div>
+
+  const col = 'text-[10px] font-extrabold uppercase tracking-wider text-muted mb-1.5'
+  return (
+    <div className="grid md:grid-cols-3 gap-5 pt-3">
+      <div>
+        <div className={col}>Boards</div>
+        <ul className="m-0 p-0 list-none space-y-1">
+          {p.boards.slice(0, 6).map(b => (
+            <li key={b.name} className="text-[13px] text-tn-ink">
+              <span className="tabular-nums text-muted mr-2">{b.count}</span>{b.name}
+              <span className="block text-xs text-muted">{b.workspace ?? '-'}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <div className={col}>Steps</div>
+        <ul className="m-0 p-0 list-none space-y-1">
+          {p.steps.slice(0, 6).map(st => (
+            <li key={st.name} className="text-[13px] text-tn-ink">
+              <span className="tabular-nums text-muted mr-2">{st.count}</span>{st.name}
+            </li>
+          ))}
+        </ul>
+        {(p.firstDue || p.lastTouched) && (
+          <div className="text-xs text-muted mt-2">
+            {p.firstDue && <div>Deadlines {p.firstDue} → {p.lastDue}</div>}
+            {p.lastTouched && <div>Last touched {p.lastTouched}</div>}
+          </div>
+        )}
+      </div>
+      <div>
+        <div className={col}>Worked alongside</div>
+        {p.alongside.length === 0 && <div className="text-[13px] text-muted">Nobody: always alone on these items.</div>}
+        <ul className="m-0 p-0 list-none space-y-1">
+          {p.alongside.slice(0, 6).map(a => (
+            <li key={a.name} className="text-[13px] text-tn-ink">
+              <span className="tabular-nums text-muted mr-2">{a.count}</span>{a.name}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="md:col-span-3">
+        <div className={col}>Sample items</div>
+        <div className="text-[13px] text-muted leading-relaxed">
+          {p.sample.map(x => (x.parent ? `${x.parent} → ${x.item}` : x.item)).join(' · ')}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MondayLinksClient({ board, people }: { board: LinkBoard; people: Option[] }) {
   const router = useRouter()
   const [busy, startTransition] = useTransition()
   const [q, setQ] = useState('')
   const [choice, setChoice] = useState<Record<number, string>>({})
+  const [expanded, setExpanded] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
@@ -88,6 +164,18 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
                 >
                   Not ours
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(expanded === a.mondayUserId ? null : a.mondayUserId)}
+                  className={`${btn} border-tn-teal text-tn-teal hover:bg-[rgba(30,125,127,.06)]`}
+                >
+                  {expanded === a.mondayUserId ? 'Hide' : 'Who is this?'}
+                </button>
+                {expanded === a.mondayUserId && (
+                  <div className="w-full border-t border-slate-100 mt-2">
+                    <WhoIsThis id={a.mondayUserId} />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
