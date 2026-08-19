@@ -15,6 +15,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
+import { SearchField } from '@/components/ui/SearchField'
 import { PullInfo } from '@/components/PullInfo'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
 
@@ -231,6 +232,10 @@ export function WorkList({
   const params = useSearchParams()
   const [, startTransition] = useTransition()
   const [openRow, setOpenRow] = useState<WorkRow | null>(null)
+  // Search is client-side and deliberately not a URL parameter: person and team
+  // decide which rows are fetched, and typing would re-query the database on
+  // every keystroke to narrow rows the browser already has.
+  const [q, setQ] = useState('')
 
   const person = params.get('person') ?? selfPersonId ?? ''
   const team = params.get('team') ?? ''
@@ -247,9 +252,22 @@ export function WorkList({
     startTransition(() => router.push(`/my-work?${next.toString()}`))
   }
 
+  const needle = q.trim().toLowerCase()
+  const rows = needle
+    ? data.rows.filter(r =>
+        [r.itemName, r.parentItemName, r.boardName, r.workspaceName, r.who, r.stepName, r.statusText]
+          .some(v => v?.toLowerCase().includes(needle)))
+    : data.rows
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3 flex-wrap">
+        <SearchField
+          value={q}
+          onChange={setQ}
+          placeholder="Search items, boards, people…"
+          className="w-full sm:w-[320px]"
+        />
         <Select
           value={person}
           onChange={v => setParam('person', v)}
@@ -273,9 +291,11 @@ export function WorkList({
           {includeDone ? 'Showing finished steps' : 'Open steps only'}
         </button>
         <span className="text-sm text-muted ml-auto">
-          {data.truncated
-            ? `${data.open} shown of ${data.matching}`
-            : `${data.open} open${data.total !== data.open ? ` · ${data.total} in view` : ''}`}
+          {needle
+            ? `${rows.length} matching`
+            : data.truncated
+              ? `${data.open} shown of ${data.matching}`
+              : `${data.open} open${data.total !== data.open ? ` · ${data.total} in view` : ''}`}
         </span>
       </div>
 
@@ -320,13 +340,18 @@ export function WorkList({
         </div>
       )}
 
-      {data.rows.length === 0 && (
+      {rows.length === 0 && (
         <div className="rounded-[14px] border border-slate-200 bg-white px-6 py-12 text-center text-sm text-muted">
-          Nothing open here.
+          {needle ? `Nothing matches "${q}".` : 'Nothing open here.'}
+          {needle && data.truncated && (
+            <div className="mt-2 text-xs">
+              {`Searching within the first ${data.total} of ${data.matching} steps. Pick a person or a team to search all of theirs.`}
+            </div>
+          )}
         </div>
       )}
 
-      {data.rows.length > 0 && (
+      {rows.length > 0 && (
         <div className="rounded-[14px] border border-slate-200 bg-white overflow-x-auto">
           {/* Fixed layout so a long item name cannot starve the columns after
               it. Text wraps to two lines; the date does not, because a broken
@@ -361,7 +386,7 @@ export function WorkList({
               </tr>
             </thead>
             <tbody>
-              {data.rows.map(r => (
+              {rows.map(r => (
                 <tr
                   key={r.id}
                   onClick={() => setOpenRow(r)}
