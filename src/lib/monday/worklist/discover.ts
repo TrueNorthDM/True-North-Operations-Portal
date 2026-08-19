@@ -115,9 +115,14 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
     if (error) throw new Error(`monday_users upsert: ${error.message}`)
   }
 
-  const [{ data: peopleRows }, { data: linkRows }] = await Promise.all([
+  const [{ data: peopleRows }, { data: linkRows }, { data: externalRows }] = await Promise.all([
     supabase.from('people').select('id, full_name, email_true_north, email_goodnews, email_coe, email_personal'),
     supabase.from('monday_user_links').select('monday_user_id'),
+    // Marked as somebody outside True North. That is a finished answer, and
+    // reporting it as pending is what makes a pending list stop being read:
+    // the migration that added this column existed to prevent exactly that,
+    // and this function was still counting the old way.
+    supabase.from('monday_users').select('id').eq('is_external', true),
   ])
   type P = {
     id: string; full_name: string
@@ -125,6 +130,7 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
     email_coe: string | null; email_personal: string | null
   }
   const already = new Set(((linkRows ?? []) as { monday_user_id: number }[]).map(l => l.monday_user_id))
+  const external = new Set(((externalRows ?? []) as { id: number }[]).map(u => u.id))
   const norm = (s: string) => s.trim().toLowerCase()
   const byEmail = new Map<string, P>()
   for (const p of (peopleRows ?? []) as P[]) {
@@ -140,7 +146,7 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
   const unlinked: UserSyncResult['unlinked'] = []
   for (const u of users) {
     const id = Number(u.id)
-    if (already.has(id)) continue
+    if (already.has(id) || external.has(id)) continue
     const hit = u.email ? byEmail.get(norm(u.email)) : undefined
     if (hit) newLinks.push({ monday_user_id: id, person_id: hit.id, linked_by: 'email' })
     else unlinked.push({ id, name: u.name, email: u.email })
