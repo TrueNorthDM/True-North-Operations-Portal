@@ -32,6 +32,39 @@ interface HistoryEvent {
 
 const chip = 'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
 
+/**
+ * A status chip in Monday's own colour.
+ *
+ * The hex comes from the board's own settings, so a label that is amber there
+ * is amber here. Anything else and the two stop looking like the same fact.
+ * White text on the label colour is how Monday paints it too; the grey
+ * fallback is for a step with no status column paired to it at all.
+ */
+function StatusChip({ text, colour }: { text: string; colour: string | null }) {
+  if (!colour) return <span className={`${chip} bg-slate-100 text-slate-600`}>{text}</span>
+  return <span className={`${chip} text-white`} style={{ background: colour }}>{text}</span>
+}
+
+/** Due dates read as a deadline, so today and tomorrow are named. */
+function dueLabel(date: string): { text: string; tone: 'late' | 'now' | 'soon' | 'later' } {
+  const today = new Date()
+  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const days = Math.round((Date.parse(`${date}T00:00:00`) - Date.parse(`${iso}T00:00:00`)) / 86_400_000)
+  const shown = new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  if (days < 0) return { text: `${shown} · ${-days}d late`, tone: 'late' }
+  if (days === 0) return { text: 'Today', tone: 'now' }
+  if (days === 1) return { text: 'Tomorrow', tone: 'now' }
+  if (days <= 7) return { text: shown, tone: 'soon' }
+  return { text: shown, tone: 'later' }
+}
+
+const DUE_TONE: Record<'late' | 'now' | 'soon' | 'later', string> = {
+  late: 'text-[#c2410c] font-bold',
+  now: 'text-tn-ink font-bold',
+  soon: 'text-tn-ink font-semibold',
+  later: 'text-muted',
+}
+
 function when(iso: string | null): string {
   if (!iso) return ''
   return new Date(iso).toLocaleString('en-US', {
@@ -71,9 +104,10 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
         <div className="px-6 py-5">
           <div className="flex items-center gap-2 flex-wrap mb-5">
             <span className={`${chip} bg-[rgba(30,125,127,.1)] text-tn-teal`}>{row.stepName}</span>
-            {row.statusText && (
-              <span className={`${chip} ${row.statusDone ? 'bg-[#059f6b1f] text-[#059f6b]' : 'bg-slate-100 text-slate-600'}`}>
-                {row.statusText}
+            {row.statusText && <StatusChip text={row.statusText} colour={row.statusColor} />}
+            {row.dueDate && (
+              <span className="text-sm text-muted">
+                {row.dueLabel ?? 'Due'}: {new Date(`${row.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             )}
             <span className="text-sm text-muted">{row.who}</span>
@@ -257,11 +291,14 @@ export function WorkList({
                             {r.groupTitle ? ` · ${r.groupTitle}` : ''}
                           </span>
                         </span>
-                        {r.statusText && (
-                          <span className={`${chip} shrink-0 ${r.statusDone ? 'bg-[#059f6b1f] text-[#059f6b]' : 'bg-slate-100 text-slate-600'}`}>
-                            {r.statusText}
-                          </span>
-                        )}
+                        <span className="shrink-0 w-[92px] text-right text-xs">
+                          {r.dueDate
+                            ? (() => { const d = dueLabel(r.dueDate); return <span className={DUE_TONE[d.tone]}>{d.text}</span> })()
+                            : <span className="text-slate-300">-</span>}
+                        </span>
+                        {r.statusText
+                          ? <span className="shrink-0"><StatusChip text={r.statusText} colour={r.statusColor} /></span>
+                          : <span className="shrink-0 w-[1px]" />}
                         <span className="shrink-0 text-xs text-muted w-[120px] truncate text-right">{r.who}</span>
                       </button>
                     </li>

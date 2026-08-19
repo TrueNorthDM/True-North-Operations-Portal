@@ -9,7 +9,7 @@
 // pass that quietly reverts corrections teaches people not to correct anything.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { seedSteps, PEOPLE_TYPES, type BoardColumn } from './steps'
+import { seedSteps, pickDateColumn, PEOPLE_TYPES, type BoardColumn } from './steps'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -210,6 +210,8 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     // the account reports far more boards than a person would name.
     is_subitem_board: /^Subitems of /i.test(b.name),
     items_count: b.items_count,
+    date_col: pickDateColumn(b.columns ?? [])?.id ?? null,
+    date_title: pickDateColumn(b.columns ?? [])?.title ?? null,
     synced_at: now,
   }))
   for (let i = 0; i < boardRows.length; i += 200) {

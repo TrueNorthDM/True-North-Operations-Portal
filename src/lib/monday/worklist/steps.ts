@@ -46,6 +46,25 @@ export interface SeededStep {
   via: 'right' | 'left' | 'none'
 }
 
+/** Column types that can carry a deadline. */
+export const DATE_TYPES = new Set(['date', 'timeline'])
+
+/**
+ * The column a board's deadline should come from.
+ *
+ * Boards carry several dates: created, published, kick-off, due. Preferring a
+ * title that says so is the only signal available, and when none does the
+ * first date column is a guess worth making and recording, since a wrong date
+ * shown next to its column name is correctable and no date at all is not.
+ */
+export function pickDateColumn(cols: BoardColumn[]): BoardColumn | null {
+  const dates = cols.filter(c => DATE_TYPES.has(c.type))
+  if (!dates.length) return null
+  const named = dates.find(c => /due|deadline|target|delivery|publish/i.test(c.title))
+  if (named) return named
+  return dates.find(c => c.type === 'date') ?? dates[0]
+}
+
 /**
  * Nearest status-like column in one direction, stopping at another people
  * column: once a second owner appears, any status past it belongs to them.

@@ -29,6 +29,11 @@ export interface WorkRow {
   stepName: string
   statusText: string | null
   statusDone: boolean | null
+  /** Monday's own hex for this label, so the two never disagree on colour. */
+  statusColor: string | null
+  dueDate: string | null
+  /** Which column the date came from, so a wrong one can be spotted. */
+  dueLabel: string | null
   mondayUserId: number
   who: string
   itemUpdatedAt: string | null
@@ -99,14 +104,17 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
 
   const [{ data: boardRows }, { data: stepRows }, { data: linkRows }, { data: userRows }, { data: peopleRows }] =
     await Promise.all([
-      supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at'),
+      supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at, date_title'),
       supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source'),
       supabase.from('monday_user_links').select('monday_user_id, person_id'),
       supabase.from('monday_users').select('id, name, is_external'),
       supabase.from('people').select('id, full_name'),
     ])
 
-  type B = { id: number; name: string; workspace_name: string | null; included: boolean; items_synced_at: string | null }
+  type B = {
+    id: number; name: string; workspace_name: string | null; included: boolean
+    items_synced_at: string | null; date_title: string | null
+  }
   const boardList = (boardRows ?? []) as B[]
   const boards = new Map(boardList.map(b => [b.id, b]))
   const steps = new Map(((stepRows ?? []) as { board_id: number; people_col: string; step_name: string; position: number; source: string }[])
@@ -127,13 +135,14 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     id: number; board_id: number; item_id: number; item_name: string
     parent_item_name: string | null; group_title: string | null
     people_col: string; monday_user_id: number
-    status_text: string | null; status_done: boolean | null; item_updated_at: string | null
+    status_text: string | null; status_done: boolean | null; status_color: string | null
+    due_date: string | null; item_updated_at: string | null
   }
   const rows: A[] = []
   for (let from = 0; ; from += PAGE) {
     let q = supabase
       .from('monday_assignments')
-      .select('id, board_id, item_id, item_name, parent_item_name, group_title, people_col, monday_user_id, status_text, status_done, item_updated_at')
+      .select('id, board_id, item_id, item_name, parent_item_name, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at')
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1)
     if (onlyAccounts) {
@@ -179,6 +188,9 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       stepName: st?.step_name ?? a.people_col,
       statusText: a.status_text,
       statusDone: a.status_done,
+      statusColor: a.status_color,
+      dueDate: a.due_date,
+      dueLabel: b.date_title ?? null,
       mondayUserId: a.monday_user_id,
       who: (pid ? personName.get(pid) : undefined) ?? mondayName.get(a.monday_user_id) ?? `User ${a.monday_user_id}`,
       itemUpdatedAt: a.item_updated_at,
@@ -196,7 +208,12 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       .map(([boardId, rs]) => ({
         boardId,
         boardName: rs[0].boardName,
-        rows: rs.sort((x, y) => Number(x.statusDone) - Number(y.statusDone)
+        rows: rs.sort((x, y) =>
+          Number(x.statusDone) - Number(y.statusDone)
+          // Soonest deadline first; a row with no date is not urgent, so it
+          // sits behind the dated ones instead of ahead of them.
+          || (x.dueDate ? 0 : 1) - (y.dueDate ? 0 : 1)
+          || (x.dueDate ?? '').localeCompare(y.dueDate ?? '')
           || (x.parentItemName ?? x.itemName).localeCompare(y.parentItemName ?? y.itemName)),
       }))
       .sort((a, b) => b.rows.length - a.rows.length)

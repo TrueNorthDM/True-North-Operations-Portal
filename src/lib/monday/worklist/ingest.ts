@@ -28,6 +28,8 @@ export interface BoardRow {
   id: number
   name: string
   is_subitem_board: boolean
+  /** Chosen at discovery; null when the board has no date column at all. */
+  date_col?: string | null
 }
 
 interface StepRow {
@@ -46,14 +48,41 @@ interface ItemRow {
   column_values: { id: string; text: string | null; value: string | null }[]
 }
 
-/** The label indices this status column treats as finished. */
-function doneIndices(settings: string | null): Set<number> {
-  if (!settings) return new Set()
+interface StatusSettings {
+  /** Label indices Monday itself treats as finished. */
+  done: Set<number>
+  /** Label index → the hex Monday paints it with, so the portal can match. */
+  colour: Map<number, string>
+}
+
+function statusSettings(settings: string | null): StatusSettings {
+  const empty = { done: new Set<number>(), colour: new Map<number, string>() }
+  if (!settings) return empty
   try {
-    const s = JSON.parse(settings) as { done_colors?: number[] }
-    return new Set(s.done_colors ?? [])
+    const s = JSON.parse(settings) as {
+      done_colors?: number[]
+      labels_colors?: Record<string, { color?: string; border?: string }>
+    }
+    const colour = new Map<number, string>()
+    for (const [idx, c] of Object.entries(s.labels_colors ?? {})) {
+      if (c?.color) colour.set(Number(idx), c.color)
+    }
+    return { done: new Set(s.done_colors ?? []), colour }
   } catch {
-    return new Set()
+    return empty
+  }
+}
+
+/** Monday writes a date column as {"date":"2026-08-19"}; a timeline as a range. */
+function dateOf(value: string | null): string | null {
+  if (!value) return null
+  try {
+    const v = JSON.parse(value) as { date?: string; to?: string; from?: string }
+    // A timeline's end is its deadline; its start is when work may begin.
+    const raw = v.date ?? v.to ?? v.from ?? null
+    return raw ? raw.slice(0, 10) : null
+  } catch {
+    return null
   }
 }
 
@@ -96,13 +125,13 @@ export async function ingestBoard(
 
   const peopleCols = steps.map(s => s.people_col)
   const statusCols = [...new Set(steps.map(s => s.status_col).filter(Boolean) as string[])]
-  const wanted = [...peopleCols, ...statusCols]
+  const wanted = [...peopleCols, ...statusCols, ...(board.date_col ? [board.date_col] : [])]
 
-  // done_colors per status column, read once for the board.
+  // Done flags and label colours per status column, read once for the board.
   const cd = await gql<{ boards: { columns: { id: string; settings_str: string | null }[] }[] }>(
     token, `query ($id: [ID!]) { boards(ids: $id) { columns { id settings_str } } }`, { id: [String(board.id)] })
-  const doneBy = new Map<string, Set<number>>()
-  for (const c of cd.boards?.[0]?.columns ?? []) doneBy.set(c.id, doneIndices(c.settings_str))
+  const settingsBy = new Map<string, StatusSettings>()
+  for (const c of cd.boards?.[0]?.columns ?? []) settingsBy.set(c.id, statusSettings(c.settings_str))
 
   const ITEM_FIELDS = `
     id name updated_at
@@ -145,9 +174,10 @@ export async function ingestBoard(
         if (sc?.value) {
           try { index = (JSON.parse(sc.value) as { index?: number }).index ?? null } catch { index = null }
         }
-        const done = st.status_col && index != null
-          ? doneBy.get(st.status_col)?.has(index) ?? false
-          : null
+        const cfg = st.status_col ? settingsBy.get(st.status_col) : undefined
+        const done = st.status_col && index != null ? cfg?.done.has(index) ?? false : null
+        const colour = index != null ? cfg?.colour.get(index) ?? null : null
+        const due = board.date_col ? dateOf(byCol.get(board.date_col)?.value ?? null) : null
 
         for (const uid of ids) {
           rows.push({
@@ -163,6 +193,8 @@ export async function ingestBoard(
             status_text: sc?.text ?? null,
             status_index: index,
             status_done: done,
+            status_color: colour,
+            due_date: due,
             item_updated_at: it.updated_at,
           })
         }
@@ -209,7 +241,7 @@ export async function ingestSlice(
 
   const { data: boardRows } = await supabase
     .from('monday_boards')
-    .select('id, name, is_subitem_board, items_synced_at, included')
+    .select('id, name, is_subitem_board, date_col, items_synced_at, included')
     .eq('included', true)
     .order('items_synced_at', { ascending: true, nullsFirst: true })
   const boards = (boardRows ?? []) as (BoardRow & { items_synced_at: string | null })[]
