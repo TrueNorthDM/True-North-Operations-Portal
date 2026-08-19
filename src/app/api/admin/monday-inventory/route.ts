@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 
   const lines: string[] = []
   const say = (s = '') => lines.push(s)
-  const done = () => new Response(lines.join('\n'), {
+  const done_ = () => new Response(lines.join('\n'), {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   })
 
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
       for (const [name, v] of [...byWs].sort((a, b) => b[1].items - a[1].items)) {
         say(`  ${name.slice(0, 30).padEnd(32)}${String(v.boards).padStart(5)}${String(v.items).padStart(8)}${String(v.people).padStart(13)}`)
       }
-      return done()
+      return done_()
     }
 
     if (part === 'boards') {
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
         }
         say()
       }
-      return done()
+      return done_()
     }
 
     if (part === 'board') {
@@ -195,7 +195,7 @@ export async function GET(request: Request) {
         }
         say()
       }
-      return done()
+      return done_()
     }
 
     if (part === 'history') {
@@ -228,7 +228,7 @@ export async function GET(request: Request) {
         say('History would have to come from the board-wide activity log, which is')
         say('what the nightly ingest already stores for the four configured boards.')
       }
-      return done()
+      return done_()
     }
 
     if (part === 'people') {
@@ -241,7 +241,41 @@ export async function GET(request: Request) {
       for (const u of us.sort((a, b) => a.name.localeCompare(b.name))) {
         say(`${String(u.id).padEnd(12)}${u.name.slice(0, 26).padEnd(28)}${u.email}${u.enabled ? '' : '   (disabled)'}`)
       }
-      return done()
+      return done_()
+    }
+
+    if (part === 'status') {
+      // Reads our tables, not Monday. What landed, and what is still missing.
+      const supabase = createAdminClient()
+      const [{ data: boards }, { count: assignments }, { count: users }, { count: linked }] = await Promise.all([
+        supabase.from('monday_boards').select('id, name, workspace_name, items_count, items_synced_at, included'),
+        supabase.from('monday_assignments').select('id', { count: 'exact', head: true }),
+        supabase.from('monday_users').select('id', { count: 'exact', head: true }),
+        supabase.from('monday_user_links').select('monday_user_id', { count: 'exact', head: true }),
+      ])
+      type B = { id: number; name: string; workspace_name: string | null; items_count: number | null; items_synced_at: string | null; included: boolean }
+      const bs = (boards ?? []) as B[]
+      const { data: stepRows } = await supabase.from('monday_board_steps').select('board_id, source')
+      const steps = (stepRows ?? []) as { board_id: number; source: string }[]
+      const withSteps = new Set(steps.filter(s2 => s2.source !== 'off').map(s2 => s2.board_id))
+      const queue = bs.filter(b => b.included && withSteps.has(b.id))
+      const done = queue.filter(b => b.items_synced_at)
+
+      say(`ASSIGNMENTS  ${assignments ?? 0}`)
+      say(`USERS        ${users ?? 0} accounts, ${linked ?? 0} linked to a person`)
+      say(`STEPS        ${steps.length} (${steps.filter(s2 => s2.source === 'confirmed').length} confirmed, ${steps.filter(s2 => s2.source === 'off').length} switched off)`)
+      say(`BOARDS       ${done.length}/${queue.length} read` + (done.length < queue.length ? '  ← run the ingest again' : '  ← complete'))
+      say()
+      if (done.length < queue.length) {
+        say('STILL TO READ')
+        for (const b of queue.filter(b => !b.items_synced_at).sort((a2, b2) => (b2.items_count ?? 0) - (a2.items_count ?? 0)).slice(0, 20)) {
+          say(`  ${String(b.items_count ?? 0).padStart(6)} items   ${b.name}`)
+        }
+        say()
+      }
+      const oldest = done.map(b => b.items_synced_at!).sort()[0]
+      if (oldest) say(`Oldest board read at ${oldest}`)
+      return done_()
     }
 
     if (part === 'guess') {
@@ -307,7 +341,7 @@ export async function GET(request: Request) {
       say('Whichever wins is the default the confirmation screen starts from.')
       say('A heuristic that needs correcting on a third of boards is still worth')
       say('having; one that needs correcting everywhere is just a worse blank form.')
-      return done()
+      return done_()
     }
 
     if (part === 'match') {
@@ -374,7 +408,7 @@ export async function GET(request: Request) {
       none.forEach(l => say(l))
       say()
       say('Nothing was written. This is a survey.')
-      return done()
+      return done_()
     }
 
     return new Response(`Unknown part "${part}".`, { status: 400 })

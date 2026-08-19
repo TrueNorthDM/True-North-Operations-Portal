@@ -1,32 +1,38 @@
-// My Work, everything assigned to the signed-in person across Monday, as a
-// board or list. Available to any signed-in user (the (app) layout gates auth).
-// Data is the in-repo sample until the Monday pull is wired.
+// My Work, everything assigned to the signed-in person across Monday.
+// Available to any signed-in user (the (app) layout gates auth).
+//
+// A row is a STEP, not an item. That is the whole reason this exists rather
+// than a Monday dashboard: a board where one person owns three steps of the
+// same item gives them three things to do, and Monday's own views make you
+// pick one people column and pretend the others are not there.
 //
 // My team rides along as a second tab: both answer "what is mine". The tab is a
 // search param so the page stays a server component and each tab is linkable.
 
 import Link from 'next/link'
-import { MyWork } from '@/components/MyWork'
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
 import { loadMyTeam } from '@/lib/directory/my-team'
 import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
+import { WorkList } from '@/components/monday/WorkList'
+import { loadWorklist } from '@/lib/monday/worklist/data'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
 
-// My Team first, and the default: My Work is still sample data, so landing on
-// it every time would mean landing on a placeholder.
 const TABS = [
   { key: 'team', label: 'My Team' },
   { key: 'work', label: 'My Work' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
-export default async function MyWorkPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function MyWorkPage(
+  { searchParams }: { searchParams: Promise<{ tab?: string; person?: string; team?: string; done?: string }> },
+) {
   await requireSurface('my-work')
-  const { tab } = await searchParams
+  const sp = await searchParams
+  const { tab } = sp
   const active: TabKey = TABS.some(t => t.key === tab) ? (tab as TabKey) : 'team'
 
   return (
@@ -48,32 +54,44 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
         ))}
       </div>
 
-      {active === 'work' ? <UnderConstruction /> : <MyTeamTab />}
+      {active === 'work' ? <WorkTab sp={sp} /> : <MyTeamTab />}
     </div>
   )
 }
 
 /**
- * My Work is not connected to Monday yet: everything it renders is the in-repo
- * sample. The small "SAMPLE" chip beside the title was easy to miss next to a
- * board that looks entirely real, so the state is stated before the content
- * rather than beside it.
+ * The work list.
+ *
+ * Defaults to the signed-in person, because "my work" is the question. Left
+ * unfiltered it is everybody's, which is what a team leader wants and what
+ * the person filter is there to narrow.
  */
-function UnderConstruction() {
+async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: string } }) {
+  const supabase = await createClient()
+  const { data: auth } = await supabase.auth.getUser()
+
+  const { data: me } = auth?.user
+    ? await supabase.from('people').select('id').eq('profile_id', auth.user.id).maybeSingle()
+    : { data: null }
+  const selfPersonId = (me as { id: string } | null)?.id ?? null
+
+  // "person" absent means the signed-in person; "person=" means anybody. The
+  // two are different questions and the empty string keeps them apart.
+  const personId = sp.person === undefined ? selfPersonId : (sp.person || null)
+
+  const [data, { data: peopleRows }, { data: teamRows }] = await Promise.all([
+    loadWorklist(supabase, { personId, teamId: sp.team || null, includeDone: sp.done === '1' }),
+    supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name'),
+    supabase.from('teams').select('id, name').order('name'),
+  ])
+
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 px-6 py-10 text-center">
-        <div className="text-4xl leading-none" aria-hidden="true">🚧</div>
-        <h2 className="mt-3 font-(family-name:--font-display) font-extrabold text-[22px] text-[#7a4e05]">
-          This page is under construction
-        </h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-[#7a4e05]">
-          Everything below is sample data, not your real work. It is here to show the shape of the page
-          while the Monday connection is built. Nothing on it is yours and nothing you do here is saved.
-        </p>
-      </div>
-      <MyWork />
-    </div>
+    <WorkList
+      data={data}
+      selfPersonId={selfPersonId}
+      people={((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => ({ value: p.id, label: p.full_name }))}
+      teams={((teamRows ?? []) as { id: string; name: string }[]).map(t => ({ value: t.id, label: t.name }))}
+    />
   )
 }
 
