@@ -52,6 +52,17 @@ export const AUTOMATIONS: Automation[] = [
     since: '2026-08-04 (secret URL; the old unauthenticated /api/monday/webhook is gone)',
   },
   {
+    id: 'monday-worklist',
+    name: 'Monday work list (My Work)',
+    kind: 'cron',
+    purpose:
+      'Reads every step assigned to somebody across all 197 boards that carry people columns, into monday_assignments, so My Work loads from Postgres instead of asking Monday on every page view. Refreshes the user, board and step maps at the head of each run. Chains, because 197 boards do not fit in one 300-second invocation: a firing takes as many boards as fit and then calls itself, up to eight hops, resuming from the board that has waited longest.',
+    trigger: 'Vercel Cron',
+    schedule: 'Every 4 hours (15 1,5,9,13,17,21 * * *), the same window as the dashboard ingest',
+    location: 'src/app/api/cron/monday-worklist/route.ts, src/lib/monday/worklist/',
+    since: '2026-08-19',
+  },
+  {
     id: 'monday-ingest',
     name: 'Monday dashboard ingest',
     kind: 'cron',
