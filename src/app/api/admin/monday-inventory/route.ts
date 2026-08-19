@@ -244,6 +244,105 @@ export async function GET(request: Request) {
       return done_()
     }
 
+    if (part === 'account') {
+      // "Who was this" for an account with no name left. Monday cannot answer:
+      // the account is gone and the id is all that survives. But the work it
+      // is attached to is still here, and the shape of that work identifies a
+      // person better than a name would: which boards, which steps, over which
+      // years, beside whom.
+      const id = Number(url.searchParams.get('id') ?? '')
+      if (!Number.isFinite(id)) return new Response('Pass ?id=<monday user id>', { status: 400 })
+
+      const supabase = createAdminClient()
+      const [{ data: user }, { data: link }] = await Promise.all([
+        supabase.from('monday_users').select('id, name, email, enabled, is_guest, is_external').eq('id', id).maybeSingle(),
+        supabase.from('monday_user_links').select('person_id, linked_by').eq('monday_user_id', id).maybeSingle(),
+      ])
+
+      type A = {
+        board_id: number; item_id: number; item_name: string; parent_item_name: string | null
+        people_col: string; due_date: string | null; status_text: string | null; item_updated_at: string | null
+      }
+      const rows: A[] = []
+      for (let from = 0; ; from += 1000) {
+        const { data } = await supabase
+          .from('monday_assignments')
+          .select('board_id, item_id, item_name, parent_item_name, people_col, due_date, status_text, item_updated_at')
+          .eq('monday_user_id', id)
+          .order('id', { ascending: true }).range(from, from + 999)
+        const page = (data ?? []) as A[]
+        rows.push(...page)
+        if (page.length < 1000) break
+      }
+
+      const u = user as { id: number; name: string; email: string | null; enabled: boolean; is_guest: boolean; is_external: boolean } | null
+      say(`ACCOUNT ${id}`)
+      say(u ? `  name    ${u.name}${u.email ? `  <${u.email}>` : ''}` : '  no account record: the ingest found this id on work, discovery has not seen it')
+      if (u) say(`  state   ${u.enabled ? 'enabled' : 'disabled'}${u.is_guest ? ', guest' : ''}${u.is_external ? ', marked outside True North' : ''}`)
+      say(link ? `  linked  to a directory person (${(link as { linked_by: string }).linked_by})` : '  linked  to nobody')
+      say(`  work    ${rows.length} assignments`)
+      say()
+
+      if (!rows.length) { say('No work under this account.'); return done_() }
+
+      const { data: boardRows } = await supabase.from('monday_boards').select('id, name, workspace_name')
+      const boards = new Map(((boardRows ?? []) as { id: number; name: string; workspace_name: string | null }[])
+        .map(b => [b.id, b]))
+      const { data: stepRows } = await supabase.from('monday_board_steps').select('board_id, people_col, step_name')
+      const steps = new Map(((stepRows ?? []) as { board_id: number; people_col: string; step_name: string }[])
+        .map(st => [`${st.board_id}:${st.people_col}`, st.step_name]))
+
+      const tally = <K,>(get: (r: A) => K | null) => {
+        const m = new Map<K, number>()
+        for (const r of rows) { const k = get(r); if (k != null) m.set(k, (m.get(k) ?? 0) + 1) }
+        return [...m.entries()].sort((a, b) => b[1] - a[1])
+      }
+
+      say('BOARDS')
+      for (const [bid, n] of tally(r => r.board_id)) {
+        const b = boards.get(bid as number)
+        say(`  ${String(n).padStart(5)}  ${b?.name ?? bid}  ·  ${b?.workspace_name ?? '-'}`)
+      }
+      say()
+      say('STEPS')
+      for (const [k, n] of tally(r => steps.get(`${r.board_id}:${r.people_col}`) ?? r.people_col)) {
+        say(`  ${String(n).padStart(5)}  ${k}`)
+      }
+      say()
+
+      const dates = rows.map(r => r.due_date).filter(Boolean).sort() as string[]
+      const touched = rows.map(r => r.item_updated_at).filter(Boolean).sort() as string[]
+      if (dates.length) say(`DEADLINES  ${dates[0]} → ${dates[dates.length - 1]}`)
+      if (touched.length) say(`LAST TOUCHED IN MONDAY  ${touched[touched.length - 1].slice(0, 10)}`)
+      say()
+
+      // Who else is on the same items. A person is recognisable by the company
+      // they keep on a board, and this is often what settles it.
+      const itemIds = [...new Set(rows.map(r => r.item_id))].slice(0, 400)
+      const { data: mates } = await supabase
+        .from('monday_assignments').select('monday_user_id').in('item_id', itemIds).neq('monday_user_id', id)
+      const mateCount = new Map<number, number>()
+      for (const m of (mates ?? []) as { monday_user_id: number }[]) {
+        mateCount.set(m.monday_user_id, (mateCount.get(m.monday_user_id) ?? 0) + 1)
+      }
+      if (mateCount.size) {
+        const ids = [...mateCount.keys()]
+        const { data: names } = await supabase.from('monday_users').select('id, name').in('id', ids)
+        const nameById = new Map(((names ?? []) as { id: number; name: string }[]).map(n => [n.id, n.name]))
+        say('WORKED ALONGSIDE')
+        for (const [uid, n] of [...mateCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+          say(`  ${String(n).padStart(5)}  ${nameById.get(uid) ?? `id ${uid}`}`)
+        }
+        say()
+      }
+
+      say('SAMPLE ITEMS')
+      for (const r of rows.slice(0, 20)) {
+        say(`  ${(r.parent_item_name ? `${r.parent_item_name} → ` : '')}${r.item_name}${r.due_date ? `   due ${r.due_date}` : ''}`)
+      }
+      return done_()
+    }
+
     if (part === 'status') {
       // Reads our tables, not Monday. What landed, and what is still missing.
       const supabase = createAdminClient()
