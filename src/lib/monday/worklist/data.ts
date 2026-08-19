@@ -16,6 +16,21 @@ type Client = SupabaseClient<any, any, any>
 
 const PAGE = 1000
 
+/**
+ * How much the unfiltered view will read before it stops.
+ *
+ * There are 53,442 assignments. Paging all of them is fifty-four round trips
+ * per page load, which is the shape of thing that froze the i7 report and the
+ * Grant Pass page before it: correctness said nothing about cost either time.
+ *
+ * Nobody reads fifty thousand rows. Somebody looking at everything is
+ * surveying, and a survey is served by the first few thousand plus an honest
+ * count of the rest; somebody doing their work picks a person or a team, and
+ * that query is small and complete. So the cap applies only when neither
+ * filter is set, and the page says when it has been reached.
+ */
+const UNFILTERED_CAP = 5000
+
 export interface WorkRow {
   id: number
   boardId: number
@@ -72,6 +87,10 @@ export interface Worklist {
   unlinked: number
   /** Assignments riding on those accounts, which is the size of the blind spot. */
   unlinkedAssignments: number
+  /** True when the unfiltered view stopped early rather than reading everything. */
+  truncated: boolean
+  /** How many rows match, whether or not they were all read. */
+  matching: number
   /**
    * The OLDEST board read, not the newest.
    *
@@ -138,23 +157,37 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     status_text: string | null; status_done: boolean | null; status_color: string | null
     due_date: string | null; item_updated_at: string | null
   }
+  const SELECT = 'id, board_id, item_id, item_name, parent_item_name, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at'
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const applyFilters = (q: any): any => {
+    let out = q
+    if (onlyAccounts) out = out.in('monday_user_id', onlyAccounts)
+    if (!f.includeDone) out = out.or('status_done.is.null,status_done.eq.false')
+    return out
+  }
+
+  if (onlyAccounts && !onlyAccounts.length) {
+    return { groups: [], open: 0, total: 0, unlinked: 0, unlinkedAssignments: 0, truncated: false, matching: 0, oldestSyncAt: null }
+  }
+
+  // How many match, asked once and counted by the database rather than by
+  // reading the rows and measuring the array.
+  const { count: matching } = (await applyFilters(
+    supabase.from('monday_assignments').select('id', { count: 'exact', head: true }),
+  )) as { count: number | null }
+
+  const cap = onlyAccounts ? Number.POSITIVE_INFINITY : UNFILTERED_CAP
   const rows: A[] = []
-  for (let from = 0; ; from += PAGE) {
-    let q = supabase
-      .from('monday_assignments')
-      .select('id, board_id, item_id, item_name, parent_item_name, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at')
-      .order('id', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (onlyAccounts) {
-      if (!onlyAccounts.length) return { groups: [], open: 0, total: 0, unlinked: 0, unlinkedAssignments: 0, oldestSyncAt: null }
-      q = q.in('monday_user_id', onlyAccounts)
-    }
-    if (!f.includeDone) q = q.or('status_done.is.null,status_done.eq.false')
-    const { data, error } = await q
+  let truncated = false
+  for (let from = 0; from < cap; from += PAGE) {
+    const { data, error } = (await applyFilters(
+      supabase.from('monday_assignments').select(SELECT).order('id', { ascending: true }).range(from, from + PAGE - 1),
+    )) as { data: A[] | null; error: { message: string } | null }
     if (error) throw new Error(error.message)
     const page = (data ?? []) as A[]
     rows.push(...page)
     if (page.length < PAGE) break
+    if (from + PAGE >= cap) truncated = (matching ?? 0) > rows.length
   }
 
   const linkedAccounts = new Set(personByAccount.keys())
@@ -237,6 +270,8 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     total: rows.length,
     unlinked: unresolvedAccounts(accountsOnWork, linkedAccounts, externalAccounts).size,
     unlinkedAssignments,
+    truncated,
+    matching: matching ?? rows.length,
     oldestSyncAt: stamps[0] ?? null,
   }
 }

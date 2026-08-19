@@ -216,7 +216,9 @@ export function WorkList({
           {includeDone ? 'Showing finished steps' : 'Open steps only'}
         </button>
         <span className="text-sm text-muted ml-auto">
-          {data.open} open{data.total !== data.open ? ` · ${data.total} in view` : ''}
+          {data.truncated
+            ? `${data.open} shown of ${data.matching}`
+            : `${data.open} open${data.total !== data.open ? ` · ${data.total} in view` : ''}`}
         </span>
       </div>
 
@@ -248,6 +250,16 @@ export function WorkList({
               <a href="/admin/monday-links" className="font-bold underline hover:no-underline">Resolve them</a>.
             </>
           )}
+        </div>
+      )}
+
+      {/* Everything, unfiltered, is 53,000 rows and fifty round trips. Nobody
+          reads that; somebody looking at all of it is surveying, and a survey
+          is served by the first few thousand plus an honest count. Naming the
+          cap is what keeps it from reading as "this is all there is". */}
+      {data.truncated && (
+        <div className="rounded-[10px] border border-slate-200 bg-subtle px-4 py-3 text-sm text-muted">
+          {`Showing the first ${data.total} of ${data.matching} steps. Pick a person or a team to see all of theirs.`}
         </div>
       )}
 
