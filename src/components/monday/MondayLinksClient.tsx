@@ -53,7 +53,7 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
           </strong>
           , holding {board.unknownIds.reduce((s, u) => s + u.assignments, 0)} assignments. These are usually
           people who left and are still named on old items. Run the discovery once more: it now asks Monday for
-          deactivated accounts too, which it did not before.
+          these ids directly, which the plain user listing does not return.
         </div>
       )}
 

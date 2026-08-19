@@ -44,6 +44,7 @@ export async function GET(request: Request) {
   try {
     const u = await syncMondayUsers(supabase, token)
     out.push(`USERS      ${u.users} accounts, ${u.linkedByEmail} newly linked by email`)
+    if (u.recovered) out.push(`  ${u.recovered} of them were found only by asking for their id: they are on work but the listing omits them, which usually means they left.`)
     if (u.unlinked.length) {
       out.push(`  ${u.unlinked.length} could not be linked and need a person chosen by hand:`)
       for (const x of u.unlinked) out.push(`    ${String(x.id).padEnd(11)} ${x.name}  ${x.email ?? '(no email)'}`)

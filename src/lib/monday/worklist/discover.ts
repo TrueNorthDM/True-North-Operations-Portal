@@ -32,6 +32,8 @@ export async function gql<T>(token: string, query: string, variables?: Record<st
 
 export interface UserSyncResult {
   users: number
+  /** Recovered by id because the listing did not include them. */
+  recovered: number
   linkedByEmail: number
   unlinked: { id: number; name: string; email: string | null }[]
 }
@@ -47,13 +49,39 @@ export interface UserSyncResult {
  * linked comes back in `unlinked` so it is a visible pending item.
  */
 export async function syncMondayUsers(supabase: Client, token: string): Promise<UserSyncResult> {
-  // state: all, deliberately. The default returns active accounts only, and
-  // people who left are still named on years of items: their ids turn up in
-  // assignments with no row to explain them, which is how a page ends up
-  // reporting 35 unknown accounts when discovery had only flagged 18.
-  const d = await gql<{ users: { id: string; name: string; email: string | null; enabled: boolean; is_guest: boolean }[] }>(
-    token, `query { users(limit: 500, state: all) { id name email enabled is_guest } }`)
-  const users = d.users ?? []
+  type U = { id: string; name: string; email: string | null; enabled: boolean; is_guest: boolean }
+  const FIELDS = 'id name email enabled is_guest'
+
+  const d = await gql<{ users: U[] }>(token, `query { users(limit: 500) { ${FIELDS} } }`)
+  const users: U[] = d.users ?? []
+
+  // The listing does not return everybody. People who have left are still
+  // named on years of items, so their ids turn up in assignments with no row
+  // to explain them: that is why the page counted 35 unknown accounts when
+  // this had reported 18.
+  //
+  // Asking for them by id rather than trying to widen the listing, because the
+  // filter that would widen it differs between API versions (`state` is not a
+  // valid argument on this one) while `ids` is stable. It also asks a precise
+  // question: these exact accounts are on real work, who are they.
+  const seen = new Set(users.map(u => Number(u.id)))
+  const missing = new Set<number>()
+  for (let from = 0; ; from += 2000) {
+    const { data, error } = await supabase
+      .from('monday_assignments').select('monday_user_id')
+      .order('id', { ascending: true }).range(from, from + 1999)
+    if (error) break                       // no assignments yet on a first run
+    const rows = (data ?? []) as { monday_user_id: number }[]
+    for (const r of rows) if (!seen.has(r.monday_user_id)) missing.add(r.monday_user_id)
+    if (rows.length < 2000) break
+  }
+  const ids = [...missing]
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100).map(String)
+    const extra = await gql<{ users: U[] }>(
+      token, `query ($ids: [ID!]) { users(ids: $ids, limit: 100) { ${FIELDS} } }`, { ids: chunk })
+    users.push(...(extra.users ?? []))
+  }
 
   const rows = users.map(u => ({
     id: Number(u.id),
@@ -103,7 +131,7 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
     if (error) throw new Error(`monday_user_links upsert: ${error.message}`)
   }
 
-  return { users: users.length, linkedByEmail: newLinks.length, unlinked }
+  return { users: users.length, recovered: ids.length, linkedByEmail: newLinks.length, unlinked }
 }
 
 // ── Boards and their steps ──────────────────────────────────────────────────
