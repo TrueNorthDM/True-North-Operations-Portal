@@ -12,7 +12,7 @@
  * stored, so what opens is current by definition.
  */
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useMemo, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
@@ -252,12 +252,31 @@ export function WorkList({
     startTransition(() => router.push(`/my-work?${next.toString()}`))
   }
 
+  /**
+   * Every row with its deadline already read, and everything the row SHOWS
+   * flattened into one string to search.
+   *
+   * Searching the fields alone missed the date: "2020" is on the screen, in
+   * the Due column, and finding nothing made the page look broken rather than
+   * narrow. So the haystack is built from what was rendered, both the stored
+   * form (2020-08-21) and the printed one (Aug 21, 2020), plus the elapsed
+   * time and the badge, because "late" and "upcoming" are words on the page
+   * too and somebody will type them.
+   */
+  const prepared = useMemo(() => data.rows.map(r => {
+    const due = r.dueDate ? readDue(r.dueDate, r.dueSuspect) : null
+    return {
+      row: r,
+      due,
+      hay: [
+        r.itemName, r.parentItemName, r.boardName, r.workspaceName, r.who, r.stepName, r.statusText,
+        r.dueDate, due?.date, due?.time, due ? DUE_BADGE[due.state].label : null,
+      ].filter(Boolean).join(' ').toLowerCase(),
+    }
+  }), [data.rows])
+
   const needle = q.trim().toLowerCase()
-  const rows = needle
-    ? data.rows.filter(r =>
-        [r.itemName, r.parentItemName, r.boardName, r.workspaceName, r.who, r.stepName, r.statusText]
-          .some(v => v?.toLowerCase().includes(needle)))
-    : data.rows
+  const rows = needle ? prepared.filter(p2 => p2.hay.includes(needle)) : prepared
 
   return (
     <div className="space-y-5">
@@ -386,7 +405,7 @@ export function WorkList({
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
+              {rows.map(({ row: r, due: d }) => (
                 <tr
                   key={r.id}
                   onClick={() => setOpenRow(r)}
@@ -420,9 +439,7 @@ export function WorkList({
                       ? <StatusChip text={r.statusText} colour={r.statusColor} />
                       : <span className="text-slate-300">-</span>}
                   </td>
-                  {(() => {
-                    const d = r.dueDate ? readDue(r.dueDate, r.dueSuspect) : null
-                    return (
+                  {(() => (
                       <>
                         <td className="px-4 py-2.5 text-right whitespace-nowrap text-tn-ink align-top">
                           {d ? d.date : <span className="text-slate-300">-</span>}
@@ -434,8 +451,7 @@ export function WorkList({
                           {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
                         </td>
                       </>
-                    )
-                  })()}
+                  ))()}
                   <td className="px-4 py-2.5 text-right align-top">
                     {r.url ? (
                       <a
