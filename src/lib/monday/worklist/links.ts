@@ -16,6 +16,29 @@ type Client = SupabaseClient<any, any, any>
 
 const PAGE = 2000
 
+/**
+ * Accounts that still owe an answer, decided in one place.
+ *
+ * This rule has been written from scratch three times today, in the links
+ * screen, in the discovery output and in the My Work counter, and the three
+ * disagreed: one of them said 23 while another said none were pending. A
+ * number nobody can reconcile is worse than no number, so both readers now
+ * call this and a disagreement becomes impossible rather than merely unlikely.
+ *
+ * Unresolved means: this account is named on work, no directory person owns
+ * it, and nobody has said it belongs outside True North. Both settlements are
+ * final; only the absence of either is a question.
+ */
+export function unresolvedAccounts(
+  onWork: Iterable<number>,
+  linked: ReadonlySet<number>,
+  external: ReadonlySet<number>,
+): Set<number> {
+  const out = new Set<number>()
+  for (const id of onWork) if (!linked.has(id) && !external.has(id)) out.add(id)
+  return out
+}
+
 export interface PendingAccount {
   mondayUserId: number
   name: string
@@ -66,8 +89,12 @@ export interface LinkBoard {
   pending: PendingAccount[]
   external: PendingAccount[]
   linked: LinkedAccount[]
-  /** Ids on work with no monday_users row at all: discovery has not seen them. */
-  unknownIds: { mondayUserId: number; assignments: number }[]
+  /**
+   * Exactly the accounts the My Work banner counts: named on work, owned by
+   * nobody, not settled as outside. Named rather than tallied, because a count
+   * on its own cannot be checked or acted on.
+   */
+  onWorkUnresolved: { mondayUserId: number; name: string; email: string | null; assignments: number; known: boolean }[]
 }
 
 export async function loadLinkBoard(supabase: Client): Promise<LinkBoard> {
@@ -133,11 +160,23 @@ export async function loadLinkBoard(supabase: Client): Promise<LinkBoard> {
     })
     .sort(bySize)
 
-  const known = new Set(users.map(u => u.id))
-  const unknownIds = [...counts.entries()]
-    .filter(([id]) => !known.has(id))
-    .map(([mondayUserId, assignments]) => ({ mondayUserId, assignments }))
+  const knownIds = new Set(users.map(u => u.id))
+  const externalIds = new Set(users.filter(u => u.is_external).map(u => u.id))
+  const linkedSet = new Set(links.map(l => l.monday_user_id))
+  const nameById = new Map(users.map(u => [u.id, u]))
+
+  const onWorkUnresolved = [...unresolvedAccounts(counts.keys(), linkedSet, externalIds)]
+    .map(id => {
+      const u = nameById.get(id)
+      return {
+        mondayUserId: id,
+        name: u?.name ?? `Unknown account ${id}`,
+        email: u?.email ?? null,
+        assignments: counts.get(id) ?? 0,
+        known: knownIds.has(id),
+      }
+    })
     .sort(bySize)
 
-  return { pending, external, linked, unknownIds }
+  return { pending, external, linked, onWorkUnresolved }
 }

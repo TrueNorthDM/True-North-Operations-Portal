@@ -44,14 +44,54 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
 
       <SearchField value={q} onChange={setQ} placeholder="Search accounts…" className="max-w-[380px]" />
 
-      {/* Ids on work with nobody behind them at all. */}
-      {board.unknownIds.length > 0 && (
-        <div className="rounded-[10px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-[#8a6d1a]">
-          <strong className="font-extrabold">
-            {`${board.unknownIds.length} account ${board.unknownIds.length === 1 ? 'id is' : 'ids are'} on work but unknown to Monday's user list`}
-          </strong>
-          {`, holding ${board.unknownIds.reduce((s, u) => s + u.assignments, 0)} assignments. Run the discovery again: it asks Monday for these ids directly, and gives a placeholder to any account Monday no longer has at all, so they can be resolved like the rest.`}
-        </div>
+      {/* The list the My Work banner is counting. Named, not tallied. */}
+      {board.onWorkUnresolved.length > 0 && (
+        <section className={card}>
+          <div className={head}>
+            <h2 className={title}>
+              On work, owned by nobody
+              <span className="ml-2 text-xs font-bold text-muted">{board.onWorkUnresolved.length}</span>
+            </h2>
+            <span className="text-xs text-muted">
+              {board.onWorkUnresolved.reduce((s2, a) => s2 + a.assignments, 0)} assignments a team filter cannot see
+            </span>
+          </div>
+          <ul className="m-0 p-0 list-none">
+            {board.onWorkUnresolved.map(a => (
+              <li key={a.mondayUserId} className="px-5 py-3 border-b border-slate-100 last:border-b-0 flex items-center gap-3 flex-wrap">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13.5px] font-bold text-tn-ink truncate">
+                    {a.name}
+                    {!a.known && <span className="ml-2 text-[10px] font-bold uppercase text-muted">no account record</span>}
+                  </span>
+                  <span className="block text-xs text-muted truncate">{a.email ?? `id ${a.mondayUserId}`}</span>
+                </span>
+                <span className={`${chip} bg-[rgba(224,138,30,.1)] text-[#b06d0a]`}>{a.assignments} assigned</span>
+                <span className="w-[220px]">
+                  <Select
+                    value={choice[a.mondayUserId] ?? ''}
+                    onChange={v => {
+                      setChoice({ ...choice, [a.mondayUserId]: v })
+                      if (v) run(() => linkAccount(a.mondayUserId, v))
+                    }}
+                    options={[{ value: '', label: 'Choose a person…' }, ...people]}
+                    ariaLabel={`Link ${a.name}`}
+                    searchable
+                    fullWidth
+                  />
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => run(() => markExternal(a.mondayUserId))}
+                  className={`${btn} border-slate-200 text-muted hover:text-tn-ink`}
+                >
+                  Not ours
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className={card}>

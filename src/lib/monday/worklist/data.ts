@@ -9,6 +9,7 @@
 // four years of finished work is not a work list.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { unresolvedAccounts } from './links'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -147,9 +148,10 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     if (page.length < PAGE) break
   }
 
+  const linkedAccounts = new Set(personByAccount.keys())
   const byWorkspace = new Map<string, Map<number, WorkRow[]>>()
   let open = 0
-  const unlinkedAccounts = new Set<number>()
+  const accountsOnWork = new Set<number>()
   let unlinkedAssignments = 0
 
   for (const a of rows) {
@@ -160,10 +162,10 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     if (st?.source === 'off') continue
 
     const pid = personByAccount.get(a.monday_user_id)
-    if (!pid && !externalAccounts.has(a.monday_user_id)) {
-      unlinkedAccounts.add(a.monday_user_id)
-      unlinkedAssignments++
-    }
+    accountsOnWork.add(a.monday_user_id)
+    // Same rule as the links screen, from the same function, so the two
+    // screens cannot report different numbers for the same question.
+    if (!pid && !externalAccounts.has(a.monday_user_id)) unlinkedAssignments++
 
     const row: WorkRow = {
       id: a.id,
@@ -216,7 +218,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     groups,
     open,
     total: rows.length,
-    unlinked: unlinkedAccounts.size,
+    unlinked: unresolvedAccounts(accountsOnWork, linkedAccounts, externalAccounts).size,
     unlinkedAssignments,
     oldestSyncAt: stamps[0] ?? null,
   }
