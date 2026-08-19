@@ -44,7 +44,7 @@ interface ItemRow {
   name: string
   updated_at: string | null
   group: { title: string } | null
-  parent_item: { id: string; name: string } | null
+  parent_item: { id: string; name: string; board: { id: string } | null } | null
   column_values: { id: string; text: string | null; value: string | null }[]
 }
 
@@ -136,7 +136,7 @@ export async function ingestBoard(
   const ITEM_FIELDS = `
     id name updated_at
     group { title }
-    parent_item { id name }
+    parent_item { id name board { id } }
     column_values(ids: $cols) { id text value }`
 
   const rows: Record<string, unknown>[] = []
@@ -186,6 +186,9 @@ export async function ingestBoard(
             item_name: it.name,
             parent_item_id: it.parent_item ? Number(it.parent_item.id) : null,
             parent_item_name: it.parent_item?.name ?? null,
+            // A subitem board is not navigable in Monday, so a link has to go
+            // to the parent, on the parent's own board.
+            parent_board_id: it.parent_item?.board ? Number(it.parent_item.board.id) : null,
             group_title: it.group?.title ?? null,
             people_col: st.people_col,
             monday_user_id: uid,

@@ -49,6 +49,8 @@ export interface WorkRow {
   dueDate: string | null
   /** Which column the date came from, so a wrong one can be spotted. */
   dueLabel: string | null
+  /** Straight to the item in Monday. Null only while the slug is unknown. */
+  url: string | null
   mondayUserId: number
   who: string
   itemUpdatedAt: string | null
@@ -122,6 +124,24 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       supabase.from('people').select('id, full_name'),
     ])
 
+  const { data: settings } = await supabase
+    .from('app_settings').select('monday_account_slug').eq('singleton_id', 1).maybeSingle()
+  const slug = (settings as { monday_account_slug: string | null } | null)?.monday_account_slug ?? null
+
+  /**
+   * A subitem's own board cannot be opened in Monday, so a subitem links to
+   * its parent, on the parent's board. Falling back to the subitem's own board
+   * would produce a URL that loads a page saying nothing is there, which is
+   * worse than no link.
+   */
+  const itemUrl = (a: A): string | null => {
+    if (!slug) return null
+    const board = a.parent_board_id ?? (a.parent_item_id ? null : a.board_id)
+    const item = a.parent_item_id ?? a.item_id
+    if (!board) return null
+    return `https://${slug}.monday.com/boards/${board}/pulses/${item}`
+  }
+
   type B = {
     id: number; name: string; workspace_name: string | null; included: boolean
     items_synced_at: string | null; date_title: string | null
@@ -148,8 +168,9 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     people_col: string; monday_user_id: number
     status_text: string | null; status_done: boolean | null; status_color: string | null
     due_date: string | null; item_updated_at: string | null
+    parent_item_id: number | null; parent_board_id: number | null
   }
-  const SELECT = 'id, board_id, item_id, item_name, parent_item_name, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at'
+  const SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at'
   const applyFilters = (q: any): any => {
     let out = q
     if (onlyAccounts) out = out.in('monday_user_id', onlyAccounts)
@@ -215,6 +236,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       statusColor: a.status_color,
       dueDate: a.due_date,
       dueLabel: b.date_title ?? null,
+      url: itemUrl(a),
       mondayUserId: a.monday_user_id,
       who: (pid ? personName.get(pid) : undefined) ?? mondayName.get(a.monday_user_id) ?? `User ${a.monday_user_id}`,
       itemUpdatedAt: a.item_updated_at,

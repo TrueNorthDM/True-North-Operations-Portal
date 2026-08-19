@@ -197,6 +197,15 @@ async function allBoards(token: string): Promise<RawBoard[]> {
 }
 
 export async function syncMondayBoards(supabase: Client, token: string): Promise<BoardSyncResult> {
+  // The account's subdomain, which item links are built from. Read here rather
+  // than written into the source: hardcoding it means the day it changes every
+  // link breaks quietly and nobody connects the two events.
+  const acct = await gql<{ account: { slug: string } }>(token, `query { account { slug } }`)
+  if (acct.account?.slug) {
+    await supabase.from('app_settings')
+      .update({ monday_account_slug: acct.account.slug }).eq('singleton_id', 1)
+  }
+
   const boards = await allBoards(token)
   const now = new Date().toISOString()
 

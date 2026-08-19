@@ -105,6 +105,16 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
         <div className="px-6 py-5">
           <div className="flex items-center gap-2 flex-wrap mb-5">
             <span className={`${chip} bg-[rgba(30,125,127,.1)] text-tn-teal`}>{row.stepName}</span>
+            {row.url && (
+              <a
+                href={row.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${chip} bg-[rgba(1,35,88,.06)] text-tn-ink hover:bg-[rgba(1,35,88,.12)]`}
+              >
+                Open in Monday ↗
+              </a>
+            )}
             {row.statusText && <StatusChip text={row.statusText} colour={row.statusColor} />}
             {row.dueDate && (
               <span className="text-sm text-muted">
@@ -286,7 +296,23 @@ export function WorkList({
                   className="border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors cursor-pointer"
                 >
                   <td className="px-4 py-2.5 font-semibold text-tn-ink max-w-[280px]">
-                    <span className="block truncate" title={r.itemName}>{r.itemName}</span>
+                    {r.url ? (
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        // The row opens the history; the name opens Monday. Two
+                        // destinations on one row need the inner one to stop
+                        // the outer one, or clicking the link does both.
+                        onClick={e => e.stopPropagation()}
+                        className="block truncate hover:text-tn-teal hover:underline"
+                        title={`${r.itemName} · open in Monday`}
+                      >
+                        {r.itemName}
+                      </a>
+                    ) : (
+                      <span className="block truncate" title={r.itemName}>{r.itemName}</span>
+                    )}
                   </td>
                   {/* Only a subitem has one, and the parent is the name a
                       person recognises: "Portuguese" means nothing without
