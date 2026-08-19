@@ -121,12 +121,13 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
 }
 
 export function WorkList({
-  data, people, teams, selfPersonId,
+  data, people, teams, selfPersonId, isAdmin = false,
 }: {
   data: Worklist
   people: Option[]
   teams: Option[]
   selfPersonId: string | null
+  isAdmin?: boolean
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -196,10 +197,23 @@ export function WorkList({
         pastVerb="refreshed"
       />
 
-      {data.unlinked > 0 && (
+      {/* Only where it changes the answer.
+          A missing account → person link matters for exactly one thing: the
+          team filter runs through it, so work on an unlinked account is
+          invisible while a team is selected. With no team chosen the list is
+          complete and the same message would be describing a problem that is
+          not on screen, aimed at somebody who cannot fix it: fixing it is an
+          admin job on another page. A standing yellow banner nobody can act on
+          is how a warning gets tuned out before the day it matters. */}
+      {team && data.unlinked > 0 && (
         <div className="rounded-[10px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-[#8a6d1a]">
-          {data.unlinked} Monday {data.unlinked === 1 ? 'account is' : 'accounts are'} not linked to anyone in the
-          Directory. Their work shows here but cannot be filtered by team.
+          {`This team filter cannot see ${data.unlinkedAssignments} ${data.unlinkedAssignments === 1 ? 'assignment' : 'assignments'} on ${data.unlinked} Monday ${data.unlinked === 1 ? 'account' : 'accounts'} that belong to nobody in the Directory.`}
+          {isAdmin && (
+            <>
+              {' '}
+              <a href="/admin/monday-links" className="font-bold underline hover:no-underline">Resolve them</a>.
+            </>
+          )}
         </div>
       )}
 

@@ -17,6 +17,7 @@ import { loadMyTeam } from '@/lib/directory/my-team'
 import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
 import { WorkList } from '@/components/monday/WorkList'
 import { loadWorklist } from '@/lib/monday/worklist/data'
+import { isSecurityAdmin } from '@/lib/auth/role'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
@@ -79,16 +80,18 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   // two are different questions and the empty string keeps them apart.
   const personId = sp.person === undefined ? selfPersonId : (sp.person || null)
 
-  const [data, { data: peopleRows }, { data: teamRows }] = await Promise.all([
+  const [data, { data: peopleRows }, { data: teamRows }, admin] = await Promise.all([
     loadWorklist(supabase, { personId, teamId: sp.team || null, includeDone: sp.done === '1' }),
     supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name'),
     supabase.from('teams').select('id, name').order('name'),
+    isSecurityAdmin(),
   ])
 
   return (
     <WorkList
       data={data}
       selfPersonId={selfPersonId}
+      isAdmin={admin}
       people={((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => ({ value: p.id, label: p.full_name }))}
       teams={((teamRows ?? []) as { id: string; name: string }[]).map(t => ({ value: t.id, label: t.name }))}
     />

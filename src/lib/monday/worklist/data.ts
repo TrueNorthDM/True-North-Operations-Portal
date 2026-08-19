@@ -64,6 +64,8 @@ export interface Worklist {
    * counted: an answered question is not an open one.
    */
   unlinked: number
+  /** Assignments riding on those accounts, which is the size of the blind spot. */
+  unlinkedAssignments: number
   /**
    * The OLDEST board read, not the newest.
    *
@@ -134,7 +136,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1)
     if (onlyAccounts) {
-      if (!onlyAccounts.length) return { groups: [], open: 0, total: 0, unlinked: 0, oldestSyncAt: null }
+      if (!onlyAccounts.length) return { groups: [], open: 0, total: 0, unlinked: 0, unlinkedAssignments: 0, oldestSyncAt: null }
       q = q.in('monday_user_id', onlyAccounts)
     }
     if (!f.includeDone) q = q.or('status_done.is.null,status_done.eq.false')
@@ -148,6 +150,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   const byWorkspace = new Map<string, Map<number, WorkRow[]>>()
   let open = 0
   const unlinkedAccounts = new Set<number>()
+  let unlinkedAssignments = 0
 
   for (const a of rows) {
     const b = boards.get(a.board_id)
@@ -157,7 +160,10 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     if (st?.source === 'off') continue
 
     const pid = personByAccount.get(a.monday_user_id)
-    if (!pid && !externalAccounts.has(a.monday_user_id)) unlinkedAccounts.add(a.monday_user_id)
+    if (!pid && !externalAccounts.has(a.monday_user_id)) {
+      unlinkedAccounts.add(a.monday_user_id)
+      unlinkedAssignments++
+    }
 
     const row: WorkRow = {
       id: a.id,
@@ -211,6 +217,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     open,
     total: rows.length,
     unlinked: unlinkedAccounts.size,
+    unlinkedAssignments,
     oldestSyncAt: stamps[0] ?? null,
   }
 }
