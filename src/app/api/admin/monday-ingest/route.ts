@@ -1,25 +1,23 @@
 /**
  * GET /api/admin/monday-ingest?run=yes
  *
- * Reads assignments off every included board that has steps, oldest first,
- * until the time budget runs out. Re-run until it says nothing is left.
+ * Starts the same chained ingest the cron runs, and answers immediately.
  *
- * Sliced rather than one long run because a Vercel function is killed at 300
- * seconds and 197 boards do not fit in one. Progress lives on the board row
- * (items_synced_at), so a slice that dies costs one board.
+ * It used to do the reading inside this request, which meant the browser sat
+ * on a blank tab for up to four minutes and then, if the platform lost
+ * patience first, showed nothing at all. A request that holds a person still
+ * while it works is a bad way to run a job that takes minutes: the work has a
+ * place to report progress already, and waiting is not how you read it.
+ *
+ * So this hands off to /api/cron/monday-worklist, which slices, chains and
+ * stamps each board as it finishes, and returns a pointer to the status page.
+ * Nothing is lost if the tab is closed a second later.
  */
 
 import { isSecurityAdmin } from '@/lib/auth/role'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { getMondayToken } from '@/lib/monday/snapshot'
-import { ingestSlice } from '@/lib/monday/worklist/ingest'
 
 export const runtime = 'nodejs'
-export const maxDuration = 300
 export const dynamic = 'force-dynamic'
-
-// Leaves room to write what was gathered before the platform pulls the plug.
-const BUDGET_MS = 220_000
 
 export async function GET(request: Request) {
   if (!(await isSecurityAdmin())) return new Response('Admins only.', { status: 403 })
@@ -31,27 +29,33 @@ export async function GET(request: Request) {
     })
   }
 
-  const token = await getMondayToken()
-  if (!token) return new Response('No Monday token configured in Settings.', { status: 400 })
+  const secret = process.env.CRON_SECRET
+  const target = new URL('/api/cron/monday-worklist', url.origin)
 
-  const out: string[] = []
-  try {
-    const r = await ingestSlice(createAdminClient(), token, BUDGET_MS)
-    const items = r.done.reduce((s, b) => s + b.items, 0)
-    const asg = r.done.reduce((s, b) => s + b.assignments, 0)
-    out.push(`${r.done.length} boards in ${Math.round(r.spentMs / 1000)}s: ${items} items, ${asg} assignments.`)
-    out.push('')
-    for (const b of r.done.sort((a, b2) => b2.assignments - a.assignments)) {
-      out.push(`  ${String(b.assignments).padStart(6)}  from ${String(b.items).padStart(5)} items   ${b.board}`)
-    }
-    out.push('')
-    out.push(r.remaining > 0
-      ? `${r.remaining} boards still to go. Run it again.`
-      : 'Nothing left. Every board is in.')
-    return new Response(out.join('\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
-  } catch (e) {
-    out.push(`FAILED: ${(e as Error).message}`)
-    out.push('Whatever finished is saved. Run it again to pick up from there.')
-    return new Response(out.join('\n'), { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
-  }
+  // Fire and forget, exactly as the chain does between its own hops: awaiting
+  // it would put the four-minute wait straight back.
+  void fetch(target.toString(), {
+    headers: secret ? { authorization: `Bearer ${secret}` } : undefined,
+  }).catch(() => {
+    // Nothing to recover here. The scheduled run picks up the same queue, in
+    // the same order, because progress lives on the board rows.
+  })
+
+  return new Response(
+    [
+      'Started.',
+      '',
+      'It refreshes the user, board and step maps first, then reads boards in',
+      'slices, oldest first, calling itself until the queue is empty. A full',
+      'pass over 197 boards takes a few minutes and continues after this tab',
+      'is closed.',
+      '',
+      'Watch it here:',
+      '  /api/admin/monday-inventory?part=status',
+      '',
+      'Or just wait: the same job runs on its own at 02:15, 06:15, 10:15,',
+      '14:15, 18:15 and 22:15 (GMT-3).',
+    ].join('\n'),
+    { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+  )
 }
