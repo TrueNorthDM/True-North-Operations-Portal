@@ -47,8 +47,12 @@ export interface UserSyncResult {
  * linked comes back in `unlinked` so it is a visible pending item.
  */
 export async function syncMondayUsers(supabase: Client, token: string): Promise<UserSyncResult> {
+  // state: all, deliberately. The default returns active accounts only, and
+  // people who left are still named on years of items: their ids turn up in
+  // assignments with no row to explain them, which is how a page ends up
+  // reporting 35 unknown accounts when discovery had only flagged 18.
   const d = await gql<{ users: { id: string; name: string; email: string | null; enabled: boolean; is_guest: boolean }[] }>(
-    token, `query { users(limit: 500) { id name email enabled is_guest } }`)
+    token, `query { users(limit: 500, state: all) { id name email enabled is_guest } }`)
   const users = d.users ?? []
 
   const rows = users.map(u => ({
