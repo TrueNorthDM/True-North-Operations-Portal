@@ -30,6 +30,7 @@ interface HistoryEvent {
   to: string | null
 }
 
+const th = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 whitespace-nowrap'
 const chip = 'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
 
 /**
@@ -167,7 +168,6 @@ export function WorkList({
   const params = useSearchParams()
   const [, startTransition] = useTransition()
   const [openRow, setOpenRow] = useState<WorkRow | null>(null)
-  const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
 
   const person = params.get('person') ?? selfPersonId ?? ''
   const team = params.get('team') ?? ''
@@ -182,12 +182,6 @@ export function WorkList({
     if (key === 'team' && value) next.delete('person')
     next.set('tab', 'work')
     startTransition(() => router.push(`/my-work?${next.toString()}`))
-  }
-
-  const toggle = (id: number) => {
-    const next = new Set(collapsed)
-    if (next.has(id)) next.delete(id); else next.add(id)
-    setCollapsed(next)
   }
 
   return (
@@ -263,64 +257,69 @@ export function WorkList({
         </div>
       )}
 
-      {data.groups.length === 0 && (
+      {data.rows.length === 0 && (
         <div className="rounded-[14px] border border-slate-200 bg-white px-6 py-12 text-center text-sm text-muted">
           Nothing open here.
         </div>
       )}
 
-      {data.groups.map(g => (
-        <section key={g.workspaceName} className="space-y-2">
-          <h2 className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[15px] m-0">
-            {g.workspaceName}
-            <span className="ml-2 text-xs font-bold text-muted">{g.open} open</span>
-          </h2>
-
-          {g.boards.map(b => (
-            <div key={b.boardId} className="rounded-[14px] border border-slate-200 bg-white overflow-hidden">
-              <button
-                onClick={() => toggle(b.boardId)}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-subtle transition-colors"
-              >
-                <span className="font-bold text-tn-ink text-sm">{b.boardName}</span>
-                <span className="text-xs text-muted">{b.rows.length}</span>
-              </button>
-
-              {!collapsed.has(b.boardId) && (
-                <ul className="m-0 p-0 list-none border-t border-slate-100">
-                  {b.rows.map(r => (
-                    <li key={r.id}>
-                      <button
-                        onClick={() => setOpenRow(r)}
-                        className="w-full text-left px-4 py-2.5 flex items-center gap-3 border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[13.5px] font-semibold text-tn-ink truncate">
-                            {r.parentItemName ?? r.itemName}
-                          </span>
-                          <span className="block text-xs text-muted truncate">
-                            {r.parentItemName ? `${r.itemName} · ` : ''}{r.stepName}
-                            {r.groupTitle ? ` · ${r.groupTitle}` : ''}
-                          </span>
-                        </span>
-                        <span className="shrink-0 w-[92px] text-right text-xs">
-                          {r.dueDate
-                            ? (() => { const d = dueLabel(r.dueDate); return <span className={DUE_TONE[d.tone]}>{d.text}</span> })()
-                            : <span className="text-slate-300">-</span>}
-                        </span>
-                        {r.statusText
-                          ? <span className="shrink-0"><StatusChip text={r.statusText} colour={r.statusColor} /></span>
-                          : <span className="shrink-0 w-[1px]" />}
-                        <span className="shrink-0 text-xs text-muted w-[120px] truncate text-right">{r.who}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-        </section>
-      ))}
+      {data.rows.length > 0 && (
+        <div className="rounded-[14px] border border-slate-200 bg-white overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-subtle border-b border-slate-200 text-left">
+                <th className={th}>Item</th>
+                <th className={th}>Parent item</th>
+                <th className={th}>Board</th>
+                <th className={th}>Workspace</th>
+                <th className={th}>Assignee</th>
+                <th className={th}>Step</th>
+                <th className={th}>Status</th>
+                <th className={`${th} text-right`}>Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map(r => (
+                <tr
+                  key={r.id}
+                  onClick={() => setOpenRow(r)}
+                  className="border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors cursor-pointer"
+                >
+                  <td className="px-4 py-2.5 font-semibold text-tn-ink max-w-[280px]">
+                    <span className="block truncate" title={r.itemName}>{r.itemName}</span>
+                  </td>
+                  {/* Only a subitem has one, and the parent is the name a
+                      person recognises: "Portuguese" means nothing without
+                      the page it belongs to. */}
+                  <td className="px-4 py-2.5 text-muted max-w-[240px]">
+                    {r.parentItemName
+                      ? <span className="block truncate" title={r.parentItemName}>{r.parentItemName}</span>
+                      : <span className="text-slate-300">-</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-muted max-w-[200px]">
+                    <span className="block truncate" title={r.boardName}>{r.boardName}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-muted max-w-[170px]">
+                    <span className="block truncate">{r.workspaceName ?? '-'}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-tn-ink whitespace-nowrap">{r.who}</td>
+                  <td className="px-4 py-2.5 text-muted whitespace-nowrap">{r.stepName}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    {r.statusText
+                      ? <StatusChip text={r.statusText} colour={r.statusColor} />
+                      : <span className="text-slate-300">-</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap text-xs">
+                    {r.dueDate
+                      ? (() => { const d = dueLabel(r.dueDate); return <span className={DUE_TONE[d.tone]}>{d.text}</span> })()
+                      : <span className="text-slate-300">-</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {openRow && <HistoryPanel row={openRow} onClose={() => setOpenRow(null)} />}
     </div>

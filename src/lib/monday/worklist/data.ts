@@ -54,18 +54,10 @@ export interface WorkRow {
   itemUpdatedAt: string | null
 }
 
-export interface WorkBoard {
-  boardId: number
-  boardName: string
-  rows: WorkRow[]
-}
-
-export interface WorkGroup {
-  workspaceName: string
-  boards: WorkBoard[]
-  open: number
-  total: number
-}
+// Workspace and board are columns on the row now, not levels of a tree. The
+// grouped shape answered "what is happening in Graphics"; a flat table answers
+// "what is on my plate", which is the question this page is named after, and
+// it is the shape that can be sorted and read across boards at once.
 
 export interface WorklistFilters {
   /** Directory person, resolved to their Monday accounts. */
@@ -76,7 +68,7 @@ export interface WorklistFilters {
 }
 
 export interface Worklist {
-  groups: WorkGroup[]
+  rows: WorkRow[]
   open: number
   total: number
   /**
@@ -166,7 +158,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   }
 
   if (onlyAccounts && !onlyAccounts.length) {
-    return { groups: [], open: 0, total: 0, unlinked: 0, unlinkedAssignments: 0, truncated: false, matching: 0, oldestSyncAt: null }
+    return { rows: [], open: 0, total: 0, unlinked: 0, unlinkedAssignments: 0, truncated: false, matching: 0, oldestSyncAt: null }
   }
 
   // How many match, asked once and counted by the database rather than by
@@ -190,7 +182,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   }
 
   const linkedAccounts = new Set(personByAccount.keys())
-  const byWorkspace = new Map<string, Map<number, WorkRow[]>>()
+  const out: WorkRow[] = []
   let open = 0
   const accountsOnWork = new Set<number>()
   let unlinkedAssignments = 0
@@ -229,34 +221,16 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     }
     if (row.statusDone !== true) open++
 
-    const ws = b.workspace_name ?? 'No workspace'
-    const inWs = byWorkspace.get(ws) ?? new Map<number, WorkRow[]>()
-    byWorkspace.set(ws, inWs)
-    inWs.set(a.board_id, [...(inWs.get(a.board_id) ?? []), row])
+    out.push(row)
   }
 
-  const groups: WorkGroup[] = [...byWorkspace.entries()].map(([workspaceName, boardMap]) => {
-    const bs: WorkBoard[] = [...boardMap.entries()]
-      .map(([boardId, rs]) => ({
-        boardId,
-        boardName: rs[0].boardName,
-        rows: rs.sort((x, y) =>
-          Number(x.statusDone) - Number(y.statusDone)
-          // Soonest deadline first; a row with no date is not urgent, so it
-          // sits behind the dated ones instead of ahead of them.
-          || (x.dueDate ? 0 : 1) - (y.dueDate ? 0 : 1)
-          || (x.dueDate ?? '').localeCompare(y.dueDate ?? '')
-          || (x.parentItemName ?? x.itemName).localeCompare(y.parentItemName ?? y.itemName)),
-      }))
-      .sort((a, b) => b.rows.length - a.rows.length)
-    const total = bs.reduce((s, x) => s + x.rows.length, 0)
-    return {
-      workspaceName,
-      boards: bs,
-      total,
-      open: bs.reduce((s, x) => s + x.rows.filter(r => r.statusDone !== true).length, 0),
-    }
-  }).sort((a, b) => b.open - a.open || b.total - a.total)
+  // Open before finished, then soonest deadline, then alphabetical. A row with
+  // no date is not urgent, so it sits behind the dated ones instead of ahead.
+  out.sort((x, y) =>
+    Number(x.statusDone) - Number(y.statusDone)
+    || (x.dueDate ? 0 : 1) - (y.dueDate ? 0 : 1)
+    || (x.dueDate ?? '').localeCompare(y.dueDate ?? '')
+    || (x.parentItemName ?? x.itemName).localeCompare(y.parentItemName ?? y.itemName))
 
   const stamps = boardList
     .filter(b => b.included && b.items_synced_at)
@@ -264,7 +238,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     .sort()
 
   return {
-    groups,
+    rows: out,
     open,
     total: rows.length,
     unlinked: unresolvedAccounts(accountsOnWork, linkedAccounts, externalAccounts).size,
