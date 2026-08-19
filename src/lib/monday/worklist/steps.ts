@@ -50,23 +50,30 @@ export interface SeededStep {
 export const DATE_TYPES = new Set(['date', 'timeline'])
 
 /**
- * The column a board's deadline should come from.
+ * The column a board's deadline should come from, or nothing.
  *
- * Boards carry several dates: created, published, kick-off, due. Preferring a
- * title that says so is the only signal available, and when none does the
- * first date column is a guess worth making and recording, since a wrong date
- * shown next to its column name is correctable and no date at all is not.
+ * The boards that get this right all name it the same two ways: something
+ * ending in "By" (Audit By, Adapt By, Plan By, Create By, GPT By) or something
+ * containing Deadline or Due. English does the work: "by" looks forward, and a
+ * date you must act before is a deadline.
+ *
+ * The ones that got it wrong were all picked by a fallback that took the first
+ * date column on the board when nothing matched, and on those boards the first
+ * date column is a RECORD of the past: Published On, Item Creation, Submitted
+ * On, Posted Date. A record read as a deadline manufactures overdue work, on a
+ * page whose entire job is to order things by urgency.
+ *
+ * So there is no fallback. A board with no column that says deadline gets no
+ * deadline, and the column stays empty until a person says otherwise. Inventing
+ * one is worse than leaving it blank, because blank is legible as "not set" and
+ * a wrong date is not legible as anything.
  */
 export function pickDateColumn(cols: BoardColumn[]): BoardColumn | null {
   const dates = cols.filter(c => DATE_TYPES.has(c.type))
   if (!dates.length) return null
-  // "publish" was in this list and it was wrong: "Published On" records when
-  // something shipped, which is the opposite of a deadline, and reading it as
-  // one put six-year-old publication dates at the top of everyone's list as
-  // though they were overdue work.
-  const named = dates.find(c => /due|deadline|target|delivery|by when|implement by/i.test(c.title))
-  if (named) return named
-  return dates.find(c => c.type === 'date') ?? dates[0]
+  const deadline = (t: string) =>
+    /\bby\s*$/i.test(t.trim()) || /deadline|due\b|due-|target|delivery/i.test(t)
+  return dates.find(c => deadline(c.title)) ?? null
 }
 
 /**

@@ -219,13 +219,25 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     // the account reports far more boards than a person would name.
     is_subitem_board: /^Subitems of /i.test(b.name),
     items_count: b.items_count,
-    date_col: pickDateColumn(b.columns ?? [])?.id ?? null,
-    date_title: pickDateColumn(b.columns ?? [])?.title ?? null,
+    ...(() => {
+      const c = pickDateColumn(b.columns ?? [])
+      return { date_col: c?.id ?? null, date_title: c?.title ?? null }
+    })(),
     synced_at: now,
   }))
   for (let i = 0; i < boardRows.length; i += 200) {
     const { error } = await supabase.from('monday_boards').upsert(boardRows.slice(i, i + 200), { onConflict: 'id' })
     if (error) throw new Error(`monday_boards upsert: ${error.message}`)
+  }
+
+  // A board that just lost its date column still carries the dates that column
+  // produced. Clearing them here rather than waiting for the board's turn in
+  // the ingest queue: a wrong deadline should stop being shown the moment it is
+  // known to be wrong, not hours later.
+  const dropped = boardRows.filter(b => b.date_col == null).map(b => b.id)
+  for (let i = 0; i < dropped.length; i += 200) {
+    await supabase.from('monday_assignments')
+      .update({ due_date: null }).in('board_id', dropped.slice(i, i + 200)).not('due_date', 'is', null)
   }
 
   const withPeople = boards.filter(b => (b.columns ?? []).some(c => PEOPLE_TYPES.has(c.type)))

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seedSteps, type BoardColumn } from './steps'
+import { seedSteps, pickDateColumn, type BoardColumn } from './steps'
 
 const col = (id: string, title: string, type: string): BoardColumn => ({ id, title, type })
 const p = (id: string, title: string) => col(id, title, 'multiple-person')
@@ -74,5 +74,40 @@ describe('seedSteps', () => {
   it('records column order, which is the order the workflow runs in', () => {
     const out = seedSteps([s('a', 'X'), p('pe1', 'One'), s('b', 'Y'), p('pe2', 'Two')])
     expect(out.map(x => x.position)).toEqual([1, 3])
+  })
+})
+
+describe('pickDateColumn', () => {
+  const d = (id: string, title: string) => col(id, title, 'date')
+
+  // How the boards that get it right all name it.
+  it('takes a title that ends in "by"', () => {
+    expect(pickDateColumn([d('c1', 'Created On'), d('c2', 'Audit By')])?.title).toBe('Audit By')
+  })
+
+  it('takes a title that says deadline or due', () => {
+    expect(pickDateColumn([d('c1', 'Draft Deadline')])?.title).toBe('Draft Deadline')
+    expect(pickDateColumn([d('c1', 'Due Date')])?.title).toBe('Due Date')
+    expect(pickDateColumn([d('c1', 'Due-Date')])?.title).toBe('Due-Date')
+  })
+
+  // The four boards this went wrong on. A record of the past read as a deadline
+  // manufactures overdue work on a page that sorts by urgency.
+  it('never falls back to a record of the past', () => {
+    expect(pickDateColumn([d('c1', 'Published On')])).toBeNull()
+    expect(pickDateColumn([d('c1', 'Item Creation')])).toBeNull()
+    expect(pickDateColumn([d('c1', 'Submitted On')])).toBeNull()
+    expect(pickDateColumn([d('c1', 'Posted Date')])).toBeNull()
+  })
+
+  it('leaves a board with no deadline column without one', () => {
+    expect(pickDateColumn([d('c1', 'Date'), d('c2', 'Kick-Off')])).toBeNull()
+    expect(pickDateColumn([])).toBeNull()
+  })
+
+  // "Publish By" says by, so it is a deadline; "Published On" says on.
+  it('reads by and on as the opposites they are', () => {
+    expect(pickDateColumn([d('c1', 'Publish By')])?.title).toBe('Publish By')
+    expect(pickDateColumn([d('c1', 'Published On')])).toBeNull()
   })
 })
