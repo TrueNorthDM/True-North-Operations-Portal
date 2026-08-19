@@ -158,7 +158,6 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     due_date: string | null; item_updated_at: string | null
   }
   const SELECT = 'id, board_id, item_id, item_name, parent_item_name, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at'
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const applyFilters = (q: any): any => {
     let out = q
     if (onlyAccounts) out = out.in('monday_user_id', onlyAccounts)
