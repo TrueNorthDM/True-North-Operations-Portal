@@ -24,6 +24,7 @@
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { BOARDS } from '@/lib/boards/config'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -142,13 +143,20 @@ export async function GET(request: Request) {
         .sort((a, b) => (b.items_count ?? 0) - (a.items_count ?? 0))
       say(`${boards.length} active boards. p = people columns, s = status-like columns.`)
       say()
+      // IN BOARD ORDER, not grouped by type. The first version of this grouped
+      // people columns then status columns, which reads more tidily and throws
+      // away the only strong signal there is: a board is laid out left to right
+      // and whoever built the workflow put a step's status beside that step's
+      // owner. Sorting output for legibility lost the structure of the data.
       for (const b of boards) {
         const ppl = b.columns.filter(c => PEOPLE_TYPES.has(c.type))
         const st = b.columns.filter(c => STATE_TYPES.has(c.type))
         say(`── ${b.name}`)
         say(`   id ${b.id}  ws ${b.workspace?.name ?? '-'}  kind ${b.board_kind}  items ${b.items_count ?? '?'}  p${ppl.length} s${st.length}`)
-        for (const c of ppl) say(`   p  ${c.id.padEnd(28)} ${c.title}`)
-        for (const c of st) say(`   s  ${c.id.padEnd(28)} ${c.title}`)
+        for (const c of b.columns) {
+          const mark = PEOPLE_TYPES.has(c.type) ? 'p' : STATE_TYPES.has(c.type) ? 's' : ' '
+          say(`   ${mark}  ${c.id.padEnd(28)} ${c.type.padEnd(18)} ${c.title}`)
+        }
         say()
       }
       return done()
@@ -233,6 +241,72 @@ export async function GET(request: Request) {
       for (const u of us.sort((a, b) => a.name.localeCompare(b.name))) {
         say(`${String(u.id).padEnd(12)}${u.name.slice(0, 26).padEnd(28)}${u.email}${u.enabled ? '' : '   (disabled)'}`)
       }
+      return done()
+    }
+
+    if (part === 'guess') {
+      // The four configured boards are an answer key: a person sat down and
+      // wrote which status column each people column belongs to. Running the
+      // heuristic against them turns "this probably works" into a number.
+      const ids = Object.keys(BOARDS)
+      const d = await gql<{ boards: (Board & { columns: Col[] })[] }>(token, `
+        query ($ids: [ID!]) {
+          boards(ids: $ids) { id name columns { id title type } }
+        }`, { ids })
+
+      // Truth: ownerCol → the stage column it belongs to, from config.ts.
+      const truth = new Map<string, Map<string, string>>()
+      for (const [bid, cfg] of Object.entries(BOARDS)) {
+        const m = new Map<string, string>()
+        for (const st of cfg.stages ?? []) if (st.ownerCol) m.set(st.ownerCol, st.col)
+        for (const st of cfg.subitemPipeline?.stages ?? []) if (st.ownerCol) m.set(st.ownerCol, st.col)
+        truth.set(bid, m)
+      }
+
+      const nearest = (cols: Col[], at: number, dir: -1 | 1): Col | null => {
+        for (let i = at + dir; i >= 0 && i < cols.length; i += dir) {
+          if (STATE_TYPES.has(cols[i].type)) return cols[i]
+          if (PEOPLE_TYPES.has(cols[i].type)) return null   // another step's owner: stop
+        }
+        return null
+      }
+
+      let leftHits = 0, rightHits = 0, total = 0
+      for (const b of d.boards ?? []) {
+        const want = truth.get(String(b.id))
+        // Subitem pipelines live on a different board id than the parent, so a
+        // parent's map may name columns this board does not have. Only score
+        // what is actually here.
+        const cols = b.columns ?? []
+        say(`── ${b.name} (${b.id})`)
+        for (let i = 0; i < cols.length; i++) {
+          const c = cols[i]
+          if (!PEOPLE_TYPES.has(c.type)) continue
+          const expect = want?.get(c.id)
+          const l = nearest(cols, i, -1)
+          const r = nearest(cols, i, 1)
+          if (!expect) {
+            say(`   ?  ${c.title.padEnd(24)} not in the answer key   left=${l?.title ?? '-'}  right=${r?.title ?? '-'}`)
+            continue
+          }
+          total++
+          const okL = l?.id === expect
+          const okR = r?.id === expect
+          if (okL) leftHits++
+          if (okR) rightHits++
+          const mark = okL && okR ? 'both' : okL ? 'LEFT' : okR ? 'RIGHT' : 'MISS'
+          say(`   ${mark.padEnd(6)} ${c.title.padEnd(24)} should be "${cols.find(x => x.id === expect)?.title ?? expect}"`)
+          if (!okL && !okR) say(`          got left="${l?.title ?? '-'}"  right="${r?.title ?? '-'}"`)
+        }
+        say()
+      }
+      say(`SCORED ${total} owner columns that the answer key covers.`)
+      say(`  nearest status to the LEFT   ${leftHits}/${total}`)
+      say(`  nearest status to the RIGHT  ${rightHits}/${total}`)
+      say()
+      say('Whichever wins is the default the confirmation screen starts from.')
+      say('A heuristic that needs correcting on a third of boards is still worth')
+      say('having; one that needs correcting everywhere is just a worse blank form.')
       return done()
     }
 
