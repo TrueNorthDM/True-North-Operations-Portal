@@ -46,24 +46,61 @@ function StatusChip({ text, colour }: { text: string; colour: string | null }) {
   return <span className={`${chip} text-white`} style={{ background: colour }}>{text}</span>
 }
 
-/** Due dates read as a deadline, so today and tomorrow are named. */
-function dueLabel(date: string): { text: string; tone: 'late' | 'now' | 'soon' | 'later' } {
-  const today = new Date()
-  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  const days = Math.round((Date.parse(`${date}T00:00:00`) - Date.parse(`${iso}T00:00:00`)) / 86_400_000)
-  const shown = new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  if (days < 0) return { text: `${shown} · ${-days}d late`, tone: 'late' }
-  if (days === 0) return { text: 'Today', tone: 'now' }
-  if (days === 1) return { text: 'Tomorrow', tone: 'now' }
-  if (days <= 7) return { text: shown, tone: 'soon' }
-  return { text: shown, tone: 'later' }
+/**
+ * How far apart two dates are, in years, months and days.
+ *
+ * Calendar arithmetic rather than dividing by 86,400,000: "5y 11m 29d" is how
+ * a person reads a six-year-old deadline, and "2189d" is a number they have to
+ * do arithmetic on before it means anything.
+ */
+function span(from: Date, to: Date): string {
+  let y = to.getFullYear() - from.getFullYear()
+  let m = to.getMonth() - from.getMonth()
+  let d = to.getDate() - from.getDate()
+  if (d < 0) {
+    m--
+    // Days in the month before `to`, which is the month the shortfall is owed
+    // to. Assuming 30 drifts by up to two days.
+    d += new Date(to.getFullYear(), to.getMonth(), 0).getDate()
+  }
+  if (m < 0) { y--; m += 12 }
+  const parts = [y ? `${y}y` : '', m ? `${m}m` : '', d ? `${d}d` : ''].filter(Boolean)
+  return parts.length ? parts.join(' ') : 'today'
 }
 
-const DUE_TONE: Record<'late' | 'now' | 'soon' | 'later', string> = {
-  late: 'text-[#c2410c] font-bold',
-  now: 'text-tn-ink font-bold',
-  soon: 'text-tn-ink font-semibold',
-  later: 'text-muted',
+type DueState = 'late' | 'today' | 'upcoming'
+
+/** The three things a deadline can be, kept apart so each gets its own column. */
+function readDue(date: string): { date: string; time: string; state: DueState } {
+  const at = new Date(`${date}T00:00:00`)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const shown = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  if (at.getTime() < today.getTime()) return { date: shown, time: span(at, today), state: 'late' }
+  if (at.getTime() === today.getTime()) return { date: shown, time: '', state: 'today' }
+  return { date: shown, time: `in ${span(today, at)}`, state: 'upcoming' }
+}
+
+const DUE_BADGE: Record<DueState, { label: string; className: string }> = {
+  late: { label: 'Late', className: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]' },
+  today: { label: 'Due today', className: 'bg-[rgba(224,138,30,.14)] text-[#b06d0a]' },
+  upcoming: { label: 'Upcoming', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
+}
+
+const DUE_TIME: Record<DueState, string> = {
+  late: 'text-[#c2410c] font-semibold',
+  today: 'text-muted',
+  upcoming: 'text-tn-teal font-semibold',
+}
+
+/** The same eye the Href Link Management list uses for "open this". */
+function EyeIcon() {
+  return (
+    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
 }
 
 function when(iso: string | null): string {
@@ -116,11 +153,16 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
               </a>
             )}
             {row.statusText && <StatusChip text={row.statusText} colour={row.statusColor} />}
-            {row.dueDate && (
-              <span className="text-sm text-muted">
-                {row.dueLabel ?? 'Due'}: {new Date(`${row.dueDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
-            )}
+            {row.dueDate && (() => {
+              const d = readDue(row.dueDate)
+              return (
+                <span className="inline-flex items-center gap-2 text-sm text-muted">
+                  {row.dueLabel ?? 'Due'}: {d.date}
+                  {d.time && <span className={DUE_TIME[d.state]}>{d.time}</span>}
+                  <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>
+                </span>
+              )
+            })()}
             <span className="text-sm text-muted">{row.who}</span>
           </div>
 
@@ -286,6 +328,9 @@ export function WorkList({
                 <th className={th}>Step</th>
                 <th className={th}>Status</th>
                 <th className={`${th} text-right`}>Due</th>
+                <th className={`${th} text-right`}>Time</th>
+                <th className={th}>&nbsp;</th>
+                <th className={`${th} text-right`}>Monday</th>
               </tr>
             </thead>
             <tbody>
@@ -296,23 +341,7 @@ export function WorkList({
                   className="border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors cursor-pointer"
                 >
                   <td className="px-4 py-2.5 font-semibold text-tn-ink max-w-[280px]">
-                    {r.url ? (
-                      <a
-                        href={r.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        // The row opens the history; the name opens Monday. Two
-                        // destinations on one row need the inner one to stop
-                        // the outer one, or clicking the link does both.
-                        onClick={e => e.stopPropagation()}
-                        className="block truncate hover:text-tn-teal hover:underline"
-                        title={`${r.itemName} · open in Monday`}
-                      >
-                        {r.itemName}
-                      </a>
-                    ) : (
-                      <span className="block truncate" title={r.itemName}>{r.itemName}</span>
-                    )}
+                    <span className="block truncate" title={r.itemName}>{r.itemName}</span>
                   </td>
                   {/* Only a subitem has one, and the parent is the name a
                       person recognises: "Portuguese" means nothing without
@@ -335,10 +364,41 @@ export function WorkList({
                       ? <StatusChip text={r.statusText} colour={r.statusColor} />
                       : <span className="text-slate-300">-</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap text-xs">
-                    {r.dueDate
-                      ? (() => { const d = dueLabel(r.dueDate); return <span className={DUE_TONE[d.tone]}>{d.text}</span> })()
-                      : <span className="text-slate-300">-</span>}
+                  {(() => {
+                    const d = r.dueDate ? readDue(r.dueDate) : null
+                    return (
+                      <>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap text-tn-ink">
+                          {d ? d.date : <span className="text-slate-300">-</span>}
+                        </td>
+                        <td className={`px-4 py-2.5 text-right whitespace-nowrap text-xs ${d ? DUE_TIME[d.state] : ''}`}>
+                          {d?.time || (d ? '' : <span className="text-slate-300">-</span>)}
+                        </td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
+                        </td>
+                      </>
+                    )
+                  })()}
+                  <td className="px-4 py-2.5 text-right">
+                    {r.url ? (
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        // The row opens the history; this opens Monday. The
+                        // inner target has to stop the outer one or a click
+                        // does both.
+                        onClick={e => e.stopPropagation()}
+                        aria-label={`Open ${r.itemName} in Monday`}
+                        title="Open in Monday"
+                        className="inline-flex items-center justify-center p-1.5 rounded text-muted hover:text-tn-teal hover:bg-slate-100 transition-colors"
+                      >
+                        <EyeIcon />
+                      </a>
+                    ) : (
+                      <span className="text-slate-300">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
