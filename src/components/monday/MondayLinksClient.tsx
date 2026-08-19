@@ -48,12 +48,9 @@ export function MondayLinksClient({ board, people }: { board: LinkBoard; people:
       {board.unknownIds.length > 0 && (
         <div className="rounded-[10px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-[#8a6d1a]">
           <strong className="font-extrabold">
-            {board.unknownIds.length} account {board.unknownIds.length === 1 ? 'id is' : 'ids are'} on work but
-            unknown to Monday&apos;s user list
+            {`${board.unknownIds.length} account ${board.unknownIds.length === 1 ? 'id is' : 'ids are'} on work but unknown to Monday's user list`}
           </strong>
-          , holding {board.unknownIds.reduce((s, u) => s + u.assignments, 0)} assignments. These are usually
-          people who left and are still named on old items. Run the discovery once more: it now asks Monday for
-          these ids directly, which the plain user listing does not return.
+          {`, holding ${board.unknownIds.reduce((s, u) => s + u.assignments, 0)} assignments. Run the discovery again: it asks Monday for these ids directly, and gives a placeholder to any account Monday no longer has at all, so they can be resolved like the rest.`}
         </div>
       )}
 

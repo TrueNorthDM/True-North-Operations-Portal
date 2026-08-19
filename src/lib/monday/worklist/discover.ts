@@ -34,6 +34,8 @@ export interface UserSyncResult {
   users: number
   /** Recovered by id because the listing did not include them. */
   recovered: number
+  /** Ids on work that Monday will not resolve at all: deleted accounts. */
+  ghosts: number
   linkedByEmail: number
   unlinked: { id: number; name: string; email: string | null }[]
 }
@@ -76,11 +78,28 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
     if (rows.length < 2000) break
   }
   const ids = [...missing]
+  let recovered = 0
   for (let i = 0; i < ids.length; i += 100) {
     const chunk = ids.slice(i, i + 100).map(String)
     const extra = await gql<{ users: U[] }>(
       token, `query ($ids: [ID!]) { users(ids: $ids, limit: 100) { ${FIELDS} } }`, { ids: chunk })
-    users.push(...(extra.users ?? []))
+    const got = extra.users ?? []
+    recovered += got.length
+    users.push(...got)
+  }
+
+  // Some ids Monday will not resolve at all: the account was deleted from the
+  // account outright, while the id stays written on every item that person
+  // ever touched. Without a row they are permanently "unknown", which is a
+  // warning that can never be cleared and therefore stops being read.
+  //
+  // So they get a placeholder. It says exactly what is known (an id, on real
+  // work, with nobody behind it) and it can be marked as outside True North
+  // like any other account, which is usually the truth.
+  const resolved = new Set(users.map(u => Number(u.id)))
+  const ghosts = ids.filter(id => !resolved.has(id))
+  for (const id of ghosts) {
+    users.push({ id: String(id), name: `Removed account ${id}`, email: null, enabled: false, is_guest: false })
   }
 
   const rows = users.map(u => ({
@@ -131,7 +150,7 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
     if (error) throw new Error(`monday_user_links upsert: ${error.message}`)
   }
 
-  return { users: users.length, recovered: ids.length, linkedByEmail: newLinks.length, unlinked }
+  return { users: users.length, recovered, ghosts: ghosts.length, linkedByEmail: newLinks.length, unlinked }
 }
 
 // ── Boards and their steps ──────────────────────────────────────────────────
