@@ -23,6 +23,7 @@
 
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { getMondayToken } from '@/lib/monday/snapshot'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -232,6 +233,73 @@ export async function GET(request: Request) {
       for (const u of us.sort((a, b) => a.name.localeCompare(b.name))) {
         say(`${String(u.id).padEnd(12)}${u.name.slice(0, 26).padEnd(28)}${u.email}${u.enabled ? '' : '   (disabled)'}`)
       }
+      return done()
+    }
+
+    if (part === 'match') {
+      // Nothing is written here. The question is how much of the directory can
+      // be joined to Monday without a person deciding, because everything the
+      // task list does per team depends on that join existing. Today the board
+      // code matches on the display name inside a people column, which is the
+      // same shape of mistake that produced fifteen duplicated people on the
+      // TSheets side: a name is what somebody typed, an id is who they are.
+      const d = await gql<{ users: { id: string; name: string; email: string; enabled: boolean; is_guest: boolean }[] }>(
+        token, `query { users(limit: 500) { id name email enabled is_guest } }`)
+      const monday = (d.users ?? []).filter(u => !u.is_guest)
+
+      const supabase = createAdminClient()
+      const { data: peopleRows } = await supabase
+        .from('people')
+        .select('id, full_name, status, email_true_north, email_goodnews, email_coe, email_personal')
+      type P = {
+        id: string; full_name: string; status: string
+        email_true_north: string | null; email_goodnews: string | null
+        email_coe: string | null; email_personal: string | null
+      }
+      const people = (peopleRows ?? []) as P[]
+
+      const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+      const byEmail = new Map<string, P>()
+      for (const p of people) {
+        for (const e of [p.email_true_north, p.email_goodnews, p.email_coe, p.email_personal]) {
+          if (e) byEmail.set(norm(e), p)
+        }
+      }
+      const byName = new Map<string, P[]>()
+      for (const p of people) {
+        const k = norm(p.full_name)
+        byName.set(k, [...(byName.get(k) ?? []), p])
+      }
+
+      const email: string[] = []
+      const name: string[] = []
+      const ambiguous: string[] = []
+      const none: string[] = []
+      for (const u of monday.sort((a, b) => a.name.localeCompare(b.name))) {
+        const tag = `${String(u.id).padEnd(11)} ${u.name.slice(0, 26).padEnd(28)} ${u.email}`
+        const hitE = byEmail.get(norm(u.email ?? ''))
+        if (hitE) { email.push(`  ${tag}  →  ${hitE.full_name}${hitE.status === 'inactive' ? ' (inactive)' : ''}`); continue }
+        const hitN = byName.get(norm(u.name))
+        if (hitN && hitN.length === 1) { name.push(`  ${tag}  →  ${hitN[0].full_name}${hitN[0].status === 'inactive' ? ' (inactive)' : ''}`); continue }
+        if (hitN && hitN.length > 1) { ambiguous.push(`  ${tag}  →  ${hitN.length} people share that name`); continue }
+        none.push(`  ${tag}`)
+      }
+
+      say(`${monday.length} Monday users (guests excluded), ${people.length} people in the directory.`)
+      say()
+      say(`MATCHED BY EMAIL   ${email.length}   the only join that is actually safe`)
+      email.forEach(l => say(l))
+      say()
+      say(`MATCHED BY NAME    ${name.length}   works until somebody is typed differently`)
+      name.forEach(l => say(l))
+      say()
+      say(`AMBIGUOUS          ${ambiguous.length}`)
+      ambiguous.forEach(l => say(l))
+      say()
+      say(`NO MATCH           ${none.length}   these would vanish from a team filter, silently`)
+      none.forEach(l => say(l))
+      say()
+      say('Nothing was written. This is a survey.')
       return done()
     }
 
