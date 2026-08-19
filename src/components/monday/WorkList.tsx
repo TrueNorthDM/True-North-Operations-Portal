@@ -15,6 +15,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
+import { PullInfo } from '@/components/PullInfo'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
 
 interface Option { value: string; label: string }
@@ -183,6 +184,17 @@ export function WorkList({
           {data.open} open{data.total !== data.open ? ` · ${data.total} in view` : ''}
         </span>
       </div>
+
+      {/* Same footer the API cards use, so "how current is this" reads the
+          same everywhere. Fed the oldest board's stamp rather than the newest:
+          boards refresh in rotation, so the newest would flatter the page. */}
+      <PullInfo
+        syncedAt={data.oldestSyncAt}
+        utcHours={[1, 5, 9, 13, 17, 21]}
+        utcMinute={15}
+        label="Work pulled from Monday"
+        pastVerb="refreshed"
+      />
 
       {data.unlinked > 0 && (
         <div className="rounded-[10px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-[#8a6d1a]">

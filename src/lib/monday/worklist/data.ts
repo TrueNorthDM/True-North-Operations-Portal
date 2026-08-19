@@ -58,8 +58,20 @@ export interface Worklist {
   groups: WorkGroup[]
   open: number
   total: number
-  /** Assignees with no directory person, which a team filter cannot see. */
+  /**
+   * Assignees who are neither linked to a person nor marked as outside True
+   * North, which a team filter cannot see. Accounts settled either way are not
+   * counted: an answered question is not an open one.
+   */
   unlinked: number
+  /**
+   * The OLDEST board read, not the newest.
+   *
+   * Boards are refreshed in rotation, oldest first, so the newest stamp would
+   * say "a minute ago" while some board had not been touched since morning.
+   * The oldest is the only number that is true of everything on the page.
+   */
+  oldestSyncAt: string | null
 }
 
 /** Monday accounts belonging to a set of directory people. */
@@ -84,20 +96,28 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
 
   const [{ data: boardRows }, { data: stepRows }, { data: linkRows }, { data: userRows }, { data: peopleRows }] =
     await Promise.all([
-      supabase.from('monday_boards').select('id, name, workspace_name, included'),
+      supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at'),
       supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source'),
       supabase.from('monday_user_links').select('monday_user_id, person_id'),
-      supabase.from('monday_users').select('id, name'),
+      supabase.from('monday_users').select('id, name, is_external'),
       supabase.from('people').select('id, full_name'),
     ])
 
-  const boards = new Map(((boardRows ?? []) as { id: number; name: string; workspace_name: string | null; included: boolean }[])
-    .map(b => [b.id, b]))
+  type B = { id: number; name: string; workspace_name: string | null; included: boolean; items_synced_at: string | null }
+  const boardList = (boardRows ?? []) as B[]
+  const boards = new Map(boardList.map(b => [b.id, b]))
   const steps = new Map(((stepRows ?? []) as { board_id: number; people_col: string; step_name: string; position: number; source: string }[])
     .map(s => [`${s.board_id}:${s.people_col}`, s]))
   const personByAccount = new Map(((linkRows ?? []) as { monday_user_id: number; person_id: string }[])
     .map(l => [l.monday_user_id, l.person_id]))
-  const mondayName = new Map(((userRows ?? []) as { id: number; name: string }[]).map(u => [u.id, u.name]))
+  const users = (userRows ?? []) as { id: number; name: string; is_external: boolean }[]
+  const mondayName = new Map(users.map(u => [u.id, u.name]))
+  // Settled the other way: somebody said this account is a client or an
+  // outside collaborator. It has no person on purpose, so counting it as
+  // "needs linking" reports a question that was already answered. This is the
+  // third reader of that rule; the screen and the discovery had to learn it
+  // separately, which is what adding a state to a schema actually costs.
+  const externalAccounts = new Set(users.filter(u => u.is_external).map(u => u.id))
   const personName = new Map(((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
 
   type A = {
@@ -114,7 +134,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1)
     if (onlyAccounts) {
-      if (!onlyAccounts.length) return { groups: [], open: 0, total: 0, unlinked: 0 }
+      if (!onlyAccounts.length) return { groups: [], open: 0, total: 0, unlinked: 0, oldestSyncAt: null }
       q = q.in('monday_user_id', onlyAccounts)
     }
     if (!f.includeDone) q = q.or('status_done.is.null,status_done.eq.false')
@@ -137,7 +157,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     if (st?.source === 'off') continue
 
     const pid = personByAccount.get(a.monday_user_id)
-    if (!pid) unlinkedAccounts.add(a.monday_user_id)
+    if (!pid && !externalAccounts.has(a.monday_user_id)) unlinkedAccounts.add(a.monday_user_id)
 
     const row: WorkRow = {
       id: a.id,
@@ -181,5 +201,16 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     }
   }).sort((a, b) => b.open - a.open || b.total - a.total)
 
-  return { groups, open, total: rows.length, unlinked: unlinkedAccounts.size }
+  const stamps = boardList
+    .filter(b => b.included && b.items_synced_at)
+    .map(b => b.items_synced_at as string)
+    .sort()
+
+  return {
+    groups,
+    open,
+    total: rows.length,
+    unlinked: unlinkedAccounts.size,
+    oldestSyncAt: stamps[0] ?? null,
+  }
 }
