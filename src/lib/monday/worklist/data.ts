@@ -47,6 +47,12 @@ export interface WorkRow {
   /** Monday's own hex for this label, so the two never disagree on colour. */
   statusColor: string | null
   dueDate: string | null
+  /**
+   * A date outside living memory, kept but not trusted. Monday holds values
+   * like year 202, typed wrong once and never noticed, and treating one as a
+   * deadline floats the most broken row to the top of everyone's list.
+   */
+  dueSuspect: boolean
   /** Which column the date came from, so a wrong one can be spotted. */
   dueLabel: string | null
   /** Straight to the item in Monday. Null only while the slug is unknown. */
@@ -134,6 +140,13 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
    * would produce a URL that loads a page saying nothing is there, which is
    * worse than no link.
    */
+  /** A deadline anyone could act on falls in this window; the rest is noise. */
+  const plausible = (d: string | null): boolean => {
+    if (!d) return false
+    const y = Number(d.slice(0, 4))
+    return y >= 2000 && y <= 2100
+  }
+
   const itemUrl = (a: A): string | null => {
     if (!slug) return null
     const board = a.parent_board_id ?? (a.parent_item_id ? null : a.board_id)
@@ -235,6 +248,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       statusDone: a.status_done,
       statusColor: a.status_color,
       dueDate: a.due_date,
+      dueSuspect: a.due_date != null && !plausible(a.due_date),
       dueLabel: b.date_title ?? null,
       url: itemUrl(a),
       mondayUserId: a.monday_user_id,
@@ -248,10 +262,13 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
 
   // Open before finished, then soonest deadline, then alphabetical. A row with
   // no date is not urgent, so it sits behind the dated ones instead of ahead.
+  // A suspect date sorts as though it had none: an unreadable year is not an
+  // urgency, and letting it sort puts the worst data first.
+  const sortDate = (r: WorkRow) => (r.dueDate && !r.dueSuspect ? r.dueDate : '')
   out.sort((x, y) =>
     Number(x.statusDone) - Number(y.statusDone)
-    || (x.dueDate ? 0 : 1) - (y.dueDate ? 0 : 1)
-    || (x.dueDate ?? '').localeCompare(y.dueDate ?? '')
+    || (sortDate(x) ? 0 : 1) - (sortDate(y) ? 0 : 1)
+    || sortDate(x).localeCompare(sortDate(y))
     || (x.parentItemName ?? x.itemName).localeCompare(y.parentItemName ?? y.itemName))
 
   const stamps = boardList

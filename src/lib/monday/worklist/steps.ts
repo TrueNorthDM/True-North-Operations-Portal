@@ -60,7 +60,11 @@ export const DATE_TYPES = new Set(['date', 'timeline'])
 export function pickDateColumn(cols: BoardColumn[]): BoardColumn | null {
   const dates = cols.filter(c => DATE_TYPES.has(c.type))
   if (!dates.length) return null
-  const named = dates.find(c => /due|deadline|target|delivery|publish/i.test(c.title))
+  // "publish" was in this list and it was wrong: "Published On" records when
+  // something shipped, which is the opposite of a deadline, and reading it as
+  // one put six-year-old publication dates at the top of everyone's list as
+  // though they were overdue work.
+  const named = dates.find(c => /due|deadline|target|delivery|by when|implement by/i.test(c.title))
   if (named) return named
   return dates.find(c => c.type === 'date') ?? dates[0]
 }

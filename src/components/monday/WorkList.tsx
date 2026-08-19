@@ -68,11 +68,16 @@ function span(from: Date, to: Date): string {
   return parts.length ? parts.join(' ') : 'today'
 }
 
-type DueState = 'late' | 'today' | 'upcoming'
+type DueState = 'late' | 'today' | 'upcoming' | 'odd'
 
 /** The three things a deadline can be, kept apart so each gets its own column. */
-function readDue(date: string): { date: string; time: string; state: DueState } {
+function readDue(date: string, suspect = false): { date: string; time: string; state: DueState } {
   const at = new Date(`${date}T00:00:00`)
+  // Year 202 is not a deadline anybody set; saying "1824y late" about it dresses
+  // a typo up as urgency. Shown, because somebody should fix it in Monday.
+  if (suspect) {
+    return { date, time: '', state: 'odd' }
+  }
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const shown = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -85,12 +90,14 @@ const DUE_BADGE: Record<DueState, { label: string; className: string }> = {
   late: { label: 'Late', className: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]' },
   today: { label: 'Due today', className: 'bg-[rgba(224,138,30,.14)] text-[#b06d0a]' },
   upcoming: { label: 'Upcoming', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
+  odd: { label: 'Check date', className: 'bg-slate-100 text-slate-500' },
 }
 
 const DUE_TIME: Record<DueState, string> = {
   late: 'text-[#c2410c] font-semibold',
   today: 'text-muted',
   upcoming: 'text-tn-teal font-semibold',
+  odd: 'text-slate-400',
 }
 
 /** The same eye the Href Link Management list uses for "open this". */
@@ -136,25 +143,29 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
             </h2>
             {row.parentItemName && <div className="text-sm text-muted mt-0.5">{row.itemName}</div>}
           </div>
-          <button onClick={onClose} className="shrink-0 w-8 h-8 rounded-full text-muted hover:text-tn-ink hover:bg-slate-100" aria-label="Close">×</button>
+          {/* No close button: the panel closes by clicking away from it, which
+              is the gesture people already use on a drawer. What earns the
+              corner is the one action that leaves for somewhere else. */}
+          {row.url && (
+            <a
+              href={row.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${row.itemName} in Monday`}
+              title="Open in Monday"
+              className="shrink-0 inline-flex items-center justify-center p-2 rounded-full text-muted hover:text-tn-teal hover:bg-slate-100 transition-colors"
+            >
+              <EyeIcon />
+            </a>
+          )}
         </div>
 
         <div className="px-6 py-5">
           <div className="flex items-center gap-2 flex-wrap mb-5">
             <span className={`${chip} bg-[rgba(30,125,127,.1)] text-tn-teal`}>{row.stepName}</span>
-            {row.url && (
-              <a
-                href={row.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${chip} bg-[rgba(1,35,88,.06)] text-tn-ink hover:bg-[rgba(1,35,88,.12)]`}
-              >
-                Open in Monday ↗
-              </a>
-            )}
             {row.statusText && <StatusChip text={row.statusText} colour={row.statusColor} />}
             {row.dueDate && (() => {
-              const d = readDue(row.dueDate)
+              const d = readDue(row.dueDate, row.dueSuspect)
               return (
                 <span className="inline-flex items-center gap-2 text-sm text-muted">
                   {row.dueLabel ?? 'Due'}: {d.date}
@@ -317,7 +328,23 @@ export function WorkList({
 
       {data.rows.length > 0 && (
         <div className="rounded-[14px] border border-slate-200 bg-white overflow-x-auto">
-          <table className="min-w-full text-sm">
+          {/* Fixed layout so a long item name cannot starve the columns after
+              it. Text wraps to two lines; the date does not, because a broken
+              date is unreadable in a way a broken title is not. */}
+          <table className="w-full min-w-[1180px] text-sm table-fixed">
+            <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[9%]" />
+              <col className="w-[11%]" />
+              <col className="w-[10%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
+              <col className="w-[7%]" />
+              <col className="w-[6%]" />
+              <col className="w-[4%]" />
+            </colgroup>
             <thead>
               <tr className="bg-subtle border-b border-slate-200 text-left">
                 <th className={th}>Item</th>
@@ -340,47 +367,51 @@ export function WorkList({
                   onClick={() => setOpenRow(r)}
                   className="border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors cursor-pointer"
                 >
-                  <td className="px-4 py-2.5 font-semibold text-tn-ink max-w-[280px]">
-                    <span className="block truncate" title={r.itemName}>{r.itemName}</span>
+                  <td className="px-4 py-2.5 font-semibold text-tn-ink align-top">
+                    <span className="block line-clamp-2 break-words" title={r.itemName}>{r.itemName}</span>
                   </td>
                   {/* Only a subitem has one, and the parent is the name a
                       person recognises: "Portuguese" means nothing without
                       the page it belongs to. */}
-                  <td className="px-4 py-2.5 text-muted max-w-[240px]">
+                  <td className="px-4 py-2.5 text-muted align-top">
                     {r.parentItemName
-                      ? <span className="block truncate" title={r.parentItemName}>{r.parentItemName}</span>
+                      ? <span className="block line-clamp-2 break-words" title={r.parentItemName}>{r.parentItemName}</span>
                       : <span className="text-slate-300">-</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-muted max-w-[200px]">
-                    <span className="block truncate" title={r.boardName}>{r.boardName}</span>
+                  <td className="px-4 py-2.5 text-muted align-top">
+                    <span className="block line-clamp-2 break-words" title={r.boardName}>{r.boardName}</span>
                   </td>
-                  <td className="px-4 py-2.5 text-muted max-w-[170px]">
-                    <span className="block truncate">{r.workspaceName ?? '-'}</span>
+                  <td className="px-4 py-2.5 text-muted align-top">
+                    <span className="block line-clamp-2 break-words">{r.workspaceName ?? '-'}</span>
                   </td>
-                  <td className="px-4 py-2.5 text-tn-ink whitespace-nowrap">{r.who}</td>
-                  <td className="px-4 py-2.5 text-muted whitespace-nowrap">{r.stepName}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-tn-ink align-top">
+                    <span className="block line-clamp-2 break-words">{r.who}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-muted align-top">
+                    <span className="block line-clamp-2 break-words">{r.stepName}</span>
+                  </td>
+                  <td className="px-4 py-2.5 align-top">
                     {r.statusText
                       ? <StatusChip text={r.statusText} colour={r.statusColor} />
                       : <span className="text-slate-300">-</span>}
                   </td>
                   {(() => {
-                    const d = r.dueDate ? readDue(r.dueDate) : null
+                    const d = r.dueDate ? readDue(r.dueDate, r.dueSuspect) : null
                     return (
                       <>
-                        <td className="px-4 py-2.5 text-right whitespace-nowrap text-tn-ink">
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap text-tn-ink align-top">
                           {d ? d.date : <span className="text-slate-300">-</span>}
                         </td>
-                        <td className={`px-4 py-2.5 text-right whitespace-nowrap text-xs ${d ? DUE_TIME[d.state] : ''}`}>
+                        <td className={`px-4 py-2.5 text-right text-xs align-top ${d ? DUE_TIME[d.state] : ''}`}>
                           {d?.time || (d ? '' : <span className="text-slate-300">-</span>)}
                         </td>
-                        <td className="px-4 py-2.5 whitespace-nowrap">
+                        <td className="px-4 py-2.5 align-top">
                           {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
                         </td>
                       </>
                     )
                   })()}
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-4 py-2.5 text-right align-top">
                     {r.url ? (
                       <a
                         href={r.url}
