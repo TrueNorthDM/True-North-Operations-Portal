@@ -26,15 +26,18 @@ export function visibleTabs(level: number) {
 }
 
 export function ReportTabs(
-  { active, level, params, ready }:
-  { active: ReportTabKey; level: number; params?: Record<string, string>; ready?: readonly ReportTabKey[] },
+  { active, level, params, ready, base = '/report' }:
+  {
+    active: ReportTabKey; level: number; params?: Record<string, string>
+    ready?: readonly ReportTabKey[]; base?: string
+  },
 ) {
   const query = (tab: string) => {
     const q = new URLSearchParams(params ?? {})
     if (tab === 'overview') q.delete('tab')
     else q.set('tab', tab)
     const s = q.toString()
-    return s ? `/report?${s}` : '/report'
+    return s ? `${base}?${s}` : base
   }
 
   return (

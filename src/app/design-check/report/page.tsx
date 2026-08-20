@@ -7,6 +7,11 @@
 
 import { notFound } from 'next/navigation'
 import { ReportOverview } from '@/components/report/ReportOverview'
+import { ReportPeople, type PersonRow } from '@/components/report/ReportPeople'
+import { ReportWorkload } from '@/components/report/ReportWorkload'
+import { ReportWaits, type StepWait, type StuckItem } from '@/components/report/ReportWaits'
+import { ReportMethod, type Source } from '@/components/report/ReportMethod'
+import type { WorkloadRow } from '@/lib/report/workload'
 import { ReportTabs } from '@/components/report/ReportTabs'
 import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
 import { AGE_BUCKETS, type Overview } from '@/lib/report/overview'
@@ -39,8 +44,74 @@ const SAMPLE: Overview = {
   ],
 }
 
-export default function ReportPreview() {
+// The handoff's four people, with the team colours it draws them in.
+const PEOPLE: PersonRow[] = [
+  { id: '1', name: 'Amy Marsh', team: 'SEO', color: '#1E7D7F', initials: 'AM', delivered: 42, onTimePct: 79, medianHeld: 4.2, open: 9, late: 3, hours: 494 },
+  { id: '2', name: 'Kevin Brown', team: 'SEO', color: '#1E7D7F', initials: 'KB', delivered: 27, onTimePct: 56, medianHeld: 6.8, open: 6, late: 2, hours: 286 },
+  { id: '3', name: 'Lana Prado', team: 'Writing', color: '#579BFC', initials: 'LP', delivered: 66, onTimePct: 91, medianHeld: 2.1, open: 5, late: 1, hours: 247 },
+  { id: '4', name: 'Wendy Clark', team: 'Web', color: '#94C4C5', initials: 'WC', delivered: 18, onTimePct: 67, medianHeld: 8.5, open: 4, late: 0, hours: null },
+]
+
+// The handoff's own arrival and finishing weights, so the sparklines carry
+// its shapes rather than shapes I invented.
+const ARR_W = [.92, 1.08, .95, 1.18, .88, 1.12, .96, 1.06]
+const FIN_W = [1.06, .94, 1.12, .82, 1.1, .9, 1.04, .96]
+
+const weekly = (arr: number, fin: number) => ARR_W.map((w, k) => arr * w - fin * FIN_W[k])
+
+const LOAD: WorkloadRow[] = [
+  { id: '1', name: 'Amy Marsh', initials: 'AM', color: '#1E7D7F', contracted: 40, observed: 38, hoursLogged: 494, estimatedAhead: 214, arriving: 4.6, finishing: 3.5, weekly: weekly(4.6, 3.5) },
+  { id: '2', name: 'Kevin Brown', initials: 'KB', color: '#1E7D7F', contracted: 40, observed: 22, hoursLogged: 286, estimatedAhead: 96, arriving: 2.9, finishing: 2.1, weekly: weekly(2.9, 2.1) },
+  { id: '3', name: 'Lana Prado', initials: 'LP', color: '#579BFC', contracted: 20, observed: 19, hoursLogged: 247, estimatedAhead: 58, arriving: 5.2, finishing: 5.4, weekly: weekly(5.2, 5.4) },
+  { id: '4', name: 'Wendy Clark', initials: 'WC', color: '#94C4C5', contracted: 20, observed: 12, hoursLogged: 156, estimatedAhead: 74, arriving: 2.2, finishing: 1.4, weekly: weekly(2.2, 1.4) },
+]
+
+const STEPS: StepWait[] = [
+  { name: 'Approve', median: 7.5, delivered: 38 },
+  { name: 'Review', median: 4.8, delivered: 74 },
+  { name: 'Write', median: 3.6, delivered: 96 },
+  { name: 'Translate', median: 2.2, delivered: 132 },
+  { name: 'Publish', median: 1.1, delivered: 88 },
+]
+
+const STUCK: StuckItem[] = [
+  { id: '1', item: 'SEO Bi-Weekly Company Report, Nov 25 2025', who: 'Amy Marsh', step: 'Write', heldDays: 104 },
+  { id: '2', item: 'i7 Monthly Report, MME billing', who: 'Kevin Brown', step: 'Approve', heldDays: 61 },
+  { id: '3', item: 'Hope For Africa launch page', who: 'Wendy Clark', step: 'Approve', heldDays: 44 },
+]
+
+const SOURCES: Source[] = [
+  {
+    name: 'Monday assignments', state: 'live', cadence: 'every 4 hours',
+    what: 'Who is on which step, its status, due date, board and workspace. The same read as My Work, so the two pages cannot disagree.',
+  },
+  {
+    name: 'Assignment change log', state: 'to-build', cadence: 'written by the same sync',
+    what: 'One row per change: step, person, status, due date, moment. Held time and on-time delivery come only from here.',
+  },
+  {
+    name: 'Timeclock entries', state: 'live', cadence: 'every 4 hours',
+    what: 'Approved hours per person per day with the i7 code. Answers how much time went in, which the boards never record.',
+  },
+]
+
+const TODO = [
+  { text: 'Write the change log from the existing ingest, diffing before the rows are replaced.' },
+  { text: 'Backfill what Monday still remembers for open items, one item at a time.' },
+  { text: 'Decide what a reopened step means for "delivered".' },
+  { text: 'Decide whether weekends and time off count as held time.' },
+]
+
+export default async function ReportPreview(
+  { searchParams }: { searchParams: Promise<{ tab?: string }> },
+) {
   if (process.env.NODE_ENV === 'production') notFound()
+
+  const asked = (await searchParams).tab
+  const KNOWN = ['people', 'workload', 'waits', 'method'] as const
+  const tab = (KNOWN as readonly string[]).includes(asked ?? '')
+    ? (asked as (typeof KNOWN)[number])
+    : 'overview'
 
   return (
     <div className="p-8 bg-app min-h-screen">
@@ -63,8 +134,12 @@ export default function ReportPreview() {
           <WorkViewSwitch active="report" />
         </div>
 
-        <ReportTabs active="overview" level={3} />
-        <ReportOverview data={SAMPLE} />
+        <ReportTabs active={tab} level={3} base="/design-check/report" />
+        {tab === 'people' ? <ReportPeople people={PEOPLE} />
+          : tab === 'workload' ? <ReportWorkload people={LOAD} />
+          : tab === 'waits' ? <ReportWaits steps={STEPS} stuck={STUCK} />
+          : tab === 'method' ? <ReportMethod sources={SOURCES} todo={TODO} />
+          : <ReportOverview data={SAMPLE} />}
       </div>
     </div>
   )
