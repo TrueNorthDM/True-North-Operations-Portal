@@ -83,6 +83,9 @@ function StatusChip({ text, colour }: { text: string; colour: string | null }) {
   return <span className={`${chip} text-white`} style={{ background: colour }}>{text}</span>
 }
 
+/** Counts in the thousands, written the way the handoff writes them. */
+const n = (v: number) => v.toLocaleString('en-US')
+
 const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 const PRIORITY_CHIP: Record<string, string> = {
@@ -304,7 +307,7 @@ function Block({
       </button>
 
       {open && rows.length === 0 && (
-        <div className="px-5 py-8 text-center text-[13px] text-muted border-t border-[#eceff3]">Nothing here.</div>
+        <div className="px-5 py-8 text-center text-[13.5px] text-muted border-t border-[#eceff3]">Nothing here.</div>
       )}
 
       {open && rows.length > 0 && (
@@ -385,9 +388,9 @@ function Block({
           {!all && rows.length > FIRST_ROWS && (
             <button
               onClick={() => setAll(true)}
-              className="w-full px-5 py-3 text-sm font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-[#eceff3]"
+              className="w-full px-5 py-[13px] text-[13.5px] font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-[#eceff3]"
             >
-              {`Show the other ${rows.length - FIRST_ROWS}`}
+              {`Show the other ${n(rows.length - FIRST_ROWS)}`}
             </button>
           )}
         </div>
@@ -396,14 +399,33 @@ function Block({
   )
 }
 
+/**
+ * States forced open for the design check.
+ *
+ * One optional object rather than four loose props, and named for what it is:
+ * every field here exists to render a state the page normally reaches on its
+ * own, so a reviewer can see all of them at once. Nothing in the app passes it.
+ */
+export interface PreviewState {
+  /** Start with a search already typed. */
+  query?: string
+  /** Behave as though this team were chosen, which the URL normally decides. */
+  team?: string
+  /** Hold the "Mine is unavailable" tooltip open. */
+  tip?: boolean
+  /** Start with every block collapsed. */
+  closed?: boolean
+}
+
 export function WorkList({
-  data, people, teams, selfPersonId, isAdmin = false,
+  data, people, teams, selfPersonId, isAdmin = false, preview,
 }: {
   data: Worklist
   people: Option[]
   teams: Option[]
   selfPersonId: string | null
   isAdmin?: boolean
+  preview?: PreviewState
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -416,13 +438,17 @@ export function WorkList({
   // Search is client-side and deliberately not a URL parameter: person and team
   // decide which rows are fetched, and typing would re-query the database on
   // every keystroke to narrow rows the browser already has.
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(preview?.query ?? '')
   // Unknown user starts closed: it is an admin's queue, not the reader's work,
   // and it should not be the first thing between somebody and their list.
-  const [openBlocks, setOpenBlocks] = useState({ unknown: false, ongoing: true, completed: false })
+  const [openBlocks, setOpenBlocks] = useState(
+    preview?.closed
+      ? { unknown: false, ongoing: false, completed: false }
+      : { unknown: false, ongoing: true, completed: false })
+  const [tip, setTip] = useState(preview?.tip ?? false)
 
   const person = params.get('person') ?? selfPersonId ?? ''
-  const team = params.get('team') ?? ''
+  const team = preview?.team ?? params.get('team') ?? ''
   const includeDone = params.get('done') === '1'
   const mineFromUrl = !!selfPersonId && person === selfPersonId && !team
   const mine = wanted ?? mineFromUrl
@@ -516,19 +542,36 @@ export function WorkList({
             const on = t.key === 'mine' ? mine : !mine
             const dead = t.key === 'mine' && !selfPersonId
             return (
-              <button
-                key={t.key}
-                disabled={dead}
-                title={dead ? 'Your login is not linked to anyone in the Directory yet, so there is no "mine" to filter by.' : undefined}
-                onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '', t.key === 'mine')}
-                className={`font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors ${
-                  dead ? 'text-[#cbd2da] cursor-not-allowed'
-                  : on ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]'
-                  : 'text-muted hover:text-tn-ink'
-                }`}
-              >
-                {t.label}
-              </button>
+              <span key={t.key} className="relative">
+                <button
+                  disabled={dead}
+                  onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '', t.key === 'mine')}
+                  onMouseEnter={() => dead && setTip(true)}
+                  onMouseLeave={() => setTip(false)}
+                  onFocus={() => dead && setTip(true)}
+                  onBlur={() => setTip(false)}
+                  className={`font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors ${
+                    dead ? 'text-[#cbd2da] cursor-not-allowed'
+                    : on ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]'
+                    : 'text-muted hover:text-tn-ink'
+                  }`}
+                >
+                  {t.label}
+                </button>
+
+                {/* Written into the page rather than left to the browser's own
+                    tooltip: a disabled control never gets one in most browsers,
+                    so the explanation for why it cannot be pressed would be the
+                    one thing nobody could read. */}
+                {dead && tip && (
+                  <span
+                    role="tooltip"
+                    className="absolute top-[calc(100%+8px)] left-0 z-20 w-80 rounded-[9px] bg-tn-primary px-[11px] py-[9px] text-[12px] leading-[1.5] text-[#dfe8f5] shadow-[0_12px_26px_-14px_rgba(1,35,88,.6)]"
+                  >
+                    Your login is not linked to anyone in the Directory yet, so there is no “mine” to filter by.
+                  </span>
+                )}
+              </span>
             )
           })}
         </div>
@@ -565,10 +608,10 @@ export function WorkList({
 
         <span className="text-[13.5px] text-muted ml-auto">
           {needle
-            ? `${rows.length} matching`
+            ? `${n(rows.length)} matching`
             : data.truncated
-              ? `${data.open} shown of ${data.matching}`
-              : `${data.open} open${data.total !== data.open ? ` · ${data.total} in view` : ''}`}
+              ? `${n(data.total)} shown of ${n(data.matching)}`
+              : `${n(data.open)} open${data.total !== data.open ? ` · ${n(data.total)} in view` : ''}`}
         </span>
       </div>
 
@@ -593,12 +636,12 @@ export function WorkList({
           admin job on another page. A standing yellow banner nobody can act on
           is how a warning gets tuned out before the day it matters. */}
       {team && data.unlinked > 0 && (
-        <div className="rounded-[10px] border border-[rgba(224,148,14,.45)] bg-[rgba(242,196,10,.09)] px-4 py-3 text-[13px] text-[#8a6d1a]">
+        <div className="rounded-[10px] border border-[rgba(224,148,14,.5)] bg-[#fdf8e7] px-4 py-3.5 text-[13.5px] leading-[1.6] text-[#8a6d1a]">
           {`This team filter cannot see ${data.unlinkedAssignments} ${data.unlinkedAssignments === 1 ? 'assignment' : 'assignments'} on ${data.unlinked} Monday ${data.unlinked === 1 ? 'account' : 'accounts'} that belong to nobody in the Directory.`}
           {isAdmin && (
             <>
               {' '}
-              <a href="/admin/monday-links" className="font-bold underline hover:no-underline">Resolve them</a>.
+              <a href="/admin/monday-links" className="font-bold text-[#8a6d1a] underline hover:no-underline">Resolve them</a>.
             </>
           )}
         </div>
@@ -609,8 +652,8 @@ export function WorkList({
           is served by the first few thousand plus an honest count. Naming the
           cap is what keeps it from reading as "this is all there is". */}
       {data.truncated && (
-        <div className="rounded-[10px] border border-slate-200 bg-subtle px-4 py-3 text-sm text-muted">
-          {`Showing the first ${data.total} of ${data.matching} steps. Pick a person or a team to see all of theirs.`}
+        <div className="rounded-[10px] border border-[#e4e7ec] bg-subtle px-4 py-3.5 text-[13.5px] text-muted leading-[1.6]">
+          {`Showing the first ${n(data.total)} of ${n(data.matching)} steps. Pick a person or a team to see all of theirs.`}
         </div>
       )}
 

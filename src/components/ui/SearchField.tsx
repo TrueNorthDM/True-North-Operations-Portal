@@ -99,7 +99,10 @@ export function SearchField({
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
         autoFocus={autoFocus}
-        className={`w-full text-tn-ink border border-slate-200 placeholder-slate-400 focus:outline-none ${sz.input} ${focus}`}
+        // Teal border while it holds a query, not only while it has focus. A
+        // search that has narrowed the list is still doing something after the
+        // cursor moves away, and the field should say so.
+        className={`w-full text-tn-ink border placeholder-slate-400 focus:outline-none ${value ? 'border-tn-teal' : 'border-slate-200'} ${sz.input} ${focus}`}
       />
 
       {value && (
