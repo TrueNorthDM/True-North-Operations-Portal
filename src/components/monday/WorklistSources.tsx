@@ -17,7 +17,6 @@ import { setBoardIncluded, setWorkspaceIncluded, setUserHidden } from '@/app/(ap
 import type { WorklistSources } from '@/lib/monday/worklist/sources'
 
 const card = 'rounded-[14px] border border-slate-200 bg-white overflow-hidden'
-const chip = 'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
 
 function ago(iso: string | null): { text: string; stale: boolean } {
   if (!iso) return { text: 'never', stale: true }
@@ -118,12 +117,16 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
                 <span className={`shrink-0 text-muted transition-transform ${open.has(w.name) ? 'rotate-90' : ''}`} aria-hidden="true">›</span>
                 <span className="min-w-0">
                   <span className="block font-(family-name:--font-display) font-extrabold text-tn-ink text-[15px] truncate">{w.name}</span>
+                  {/* No badge beside the button. "Quiet" read as a control
+                      sitting next to a control, when it is a fact, and the
+                      line already carried it: emphasising the words that say
+                      it is clearer than adding a word that repeats it. */}
                   <span className="block text-xs text-muted">
-                    {w.included} of {w.boards.length} boards · {w.assignments} assignments · last used {seen.text}
+                    {w.included} of {w.boards.length} boards · {w.assignments} assignments ·{' '}
+                    <span className={seen.stale ? 'font-bold text-[#b06d0a]' : ''}>last used {seen.text}</span>
                   </span>
                 </span>
               </button>
-              {seen.stale && <span className={`${chip} bg-slate-100 text-slate-500`}>quiet</span>}
               <Toggle
                 on={allOn}
                 busy={busy}
@@ -145,10 +148,10 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
                           {b.isSubitemBoard && <span className="ml-2 text-[10px] font-bold uppercase text-muted">subitems</span>}
                         </span>
                         <span className="block text-xs text-muted">
-                          {b.assignments} assignments · last used {s.text}
+                          {b.assignments} assignments ·{' '}
+                          <span className={s.stale ? 'font-bold text-[#b06d0a]' : ''}>last used {s.text}</span>
                         </span>
                       </span>
-                      {s.stale && <span className={`${chip} bg-slate-100 text-slate-500`}>quiet</span>}
                       <Toggle on={b.included} busy={busy} onChange={v => run(() => setBoardIncluded(b.id, v))} />
                     </li>
                   )
@@ -181,7 +184,9 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
       )}
 
       <p className="text-xs text-muted leading-relaxed m-0">
-        Hiding changes what My Work shows and nothing else. Everything here is still ingested, still counted, and
+        The buttons on the right are the switches; everything else on a row is a fact about it. A date in amber
+        means nothing has moved on that board for more than six months, which is usually what makes it safe to
+        switch off. Hiding changes what My Work shows and nothing else. Everything here is still ingested, still counted, and
         still visible in the reports: a board switched off stops filling somebody&apos;s list, it does not disappear.
         Turn any of it back on and the work returns at the next refresh.
       </p>
