@@ -94,6 +94,52 @@ const PRIORITY_CHIP: Record<string, string> = {
   low: 'text-[#9aa7b6]',
 }
 
+/**
+ * The eye that opens the item in Monday, with the label written into the page.
+ *
+ * A chip rather than a bare icon, because at 17px on a busy row an outline of
+ * an eye is easy to miss; the tinted square gives it an edge to find. The
+ * label is a real element and not the title attribute, so it appears at once
+ * instead of after the browser's own delay, and it can sit where the handoff
+ * puts it.
+ */
+export function OpenInMonday({ href, label, showLabel = false }: {
+  href: string
+  label: string
+  /** Design check only: hold the label open. */
+  showLabel?: boolean
+}) {
+  const [over, setOver] = useState(showLabel)
+  return (
+    <span className="relative inline-flex">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        // The row opens the history; this opens Monday. The inner target has
+        // to stop the outer one or one click does both.
+        onClick={e => e.stopPropagation()}
+        onMouseEnter={() => setOver(true)}
+        onMouseLeave={() => setOver(false)}
+        onFocus={() => setOver(true)}
+        onBlur={() => setOver(false)}
+        aria-label={`Open ${label} in Monday`}
+        className="inline-flex items-center justify-center w-7 h-7 rounded-[7px] bg-[var(--chip-neutral-bg)] text-tn-teal hover:bg-[rgba(30,125,127,.12)] transition-colors"
+      >
+        <EyeIcon />
+      </a>
+      {over && (
+        <span
+          role="tooltip"
+          className="absolute top-[calc(100%+8px)] right-0 z-20 whitespace-nowrap rounded-[8px] bg-tn-primary px-2.5 py-[7px] text-[12px] text-[#dfe8f5] shadow-[0_12px_26px_-14px_rgba(1,35,88,.6)]"
+        >
+          Open in Monday
+        </span>
+      )}
+    </span>
+  )
+}
+
 /** The same eye the Href Link Management list uses for "open this". */
 function EyeIcon() {
   return (
@@ -364,20 +410,8 @@ function Block({
                 <div className="px-3 py-2.5 min-w-0 overflow-hidden">
                   {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
                 </div>
-                <div className="px-3 py-2.5 min-w-0 text-right text-muted">
-                  {r.url ? (
-                    <a
-                      href={r.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      aria-label={`Open ${r.itemName} in Monday`}
-                      title="Open in Monday"
-                      className="inline-flex hover:text-tn-teal transition-colors"
-                    >
-                      <EyeIcon />
-                    </a>
-                  ) : <span className="text-[var(--faint)]">-</span>}
+                <div className="px-3 py-2.5 min-w-0 text-right">
+                  {r.url ? <OpenInMonday href={r.url} label={r.itemName} /> : <span className="text-[var(--faint)]">-</span>}
                 </div>
               </div>
             ))}

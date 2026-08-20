@@ -31,6 +31,8 @@ export function Select({
   disabled = false,
   searchable = false,
   id,
+  defaultOpen = false,
+  defaultQuery = '',
 }: {
   value: string
   onChange: (value: string) => void
@@ -44,11 +46,15 @@ export function Select({
   disabled?: boolean
   /** Add a filter box at the top of the menu (for long lists like countries). */
   searchable?: boolean
+  /** Design check only: render the menu already open. */
+  defaultOpen?: boolean
+  /** Design check only: render the menu's filter already typed into. */
+  defaultQuery?: string
   id?: string
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(defaultQuery)
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -101,7 +107,7 @@ export function Select({
           ref={menuRef}
           role="listbox"
           style={{ position: 'fixed', top: pos.top, left: pos.left, minWidth: pos.width }}
-          className="z-[9999] w-max max-w-[min(84vw,360px)] max-h-72 overflow-auto bg-white border border-slate-200 rounded-[11px] shadow-[0_20px_44px_-18px_rgba(1,35,88,.5)] p-1.5"
+          className="z-[9999] w-max max-w-[min(84vw,360px)] max-h-72 overflow-auto bg-white border border-[var(--panel-border)] rounded-[11px] shadow-[0_20px_44px_-18px_rgba(1,35,88,.5)] p-1.5"
         >
           {searchable && (
             <div className="sticky top-0 -mx-1.5 -mt-1.5 mb-1.5 px-1.5 pt-1.5 pb-1 bg-white">
@@ -157,7 +163,11 @@ export function Select({
         onClick={() => { if (!open) setQuery(''); setOpen(o => !o) }}
         className={`${fullWidth ? 'w-full ' : ''}inline-flex items-center justify-between gap-2 text-left disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       >
-        <span className={`truncate ${selected ? '' : mutePlaceholder ? 'text-muted' : ''}`}>{selected ? selected.label : placeholder}</span>
+        {/* A chosen value reads as ink and an unchosen one as muted, which is
+            how the trigger says whether it is filtering anything. */}
+        <span className={`truncate ${selected ? 'text-tn-ink' : mutePlaceholder ? 'text-muted' : ''}`}>
+          {selected ? selected.label : placeholder}
+        </span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {menu}

@@ -34,7 +34,10 @@ const SIZES = {
     clear: 'right-2 w-6 h-6', clearSize: 13,
   },
   sm: {
-    input: 'text-[13px] rounded-[8px] pl-[30px] pr-7 py-1.5 bg-subtle',
+    // White with its own border rather than a grey fill: inside a menu the
+    // field sits on white already, and a filled box would read as a second
+    // surface stacked on the first.
+    input: 'text-[12.5px] rounded-[8px] pl-[28px] pr-7 py-1.5 bg-white',
     icon: 'left-[9px]', iconSize: 13,
     clear: 'right-1 w-5 h-5', clearSize: 11,
   },
