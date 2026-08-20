@@ -198,6 +198,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   // Switched off in Settings. Their assignments are still ingested and still
   // counted everywhere else; they just do not belong on this page.
   const hiddenAccounts = new Set(users.filter(u => u.hidden).map(u => u.id))
+  const hiddenAccountIds = [...hiddenAccounts]
   const personName = new Map(((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
 
   type A = {
@@ -212,9 +213,20 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   since.setMonth(since.getMonth() - COMPLETED_MONTHS)
   const sinceIso = since.toISOString()
 
+  // Boards that are switched off are excluded in the QUERY, not filtered out
+  // after the fact.
+  //
+  // Dropping them afterwards looked equivalent and was not: the unfiltered view
+  // reads the first 5,000 rows, so a board switched off went on consuming that
+  // budget and pushed real work out of the page. Switching something off has to
+  // make room, otherwise hiding a board makes the list worse instead of shorter.
+  const includedBoards = boardList.filter(b => b.included).map(b => b.id)
+
   const SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at'
   const applyFilters = (q: any): any => {
     let out = q
+    out = out.in('board_id', includedBoards)
+    if (hiddenAccountIds.length) out = out.not('monday_user_id', 'in', `(${hiddenAccountIds.join(',')})`)
     if (onlyAccounts) out = out.in('monday_user_id', onlyAccounts)
     if (!f.includeDone) {
       // Open work, plus finished work from the recent past. Both are wanted on

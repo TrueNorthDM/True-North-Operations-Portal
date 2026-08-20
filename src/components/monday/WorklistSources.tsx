@@ -28,7 +28,7 @@ function ago(iso: string | null): { text: string; stale: boolean } {
   return { text: `${(days / 365).toFixed(1)}y ago`, stale: true }
 }
 
-function Toggle({ on, onChange, busy, labelOn = 'Shown', labelOff = 'Hidden' }: {
+function Toggle({ on, onChange, busy, labelOn = 'Shown', labelOff = 'Not shown' }: {
   on: boolean; onChange: (v: boolean) => void; busy: boolean; labelOn?: string; labelOff?: string
 }) {
   return (
@@ -103,7 +103,7 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
         </div>
         <SearchField value={q} onChange={setQ} placeholder="Search…" className="w-full sm:w-[300px]" />
         <span className="text-sm text-muted ml-auto">
-          {tab === 'boards' ? `${hiddenBoards} boards hidden` : `${hiddenUsers} people hidden`}
+          {tab === 'boards' ? `${hiddenBoards} boards not shown` : `${hiddenUsers} people not shown`}
         </span>
       </div>
 
@@ -130,8 +130,8 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
               <Toggle
                 on={allOn}
                 busy={busy}
-                labelOn="All shown"
-                labelOff={w.included === 0 ? 'All hidden' : 'Some hidden'}
+                labelOn="Shown"
+                labelOff={w.included === 0 ? 'Not shown' : 'Partly shown'}
                 onChange={v => run(() => setWorkspaceIncluded(w.name, v))}
               />
             </div>
