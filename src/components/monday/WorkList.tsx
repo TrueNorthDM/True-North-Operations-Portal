@@ -251,6 +251,16 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
  * against. Each keeps its own open/closed state so the page can start with the
  * one you want.
  */
+/**
+ * How many rows a block draws before asking.
+ *
+ * Twelve cells per row, so 1,280 on-going steps is fifteen thousand DOM nodes
+ * for one block, and building them is most of the wait when a tab changes.
+ * Nobody reads past the first screen anyway; the rest is a click away and the
+ * count is always on the header, so nothing is hidden by it.
+ */
+const FIRST_ROWS = 200
+
 function Block({
   title, note, rows, open, onToggle, onPick, tone = 'default',
 }: {
@@ -262,6 +272,8 @@ function Block({
   onPick: (r: WorkRow) => void
   tone?: 'default' | 'quiet'
 }) {
+  const [all, setAll] = useState(false)
+  const shown = all ? rows : rows.slice(0, FIRST_ROWS)
   return (
     <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-amber-300/60' : 'border-slate-200'} bg-white overflow-hidden`}>
       <button
@@ -317,7 +329,7 @@ function Block({
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ row: r, due: d }) => (
+            {shown.map(({ row: r, due: d }) => (
             <tr
               key={r.id}
               onClick={() => onPick(r)}
@@ -392,6 +404,15 @@ function Block({
           </tbody>
         </table>
       </div>
+
+          {!all && rows.length > FIRST_ROWS && (
+            <button
+              onClick={() => setAll(true)}
+              className="w-full px-5 py-3 text-sm font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-slate-100"
+            >
+              {`Show the other ${rows.length - FIRST_ROWS}`}
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -409,7 +430,11 @@ export function WorkList({
 }) {
   const router = useRouter()
   const params = useSearchParams()
-  const [, startTransition] = useTransition()
+  const [pending, startTransition] = useTransition()
+  // Which tab the person just chose, held until the URL catches up. The data
+  // still comes from the server, but the click should not wait for it: a tab
+  // that stays inert for a second reads as broken, and the user clicks again.
+  const [wanted, setWanted] = useState<boolean | null>(null)
   const [openRow, setOpenRow] = useState<WorkRow | null>(null)
   // Search is client-side and deliberately not a URL parameter: person and team
   // decide which rows are fetched, and typing would re-query the database on
@@ -422,9 +447,17 @@ export function WorkList({
   const person = params.get('person') ?? selfPersonId ?? ''
   const team = params.get('team') ?? ''
   const includeDone = params.get('done') === '1'
-  const mine = !!selfPersonId && person === selfPersonId && !team
+  const mineFromUrl = !!selfPersonId && person === selfPersonId && !team
+  const mine = wanted ?? mineFromUrl
 
-  const setParam = (key: string, value: string) => {
+  /**
+   * `want` carries the tab the click chose, so the highlight can move before
+   * the server answers. Every other control passes nothing, which clears it:
+   * the local answer expires the moment somebody asks a different question,
+   * without an effect watching for it.
+   */
+  const setParam = (key: string, value: string, want: boolean | null = null) => {
+    setWanted(want)
     const next = new URLSearchParams(params.toString())
     // An empty person is NOT the absence of one. Absent means "the signed-in
     // person" and empty means "anybody", which is the whole basis of the two
@@ -492,7 +525,7 @@ export function WorkList({
   const completed = known.filter(r => r.row.statusDone === true)
 
   return (
-    <div className="space-y-5">
+    <div className={`space-y-5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
       {/* Mine or everybody's, as a tab rather than a filter value. It is the
           first decision somebody makes on this page and it deserves to look
           like one; the person selector stays for looking at a colleague. */}
@@ -511,7 +544,7 @@ export function WorkList({
               key={t.key}
               disabled={dead}
               title={dead ? 'Your login is not linked to anyone in the Directory yet, so there is no "mine" to filter by.' : undefined}
-              onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '')}
+              onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '', t.key === 'mine')}
               aria-current={active ? 'page' : undefined}
               className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
                 dead ? 'border-transparent text-slate-300 cursor-not-allowed'
