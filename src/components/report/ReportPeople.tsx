@@ -1,11 +1,16 @@
+'use client'
+
 // Screen 1.2: People, one row per person in scope.
 //
 // The comparison table. Same period as the Overview, sortable by every
 // numeric column, and the row itself is the way into the person drawer, so
 // the whole row lights on hover rather than growing a button.
 
+import { useState } from 'react'
 import { chip } from '@/components/monday/tokens'
 import { formatDays } from '@/lib/report/overview'
+import { PersonDrawer, type DrawerPerson } from '@/components/report/PersonDrawer'
+import type { PersonDetail } from '@/lib/report/drawer'
 
 export type PersonRow = {
   id: string
@@ -50,8 +55,29 @@ function ChevronIcon() {
   )
 }
 
-export function ReportPeople({ people }: { people: PersonRow[] }) {
+export function ReportPeople({
+  people, periodDays = 90, loadDetail,
+}: {
+  people: PersonRow[]
+  periodDays?: number
+  /** Fetches the per-item detail. Absent in previews, where nothing opens. */
+  loadDetail?: (personId: string) => Promise<PersonDetail>
+}) {
+  // Open state lives here rather than in the URL on purpose: the handoff asks
+  // that opening the drawer not lose the table's scroll position, and a query
+  // param means a navigation, which restores scroll wherever it feels like.
+  const [open, setOpen] = useState<PersonRow | null>(null)
+  const [detail, setDetail] = useState<PersonDetail | null>(null)
+
+  const openRow = (p: PersonRow) => {
+    if (!loadDetail) return
+    setOpen(p)
+    setDetail(null)
+    loadDetail(p.id).then(d => setDetail(cur => (cur === null ? d : cur)))
+  }
+
   return (
+    <>
     <section className="border border-[var(--panel-border)] bg-white rounded-[14px] overflow-hidden">
       <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={{ gridTemplateColumns: GRID }}>
         <div className={HEAD_CELL}>Person</div>
@@ -67,7 +93,8 @@ export function ReportPeople({ people }: { people: PersonRow[] }) {
       {people.map((p, i) => (
         <div
           key={p.id}
-          className={`grid transition-colors hover:bg-[var(--row-hover)] ${i ? 'border-t border-[var(--row-rule)]' : ''}`}
+          onClick={() => openRow(p)}
+          className={`grid transition-colors hover:bg-[var(--row-hover)] ${loadDetail ? 'cursor-pointer' : ''} ${i ? 'border-t border-[var(--row-rule)]' : ''}`}
           style={{ gridTemplateColumns: GRID }}
         >
           <div className="px-4 py-3 flex items-center gap-[11px] min-w-0">
@@ -108,7 +135,34 @@ export function ReportPeople({ people }: { people: PersonRow[] }) {
         </div>
       ))}
     </section>
+
+    {open ? (
+      <PersonDrawer
+        person={drawerPerson(open)}
+        detail={detail}
+        periodDays={periodDays}
+        onClose={() => setOpen(null)}
+      />
+    ) : null}
+    </>
   )
+}
+
+/** The four numbers already on the row, so the drawer reads on its own. */
+function drawerPerson(p: PersonRow): DrawerPerson {
+  return {
+    id: p.id,
+    name: p.name,
+    initials: p.initials,
+    color: p.color,
+    team: p.team,
+    stats: [
+      { label: 'Delivered', value: p.delivered === null ? '-' : String(p.delivered) },
+      { label: 'On time', value: p.onTimePct === null ? '-' : `${p.onTimePct}%` },
+      { label: 'Median held', value: p.medianHeld === null ? '-' : formatDays(p.medianHeld) },
+      { label: 'Open now', value: String(p.open) },
+    ],
+  }
 }
 
 function OnTime({ pct }: { pct: number | null }) {

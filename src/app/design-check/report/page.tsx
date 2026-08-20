@@ -7,7 +7,8 @@
 
 import { notFound } from 'next/navigation'
 import { ReportOverview } from '@/components/report/ReportOverview'
-import { ReportPeople, type PersonRow } from '@/components/report/ReportPeople'
+import type { PersonRow } from '@/components/report/ReportPeople'
+import { PeopleDemo } from './PeopleDemo'
 import { ReportWorkload } from '@/components/report/ReportWorkload'
 import { ReportWaits, type StepWait, type StuckItem } from '@/components/report/ReportWaits'
 import { ReportMethod, type Source } from '@/components/report/ReportMethod'
@@ -228,7 +229,7 @@ export default async function ReportPreview(
           note="7 people · change log since Feb 12, 2026"
         />
         <LevelPicker level={level} />
-        {tab === 'people' ? <ReportPeople people={PEOPLE} />
+        {tab === 'people' ? <PeopleDemo people={PEOPLE} />
           : tab === 'workload' ? (
             <div className="space-y-4">
               <WorkloadFilters teams={TEAMS} people={TEAM_PEOPLE} note="2 people on Writing, member by member" />
