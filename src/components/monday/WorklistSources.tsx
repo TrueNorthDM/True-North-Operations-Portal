@@ -13,8 +13,46 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
-import { setBoardIncluded, setWorkspaceIncluded, setUserHidden } from '@/app/(app)/settings/monday/actions'
-import type { WorklistSources } from '@/lib/monday/worklist/sources'
+import {
+  setBoardIncluded, setWorkspaceIncluded, setUserHidden, setBoardPriority, setWorkspacePriority,
+} from '@/app/(app)/settings/monday/actions'
+import type { WorklistSources, Priority } from '@/lib/monday/worklist/sources'
+
+const PRIORITIES: Priority[] = ['high', 'medium', 'low']
+
+const PRIORITY_STYLE: Record<Priority, string> = {
+  high: 'border-[#c2410c] text-[#c2410c] bg-[rgba(194,65,12,.08)]',
+  medium: 'border-slate-300 text-tn-ink bg-slate-50',
+  low: 'border-slate-200 text-muted',
+}
+
+/**
+ * Three buttons rather than a dropdown, because the whole set is three items
+ * and the current one should be readable without opening anything: this row is
+ * scanned far more often than it is changed.
+ */
+function PriorityPicker({ value, onChange, busy }: {
+  value: Priority; onChange: (p: Priority) => void; busy: boolean
+}) {
+  return (
+    <span className="shrink-0 inline-flex rounded-[8px] overflow-hidden border border-slate-200">
+      {PRIORITIES.map(p => (
+        <button
+          key={p}
+          type="button"
+          disabled={busy}
+          onClick={() => onChange(p)}
+          aria-pressed={value === p}
+          className={`text-[11px] font-bold px-2 py-1.5 capitalize transition-colors border-r border-slate-200 last:border-r-0 ${
+            value === p ? PRIORITY_STYLE[p] : 'text-slate-400 hover:text-tn-ink hover:bg-slate-50'
+          }`}
+        >
+          {p}
+        </button>
+      ))}
+    </span>
+  )
+}
 
 const card = 'rounded-[14px] border border-slate-200 bg-white overflow-hidden'
 
@@ -110,6 +148,10 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
       {tab === 'boards' && workspaces.map(w => {
         const seen = ago(w.lastActivityAt)
         const allOn = w.included === w.boards.length
+        // Shown as the workspace's own only when its boards agree; otherwise
+        // medium sits unhighlighted and pressing one sets them all.
+        const levels = new Set(w.boards.map(b => b.priority))
+        const wPriority: Priority = levels.size === 1 ? [...levels][0] : 'medium'
         return (
           <div key={w.name} className={card}>
             <div className="flex items-center gap-3 px-5 py-3.5">
@@ -127,6 +169,11 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
                   </span>
                 </span>
               </button>
+              <PriorityPicker
+                value={wPriority}
+                busy={busy}
+                onChange={p => run(() => setWorkspacePriority(w.name, p))}
+              />
               <Toggle
                 on={allOn}
                 busy={busy}
@@ -152,6 +199,11 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
                           <span className={s.stale ? 'font-bold text-[#b06d0a]' : ''}>last used {s.text}</span>
                         </span>
                       </span>
+                      <PriorityPicker
+                        value={b.priority}
+                        busy={busy}
+                        onChange={p => run(() => setBoardPriority(b.id, p))}
+                      />
                       <Toggle on={b.included} busy={busy} onChange={v => run(() => setBoardIncluded(b.id, v))} />
                     </li>
                   )
@@ -184,7 +236,10 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
       )}
 
       <p className="text-xs text-muted leading-relaxed m-0">
-        The buttons on the right are the switches; everything else on a row is a fact about it. A date in amber
+        Priority orders the On-going block of My Work and changes nothing else: it does not hide anything and
+        does not affect the reports. Nothing in Monday knows which boards matter most, because a row count says
+        how busy a board is and a deadline says what is urgent, and neither is the same as important. The
+        buttons on the right are the switches; everything else on a row is a fact about it. A date in amber
         means nothing has moved on that board for more than six months, which is usually what makes it safe to
         switch off. Hiding changes what My Work shows and nothing else. Everything here is still ingested, still counted, and
         still visible in the reports: a board switched off stops filling somebody&apos;s list, it does not disappear.

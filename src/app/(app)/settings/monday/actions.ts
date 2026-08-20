@@ -44,6 +44,29 @@ export async function setWorkspaceIncluded(workspace: string, included: boolean)
   return { ok: true }
 }
 
+/** How much a board matters. Nothing in Monday knows this; a person does. */
+export async function setBoardPriority(boardId: number, priority: 'high' | 'medium' | 'low'): Promise<Result> {
+  const no = await guard(); if (no) return { ok: false, error: no }
+  const { error } = await createAdminClient()
+    .from('monday_boards').update({ priority }).eq('id', boardId)
+  if (error) return { ok: false, error: error.message }
+  done()
+  return { ok: true }
+}
+
+/** Same reasoning as the shown switch: a workspace sets its boards. */
+export async function setWorkspacePriority(workspace: string, priority: 'high' | 'medium' | 'low'): Promise<Result> {
+  const no = await guard(); if (no) return { ok: false, error: no }
+  const supabase = createAdminClient()
+  const q = supabase.from('monday_boards').update({ priority })
+  const { error } = workspace === 'No workspace'
+    ? await q.is('workspace_name', null)
+    : await q.eq('workspace_name', workspace)
+  if (error) return { ok: false, error: error.message }
+  done()
+  return { ok: true }
+}
+
 export async function setUserHidden(mondayUserId: number, hidden: boolean): Promise<Result> {
   const no = await guard(); if (no) return { ok: false, error: no }
   const { error } = await createAdminClient()

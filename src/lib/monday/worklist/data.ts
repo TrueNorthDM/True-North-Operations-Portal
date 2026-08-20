@@ -79,6 +79,8 @@ export interface WorkRow {
    * block collects: their work is real, it just has nobody to file it under.
    */
   assigneeKnown: boolean
+  /** From the board. Orders the On-going block and nothing else. */
+  priority: 'high' | 'medium' | 'low'
   mondayUserId: number
   who: string
   itemUpdatedAt: string | null
@@ -145,7 +147,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
 
   const [{ data: boardRows }, { data: stepRows }, { data: linkRows }, { data: userRows }, { data: peopleRows }] =
     await Promise.all([
-      supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at, date_title'),
+      supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at, date_title, priority'),
       supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source'),
       supabase.from('monday_user_links').select('monday_user_id, person_id'),
       supabase.from('monday_users').select('id, name, is_external, hidden'),
@@ -180,6 +182,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   type B = {
     id: number; name: string; workspace_name: string | null; included: boolean
     items_synced_at: string | null; date_title: string | null
+    priority: 'high' | 'medium' | 'low'
   }
   const boardList = (boardRows ?? []) as B[]
   const boards = new Map(boardList.map(b => [b.id, b]))
@@ -298,6 +301,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       dueLabel: b.date_title ?? null,
       url: itemUrl(a),
       assigneeKnown: pid != null,
+      priority: b.priority ?? 'medium',
       mondayUserId: a.monday_user_id,
       who: (pid ? personName.get(pid) : undefined) ?? mondayName.get(a.monday_user_id) ?? `User ${a.monday_user_id}`,
       itemUpdatedAt: a.item_updated_at,

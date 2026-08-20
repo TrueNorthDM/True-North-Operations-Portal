@@ -104,6 +104,14 @@ const DUE_TIME: Record<DueState, string> = {
   odd: 'text-slate-400',
 }
 
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
+const PRIORITY_CHIP: Record<string, string> = {
+  high: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]',
+  medium: 'bg-slate-100 text-slate-600',
+  low: 'bg-transparent text-slate-400',
+}
+
 /** The same eye the Href Link Management list uses for "open this". */
 function EyeIcon() {
   return (
@@ -267,17 +275,18 @@ function Block({
             date is unreadable in a way a broken title is not. */}
         <table className="w-full min-w-[1180px] text-sm table-fixed">
           <colgroup>
-            <col className="w-[16%]" />
-            <col className="w-[11%]" />
-            <col className="w-[11%]" />
-            <col className="w-[9%]" />
-            <col className="w-[11%]" />
+            <col className="w-[15%]" />
             <col className="w-[10%]" />
-            <col className="w-[11%]" />
+            <col className="w-[10%]" />
             <col className="w-[8%]" />
-            <col className="w-[7%]" />
+            <col className="w-[10%]" />
             <col className="w-[6%]" />
-            <col className="w-[4%]" />
+            <col className="w-[9%]" />
+            <col className="w-[10%]" />
+            <col className="w-[8%]" />
+            <col className="w-[6%]" />
+            <col className="w-[5%]" />
+            <col className="w-[3%]" />
           </colgroup>
           <thead>
             <tr className="bg-subtle border-b border-slate-200 text-left">
@@ -286,6 +295,7 @@ function Block({
             <th className={th}>Board</th>
             <th className={th}>Workspace</th>
             <th className={th}>Assignee</th>
+            <th className={th}>Priority</th>
             <th className={th}>Step</th>
             <th className={th}>Status</th>
             <th className={`${th} text-right`}>Due</th>
@@ -320,6 +330,9 @@ function Block({
               </td>
               <td className="px-4 py-2.5 text-tn-ink align-top">
                 <span className="block line-clamp-2 break-words">{r.who}</span>
+              </td>
+              <td className="px-4 py-2.5 align-top">
+                <span className={`${chip} ${PRIORITY_CHIP[r.priority]}`}>{r.priority}</span>
               </td>
               <td className="px-4 py-2.5 text-muted align-top">
                 <span className="block line-clamp-2 break-words">{r.stepName}</span>
@@ -440,11 +453,44 @@ export function WorkList({
   // that can.
   const unknown = rows.filter(r => !r.row.assigneeKnown)
   const known = rows.filter(r => r.row.assigneeKnown)
-  const ongoing = known.filter(r => r.row.statusDone !== true)
+  // On-going is the only block sorted by priority. Completed is a record, and
+  // Unknown user is a queue for an admin; ordering either by importance would
+  // be answering a question nobody asks of them.
+  const ongoing = known.filter(r => r.row.statusDone !== true).sort((a, b) =>
+    PRIORITY_RANK[a.row.priority] - PRIORITY_RANK[b.row.priority]
+    // Within a priority the deadline decides, which keeps the previous order
+    // intact inside each band rather than replacing it.
+    || (a.due && !a.row.dueSuspect ? 0 : 1) - (b.due && !b.row.dueSuspect ? 0 : 1)
+    || (a.row.dueDate ?? '').localeCompare(b.row.dueDate ?? '')
+    || a.row.itemName.localeCompare(b.row.itemName))
   const completed = known.filter(r => r.row.statusDone === true)
 
   return (
     <div className="space-y-5">
+      {/* Mine or everybody's, as a tab rather than a filter value. It is the
+          first decision somebody makes on this page and it deserves to look
+          like one; the person selector stays for looking at a colleague. */}
+      <div className="flex items-center gap-1 border-b border-slate-200">
+        {([
+          { key: 'mine', label: 'My tasks' },
+          { key: 'all', label: 'Everything' },
+        ] as const).map(t => {
+          const active = t.key === 'mine' ? person === selfPersonId && !team : person === '' || !!team
+          return (
+            <button
+              key={t.key}
+              onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '')}
+              aria-current={active ? 'page' : undefined}
+              className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
+                active ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
+              }`}
+            >
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="flex items-center gap-3 flex-wrap">
         <SearchField
           value={q}

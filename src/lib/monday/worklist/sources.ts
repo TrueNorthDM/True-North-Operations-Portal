@@ -11,10 +11,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
 
+export type Priority = 'high' | 'medium' | 'low'
+
 export interface SourceBoard {
   id: number
   name: string
   included: boolean
+  priority: Priority
   isSubitemBoard: boolean
   assignments: number
   lastActivityAt: string | null
@@ -47,14 +50,14 @@ export interface WorklistSources {
 export async function loadWorklistSources(supabase: Client): Promise<WorklistSources> {
   const [{ data: boardRows }, { data: userRows }, { data: linkRows }, { data: peopleRows }] = await Promise.all([
     supabase.from('monday_boards')
-      .select('id, name, workspace_name, included, is_subitem_board, assignments_count, last_activity_at'),
+      .select('id, name, workspace_name, included, priority, is_subitem_board, assignments_count, last_activity_at'),
     supabase.from('monday_users').select('id, name, email, hidden, is_external'),
     supabase.from('monday_user_links').select('monday_user_id, person_id'),
     supabase.from('people').select('id, full_name'),
   ])
 
   type B = {
-    id: number; name: string; workspace_name: string | null; included: boolean
+    id: number; name: string; workspace_name: string | null; included: boolean; priority: Priority
     is_subitem_board: boolean; assignments_count: number | null; last_activity_at: string | null
   }
   const byWorkspace = new Map<string, SourceBoard[]>()
@@ -64,6 +67,7 @@ export async function loadWorklistSources(supabase: Client): Promise<WorklistSou
       id: b.id,
       name: b.name,
       included: b.included,
+      priority: b.priority,
       isSubitemBoard: b.is_subitem_board,
       assignments: b.assignments_count ?? 0,
       lastActivityAt: b.last_activity_at,
