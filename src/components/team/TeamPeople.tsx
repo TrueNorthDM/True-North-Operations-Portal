@@ -44,7 +44,7 @@ const initialsOf = (name: string) =>
 function TeamCard({ team }: { team: RestrictedTeam }) {
   const colour = TEAM_COLOR[team.teamKey] ?? '#012358'
   return (
-    <div className="border border-[#e4e7ec] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+    <div className="border border-[var(--panel-border)] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
       <div className="h-1.5" style={{ background: colour }} />
       <div className="p-5">
         <div className="flex items-center justify-between gap-2 mb-4">
@@ -67,13 +67,13 @@ function TeamCard({ team }: { team: RestrictedTeam }) {
                 <span className="block text-[13px] font-semibold text-tn-ink truncate">{m.name}</span>
                 <span className="block text-[11.5px] text-muted truncate">{m.title ?? '-'}</span>
               </span>
-              <span className={`${PILL} bg-[#f1f3f6] text-[#6b7c95]`}>{m.positionLabel}</span>
+              <span className={`${PILL} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>{m.positionLabel}</span>
             </div>
           ))}
         </div>
 
         {team.tools && (
-          <div className="pt-3.5 mt-3.5 border-t border-[#eceff3]">
+          <div className="pt-3.5 mt-3.5 border-t border-[var(--row-rule)]">
             <p className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted m-0 mb-2.5">
               Tool access
             </p>
@@ -122,7 +122,7 @@ export function TeamPeople({
   return (
     <div>
       {showTeams && (
-        <div className="flex items-center gap-0.5 border-b border-[#e4e7ec] mb-5">
+        <div className="flex items-center gap-0.5 border-b border-[var(--panel-border)] mb-5">
           {(['people', 'teams'] as const).map(t => (
             <button
               key={t}
@@ -140,7 +140,7 @@ export function TeamPeople({
 
       {showTeams && tab === 'teams' && (
         teams.length === 0
-          ? <div className="border border-[#e4e7ec] bg-white rounded-[16px] px-6 py-12 text-center text-[13px] text-muted">You are not on a team yet.</div>
+          ? <div className="border border-[var(--panel-border)] bg-white rounded-[16px] px-6 py-12 text-center text-[13px] text-muted">You are not on a team yet.</div>
           : (
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {teams.map(t => <TeamCard key={t.id} team={t} />)}
@@ -156,7 +156,7 @@ export function TeamPeople({
         className="w-full sm:w-[420px] mb-4"
       />
 
-      <div className="border border-[#e4e7ec] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className="border border-[var(--panel-border)] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
         {shown.length === 0 && (
           <div className="px-[22px] py-13 text-center text-[13px] text-muted">No one matches “{q}”.</div>
         )}
@@ -174,8 +174,8 @@ export function TeamPeople({
             <div
               key={p.id}
               onClick={() => { if (openable) setOpenId(p.id) }}
-              className={`flex items-center gap-3.5 px-[22px] py-3 transition-colors ${i > 0 ? 'border-t border-[#eceff3]' : ''} ${
-                openable ? 'cursor-pointer hover:bg-[#f8f7f3]' : ''
+              className={`flex items-center gap-3.5 px-[22px] py-3 transition-colors ${i > 0 ? 'border-t border-[var(--row-rule)]' : ''} ${
+                openable ? 'cursor-pointer hover:bg-[var(--row-hover)]' : ''
               }`}
             >
               <span
@@ -188,7 +188,7 @@ export function TeamPeople({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 flex-wrap">
                   <span className="text-[14px] font-semibold text-tn-ink">{p.name}</span>
-                  <span className={`${PILL} bg-[#eef2f7] text-[#5b6b82]`}>{role.label}</span>
+                  <span className={`${PILL} bg-[var(--role-bg)] text-[var(--chip-neutral-fg)]`}>{role.label}</span>
                   {self && <span className={`${PILL} bg-[rgba(30,125,127,.12)] text-tn-teal`}>You</span>}
                 </span>
                 <span className="block text-[12.5px] text-muted mt-0.5">{p.title ?? '-'}</span>
@@ -196,12 +196,12 @@ export function TeamPeople({
 
               <span className="text-[12.5px] text-muted w-40 shrink-0">{p.teamName ?? '-'}</span>
 
-              <span className={`${PILL} ${active ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-muted'}`}>
+              <span className={`${PILL} ${active ? 'bg-[var(--ok-bg)] text-[var(--ok-fg)]' : 'bg-[var(--chip-neutral-bg)] text-muted'}`}>
                 {active ? 'Active' : 'Inactive'}
               </span>
 
               {/* Present only where there is somewhere to go. */}
-              <span className="shrink-0 w-4 text-[#cbd2da] inline-flex justify-end">
+              <span className="shrink-0 w-4 text-[var(--faint)] inline-flex justify-end">
                 {openable && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="m9 18 6-6-6-6" />

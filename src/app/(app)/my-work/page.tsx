@@ -67,14 +67,14 @@ export default async function MyWorkPage(
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-[13px]">
         <Link href="/" className="font-semibold text-muted hover:text-tn-ink transition-colors">Dashboard</Link>
-        <span className="text-[#cbd2da]">/</span>
+        <span className="text-[var(--faint)]">/</span>
         <span className="font-semibold text-tn-ink">My Work / My Team</span>
       </div>
 
       {/* Title on the left, the two views as a segmented control on the right.
           They are two ways of asking "what is mine", so they sit together as
           one control rather than as tabs down the page. */}
-      <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[#e4e7ec]">
+      <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[var(--panel-border)]">
         <div>
           <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">
             {heading.title}
@@ -82,7 +82,7 @@ export default async function MyWorkPage(
           <p className="text-[14.5px] text-muted mt-1.5 m-0">{heading.desc}</p>
         </div>
 
-        <div className="flex items-center bg-subtle border border-[#e4e7ec] rounded-[11px] p-1">
+        <div className="flex items-center bg-subtle border border-[var(--panel-border)] rounded-[11px] p-1">
           {TABS.map(t => (
             <Link
               key={t.key}

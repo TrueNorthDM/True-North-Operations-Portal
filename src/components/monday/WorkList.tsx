@@ -79,7 +79,7 @@ const chip = 'inline-flex items-center align-top font-[family-name:var(--font-op
  * how Monday paints it. Grey only when a step has no status column paired.
  */
 function StatusChip({ text, colour }: { text: string; colour: string | null }) {
-  if (!colour) return <span className={`${chip} bg-[#f1f3f6] text-muted`}>{text}</span>
+  if (!colour) return <span className={`${chip} bg-[var(--chip-neutral-bg)] text-muted`}>{text}</span>
   return <span className={`${chip} text-white`} style={{ background: colour }}>{text}</span>
 }
 
@@ -90,7 +90,7 @@ const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 const PRIORITY_CHIP: Record<string, string> = {
   high: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]',
-  medium: 'bg-[#f1f3f6] text-[#5b6b82]',
+  medium: 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]',
   low: 'text-[#9aa7b6]',
 }
 
@@ -143,14 +143,14 @@ const DUE_BADGE: Record<DueState, { label: string; className: string }> = {
   late: { label: 'Late', className: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]' },
   today: { label: 'Due today', className: 'bg-[rgba(224,138,30,.16)] text-[#b06d0a]' },
   upcoming: { label: 'Upcoming', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
-  odd: { label: 'Check date', className: 'bg-[#f1f3f6] text-muted' },
+  odd: { label: 'Check date', className: 'bg-[var(--chip-neutral-bg)] text-muted' },
 }
 
 const DUE_TIME: Record<DueState, string> = {
   late: 'text-[#c2410c] font-semibold',
   today: 'text-muted',
   upcoming: 'text-tn-teal font-semibold',
-  odd: 'text-[#cbd2da]',
+  odd: 'text-[var(--faint)]',
 }
 
 function when(iso: string | null): string {
@@ -178,7 +178,7 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
       <button className="absolute inset-0 bg-[rgba(1,35,88,.35)]" onClick={onClose} aria-label="Close" />
       <div className="relative w-full max-w-[560px] h-full bg-white shadow-2xl overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-start justify-between gap-4">
+        <div className="sticky top-0 bg-white border-b border-[var(--panel-border)] px-6 py-4 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{row.boardName}</div>
             <h2 className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[19px] leading-tight m-0 mt-0.5">
@@ -224,7 +224,7 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
 
           {state.loading && <div className="text-sm text-muted">Asking Monday…</div>}
           {state.error && (
-            <div className="rounded-[10px] border border-amber-300/60 bg-amber-50 p-4 text-sm text-[#8a6d1a]">{state.error}</div>
+            <div className="rounded-[10px] border border-[var(--warn-border)] bg-[var(--warn-bg)] p-4 text-sm text-[var(--warn-fg)]">{state.error}</div>
           )}
           {state.events && state.events.length === 0 && (
             <div className="text-sm text-muted">
@@ -294,11 +294,11 @@ function Block({
   const [all, setAll] = useState(false)
   const shown = all ? rows : rows.slice(0, FIRST_ROWS)
   return (
-    <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-[rgba(224,148,14,.45)]' : 'border-[#e4e7ec]'} bg-white overflow-hidden`}>
+    <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-[var(--warn-border)]' : 'border-[var(--panel-border)]'} bg-white overflow-hidden`}>
       <button
         onClick={onToggle}
         aria-expanded={open}
-        className={`w-full flex items-center gap-3 px-5 py-[13px] text-left transition-colors ${tone === 'quiet' ? 'bg-[rgba(242,196,10,.09)] hover:bg-[rgba(242,196,10,.16)]' : 'hover:bg-[#f8f7f3]'}`}
+        className={`w-full flex items-center gap-3 px-5 py-[13px] text-left transition-colors ${tone === 'quiet' ? 'bg-[rgba(242,196,10,.09)] hover:bg-[rgba(242,196,10,.16)]' : 'hover:bg-[var(--row-hover)]'}`}
       >
         <span className="shrink-0 text-muted text-[15px] leading-none" aria-hidden="true">{open ? '⌄' : '›'}</span>
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{title}</span>
@@ -307,17 +307,17 @@ function Block({
       </button>
 
       {open && rows.length === 0 && (
-        <div className="px-5 py-8 text-center text-[13.5px] text-muted border-t border-[#eceff3]">Nothing here.</div>
+        <div className="px-5 py-8 text-center text-[13.5px] text-muted border-t border-[var(--row-rule)]">Nothing here.</div>
       )}
 
       {open && rows.length > 0 && (
         <div>
-        <div className="border-t border-[#eceff3] overflow-x-auto">
+        <div className="border-t border-[var(--row-rule)] overflow-x-auto">
           <div className="min-w-[1180px]">
             {/* A grid, not a table: the handoff fixes the twelve widths as
                 percentages, and a grid honours them without the browser
                 measuring the content first. */}
-            <div className="grid bg-subtle border-b border-[#e4e7ec]" style={{ gridTemplateColumns: GRID }}>
+            <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={{ gridTemplateColumns: GRID }}>
               <div className={HEAD_CELL}>Item</div>
               <div className={HEAD_CELL}>Parent item</div>
               <div className={HEAD_CELL}>Board</div>
@@ -336,7 +336,7 @@ function Block({
               <div
                 key={r.id}
                 onClick={() => onPick(r)}
-                className="grid border-b border-[#eceff3] last:border-b-0 cursor-pointer hover:bg-[#f8f7f3] transition-colors"
+                className="grid border-b border-[var(--row-rule)] last:border-b-0 cursor-pointer hover:bg-[var(--row-hover)] transition-colors"
                 style={{ gridTemplateColumns: GRID }}
               >
                 <div className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>{r.itemName}</div>
@@ -353,13 +353,13 @@ function Block({
                 <div className="px-3 py-2.5 min-w-0 overflow-hidden">
                   {r.statusText
                     ? <StatusChip text={r.statusText} colour={r.statusColor} />
-                    : <span className="text-[#cbd2da] text-[13px]">-</span>}
+                    : <span className="text-[var(--faint)] text-[13px]">-</span>}
                 </div>
                 <div className={`${CELL} text-tn-ink text-right whitespace-nowrap`}>
-                  {d ? d.date : <span className="text-[#cbd2da]">-</span>}
+                  {d ? d.date : <span className="text-[var(--faint)]">-</span>}
                 </div>
                 <div className={`px-3 py-2.5 min-w-0 overflow-hidden text-[12px] text-right ${d ? DUE_TIME[d.state] : ''}`}>
-                  {d?.time || (d ? '' : <span className="text-[#cbd2da]">-</span>)}
+                  {d?.time || (d ? '' : <span className="text-[var(--faint)]">-</span>)}
                 </div>
                 <div className="px-3 py-2.5 min-w-0 overflow-hidden">
                   {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
@@ -377,7 +377,7 @@ function Block({
                     >
                       <EyeIcon />
                     </a>
-                  ) : <span className="text-[#cbd2da]">-</span>}
+                  ) : <span className="text-[var(--faint)]">-</span>}
                 </div>
               </div>
             ))}
@@ -388,7 +388,7 @@ function Block({
           {!all && rows.length > FIRST_ROWS && (
             <button
               onClick={() => setAll(true)}
-              className="w-full px-5 py-[13px] text-[13.5px] font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-[#eceff3]"
+              className="w-full px-5 py-[13px] text-[13.5px] font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-[var(--row-rule)]"
             >
               {`Show the other ${n(rows.length - FIRST_ROWS)}`}
             </button>
@@ -540,7 +540,7 @@ export function WorkList({
 
         {/* Mine or everyone's, as one segmented control rather than two tabs:
             it is a single either/or and the handoff draws it that way. */}
-        <div className="flex items-center bg-subtle border border-[#e4e7ec] rounded-[10px] p-[3px]">
+        <div className="flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]">
           {([
             { key: 'mine', label: 'Mine' },
             { key: 'all', label: 'Everyone' },
@@ -557,7 +557,7 @@ export function WorkList({
                   onFocus={() => dead && setTip(true)}
                   onBlur={() => setTip(false)}
                   className={`font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors ${
-                    dead ? 'text-[#cbd2da] cursor-not-allowed'
+                    dead ? 'text-[var(--faint)] cursor-not-allowed'
                     : on ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]'
                     : 'text-muted hover:text-tn-ink'
                   }`}
@@ -589,7 +589,7 @@ export function WorkList({
               onChange={v => setParam('person', v)}
               options={[{ value: '', label: 'Anyone' }, ...people]}
               ariaLabel="Person"
-              className="gap-2 px-3 py-[9px] rounded-[10px] border border-[#e4e7ec] bg-white font-(family-name:--font-display) font-semibold text-[13px] text-muted"
+              className="gap-2 px-3 py-[9px] rounded-[10px] border border-[var(--panel-border)] bg-white font-(family-name:--font-display) font-semibold text-[13px] text-muted"
               searchable
             />
             <Select
@@ -597,7 +597,7 @@ export function WorkList({
               onChange={v => setParam('team', v)}
               options={[{ value: '', label: 'All teams' }, ...teams]}
               ariaLabel="Team"
-              className="gap-2 px-3 py-[9px] rounded-[10px] border border-[#e4e7ec] bg-white font-(family-name:--font-display) font-semibold text-[13px] text-muted"
+              className="gap-2 px-3 py-[9px] rounded-[10px] border border-[var(--panel-border)] bg-white font-(family-name:--font-display) font-semibold text-[13px] text-muted"
             />
           </>
         )}
@@ -606,7 +606,7 @@ export function WorkList({
           type="button"
           onClick={() => setParam('done', includeDone ? '' : '1')}
           className={`font-[family-name:var(--font-open-sans)] text-[13.5px] font-semibold px-3 py-2 rounded-[10px] border transition-colors ${
-            includeDone ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.07)]' : 'border-[#e4e7ec] text-muted hover:text-tn-ink'
+            includeDone ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.07)]' : 'border-[var(--panel-border)] text-muted hover:text-tn-ink'
           }`}
         >
           {includeDone ? 'Finished work: all of it' : `Finished work: ${COMPLETED_MONTHS} months`}
@@ -630,7 +630,7 @@ export function WorkList({
         utcMinute={15}
         label="Work pulled from Monday"
         pastVerb="refreshed"
-        className="flex items-center gap-2 text-[12.5px] text-muted border-t border-[#e4e7ec] pt-3"
+        className="flex items-center gap-2 text-[12.5px] text-muted border-t border-[var(--panel-border)] pt-3"
       />
 
       {/* Only where it changes the answer.
@@ -642,12 +642,12 @@ export function WorkList({
           admin job on another page. A standing yellow banner nobody can act on
           is how a warning gets tuned out before the day it matters. */}
       {team && data.unlinked > 0 && (
-        <div className="rounded-[10px] border border-[rgba(224,148,14,.5)] bg-[#fdf8e7] px-4 py-3.5 text-[13.5px] leading-[1.6] text-[#8a6d1a]">
+        <div className="rounded-[10px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-4 py-3.5 text-[13.5px] leading-[1.6] text-[var(--warn-fg)]">
           {`This team filter cannot see ${data.unlinkedAssignments} ${data.unlinkedAssignments === 1 ? 'assignment' : 'assignments'} on ${data.unlinked} Monday ${data.unlinked === 1 ? 'account' : 'accounts'} that belong to nobody in the Directory.`}
           {isAdmin && (
             <>
               {' '}
-              <a href="/admin/monday-links" className="font-bold text-[#8a6d1a] underline hover:no-underline">Resolve them</a>.
+              <a href="/admin/monday-links" className="font-bold text-[var(--warn-fg)] underline hover:no-underline">Resolve them</a>.
             </>
           )}
         </div>
@@ -658,7 +658,7 @@ export function WorkList({
           is served by the first few thousand plus an honest count. Naming the
           cap is what keeps it from reading as "this is all there is". */}
       {data.truncated && (
-        <div className="rounded-[10px] border border-[#e4e7ec] bg-subtle px-4 py-3.5 text-[13.5px] text-muted leading-[1.6]">
+        <div className="rounded-[10px] border border-[var(--panel-border)] bg-subtle px-4 py-3.5 text-[13.5px] text-muted leading-[1.6]">
           {`Showing the first ${n(data.total)} of ${n(data.matching)} steps. Pick a person or a team to see all of theirs.`}
         </div>
       )}

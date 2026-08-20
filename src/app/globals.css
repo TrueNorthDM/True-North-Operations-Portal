@@ -10,6 +10,20 @@
   /* True North Digital Marketing brand, warm off-white canvas, navy ink. */
   --background: #f1efe8;
   --subtle: #f4f2ec;       /* warm subtle fill, table headers, group rows */
+
+  /* My Work / My Team surfaces (design handoff, screens 1.x and 2.x).
+     Named rather than written inline so the dark mirror below can restate
+     them: an arbitrary hex in a class is invisible to every theme rule. */
+  --panel-border: #e4e7ec;      /* panel, card and table-header borders */
+  --row-rule: #eceff3;          /* the line between rows */
+  --row-hover: #f8f7f3;         /* row under the cursor */
+  --chip-neutral-bg: #f1f3f6;   /* a badge carrying no state of its own */
+  --chip-neutral-fg: #5b6b82;
+  --faint: #cbd2da;             /* an empty cell's dash, a disabled label */
+  --ok-bg: #e6f6ee;   --ok-fg: #0d7a4f;      /* an active person, a finished step */
+  --warn-bg: #fdf8e7; --warn-fg: #8a6d1a;    /* the caveat a team filter carries */
+  --warn-border: rgba(224,148,14,.5);
+  --role-bg: #eef2f7;                        /* the pill that names a role */
   --stat-total: #0f2036;   /* Tickets "Total" stat card (lightened in dark) */
 
   /* Ticket status/priority/type badge palette (see TicketsClient). Literal in
@@ -184,6 +198,17 @@ h1, h2, h3 {
   --muted: #74849c;
   --primary: #2a5cab;
   --primary-hover: #3a6cbb;
+
+  --panel-border: #20355a;
+  --row-rule: #20355a;
+  --row-hover: #16294a;
+  --chip-neutral-bg: rgba(170,182,201,.18);
+  --chip-neutral-fg: #aab6c9;
+  --faint: #46566f;
+  --ok-bg: rgba(95,206,156,.15);  --ok-fg: #6fd9a5;
+  --warn-bg: rgba(229,193,90,.10); --warn-fg: #e5c15a;
+  --warn-border: rgba(229,193,90,.35);
+  --role-bg: rgba(170,182,201,.15);
 
   --org-thread: #20355a;
 
