@@ -291,11 +291,11 @@ function Block({
   const [all, setAll] = useState(false)
   const shown = all ? rows : rows.slice(0, FIRST_ROWS)
   return (
-    <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-amber-300/60' : 'border-[#e4e7ec]'} bg-white overflow-hidden`}>
+    <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-[rgba(224,148,14,.45)]' : 'border-[#e4e7ec]'} bg-white overflow-hidden`}>
       <button
         onClick={onToggle}
         aria-expanded={open}
-        className={`w-full flex items-center gap-3 px-5 py-[13px] text-left transition-colors ${tone === 'quiet' ? 'bg-amber-50 hover:bg-amber-100/60' : 'hover:bg-[#f8f7f3]'}`}
+        className={`w-full flex items-center gap-3 px-5 py-[13px] text-left transition-colors ${tone === 'quiet' ? 'bg-[rgba(242,196,10,.09)] hover:bg-[rgba(242,196,10,.16)]' : 'hover:bg-[#f8f7f3]'}`}
       >
         <span className="shrink-0 text-muted text-[15px] leading-none" aria-hidden="true">{open ? '⌄' : '›'}</span>
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{title}</span>
@@ -540,6 +540,7 @@ export function WorkList({
               onChange={v => setParam('person', v)}
               options={[{ value: '', label: 'Anyone' }, ...people]}
               ariaLabel="Person"
+              className="gap-2 px-3 py-[9px] rounded-[10px] border border-[#e4e7ec] bg-white font-(family-name:--font-display) font-semibold text-[13px] text-muted"
               searchable
             />
             <Select
@@ -547,6 +548,7 @@ export function WorkList({
               onChange={v => setParam('team', v)}
               options={[{ value: '', label: 'All teams' }, ...teams]}
               ariaLabel="Team"
+              className="gap-2 px-3 py-[9px] rounded-[10px] border border-[#e4e7ec] bg-white font-(family-name:--font-display) font-semibold text-[13px] text-muted"
             />
           </>
         )}
@@ -591,7 +593,7 @@ export function WorkList({
           admin job on another page. A standing yellow banner nobody can act on
           is how a warning gets tuned out before the day it matters. */}
       {team && data.unlinked > 0 && (
-        <div className="rounded-[10px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-[#8a6d1a]">
+        <div className="rounded-[10px] border border-[rgba(224,148,14,.45)] bg-[rgba(242,196,10,.09)] px-4 py-3 text-[13px] text-[#8a6d1a]">
           {`This team filter cannot see ${data.unlinkedAssignments} ${data.unlinkedAssignments === 1 ? 'assignment' : 'assignments'} on ${data.unlinked} Monday ${data.unlinked === 1 ? 'account' : 'accounts'} that belong to nobody in the Directory.`}
           {isAdmin && (
             <>

@@ -72,8 +72,19 @@ const DATA: Worklist = {
   oldestSyncAt: new Date(Date.now() - 5 * 3600_000).toISOString(),
 }
 
-export default function DesignCheck() {
+const UNKNOWN: WorkRow[] = Array.from({ length: 6 }, (_, i) =>
+  row(900 + i, {
+    itemName: 'Home Page', boardName: 'TCA Website', workspaceName: 'Marketing',
+    who: 'Removed account 22812214', assigneeKnown: false, priority: 'medium',
+    stepName: 'Editor', statusText: null, statusColor: null, dueDate: day(-1748),
+  }))
+
+export default async function DesignCheck(
+  { searchParams }: { searchParams: Promise<{ view?: string }> },
+) {
   if (process.env.NODE_ENV === 'production') notFound()
+  const { view } = await searchParams
+  const everyone = view === 'everyone'
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-[1340px] mx-auto space-y-6">
@@ -100,7 +111,13 @@ export default function DesignCheck() {
           </div>
         </div>
 
-        <WorkList data={DATA} people={[]} teams={[]} selfPersonId="me" isAdmin={false} />
+        <WorkList
+          data={everyone ? { ...DATA, rows: [...UNKNOWN, ...DATA.rows], open: DATA.open + UNKNOWN.length } : DATA}
+          people={everyone ? [{ value: 'p1', label: 'Amy Marsh' }, { value: 'p2', label: 'Lana Prado' }] : []}
+          teams={everyone ? [{ value: 't1', label: 'SEO' }, { value: 't2', label: 'Writing' }] : []}
+          selfPersonId="me"
+          isAdmin={false}
+        />
       </div>
     </div>
   )
