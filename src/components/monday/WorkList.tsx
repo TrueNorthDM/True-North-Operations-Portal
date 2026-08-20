@@ -35,7 +35,19 @@ interface HistoryEvent {
 }
 
 const th = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 whitespace-nowrap'
-const chip = 'inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[5px]'
+/**
+ * A badge that sits on the text line rather than beside it.
+ *
+ * leading-5 with no vertical padding makes the pill exactly one line tall, the
+ * same 20px box text-sm occupies, so a top-aligned cell puts the badge's first
+ * line level with its neighbours' first line. With py-0.5 the pill was a
+ * different height from the text next to it and looked half a line low, which
+ * is what made LATE seem out of step with its own date.
+ *
+ * A badge that wraps to two lines still starts on the first one, because the
+ * line box is the same height for both.
+ */
+const chip = 'inline-flex items-center align-top text-[10px] font-extrabold uppercase tracking-wider px-2 py-0 leading-5 rounded-[5px]'
 
 /**
  * A status chip in Monday's own colour.
@@ -410,6 +422,7 @@ export function WorkList({
   const person = params.get('person') ?? selfPersonId ?? ''
   const team = params.get('team') ?? ''
   const includeDone = params.get('done') === '1'
+  const mine = !!selfPersonId && person === selfPersonId && !team
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString())
@@ -475,7 +488,7 @@ export function WorkList({
           { key: 'mine', label: 'My tasks' },
           { key: 'all', label: 'Everything' },
         ] as const).map(t => {
-          const active = t.key === 'mine' ? person === selfPersonId && !team : person === '' || !!team
+          const active = t.key === 'mine' ? mine : !mine
           // Without a person behind the login there is no "mine" to show. The
           // tab says so instead of looking clickable and doing nothing, which
           // is the worst of both: no result and no reason.
@@ -506,19 +519,27 @@ export function WorkList({
           placeholder="Search items, boards, people…"
           className="w-full sm:w-[320px]"
         />
-        <Select
-          value={person}
-          onChange={v => setParam('person', v)}
-          options={[{ value: '', label: 'Anyone' }, ...people]}
-          ariaLabel="Person"
-          searchable
-        />
-        <Select
-          value={team}
-          onChange={v => setParam('team', v)}
-          options={[{ value: '', label: 'All teams' }, ...teams]}
-          ariaLabel="Team"
-        />
+        {/* Only under Everything. On My tasks the question of whose work this
+            is has already been answered by the tab, and leaving the two
+            selectors there invites somebody to contradict it: picking a
+            colleague while the tab says "mine" is a state with no meaning. */}
+        {!mine && (
+          <>
+            <Select
+              value={person}
+              onChange={v => setParam('person', v)}
+              options={[{ value: '', label: 'Anyone' }, ...people]}
+              ariaLabel="Person"
+              searchable
+            />
+            <Select
+              value={team}
+              onChange={v => setParam('team', v)}
+              options={[{ value: '', label: 'All teams' }, ...teams]}
+              ariaLabel="Team"
+            />
+          </>
+        )}
         <button
           type="button"
           onClick={() => setParam('done', includeDone ? '' : '1')}
