@@ -476,13 +476,21 @@ export function WorkList({
           { key: 'all', label: 'Everything' },
         ] as const).map(t => {
           const active = t.key === 'mine' ? person === selfPersonId && !team : person === '' || !!team
+          // Without a person behind the login there is no "mine" to show. The
+          // tab says so instead of looking clickable and doing nothing, which
+          // is the worst of both: no result and no reason.
+          const dead = t.key === 'mine' && !selfPersonId
           return (
             <button
               key={t.key}
+              disabled={dead}
+              title={dead ? 'Your login is not linked to anyone in the Directory yet, so there is no "mine" to filter by.' : undefined}
               onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '')}
               aria-current={active ? 'page' : undefined}
               className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
-                active ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
+                dead ? 'border-transparent text-slate-300 cursor-not-allowed'
+                : active ? 'border-tn-teal text-tn-ink'
+                : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
               }`}
             >
               {t.label}

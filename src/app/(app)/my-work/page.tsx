@@ -18,6 +18,7 @@ import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
 import { WorkList } from '@/components/monday/WorkList'
 import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
@@ -71,10 +72,13 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   const supabase = await createClient()
   const { data: auth } = await supabase.auth.getUser()
 
-  const { data: me } = auth?.user
-    ? await supabase.from('people').select('id').eq('profile_id', auth.user.id).maybeSingle()
-    : { data: null }
-  const selfPersonId = (me as { id: string } | null)?.id ?? null
+  // The portal already knows how to answer "who is signed in", and this had
+  // written a weaker version of it: profile_id only. A person whose row was
+  // never linked to their login came out as nobody, so the My tasks tab asked
+  // to filter by nobody, which is the same as everybody, and clicking it did
+  // nothing at all. loadCurrentPerson falls back to matching the email.
+  const me = await loadCurrentPerson(supabase, auth?.user ?? null)
+  const selfPersonId = me?.id ?? null
 
   // "person" absent means the signed-in person; "person=" means anybody. The
   // two are different questions and the empty string keeps them apart.
