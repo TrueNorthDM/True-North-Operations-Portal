@@ -17,7 +17,9 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { loadContactByPerson } from '@/lib/hr/contact'
 import { teamKeyFromName } from '@/lib/directory/people-types'
 import { asRoleType } from '@/lib/auth/tier'
-import type { RestrictedPerson, FullProfile } from '@/components/admin/RestrictedDirectory'
+import type { RestrictedPerson, FullProfile, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
+import { TEAM_POSITION_LABEL } from '@/lib/directory/people-types'
+import { TOOLS } from '@/lib/access/tools'
 
 type Client = SupabaseClient<Database>
 
@@ -29,6 +31,13 @@ const str = (v: unknown): string | null => {
 export interface MyTeamView {
   people: RestrictedPerson[]
   teamNames: string[]
+  /**
+   * The viewer's teams as cards. Tool access is filled from level 2 up and
+   * null below, which is the one thing that separates the two levels: at
+   * level 1 the tab shows who is on the team, at level 2 it also shows what
+   * the team can reach.
+   */
+  teams: RestrictedTeam[]
   /** Whose card the viewer may open, keyed by person id. */
   profiles: Record<string, FullProfile>
   selfId: string | null
@@ -41,7 +50,7 @@ export interface MyTeamView {
  */
 export async function loadMyTeam(supabase: Client, user: User | null, level: 1 | 2 | 3): Promise<MyTeamView> {
   const me = await loadCurrentPerson(supabase, user)
-  if (!me) return { people: [], teamNames: [], profiles: {}, selfId: null }
+  if (!me) return { people: [], teamNames: [], teams: [], profiles: {}, selfId: null }
 
   const { data: myMemberships } = await supabase
     .from('team_members')
@@ -180,5 +189,53 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
     profiles[r.id] = toProfile(r)
   }
 
-  return { people, teamNames, profiles, selfId: me.id }
+  // ── The Teams tab ────────────────────────────────────────────────────────
+  const teamCards: RestrictedTeam[] = []
+  if (teamIds.length) {
+    const [{ data: teamRows }, { data: memberRows }, tools] = await Promise.all([
+      supabase.from('teams').select('id, name').in('id', teamIds),
+      supabase.from('team_members').select('team_id, person_id, position').in('team_id', teamIds),
+      // Level 1 never sees tool access, so it is never even asked for.
+      level >= 2
+        ? supabase.from('team_tools').select('team_id, tool_key, audience').in('team_id', teamIds)
+        : Promise.resolve({ data: [] as { team_id: string; tool_key: string; audience: string }[] }),
+    ])
+
+    const titleById = new Map((rows ?? []).map(r => [r.id, str(r.title)]))
+    const avatarById = new Map((rows ?? []).map(r => [r.id, r.avatar_url ?? null]))
+    const toolLabel = new Map(TOOLS.map(t => [t.key, t.label]))
+
+    const byTeam = new Map<string, { person_id: string; position?: string }[]>()
+    for (const m of (memberRows ?? []) as { team_id: string; person_id: string; position?: string }[]) {
+      byTeam.set(m.team_id, [...(byTeam.get(m.team_id) ?? []), m])
+    }
+    const toolsByTeam = new Map<string, { label: string; audience: 'lead' | 'all' }[]>()
+    for (const t of (tools.data ?? []) as { team_id: string; tool_key: string; audience: string }[]) {
+      toolsByTeam.set(t.team_id, [...(toolsByTeam.get(t.team_id) ?? []), {
+        label: toolLabel.get(t.tool_key) ?? t.tool_key,
+        audience: t.audience === 'lead' ? 'lead' : 'all',
+      }])
+    }
+
+    for (const t of (teamRows ?? []) as { id: string; name: string }[]) {
+      teamCards.push({
+        id: t.id,
+        name: t.name,
+        teamKey: teamKeyFromName(t.name),
+        members: (byTeam.get(t.id) ?? [])
+          .map(m => ({
+            id: m.person_id,
+            name: nameById.get(m.person_id) ?? 'Unknown',
+            title: titleById.get(m.person_id) ?? null,
+            avatarUrl: avatarById.get(m.person_id) ?? null,
+            positionLabel: TEAM_POSITION_LABEL[m.position ?? 'collaborator'] ?? 'Collaborator',
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+        tools: level >= 2 ? (toolsByTeam.get(t.id) ?? []) : null,
+      })
+    }
+    teamCards.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  return { people, teamNames, teams: teamCards, profiles, selfId: me.id }
 }

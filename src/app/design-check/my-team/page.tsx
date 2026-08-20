@@ -2,7 +2,7 @@
 
 import { notFound } from 'next/navigation'
 import { TeamPeople } from '@/components/team/TeamPeople'
-import type { RestrictedPerson } from '@/components/admin/RestrictedDirectory'
+import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +25,30 @@ const PEOPLE: RestrictedPerson[] = [
   person('p3', 'Kevin Brown', 'Analyst', 'SEO', 'seo', 'user', true),
   person('p4', 'Lana Prado', 'Translator', 'Writing', 'writing', 'team_leader', true),
   person('p5', 'Wendy Clark', 'Account Director', 'Web', 'other', 'admin_assistant', false),
+]
+
+const TEAMS: RestrictedTeam[] = [
+  {
+    id: 't1', name: 'SEO', teamKey: 'seo',
+    members: [
+      { id: 'p2', name: 'Amy Marsh', title: 'SEO Specialist', avatarUrl: null, positionLabel: 'Lead' },
+      { id: 'p3', name: 'Kevin Brown', title: 'Analyst', avatarUrl: null, positionLabel: 'Member' },
+    ],
+    tools: [
+      { label: 'Time report', audience: 'lead' },
+      { label: 'Publishing Goals', audience: 'all' },
+    ],
+  },
+  {
+    id: 't2', name: 'Writing', teamKey: 'writing',
+    members: [{ id: 'p4', name: 'Lana Prado', title: 'Translator', avatarUrl: null, positionLabel: 'Member' }],
+    tools: [],
+  },
+  {
+    id: 't3', name: 'Web', teamKey: 'other',
+    members: [{ id: 'p5', name: 'Wendy Clark', title: 'Account Director', avatarUrl: null, positionLabel: 'Lead' }],
+    tools: [{ label: 'Href Link Management', audience: 'all' }],
+  },
 ]
 
 export default function DesignCheckTeam() {
@@ -57,7 +81,7 @@ export default function DesignCheckTeam() {
           </div>
         </div>
 
-        <TeamPeople people={PEOPLE} selfId="me" />
+        <TeamPeople people={PEOPLE} selfId="me" teams={TEAMS} showTeams />
       </div>
     </div>
   )

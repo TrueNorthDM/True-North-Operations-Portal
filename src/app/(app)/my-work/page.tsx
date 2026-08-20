@@ -153,7 +153,18 @@ async function MyTeamTab() {
   // Same rule the Directory follows: level 3 opens every teammate's card,
   // levels 1 and 2 only your own.
   const access = await loadAccess()
-  const { people, profiles, selfId } = await loadMyTeam(supabase, user, directoryLevel(access.can))
+  const level = directoryLevel(access.can)
+  const { people, teams, profiles, selfId } = await loadMyTeam(supabase, user, level)
 
-  return <TeamPeople people={people} profiles={profiles} selfId={selfId} />
+  // The Teams tab is what level 2 adds; below that the tab does not exist,
+  // rather than existing and being empty.
+  return (
+    <TeamPeople
+      people={people}
+      teams={teams}
+      showTeams={level >= 2}
+      profiles={profiles}
+      selfId={selfId}
+    />
+  )
 }
