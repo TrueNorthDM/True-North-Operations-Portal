@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadMyTeam } from '@/lib/directory/my-team'
 import { TeamPeople } from '@/components/team/TeamPeople'
 import { WorkList } from '@/components/monday/WorkList'
+import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
 import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -32,25 +33,6 @@ const TABS = [
   { key: 'team', label: 'My Team' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
-
-function BriefcaseIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="7" width="20" height="14" rx="2" />
-      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-    </svg>
-  )
-}
-
-function TeamIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  )
-}
 
 export default async function MyWorkPage(
   { searchParams }: { searchParams: Promise<{ tab?: string; person?: string; team?: string; done?: string }> },
@@ -69,7 +51,7 @@ export default async function MyWorkPage(
       <div className="flex items-center gap-2 text-[13px]">
         <Link href="/" className="font-semibold text-muted hover:text-tn-ink transition-colors">Dashboard</Link>
         <span className="text-[var(--faint)]">/</span>
-        <span className="font-semibold text-tn-ink">My Work / My Team</span>
+        <span className="font-semibold text-tn-ink">My Work / Report / My Team</span>
       </div>
 
       {/* Title on the left, the two views as a segmented control on the right.
@@ -83,23 +65,7 @@ export default async function MyWorkPage(
           <p className="text-[14.5px] text-muted mt-1.5 m-0">{heading.desc}</p>
         </div>
 
-        <div className="flex items-center bg-subtle border border-[var(--panel-border)] rounded-[11px] p-1">
-          {TABS.map(t => (
-            <Link
-              key={t.key}
-              href={t.key === 'work' ? '/my-work' : `/my-work?tab=${t.key}`}
-              aria-current={t.key === active ? 'page' : undefined}
-              className={`inline-flex items-center gap-[7px] px-[15px] py-2 rounded-[8px] font-(family-name:--font-display) font-extrabold text-[13.5px] transition-colors ${
-                t.key === active
-                  ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]'
-                  : 'text-muted hover:text-tn-ink'
-              }`}
-            >
-              {t.key === 'work' ? <BriefcaseIcon /> : <TeamIcon />}
-              {t.label}
-            </Link>
-          ))}
-        </div>
+        <WorkViewSwitch active={active === 'work' ? 'work' : 'team'} />
       </div>
 
       {active === 'work' ? <WorkTab sp={sp} /> : <MyTeamTab />}

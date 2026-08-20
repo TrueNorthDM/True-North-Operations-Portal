@@ -24,7 +24,10 @@ const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron']
 // Design checks run without a login, and only ever in development: the page
 // itself refuses to render in a production build, and this refuses to let the
 // request through, so both halves have to fail for real work to be exposed.
-const DEV_ONLY_PUBLIC = ['/design-check']
+// /__design serves a handoff's own HTML beside the rebuilt screen, so the two
+// can be compared in one browser instead of by eye across two windows. The
+// folder is gitignored and never exists in a deployed build.
+const DEV_ONLY_PUBLIC = ['/design-check', '/__design']
 
 function isPublic(pathname: string): boolean {
   const paths = process.env.NODE_ENV === 'production'
