@@ -18,6 +18,7 @@ import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { PullInfo } from '@/components/PullInfo'
 import { COMPLETED_MONTHS } from '@/lib/monday/worklist/data'
+import { chip, PRIORITY_CHIP, PRIORITY_RANK, DUE_BADGE, DUE_TIME, type DueState } from './tokens'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
 
 interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: string }
@@ -68,31 +69,20 @@ const GRID = '13% 9% 8% 7% 10% 6% 8% 9% 8% 6% 9% 7%'
 const HEAD_CELL = "px-3 py-[11px] min-w-0 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted"
 const CELL = 'px-3 py-2.5 min-w-0 overflow-hidden text-[13px] leading-[1.4] break-words'
 
-/**
- * A badge, exactly as the handoff draws one: 20px line box, no vertical
- * padding, so it sits on the text line beside it.
- */
-const chip = 'inline-flex items-center align-top font-[family-name:var(--font-open-sans)] text-[10px] font-extrabold tracking-[.06em] uppercase px-2 leading-5 rounded-[5px]'
 
 /**
  * A status badge in Monday's own colour, white on the label's hex, which is
  * how Monday paints it. Grey only when a step has no status column paired.
  */
 function StatusChip({ text, colour }: { text: string; colour: string | null }) {
-  if (!colour) return <span className={`${chip} bg-[var(--chip-neutral-bg)] text-muted`}>{text}</span>
+  if (!colour) return <span className={`${chip} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>{text}</span>
   return <span className={`${chip} text-white`} style={{ background: colour }}>{text}</span>
 }
 
 /** Counts in the thousands, written the way the handoff writes them. */
 const n = (v: number) => v.toLocaleString('en-US')
 
-const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
-const PRIORITY_CHIP: Record<string, string> = {
-  high: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]',
-  medium: 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]',
-  low: 'text-[#9aa7b6]',
-}
 
 /**
  * The eye that opens the item in Monday, with the label written into the page.
@@ -163,7 +153,6 @@ function span(from: Date, to: Date): string {
   return parts.length ? parts.join(' ') : 'today'
 }
 
-type DueState = 'late' | 'today' | 'upcoming' | 'odd'
 
 function readDue(date: string, suspect = false): { date: string; time: string; state: DueState } {
   const at = new Date(`${date}T00:00:00`)
@@ -185,19 +174,7 @@ function readDue(date: string, suspect = false): { date: string; time: string; s
   return { date: shown, time: `in ${span(today, at)}`, state: 'upcoming' }
 }
 
-const DUE_BADGE: Record<DueState, { label: string; className: string }> = {
-  late: { label: 'Late', className: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]' },
-  today: { label: 'Due today', className: 'bg-[rgba(224,138,30,.16)] text-[#b06d0a]' },
-  upcoming: { label: 'Upcoming', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
-  odd: { label: 'Check date', className: 'bg-[var(--chip-neutral-bg)] text-muted' },
-}
 
-const DUE_TIME: Record<DueState, string> = {
-  late: 'text-[#c2410c] font-semibold',
-  today: 'text-muted',
-  upcoming: 'text-tn-teal font-semibold',
-  odd: 'text-[var(--faint)]',
-}
 
 function when(iso: string | null): string {
   if (!iso) return ''
@@ -382,11 +359,17 @@ function Block({
                 className="grid border-b border-[var(--row-rule)] last:border-b-0 cursor-pointer hover:bg-[var(--row-hover)] transition-colors"
                 style={{ gridTemplateColumns: GRID }}
               >
-                <div className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>{r.itemName}</div>
+                <div className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>
+                  <span className="line-clamp-2">{r.itemName}</span>
+                </div>
                 {/* Only a subitem has one, and the parent is the name a person
                     recognises: "Portuguese" means nothing without its page. */}
-                <div className={`${CELL} text-muted`}>{r.parentItemName ?? '-'}</div>
-                <div className={`${CELL} text-muted`} title={r.boardName}>{r.boardName}</div>
+                <div className={`${CELL} text-muted`} title={r.parentItemName ?? undefined}>
+                  {r.parentItemName ? <span className="line-clamp-2">{r.parentItemName}</span> : <span className="text-[var(--faint)]">-</span>}
+                </div>
+                <div className={`${CELL} text-muted`} title={r.boardName}>
+                  <span className="line-clamp-2">{r.boardName}</span>
+                </div>
                 <div className={`${CELL} text-muted`}>{r.workspaceName ?? '-'}</div>
                 <div className={`${CELL} text-foreground`}>{r.who}</div>
                 <div className="px-3 py-2.5 min-w-0 overflow-hidden">
