@@ -23,9 +23,12 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
 
+// My Work first, and the default. It was second because it rendered sample
+// data and landing on a placeholder every time would have been worse than a
+// detour; it reads the real Monday account now, so it is what the page is for.
 const TABS = [
-  { key: 'team', label: 'My Team' },
   { key: 'work', label: 'My Work' },
+  { key: 'team', label: 'My Team' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
@@ -35,7 +38,7 @@ export default async function MyWorkPage(
   await requireSurface('my-work')
   const sp = await searchParams
   const { tab } = sp
-  const active: TabKey = TABS.some(t => t.key === tab) ? (tab as TabKey) : 'team'
+  const active: TabKey = TABS.some(t => t.key === tab) ? (tab as TabKey) : 'work'
 
   return (
     <div className="space-y-6">
@@ -43,7 +46,7 @@ export default async function MyWorkPage(
         {TABS.map(t => (
           <Link
             key={t.key}
-            href={t.key === 'team' ? '/my-work' : `/my-work?tab=${t.key}`}
+            href={t.key === 'work' ? '/my-work' : `/my-work?tab=${t.key}`}
             aria-current={t.key === active ? 'page' : undefined}
             className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
               t.key === active

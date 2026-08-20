@@ -599,15 +599,21 @@ export function WorkList({
         </div>
       )}
 
-      <Block
-        title="Unknown user"
-        note="Work on a Monday account with nobody behind it"
-        rows={unknown}
-        open={openBlocks.unknown}
-        onToggle={() => setOpenBlocks(b => ({ ...b, unknown: !b.unknown }))}
-        onPick={setOpenRow}
-        tone="quiet"
-      />
+      {/* Never under My tasks. Those rows belong to an account nobody is
+          behind, so by definition none of them are yours: the block could only
+          ever read zero there, which is a row of furniture asking to be
+          ignored. */}
+      {!mine && (
+        <Block
+          title="Unknown user"
+          note="Work on a Monday account with nobody behind it"
+          rows={unknown}
+          open={openBlocks.unknown}
+          onToggle={() => setOpenBlocks(b => ({ ...b, unknown: !b.unknown }))}
+          onPick={setOpenRow}
+          tone="quiet"
+        />
+      )}
 
       <Block
         title="On-going"
