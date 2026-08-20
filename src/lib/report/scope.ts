@@ -37,6 +37,19 @@ export function resolveScope(asked: string | undefined, level: number): Scope {
   return allowed.includes('team') ? 'team' : 'me'
 }
 
+/**
+ * The scope the page is actually showing, once a filter is in play.
+ *
+ * Picking a team or a person forces Everyone. A lead whose scope is their own
+ * team, crossed with a different team, returns nothing at all: an empty table
+ * that looks like a broken filter rather than like two conditions that cannot
+ * both hold. Forcing the scope is the honest resolution, and the switch has
+ * to show it, or the screen states one scope and obeys another.
+ */
+export function effectiveScope(scope: Scope, team?: string, person?: string): Scope {
+  return team || person ? 'everyone' : scope
+}
+
 export const PERIODS = [30, 90] as const
 export type Period = (typeof PERIODS)[number]
 

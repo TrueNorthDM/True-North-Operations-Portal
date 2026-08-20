@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { reportHref, resolvePeriod, resolveScope, scopesFor, weekColumns } from './scope'
+import { effectiveScope, reportHref, resolvePeriod, resolveScope, scopesFor, weekColumns } from './scope'
 
 describe('scopesFor', () => {
   it('gives level 1 one option, not a disabled row of three', () => {
@@ -91,5 +91,20 @@ describe('reportHref', () => {
 
   it('builds the export URLs from the same state', () => {
     expect(reportHref('/report/csv', state)).toBe('/report/csv?tab=people&scope=everyone&period=30')
+  })
+})
+
+describe('effectiveScope', () => {
+  // A lead's own-team scope crossed with another team returns nothing, which
+  // reads as a broken filter rather than as two conditions that cannot both
+  // hold. Forcing Everyone is the honest answer, and the switch shows it.
+  it('forces everyone once a team or person is picked', () => {
+    expect(effectiveScope('team', 'writing-id')).toBe('everyone')
+    expect(effectiveScope('me', undefined, 'person-id')).toBe('everyone')
+  })
+
+  it('leaves the scope alone with no filter', () => {
+    expect(effectiveScope('team')).toBe('team')
+    expect(effectiveScope('me', '', '')).toBe('me')
   })
 })

@@ -12,6 +12,11 @@ import { ReportWorkload } from '@/components/report/ReportWorkload'
 import { ReportWaits, type StepWait, type StuckItem } from '@/components/report/ReportWaits'
 import { ReportMethod, type Source } from '@/components/report/ReportMethod'
 import { ReportControls } from '@/components/report/ReportControls'
+import {
+  EstimateAudit, NobodyInSelection, WorkloadHoldings, WorkloadSummary,
+  type EffortBasis, type SummaryCard,
+} from '@/components/report/WorkloadHoldings'
+import type { PersonHoldings } from '@/lib/report/holdings'
 import { resolvePeriod, resolveScope } from '@/lib/report/scope'
 import type { WorkloadRow } from '@/lib/report/workload'
 import { ReportTabs } from '@/components/report/ReportTabs'
@@ -92,6 +97,37 @@ function LevelPicker({ level }: { level: number }) {
     </div>
   )
 }
+
+const WRITING: PersonHoldings[] = [
+  {
+    id: '3', name: 'Lana Prado', role: 'Writing · 19h typical week', availableHours: 82,
+    holdings: [
+      { board: 'AAAF Publishing', steps: 4, hours: 44 },
+      { board: 'HFA Publishing', steps: 1, hours: 14 },
+    ],
+  },
+  {
+    id: '5', name: 'Jeannette Alves', role: 'Writing · 24h typical week', availableHours: 103,
+    holdings: [
+      { board: 'AAAF Publishing', steps: 2, hours: 28 },
+      { board: 'HFA Publishing', steps: 1, hours: 18 },
+    ],
+  },
+]
+
+const TEAM_SUMMARY: SummaryCard[] = [
+  { label: 'Team', value: 'Writing' },
+  { label: 'Open, next 30 days', value: '8', unit: 'steps' },
+  { label: 'Estimated hours', value: '104', unit: 'h' },
+  { label: 'Available hours', value: '185', unit: 'h' },
+  { label: 'Load', value: '56%', teal: true },
+]
+
+const EFFORT: EffortBasis[] = [
+  { board: 'i7 Marketing', basis: '1,046h over 118 steps', perStep: '8.9h', measured: true },
+  { board: 'Team Reports Scheduled', basis: '452h over 74 steps', perStep: '6.1h', measured: true },
+  { board: '38 other boards', basis: 'hours booked to a shared code', perStep: '4.6h', measured: false },
+]
 
 const STEPS: StepWait[] = [
   { name: 'Approve', median: 7.5, delivered: 38 },
@@ -178,7 +214,17 @@ export default async function ReportPreview(
         />
         <LevelPicker level={level} />
         {tab === 'people' ? <ReportPeople people={PEOPLE} />
-          : tab === 'workload' ? <ReportWorkload people={LOAD} />
+          : tab === 'workload' ? (
+            <div className="space-y-4">
+              <ReportWorkload people={LOAD} />
+              <WorkloadSummary cards={TEAM_SUMMARY} />
+              <WorkloadHoldings title="What each person on Writing is holding" people={WRITING} />
+              <div className="grid grid-cols-2 gap-4 items-start">
+                <NobodyInSelection />
+                <EstimateAudit rows={EFFORT} />
+              </div>
+            </div>
+          )
           : tab === 'waits' ? <ReportWaits steps={STEPS} stuck={STUCK} />
           : tab === 'method' ? <ReportMethod sources={SOURCES} todo={TODO} />
           : <ReportOverview data={SAMPLE} />}
