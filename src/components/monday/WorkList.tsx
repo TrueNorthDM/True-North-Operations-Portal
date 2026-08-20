@@ -19,6 +19,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import { PullInfo } from '@/components/PullInfo'
 import { COMPLETED_MONTHS } from '@/lib/monday/worklist/data'
 import { chip, PRIORITY_CHIP, PRIORITY_RANK, DUE_BADGE, DUE_TIME, type DueState } from './tokens'
+import { personSelectValue, isMine } from '@/lib/monday/worklist/filters'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
 
 interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: string }
@@ -467,10 +468,10 @@ export function WorkList({
     })
   const [tip, setTip] = useState(preview?.tip ?? false)
 
-  const person = params.get('person') ?? selfPersonId ?? ''
   const team = preview?.team ?? params.get('team') ?? ''
+  const person = personSelectValue(params.get('person'), team, selfPersonId)
   const includeDone = preview?.done ?? params.get('done') === '1'
-  const mineFromUrl = !!selfPersonId && person === selfPersonId && !team
+  const mineFromUrl = isMine(person, team, selfPersonId)
   const mine = wanted ?? mineFromUrl
 
   /**
@@ -500,6 +501,10 @@ export function WorkList({
     // Everything means everything: a team left selected would keep narrowing
     // the list while the tab claimed otherwise.
     if (key === 'person' && !value) next.delete('team')
+    // And a chosen team writes an EMPTY person rather than deleting it.
+    // Deleting it means "the signed-in person", so picking Writers used to
+    // filter to Writers and Arnaldo at once.
+    if (key === 'team' && value) next.set('person', '')
     next.set('tab', 'work')
     startTransition(() => router.push(`/my-work?${next.toString()}`))
   }

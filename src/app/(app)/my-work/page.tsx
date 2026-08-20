@@ -19,6 +19,7 @@ import { WorkList } from '@/components/monday/WorkList'
 import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { resolvePersonFilter } from '@/lib/monday/worklist/filters'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
@@ -125,9 +126,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   const me = await loadCurrentPerson(supabase, auth?.user ?? null)
   const selfPersonId = me?.id ?? null
 
-  // "person" absent means the signed-in person; "person=" means anybody. The
-  // two are different questions and the empty string keeps them apart.
-  const personId = sp.person === undefined ? selfPersonId : (sp.person || null)
+  const personId = resolvePersonFilter(sp, selfPersonId)
 
   const [data, { data: peopleRows }, { data: teamRows }, admin] = await Promise.all([
     loadWorklist(supabase, { personId, teamId: sp.team || null, includeDone: sp.done === '1' }),
