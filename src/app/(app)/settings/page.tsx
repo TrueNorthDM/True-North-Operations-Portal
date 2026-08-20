@@ -3,6 +3,9 @@
 // heavy editors are the existing functional components, routed into sections.
 
 import Link from 'next/link'
+import { WorklistSources } from '@/components/monday/WorklistSources'
+import { loadWorklistSources } from '@/lib/monday/worklist/sources'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/role'
 import { requireSurface } from '@/lib/access/resolve'
@@ -144,6 +147,8 @@ export default async function SettingsPage() {
   const roleLabel = profile?.role ? profile.role[0].toUpperCase() + profile.role.slice(1) : 'Member'
   const signedIn = { name: profile?.full_name ?? me?.full_name ?? profile?.email ?? 'You', role: `${roleLabel} · True North` }
 
+  const worklistSources = await loadWorklistSources(createAdminClient())
+
   const sections: SettingsSection[] = [
     {
       id: 'apis',
@@ -180,6 +185,21 @@ export default async function SettingsPage() {
             clearWarning={{ title: 'Remove the TSheets token?', confirm: 'Remove token', body: <p>Removing it stops the hours sync; the Clients Reports page falls back to sample data.</p> }}
             footer={<PullInfo syncedAt={tsheetsPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={30} label="Clients & people synced" pastVerb="synced" />}
           />
+        </div>
+      ),
+    },
+    {
+      id: 'my-work',
+      label: 'My Work sources',
+      icon: CatalogIcon,
+      editable: false,
+      content: (
+        <div className="space-y-5">
+          <SectionHead
+            title="My Work sources"
+            desc="Which Monday workspaces, boards and people are allowed to appear on My Work. 262 boards is more than anybody works on: finished projects, experiments and personal spaces keep producing steps that will never be done, and every one of them makes the list longer without making it truer. Each row shows how much work it holds and when it was last touched, so the boards nobody has used in years list themselves."
+          />
+          <WorklistSources sources={worklistSources} />
         </div>
       ),
     },

@@ -148,7 +148,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at, date_title'),
       supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source'),
       supabase.from('monday_user_links').select('monday_user_id, person_id'),
-      supabase.from('monday_users').select('id, name, is_external'),
+      supabase.from('monday_users').select('id, name, is_external, hidden'),
       supabase.from('people').select('id, full_name'),
     ])
 
@@ -187,7 +187,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     .map(s => [`${s.board_id}:${s.people_col}`, s]))
   const personByAccount = new Map(((linkRows ?? []) as { monday_user_id: number; person_id: string }[])
     .map(l => [l.monday_user_id, l.person_id]))
-  const users = (userRows ?? []) as { id: number; name: string; is_external: boolean }[]
+  const users = (userRows ?? []) as { id: number; name: string; is_external: boolean; hidden: boolean }[]
   const mondayName = new Map(users.map(u => [u.id, u.name]))
   // Settled the other way: somebody said this account is a client or an
   // outside collaborator. It has no person on purpose, so counting it as
@@ -195,6 +195,9 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   // third reader of that rule; the screen and the discovery had to learn it
   // separately, which is what adding a state to a schema actually costs.
   const externalAccounts = new Set(users.filter(u => u.is_external).map(u => u.id))
+  // Switched off in Settings. Their assignments are still ingested and still
+  // counted everywhere else; they just do not belong on this page.
+  const hiddenAccounts = new Set(users.filter(u => u.hidden).map(u => u.id))
   const personName = new Map(((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
 
   type A = {
@@ -254,6 +257,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   for (const a of rows) {
     const b = boards.get(a.board_id)
     if (!b || !b.included) continue
+    if (hiddenAccounts.has(a.monday_user_id)) continue
     const st = steps.get(`${a.board_id}:${a.people_col}`)
     // A column switched off is not a step, so it is not work.
     if (st?.source === 'off') continue

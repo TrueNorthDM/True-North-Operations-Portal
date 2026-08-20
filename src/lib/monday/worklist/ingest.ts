@@ -214,8 +214,16 @@ export async function ingestBoard(
     if (error) throw new Error(`assignments insert (${board.name}): ${error.message}`)
   }
 
+  // Recorded here because the ingest already holds it. A settings page asking
+  // "when was this board last used" would otherwise scan 53,000 assignments to
+  // find out.
+  const touched = rows.map(r => r.item_updated_at).filter(Boolean).sort() as string[]
   await supabase.from('monday_boards')
-    .update({ items_synced_at: new Date().toISOString() })
+    .update({
+      items_synced_at: new Date().toISOString(),
+      last_activity_at: touched[touched.length - 1] ?? null,
+      assignments_count: rows.length,
+    })
     .eq('id', board.id)
 
   return { board: board.name, items, assignments: rows.length }
