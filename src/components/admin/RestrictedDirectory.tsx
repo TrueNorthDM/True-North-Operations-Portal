@@ -316,7 +316,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
 // the same shared parts (components/profile/profile-parts) so the two cannot
 // drift into lookalikes. Read-only either way: editing your own details still
 // lives on My profile, the one place that owns those writes.
-function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProfile; isSelf: boolean; onClose: () => void }) {
+export function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProfile; isSelf: boolean; onClose: () => void }) {
   const teamKey = teamKeyFromName(p.teamNames[0])
 
   return (

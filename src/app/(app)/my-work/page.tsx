@@ -14,7 +14,7 @@ import { requireSurface, loadAccess } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
 import { loadMyTeam } from '@/lib/directory/my-team'
-import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
+import { TeamPeople } from '@/components/team/TeamPeople'
 import { WorkList } from '@/components/monday/WorkList'
 import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
@@ -155,5 +155,5 @@ async function MyTeamTab() {
   const access = await loadAccess()
   const { people, profiles, selfId } = await loadMyTeam(supabase, user, directoryLevel(access.can))
 
-  return <RestrictedDirectory people={people} teams={[]} showTeams={false} profiles={profiles} selfId={selfId} />
+  return <TeamPeople people={people} profiles={profiles} selfId={selfId} />
 }
