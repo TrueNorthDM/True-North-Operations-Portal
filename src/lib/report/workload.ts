@@ -23,9 +23,17 @@ export type WorkloadRow = {
   color: string
   /** Hours a week they agreed to, and hours they actually tend to work. */
   contracted: number
-  observed: number
-  /** Hours logged over the utilisation window. */
-  hoursLogged: number
+  /** Null for anyone outside the timeclock: contractors, mostly. */
+  observed: number | null
+  /**
+   * Hours logged over the utilisation window.
+   *
+   * Null and 0 are different facts and the column shows them differently:
+   * null is "the timeclock has no record of this person", 0 is "it has a
+   * record and they logged nothing". Collapsing the two turns a contractor
+   * into somebody who did no work all quarter.
+   */
+  hoursLogged: number | null
   /** Estimated hours of work due in the next 30 days. */
   estimatedAhead: number
   /** Steps arriving and finishing per week, over the backlog window. */
@@ -52,14 +60,36 @@ export const LOAD_TICK_PCT = (100 / LOAD_SCALE) * 100
 
 export const SPARK_MAX_PX = 20
 
-export function utilisation(hoursLogged: number, contracted: number, weeks = UTILISATION_WEEKS): number | null {
-  if (contracted <= 0) return null
+export function utilisation(
+  hoursLogged: number | null, contracted: number, weeks = UTILISATION_WEEKS,
+): number | null {
+  if (hoursLogged === null || contracted <= 0) return null
   return Math.round((hoursLogged / weeks / contracted) * 100)
 }
 
-/** Hours available over the horizon, from the hours they actually work. */
-export function availableHours(observed: number, days = LOAD_HORIZON_DAYS): number {
-  return Math.round(observed * (days / 7))
+/**
+ * Hours available over the horizon.
+ *
+ * From the hours they actually work, or from the group's average week when
+ * the timeclock has nothing for them. Blanking Load instead would lose the
+ * one reading that still means something for a contractor, and Backlog alone
+ * cannot say whether the queue is more than they can carry.
+ *
+ * The caller has to mark a row that fell back. An estimate resting on
+ * somebody else's week read as measured is worse than no estimate.
+ */
+export function availableHours(
+  observed: number | null, groupAverageWeek: number, days = LOAD_HORIZON_DAYS,
+): { hours: number; estimated: boolean } {
+  const week = observed ?? groupAverageWeek
+  return { hours: Math.round(week * (days / 7)), estimated: observed === null }
+}
+
+/** The average week of everyone the timeclock does know about. */
+export function groupAverageWeek(people: { observed: number | null }[]): number {
+  const known = people.map(p => p.observed).filter((h): h is number => h !== null)
+  if (!known.length) return 0
+  return Math.round((known.reduce((s, h) => s + h, 0) / known.length) * 10) / 10
 }
 
 export function loadPercent(estimatedAhead: number, available: number): number | null {

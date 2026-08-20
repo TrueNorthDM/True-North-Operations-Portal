@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   LOAD_SCALE, LOAD_TICK_PCT, SPARK_MAX_PX, availableHours, formatNet, loadPercent,
-  netFlow, reading, sparkBar, utilisation,
+  groupAverageWeek, netFlow, reading, sparkBar, utilisation,
 } from './workload'
 
 describe('utilisation', () => {
@@ -13,18 +13,40 @@ describe('utilisation', () => {
   it('has no answer for someone with no contracted hours', () => {
     expect(utilisation(100, 0)).toBeNull()
   })
+
+  // Absent and empty are different facts. A contractor the timeclock has no
+  // record of is not somebody who logged nothing all quarter.
+  it('tells no record apart from a record of nothing', () => {
+    expect(utilisation(null, 40)).toBeNull()
+    expect(utilisation(0, 40)).toBe(0)
+  })
 })
 
 describe('load', () => {
   // The divisor is the hours they actually work, not the hours they agreed to.
   // Using contracted here would call every part-timer overloaded.
   it('measures against observed hours over the horizon', () => {
-    expect(availableHours(20)).toBe(86)
-    expect(loadPercent(86, availableHours(20))).toBe(100)
+    expect(availableHours(20, 30)).toEqual({ hours: 86, estimated: false })
+    expect(loadPercent(86, 86)).toBe(100)
   })
 
   it('has no answer when nobody works any hours', () => {
     expect(loadPercent(40, 0)).toBeNull()
+  })
+
+  // Screen 6.2: a contractor outside the timeclock still gets a Load, from
+  // the group's average week, and the row is marked so the estimate is not
+  // read as measured.
+  it('borrows the group average for somebody with no hours, and says so', () => {
+    expect(availableHours(null, 20)).toEqual({ hours: 86, estimated: true })
+  })
+
+  it('averages only the people the timeclock knows about', () => {
+    expect(groupAverageWeek([{ observed: 38 }, { observed: 22 }, { observed: null }])).toBe(30)
+  })
+
+  it('has no average to borrow when nobody is on the timeclock', () => {
+    expect(groupAverageWeek([{ observed: null }])).toBe(0)
   })
 
   it('puts the 100% tick short of the end, because the scale runs past it', () => {

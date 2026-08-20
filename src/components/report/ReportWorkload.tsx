@@ -8,8 +8,8 @@
 import { chip } from '@/components/monday/tokens'
 import {
   BACKLOG_WEEKS, LOAD_HORIZON_DAYS, LOAD_SCALE, LOAD_TICK_PCT, READING_CHIP, READING_LABEL,
-  availableHours, formatNet, loadColour, loadPercent, netChip, netFlow, reading, sparkBar,
-  utilisation, utilisationColour, type WorkloadRow,
+  availableHours, formatNet, groupAverageWeek, loadColour, loadPercent, netChip, netFlow,
+  reading, sparkBar, utilisation, utilisationColour, type WorkloadRow,
 } from '@/lib/report/workload'
 
 const GRID = '1.5fr 1.15fr 1.15fr 1.35fr 1fr'
@@ -52,18 +52,20 @@ export function ReportWorkload({ people, children }: { people: WorkloadRow[]; ch
           <div className={HEAD_CELL}>Reading</div>
         </div>
 
+        {/* One average for the whole selection, so two contractors on the
+            same screen are measured against the same week. */}
         {people.map((p, i) => (
-          <Row key={p.id} p={p} first={i === 0} />
+          <Row key={p.id} p={p} first={i === 0} average={groupAverageWeek(people)} />
         ))}
       </section>
     </div>
   )
 }
 
-function Row({ p, first }: { p: WorkloadRow; first: boolean }) {
+function Row({ p, first, average }: { p: WorkloadRow; first: boolean; average: number }) {
   const util = utilisation(p.hoursLogged, p.contracted)
-  const avail = availableHours(p.observed)
-  const load = loadPercent(p.estimatedAhead, avail)
+  const avail = availableHours(p.observed, average)
+  const load = loadPercent(p.estimatedAhead, avail.hours)
   const net = netFlow(p.arriving, p.finishing)
   const verdict = reading(load, net, util)
 
@@ -82,20 +84,22 @@ function Row({ p, first }: { p: WorkloadRow; first: boolean }) {
         <span className="min-w-0">
           <span className="block text-[13.5px] font-semibold text-tn-ink truncate">{p.name}</span>
           <span className="block text-[11.5px] text-muted truncate">
-            {p.contracted}h/week contracted · {p.observed}h typical
+            {p.contracted}h/week contracted · {p.observed === null
+              ? 'not on the timeclock'
+              : `${p.observed}h typical`}
           </span>
         </span>
       </div>
 
       <div className="px-4 py-[13px]">
         {util === null ? (
-          <NotOnTheClock />
+          <NoHours />
         ) : (
           <>
             <div className="flex items-baseline gap-[7px]">
               <span className={BIG_NUMBER} style={{ color: utilisationColour(util) }}>{util}%</span>
               <span className="text-[11.5px] text-muted">
-                {Math.round(p.hoursLogged / 13)}h of {p.contracted}h
+                {`${Math.round((p.hoursLogged ?? 0) / 13)}h of ${p.contracted}h`}
               </span>
             </div>
             <div className={TRACK}>
@@ -110,12 +114,16 @@ function Row({ p, first }: { p: WorkloadRow; first: boolean }) {
 
       <div className="px-4 py-[13px]">
         {load === null ? (
-          <NotOnTheClock />
+          <NoHours />
         ) : (
           <>
             <div className="flex items-baseline gap-[7px]">
               <span className={BIG_NUMBER} style={{ color: loadColour(load) }}>{load}%</span>
-              <span className="text-[11.5px] text-muted">{p.estimatedAhead}h of {avail}h</span>
+              <span className="text-[11.5px] text-muted">
+                {p.estimatedAhead}h of {avail.hours}h
+                {/* Marked, so nobody reads a borrowed week as a measured one. */}
+                {avail.estimated ? <span className={`${chip} ${netChip(0)} ml-1.5`}>est</span> : null}
+              </span>
             </div>
             <div className={`${TRACK} relative`}>
               <span
@@ -164,11 +172,20 @@ function Row({ p, first }: { p: WorkloadRow; first: boolean }) {
 }
 
 /**
- * Utilisation and Load both divide by hours. For somebody who never logs any,
- * both are unanswerable, and a 0% would read as a person doing nothing rather
- * than as a question the timeclock cannot answer. Backlog still works, which
- * is the reason that column uses no hours.
+ * Utilisation for somebody the timeclock does not know.
+ *
+ * A dash, not 0%, which would read as a person doing nothing rather than as a
+ * question the timeclock cannot answer. Load does not use this: it falls back
+ * to the group's average week and marks itself, because losing the only
+ * reading that speaks to capacity would be the bigger loss.
  */
-function NotOnTheClock() {
-  return <span className="text-[12.5px] text-[var(--faint)]">Not on the timeclock</span>
+function NoHours() {
+  return (
+    <span
+      className="text-[12.5px] text-[var(--faint)]"
+      title="No approved hours in this window"
+    >
+      -
+    </span>
+  )
 }

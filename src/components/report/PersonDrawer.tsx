@@ -76,7 +76,7 @@ export function PersonDrawer({
               {person.name}
             </h3>
             <p className="text-[13px] text-muted mt-[3px] m-0">
-              {person.team ?? 'No team'} · last {periodDays} days
+              {person.team ?? 'No team'} · {`last ${periodDays} days`}
             </p>
           </div>
           <button

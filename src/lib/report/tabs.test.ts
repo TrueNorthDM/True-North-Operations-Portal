@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { visibleTabs } from '@/components/report/ReportTabs'
+import { resolveTab, visibleTabs } from '@/components/report/ReportTabs'
 
 describe('visibleTabs', () => {
   // Screen 2.5 counts it exactly: two tabs fewer at level 1.
@@ -20,5 +20,25 @@ describe('visibleTabs', () => {
 
   it('always leaves a tab to land on', () => {
     expect(visibleTabs(1)[0].key).toBe('overview')
+  })
+})
+
+describe('resolveTab', () => {
+  // Screen 6.6: an admin's link opened by a level 1 person lands on Overview,
+  // not on an error page and not on a tab that throws when it renders.
+  it('sends a level that may not see the tab back to Overview', () => {
+    expect(resolveTab('workload', 1)).toBe('overview')
+    expect(resolveTab('workload', 2)).toBe('overview')
+    expect(resolveTab('people', 1)).toBe('overview')
+  })
+
+  it('honours a tab the level may see', () => {
+    expect(resolveTab('workload', 3)).toBe('workload')
+    expect(resolveTab('people', 2)).toBe('people')
+  })
+
+  it('ignores a tab that does not exist', () => {
+    expect(resolveTab('nonsense', 3)).toBe('overview')
+    expect(resolveTab(undefined, 3)).toBe('overview')
   })
 })

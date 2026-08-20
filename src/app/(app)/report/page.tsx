@@ -14,7 +14,9 @@ import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
-import { ReportTabs, type ReportTabKey } from '@/components/report/ReportTabs'
+import { ReportTabs, resolveTab, type ReportTabKey } from '@/components/report/ReportTabs'
+import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
+import { ChangeLogNotice } from '@/components/report/ReportNotices'
 import { ReportOverview } from '@/components/report/ReportOverview'
 import { ReportControls } from '@/components/report/ReportControls'
 import { resolvePeriod, resolveScope, type ReportState } from '@/lib/report/scope'
@@ -27,7 +29,9 @@ export const dynamic = 'force-dynamic'
 const READY: readonly ReportTabKey[] = ['overview']
 
 export default async function ReportPage(
-  { searchParams }: { searchParams: Promise<{ scope?: string; period?: string; team?: string }> },
+  { searchParams }: {
+    searchParams: Promise<{ tab?: string; scope?: string; period?: string; team?: string }>
+  },
 ) {
   await requireSurface('my-work')
 
@@ -40,7 +44,10 @@ export default async function ReportPage(
   // their own work rather than on an error or on everyone.
   const scope = resolveScope(sp.scope, level)
   const period = resolvePeriod(sp.period)
-  const state: ReportState = { tab: 'overview', scope, period, team: sp.team }
+  // Screen 6.6: a tab this level may not see resolves to Overview rather than
+  // throwing, so an admin's shared link degrades quietly.
+  const tab = resolveTab(sp.tab, level)
+  const state: ReportState = { tab, scope, period, team: sp.team }
 
   const supabase = await createClient()
   const { data: auth } = await supabase.auth.getUser()
@@ -74,10 +81,21 @@ export default async function ReportPage(
         <WorkViewSwitch active="report" />
       </div>
 
-      <ReportTabs active="overview" level={level} ready={READY} state={state} />
-      <ReportControls state={state} level={level} note={methodNote(recording)} canExport={access.can('report-export')} />
-      <RecordingNotice recording={recording} />
-      <ReportOverview data={overview} />
+      <ReportNav>
+        <ReportTabs active={tab} level={level} ready={READY} state={state} />
+        <ReportControls
+          state={state}
+          level={level}
+          note={methodNote(recording)}
+          canExport={access.can('report-export')}
+        />
+        <DimWhilePending>
+          <div className="space-y-4">
+            <ChangeLogNotice recording={recording} />
+            <ReportOverview data={overview} />
+          </div>
+        </DimWhilePending>
+      </ReportNav>
     </div>
   )
 }
@@ -90,31 +108,3 @@ function methodNote(recording: Recording): string {
   return `change log since ${since}`
 }
 
-/**
- * Says out loud that the past is not available yet.
- *
- * Three of the five headline numbers, both charts and the per-person panel
- * read the change log, and the change log starts empty. Without this line the
- * page looks like a team that delivered nothing, which is a claim nobody
- * should make on this account's behalf.
- */
-function RecordingNotice({ recording }: { recording: Recording }) {
-  if (recording.state === 'on' && recording.events > 0) return null
-
-  const since = recording.state === 'on'
-    ? new Date(recording.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-    : null
-
-  return (
-    <div className="rounded-[12px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-[18px] py-3.5">
-      <p className="text-[13px] text-[var(--warn-fg)] m-0 leading-[1.55]">
-        <strong className="font-bold">No history yet.</strong>{' '}
-        Delivery, on-time share and held time are read from a record of what changed on each
-        step. Monday keeps only the current state, so this account has no past to report on
-        until that record has been running for a while
-        {since ? `; it started on ${since}.` : '.'}{' '}
-        Open now and Late now are the current snapshot and are already true.
-      </p>
-    </div>
-  )
-}

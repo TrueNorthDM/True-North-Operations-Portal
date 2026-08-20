@@ -9,8 +9,10 @@
 // gets a scope switch with one segment and two tabs fewer, and nothing on
 // screen suggests there is a version of the page they are being kept from.
 
-import Link from 'next/link'
+'use client'
+
 import { ExportMenu } from '@/components/report/ExportMenu'
+import { useReportNav } from '@/components/report/ReportFrame'
 import {
   PERIODS, PERIOD_LABEL, SCOPE_LABEL, reportHref, scopesFor, type ReportState,
 } from '@/lib/report/scope'
@@ -31,32 +33,37 @@ export function ReportControls({
   canExport?: boolean
 }) {
   const scopes = scopesFor(level)
+  // Buttons rather than links: the dim on screen 6.3 needs the pending state
+  // of the navigation, and only a transition we start ourselves reports it.
+  const { go } = useReportNav()
 
   return (
     <div className="flex items-center gap-2.5 flex-wrap mb-4">
       <div className={SEGMENT_BOX}>
         {scopes.map(s => (
-          <Link
+          <button
             key={s}
-            href={reportHref(base, state, { scope: s })}
+            type="button"
+            onClick={() => go(reportHref(base, state, { scope: s }))}
             aria-current={s === state.scope ? 'true' : undefined}
             className={`${SEGMENT} ${s === state.scope ? SEGMENT_ON : SEGMENT_OFF}`}
           >
             {SCOPE_LABEL[s]}
-          </Link>
+          </button>
         ))}
       </div>
 
       <div className={SEGMENT_BOX}>
         {PERIODS.map(p => (
-          <Link
+          <button
             key={p}
-            href={reportHref(base, state, { period: p })}
+            type="button"
+            onClick={() => go(reportHref(base, state, { period: p }))}
             aria-current={p === state.period ? 'true' : undefined}
             className={`${SEGMENT} ${p === state.period ? SEGMENT_ON : SEGMENT_OFF}`}
           >
             {PERIOD_LABEL[p]}
-          </Link>
+          </button>
         ))}
       </div>
 

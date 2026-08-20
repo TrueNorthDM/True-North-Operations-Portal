@@ -19,6 +19,8 @@ import {
 } from '@/components/report/WorkloadHoldings'
 import type { PersonHoldings } from '@/lib/report/holdings'
 import { WorkloadFilters } from '@/components/report/WorkloadFilters'
+import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
+import { ChangeLogNotice, NothingInWindow, StaleSnapshot } from '@/components/report/ReportNotices'
 import { resolvePeriod, resolveScope } from '@/lib/report/scope'
 import type { WorkloadRow } from '@/lib/report/workload'
 import { ReportTabs } from '@/components/report/ReportTabs'
@@ -72,7 +74,9 @@ const LOAD: WorkloadRow[] = [
   { id: '1', name: 'Amy Marsh', initials: 'AM', color: '#1E7D7F', contracted: 40, observed: 38, hoursLogged: 494, estimatedAhead: 214, arriving: 4.6, finishing: 3.5, weekly: weekly(4.6, 3.5) },
   { id: '2', name: 'Kevin Brown', initials: 'KB', color: '#1E7D7F', contracted: 40, observed: 22, hoursLogged: 286, estimatedAhead: 96, arriving: 2.9, finishing: 2.1, weekly: weekly(2.9, 2.1) },
   { id: '3', name: 'Lana Prado', initials: 'LP', color: '#579BFC', contracted: 20, observed: 19, hoursLogged: 247, estimatedAhead: 58, arriving: 5.2, finishing: 5.4, weekly: weekly(5.2, 5.4) },
-  { id: '4', name: 'Wendy Clark', initials: 'WC', color: '#94C4C5', contracted: 20, observed: 12, hoursLogged: 156, estimatedAhead: 74, arriving: 2.2, finishing: 1.4, weekly: weekly(2.2, 1.4) },
+  // Screen 6.2: outside the timeclock. Load still computes, from the group's
+  // average week, and says est.
+  { id: '4', name: 'Wendy Clark', initials: 'WC', color: '#94C4C5', contracted: 20, observed: null, hoursLogged: null, estimatedAhead: 74, arriving: 2.2, finishing: 1.4, weekly: weekly(2.2, 1.4) },
 ]
 
 /**
@@ -81,6 +85,18 @@ const LOAD: WorkloadRow[] = [
  * The point of the screen is that permission is a shorter control rather than
  * a disabled one, and that is only visible by switching between them.
  */
+/** Group 6, the states that only show up when something is missing. */
+function StatesDemo() {
+  return (
+    <div className="space-y-4">
+      <ChangeLogNotice recording={{ state: 'off' }} />
+      <ChangeLogNotice recording={{ state: 'on', startedAt: '2026-02-12T09:00:00Z', events: 4210 }} />
+      <StaleSnapshot syncedAt="2026-08-20T09:15:00Z" hoursBehind={9} />
+      <NothingInWindow periodDays={90} />
+    </div>
+  )
+}
+
 function LevelPicker({ level }: { level: number }) {
   return (
     <div className="flex items-center gap-2 text-[12px] text-muted mb-4">
@@ -193,11 +209,11 @@ export default async function ReportPreview(
   const scope = resolveScope(sp.scope, level)
   const period = resolvePeriod(sp.period)
   const asked = sp.tab
-  const KNOWN = ['people', 'workload', 'waits', 'method'] as const
+  const KNOWN = ['people', 'workload', 'waits', 'method', 'states'] as const
   const tab = (KNOWN as readonly string[]).includes(asked ?? '')
     ? (asked as (typeof KNOWN)[number])
     : 'overview'
-  const state = { tab, scope, period }
+  const state = { tab: tab === 'states' ? 'overview' : tab, scope, period }
 
   return (
     <div className="p-8 bg-app min-h-screen">
@@ -220,7 +236,8 @@ export default async function ReportPreview(
           <WorkViewSwitch active="report" />
         </div>
 
-        <ReportTabs active={tab} level={level} state={state} base="/design-check/report" />
+        <ReportNav>
+        <ReportTabs active={tab === 'states' ? 'overview' : tab} level={level} state={state} base="/design-check/report" />
         <ReportControls
           state={state}
           level={level}
@@ -229,6 +246,8 @@ export default async function ReportPreview(
           note="7 people · change log since Feb 12, 2026"
         />
         <LevelPicker level={level} />
+        <DimWhilePending>
+        <div className="space-y-4">
         {tab === 'people' ? <PeopleDemo people={PEOPLE} />
           : tab === 'workload' ? (
             <div className="space-y-4">
@@ -244,7 +263,11 @@ export default async function ReportPreview(
           )
           : tab === 'waits' ? <ReportWaits steps={STEPS} stuck={STUCK} />
           : tab === 'method' ? <ReportMethod sources={SOURCES} todo={TODO} />
+          : tab === 'states' ? <StatesDemo />
           : <ReportOverview data={SAMPLE} />}
+        </div>
+        </DimWhilePending>
+        </ReportNav>
       </div>
     </div>
   )

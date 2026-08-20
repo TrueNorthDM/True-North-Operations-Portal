@@ -52,7 +52,8 @@ export function ReportWaits({ steps, stuck }: { steps: StepWait[]; stuck: StuckI
               <div className="flex items-baseline justify-between gap-2.5 mb-1.5">
                 <span className="text-[13.5px] font-semibold text-tn-ink">{s.name}</span>
                 <span className="text-[12.5px] text-muted">
-                  {s.median < 10 ? s.median.toFixed(1) : Math.round(s.median)}d median · {s.delivered} delivered
+                  {`${s.median < 10 ? s.median.toFixed(1) : Math.round(s.median)}d median`}
+                  {` · ${s.delivered} delivered`}
                 </span>
               </div>
               <div className="h-2.5 rounded-[5px] bg-subtle overflow-hidden">

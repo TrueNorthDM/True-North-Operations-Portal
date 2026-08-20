@@ -29,6 +29,18 @@ export function visibleTabs(level: number) {
   return REPORT_TABS.filter(t => !('minLevel' in t) || level >= t.minLevel)
 }
 
+/**
+ * Screen 6.6: the tab this level actually gets.
+ *
+ * A link shared by an admin, or a bookmark kept after a role change, has to
+ * degrade quietly. Resolving here and redirecting on the server follows the
+ * portal's existing pattern and beats rendering a tab that then throws.
+ */
+export function resolveTab(asked: string | undefined, level: number): ReportTabKey {
+  const allowed = visibleTabs(level).map(t => t.key as string)
+  return allowed.includes(asked ?? '') ? (asked as ReportTabKey) : 'overview'
+}
+
 export function ReportTabs(
   { active, level, state, ready, base = '/report' }:
   {
