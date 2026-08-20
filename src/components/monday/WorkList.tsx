@@ -426,11 +426,24 @@ export function WorkList({
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString())
-    if (value) next.set(key, value); else next.delete(key)
+    // An empty person is NOT the absence of one. Absent means "the signed-in
+    // person" and empty means "anybody", which is the whole basis of the two
+    // tabs. Deleting the key when the value is empty collapsed the two, so
+    // Everything wrote no parameter, the server read that as "me", and the
+    // click did nothing.
+    //
+    // The distinction was written down a few commits ago and then erased by
+    // this one line: the comment said they were different and the code made
+    // them the same.
+    if (value || key === 'person') next.set(key, value)
+    else next.delete(key)
     // Person and team are two ways of asking the same question, so choosing one
     // clears the other rather than quietly intersecting them.
     if (key === 'person' && value) next.delete('team')
     if (key === 'team' && value) next.delete('person')
+    // Everything means everything: a team left selected would keep narrowing
+    // the list while the tab claimed otherwise.
+    if (key === 'person' && !value) next.delete('team')
     next.set('tab', 'work')
     startTransition(() => router.push(`/my-work?${next.toString()}`))
   }
