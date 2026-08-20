@@ -10,10 +10,14 @@
 // the difference between unfinished and broken.
 
 import Link from 'next/link'
+import { reportHref, type ReportState } from '@/lib/report/scope'
 
 export const REPORT_TABS = [
   { key: 'overview', label: 'Overview' },
-  { key: 'people', label: 'People' },
+  // Level 2 and up. Control 2.1 says level 1 "never sees another name", and
+  // this tab is nothing but other people's names. With Workload that makes
+  // the two tabs fewer that screen 2.5 counts.
+  { key: 'people', label: 'People', minLevel: 2 },
   { key: 'workload', label: 'Workload', minLevel: 3 },
   { key: 'waits', label: 'Where it waits' },
   { key: 'method', label: 'Method' },
@@ -26,26 +30,21 @@ export function visibleTabs(level: number) {
 }
 
 export function ReportTabs(
-  { active, level, params, ready, base = '/report' }:
+  { active, level, state, ready, base = '/report' }:
   {
-    active: ReportTabKey; level: number; params?: Record<string, string>
+    active: ReportTabKey; level: number
+    /** The rest of the URL state, carried through every tab link. */
+    state: ReportState
     ready?: readonly ReportTabKey[]; base?: string
   },
 ) {
-  const query = (tab: string) => {
-    const q = new URLSearchParams(params ?? {})
-    if (tab === 'overview') q.delete('tab')
-    else q.set('tab', tab)
-    const s = q.toString()
-    return s ? `${base}?${s}` : base
-  }
 
   return (
     <div className="flex items-center gap-0.5 border-b border-[var(--panel-border)] mb-5">
       {visibleTabs(level).filter(t => !ready || ready.includes(t.key)).map(t => (
         <Link
           key={t.key}
-          href={query(t.key)}
+          href={reportHref(base, state, { tab: t.key })}
           aria-current={t.key === active ? 'page' : undefined}
           className={`px-4 py-2.5 text-[13.5px] font-semibold -mb-px border-b-2 transition-colors ${
             t.key === active

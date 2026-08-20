@@ -11,6 +11,8 @@ import { ReportPeople, type PersonRow } from '@/components/report/ReportPeople'
 import { ReportWorkload } from '@/components/report/ReportWorkload'
 import { ReportWaits, type StepWait, type StuckItem } from '@/components/report/ReportWaits'
 import { ReportMethod, type Source } from '@/components/report/ReportMethod'
+import { ReportControls } from '@/components/report/ReportControls'
+import { resolvePeriod, resolveScope } from '@/lib/report/scope'
 import type { WorkloadRow } from '@/lib/report/workload'
 import { ReportTabs } from '@/components/report/ReportTabs'
 import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
@@ -66,6 +68,31 @@ const LOAD: WorkloadRow[] = [
   { id: '4', name: 'Wendy Clark', initials: 'WC', color: '#94C4C5', contracted: 20, observed: 12, hoursLogged: 156, estimatedAhead: 74, arriving: 2.2, finishing: 1.4, weekly: weekly(2.2, 1.4) },
 ]
 
+/**
+ * Dev-only: swap directory level, to see 2.5 without three accounts.
+ *
+ * The point of the screen is that permission is a shorter control rather than
+ * a disabled one, and that is only visible by switching between them.
+ */
+function LevelPicker({ level }: { level: number }) {
+  return (
+    <div className="flex items-center gap-2 text-[12px] text-muted mb-4">
+      <span>Preview as directory level:</span>
+      {[1, 2, 3].map(l => (
+        <a
+          key={l}
+          href={`/design-check/report?level=${l}`}
+          className={`px-2 py-0.5 rounded border ${
+            l === level ? 'border-tn-teal text-tn-teal font-bold' : 'border-[var(--panel-border)]'
+          }`}
+        >
+          {l}
+        </a>
+      ))}
+    </div>
+  )
+}
+
 const STEPS: StepWait[] = [
   { name: 'Approve', median: 7.5, delivered: 38 },
   { name: 'Review', median: 4.8, delivered: 74 },
@@ -103,15 +130,22 @@ const TODO = [
 ]
 
 export default async function ReportPreview(
-  { searchParams }: { searchParams: Promise<{ tab?: string }> },
+  { searchParams }: {
+    searchParams: Promise<{ tab?: string; scope?: string; period?: string; level?: string }>
+  },
 ) {
   if (process.env.NODE_ENV === 'production') notFound()
 
-  const asked = (await searchParams).tab
+  const sp = await searchParams
+  const level = Number(sp.level) === 1 || Number(sp.level) === 2 ? Number(sp.level) : 3
+  const scope = resolveScope(sp.scope, level)
+  const period = resolvePeriod(sp.period)
+  const asked = sp.tab
   const KNOWN = ['people', 'workload', 'waits', 'method'] as const
   const tab = (KNOWN as readonly string[]).includes(asked ?? '')
     ? (asked as (typeof KNOWN)[number])
     : 'overview'
+  const state = { tab, scope, period }
 
   return (
     <div className="p-8 bg-app min-h-screen">
@@ -134,7 +168,15 @@ export default async function ReportPreview(
           <WorkViewSwitch active="report" />
         </div>
 
-        <ReportTabs active={tab} level={3} base="/design-check/report" />
+        <ReportTabs active={tab} level={level} state={state} base="/design-check/report" />
+        <ReportControls
+          state={state}
+          level={level}
+          canExport
+          base="/design-check/report"
+          note="7 people · change log since Feb 12, 2026"
+        />
+        <LevelPicker level={level} />
         {tab === 'people' ? <ReportPeople people={PEOPLE} />
           : tab === 'workload' ? <ReportWorkload people={LOAD} />
           : tab === 'waits' ? <ReportWaits steps={STEPS} stuck={STUCK} />

@@ -16,6 +16,8 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
 import { ReportTabs, type ReportTabKey } from '@/components/report/ReportTabs'
 import { ReportOverview } from '@/components/report/ReportOverview'
+import { ReportControls } from '@/components/report/ReportControls'
+import { resolvePeriod, resolveScope, type ReportState } from '@/lib/report/scope'
 import { loadReportOverview, type Recording } from '@/lib/report/data'
 
 export const metadata = { title: 'Report' }
@@ -24,20 +26,33 @@ export const dynamic = 'force-dynamic'
 /** Tabs with something behind them. The rest arrive as they are built. */
 const READY: readonly ReportTabKey[] = ['overview']
 
-export default async function ReportPage() {
+export default async function ReportPage(
+  { searchParams }: { searchParams: Promise<{ scope?: string; period?: string; team?: string }> },
+) {
   await requireSurface('my-work')
 
+  const sp = await searchParams
   const access = await loadAccess()
   const level = directoryLevel(access.can)
+
+  // Clamped against the level, never taken as given: the query string is
+  // typed by people, and a level 1 person editing ?scope=everyone lands on
+  // their own work rather than on an error or on everyone.
+  const scope = resolveScope(sp.scope, level)
+  const period = resolvePeriod(sp.period)
+  const state: ReportState = { tab: 'overview', scope, period, team: sp.team }
 
   const supabase = await createClient()
   const { data: auth } = await supabase.auth.getUser()
   const me = await loadCurrentPerson(supabase, auth?.user ?? null)
 
-  // Level 1 sees their own work and nothing else. Not a filter the person can
-  // clear: it is the scope of the page for them.
-  const scope = level >= 2 ? {} : { personId: me?.id ?? null }
-  const { overview, recording } = await loadReportOverview(supabase, scope)
+  // Me means this person; My team means the team filter if one is set and
+  // otherwise everyone they may see. resolveScope has already refused any
+  // scope this level is not entitled to.
+  const filters = scope === 'me'
+    ? { personId: me?.id ?? null }
+    : { teamId: sp.team || null }
+  const { overview, recording } = await loadReportOverview(supabase, filters)
 
   return (
     <div className="space-y-6">
@@ -59,11 +74,20 @@ export default async function ReportPage() {
         <WorkViewSwitch active="report" />
       </div>
 
-      <ReportTabs active="overview" level={level} ready={READY} />
+      <ReportTabs active="overview" level={level} ready={READY} state={state} />
+      <ReportControls state={state} level={level} note={methodNote(recording)} canExport={access.can('report-export')} />
       <RecordingNotice recording={recording} />
       <ReportOverview data={overview} />
     </div>
   )
+}
+
+/** The real change-log start date, never a constant. */
+function methodNote(recording: Recording): string {
+  if (recording.state !== 'on') return 'change log not running yet'
+  const since = new Date(recording.startedAt)
+    .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+  return `change log since ${since}`
 }
 
 /**
