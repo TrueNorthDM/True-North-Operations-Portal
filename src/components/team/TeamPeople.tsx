@@ -99,7 +99,7 @@ function TeamCard({ team }: { team: RestrictedTeam }) {
 }
 
 export function TeamPeople({
-  people, selfId, profiles, teams = [], showTeams = false,
+  people, selfId, profiles, teams = [], showTeams = false, alone = false,
 }: {
   people: RestrictedPerson[]
   selfId: string | null
@@ -108,6 +108,12 @@ export function TeamPeople({
   teams?: RestrictedTeam[]
   /** The Teams tab exists from directory level 2 up. */
   showTeams?: boolean
+  /**
+   * Nobody else on the list. Said in a sentence rather than left as one row in
+   * an otherwise empty card: "just you" and "the list failed to load" look the
+   * same otherwise.
+   */
+  alone?: boolean
 }) {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'people' | 'teams'>('people')
@@ -149,6 +155,13 @@ export function TeamPeople({
       )}
 
       <div className={showTeams && tab === 'teams' ? 'hidden' : 'contents'}>
+      {alone && (
+        <div className="border border-[var(--panel-border)] bg-white rounded-[16px] p-5 mb-4">
+          <p className="text-[14.5px] text-muted leading-[1.6] m-0">
+            Your own profile. You are not on a team yet, so no colleagues are listed.
+          </p>
+        </div>
+      )}
       <SearchField
         value={q}
         onChange={setQ}
@@ -158,7 +171,7 @@ export function TeamPeople({
 
       <div className="border border-[var(--panel-border)] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
         {shown.length === 0 && (
-          <div className="px-[22px] py-13 text-center text-[13px] text-muted">No one matches “{q}”.</div>
+          <div className="px-5 py-9 text-center text-[13.5px] text-muted">No one matches “{q}”.</div>
         )}
 
         {shown.map((p, i) => {
@@ -219,6 +232,52 @@ export function TeamPeople({
 
       {open && profiles?.[open.id] && (
         <ProfileCard profile={profiles[open.id]} isSelf={open.id === selfId} onClose={() => setOpenId(null)} />
+      )}
+
+      {/* A colleague the viewer may open but has no full profile for: the row
+          already showed name, role and team, so the card adds only what the
+          row could not fit. */}
+      {open && !profiles?.[open.id] && open.detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true">
+          <button className="absolute inset-0 bg-tn-ink/40" onClick={() => setOpenId(null)} aria-label="Close" />
+          <div className="relative w-[420px] max-w-full bg-white rounded-[18px] overflow-hidden shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
+            <div className="flex items-center gap-3.5 px-[22px] pt-[22px] pb-[18px] border-b border-[#f2f4f7]">
+              <span
+                className="inline-flex shrink-0 w-13 h-13 rounded-full items-center justify-center font-(family-name:--font-display) font-extrabold text-[17px] text-white"
+                style={{ background: TEAM_COLOR[open.teamKey] ?? '#012358' }}
+              >
+                {initialsOf(open.name)}
+              </span>
+              <div className="min-w-0">
+                <h4 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0">{open.name}</h4>
+                <p className="text-[13px] text-muted m-0 mt-[3px]">{open.title ?? '-'}</p>
+              </div>
+              <button
+                onClick={() => setOpenId(null)}
+                aria-label="Close"
+                className="ml-auto inline-flex items-center justify-center w-8 h-8 rounded-[9px] text-muted hover:text-tn-ink hover:bg-subtle transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="px-[22px] pt-3.5 pb-5">
+              {[
+                ['Team', open.teamName],
+                ['Manager', open.detail.managerName],
+                ['Work email', open.detail.workEmail],
+                ['Phone', open.detail.phone],
+                ['Location', open.detail.location],
+                ['Employment', open.detail.employmentType],
+                ['Started', open.detail.hireDate],
+              ].map(([label, value]) => (
+                <div key={label as string} className="flex items-baseline justify-between gap-4 py-2 border-b border-[#f7f8fa] last:border-b-0">
+                  <span className="text-[13.5px] text-muted">{label}</span>
+                  <span className="text-[13.5px] font-semibold text-tn-ink text-right">{value || '-'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

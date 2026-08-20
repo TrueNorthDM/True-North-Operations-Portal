@@ -51,6 +51,16 @@ const TEAMS: RestrictedTeam[] = [
   },
 ]
 
+// 5.2 needs somebody the viewer may open without a full profile behind them.
+const MATE: RestrictedPerson = {
+  ...person('p4', 'Lana Prado', 'Translator', 'Writing', 'writing', 'team_leader', true),
+  detail: {
+    managerName: 'Wendy Clark', workEmail: 'lana@goodnewsadvocates.org',
+    phone: '+55 11 99999 0000', location: 'São Paulo, Brazil',
+    hireDate: '2023-04-17', employmentType: 'contractor',
+  },
+}
+
 export default function DesignCheckTeam() {
   if (process.env.NODE_ENV === 'production') notFound()
   return (
@@ -81,7 +91,7 @@ export default function DesignCheckTeam() {
           </div>
         </div>
 
-        <TeamPeople people={PEOPLE} selfId="me" teams={TEAMS} showTeams />
+        <TeamPeople people={[...PEOPLE.slice(0, 3), MATE, ...PEOPLE.slice(4)]} selfId="me" teams={TEAMS} showTeams />
       </div>
     </div>
   )

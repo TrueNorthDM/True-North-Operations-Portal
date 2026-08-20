@@ -165,6 +165,7 @@ async function MyTeamTab() {
       showTeams={level >= 2}
       profiles={profiles}
       selfId={selfId}
+      alone={people.length <= 1}
     />
   )
 }

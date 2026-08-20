@@ -322,13 +322,13 @@ export function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProf
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8" role="dialog" aria-modal="true" aria-label={`${p.name} profile`}>
       <div className="fixed inset-0 bg-tn-ink/40" onClick={onClose} />
-      <div className="relative w-full max-w-[920px] my-auto rounded-[18px] border border-slate-200 bg-white overflow-hidden shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
+      <div className="relative w-full max-w-[920px] my-auto rounded-[18px] border border-[var(--panel-border)] bg-white overflow-hidden shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
         {/* header, same proportions as the page */}
-        <div className="px-8 pt-8 pb-6 border-b border-slate-200 flex items-start justify-between gap-4 flex-wrap">
+        <div className="px-[30px] pt-7 pb-6 border-b border-[var(--panel-border)] flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-6 min-w-0">
-            <Avatar name={p.name} avatarUrl={p.avatarUrl} size={120} color={TEAM_COLOR[teamKey]} />
+            <Avatar name={p.name} avatarUrl={p.avatarUrl} size={110} color={TEAM_COLOR[teamKey]} />
             <div className="min-w-0">
-              <h2 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink leading-tight m-0">{p.name}</h2>
+              <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] leading-[1.15] text-tn-ink m-0">{p.name}</h2>
               <p className="text-[15px] text-muted mt-1 font-semibold">{p.title || '-'}</p>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 {p.teamNames.length === 0 ? (
