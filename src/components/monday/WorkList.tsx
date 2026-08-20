@@ -34,49 +34,79 @@ interface HistoryEvent {
   to: string | null
 }
 
-const th = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 whitespace-nowrap'
-/**
- * A badge that sits on the text line rather than beside it.
- *
- * leading-5 with no vertical padding makes the pill exactly one line tall, the
- * same 20px box text-sm occupies, so a top-aligned cell puts the badge's first
- * line level with its neighbours' first line. With py-0.5 the pill was a
- * different height from the text next to it and looked half a line low, which
- * is what made LATE seem out of step with its own date.
- *
- * A badge that wraps to two lines still starts on the first one, because the
- * line box is the same height for both.
- */
-const chip = 'inline-flex items-center align-top text-[10px] font-extrabold uppercase tracking-wider px-2 py-0 leading-5 rounded-[5px]'
+// Design tokens copied from the handoff rather than approximated. The portal's
+// own variables already carry most of them (--subtle is #f4f2ec, --muted is
+// #8593a4, --foreground #435066, tn-ink #012358, tn-teal #1E7D7F), so those are
+// used by name; the two border greys have no token yet and are written out.
+// Written inline at each use rather than through constants: Tailwind reads
+// arbitrary values out of the class string at build time, so a name here would
+// produce a class the compiler never sees.
+//   #e4e7ec  panel and header borders
+//   #eceff3  the rule between rows
+//   #f8f7f3  row hover
 
 /**
- * A status chip in Monday's own colour.
+ * The twelve columns.
  *
- * The hex comes from the board's own settings, so a label that is amber there
- * is amber here. Anything else and the two stop looking like the same fact.
- * White text on the label colour is how Monday paints it too; the grey
- * fallback is for a step with no status column paired to it at all.
+ * Two of the handoff's widths do not fit their own contents at the 1180px it
+ * sets, and copying them exactly would copy the bug:
+ *
+ *   badge 5%   59px for an "UPCOMING" 62px wide, so in the mock itself the
+ *              badge paints over the eye beside it. Now 9%.
+ *   Monday 3%  35px, which is 11px of usable width after padding, for a 17px
+ *              icon under a header word that needs about 55px. Now 7%.
+ *
+ * The text columns give up the difference, since they wrap and these do not. A
+ * design file describes an intent, and the intent is plainly not "clip this".
+ */
+const GRID = '13% 9% 8% 7% 10% 6% 8% 9% 8% 6% 9% 7%'
+
+// min-w-0 on every cell, so a grid column can never be widened by its content,
+// and overflow-hidden so nothing can be drawn outside the column that owns it.
+// Without the pair, one long unbreakable word reaches into its neighbour and
+// the reader sees two facts on top of each other.
+const HEAD_CELL = "px-3 py-[11px] min-w-0 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted"
+const CELL = 'px-3 py-2.5 min-w-0 overflow-hidden text-[13px] leading-[1.4] break-words'
+
+/**
+ * A badge, exactly as the handoff draws one: 20px line box, no vertical
+ * padding, so it sits on the text line beside it.
+ */
+const chip = 'inline-flex items-center align-top font-[family-name:var(--font-open-sans)] text-[10px] font-extrabold tracking-[.06em] uppercase px-2 leading-5 rounded-[5px]'
+
+/**
+ * A status badge in Monday's own colour, white on the label's hex, which is
+ * how Monday paints it. Grey only when a step has no status column paired.
  */
 function StatusChip({ text, colour }: { text: string; colour: string | null }) {
-  if (!colour) return <span className={`${chip} bg-slate-100 text-slate-600`}>{text}</span>
+  if (!colour) return <span className={`${chip} bg-[#f1f3f6] text-muted`}>{text}</span>
   return <span className={`${chip} text-white`} style={{ background: colour }}>{text}</span>
 }
 
-/**
- * How far apart two dates are, in years, months and days.
- *
- * Calendar arithmetic rather than dividing by 86,400,000: "5y 11m 29d" is how
- * a person reads a six-year-old deadline, and "2189d" is a number they have to
- * do arithmetic on before it means anything.
- */
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
+const PRIORITY_CHIP: Record<string, string> = {
+  high: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]',
+  medium: 'bg-[#f1f3f6] text-[#5b6b82]',
+  low: 'text-[#9aa7b6]',
+}
+
+/** The same eye the Href Link Management list uses for "open this". */
+function EyeIcon() {
+  return (
+    <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 function span(from: Date, to: Date): string {
   let y = to.getFullYear() - from.getFullYear()
   let m = to.getMonth() - from.getMonth()
   let d = to.getDate() - from.getDate()
   if (d < 0) {
     m--
-    // Days in the month before `to`, which is the month the shortfall is owed
-    // to. Assuming 30 drifts by up to two days.
     d += new Date(to.getFullYear(), to.getMonth(), 0).getDate()
   }
   if (m < 0) { y--; m += 12 }
@@ -86,17 +116,21 @@ function span(from: Date, to: Date): string {
 
 type DueState = 'late' | 'today' | 'upcoming' | 'odd'
 
-/** The three things a deadline can be, kept apart so each gets its own column. */
 function readDue(date: string, suspect = false): { date: string; time: string; state: DueState } {
   const at = new Date(`${date}T00:00:00`)
-  // Year 202 is not a deadline anybody set; saying "1824y late" about it dresses
-  // a typo up as urgency. Shown, because somebody should fix it in Monday.
-  if (suspect) {
-    return { date, time: '', state: 'odd' }
-  }
+  // Padded to four digits by hand. Intl prints year 202 as "202", dropping the
+  // very digit that shows the value is wrong: "Aug 21, 0202" reads as a typo,
+  // "Aug 21, 202" reads as a year nobody recognises.
+  const stored = Number(date.slice(0, 4))
+  const shown = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    .replace(/\b\d{1,4}$/, String(stored).padStart(4, '0'))
+  // Still written the way every other date is written. A year of 0202 reads as
+  // a typo at a glance in "Aug 21, 0202"; as a raw 0202-08-21 it reads as a
+  // different kind of value, and the point is that it is the same kind with a
+  // digit missing.
+  if (suspect) return { date: shown, time: '', state: 'odd' }
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const shown = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   if (at.getTime() < today.getTime()) return { date: shown, time: span(at, today), state: 'late' }
   if (at.getTime() === today.getTime()) return { date: shown, time: '', state: 'today' }
   return { date: shown, time: `in ${span(today, at)}`, state: 'upcoming' }
@@ -104,34 +138,16 @@ function readDue(date: string, suspect = false): { date: string; time: string; s
 
 const DUE_BADGE: Record<DueState, { label: string; className: string }> = {
   late: { label: 'Late', className: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]' },
-  today: { label: 'Due today', className: 'bg-[rgba(224,138,30,.14)] text-[#b06d0a]' },
+  today: { label: 'Due today', className: 'bg-[rgba(224,138,30,.16)] text-[#b06d0a]' },
   upcoming: { label: 'Upcoming', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
-  odd: { label: 'Check date', className: 'bg-slate-100 text-slate-500' },
+  odd: { label: 'Check date', className: 'bg-[#f1f3f6] text-muted' },
 }
 
 const DUE_TIME: Record<DueState, string> = {
   late: 'text-[#c2410c] font-semibold',
   today: 'text-muted',
   upcoming: 'text-tn-teal font-semibold',
-  odd: 'text-slate-400',
-}
-
-const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
-
-const PRIORITY_CHIP: Record<string, string> = {
-  high: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]',
-  medium: 'bg-slate-100 text-slate-600',
-  low: 'bg-transparent text-slate-400',
-}
-
-/** The same eye the Href Link Management list uses for "open this". */
-function EyeIcon() {
-  return (
-    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
+  odd: 'text-[#cbd2da]',
 }
 
 function when(iso: string | null): string {
@@ -275,140 +291,101 @@ function Block({
   const [all, setAll] = useState(false)
   const shown = all ? rows : rows.slice(0, FIRST_ROWS)
   return (
-    <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-amber-300/60' : 'border-slate-200'} bg-white overflow-hidden`}>
+    <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-amber-300/60' : 'border-[#e4e7ec]'} bg-white overflow-hidden`}>
       <button
         onClick={onToggle}
         aria-expanded={open}
-        className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors ${tone === 'quiet' ? 'bg-amber-50 hover:bg-amber-100/60' : 'hover:bg-subtle'}`}
+        className={`w-full flex items-center gap-3 px-5 py-[13px] text-left transition-colors ${tone === 'quiet' ? 'bg-amber-50 hover:bg-amber-100/60' : 'hover:bg-[#f8f7f3]'}`}
       >
-        <span className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden="true">›</span>
-        <span className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[15px]">{title}</span>
-        <span className="text-xs font-bold text-muted">{rows.length}</span>
-        {note && <span className="text-xs text-muted ml-auto text-right">{note}</span>}
+        <span className="shrink-0 text-muted text-[15px] leading-none" aria-hidden="true">{open ? '⌄' : '›'}</span>
+        <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{title}</span>
+        <span className="text-[12px] font-bold text-muted">{rows.length}</span>
+        {note && <span className="text-[12px] text-muted ml-auto text-right">{note}</span>}
       </button>
 
       {open && rows.length === 0 && (
-        <div className="px-5 py-8 text-center text-sm text-muted border-t border-slate-100">Nothing here.</div>
+        <div className="px-5 py-8 text-center text-[13px] text-muted border-t border-[#eceff3]">Nothing here.</div>
       )}
 
       {open && rows.length > 0 && (
-        <div className="border-t border-slate-100 overflow-x-auto">
-      <div className="rounded-[14px] border border-slate-200 bg-white overflow-x-auto">
-        {/* Fixed layout so a long item name cannot starve the columns after
-            it. Text wraps to two lines; the date does not, because a broken
-            date is unreadable in a way a broken title is not. */}
-        <table className="w-full min-w-[1180px] text-sm table-fixed">
-          <colgroup>
-            <col className="w-[15%]" />
-            <col className="w-[10%]" />
-            <col className="w-[10%]" />
-            <col className="w-[8%]" />
-            <col className="w-[10%]" />
-            <col className="w-[6%]" />
-            <col className="w-[9%]" />
-            <col className="w-[10%]" />
-            <col className="w-[8%]" />
-            <col className="w-[6%]" />
-            <col className="w-[5%]" />
-            <col className="w-[3%]" />
-          </colgroup>
-          <thead>
-            <tr className="bg-subtle border-b border-slate-200 text-left">
-            <th className={th}>Item</th>
-            <th className={th}>Parent item</th>
-            <th className={th}>Board</th>
-            <th className={th}>Workspace</th>
-            <th className={th}>Assignee</th>
-            <th className={th}>Priority</th>
-            <th className={th}>Step</th>
-            <th className={th}>Status</th>
-            <th className={`${th} text-right`}>Due</th>
-            <th className={`${th} text-right`}>Time</th>
-            <th className={th}>&nbsp;</th>
-            <th className={`${th} text-right`}>Monday</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div>
+        <div className="border-t border-[#eceff3] overflow-x-auto">
+          <div className="min-w-[1180px]">
+            {/* A grid, not a table: the handoff fixes the twelve widths as
+                percentages, and a grid honours them without the browser
+                measuring the content first. */}
+            <div className="grid bg-subtle border-b border-[#e4e7ec]" style={{ gridTemplateColumns: GRID }}>
+              <div className={HEAD_CELL}>Item</div>
+              <div className={HEAD_CELL}>Parent item</div>
+              <div className={HEAD_CELL}>Board</div>
+              <div className={HEAD_CELL}>Workspace</div>
+              <div className={HEAD_CELL}>Assignee</div>
+              <div className={HEAD_CELL}>Priority</div>
+              <div className={HEAD_CELL}>Step</div>
+              <div className={HEAD_CELL}>Status</div>
+              <div className={`${HEAD_CELL} text-right`}>Due</div>
+              <div className={`${HEAD_CELL} text-right`}>Time</div>
+              <div className="px-3 py-[11px] min-w-0" />
+              <div className={`${HEAD_CELL} text-right`}>Monday</div>
+            </div>
+
             {shown.map(({ row: r, due: d }) => (
-            <tr
-              key={r.id}
-              onClick={() => onPick(r)}
-              className="border-b border-slate-100 last:border-b-0 hover:bg-subtle transition-colors cursor-pointer"
-            >
-              <td className="px-4 py-2.5 font-semibold text-tn-ink align-top">
-                <span className="block line-clamp-2 break-words" title={r.itemName}>{r.itemName}</span>
-              </td>
-              {/* Only a subitem has one, and the parent is the name a
-                  person recognises: "Portuguese" means nothing without
-                  the page it belongs to. */}
-              <td className="px-4 py-2.5 text-muted align-top">
-                {r.parentItemName
-                  ? <span className="block line-clamp-2 break-words" title={r.parentItemName}>{r.parentItemName}</span>
-                  : <span className="text-slate-300">-</span>}
-              </td>
-              <td className="px-4 py-2.5 text-muted align-top">
-                <span className="block line-clamp-2 break-words" title={r.boardName}>{r.boardName}</span>
-              </td>
-              <td className="px-4 py-2.5 text-muted align-top">
-                <span className="block line-clamp-2 break-words">{r.workspaceName ?? '-'}</span>
-              </td>
-              <td className="px-4 py-2.5 text-tn-ink align-top">
-                <span className="block line-clamp-2 break-words">{r.who}</span>
-              </td>
-              <td className="px-4 py-2.5 align-top">
-                <span className={`${chip} ${PRIORITY_CHIP[r.priority]}`}>{r.priority}</span>
-              </td>
-              <td className="px-4 py-2.5 text-muted align-top">
-                <span className="block line-clamp-2 break-words">{r.stepName}</span>
-              </td>
-              <td className="px-4 py-2.5 align-top">
-                {r.statusText
-                  ? <StatusChip text={r.statusText} colour={r.statusColor} />
-                  : <span className="text-slate-300">-</span>}
-              </td>
-              {(() => (
-                  <>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap text-tn-ink align-top">
-                    {d ? d.date : <span className="text-slate-300">-</span>}
-                  </td>
-                  <td className={`px-4 py-2.5 text-right text-xs align-top ${d ? DUE_TIME[d.state] : ''}`}>
-                    {d?.time || (d ? '' : <span className="text-slate-300">-</span>)}
-                  </td>
-                  <td className="px-4 py-2.5 align-top">
-                    {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
-                  </td>
-                  </>
-              ))()}
-              <td className="px-4 py-2.5 text-right align-top">
-                {r.url ? (
-                  <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  // The row opens the history; this opens Monday. The
-                  // inner target has to stop the outer one or a click
-                  // does both.
-                  onClick={e => e.stopPropagation()}
-                  aria-label={`Open ${r.itemName} in Monday`}
-                  title="Open in Monday"
-                  className="inline-flex items-center justify-center p-1.5 rounded text-muted hover:text-tn-teal hover:bg-slate-100 transition-colors"
-                  >
-                  <EyeIcon />
-                  </a>
-                ) : (
-                  <span className="text-slate-300">-</span>
-                )}
-              </td>
-            </tr>
+              <div
+                key={r.id}
+                onClick={() => onPick(r)}
+                className="grid border-b border-[#eceff3] last:border-b-0 cursor-pointer hover:bg-[#f8f7f3] transition-colors"
+                style={{ gridTemplateColumns: GRID }}
+              >
+                <div className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>{r.itemName}</div>
+                {/* Only a subitem has one, and the parent is the name a person
+                    recognises: "Portuguese" means nothing without its page. */}
+                <div className={`${CELL} text-muted`}>{r.parentItemName ?? '-'}</div>
+                <div className={`${CELL} text-muted`} title={r.boardName}>{r.boardName}</div>
+                <div className={`${CELL} text-muted`}>{r.workspaceName ?? '-'}</div>
+                <div className={`${CELL} text-foreground`}>{r.who}</div>
+                <div className="px-3 py-2.5 min-w-0 overflow-hidden">
+                  <span className={`${chip} ${PRIORITY_CHIP[r.priority]}`}>{r.priority}</span>
+                </div>
+                <div className={`${CELL} text-muted`}>{r.stepName}</div>
+                <div className="px-3 py-2.5 min-w-0 overflow-hidden">
+                  {r.statusText
+                    ? <StatusChip text={r.statusText} colour={r.statusColor} />
+                    : <span className="text-[#cbd2da] text-[13px]">-</span>}
+                </div>
+                <div className={`${CELL} text-tn-ink text-right whitespace-nowrap`}>
+                  {d ? d.date : <span className="text-[#cbd2da]">-</span>}
+                </div>
+                <div className={`px-3 py-2.5 min-w-0 overflow-hidden text-[12px] text-right ${d ? DUE_TIME[d.state] : ''}`}>
+                  {d?.time || (d ? '' : <span className="text-[#cbd2da]">-</span>)}
+                </div>
+                <div className="px-3 py-2.5 min-w-0 overflow-hidden">
+                  {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
+                </div>
+                <div className="px-3 py-2.5 min-w-0 text-right text-muted">
+                  {r.url ? (
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      aria-label={`Open ${r.itemName} in Monday`}
+                      title="Open in Monday"
+                      className="inline-flex hover:text-tn-teal transition-colors"
+                    >
+                      <EyeIcon />
+                    </a>
+                  ) : <span className="text-[#cbd2da]">-</span>}
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+
 
           {!all && rows.length > FIRST_ROWS && (
             <button
               onClick={() => setAll(true)}
-              className="w-full px-5 py-3 text-sm font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-slate-100"
+              className="w-full px-5 py-3 text-sm font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-[#eceff3]"
             >
               {`Show the other ${rows.length - FIRST_ROWS}`}
             </button>
@@ -525,50 +502,37 @@ export function WorkList({
   const completed = known.filter(r => r.row.statusDone === true)
 
   return (
-    <div className={`space-y-5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
-      {/* Mine or everybody's, as a tab rather than a filter value. It is the
-          first decision somebody makes on this page and it deserves to look
-          like one; the person selector stays for looking at a colleague. */}
-      <div className="flex items-center gap-1 border-b border-slate-200">
-        {([
-          { key: 'mine', label: 'My tasks' },
-          { key: 'all', label: 'Everything' },
-        ] as const).map(t => {
-          const active = t.key === 'mine' ? mine : !mine
-          // Without a person behind the login there is no "mine" to show. The
-          // tab says so instead of looking clickable and doing nothing, which
-          // is the worst of both: no result and no reason.
-          const dead = t.key === 'mine' && !selfPersonId
-          return (
-            <button
-              key={t.key}
-              disabled={dead}
-              title={dead ? 'Your login is not linked to anyone in the Directory yet, so there is no "mine" to filter by.' : undefined}
-              onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '', t.key === 'mine')}
-              aria-current={active ? 'page' : undefined}
-              className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
-                dead ? 'border-transparent text-slate-300 cursor-not-allowed'
-                : active ? 'border-tn-teal text-tn-ink'
-                : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
-              }`}
-            >
-              {t.label}
-            </button>
-          )
-        })}
-      </div>
+    <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <SearchField value={q} onChange={setQ} placeholder="Search items, boards, people…" className="w-full sm:w-[320px]" />
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <SearchField
-          value={q}
-          onChange={setQ}
-          placeholder="Search items, boards, people…"
-          className="w-full sm:w-[320px]"
-        />
-        {/* Only under Everything. On My tasks the question of whose work this
-            is has already been answered by the tab, and leaving the two
-            selectors there invites somebody to contradict it: picking a
-            colleague while the tab says "mine" is a state with no meaning. */}
+        {/* Mine or everyone's, as one segmented control rather than two tabs:
+            it is a single either/or and the handoff draws it that way. */}
+        <div className="flex items-center bg-subtle border border-[#e4e7ec] rounded-[10px] p-[3px]">
+          {([
+            { key: 'mine', label: 'Mine' },
+            { key: 'all', label: 'Everyone' },
+          ] as const).map(t => {
+            const on = t.key === 'mine' ? mine : !mine
+            const dead = t.key === 'mine' && !selfPersonId
+            return (
+              <button
+                key={t.key}
+                disabled={dead}
+                title={dead ? 'Your login is not linked to anyone in the Directory yet, so there is no "mine" to filter by.' : undefined}
+                onClick={() => setParam('person', t.key === 'mine' ? (selfPersonId ?? '') : '', t.key === 'mine')}
+                className={`font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors ${
+                  dead ? 'text-[#cbd2da] cursor-not-allowed'
+                  : on ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]'
+                  : 'text-muted hover:text-tn-ink'
+                }`}
+              >
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+
         {!mine && (
           <>
             <Select
@@ -586,16 +550,18 @@ export function WorkList({
             />
           </>
         )}
+
         <button
           type="button"
           onClick={() => setParam('done', includeDone ? '' : '1')}
-          className={`text-sm font-semibold px-3 py-2 rounded-[10px] border transition-colors ${
-            includeDone ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.06)]' : 'border-slate-200 text-muted hover:text-tn-ink'
+          className={`font-[family-name:var(--font-open-sans)] text-[13.5px] font-semibold px-3 py-2 rounded-[10px] border transition-colors ${
+            includeDone ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.06)]' : 'border-[#e4e7ec] text-muted hover:text-tn-ink'
           }`}
         >
-          {includeDone ? `Finished work: all of it` : `Finished work: ${COMPLETED_MONTHS} months`}
+          {includeDone ? 'Finished work: all of it' : `Finished work: ${COMPLETED_MONTHS} months`}
         </button>
-        <span className="text-sm text-muted ml-auto">
+
+        <span className="text-[13.5px] text-muted ml-auto">
           {needle
             ? `${rows.length} matching`
             : data.truncated
@@ -613,6 +579,7 @@ export function WorkList({
         utcMinute={15}
         label="Work pulled from Monday"
         pastVerb="refreshed"
+        className="flex items-center gap-2 text-[12.5px] text-muted border-t border-[#e4e7ec] pt-3"
       />
 
       {/* Only where it changes the answer.
@@ -681,7 +648,7 @@ export function WorkList({
         onPick={setOpenRow}
       />
 
-      <p className="text-xs text-muted leading-relaxed m-0">
+      <p className="text-[12px] text-muted leading-[1.65] m-0 mt-3.5">
         {`Completed shows steps finished where the item was last changed in Monday within ${COMPLETED_MONTHS} months, which the filter above can widen to everything. Nothing is deleted: older finished work stays in the database and out of this page, because a work list that opens on nine years of finished steps is not a work list. Monday does not record when a step was completed, so the item's last change is used instead, which keeps a step in view a little longer when the item was touched for some other reason.`}
       </p>
 

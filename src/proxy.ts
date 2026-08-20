@@ -21,8 +21,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 //                        a 307 → /login and the webhook test fails.
 const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron']
 
+// Design checks run without a login, and only ever in development: the page
+// itself refuses to render in a production build, and this refuses to let the
+// request through, so both halves have to fail for real work to be exposed.
+const DEV_ONLY_PUBLIC = ['/design-check']
+
 function isPublic(pathname: string): boolean {
-  return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
+  const paths = process.env.NODE_ENV === 'production'
+    ? PUBLIC_PATHS
+    : [...PUBLIC_PATHS, ...DEV_ONLY_PUBLIC]
+  return paths.some(p => pathname === p || pathname.startsWith(p + '/'))
 }
 
 export async function proxy(request: NextRequest) {

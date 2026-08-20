@@ -54,3 +54,7 @@ next-env.d.ts
 
 # Reference material (client PDFs) — keep local, not in the repo
 Monthly i7 pdfs/
+
+# Design handoff copied into public/ for side-by-side checks in dev. The
+# original lives in Design/; a second 750KB copy does not belong in git.
+public/design-check/

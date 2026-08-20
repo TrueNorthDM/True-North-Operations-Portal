@@ -40,10 +40,14 @@ interface Props {
   label: string
   /** Past-tense verb for the last-run line, e.g. "pulled" or "synced". */
   pastVerb: string
+  /** Wrapper classes, so a page can place the line in its own frame. */
+  className?: string
 }
 
 /** Footer for an API card: the exact times data is pulled + when it last ran. */
-export function PullInfo({ syncedAt, utcHours, utcMinute = 0, label, pastVerb }: Props) {
+const DEFAULT_WRAP = 'flex items-center gap-1.5 text-xs text-slate-400 border-t border-slate-100 pt-3'
+
+export function PullInfo({ syncedAt, utcHours, utcMinute = 0, label, pastVerb, className = DEFAULT_WRAP }: Props) {
   // Times/relative-time are timezone- and clock-dependent, so compute them only
   // after mount, otherwise the server (UTC) and client render differently and
   // React reports a hydration mismatch. The tick also refreshes "X ago".
@@ -68,7 +72,7 @@ export function PullInfo({ syncedAt, utcHours, utcMinute = 0, label, pastVerb }:
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-slate-400 border-t border-slate-100 pt-3">
+    <div className={className}>
       <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
         <circle cx="12" cy="12" r="9" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v5l3 2" />
