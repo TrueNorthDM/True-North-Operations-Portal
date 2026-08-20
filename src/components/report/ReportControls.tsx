@@ -10,6 +10,7 @@
 // screen suggests there is a version of the page they are being kept from.
 
 import Link from 'next/link'
+import { ExportMenu } from '@/components/report/ExportMenu'
 import {
   PERIODS, PERIOD_LABEL, SCOPE_LABEL, reportHref, scopesFor, type ReportState,
 } from '@/lib/report/scope'
@@ -18,18 +19,6 @@ const SEGMENT_BOX = 'flex items-center bg-subtle border border-[var(--panel-bord
 const SEGMENT = 'font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-lg transition-colors'
 const SEGMENT_ON = 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]'
 const SEGMENT_OFF = 'text-muted hover:text-tn-ink'
-
-const EXPORT_BUTTON =
-  'inline-flex items-center gap-[7px] text-[13px] font-semibold px-[13px] py-[9px] rounded-[10px] border border-[var(--panel-border)] bg-white text-foreground hover:bg-[var(--row-hover)] transition-colors'
-
-function DownloadIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <path d="M7 10l5 5 5-5M12 15V3" />
-    </svg>
-  )
-}
 
 export function ReportControls({
   state, level, note, base = '/report', canExport = false,
@@ -74,15 +63,11 @@ export function ReportControls({
       <span className="text-[12.5px] text-muted">{note}</span>
 
       {canExport ? (
-        <div className="ml-auto flex items-center gap-2.5">
-          {/* The export carries the current tab, scope and period, so what
-              downloads is what is on screen and not the default view. */}
-          <a className={EXPORT_BUTTON} href={reportHref(`${base}/csv`, state)}>
-            <DownloadIcon />CSV
-          </a>
-          <a className={EXPORT_BUTTON} href={reportHref(`${base}/pdf`, state)}>
-            <DownloadIcon />PDF
-          </a>
+        <div className="ml-auto">
+          <ExportMenu
+            csvHref={reportHref(`${base}/csv`, state)}
+            pdfHref={reportHref(`${base}/pdf`, state)}
+          />
         </div>
       ) : null}
     </div>

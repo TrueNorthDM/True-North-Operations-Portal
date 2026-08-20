@@ -17,6 +17,7 @@ import {
   type EffortBasis, type SummaryCard,
 } from '@/components/report/WorkloadHoldings'
 import type { PersonHoldings } from '@/lib/report/holdings'
+import { WorkloadFilters } from '@/components/report/WorkloadFilters'
 import { resolvePeriod, resolveScope } from '@/lib/report/scope'
 import type { WorkloadRow } from '@/lib/report/workload'
 import { ReportTabs } from '@/components/report/ReportTabs'
@@ -97,6 +98,20 @@ function LevelPicker({ level }: { level: number }) {
     </div>
   )
 }
+
+const TEAMS = [
+  { id: 'seo', name: 'SEO' },
+  { id: 'writing', name: 'Writing' },
+  { id: 'web', name: 'Web' },
+]
+
+const TEAM_PEOPLE = [
+  { id: '1', name: 'Amy Marsh', teamIds: ['seo'] },
+  { id: '2', name: 'Kevin Brown', teamIds: ['seo'] },
+  { id: '3', name: 'Lana Prado', teamIds: ['writing'] },
+  { id: '4', name: 'Wendy Clark', teamIds: ['web'] },
+  { id: '5', name: 'Jeannette Alves', teamIds: ['writing'] },
+]
 
 const WRITING: PersonHoldings[] = [
   {
@@ -216,6 +231,7 @@ export default async function ReportPreview(
         {tab === 'people' ? <ReportPeople people={PEOPLE} />
           : tab === 'workload' ? (
             <div className="space-y-4">
+              <WorkloadFilters teams={TEAMS} people={TEAM_PEOPLE} note="2 people on Writing, member by member" />
               <ReportWorkload people={LOAD} />
               <WorkloadSummary cards={TEAM_SUMMARY} />
               <WorkloadHoldings title="What each person on Writing is holding" people={WRITING} />

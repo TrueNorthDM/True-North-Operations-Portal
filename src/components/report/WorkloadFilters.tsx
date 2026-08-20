@@ -9,12 +9,15 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
+import { applyFilter, clearFilters, toQuery, type FilterKey } from '@/lib/report/filters'
 
 export function WorkloadFilters({
   teams, people, note,
 }: {
+  /** From team_members, and only teams with an active member on them. */
   teams: { id: string; name: string }[]
-  people: { id: string; name: string }[]
+  /** Every person in scope, each tagged with the teams they are on. */
+  people: { id: string; name: string; teamIds: string[] }[]
   /** What the selection amounts to, e.g. "2 people on Writing, member by member". */
   note: string
 }) {
@@ -24,24 +27,18 @@ export function WorkloadFilters({
   const team = params.get('team') ?? ''
   const person = params.get('person') ?? ''
 
-  const setParam = (key: string, value: string) => {
-    const next = new URLSearchParams(params.toString())
-    if (value) next.set(key, value)
-    else next.delete(key)
-    // Picking a filter forces the scope to Everyone, so drop whatever scope
-    // was there rather than leaving a value the page is no longer obeying.
-    if (value) next.delete('scope')
-    const q = next.toString()
+  const current = Object.fromEntries(params.entries())
+  const go = (next: Record<string, string>) => {
+    const q = toQuery(next)
     router.push(q ? `/report?${q}` : '/report')
   }
 
-  const clear = () => {
-    const next = new URLSearchParams(params.toString())
-    next.delete('team')
-    next.delete('person')
-    const q = next.toString()
-    router.push(q ? `/report?${q}` : '/report')
-  }
+  const setParam = (key: FilterKey, value: string) => go(applyFilter(current, key, value))
+  const clear = () => go(clearFilters(current))
+
+  // Screen 4.2: with a team picked, the person list holds only its members.
+  // Offering the rest would offer combinations that return nothing.
+  const inScope = team ? people.filter(p => p.teamIds.includes(team)) : people
 
   const active = 'border-tn-teal bg-[rgba(30,125,127,.07)]'
   const idle = 'border-[var(--panel-border)] bg-white'
@@ -59,7 +56,7 @@ export function WorkloadFilters({
       <Select
         value={person}
         onChange={v => setParam('person', v)}
-        options={[{ value: '', label: 'Anyone' }, ...people.map(p => ({ value: p.id, label: p.name }))]}
+        options={[{ value: '', label: 'Anyone' }, ...inScope.map(p => ({ value: p.id, label: p.name }))]}
         ariaLabel="Person"
         searchable
         className={`rounded-[10px] border text-[13.5px] font-semibold text-tn-ink ${person ? active : idle}`}
