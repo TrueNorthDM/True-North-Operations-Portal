@@ -24,7 +24,7 @@ interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: 
 
 interface Option { value: string; label: string }
 
-interface HistoryEvent {
+export interface HistoryEvent {
   id: string
   event: string
   at: string | null
@@ -206,35 +206,49 @@ function when(iso: string | null): string {
   })
 }
 
-function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
-  const [state, setState] = useState<{
+export function HistoryPanel({ row, onClose, state }: {
+  row: WorkRow
+  onClose: () => void
+  /** Design check only: show one of the panel's states without waiting for it. */
+  state?: { loading?: boolean; error?: string; events?: HistoryEvent[]; names?: Record<number, string> }
+}) {
+  const [live, setLive] = useState<{
     loading: boolean; error?: string; events?: HistoryEvent[]; names?: Record<number, string>
   }>({ loading: true })
 
   useEffect(() => {
+    if (state) return
     let alive = true
     fetch(`/api/monday/item-history?board=${row.boardId}&item=${row.itemId}`)
       .then(r => r.json())
-      .then(d => { if (alive) setState(d.error ? { loading: false, error: d.error } : { loading: false, events: d.events, names: d.names }) })
-      .catch(e => { if (alive) setState({ loading: false, error: String(e) }) })
+      .then(d => { if (alive) setLive(d.error ? { loading: false, error: d.error } : { loading: false, events: d.events, names: d.names }) })
+      .catch(e => { if (alive) setLive({ loading: false, error: String(e) }) })
     return () => { alive = false }
-  }, [row.boardId, row.itemId])
+  }, [row.boardId, row.itemId, state])
+
+  const s = state ?? live
+  const due = row.dueDate ? readDue(row.dueDate, row.dueSuspect) : null
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
       <button className="absolute inset-0 bg-[rgba(1,35,88,.35)]" onClick={onClose} aria-label="Close" />
-      <div className="relative w-full max-w-[560px] h-full bg-white shadow-2xl overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-[var(--panel-border)] px-6 py-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted">{row.boardName}</div>
-            <h2 className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[19px] leading-tight m-0 mt-0.5">
+
+      <div className="relative w-full max-w-[560px] h-full bg-white shadow-[0_24px_50px_-20px_rgba(1,35,88,.6)] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-[var(--panel-border)] px-[18px] py-4 flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">
+              {row.boardName}
+            </div>
+            {/* The parent is the headline when there is one: a subitem called
+                "Portuguese" is not a thing anybody recognises on its own. */}
+            <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] leading-[1.25] text-tn-ink m-0 mt-[3px]">
               {row.parentItemName ?? row.itemName}
-            </h2>
-            {row.parentItemName && <div className="text-sm text-muted mt-0.5">{row.itemName}</div>}
+            </h3>
+            {row.parentItemName && <div className="text-[13px] text-muted mt-[3px]">{row.itemName}</div>}
           </div>
-          {/* No close button: the panel closes by clicking away from it, which
-              is the gesture people already use on a drawer. What earns the
-              corner is the one action that leaves for somewhere else. */}
+
+          {/* No close button: clicking away closes it, and the corner belongs
+              to the one action that leaves for somewhere else. */}
           {row.url && (
             <a
               href={row.url}
@@ -242,80 +256,63 @@ function HistoryPanel({ row, onClose }: { row: WorkRow; onClose: () => void }) {
               rel="noopener noreferrer"
               aria-label={`Open ${row.itemName} in Monday`}
               title="Open in Monday"
-              className="shrink-0 inline-flex items-center justify-center p-2 rounded-full text-muted hover:text-tn-teal hover:bg-slate-100 transition-colors"
+              className="shrink-0 inline-flex items-center justify-center w-[30px] h-[30px] rounded-full text-muted hover:text-tn-teal hover:bg-subtle transition-colors"
             >
               <EyeIcon />
             </a>
           )}
         </div>
 
-        <div className="px-6 py-5">
-          <div className="flex items-center gap-2 flex-wrap mb-5">
+        <div className="px-[18px] pt-4 pb-5">
+          <div className="flex items-center gap-[7px] flex-wrap mb-4">
             <span className={`${chip} bg-[rgba(30,125,127,.1)] text-tn-teal`}>{row.stepName}</span>
             {row.statusText && <StatusChip text={row.statusText} colour={row.statusColor} />}
-            {row.dueDate && (() => {
-              const d = readDue(row.dueDate, row.dueSuspect)
-              return (
-                <span className="inline-flex items-center gap-2 text-sm text-muted">
-                  {row.dueLabel ?? 'Due'}: {d.date}
-                  {d.time && <span className={DUE_TIME[d.state]}>{d.time}</span>}
-                  <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>
-                </span>
-              )
-            })()}
-            <span className="text-sm text-muted">{row.who}</span>
+            {due && <span className="text-[12.5px] text-muted">{row.dueLabel ?? 'Due'}: {due.date}</span>}
+            {due && <span className={`${chip} ${DUE_BADGE[due.state].className}`}>{DUE_BADGE[due.state].label}</span>}
           </div>
 
-          <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink text-sm m-0 mb-3">History</h3>
+          <h4 className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink m-0 mb-3">History</h4>
 
-          {state.loading && <div className="text-sm text-muted">Asking Monday…</div>}
-          {state.error && (
-            <div className="rounded-[10px] border border-[var(--warn-border)] bg-[var(--warn-bg)] p-4 text-sm text-[var(--warn-fg)]">{state.error}</div>
-          )}
-          {state.events && state.events.length === 0 && (
-            <div className="text-sm text-muted">
-              Nothing in Monday&apos;s log for this item. Monday keeps activity for a limited window, so an item
-              that has not moved in a long time is genuinely empty rather than missing.
+          {s.loading && <div className="text-[13px] text-muted">Asking Monday…</div>}
+
+          {s.error && (
+            <div className="rounded-[10px] border border-[var(--warn-border)] bg-[var(--warn-bg)] p-3.5 text-[13px] leading-[1.55] text-[var(--warn-fg)]">
+              {s.error}
             </div>
           )}
-          {state.events && state.events.length > 0 && (
-            <ol className="m-0 p-0 list-none space-y-3">
-              {state.events.map(e => (
-                <li key={e.id} className="relative pl-5">
-                  <span className="absolute left-0 top-[6px] w-2 h-2 rounded-full bg-tn-teal" />
-                  <div className="text-[13px] text-tn-ink">
-                    {e.column ? (
-                      <>
-                        <span className="font-bold">{e.column}</span>
-                        {e.from && <span className="text-muted"> from {e.from}</span>}
-                        {e.to && <> → <span className="font-semibold">{e.to}</span></>}
-                      </>
-                    ) : (
-                      <span className="text-muted">{e.event.replace(/_/g, ' ')}</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted mt-0.5">
-                    {when(e.at)}{e.userId && state.names?.[e.userId] ? ` · ${state.names[e.userId]}` : ''}
-                  </div>
-                </li>
-              ))}
-            </ol>
+
+          {s.events && s.events.length === 0 && (
+            <p className="text-[13px] text-muted leading-[1.6] m-0">
+              Nothing in Monday&apos;s log for this item. Monday keeps activity for a limited window, so an item
+              that has not moved in a long time is genuinely empty rather than missing.
+            </p>
           )}
+
+          {s.events && s.events.length > 0 && s.events.map(e => (
+            <div key={e.id} className="relative pl-[18px] mb-3">
+              <span className="absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full bg-tn-teal" />
+              <div className="text-[12.5px] leading-[1.45] text-tn-ink">
+                {e.column ? (
+                  <>
+                    <span className="font-bold">{e.column}</span>
+                    {e.from && <span className="text-muted"> from {e.from}</span>}
+                    {e.to && <span className="font-semibold"> → {e.to}</span>}
+                  </>
+                ) : (
+                  <span className="text-muted">{e.event.replace(/_/g, ' ')}</span>
+                )}
+              </div>
+              <div className="text-[11.5px] text-muted mt-0.5">
+                {when(e.at)}{e.userId && s.names?.[e.userId] ? ` · ${s.names[e.userId]}` : ''}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   )
 }
 
-/**
- * One collapsible block of rows.
- *
- * Three of them, because the rows answer three different questions and mixing
- * them makes each one harder to read: work with nobody behind it needs an
- * admin, open work needs doing, and finished work is only there to be checked
- * against. Each keeps its own open/closed state so the page can start with the
- * one you want.
- */
 /**
  * How many rows a block draws before asking.
  *
