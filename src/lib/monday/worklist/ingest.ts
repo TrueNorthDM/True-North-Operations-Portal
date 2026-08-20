@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { gql } from './discover'
+import { diffAssignments, type AssignmentSnapshot } from './changes'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -111,6 +112,42 @@ export interface BoardIngestResult {
  * an assignment that was removed in Monday has to disappear here, and an
  * upsert alone would leave it behind forever.
  */
+/**
+ * Write what changed on this board since the last sync.
+ *
+ * Deliberately not allowed to fail the ingest. A board whose history cannot
+ * be written is a board missing some history; a board whose assignments stop
+ * updating is a board missing from My Work, which people use every day. The
+ * first loss is the smaller one, so it is logged and swallowed.
+ */
+async function recordChanges(supabase: Client, boardId: number, after: AssignmentSnapshot[]) {
+  try {
+    const { data, error } = await supabase
+      .from('monday_assignments')
+      .select('item_id, people_col, monday_user_id, status_text, status_done, due_date')
+      .eq('board_id', boardId)
+    if (error) throw error
+
+    const events = diffAssignments(boardId, (data ?? []) as AssignmentSnapshot[], after, new Date().toISOString())
+    if (!events.length) return
+
+    for (let i = 0; i < events.length; i += 500) {
+      // The same change seen by two syncs is one change, and the table's
+      // unique key says so. Ignoring the duplicate is the intended outcome,
+      // not an error to retry.
+      const { error: insErr } = await supabase
+        .from('monday_assignment_events')
+        .upsert(events.slice(i, i + 500), {
+          onConflict: 'board_id,item_id,people_col,monday_user_id,event,occurred_at',
+          ignoreDuplicates: true,
+        })
+      if (insErr) throw insErr
+    }
+  } catch (e) {
+    console.error(`change log for board ${boardId}:`, e instanceof Error ? e.message : e)
+  }
+}
+
 export async function ingestBoard(
   supabase: Client,
   token: string,
@@ -206,6 +243,12 @@ export async function ingestBoard(
     cursor = page.cursor
     if (!cursor) break
   }
+
+  // Read what is there BEFORE replacing it. This is the only moment both
+  // halves exist, and the difference between them is the only record of the
+  // past this system will ever have: monday_assignments keeps the present and
+  // Monday does not keep the rest.
+  await recordChanges(supabase, board.id, rows as unknown as AssignmentSnapshot[])
 
   const { error: delErr } = await supabase.from('monday_assignments').delete().eq('board_id', board.id)
   if (delErr) throw new Error(`clear board ${board.id}: ${delErr.message}`)
