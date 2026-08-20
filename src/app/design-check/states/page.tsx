@@ -50,6 +50,9 @@ function State({ id, title, note, children }: { id: string; title: string; note?
 const ROWS = [row(1), row(2, { itemName: 'Spanish', priority: 'high' }), row(3, { itemName: 'French', priority: 'low' })]
 const MANY = Array.from({ length: 260 }, (_, i) => row(10 + i, { itemName: `Item ${i + 1}` }))
 
+// 2.9 lives on its own page: a thousand finished rows is more document than
+// this one should carry.
+
 export default function DesignCheckStates() {
   if (process.env.NODE_ENV === 'production') notFound()
   return (

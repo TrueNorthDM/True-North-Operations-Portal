@@ -302,7 +302,7 @@ function Block({
       >
         <span className="shrink-0 text-muted text-[15px] leading-none" aria-hidden="true">{open ? '⌄' : '›'}</span>
         <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{title}</span>
-        <span className="text-[12px] font-bold text-muted">{rows.length}</span>
+        <span className="text-[12px] font-bold text-muted">{n(rows.length)}</span>
         {note && <span className="text-[12px] text-muted ml-auto text-right">{note}</span>}
       </button>
 
@@ -415,6 +415,10 @@ export interface PreviewState {
   tip?: boolean
   /** Start with every block collapsed. */
   closed?: boolean
+  /** Behave as though the finished-work filter were widened to everything. */
+  done?: boolean
+  /** Start with Completed open. */
+  openCompleted?: boolean
 }
 
 export function WorkList({
@@ -442,14 +446,16 @@ export function WorkList({
   // Unknown user starts closed: it is an admin's queue, not the reader's work,
   // and it should not be the first thing between somebody and their list.
   const [openBlocks, setOpenBlocks] = useState(
-    preview?.closed
-      ? { unknown: false, ongoing: false, completed: false }
-      : { unknown: false, ongoing: true, completed: false })
+    {
+      unknown: false,
+      ongoing: !preview?.closed,
+      completed: preview?.openCompleted ?? false,
+    })
   const [tip, setTip] = useState(preview?.tip ?? false)
 
   const person = params.get('person') ?? selfPersonId ?? ''
   const team = preview?.team ?? params.get('team') ?? ''
-  const includeDone = params.get('done') === '1'
+  const includeDone = preview?.done ?? params.get('done') === '1'
   const mineFromUrl = !!selfPersonId && person === selfPersonId && !team
   const mine = wanted ?? mineFromUrl
 
@@ -600,7 +606,7 @@ export function WorkList({
           type="button"
           onClick={() => setParam('done', includeDone ? '' : '1')}
           className={`font-[family-name:var(--font-open-sans)] text-[13.5px] font-semibold px-3 py-2 rounded-[10px] border transition-colors ${
-            includeDone ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.06)]' : 'border-[#e4e7ec] text-muted hover:text-tn-ink'
+            includeDone ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.07)]' : 'border-[#e4e7ec] text-muted hover:text-tn-ink'
           }`}
         >
           {includeDone ? 'Finished work: all of it' : `Finished work: ${COMPLETED_MONTHS} months`}
