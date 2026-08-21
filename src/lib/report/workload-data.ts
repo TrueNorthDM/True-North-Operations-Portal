@@ -34,22 +34,6 @@ const DAY = 86_400_000
 /** The horizon the Load column looks ahead over. Fixed, never the period. */
 const AHEAD_DAYS = 30
 
-/**
- * Hours a step takes, estimated.
- *
- * No board in this account is linked to a timeclock project code, so there is
- * nothing to measure per board: every board shares one average, total approved
- * hours over total steps delivered. The audit says "fallback" for all of them,
- * which is the truth and is exactly what that chip is for.
- *
- * Null when the log has delivered nothing yet. An average over no steps is not
- * a small number, it is no number, and Load has to say so rather than divide.
- */
-export function hoursPerStep(totalHours: number, delivered: number): number | null {
-  if (delivered <= 0) return null
-  return Math.round((totalHours / delivered) * 10) / 10
-}
-
 function weekIndex(iso: string, now: number, weeks: number): number | null {
   const back = Math.floor((now - Date.parse(iso)) / (7 * DAY))
   return back >= 0 && back < weeks ? weeks - 1 - back : null
