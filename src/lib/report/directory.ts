@@ -6,6 +6,7 @@
 // reports as a bug and everybody quietly distrusts.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { teamColoursFrom, type TeamColours } from '@/lib/directory/team-colour'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -36,6 +37,12 @@ export async function activePeople(
  * taking whichever row came back first, which is what the rest of the portal
  * does and what somebody looking at two pages will expect.
  */
+/** Every team's colour, from the database, falling back by name. */
+export async function teamColours(supabase: Client): Promise<TeamColours> {
+  const { data } = await supabase.from('teams').select('name, color')
+  return teamColoursFrom((data ?? []) as { name: string; color: string | null }[])
+}
+
 export async function primaryTeams(supabase: Client, personIds: string[]): Promise<Map<string, string>> {
   if (!personIds.length) return new Map()
 

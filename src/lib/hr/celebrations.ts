@@ -5,6 +5,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { loadContactByPerson } from '@/lib/hr/contact'
 import { teamKeyFromName, type TeamKey } from '@/lib/directory/people-types'
+import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MON_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -17,6 +18,8 @@ export interface CelebrationPerson {
   dob: string | null
   teamName: string | null
   teamKey: TeamKey
+  /** Resolved from teams.color, the same palette every other screen uses. */
+  color: string
 }
 
 export function parseYMD(iso: string | null | undefined): { y: number; m: number; d: number } | null {
@@ -49,12 +52,16 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
   let pRes = await supabase.from('people').select('id, full_name, status, hire_date, avatar_url')
   if (pRes.error) pRes = (await supabase.from('people').select('id, full_name, status, hire_date')) as typeof pRes
   const [{ data: tData }, { data: mData }, birthdays] = await Promise.all([
-    supabase.from('teams').select('id, name'),
+    supabase.from('teams').select('id, name, color'),
     supabase.from('team_members').select('team_id, person_id'),
     loadContactByPerson(),
   ])
 
   const teamById = new Map((tData ?? []).map(t => [t.id, t.name]))
+  // The same palette the directory and My Team use, so a face on the home
+  // page is the colour that person is everywhere else.
+  const colours = teamColoursFrom((tData ?? []) as { name: string; color: string | null }[])
+
   const teamsByPerson = new Map<string, string[]>()
   for (const m of mData ?? []) {
     const arr = teamsByPerson.get(m.person_id) ?? []
@@ -79,6 +86,7 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
         dob: birthdays.get(p.id)?.dateOfBirth ?? null,
         teamName: tn,
         teamKey: teamKeyFromName(tn),
+        color: colourOf(colours, tn),
       }
     })
 }

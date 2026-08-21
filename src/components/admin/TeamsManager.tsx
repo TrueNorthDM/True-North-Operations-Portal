@@ -15,7 +15,7 @@ import Link from 'next/link'
 import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition, setTeamTool, removeTeamTool } from '@/app/(app)/admin/teams/actions'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, teamPositionPill, PILL_CLASS, TEAM_COLOR, type PersonView, type TeamKey } from '@/lib/directory/people-types'
+import { roleTypePill, teamPositionPill, PILL_CLASS, type PersonView, type TeamKey } from '@/lib/directory/people-types'
 import { TOOLS, type ToolAudience } from '@/lib/access/tools'
 import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/color-palette'
 import { Select } from '@/components/ui/Select'
@@ -182,7 +182,8 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
             const isFounder = m.position === 'founder'
             return (
               <div key={m.id} className="group/mem flex items-center gap-2.5 py-[5px]">
-                <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={TEAM_COLOR[m.teamKey]} />
+                {/* The card's colour, not the member's: this face is on this team. */}
+                <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={team.color} />
                 <span className="text-[13.5px] text-foreground font-semibold truncate min-w-0">{m.name}</span>
                 {/* Right cluster: the ACCESS (contact type) shown discreetly only when
                     it's elevated, then the TEAM POSITION prominently. On hover both

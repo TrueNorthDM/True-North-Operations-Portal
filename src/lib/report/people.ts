@@ -7,10 +7,11 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadWorklist } from '@/lib/monday/worklist/data'
-import { TEAM_COLOR, initialsOf, teamKeyFromName } from '@/lib/directory/people-types'
+import { initialsOf } from '@/lib/directory/people-types'
+import { colourOf } from '@/lib/directory/team-colour'
 import type { PersonRow } from '@/components/report/ReportPeople'
 import { accountsInScope, loadSpans } from './data'
-import { activePeople, primaryTeams } from './directory'
+import { activePeople, primaryTeams, teamColours } from './directory'
 import { median, onTimeShare } from './spans'
 import type { Period } from './scope'
 
@@ -64,10 +65,11 @@ export async function loadReportPeople(
   const since = new Date(Date.now() - period * 86_400_000)
   const sinceDate = since.toISOString().slice(0, 10)
 
-  const [people, accounts, snapshot] = await Promise.all([
+  const [people, accounts, snapshot, colours] = await Promise.all([
     peopleInScope(supabase, f),
     accountsInScope(supabase, f),
     loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, includeDone: false }),
+    teamColours(supabase),
   ])
   if (!people.length) return []
 
@@ -110,13 +112,12 @@ export async function loadReportPeople(
     const mine = spansOf.get(p.id) ?? []
     const share = onTimeShare(mine)
     const counts = openOf.get(p.id) ?? { open: 0, late: 0 }
-    const teamKey = teamKeyFromName(p.teamName)
 
     return {
       id: p.id,
       name: p.full_name,
       team: p.teamName,
-      color: TEAM_COLOR[teamKey],
+      color: colourOf(colours, p.teamName),
       initials: initialsOf(p.full_name),
       // Null, not zero, while there is no history for them: zero delivered is
       // a measurement and no history is not.

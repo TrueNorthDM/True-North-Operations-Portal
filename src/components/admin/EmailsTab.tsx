@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
-import { TEAM_COLOR, initialsOf, type PersonView } from '@/lib/directory/people-types'
+import { initialsOf, type PersonView } from '@/lib/directory/people-types'
 import { FilterBar } from './grid/FilterBar'
 import { SortHeader } from './grid/SortHeader'
 import { applyFilters, applySort, nextSort } from './grid/utils'
@@ -91,7 +91,7 @@ export function EmailsTab({ people, onOpen }: { people: PersonView[]; onOpen: (i
                 className={`grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-3.5 items-center px-[22px] py-[13px] cursor-pointer transition-colors hover:bg-subtle ${i === 0 ? '' : 'border-t border-slate-200'}`}
               >
                 <span className="inline-flex items-center gap-3 min-w-0">
-                  <span className={`shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[12px] ${p.status === 'inactive' ? 'opacity-45 grayscale-[.4]' : ''}`} style={{ width: 38, height: 38, background: TEAM_COLOR[p.teamKey] }}>{initialsOf(p.full_name)}</span>
+                  <span className={`shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[12px] ${p.status === 'inactive' ? 'opacity-45 grayscale-[.4]' : ''}`} style={{ width: 38, height: 38, background: p.color }}>{initialsOf(p.full_name)}</span>
                   <span className="min-w-0">
                     <span className="block font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
                     <span className="block text-xs text-muted truncate">{p.title ?? '-'}</span>

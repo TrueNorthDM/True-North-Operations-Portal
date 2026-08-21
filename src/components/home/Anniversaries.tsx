@@ -5,7 +5,7 @@
 import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
-import { formatDate, TEAM_COLOR } from '@/lib/directory/people-types'
+import { formatDate } from '@/lib/directory/people-types'
 import { MONTHS, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
 
 interface Ann extends CelebrationPerson { years: number; day: number }
@@ -37,12 +37,12 @@ export function Anniversaries({ people }: { people: CelebrationPerson[] }) {
           <div className="flex flex-col gap-3">
             {list.map(a => (
               <div key={a.id} className="flex items-center gap-2.5">
-                <Avatar name={a.name} avatarUrl={a.avatarUrl} size={32} color={TEAM_COLOR[a.teamKey]} />
+                <Avatar name={a.name} avatarUrl={a.avatarUrl} size={32} color={a.color} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13px] font-bold text-tn-ink truncate">{a.name}</span>
                   <span className="flex items-center gap-1.5 mt-0.5 min-w-0">
                     {a.teamName && (
-                      <span className="shrink-0 max-w-[120px] truncate font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-1.5 py-0.5" style={{ color: TEAM_COLOR[a.teamKey], background: `${TEAM_COLOR[a.teamKey]}1a` }}>{a.teamName}</span>
+                      <span className="shrink-0 max-w-[120px] truncate font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-1.5 py-0.5" style={{ color: a.color, background: `${a.color}1a` }}>{a.teamName}</span>
                     )}
                     <span className="text-[11px] text-muted truncate">Joined {formatDate(a.hireDate)}</span>
                   </span>

@@ -216,7 +216,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
                 style={{ gridTemplateColumns: gridTemplate }}
               >
                 <span className="inline-flex items-center gap-3 min-w-0">
-                  <Avatar name={p.full_name} avatarUrl={p.avatarUrl} size={38} color={TEAM_COLOR[p.teamKey]} dimmed={p.status === 'inactive'} />
+                  <Avatar name={p.full_name} avatarUrl={p.avatarUrl} size={38} color={p.color} dimmed={p.status === 'inactive'} />
                   <span className="min-w-0">
                     <span className="block font-(family-name:--font-display) font-bold text-sm text-tn-ink truncate">{p.full_name}</span>
                     <span className="block text-xs text-muted truncate">{primaryEmail(p) || '-'}</span>
@@ -245,7 +245,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
 function Cell({ col, p }: { col: { id: ColId; align?: 'right' }; p: PersonView }) {
   const wrap = `inline-flex items-center gap-2 min-w-0 ${col.align === 'right' ? 'justify-end' : ''}`
 
-  if (col.id === 'team') return <span className={wrap}><span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[p.teamKey], background: `${TEAM_COLOR[p.teamKey]}1a` }}>{p.teamName ?? '-'}</span></span>
+  if (col.id === 'team') return <span className={wrap}><span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: p.color, background: `${p.color}1a` }}>{p.teamName ?? '-'}</span></span>
   if (col.id === 'role') return <span className={wrap}><PillBadge pill={roleTypePill(p.roleType)} /></span>
   if (col.id === 'job') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{p.title ?? '-'}</span></span>
   if (col.id === 'joined') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{formatDate(p.hireDate) ?? '-'}</span></span>

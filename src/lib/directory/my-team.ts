@@ -19,6 +19,7 @@ import { teamKeyFromName } from '@/lib/directory/people-types'
 import { asRoleType } from '@/lib/auth/tier'
 import type { RestrictedPerson, FullProfile, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 import { TEAM_POSITION_LABEL } from '@/lib/directory/people-types'
+import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 import { TOOLS } from '@/lib/access/tools'
 
 type Client = SupabaseClient<Database>
@@ -51,6 +52,11 @@ export interface MyTeamView {
 export async function loadMyTeam(supabase: Client, user: User | null, level: 1 | 2 | 3): Promise<MyTeamView> {
   const me = await loadCurrentPerson(supabase, user)
   if (!me) return { people: [], teamNames: [], teams: [], profiles: {}, selfId: null }
+
+  // One read of the team palette for the whole view, so every avatar on the
+  // page agrees with every other and with the directory.
+  const { data: allTeams } = await supabase.from('teams').select('name, color')
+  const colours = teamColoursFrom((allTeams ?? []) as { name: string; color: string | null }[])
 
   const { data: myMemberships } = await supabase
     .from('team_members')
@@ -132,6 +138,7 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
         title: str(p.title),
         teamName,
         teamKey: teamKeyFromName(teamName ?? undefined),
+        color: colourOf(colours, teamName),
         avatarUrl: p.avatar_url ?? null,
         roleType: asRoleType(p.role_type),
         status: 'active',
@@ -222,6 +229,7 @@ export async function loadMyTeam(supabase: Client, user: User | null, level: 1 |
         id: t.id,
         name: t.name,
         teamKey: teamKeyFromName(t.name),
+        color: colourOf(colours, t.name),
         members: (byTeam.get(t.id) ?? [])
           .map(m => ({
             id: m.person_id,

@@ -2,6 +2,7 @@
 
 import { notFound } from 'next/navigation'
 import { TeamPeople } from '@/components/team/TeamPeople'
+import { teamColour } from '@/lib/directory/team-colour'
 import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 
 export const dynamic = 'force-dynamic'
@@ -11,6 +12,7 @@ const person = (
   teamKey: RestrictedPerson['teamKey'], roleType: string, active: boolean, self = false,
 ): RestrictedPerson => ({
   id, name, title, teamName, teamKey,
+  color: teamColour(null, teamName),
   avatarUrl: null,
   roleType,
   status: active ? 'active' : 'inactive',
@@ -29,7 +31,7 @@ const PEOPLE: RestrictedPerson[] = [
 
 const TEAMS: RestrictedTeam[] = [
   {
-    id: 't1', name: 'SEO', teamKey: 'seo',
+    id: 't1', name: 'SEO', teamKey: 'seo', color: teamColour(null, 'seo'),
     members: [
       { id: 'p2', name: 'Amy Marsh', title: 'SEO Specialist', avatarUrl: null, positionLabel: 'Lead' },
       { id: 'p3', name: 'Kevin Brown', title: 'Analyst', avatarUrl: null, positionLabel: 'Member' },
@@ -40,12 +42,12 @@ const TEAMS: RestrictedTeam[] = [
     ],
   },
   {
-    id: 't2', name: 'Writing', teamKey: 'writing',
+    id: 't2', name: 'Writing', teamKey: 'writing', color: teamColour(null, 'writing'),
     members: [{ id: 'p4', name: 'Lana Prado', title: 'Translator', avatarUrl: null, positionLabel: 'Member' }],
     tools: [],
   },
   {
-    id: 't3', name: 'Web', teamKey: 'other',
+    id: 't3', name: 'Web', teamKey: 'other', color: teamColour(null, 'other'),
     members: [{ id: 'p5', name: 'Wendy Clark', title: 'Account Director', avatarUrl: null, positionLabel: 'Lead' }],
     tools: [{ label: 'Href Link Management', audience: 'all' }],
   },

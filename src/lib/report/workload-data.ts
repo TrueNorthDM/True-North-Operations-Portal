@@ -16,12 +16,13 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadWorklist } from '@/lib/monday/worklist/data'
-import { initialsOf, TEAM_COLOR, teamKeyFromName } from '@/lib/directory/people-types'
+import { initialsOf } from '@/lib/directory/people-types'
+import { colourOf } from '@/lib/directory/team-colour'
 import type { EffortBasis } from '@/components/report/WorkloadHoldings'
 import type { WorkloadRow } from './workload'
 import { BACKLOG_WEEKS, UTILISATION_WEEKS } from './workload'
 import { accountsInScope, loadSpans, NO_TABLE } from './data'
-import { activePeople, primaryTeams } from './directory'
+import { activePeople, primaryTeams, teamColours } from './directory'
 import type { LoggedEvent } from './spans'
 import type { Period } from './scope'
 import { buildEffortTable, hoursFor, isMeasured, type BoardEffort } from './effort'
@@ -56,7 +57,7 @@ export async function loadWorkload(
   if (!people.length) return { people: [], effort: [], estimateReady: false }
 
   const personIds = people.map(p => p.id)
-  const teamOf = await primaryTeams(supabase, personIds)
+  const [teamOf, colours] = await Promise.all([primaryTeams(supabase, personIds), teamColours(supabase)])
   const utilSince = new Date(now - UTILISATION_WEEKS * 7 * DAY).toISOString().slice(0, 10)
 
   const [{ data: entries }, links, spans, events] = await Promise.all([
@@ -121,7 +122,7 @@ export async function loadWorkload(
       id: p.id,
       name: p.full_name,
       initials: initialsOf(p.full_name),
-      color: TEAM_COLOR[teamKeyFromName(teamOf.get(p.id) ?? null)],
+      color: colourOf(colours, teamOf.get(p.id) ?? null),
       contracted: p.weekly_hours ?? 0,
       observed,
       hoursLogged: logged,

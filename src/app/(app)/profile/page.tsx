@@ -10,9 +10,10 @@ import { loadOwnContact } from '@/lib/hr/contact'
 import { getCurrentTier } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import {
-  TEAM_COLOR, initialsOf, formatDate, teamKeyFromName,
+  initialsOf, formatDate,
   typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill,
 } from '@/lib/directory/people-types'
+import { teamColour } from '@/lib/directory/team-colour'
 // Shared with the popup on My Team, so the two render the same card.
 import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profile/profile-parts'
 import type { PersonRow } from '@/lib/types/database.types'
@@ -84,9 +85,12 @@ export default async function ProfilePage() {
   ])
   const nameById = new Map((relRes.data ?? []).map(r => [r.id, r.full_name]))
   const teamIds = (tmRes.data ?? []).map(r => r.team_id)
-  const { data: teamRows } = teamIds.length ? await supabase.from('teams').select('id, name').in('id', teamIds) : { data: [] as { id: string; name: string }[] }
+  const { data: teamRows } = teamIds.length
+    ? await supabase.from('teams').select('id, name, color').in('id', teamIds)
+    : { data: [] as { id: string; name: string; color: string | null }[] }
   const teamName = (teamRows ?? [])[0]?.name ?? null
-  const teamKey = teamKeyFromName(teamName)
+  // The colour an admin set, not a second opinion about it.
+  const teamColor = teamColour((teamRows ?? [])[0]?.color ?? null, teamName)
   // Team members: the same rule the Directory card uses, from lib/directory/team-of.
   // manager_id alone was leaving out anybody whose reporting line runs through a
   // different team than the one they work on.
@@ -152,12 +156,12 @@ export default async function ProfilePage() {
         {/* header, larger avatar */}
         <div className="px-8 pt-8 pb-6 border-b border-slate-200 flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-6 min-w-0">
-            <ProfileAvatar name={me.full_name} avatarUrl={avatarUrl} color={TEAM_COLOR[teamKey]} size={120} />
+            <ProfileAvatar name={me.full_name} avatarUrl={avatarUrl} color={teamColor} size={120} />
             <div className="min-w-0">
               <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink leading-tight m-0">{me.full_name}</h1>
               <p className="text-[15px] text-muted mt-1 font-semibold">{me.title || '-'}</p>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: TEAM_COLOR[teamKey], background: `${TEAM_COLOR[teamKey]}1a` }}>{teamName ?? 'No team'}</span>
+                <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: teamColor, background: `${teamColor}1a` }}>{teamName ?? 'No team'}</span>
                 <Badge pill={roleTypePill(me.role_type ?? 'user')} />
                 <Badge pill={statusPill(active)} />
               </div>
@@ -225,7 +229,7 @@ export default async function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-2.5">
               {reports.map(m => (
                 <div key={m.id} className="flex items-center gap-2.5">
-                  <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px]" style={{ width: 30, height: 30, background: TEAM_COLOR[teamKey] }}>{initialsOf(m.full_name)}</span>
+                  <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px]" style={{ width: 30, height: 30, background: teamColor }}>{initialsOf(m.full_name)}</span>
                   <span className="min-w-0">
                     <span className="block text-[13.5px] font-bold text-tn-ink truncate">{m.full_name}</span>
                     <span className="flex items-center gap-1.5 min-w-0">

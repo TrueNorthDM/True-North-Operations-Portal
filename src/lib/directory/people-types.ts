@@ -32,6 +32,8 @@ export interface PersonTeam {
   teamId: string
   teamName: string | null
   teamKey: TeamKey
+  /** See PersonView.color. */
+  color: string
   position: string // 'founder' | 'manager' | 'team_leader' | 'collaborator'
   primary: boolean // the person's main department (migration 048)
 }
@@ -43,10 +45,17 @@ export interface PersonView {
   avatarUrl: string | null // profile photo (public URL)
   title: string | null // job title
 
-  // Primary team (first membership), drives avatar colour, badge, filter, group.
+  // Primary team (first membership), drives the badge, filter and group.
   teamId: string | null
   teamName: string | null
   teamKey: TeamKey
+  /**
+   * The avatar colour, resolved once from teams.color with the key map as the
+   * fallback. A field rather than a lookup, because thirteen components each
+   * looking it up their own way is how the same person came out three
+   * different colours on three screens.
+   */
+  color: string
   // All memberships with per-team position (Team Position, distinct from access).
   teams: PersonTeam[]
 

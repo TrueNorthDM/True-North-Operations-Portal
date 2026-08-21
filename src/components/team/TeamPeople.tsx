@@ -16,20 +16,10 @@ import { useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
 import { roleTypePill } from '@/lib/directory/people-types'
 import { ProfileCard, type RestrictedPerson, type FullProfile, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
-import { TEAM_COLOR } from '@/lib/directory/people-types'
 
 // The pill shape the handoff uses for both role and status: 9px, uppercase,
 // fully round, and never allowed to grow with its row.
 const PILL = 'inline-flex items-center shrink-0 font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.05em] uppercase rounded-full px-2 py-[3px]'
-
-/** Avatar colours follow the person's team, as everywhere else in the portal. */
-const AVATAR_COLOUR: Record<string, string> = {
-  seo: '#1E7D7F',
-  writing: '#579BFC',
-  graphics: '#7c3aed',
-  web: '#012358',
-  other: '#012358',
-}
 
 const initialsOf = (name: string) =>
   name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -42,7 +32,7 @@ const initialsOf = (name: string) =>
  * level 2 with no grants gets a sentence saying so.
  */
 function TeamCard({ team }: { team: RestrictedTeam }) {
-  const colour = TEAM_COLOR[team.teamKey] ?? '#012358'
+  const colour = team.color
   return (
     <div className="border border-[var(--panel-border)] bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
       <div className="h-1.5" style={{ background: colour }} />
@@ -193,7 +183,7 @@ export function TeamPeople({
             >
               <span
                 className="inline-flex shrink-0 w-9 h-9 rounded-full items-center justify-center font-(family-name:--font-display) font-extrabold text-[12.5px] text-white"
-                style={{ background: AVATAR_COLOUR[p.teamKey] ?? AVATAR_COLOUR.other }}
+                style={{ background: p.color }}
               >
                 {initialsOf(p.name)}
               </span>
@@ -244,7 +234,7 @@ export function TeamPeople({
             <div className="flex items-center gap-3.5 px-[22px] pt-[22px] pb-[18px] border-b border-[#f2f4f7]">
               <span
                 className="inline-flex shrink-0 w-13 h-13 rounded-full items-center justify-center font-(family-name:--font-display) font-extrabold text-[17px] text-white"
-                style={{ background: TEAM_COLOR[open.teamKey] ?? '#012358' }}
+                style={{ background: open.color }}
               >
                 {initialsOf(open.name)}
               </span>

@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
-import { TEAM_COLOR, type TeamKey } from '@/lib/directory/people-types'
+import { type TeamKey } from '@/lib/directory/people-types'
 import { Avatar } from '@/components/Avatar'
 import { deviceLabel } from '@/lib/user-agent'
 import { FilterBar } from './grid/FilterBar'
@@ -25,6 +25,7 @@ export interface AccessLogEntry {
   accessedAt: string // ISO timestamp
   avatarUrl: string | null
   teamKey: TeamKey
+  color: string
 }
 
 function fmtWhen(iso: string): string {
@@ -79,7 +80,7 @@ export function AccessLogManager({ entries }: { entries: AccessLogEntry[] }) {
         {rows.map((e, i) => (
           <div key={e.id} className={`grid gap-3.5 items-center px-[22px] py-[11px] ${i === 0 ? '' : 'border-t border-slate-200'}`} style={{ gridTemplateColumns: gridTemplate }}>
             <span className="inline-flex items-center gap-3 min-w-0">
-              <Avatar name={e.name} avatarUrl={e.avatarUrl} size={32} color={TEAM_COLOR[e.teamKey]} />
+              <Avatar name={e.name} avatarUrl={e.avatarUrl} size={32} color={e.color} />
               <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink truncate">{e.name}</span>
             </span>
             <span className="text-[13px] text-muted truncate">{e.email || '-'}</span>

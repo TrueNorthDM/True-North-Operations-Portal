@@ -17,7 +17,8 @@ import { SearchField } from '@/components/ui/SearchField'
 import { useRouter } from 'next/navigation'
 import { saveTrAssignment, savePersonCostRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
-import { TEAM_COLOR, teamKeyFromName, initialsOf, formatDate } from '@/lib/directory/people-types'
+import { initialsOf, formatDate } from '@/lib/directory/people-types'
+import { teamColour } from '@/lib/directory/team-colour'
 import { FilterBar } from '@/components/admin/grid/FilterBar'
 import { SortHeader } from '@/components/admin/grid/SortHeader'
 import { applyFilters, applySort, nextSort } from '@/components/admin/grid/utils'
@@ -65,7 +66,7 @@ const AUTO_REASON = 'Updated in Rates & Costs'
 // Team pill, tinted from the shared team-colour system.
 function TeamBadge({ team }: { team: string | null }) {
   if (!team) return <span className="text-slate-300">-</span>
-  const color = TEAM_COLOR[teamKeyFromName(team)]
+  const color = teamColour(null, team)
   return (
     <span
       className="inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 whitespace-nowrap"

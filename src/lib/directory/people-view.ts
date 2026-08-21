@@ -12,13 +12,13 @@ import type { PersonMilestone } from '@/lib/milestones'
 import {
   teamKeyFromName,
   teamPositionRank,
-  TEAM_COLOR,
   type PersonView,
   type PersonAttachment,
   type PersonTeam,
   type Account,
   type TeamKey,
 } from '@/lib/directory/people-types'
+import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
 import type { TeamOption } from '@/components/admin/DirectoryTabs'
 
 const PEOPLE_FULL =
@@ -120,6 +120,9 @@ export async function loadDirectoryPeopleView(
     named.sort((a, b) => a.name.localeCompare(b.name))
     return named[0] ? { id: named[0].id, name: named[0].name } : null
   }
+  // One palette for the whole view.
+  const palette = teamColoursFrom(teams as { name: string; color: string | null }[])
+
   const teamKeyByPerson = new Map<string, TeamKey>()
   for (const p of people) teamKeyByPerson.set(p.id, teamKeyFromName(primaryTeam(p.id)?.name))
 
@@ -128,7 +131,7 @@ export async function loadDirectoryPeopleView(
     const t = teamById.get(m.team_id)
     if (!t) continue
     const arr = teamsByPerson.get(m.person_id) ?? []
-    arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position, primary: m.is_primary })
+    arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), color: colourOf(palette, t.name), position: m.position, primary: m.is_primary })
     teamsByPerson.set(m.person_id, arr)
   }
   for (const arr of teamsByPerson.values()) {
@@ -163,6 +166,7 @@ export async function loadDirectoryPeopleView(
         teamId: pt?.id ?? null,
         teamName: pt?.name ?? null,
         teamKey: teamKeyFromName(pt?.name),
+        color: colourOf(palette, pt?.name ?? null),
         teams: teamsByPerson.get(p.id) ?? [],
         manager_id: mgrId,
         managerName: mgrId ? nameById.get(mgrId) ?? null : null,
@@ -207,7 +211,7 @@ export async function loadDirectoryPeopleView(
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
 
   const teamOptions: TeamOption[] = teams
-    .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: t.color ?? TEAM_COLOR[teamKeyFromName(t.name)] }))
+    .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: teamColour(t.color, t.name) }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   return { people: peopleView, teamOptions, availableAccounts }

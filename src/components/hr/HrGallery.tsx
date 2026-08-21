@@ -8,11 +8,11 @@ import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import { PersonModal, type ModalState } from '@/components/admin/PersonModal'
-import { TEAM_COLOR, type PersonView, type Account, type TeamKey } from '@/lib/directory/people-types'
+import { type PersonView, type Account, type TeamKey } from '@/lib/directory/people-types'
 import type { TeamOption } from '@/components/admin/DirectoryTabs'
 import type { Milestone } from '@/lib/tenure'
 
-export interface HrHolder { id: string; name: string; avatarUrl: string | null; teamName: string | null; teamKey: TeamKey; tenure: string }
+export interface HrHolder { id: string; name: string; avatarUrl: string | null; teamName: string | null; teamKey: TeamKey; color: string; tenure: string }
 export interface HrSection { key: string; milestone: Milestone; label: string; holders: HrHolder[] }
 
 export function HrGallery({ quarters, years, people, teamOptions, availableAccounts }: {
@@ -41,11 +41,11 @@ export function HrGallery({ quarters, years, people, teamOptions, availableAccou
         <div className="mt-3 flex flex-col gap-0.5 border-t border-slate-100 pt-3">
           {s.holders.map(h => (
             <button key={h.id} type="button" onClick={() => open(h.id)} className="group flex items-center gap-2.5 rounded-[9px] -mx-1 px-1 py-1 text-left transition-colors hover:bg-subtle">
-              <Avatar name={h.name} avatarUrl={h.avatarUrl} size={28} color={TEAM_COLOR[h.teamKey]} />
+              <Avatar name={h.name} avatarUrl={h.avatarUrl} size={28} color={h.color} />
               <span className="min-w-0 flex-1">
                 <span className="block text-[12.5px] font-semibold text-tn-ink truncate group-hover:text-tn-teal transition-colors">{h.name}</span>
                 {h.teamName && (
-                  <span className="inline-block mt-0.5 max-w-full truncate font-(family-name:--font-display) font-extrabold text-[8.5px] tracking-wide uppercase rounded-full px-1.5 py-0.5" style={{ color: TEAM_COLOR[h.teamKey], background: `${TEAM_COLOR[h.teamKey]}1a` }}>{h.teamName}</span>
+                  <span className="inline-block mt-0.5 max-w-full truncate font-(family-name:--font-display) font-extrabold text-[8.5px] tracking-wide uppercase rounded-full px-1.5 py-0.5" style={{ color: h.color, background: `${h.color}1a` }}>{h.teamName}</span>
                 )}
               </span>
               <span className="shrink-0 text-[11px] text-muted whitespace-nowrap tabular-nums">{h.tenure}</span>

@@ -427,7 +427,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             {p.teams.length ? p.teams.map(t => (
               <div key={t.teamId} className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-2 min-w-0">
-                  <span className="w-[9px] h-[9px] rounded-[3px] shrink-0" style={{ background: TEAM_COLOR[t.teamKey] }} />
+                  <span className="w-[9px] h-[9px] rounded-[3px] shrink-0" style={{ background: t.color }} />
                   <span className="text-[13.5px] text-foreground font-semibold truncate">{t.teamName}</span>
                 </span>
                 <PillBadge pill={teamPositionPill(t.position)} />
@@ -501,7 +501,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
           <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
             {reports.map(({ person: m, via, teamName }) => (
               <div key={m.id} className="flex items-center gap-2.5">
-                <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px] shrink-0" style={{ width: 30, height: 30, background: TEAM_COLOR[m.teamKey] }}>{initialsOf(m.full_name)}</span>
+                <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px] shrink-0" style={{ width: 30, height: 30, background: m.color }}>{initialsOf(m.full_name)}</span>
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-bold text-tn-ink truncate">{m.full_name}</span>
                   <span className="flex items-center gap-1.5 min-w-0">

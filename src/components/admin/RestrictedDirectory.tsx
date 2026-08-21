@@ -19,7 +19,8 @@ import Link from 'next/link'
 import { SearchField } from '@/components/ui/SearchField'
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, statusPill, formatDate, teamKeyFromName, typePill, timePill, ynPill, lifecyclePill, PILL_CLASS, TEAM_COLOR, type TeamKey } from '@/lib/directory/people-types'
+import { roleTypePill, statusPill, formatDate, typePill, timePill, ynPill, lifecyclePill, PILL_CLASS, type TeamKey } from '@/lib/directory/people-types'
+import { teamColour } from '@/lib/directory/team-colour'
 import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profile/profile-parts'
 
 export interface RestrictedPersonDetail {
@@ -83,6 +84,13 @@ export interface RestrictedTeam {
   id: string
   name: string
   teamKey: TeamKey
+  /**
+   * Resolved once by the loader, from teams.color with the key map as the
+   * fallback. Carried as data rather than looked up in each component,
+   * because three components looking it up their own way is how the same
+   * person ended up three different colours.
+   */
+  color: string
   members: RestrictedTeamMember[]
   /** Level 2 only; null at level 1, which hides the tool-access block. */
   tools: RestrictedTeamTool[] | null
@@ -94,6 +102,8 @@ export interface RestrictedPerson {
   title: string | null
   teamName: string | null
   teamKey: TeamKey
+  /** See RestrictedTeam.color. */
+  color: string
   avatarUrl: string | null
   roleType: string
   status: 'active' | 'inactive'
@@ -184,7 +194,7 @@ export function RestrictedDirectory({
               onKeyDown={openable ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(p.id) } } : undefined}
               className={`flex items-center gap-3.5 px-[22px] py-3 ${i === 0 ? '' : 'border-t border-slate-200'} ${openable ? 'cursor-pointer hover:bg-subtle transition-colors' : ''}`}
             >
-              <Avatar name={p.name} avatarUrl={p.avatarUrl} size={36} color={TEAM_COLOR[p.teamKey]} />
+              <Avatar name={p.name} avatarUrl={p.avatarUrl} size={36} color={p.color} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
                   <span className="text-[14px] font-semibold text-foreground truncate">{p.name}</span>
@@ -211,7 +221,7 @@ export function RestrictedDirectory({
           <div className="absolute inset-0 bg-tn-ink/40" onClick={() => setOpenId(null)} />
           <div className="relative w-full max-w-[420px] bg-white rounded-[18px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] overflow-hidden">
             <div className="px-6 pt-6 pb-5 flex items-center gap-3.5 border-b border-slate-100">
-              <Avatar name={open.name} avatarUrl={open.avatarUrl} size={52} color={TEAM_COLOR[open.teamKey]} />
+              <Avatar name={open.name} avatarUrl={open.avatarUrl} size={52} color={open.color} />
               <div className="min-w-0">
                 <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0 truncate">{open.name}</h2>
                 <p className="text-[13px] text-muted mt-0.5 truncate">{open.title ?? '-'}</p>
@@ -263,7 +273,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
     <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
       {teams.map(t => (
         <div key={t.id} className="rounded-[16px] border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-          <div className="h-1.5" style={{ background: TEAM_COLOR[t.teamKey] }} />
+          <div className="h-1.5" style={{ background: t.color }} />
           <div className="p-5 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink m-0 truncate">{t.name}</h3>
@@ -273,7 +283,7 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
             <div className="space-y-2">
               {t.members.map(m => (
                 <div key={m.id} className="flex items-center gap-2.5">
-                  <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={TEAM_COLOR[t.teamKey]} />
+                  <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={t.color} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13px] font-semibold text-foreground truncate">{m.name}</span>
                     {m.title && <span className="block text-[11.5px] text-muted truncate">{m.title}</span>}
@@ -317,8 +327,6 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
 // drift into lookalikes. Read-only either way: editing your own details still
 // lives on My profile, the one place that owns those writes.
 export function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProfile; isSelf: boolean; onClose: () => void }) {
-  const teamKey = teamKeyFromName(p.teamNames[0])
-
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8" role="dialog" aria-modal="true" aria-label={`${p.name} profile`}>
       <div className="fixed inset-0 bg-tn-ink/40" onClick={onClose} />
@@ -326,15 +334,15 @@ export function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProf
         {/* header, same proportions as the page */}
         <div className="px-[30px] pt-7 pb-6 border-b border-[var(--panel-border)] flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-6 min-w-0">
-            <Avatar name={p.name} avatarUrl={p.avatarUrl} size={110} color={TEAM_COLOR[teamKey]} />
+            <Avatar name={p.name} avatarUrl={p.avatarUrl} size={110} color={teamColour(null, p.teamNames[0] ?? null)} />
             <div className="min-w-0">
               <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] leading-[1.15] text-tn-ink m-0">{p.name}</h2>
               <p className="text-[15px] text-muted mt-1 font-semibold">{p.title || '-'}</p>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 {p.teamNames.length === 0 ? (
-                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: TEAM_COLOR[teamKey], background: `${TEAM_COLOR[teamKey]}1a` }}>No team</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: teamColour(null, null), background: `${teamColour(null, null)}1a` }}>No team</span>
                 ) : p.teamNames.map(t => (
-                  <span key={t} className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: TEAM_COLOR[teamKeyFromName(t)], background: `${TEAM_COLOR[teamKeyFromName(t)]}1a` }}>{t}</span>
+                  <span key={t} className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: teamColour(null, t), background: `${teamColour(null, t)}1a` }}>{t}</span>
                 ))}
                 <Badge pill={roleTypePill(p.roleType)} />
                 <Badge pill={statusPill(p.active)} />

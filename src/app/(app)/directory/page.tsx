@@ -9,7 +9,8 @@ import { loadContactByPerson, type Contact } from '@/lib/hr/contact'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
-import { teamKeyFromName, TEAM_COLOR, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/lib/directory/people-types'
+import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
+import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/lib/directory/people-types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import type { TeamCard } from '@/components/admin/TeamsManager'
@@ -192,6 +193,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const teamKeyByPerson = new Map<string, TeamKey>()
   for (const p of people) teamKeyByPerson.set(p.id, teamKeyFromName(primaryTeam(p.id)?.name))
 
+  // One palette for the page, from what the admin set on each team.
+  const teamPalette = teamColoursFrom(teams as { name: string; color: string | null }[])
+
   // Per-person memberships with position (drives the People modal's teams editor)
   // and the set of teams each person LEADS (position=team_leader) for the tier.
   const teamsByPerson = new Map<string, PersonTeam[]>()
@@ -200,7 +204,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     const t = teamById.get(m.team_id)
     if (t) {
       const arr = teamsByPerson.get(m.person_id) ?? []
-      arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), position: m.position, primary: m.is_primary })
+      arr.push({ teamId: t.id, teamName: t.name, teamKey: teamKeyFromName(t.name), color: colourOf(teamPalette, t.name), position: m.position, primary: m.is_primary })
       teamsByPerson.set(m.person_id, arr)
     }
     if (teamPositionLeads(m.position)) {
@@ -269,6 +273,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         teamId: pt?.id ?? null,
         teamName: pt?.name ?? null,
         teamKey: teamKeyFromName(pt?.name),
+        color: colourOf(teamPalette, pt?.name ?? null),
         teams: teamsByPerson.get(p.id) ?? [],
         manager_id: mgrId,
         managerName: mgrId ? nameById.get(mgrId) ?? null : null,
@@ -314,7 +319,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
   // ── Teams (filter pills + Team select options) ──
   const teamOptions = teams
-    .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: t.color ?? TEAM_COLOR[teamKeyFromName(t.name)] }))
+    .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: teamColour(t.color, t.name) }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // ── Team cards (members with LEAD flag + project access) ──
@@ -362,7 +367,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         id: t.id,
         name: t.name,
         teamKey: key,
-        color: t.color ?? TEAM_COLOR[key],
+        color: teamColour(t.color, t.name),
         memberCount: mem.length,
         members: mem,
         access: (grantsByTeam.get(t.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
@@ -409,6 +414,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           title: str(p.title),
           teamName: pt?.name ?? null,
           teamKey: teamKeyFromName(pt?.name),
+          color: colourOf(teamPalette, pt?.name ?? null),
           avatarUrl: avatarById.get(p.id) ?? null,
           roleType: roleTypeById.get(p.id) ?? 'user',
           status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
@@ -435,6 +441,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         id: t.id,
         name: t.name,
         teamKey: teamKeyFromName(t.name),
+        color: colourOf(teamPalette, t.name),
         members: members
           .filter(m => m.team_id === t.id)
           .map(m => ({
@@ -497,6 +504,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       email: r.email ?? pv?.accountEmail ?? '',
       userAgent: r.user_agent,
       accessedAt: r.accessed_at,
+      color: pv?.color ?? colourOf(teamPalette, null),
       avatarUrl: pv?.avatarUrl ?? null,
       teamKey: (pv?.teamKey ?? 'other') as TeamKey,
     }

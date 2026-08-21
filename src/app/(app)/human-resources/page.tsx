@@ -31,7 +31,7 @@ export default async function HumanResourcesPage() {
     if (p.status !== 'active' || !p.hireDate) continue
     const t = tenureSince(p.hireDate, now)
     const ms = milestoneOf(t)
-    const h: HrHolder = { id: p.id, name: p.full_name, avatarUrl: p.avatarUrl, teamName: p.teamName, teamKey: p.teamKey, tenure: formatTenureShort(t) }
+    const h: HrHolder = { id: p.id, name: p.full_name, avatarUrl: p.avatarUrl, teamName: p.teamName, teamKey: p.teamKey, color: p.color, tenure: formatTenureShort(t) }
     if (ms.kind === 'quarter') quarterHolders[ms.value].push(h)
     else if (ms.kind === 'year') {
       const arr = yearHolders.get(ms.value) ?? []

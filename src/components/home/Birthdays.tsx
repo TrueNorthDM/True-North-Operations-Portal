@@ -2,7 +2,6 @@
 // self-contained block so it can sit side by side with Work anniversaries.
 
 import { Avatar } from '@/components/Avatar'
-import { TEAM_COLOR } from '@/lib/directory/people-types'
 import { MONTHS, formatMonthDay, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
 
 interface Bd extends CelebrationPerson { day: number }
@@ -31,11 +30,11 @@ export function Birthdays({ people }: { people: CelebrationPerson[] }) {
           <div className="flex flex-col gap-3">
             {list.map(b => (
               <div key={b.id} className="flex items-center gap-2.5">
-                <Avatar name={b.name} avatarUrl={b.avatarUrl} size={32} color={TEAM_COLOR[b.teamKey]} />
+                <Avatar name={b.name} avatarUrl={b.avatarUrl} size={32} color={b.color} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13px] font-bold text-tn-ink truncate">{b.name}</span>
                   {b.teamName && (
-                    <span className="inline-block mt-0.5 max-w-full truncate font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-1.5 py-0.5" style={{ color: TEAM_COLOR[b.teamKey], background: `${TEAM_COLOR[b.teamKey]}1a` }}>{b.teamName}</span>
+                    <span className="inline-block mt-0.5 max-w-full truncate font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-1.5 py-0.5" style={{ color: b.color, background: `${b.color}1a` }}>{b.teamName}</span>
                   )}
                 </span>
                 <span className="inline-flex items-center gap-1.5 shrink-0 font-(family-name:--font-display) font-extrabold text-[12px] text-[#b8790a] bg-[#e08a1e]/12 rounded-full pl-2 pr-2.5 py-1">
