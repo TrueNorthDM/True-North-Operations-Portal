@@ -127,9 +127,18 @@ export async function GET(request: Request) {
   if (left > 0 && hop + 1 < LINKS) {
     // Fire and forget: waiting would spend this function's budget on the next
     // one's work and the chain would never get past hop one.
-    void fetch(`${url.origin}/api/admin/monday-backfill?hop=${hop + 1}`, {
-      headers: secret ? { authorization: `Bearer ${secret}` } : {},
-    }).catch(() => {})
+    //
+    // The hop carries the cron secret when there is one, and the caller's own
+    // cookie otherwise. Without the fallback, an account with no CRON_SECRET
+    // set gets a first pass that works and a second that 403s, which looks
+    // like the backfill silently stopping halfway.
+    const forward: Record<string, string> = {}
+    if (secret) forward.authorization = `Bearer ${secret}`
+    const cookie = request.headers.get('cookie')
+    if (cookie) forward.cookie = cookie
+
+    void fetch(`${url.origin}/api/admin/monday-backfill?hop=${hop + 1}`, { headers: forward })
+      .catch(() => {})
   }
 
   return NextResponse.json({
