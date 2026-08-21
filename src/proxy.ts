@@ -83,7 +83,11 @@ export async function proxy(request: NextRequest) {
   // Protected routes, require a session
   if (!user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', pathname)
+    // Path AND query. The Report keeps its tab, scope and period in the query
+    // string precisely so a link can be pasted to somebody else, and dropping
+    // it here sent every shared link to the default view after signing in.
+    // safeNext still refuses anything that is not a same-origin relative path.
+    loginUrl.searchParams.set('next', pathname + request.nextUrl.search)
     return NextResponse.redirect(loginUrl)
   }
 

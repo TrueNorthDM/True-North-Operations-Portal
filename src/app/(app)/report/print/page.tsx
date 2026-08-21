@@ -64,7 +64,7 @@ export default async function ReportPrintPage(
         </p>
       </header>
 
-      <Body tab={tab} supabase={supabase} filters={filters} period={period} />
+      <Body tab={tab} supabase={supabase} filters={filters} period={period} level={level} />
     </div>
   )
 }
@@ -78,9 +78,10 @@ const TAB_TITLE: Record<string, string> = {
 }
 
 async function Body({
-  tab, supabase, filters, period,
+  tab, supabase, filters, period, level,
 }: {
   tab: string
+  level: number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
   filters: { personId?: string | null; teamId?: string | null }
@@ -103,13 +104,13 @@ async function Body({
   }
 
   if (tab === 'waits') {
-    const { steps, stuck } = await loadWaits(supabase, { ...filters, period })
-    return <ReportWaits steps={steps} stuck={stuck} />
+    const { steps, boards, stuck } = await loadWaits(supabase, { ...filters, period })
+    return <ReportWaits steps={steps} boards={boards} stuck={stuck} />
   }
 
   if (tab === 'method') {
     const { sources, todo } = await loadMethod(supabase, await readRecording(supabase))
-    return <ReportMethod sources={sources} todo={todo} />
+    return <ReportMethod sources={sources} todo={todo} yourLevel={level} />
   }
 
   const { overview } = await loadReportOverview(supabase, { ...filters, period })

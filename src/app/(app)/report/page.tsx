@@ -107,7 +107,7 @@ export default async function ReportPage(
         <DimWhilePending>
           <div className="space-y-4">
             <ChangeLogNotice recording={recording} />
-            <Tab tab={tab} supabase={supabase} filters={filters} period={period} recording={recording} />
+            <Tab tab={tab} supabase={supabase} filters={filters} period={period} recording={recording} level={level} />
           </div>
         </DimWhilePending>
       </ReportNav>
@@ -123,9 +123,10 @@ export default async function ReportPage(
  * so there is no case to fall through.
  */
 async function Tab({
-  tab, supabase, filters, period, recording,
+  tab, supabase, filters, period, recording, level,
 }: {
   tab: ReportTabKey
+  level: number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
   filters: { personId?: string | null; teamId?: string | null }
@@ -138,8 +139,8 @@ async function Tab({
   }
 
   if (tab === 'waits') {
-    const { steps, stuck } = await loadWaits(supabase, { ...filters, period })
-    return <ReportWaits steps={steps} stuck={stuck} />
+    const { steps, boards, stuck } = await loadWaits(supabase, { ...filters, period })
+    return <ReportWaits steps={steps} boards={boards} stuck={stuck} />
   }
 
   if (tab === 'workload') {
@@ -177,7 +178,7 @@ async function Tab({
 
   if (tab === 'method') {
     const { sources, todo } = await loadMethod(supabase, recording)
-    return <ReportMethod sources={sources} todo={todo} />
+    return <ReportMethod sources={sources} todo={todo} yourLevel={level} />
   }
 
   const { overview } = await loadReportOverview(supabase, { ...filters, period })

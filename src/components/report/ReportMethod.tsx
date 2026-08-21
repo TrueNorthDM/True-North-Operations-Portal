@@ -25,7 +25,7 @@ const SOURCE_CHIP: Record<SourceState, { label: string; className: string }> = {
 }
 
 export function ReportMethod(
-  { sources, todo }: { sources: Source[]; todo: OpenDecision[] },
+  { sources, todo, yourLevel }: { sources: Source[]; todo: OpenDecision[]; yourLevel?: number },
 ) {
   return (
     <div className="flex flex-col gap-3.5">
@@ -43,6 +43,47 @@ export function ReportMethod(
       ))}
 
       {todo.length > 0 ? <ToBuild todo={todo} /> : null}
+      {yourLevel ? <WhoSeesWhat yourLevel={yourLevel} /> : null}
+    </div>
+  )
+}
+
+const LEVELS: { level: number; who: string; sees: string }[] = [
+  { level: 1, who: 'Everyone signed in', sees: 'Their own work. Overview, Where it waits and Method, and no other name anywhere on the page.' },
+  { level: 2, who: 'Team leaders', sees: 'Themselves and their team, plus the People tab. Workload is not shown.' },
+  { level: 3, who: 'Directory admins', sees: 'Everyone, including the Monday accounts nobody is linked to, plus the Workload tab.' },
+]
+
+/**
+ * Who sees what, level by level.
+ *
+ * On the Method tab rather than in a settings screen because the question it
+ * answers is about the numbers: somebody comparing their Report against a
+ * colleague's and finding different figures needs to know that is by design
+ * and not a fault. The row for the reader's own level is marked, since the
+ * common version of that question is "which one am I".
+ */
+function WhoSeesWhat({ yourLevel }: { yourLevel: number }) {
+  return (
+    <div className="border border-[var(--panel-border)] bg-white rounded-[12px] px-4 py-3.5">
+      <h3 className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink m-0 mb-3">
+        Who sees what
+      </h3>
+      <div className="flex flex-col gap-2.5">
+        {LEVELS.map(l => (
+          <div key={l.level} className="flex items-start gap-2.5">
+            <span className={`${chip} flex-none mt-px ${l.level === yourLevel
+              ? 'bg-[rgba(30,125,127,.12)] text-tn-teal'
+              : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'}`}
+            >
+              {l.level === yourLevel ? 'you' : `level ${l.level}`}
+            </span>
+            <span className="min-w-0 text-[12.5px] text-foreground leading-[1.55]">
+              <strong className="font-bold">{l.who}.</strong> {l.sees}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

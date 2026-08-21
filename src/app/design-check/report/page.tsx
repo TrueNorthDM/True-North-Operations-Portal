@@ -10,7 +10,7 @@ import { ReportOverview } from '@/components/report/ReportOverview'
 import type { PersonRow } from '@/components/report/ReportPeople'
 import { PeopleDemo } from './PeopleDemo'
 import { ReportWorkload } from '@/components/report/ReportWorkload'
-import { ReportWaits, type StepWait, type StuckItem } from '@/components/report/ReportWaits'
+import { ReportWaits, type BoardWait, type StepWait, type StuckItem } from '@/components/report/ReportWaits'
 import { ReportMethod, type Source } from '@/components/report/ReportMethod'
 import { ReportControls } from '@/components/report/ReportControls'
 import {
@@ -169,6 +169,13 @@ const STEPS: StepWait[] = [
   { name: 'Publish', median: 1.1, delivered: 88 },
 ]
 
+const BOARDS: BoardWait[] = [
+  { board: 'AAAF Publishing', delivered: 132, medianHeld: 2.2, latePct: 11 },
+  { board: 'i7 Marketing', delivered: 38, medianHeld: 7.5, latePct: 34 },
+  { board: 'Team Reports Scheduled', delivered: 74, medianHeld: 4.8, latePct: 22 },
+  { board: 'HFA Publishing', delivered: 21, medianHeld: 3.1, latePct: null },
+]
+
 const STUCK: StuckItem[] = [
   { id: '1', item: 'SEO Bi-Weekly Company Report, Nov 25 2025', who: 'Amy Marsh', step: 'Write', heldDays: 104 },
   { id: '2', item: 'i7 Monthly Report, MME billing', who: 'Kevin Brown', step: 'Approve', heldDays: 61 },
@@ -261,8 +268,8 @@ export default async function ReportPreview(
               </div>
             </div>
           )
-          : tab === 'waits' ? <ReportWaits steps={STEPS} stuck={STUCK} />
-          : tab === 'method' ? <ReportMethod sources={SOURCES} todo={TODO} />
+          : tab === 'waits' ? <ReportWaits steps={STEPS} boards={BOARDS} stuck={STUCK} />
+          : tab === 'method' ? <ReportMethod sources={SOURCES} todo={TODO} yourLevel={level} />
           : tab === 'states' ? <StatesDemo />
           : <ReportOverview data={SAMPLE} />}
         </div>

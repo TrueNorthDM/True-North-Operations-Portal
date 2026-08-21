@@ -6,7 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadWorklist } from '@/lib/monday/worklist/data'
-import type { StepWait, StuckItem } from '@/components/report/ReportWaits'
+import type { BoardWait, StepWait, StuckItem } from '@/components/report/ReportWaits'
 import { accountsInScope, loadOpenSince, loadSpans } from './data'
 import { median } from './spans'
 import type { Period } from './scope'
@@ -23,7 +23,7 @@ const MIN_SPANS_PER_STEP = 3
 export async function loadWaits(
   supabase: Client,
   f: { personId?: string | null; teamId?: string | null; period?: Period },
-): Promise<{ steps: StepWait[]; stuck: StuckItem[] }> {
+): Promise<{ steps: StepWait[]; boards: BoardWait[]; stuck: StuckItem[] }> {
   const period = f.period ?? 90
   const since = new Date(Date.now() - period * 86_400_000)
 
@@ -56,6 +56,32 @@ export async function loadWaits(
     else byStep.set(name, [s.heldDays])
   }
 
+  // Board names come from the snapshot, which already reads them, rather than
+  // from a second query returning names for boards nobody in scope touched.
+  const boardName = new Map<number, string>()
+  for (const r of snapshot.rows) boardName.set(r.boardId, r.boardName)
+
+  const byBoard = new Map<number, { held: number[]; late: number; judged: number }>()
+  for (const s of spans) {
+    const cur = byBoard.get(s.board_id) ?? { held: [], late: 0, judged: 0 }
+    cur.held.push(s.heldDays)
+    if (s.lateDays !== null) {
+      cur.judged++
+      if (s.lateDays > 0) cur.late++
+    }
+    byBoard.set(s.board_id, cur)
+  }
+
+  const boards: BoardWait[] = [...byBoard.entries()]
+    .filter(([, v]) => v.held.length >= MIN_SPANS_PER_STEP)
+    .map(([id, v]) => ({
+      board: boardName.get(id) ?? `Board ${id}`,
+      delivered: v.held.length,
+      medianHeld: median(v.held) ?? 0,
+      // Only over what carried a deadline, the same rule as the on-time share.
+      latePct: v.judged ? Math.round((v.late / v.judged) * 100) : null,
+    }))
+
   const steps: StepWait[] = [...byStep.entries()]
     .filter(([, days]) => days.length >= MIN_SPANS_PER_STEP)
     .map(([name, days]) => ({ name, median: median(days) ?? 0, delivered: days.length }))
@@ -84,5 +110,5 @@ export async function loadWaits(
     .sort((a, b) => b.heldDays - a.heldDays)
     .slice(0, STUCK_LIMIT)
 
-  return { steps, stuck }
+  return { steps, boards, stuck }
 }

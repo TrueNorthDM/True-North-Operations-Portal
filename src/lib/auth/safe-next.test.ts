@@ -35,3 +35,17 @@ describe('safeNext', () => {
     expect(safeNext('admin/tickets')).toBe('/')
   })
 })
+
+describe('safeNext with a query string', () => {
+  // The Report keeps its whole state in the query, so a shared link that
+  // survives the login has to keep it.
+  it('keeps the query on a relative path', () => {
+    expect(safeNext('/report?tab=workload&scope=everyone')).toBe('/report?tab=workload&scope=everyone')
+  })
+
+  it('still refuses another origin hidden behind a query', () => {
+    expect(safeNext('//evil.com/?next=/report')).toBe('/')
+    expect(safeNext('/\\evil.com?x=1')).toBe('/')
+    expect(safeNext('https://evil.com/?a=/report')).toBe('/')
+  })
+})
