@@ -24,6 +24,11 @@ import { ReportMethod } from '@/components/report/ReportMethod'
 import { loadReportPeople } from '@/lib/report/people'
 import { loadWaits } from '@/lib/report/waits'
 import { loadMethod } from '@/lib/report/method'
+import { ReportWorkload } from '@/components/report/ReportWorkload'
+import { EstimateAudit, NobodyInSelection } from '@/components/report/WorkloadHoldings'
+import { WorkloadFilters } from '@/components/report/WorkloadFilters'
+import { loadWorkload } from '@/lib/report/workload-data'
+import { activePeople, primaryTeams } from '@/lib/report/directory'
 import { ReportControls } from '@/components/report/ReportControls'
 import { resolvePeriod, resolveScope, type ReportState } from '@/lib/report/scope'
 import { loadReportOverview, readRecording, type Recording } from '@/lib/report/data'
@@ -32,7 +37,7 @@ export const metadata = { title: 'Report' }
 export const dynamic = 'force-dynamic'
 
 /** Tabs with something behind them. The rest arrive as they are built. */
-const READY: readonly ReportTabKey[] = ['overview', 'people', 'waits', 'method']
+const READY: readonly ReportTabKey[] = ['overview', 'people', 'workload', 'waits', 'method']
 
 export default async function ReportPage(
   { searchParams }: {
@@ -137,6 +142,39 @@ async function Tab({
     return <ReportWaits steps={steps} stuck={stuck} />
   }
 
+  if (tab === 'workload') {
+    const [{ people, effort, estimateReady }, teams, everyone] = await Promise.all([
+      loadWorkload(supabase, { ...filters, period }),
+      supabase.from('teams').select('id, name').order('name'),
+      activePeople(supabase, {}),
+    ])
+    const teamOf = await primaryTeams(supabase, everyone.map(p => p.id))
+    const teamIds = new Map(
+      ((teams.data ?? []) as { id: string; name: string }[]).map(t => [t.name, t.id]),
+    )
+
+    return (
+      <div className="space-y-4">
+        <WorkloadFilters
+          teams={(teams.data ?? []) as { id: string; name: string }[]}
+          people={everyone.map(p => ({
+            id: p.id,
+            name: p.full_name,
+            teamIds: [teamIds.get(teamOf.get(p.id) ?? '')].filter((x): x is string => Boolean(x)),
+          }))}
+          note={`${people.length} ${people.length === 1 ? 'person' : 'people'} in scope`}
+        />
+        {people.length === 0 ? <NobodyInSelection /> : <ReportWorkload people={people} />}
+        {/* The audit is permanent on this tab, and its absence is itself the
+            state worth showing: with nothing delivered yet there is no hours
+            per step to estimate from, and Load has nothing to divide by. */}
+        {estimateReady
+          ? <EstimateAudit rows={effort} />
+          : <NoEstimateYet />}
+      </div>
+    )
+  }
+
   if (tab === 'method') {
     const { sources, todo } = await loadMethod(supabase, recording)
     return <ReportMethod sources={sources} todo={todo} />
@@ -144,6 +182,25 @@ async function Tab({
 
   const { overview } = await loadReportOverview(supabase, { ...filters, period })
   return <ReportOverview data={overview} />
+}
+
+/**
+ * Why the Load column is empty.
+ *
+ * Hours per step is total logged hours over steps delivered, and the log has
+ * delivered nothing yet. Saying so beats a Load column of zeros, which would
+ * read as a team with nothing to do.
+ */
+function NoEstimateYet() {
+  return (
+    <div className="rounded-[10px] border border-[rgba(224,148,14,.5)] bg-[var(--warn-bg)] px-4 py-3.5">
+      <p className="text-[13.5px] text-[var(--warn-fg)] m-0 leading-[1.6]">
+        Load cannot be estimated yet. Hours per step is the logged hours divided by the steps
+        the change log has seen delivered, and it has seen none so far. Utilisation and Backlog
+        do not depend on it.
+      </p>
+    </div>
+  )
 }
 
 /** The real change-log start date, never a constant. */

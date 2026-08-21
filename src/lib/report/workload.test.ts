@@ -3,6 +3,7 @@ import {
   LOAD_SCALE, LOAD_TICK_PCT, SPARK_MAX_PX, availableHours, formatNet, loadPercent,
   groupAverageWeek, netFlow, reading, sparkBar, utilisation,
 } from './workload'
+import { hoursPerStep } from './workload-data'
 
 describe('utilisation', () => {
   it('divides logged hours by the contracted week', () => {
@@ -107,5 +108,17 @@ describe('sparkBar', () => {
   it('tells piling up from clearing', () => {
     expect(sparkBar(1).piling).toBe(true)
     expect(sparkBar(-1).piling).toBe(false)
+  })
+})
+
+describe('hoursPerStep', () => {
+  it('averages the hours actually logged over the steps actually delivered', () => {
+    expect(hoursPerStep(1046, 118)).toBe(8.9)
+  })
+
+  // An average over no steps is not a small number, it is no number. Load has
+  // to say so rather than divide and print a confident zero.
+  it('has no answer before anything has been delivered', () => {
+    expect(hoursPerStep(1046, 0)).toBeNull()
   })
 })
