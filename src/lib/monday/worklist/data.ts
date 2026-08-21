@@ -84,6 +84,14 @@ export interface WorkRow {
   mondayUserId: number
   who: string
   itemUpdatedAt: string | null
+  /**
+   * The people column this step lives on.
+   *
+   * Carried because it is half the key the change log uses: without it a row
+   * on screen cannot be matched to its own history, and the Report ends up
+   * guessing which step an event belongs to.
+   */
+  peopleCol: string
 }
 
 // Workspace and board are columns on the row now, not levels of a tree. The
@@ -293,6 +301,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       parentItemName: a.parent_item_name,
       groupTitle: a.group_title,
       stepName: st?.step_name ?? a.people_col,
+      peopleCol: a.people_col,
       statusText: a.status_text,
       statusDone: a.status_done,
       statusColor: a.status_color,

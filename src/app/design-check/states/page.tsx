@@ -16,7 +16,7 @@ const day = (o: number) => { const d = new Date(); d.setDate(d.getDate() + o); r
 const row = (n: number, o: Partial<WorkRow> = {}): WorkRow => ({
   id: n, boardId: 1, boardName: 'AAAF Publishing', workspaceName: 'AAAF',
   itemId: 100 + n, itemName: 'Portuguese', parentItemName: 'How do Adventists read the Bible?',
-  groupTitle: null, stepName: 'Translate', statusText: 'Working on it', statusColor: '#FDAB3D',
+  groupTitle: null, stepName: 'Translate', peopleCol: 'people', statusText: 'Working on it', statusColor: '#FDAB3D',
   statusDone: false, mondayUserId: 1, who: 'Lana Prado', itemUpdatedAt: null,
   dueDate: day(-12), dueSuspect: false, dueLabel: 'Due Date',
   url: 'https://x.monday.com/boards/1/pulses/1', assigneeKnown: true, priority: 'medium', ...o,

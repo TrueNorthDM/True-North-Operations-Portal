@@ -16,6 +16,7 @@
 //   does not depend on knowing every person's schedule.
 
 export type LoggedEvent = {
+  board_id: number
   item_id: number
   people_col: string
   monday_user_id: number
@@ -25,6 +26,7 @@ export type LoggedEvent = {
 }
 
 export type Span = {
+  board_id: number
   item_id: number
   people_col: string
   monday_user_id: number
@@ -99,6 +101,7 @@ export function deriveSpans(events: LoggedEvent[]): Span[] {
         closed = null
       } else if (e.event === 'done' && heldSince) {
         closed = {
+          board_id: e.board_id,
           item_id: e.item_id,
           people_col: e.people_col,
           monday_user_id: e.monday_user_id,

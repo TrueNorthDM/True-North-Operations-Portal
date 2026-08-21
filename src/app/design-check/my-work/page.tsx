@@ -22,6 +22,7 @@ const row = (n: number, o: Partial<WorkRow>): WorkRow => ({
   parentItemName: null,
   groupTitle: null,
   stepName: 'Approve',
+  peopleCol: 'people',
   statusText: 'Stuck',
   statusColor: '#E2445C',
   statusDone: false,

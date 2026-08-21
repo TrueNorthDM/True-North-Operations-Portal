@@ -4,7 +4,7 @@ import {
 } from './spans'
 
 const ev = (o: Partial<LoggedEvent> & Pick<LoggedEvent, 'event' | 'occurred_at'>): LoggedEvent => ({
-  item_id: 1, people_col: 'writer', monday_user_id: 42, due_date: null, ...o,
+  board_id: 7, item_id: 1, people_col: 'writer', monday_user_id: 42, due_date: null, ...o,
 })
 
 describe('deriveSpans', () => {
@@ -140,7 +140,7 @@ describe('median and percentile90', () => {
 
 describe('onTimeShare', () => {
   const span = (lateDays: number | null) =>
-    ({ item_id: 1, people_col: 'w', monday_user_id: 1, assignedAt: '', doneAt: '', heldDays: 1, dueDate: null, lateDays })
+    ({ board_id: 7, item_id: 1, people_col: 'w', monday_user_id: 1, assignedAt: '', doneAt: '', heldDays: 1, dueDate: null, lateDays })
 
   it('counts only the spans that had a deadline', () => {
     expect(onTimeShare([span(0), span(3), span(null)])).toEqual({ pct: 50, onTime: 1, judged: 2 })

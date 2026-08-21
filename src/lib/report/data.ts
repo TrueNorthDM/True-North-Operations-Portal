@@ -38,9 +38,9 @@ export type ReportData = {
 }
 
 /** Postgres and PostgREST for "that table does not exist". */
-const NO_TABLE = new Set(['42P01', 'PGRST205'])
+export const NO_TABLE = new Set(['42P01', 'PGRST205'])
 
-async function readRecording(supabase: Client): Promise<Recording> {
+export async function readRecording(supabase: Client): Promise<Recording> {
   const { data, error } = await supabase
     .from('monday_assignment_events')
     .select('detected_at')
@@ -77,7 +77,7 @@ function isLate(due: string | null, suspect: boolean, today: string): boolean {
 }
 
 /** Monday accounts belonging to the people this scope covers. */
-async function accountsInScope(
+export async function accountsInScope(
   supabase: Client, f: { personId?: string | null; teamId?: string | null },
 ): Promise<number[] | null> {
   let personIds: string[] | null = null
@@ -97,7 +97,7 @@ async function accountsInScope(
 }
 
 /** Names for the held chart, by Monday account. */
-async function namesFor(supabase: Client, ids: number[]): Promise<Map<number, string>> {
+export async function namesFor(supabase: Client, ids: number[]): Promise<Map<number, string>> {
   if (!ids.length) return new Map()
   const { data } = await supabase.from('monday_users').select('id, name').in('id', ids)
   return new Map(((data ?? []) as { id: number; name: string }[]).map(u => [u.id, u.name]))
@@ -144,7 +144,7 @@ function weeklyDelivery(spans: Span[], period: Period, now: Date): Overview['wee
 }
 
 /** Reads the log for one scope and period. */
-async function loadSpans(
+export async function loadSpans(
   supabase: Client, accounts: number[] | null, since: Date,
 ): Promise<Span[]> {
   if (accounts !== null && !accounts.length) return []
@@ -155,7 +155,7 @@ async function loadSpans(
   // held time. The done date is what gets filtered, further down.
   let q = supabase
     .from('monday_assignment_events')
-    .select('item_id, people_col, monday_user_id, event, due_date, occurred_at')
+    .select('board_id, item_id, people_col, monday_user_id, event, due_date, occurred_at')
     .gte('occurred_at', new Date(since.getTime() - 365 * 86_400_000).toISOString())
     .order('occurred_at', { ascending: true })
     .limit(50_000)
@@ -268,12 +268,12 @@ export async function loadReportOverview(
  * The last assigned or reopened with no done after it. Anything with a done
  * is not open, and anything with no hand-off at all predates the log.
  */
-async function loadOpenSince(supabase: Client, accounts: number[] | null): Promise<Map<string, string>> {
+export async function loadOpenSince(supabase: Client, accounts: number[] | null): Promise<Map<string, string>> {
   if (accounts !== null && !accounts.length) return new Map()
 
   let q = supabase
     .from('monday_assignment_events')
-    .select('item_id, people_col, monday_user_id, event, occurred_at')
+    .select('board_id, item_id, people_col, monday_user_id, event, occurred_at')
     .in('event', ['assigned', 'reopened', 'done', 'unassigned'])
     .order('occurred_at', { ascending: true })
     .limit(50_000)

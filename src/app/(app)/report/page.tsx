@@ -18,15 +18,21 @@ import { ReportTabs, resolveTab, type ReportTabKey } from '@/components/report/R
 import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
 import { ChangeLogNotice } from '@/components/report/ReportNotices'
 import { ReportOverview } from '@/components/report/ReportOverview'
+import { ReportPeople } from '@/components/report/ReportPeople'
+import { ReportWaits } from '@/components/report/ReportWaits'
+import { ReportMethod } from '@/components/report/ReportMethod'
+import { loadReportPeople } from '@/lib/report/people'
+import { loadWaits } from '@/lib/report/waits'
+import { loadMethod } from '@/lib/report/method'
 import { ReportControls } from '@/components/report/ReportControls'
 import { resolvePeriod, resolveScope, type ReportState } from '@/lib/report/scope'
-import { loadReportOverview, type Recording } from '@/lib/report/data'
+import { loadReportOverview, readRecording, type Recording } from '@/lib/report/data'
 
 export const metadata = { title: 'Report' }
 export const dynamic = 'force-dynamic'
 
 /** Tabs with something behind them. The rest arrive as they are built. */
-const READY: readonly ReportTabKey[] = ['overview']
+const READY: readonly ReportTabKey[] = ['overview', 'people', 'waits', 'method']
 
 export default async function ReportPage(
   { searchParams }: {
@@ -59,7 +65,11 @@ export default async function ReportPage(
   const filters = scope === 'me'
     ? { personId: me?.id ?? null }
     : { teamId: sp.team || null }
-  const { overview, recording } = await loadReportOverview(supabase, { ...filters, period })
+  // Only the recording state is needed by every tab: the notice above the
+  // content and the note beside the controls. The Overview's own load reads
+  // the whole worklist and a year of events, so it waits until it is the tab
+  // actually being shown.
+  const recording = await readRecording(supabase)
 
   return (
     <div className="space-y-6">
@@ -92,12 +102,48 @@ export default async function ReportPage(
         <DimWhilePending>
           <div className="space-y-4">
             <ChangeLogNotice recording={recording} />
-            <ReportOverview data={overview} />
+            <Tab tab={tab} supabase={supabase} filters={filters} period={period} recording={recording} />
           </div>
         </DimWhilePending>
       </ReportNav>
     </div>
   )
+}
+
+/**
+ * One tab's body.
+ *
+ * Each loader is called only for the tab being shown. The Workload tab is not
+ * here yet, and resolveTab has already sent anyone asking for it to Overview,
+ * so there is no case to fall through.
+ */
+async function Tab({
+  tab, supabase, filters, period, recording,
+}: {
+  tab: ReportTabKey
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any
+  filters: { personId?: string | null; teamId?: string | null }
+  period: 30 | 90
+  recording: Recording
+}) {
+  if (tab === 'people') {
+    const people = await loadReportPeople(supabase, { ...filters, period })
+    return <ReportPeople people={people} periodDays={period} />
+  }
+
+  if (tab === 'waits') {
+    const { steps, stuck } = await loadWaits(supabase, { ...filters, period })
+    return <ReportWaits steps={steps} stuck={stuck} />
+  }
+
+  if (tab === 'method') {
+    const { sources, todo } = await loadMethod(supabase, recording)
+    return <ReportMethod sources={sources} todo={todo} />
+  }
+
+  const { overview } = await loadReportOverview(supabase, { ...filters, period })
+  return <ReportOverview data={overview} />
 }
 
 /** The real change-log start date, never a constant. */
