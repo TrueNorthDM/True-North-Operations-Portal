@@ -59,7 +59,7 @@ export default async function ReportPage(
   const filters = scope === 'me'
     ? { personId: me?.id ?? null }
     : { teamId: sp.team || null }
-  const { overview, recording } = await loadReportOverview(supabase, filters)
+  const { overview, recording } = await loadReportOverview(supabase, { ...filters, period })
 
   return (
     <div className="space-y-6">
