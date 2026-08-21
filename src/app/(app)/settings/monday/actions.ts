@@ -75,3 +75,41 @@ export async function setUserHidden(mondayUserId: number, hidden: boolean): Prom
   done()
   return { ok: true }
 }
+
+/**
+ * Confirm a seeded step, or switch it off.
+ *
+ * 'guess' is what seedSteps() writes: the people column paired with whatever
+ * status column sat to its right. Confirming says a human looked; switching
+ * off says the pairing found a column that is not a stage of work, and the
+ * rows under it stop appearing on anybody's list.
+ */
+export async function setStepSource(
+  boardId: number, peopleCol: string, source: 'guess' | 'confirmed' | 'off',
+): Promise<Result> {
+  const no = await guard(); if (no) return { ok: false, error: no }
+  const { error } = await createAdminClient()
+    .from('monday_board_steps')
+    .update({ source })
+    .eq('board_id', boardId)
+    .eq('people_col', peopleCol)
+  if (error) return { ok: false, error: error.message }
+  done()
+  return { ok: true }
+}
+
+/**
+ * Point a board at the timeclock project its hours are booked to.
+ *
+ * Null unlinks it, and the board goes back to the shared average. That is a
+ * real choice rather than an undo: a board whose hours are spread across
+ * several codes is better on the average than on one wrong code.
+ */
+export async function setBoardJobcode(boardId: number, jobcodeId: number | null): Promise<Result> {
+  const no = await guard(); if (no) return { ok: false, error: no }
+  const { error } = await createAdminClient()
+    .from('monday_boards').update({ tc_jobcode_id: jobcodeId }).eq('id', boardId)
+  if (error) return { ok: false, error: error.message }
+  done()
+  return { ok: true }
+}

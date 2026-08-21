@@ -5,6 +5,9 @@
 import Link from 'next/link'
 import { WorklistSources } from '@/components/monday/WorklistSources'
 import { loadWorklistSources } from '@/lib/monday/worklist/sources'
+import { StepReview } from '@/components/monday/StepReview'
+import { loadStepsForReview, reviewProgress } from '@/lib/monday/worklist/steps-review'
+import { BoardProjects, type BoardLink } from '@/components/monday/BoardProjects'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/role'
@@ -148,6 +151,8 @@ export default async function SettingsPage() {
   const signedIn = { name: profile?.full_name ?? me?.full_name ?? profile?.email ?? 'You', role: `${roleLabel} · True North` }
 
   const worklistSources = await loadWorklistSources(createAdminClient())
+  const stepsForReview = await loadStepsForReview(createAdminClient())
+  const boardLinks = await loadBoardLinks()
 
   const sections: SettingsSection[] = [
     {
@@ -200,6 +205,22 @@ export default async function SettingsPage() {
             desc="Which Monday workspaces, boards and people are allowed to appear on My Work. 262 boards is more than anybody works on: finished projects, experiments and personal spaces keep producing steps that will never be done, and every one of them makes the list longer without making it truer. Each row shows how much work it holds and when it was last touched, so the boards nobody has used in years list themselves."
           />
           <WorklistSources sources={worklistSources} />
+
+          <div className="mt-8">
+            <SectionHead
+              title="Steps the ingest guessed"
+              desc="A step is a people column paired with the status column beside it, and the pairing is a guess until somebody looks. It is right most of the time and wrong loudly when it is not: a people column sitting next to a Priority dropdown produces a step called Priority, and every row of it lands on somebody's list. The ones that read like a dropdown rather than a stage come first, then the ones carrying the most work, so a few minutes here fixes most of the data."
+            />
+            <StepReview steps={stepsForReview} progress={reviewProgress(stepsForReview)} />
+          </div>
+
+          <div className="mt-8">
+            <SectionHead
+              title="Boards and timeclock projects"
+              desc="The Workload tab estimates how much work is ahead of somebody by multiplying their open steps by an hours-per-step figure. A board with no project code shares one average across the whole company, so a translation step and a monthly report count as the same amount of work. Linking a board measures it against its own hours instead, and the estimate audit stops saying fallback. The busiest boards are first: linking the top ten changes the numbers, linking the quietest hundred does not."
+            />
+            <BoardProjects boards={boardLinks.boards} jobcodes={boardLinks.jobcodes} />
+          </div>
         </div>
       ),
     },
@@ -305,4 +326,39 @@ export default async function SettingsPage() {
       <SettingsNav signedIn={signedIn} sections={sections} />
     </div>
   )
+}
+
+/**
+ * Boards to link, busiest first, with the projects available to link them to.
+ *
+ * Only active regular job codes: PTO and unpaid are not project work, and
+ * offering them invites a mapping that would make an estimate worse.
+ */
+async function loadBoardLinks(): Promise<{ boards: BoardLink[]; jobcodes: { id: number; name: string }[] }> {
+  const supabase = createAdminClient()
+
+  const [{ data: boards }, { data: jobcodes }] = await Promise.all([
+    supabase.from('monday_boards')
+      .select('id, name, workspace_name, assignments_count, tc_jobcode_id')
+      .eq('included', true),
+    supabase.from('tc_jobcodes').select('id, name').eq('active', true).eq('kind', 'regular').order('name'),
+  ])
+
+  type Row = {
+    id: number; name: string; workspace_name: string | null
+    assignments_count: number | null; tc_jobcode_id: number | null
+  }
+
+  return {
+    boards: ((boards ?? []) as Row[])
+      .map(b => ({
+        id: b.id,
+        name: b.name,
+        workspaceName: b.workspace_name,
+        assignments: b.assignments_count ?? 0,
+        jobcodeId: b.tc_jobcode_id,
+      }))
+      .sort((a, b) => b.assignments - a.assignments),
+    jobcodes: (jobcodes ?? []) as { id: number; name: string }[],
+  }
 }

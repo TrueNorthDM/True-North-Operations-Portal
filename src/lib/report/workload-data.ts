@@ -24,6 +24,7 @@ import { accountsInScope, loadSpans, NO_TABLE } from './data'
 import { activePeople, primaryTeams } from './directory'
 import type { LoggedEvent } from './spans'
 import type { Period } from './scope'
+import { buildEffortTable, hoursFor, isMeasured, type BoardEffort } from './effort'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -96,14 +97,22 @@ export async function loadWorkload(
       .map(l => [l.monday_user_id, l.person_id]),
   )
 
-  // One average across everybody in scope, so two people on the same screen
-  // are measured with the same ruler.
   const totalHours = [...seconds.values()].reduce((s, x) => s + x, 0) / 3600
-  const perStep = hoursPerStep(totalHours, spans.length)
+
+  // Per board where the board is linked to a project, and one shared average
+  // everywhere else. A translation step and a monthly report step do not take
+  // the same time, and one number for both tells a lead neither.
+  const effort = buildEffortTable(
+    await boardEffort(supabase, spans, new Date(now - period * DAY)),
+    totalHours,
+    spans.length,
+  )
 
   // Open steps due inside the horizon. A step with no date is left out: it is
   // work, but nothing says it is work for the next 30 days.
   const horizon = new Date(now + AHEAD_DAYS * DAY).toISOString().slice(0, 10)
+  // Hours, not steps: two open steps on different boards are not the same
+  // amount of work, which is the whole reason the effort table exists.
   const aheadOf = new Map<string, number>()
   for (const r of snapshot.rows) {
     if (r.statusDone || r.dueSuspect || !r.dueDate) continue
@@ -113,7 +122,7 @@ export async function loadWorkload(
     // Everything left here is due inside the horizon, overdue included: a
     // step whose date has passed is still ahead of them, because it is not
     // done. Excluding it would make the most overloaded person look free.
-    aheadOf.set(pid, (aheadOf.get(pid) ?? 0) + 1)
+    aheadOf.set(pid, (aheadOf.get(pid) ?? 0) + (hoursFor(effort, r.boardId) ?? 0))
   }
 
   const flow = flowByPerson(events, personOf, now)
@@ -132,26 +141,15 @@ export async function loadWorkload(
       contracted: p.weekly_hours ?? 0,
       observed,
       hoursLogged: logged,
-      estimatedAhead: Math.round((aheadOf.get(p.id) ?? 0) * (perStep ?? 0)),
+      estimatedAhead: Math.round(aheadOf.get(p.id) ?? 0),
       arriving: f.arriving,
       finishing: f.finishing,
       weekly: f.weekly,
     }
   })
 
-  const { count: boards } = await supabase
-    .from('monday_boards').select('id', { count: 'exact', head: true }).eq('included', true)
-
-  const effort: EffortBasis[] = perStep === null ? [] : [{
-    board: `${boards ?? 0} boards`,
-    basis: `${Math.round(totalHours).toLocaleString('en-US')}h over ${spans.length} steps delivered`,
-    perStep: `${perStep}h`,
-    // No board in this account carries its own project code, so there is
-    // nothing to measure per board and every one of them is a fallback.
-    measured: false,
-  }]
-
-  return { people: rows, effort, estimateReady: perStep !== null }
+  const audit = await effortAudit(supabase, effort, totalHours, spans.length)
+  return { people: rows, effort: audit, estimateReady: effort.fallback !== null || effort.perBoard.size > 0 }
 }
 
 /** assigned and done events over the backlog window, for the flow columns. */
@@ -196,4 +194,82 @@ function flowByPerson(events: LoggedEvent[], personOf: Map<number, string>, now:
     v.finishing = Math.round((v.finishing / BACKLOG_WEEKS) * 10) / 10
   }
   return out
+}
+
+/**
+ * Hours booked to each mapped board, against what that board delivered.
+ *
+ * Only boards carrying a project code appear: the rest have nothing of their
+ * own to divide and take the shared average instead.
+ */
+async function boardEffort(supabase: Client, spans: { board_id: number }[], since: Date): Promise<BoardEffort[]> {
+  const { data: mapped } = await supabase
+    .from('monday_boards')
+    .select('id, name, tc_jobcode_id')
+    .not('tc_jobcode_id', 'is', null)
+
+  const boards = (mapped ?? []) as { id: number; name: string; tc_jobcode_id: number }[]
+  if (!boards.length) return []
+
+  const { data: entries } = await supabase
+    .from('tc_entries')
+    .select('jobcode_id, duration_seconds')
+    .in('jobcode_id', boards.map(b => b.tc_jobcode_id))
+    .in('state', ['approved', 'locked'])
+    .gte('entry_date', since.toISOString().slice(0, 10))
+    .limit(100_000)
+
+  const secondsByCode = new Map<number, number>()
+  for (const e of (entries ?? []) as { jobcode_id: number; duration_seconds: number }[]) {
+    secondsByCode.set(e.jobcode_id, (secondsByCode.get(e.jobcode_id) ?? 0) + e.duration_seconds)
+  }
+
+  const deliveredByBoard = new Map<number, number>()
+  for (const s of spans) deliveredByBoard.set(s.board_id, (deliveredByBoard.get(s.board_id) ?? 0) + 1)
+
+  return boards.map(b => ({
+    boardId: b.id,
+    boardName: b.name,
+    hours: (secondsByCode.get(b.tc_jobcode_id) ?? 0) / 3600,
+    delivered: deliveredByBoard.get(b.id) ?? 0,
+  }))
+}
+
+/**
+ * Screen 3.4's rows: what each figure was arrived at from.
+ *
+ * Measured boards first, since they are the ones somebody can check, then one
+ * row standing for everything on the shared average.
+ */
+async function effortAudit(
+  supabase: Client, effort: ReturnType<typeof buildEffortTable>, totalHours: number, delivered: number,
+): Promise<EffortBasis[]> {
+  const rows: EffortBasis[] = []
+
+  if (effort.perBoard.size) {
+    const { data } = await supabase
+      .from('monday_boards').select('id, name').in('id', [...effort.perBoard.keys()])
+    for (const b of (data ?? []) as { id: number; name: string }[]) {
+      rows.push({
+        board: b.name,
+        basis: 'its own project code',
+        perStep: `${effort.perBoard.get(b.id)}h`,
+        measured: isMeasured(effort, b.id),
+      })
+    }
+  }
+
+  if (effort.fallback !== null) {
+    const { count } = await supabase
+      .from('monday_boards').select('id', { count: 'exact', head: true })
+      .eq('included', true).is('tc_jobcode_id', null)
+    rows.push({
+      board: `${count ?? 0} other boards`,
+      basis: `${Math.round(totalHours).toLocaleString('en-US')}h over ${delivered} steps delivered`,
+      perStep: `${effort.fallback}h`,
+      measured: false,
+    })
+  }
+
+  return rows
 }
