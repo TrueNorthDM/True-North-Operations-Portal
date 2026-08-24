@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadMyTeam } from '@/lib/directory/my-team'
 import { TeamPeople } from '@/components/team/TeamPeople'
 import { WorkList } from '@/components/monday/WorkList'
-import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
+import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -37,10 +37,17 @@ type TabKey = (typeof TABS)[number]['key']
 export default async function MyWorkPage(
   { searchParams }: { searchParams: Promise<{ tab?: string; person?: string; team?: string; done?: string }> },
 ) {
-  await requireSurface('my-work')
   const sp = await searchParams
   const { tab } = sp
-  const active: TabKey = TABS.some(t => t.key === tab) ? (tab as TabKey) : 'work'
+  const asked: TabKey = TABS.some(t => t.key === tab) ? (tab as TabKey) : 'work'
+
+  // The tab decides the grant, because the two views are two surfaces sharing
+  // one URL. A prefix in nav.ts cannot see ?tab=team, so the check is here.
+  await requireSurface(asked === 'team' ? 'my-team' : 'my-work')
+
+  const access = await loadAccess()
+  const can = (v: WorkView) => access.can(VIEW_SURFACE[v])
+  const active = asked
 
   const heading = active === 'work'
     ? { title: 'My Work', desc: 'Every step assigned to you across Monday, in one list.' }
@@ -65,7 +72,7 @@ export default async function MyWorkPage(
           <p className="text-[14.5px] text-muted mt-1.5 m-0">{heading.desc}</p>
         </div>
 
-        <WorkViewSwitch active={active === 'work' ? 'work' : 'team'} />
+        <WorkViewSwitch active={active === 'work' ? 'work' : 'team'} can={can} />
       </div>
 
       {active === 'work' ? <WorkTab sp={sp} /> : <MyTeamTab />}

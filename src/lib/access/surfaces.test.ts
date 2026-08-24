@@ -122,3 +122,34 @@ describe('catalogue integrity', () => {
     expect(surfaceForPath('/settings-other')).toBeNull()
   })
 })
+
+describe('My Work, Report and My Team as three grants', () => {
+  const keys = SURFACES.map(s => s.key)
+
+  it('lists all three separately', () => {
+    expect(keys).toContain('my-work')
+    expect(keys).toContain('report')
+    expect(keys).toContain('my-team')
+  })
+
+  // The three were one row until Report existed. Splitting them must not
+  // change what anybody reaches on the day of the split, so all three default
+  // the same way; migration 073 copies the explicit rows across.
+  it('gives all three the same default, so the split changes nothing by itself', () => {
+    const of = (k: string) => SURFACES.find(s => s.key === k)!.defaults
+    expect(of('report')).toEqual(of('my-work'))
+    expect(of('my-team')).toEqual(of('my-work'))
+  })
+
+  it('puts all three in the sidebar list', () => {
+    expect(NAV_SURFACES).toContain('my-work')
+    expect(NAV_SURFACES).toContain('report')
+    expect(NAV_SURFACES).toContain('my-team')
+  })
+
+  it('guards /report with report and /my-work with my-work', () => {
+    expect(surfaceForPath('/report')).toBe('report')
+    expect(surfaceForPath('/report/csv')).toBe('report')
+    expect(surfaceForPath('/my-work')).toBe('my-work')
+  })
+})

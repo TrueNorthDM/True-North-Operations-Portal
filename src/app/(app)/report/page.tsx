@@ -13,7 +13,7 @@ import { requireSurface, loadAccess } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
+import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { ReportTabs, resolveTab, type ReportTabKey } from '@/components/report/ReportTabs'
 import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
 import { ChangeLogNotice } from '@/components/report/ReportNotices'
@@ -44,7 +44,7 @@ export default async function ReportPage(
     searchParams: Promise<{ tab?: string; scope?: string; period?: string; team?: string }>
   },
 ) {
-  await requireSurface('my-work')
+  await requireSurface('report')
 
   const sp = await searchParams
   const access = await loadAccess()
@@ -93,7 +93,7 @@ export default async function ReportPage(
             What got delivered, how long it sat with each person, and what came in late.
           </p>
         </div>
-        <WorkViewSwitch active="report" />
+        <WorkViewSwitch active="report" can={(v: WorkView) => access.can(VIEW_SURFACE[v])} />
       </div>
 
       <ReportNav>

@@ -11,6 +11,8 @@ export const NAV_SURFACES: readonly string[] = [
   'home',
   'tools',
   'my-work',
+  'report',
+  'my-team',
   'my-hours',
   'directory',
   'human-resources',
@@ -32,9 +34,10 @@ const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
   { prefix: '/human-resources', surface: 'human-resources' },
   { prefix: '/directory', surface: 'directory' },
   { prefix: '/my-work', surface: 'my-work' },
-  // Report is the third view of the My Work module, not a place of its own:
-  // same door, and what changes by level is how much of the account it shows.
-  { prefix: '/report', surface: 'my-work' },
+  // Its own grant now. The My Team TAB inside /my-work carries the 'my-team'
+  // surface and is checked in the page, because a prefix cannot see a query
+  // parameter and the tab is ?tab=team.
+  { prefix: '/report', surface: 'report' },
   { prefix: '/tools', surface: 'tools' },
   { prefix: '/dashboards', surface: 'tools' },
   { prefix: '/boards-beta', surface: 'tools' },

@@ -39,16 +39,34 @@ function TeamIcon() {
   )
 }
 
+/** The surface key each view needs. */
+export const VIEW_SURFACE: Record<WorkView, string> = {
+  work: 'my-work',
+  report: 'report',
+  team: 'my-team',
+}
+
 const VIEWS: { key: WorkView; label: string; href: string; Icon: () => React.ReactElement }[] = [
   { key: 'work', label: 'My Work', href: '/my-work', Icon: BriefcaseIcon },
   { key: 'report', label: 'Report', href: '/report', Icon: ChartIcon },
   { key: 'team', label: 'My Team', href: '/my-work?tab=team', Icon: TeamIcon },
 ]
 
-export function WorkViewSwitch({ active }: { active: WorkView }) {
+/**
+ * The three are separate grants now, so the control shows what the person can
+ * reach and nothing else.
+ *
+ * A view they cannot open is not rendered disabled: permission is a shorter
+ * control, the same rule the Report's own scope switch follows. And a switch
+ * with one segment left is not a switch, so it disappears entirely.
+ */
+export function WorkViewSwitch({ active, can }: { active: WorkView; can?: (key: WorkView) => boolean }) {
+  const views = can ? VIEWS.filter(v => can(v.key)) : VIEWS
+  if (views.length < 2) return null
+
   return (
     <div className="flex items-center bg-subtle border border-[var(--panel-border)] rounded-[11px] p-1">
-      {VIEWS.map(v => (
+      {views.map(v => (
         <Link
           key={v.key}
           href={v.href}

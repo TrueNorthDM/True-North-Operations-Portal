@@ -33,7 +33,7 @@ export default async function ReportPrintPage(
     searchParams: Promise<{ tab?: string; scope?: string; period?: string; team?: string }>
   },
 ) {
-  await requireSurface('my-work')
+  await requireSurface('report')
 
   const access = await loadAccess()
   const level = directoryLevel(access.can)

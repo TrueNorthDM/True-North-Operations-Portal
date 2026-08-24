@@ -37,7 +37,7 @@ async function launch(): Promise<Browser> {
 }
 
 export async function GET(request: Request) {
-  await requireSurface('my-work')
+  await requireSurface('report')
 
   const access = await loadAccess()
   if (!access.can('report-export')) {

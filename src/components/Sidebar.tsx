@@ -95,10 +95,30 @@ const toolsDash: Item = {
   match: p => p === '/tools' || p.startsWith('/tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
 }
 
-// My Work, the signed-in person's tasks across Monday (board + list).
+// My Work, the signed-in person's tasks across Monday.
+//
+// One rail item for three views that share a switch, and it is the item for
+// whichever of them this person can reach. Three rails for one control would
+// be three ways to open the same header; a single rail that lands nowhere
+// they are allowed would be worse. The layout passes only the keys they have,
+// and the first match wins.
 const myWorkNav: Item = {
   href: '/my-work',
-  label: 'My Work / My Team',
+  label: 'My Work',
+  icon: WorkIcon,
+  match: p => p === '/my-work' || p === '/report',
+}
+
+const reportNav: Item = {
+  href: '/report',
+  label: 'Report',
+  icon: WorkIcon,
+  match: p => p === '/report',
+}
+
+const myTeamNav: Item = {
+  href: '/my-work?tab=team',
+  label: 'My Team',
   icon: WorkIcon,
   match: p => p === '/my-work',
 }
@@ -176,6 +196,8 @@ const NAV: readonly { key: string; item: Item }[] = [
   { key: 'home', item: home },
   { key: 'tools', item: toolsDash },
   { key: 'my-work', item: myWorkNav },
+  { key: 'report', item: reportNav },
+  { key: 'my-team', item: myTeamNav },
   { key: 'my-hours', item: myHoursNav },
   { key: 'directory', item: directoryNav },
   { key: 'human-resources', item: hrNav },

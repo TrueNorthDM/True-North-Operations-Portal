@@ -53,7 +53,31 @@ export const SURFACES: readonly Surface[] = [
     defaults: ON,
     note: 'Opens the area. Which tools appear inside it is set per team, on the Directory’s Teams tab.',
   },
-  { key: 'my-work', label: 'My Work / My Team', group: 'Navigation', defaults: ON },
+  // Three grants, not one. They were a single row while they were one page
+  // with two tabs; Report made them three views of different things, with
+  // different audiences. Splitting the switch is the point: a person can be
+  // given their own work without being given the team's delivery figures.
+  {
+    key: 'my-work',
+    label: 'My Work',
+    group: 'Navigation',
+    defaults: ON,
+    note: 'Every step assigned to them across Monday. Opens the area; Report and My Team are separate.',
+  },
+  {
+    key: 'report',
+    label: 'Report',
+    group: 'Navigation',
+    defaults: ON,
+    note: 'Delivery, held time and lateness. What each level sees inside it still follows the directory level: level 1 sees only themselves, level 3 sees everyone and the Workload tab.',
+  },
+  {
+    key: 'my-team',
+    label: 'My Team',
+    group: 'Navigation',
+    defaults: ON,
+    note: 'The people they work with and what each can reach.',
+  },
   {
     key: 'my-hours',
     label: 'My Hours',
