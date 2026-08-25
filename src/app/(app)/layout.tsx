@@ -13,7 +13,7 @@ import { ViewAsKeeper } from '@/components/ViewAsKeeper'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { loadAccess } from '@/lib/access/resolve'
-import { NAV_SURFACES } from '@/lib/access/nav'
+import { NAV_SURFACES, navHref, navVisible } from '@/lib/access/nav'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -22,7 +22,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Access levels), not from the tier alone. profiles.role='admin' is still a
   // floor inside loadAccess, so a real admin is never hidden out of anything.
   const [access, me] = await Promise.all([loadAccess(), loadCurrentPerson(supabase, user)])
-  const allowedNav = NAV_SURFACES.filter(k => access.can(k))
+  const allowedNav = NAV_SURFACES.filter(k => navVisible(k, access.can))
+  // A module rail opens whichever of its views this person may reach, so its
+  // destination is resolved here rather than hardcoded on the item.
+  const navHrefs = Object.fromEntries(
+    allowedNav.map(k => [k, navHref(k, access.can)]).filter(([, h]) => h),
+  ) as Record<string, string>
 
   return (
     <>
@@ -60,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar + main */}
       <div className="flex flex-1">
-        <Sidebar allowed={allowedNav} />
+        <Sidebar allowed={allowedNav} hrefs={navHrefs} />
         <MainContent>{children}</MainContent>
       </div>
     </>

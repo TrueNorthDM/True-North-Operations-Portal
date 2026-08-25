@@ -4,7 +4,7 @@ import {
   SURFACES, SURFACE_KEYS, CONFIGURABLE_ROLES,
   surfaceAllowed, directoryLevel,
 } from './surfaces'
-import { NAV_SURFACES, surfaceForPath } from './nav'
+import { NAV_SURFACES, navHref, navVisible, surfaceForPath } from './nav'
 
 // The rules the whole portal gates on. These are pure, so they are cheap to
 // pin down, and every case below is one that actually went wrong at some point:
@@ -141,10 +141,31 @@ describe('My Work, Report and My Team as three grants', () => {
     expect(of('my-team')).toEqual(of('my-work'))
   })
 
-  it('puts all three in the sidebar list', () => {
+  // One module, one icon. Three rails for three tabs of one header would be
+  // three ways to open the same page.
+  it('shows one rail item, not three', () => {
     expect(NAV_SURFACES).toContain('my-work')
-    expect(NAV_SURFACES).toContain('report')
-    expect(NAV_SURFACES).toContain('my-team')
+    expect(NAV_SURFACES).not.toContain('report')
+    expect(NAV_SURFACES).not.toContain('my-team')
+  })
+
+  it('shows the rail when any one of the three is granted', () => {
+    expect(navVisible('my-work', k => k === 'report')).toBe(true)
+    expect(navVisible('my-work', k => k === 'my-team')).toBe(true)
+    expect(navVisible('my-work', () => false)).toBe(false)
+  })
+
+  // A rail pointing at a view they cannot open is a link to the login page.
+  it('opens the first view the person is actually allowed', () => {
+    expect(navHref('my-work', () => true)).toBe('/my-work')
+    expect(navHref('my-work', k => k !== 'my-work')).toBe('/report')
+    expect(navHref('my-work', k => k === 'my-team')).toBe('/my-work?tab=team')
+    expect(navHref('my-work', () => false)).toBeNull()
+  })
+
+  it('leaves plain rail items alone', () => {
+    expect(navVisible('settings', k => k === 'settings')).toBe(true)
+    expect(navHref('settings', () => true)).toBeNull()
   })
 
   it('guards /report with report and /my-work with my-work', () => {

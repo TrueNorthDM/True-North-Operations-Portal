@@ -97,11 +97,9 @@ const toolsDash: Item = {
 
 // My Work, the signed-in person's tasks across Monday.
 //
-// One rail item for three views that share a switch, and it is the item for
-// whichever of them this person can reach. Three rails for one control would
-// be three ways to open the same header; a single rail that lands nowhere
-// they are allowed would be worse. The layout passes only the keys they have,
-// and the first match wins.
+// One rail item for a module of three separately granted views. The layout
+// resolves where it points, because a person with Report but not My Work has
+// to land on the Report rather than on a redirect to login.
 const myWorkNav: Item = {
   href: '/my-work',
   label: 'My Work',
@@ -109,19 +107,6 @@ const myWorkNav: Item = {
   match: p => p === '/my-work' || p === '/report',
 }
 
-const reportNav: Item = {
-  href: '/report',
-  label: 'Report',
-  icon: WorkIcon,
-  match: p => p === '/report',
-}
-
-const myTeamNav: Item = {
-  href: '/my-work?tab=team',
-  label: 'My Team',
-  icon: WorkIcon,
-  match: p => p === '/my-work',
-}
 
 // My Hours: the person's own clock.
 const ClockIcon = (
@@ -196,8 +181,6 @@ const NAV: readonly { key: string; item: Item }[] = [
   { key: 'home', item: home },
   { key: 'tools', item: toolsDash },
   { key: 'my-work', item: myWorkNav },
-  { key: 'report', item: reportNav },
-  { key: 'my-team', item: myTeamNav },
   { key: 'my-hours', item: myHoursNav },
   { key: 'directory', item: directoryNav },
   { key: 'human-resources', item: hrNav },
@@ -241,10 +224,15 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
  * layout from Admin → Access levels. The rail renders only those, so hiding an
  * item and blocking its route now come from the same configuration.
  */
-export function Sidebar({ allowed }: { allowed: readonly string[] }) {
+export function Sidebar(
+  { allowed, hrefs }: { allowed: readonly string[]; hrefs?: Record<string, string> },
+) {
   const pathname = usePathname()
   const on = new Set(allowed)
-  const items = NAV.filter(n => on.has(n.key))
+  const items = NAV
+    .filter(n => on.has(n.key))
+    // A module's destination depends on which of its views this person has.
+    .map(n => (hrefs?.[n.key] ? { ...n, item: { ...n.item, href: hrefs[n.key] } } : n))
 
   return (
     // Icon-only rail. No overflow clipping, so the hover tooltips can extend
