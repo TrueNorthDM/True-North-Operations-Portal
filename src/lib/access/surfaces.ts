@@ -90,7 +90,7 @@ export const SURFACES: readonly Surface[] = [
     label: 'People directory',
     group: 'Navigation',
     defaults: ON,
-    note: 'Switching this off does not remove My Team: seeing your own team is personal, and stays available from the avatar menu and the My Work / My Team page whatever this row says. The People directory levels below still decide how much of a teammate’s card opens there.',
+    note: 'Switching this off does not remove the personal team view from the avatar menu: seeing your own team is personal, and stays available whatever this row says. The My Team row above is the one that governs the tab inside My Work. The People directory levels below still decide how much of a teammate’s card opens.',
   },
   { key: 'human-resources', label: 'Human Resources', group: 'Navigation', defaults: PRIV },
   // Settings holds the budgets, the hourly rates and the API tokens, so it is

@@ -58,7 +58,7 @@ export default async function MyWorkPage(
       <div className="flex items-center gap-2 text-[13px]">
         <Link href="/" className="font-semibold text-muted hover:text-tn-ink transition-colors">Dashboard</Link>
         <span className="text-[var(--faint)]">/</span>
-        <span className="font-semibold text-tn-ink">My Work / Report / My Team</span>
+        <span className="font-semibold text-tn-ink">My Work</span>
       </div>
 
       {/* Title on the left, the two views as a segmented control on the right.

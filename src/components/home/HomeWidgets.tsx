@@ -51,12 +51,21 @@ interface Widget {
   description: string
   icon: React.ReactNode
   href?: string //  absent = placeholder ("Soon")
+  /**
+   * The surface that gates it, when the route map cannot tell.
+   *
+   * My Team lives at /my-work?tab=team, and surfaceForPath matches on the
+   * prefix, so it would gate this card with My Work's grant. Naming it here
+   * is the difference between a card that respects its own permission and one
+   * that offers a page the viewer will be turned away from.
+   */
+  surface?: string
   anim: string  //  looping icon micro-motion (guarded by prefers-reduced-motion)
 }
 
 const WIDGETS: Widget[] = [
   { title: 'My Work', description: 'Everything you’re working on across Monday.', icon: WorkIcon, href: '/my-work', anim: 'tn-ico-swing 3.4s ease-in-out infinite' },
-  { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon, anim: '' }, // split animation lives inside TeamIcon
+  { title: 'My Team', description: 'Your team at a glance.', icon: TeamIcon, href: '/my-work?tab=team', surface: 'my-team', anim: '' }, // split animation lives inside TeamIcon
   { title: 'Tools & Dashboards', description: 'Dashboards and the tools used inside a project.', icon: DashboardsIcon, href: '/tools', anim: 'tn-ico-pulse 3s ease-in-out infinite' },
 ]
 
@@ -76,7 +85,7 @@ export async function HomeWidgets() {
   // Placeholders (no href) have nothing to gate.
   const visible = WIDGETS.filter(w => {
     if (!w.href) return true
-    const surface = surfaceForPath(w.href)
+    const surface = w.surface ?? surfaceForPath(w.href)
     return surface ? can(surface) : true
   })
 

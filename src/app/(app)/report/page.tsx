@@ -81,7 +81,7 @@ export default async function ReportPage(
       <div className="flex items-center gap-2 text-[13px]">
         <Link href="/" className="font-semibold text-muted hover:text-tn-ink transition-colors">Dashboard</Link>
         <span className="text-[var(--faint)]">/</span>
-        <span className="font-semibold text-tn-ink">My Work / Report / My Team</span>
+        <span className="font-semibold text-tn-ink">My Work</span>
       </div>
 
       <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[var(--panel-border)]">
