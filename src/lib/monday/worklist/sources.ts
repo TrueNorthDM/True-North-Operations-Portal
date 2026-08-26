@@ -7,6 +7,7 @@
 // difference and make the decision harder rather than shorter.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { staleSweep } from './stale'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -45,16 +46,44 @@ export interface SourceUser {
 export interface WorklistSources {
   workspaces: SourceWorkspace[]
   users: SourceUser[]
+  /**
+   * The stale rule: whether it is on, and what one pass would change now.
+   *
+   * The preview is computed from the same function the sync runs, so the
+   * number printed beside the switch cannot disagree with what pressing it
+   * does.
+   */
+  stale: { on: boolean; wouldHide: number; wouldShow: number }
 }
 
 export async function loadWorklistSources(supabase: Client): Promise<WorklistSources> {
   const [{ data: boardRows }, { data: userRows }, { data: linkRows }, { data: peopleRows }] = await Promise.all([
     supabase.from('monday_boards')
-      .select('id, name, workspace_name, included, priority, is_subitem_board, assignments_count, last_activity_at'),
+      .select('id, name, workspace_name, included, included_pinned, priority, is_subitem_board, assignments_count, last_activity_at'),
     supabase.from('monday_users').select('id, name, email, hidden, is_external'),
     supabase.from('monday_user_links').select('monday_user_id, person_id'),
     supabase.from('people').select('id, full_name'),
   ])
+
+  const { data: settings } = await supabase
+    .from('app_settings').select('monday_hide_stale_boards').eq('singleton_id', 1).maybeSingle()
+
+  const sweep = staleSweep(
+    ((boardRows ?? []) as { id: number; included: boolean; included_pinned: boolean; last_activity_at: string | null }[])
+      .map(b => ({
+        id: b.id,
+        included: b.included,
+        includedPinned: b.included_pinned,
+        lastActivityAt: b.last_activity_at,
+      })),
+    new Date(),
+  )
+
+  const stale = {
+    on: Boolean((settings as { monday_hide_stale_boards?: boolean } | null)?.monday_hide_stale_boards),
+    wouldHide: sweep.hide.length,
+    wouldShow: sweep.show.length,
+  }
 
   type B = {
     id: number; name: string; workspace_name: string | null; included: boolean; priority: Priority
@@ -120,5 +149,5 @@ export async function loadWorklistSources(supabase: Client): Promise<WorklistSou
     })
     .sort((a, b) => b.assignments - a.assignments || a.name.localeCompare(b.name))
 
-  return { workspaces, users }
+  return { workspaces, users, stale }
 }

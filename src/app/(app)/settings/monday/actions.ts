@@ -5,6 +5,7 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isSecurityAdmin } from '@/lib/auth/role'
+import { staleSweep } from '@/lib/monday/worklist/stale'
 
 type Result = { ok: boolean; error?: string }
 
@@ -17,10 +18,18 @@ function done() {
   revalidatePath('/my-work')
 }
 
+/**
+ * Clicking Shown or Not shown pins the board.
+ *
+ * The stale rule decides visibility from activity; a person clicking is
+ * saying the reason is something else, and the rule stops deciding for that
+ * board. Without the pin the click would be undone at the next sync with no
+ * explanation on screen, which is a button that lies.
+ */
 export async function setBoardIncluded(boardId: number, included: boolean): Promise<Result> {
   const no = await guard(); if (no) return { ok: false, error: no }
   const { error } = await createAdminClient()
-    .from('monday_boards').update({ included }).eq('id', boardId)
+    .from('monday_boards').update({ included, included_pinned: true }).eq('id', boardId)
   if (error) return { ok: false, error: error.message }
   done()
   return { ok: true }
@@ -35,7 +44,7 @@ export async function setBoardIncluded(boardId: number, included: boolean): Prom
 export async function setWorkspaceIncluded(workspace: string, included: boolean): Promise<Result> {
   const no = await guard(); if (no) return { ok: false, error: no }
   const supabase = createAdminClient()
-  const q = supabase.from('monday_boards').update({ included })
+  const q = supabase.from('monday_boards').update({ included, included_pinned: true })
   const { error } = workspace === 'No workspace'
     ? await q.is('workspace_name', null)
     : await q.eq('workspace_name', workspace)
@@ -112,4 +121,52 @@ export async function setBoardJobcode(boardId: number, jobcodeId: number | null)
   if (error) return { ok: false, error: error.message }
   done()
   return { ok: true }
+}
+
+/**
+ * Turn the stale rule on or off, and apply it at once.
+ *
+ * Applying immediately rather than waiting for the next sync is the whole
+ * difference between a switch and a promise: four hours of nothing happening
+ * reads as a broken toggle.
+ */
+export async function setHideStaleBoards(on: boolean): Promise<Result & { hidden?: number; shown?: number }> {
+  const no = await guard(); if (no) return { ok: false, error: no }
+  const supabase = createAdminClient()
+
+  const { error } = await supabase
+    .from('app_settings').update({ monday_hide_stale_boards: on }).eq('singleton_id', 1)
+  if (error) return { ok: false, error: error.message }
+
+  // Switching it off changes nothing that is already hidden: the rule stops
+  // deciding, it does not undo what it decided. Undoing would flood My Work
+  // with years of finished projects on a single click.
+  if (!on) { done(); return { ok: true, hidden: 0, shown: 0 } }
+
+  const result = await applyStaleRule(supabase)
+  done()
+  return { ok: true, ...result }
+}
+
+/** One pass of the rule. Also called from the sync, so the two cannot drift. */
+export async function applyStaleRule(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<{ hidden: number; shown: number }> {
+  const { data } = await supabase
+    .from('monday_boards').select('id, included, included_pinned, last_activity_at')
+
+  const boards = ((data ?? []) as {
+    id: number; included: boolean; included_pinned: boolean; last_activity_at: string | null
+  }[]).map(b => ({
+    id: b.id,
+    included: b.included,
+    includedPinned: b.included_pinned,
+    lastActivityAt: b.last_activity_at,
+  }))
+
+  const { hide, show } = staleSweep(boards, new Date())
+  if (hide.length) await supabase.from('monday_boards').update({ included: false }).in('id', hide)
+  if (show.length) await supabase.from('monday_boards').update({ included: true }).in('id', show)
+
+  return { hidden: hide.length, shown: show.length }
 }

@@ -31,6 +31,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
 import { ingestSlice } from '@/lib/monday/worklist/ingest'
+import { applyStaleRule } from '@/app/(app)/settings/monday/actions'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -93,9 +94,23 @@ export async function GET(request: Request) {
       })
     }
 
+    // Run the stale rule at the END of the chain, once, not per hop: it reads
+    // last_activity_at, and that stamp is only complete after the last board
+    // has been read. Running it earlier would judge boards on last pass's
+    // numbers and flip them back on the next firing.
+    let stale: { hidden: number; shown: number } | undefined
+    if (r.remaining === 0) {
+      const { data: settings } = await supabase
+        .from('app_settings').select('monday_hide_stale_boards').eq('singleton_id', 1).maybeSingle()
+      if ((settings as { monday_hide_stale_boards?: boolean } | null)?.monday_hide_stale_boards) {
+        stale = await applyStaleRule(supabase)
+      }
+    }
+
     return NextResponse.json({
       hop,
       discovered,
+      ...(stale ? { staleHidden: stale.hidden, staleShown: stale.shown } : {}),
       boards: r.done.length,
       items: r.done.reduce((s, b) => s + b.items, 0),
       assignments: r.done.reduce((s, b) => s + b.assignments, 0),

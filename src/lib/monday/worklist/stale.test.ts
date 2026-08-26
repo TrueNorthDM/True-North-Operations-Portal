@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest'
+import { isStale, STALE_MONTHS, staleCutoff, staleSweep, type BoardStaleness } from './stale'
+
+const NOW = new Date('2026-08-26T12:00:00Z')
+const ago = (months: number) => {
+  const d = new Date(NOW)
+  d.setMonth(d.getMonth() - months)
+  return d.toISOString()
+}
+
+const board = (o: Partial<BoardStaleness> = {}): BoardStaleness => ({
+  id: 1, included: true, includedPinned: false, lastActivityAt: ago(1), ...o,
+})
+
+describe('isStale', () => {
+  it('leaves a board touched inside the window alone', () => {
+    expect(isStale(board({ lastActivityAt: ago(STALE_MONTHS - 1) }), NOW)).toBe(false)
+  })
+
+  it('calls a board quiet past the window', () => {
+    expect(isStale(board({ lastActivityAt: ago(STALE_MONTHS + 1) }), NOW)).toBe(true)
+  })
+
+  // The stamp is written on every sync from the items actually read, so null
+  // means the sync looked and found nothing, not that the board is new.
+  it('treats a board with no activity at all as quiet', () => {
+    expect(isStale(board({ lastActivityAt: null }), NOW)).toBe(true)
+  })
+
+  it('counts months, not days, so the cutoff lands on the same date', () => {
+    expect(staleCutoff(NOW).toISOString().slice(0, 10)).toBe('2026-02-26')
+  })
+})
+
+describe('staleSweep', () => {
+  it('hides the quiet boards that are still shown', () => {
+    const { hide } = staleSweep([
+      board({ id: 1, lastActivityAt: ago(9) }),
+      board({ id: 2, lastActivityAt: ago(2) }),
+    ], NOW)
+    expect(hide).toEqual([1])
+  })
+
+  // A project that restarts does not announce itself either.
+  it('brings a hidden board back when the work returns', () => {
+    const { show } = staleSweep([board({ id: 3, included: false, lastActivityAt: ago(1) })], NOW)
+    expect(show).toEqual([3])
+  })
+
+  it('leaves a hidden board hidden while it stays quiet', () => {
+    expect(staleSweep([board({ included: false, lastActivityAt: ago(9) })], NOW).show).toEqual([])
+  })
+
+  // Some boards are hidden for reasons that have nothing to do with activity:
+  // a personal space, a duplicate. Pinning takes them out of the rule's hands.
+  it('never touches a pinned board, in either direction', () => {
+    const pinned = [
+      board({ id: 1, includedPinned: true, lastActivityAt: ago(24) }),
+      board({ id: 2, included: false, includedPinned: true, lastActivityAt: ago(1) }),
+    ]
+    expect(staleSweep(pinned, NOW)).toEqual({ hide: [], show: [] })
+  })
+
+  it('does nothing when every board already matches its activity', () => {
+    expect(staleSweep([board(), board({ id: 2, included: false, lastActivityAt: ago(9) })], NOW))
+      .toEqual({ hide: [], show: [] })
+  })
+})

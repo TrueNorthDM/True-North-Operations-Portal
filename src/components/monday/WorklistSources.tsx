@@ -16,6 +16,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import {
   setBoardIncluded, setWorkspaceIncluded, setUserHidden, setBoardPriority, setWorkspacePriority,
 } from '@/app/(app)/settings/monday/actions'
+import { StaleRuleToggle } from '@/components/monday/StaleRuleToggle'
 import type { WorklistSources, Priority } from '@/lib/monday/worklist/sources'
 
 const PRIORITIES: Priority[] = ['high', 'medium', 'low']
@@ -124,6 +125,16 @@ export function WorklistSources({ sources }: { sources: WorklistSources }) {
   return (
     <div className="space-y-4">
       {error && <div className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+
+      {/* Above the tabs, because it governs the boards list below it and not
+          the People tab beside it. */}
+      {tab === 'boards' ? (
+        <StaleRuleToggle
+          on={sources.stale.on}
+          wouldHide={sources.stale.wouldHide}
+          wouldShow={sources.stale.wouldShow}
+        />
+      ) : null}
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1 border-b border-slate-200">
