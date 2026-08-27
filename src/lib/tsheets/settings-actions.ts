@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { requireAdmin } from '@/lib/tsheets/require-admin'
@@ -302,8 +303,16 @@ export async function saveTrAssignment(input: {
   const notAdmin = await requireAdmin()
   if (notAdmin) return { ok: false, error: notAdmin }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const session = await createClient()
+  const { data: { user } } = await session.auth.getUser()
+
+  // The rate table goes through the privileged client, the way every other
+  // reader of it already does. Migration 054 revoked SELECT on the table from
+  // `authenticated` and re-granted a fixed list of columns, so a session
+  // client cannot read hourly_rate at all, and cannot read person_id either
+  // because that column did not exist when the list was written. This is
+  // still admin-only: requireAdmin above is the gate, not the grant.
+  const supabase = createAdminClient()
 
   // Close current active assignment
   const { data: current } = await supabase
@@ -532,8 +541,11 @@ export async function deactivateTrAssignment(input: {
   const notAdmin = await requireAdmin()
   if (notAdmin) return { ok: false, error: notAdmin }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const session = await createClient()
+  const { data: { user } } = await session.auth.getUser()
+
+  // Same table, same reason as saveTrAssignment above.
+  const supabase = createAdminClient()
 
   const { data: current } = await supabase
     .from('tr_assignments')
