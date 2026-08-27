@@ -18,6 +18,8 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { loadManualHours } from '@/lib/timeclock/manual-data'
+import { ManualHours } from '@/components/tsheets/ManualHours'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
@@ -269,8 +271,19 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
         selectedTeam={selectedTeam}
       />
       <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
+      {/* Admins only: this writes hours that become an invoice. Below the
+          report rather than beside it, because it is a correction to what the
+          report already shows and not a second source. */}
+      {access.isAdmin ? <ManualHoursPanel month={selectedMonth} /> : null}
     </>
   )
+}
+
+/** The hand-added hours for the month on screen. */
+async function ManualHoursPanel({ month }: { month: string }) {
+  const supabase = await createClient()
+  const { rows, options } = await loadManualHours(supabase, month)
+  return <ManualHours rows={rows} options={options} month={month} />
 }
 
 // A zero-hours report for a month with nothing cached yet, so the page still
