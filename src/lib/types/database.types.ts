@@ -214,7 +214,10 @@ export type TrBudgetRow = {
 // preserves history for past reports.
 export type TrAssignmentRow = {
   id: number
-  tsheets_user_id: number
+  /** Kept for the sync and for rates whose account nobody has linked yet. */
+  tsheets_user_id: number | null
+  /** Who the rate belongs to. The key, from migration 075 onwards. */
+  person_id: string | null
   client_id: number
   hourly_rate: number
   active: boolean

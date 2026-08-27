@@ -75,32 +75,32 @@ export interface I7Universe {
 
 export function buildI7Report(
   entries: I7Entry[],                   // already filtered to i7 entries (from cache)
-  ratesByUser: Record<number, number>, // tsheets_user_id → i7 hourly rate
-  namesByUser: Record<number, string>, // tsheets_user_id → display name
+  ratesByPerson: Record<string, number>, // person id → i7 hourly rate
+  namesByPerson: Record<string, string>, // person id → display name
   startDate: string,
   universe?: I7Universe,                // the always-shown scaffold (projects/codes/people)
 ): I7Report {
   // project → code → activity → userId → { hours, cost }
   type Leaf = { hours: number; cost: number }
-  const tree = new Map<string, Map<string, Map<string, Map<number, Leaf>>>>()
+  const tree = new Map<string, Map<string, Map<string, Map<string, Leaf>>>>()
 
   for (const e of entries) {
     const code = (e.i7Code || NO_CODE).trim() || NO_CODE
     const activity = (e.activity || NO_ACTIVITY).trim() || NO_ACTIVITY
     const project = mapCodeToProject(code)
     const hours = e.duration / 3600
-    const cost = hours * (ratesByUser[e.user_id] ?? 0)
+    const cost = hours * (ratesByPerson[e.personId] ?? 0)
 
     const codes = tree.get(project) ?? new Map()
     tree.set(project, codes)
     const acts = codes.get(code) ?? new Map()
     codes.set(code, acts)
-    const ppl = acts.get(activity) ?? new Map<number, Leaf>()
+    const ppl = acts.get(activity) ?? new Map<string, Leaf>()
     acts.set(activity, ppl)
-    const leaf = ppl.get(e.user_id) ?? { hours: 0, cost: 0 }
+    const leaf = ppl.get(e.personId) ?? { hours: 0, cost: 0 }
     leaf.hours += hours
     leaf.cost += cost
-    ppl.set(e.user_id, leaf)
+    ppl.set(e.personId, leaf)
   }
 
   // Scaffold every project + job code from the universe (empty activity maps),
@@ -139,8 +139,11 @@ export function buildI7Report(
       for (const [activity, ppl] of acts) {
         let aHours = 0, aCost = 0
         const aByPerson = new Map<string, number>()
-        for (const [userId, leaf] of ppl) {
-          const name = namesByUser[userId] ?? `User ${userId}`
+        for (const [personId, leaf] of ppl) {
+          // A person with no name is a link that never happened, so the id is
+          // shown rather than swallowed: an unnamed column in an invoice is a
+          // question somebody asks, and a missing one is not.
+          const name = namesByPerson[personId] ?? `Person ${personId.slice(0, 8)}`
           personTotals.set(name, (personTotals.get(name) ?? 0) + leaf.hours)
           aByPerson.set(name, (aByPerson.get(name) ?? 0) + leaf.hours)
           cByPerson.set(name, (cByPerson.get(name) ?? 0) + leaf.hours)
@@ -174,7 +177,7 @@ export function buildI7Report(
   const [year, monthIdx] = startDate.split('-').map(Number)
   const month = `${MONTH_NAMES[monthIdx - 1]} ${year}`
   const endDate = new Date(year, monthIdx, 0).toISOString().slice(0, 10)
-  const hasRates = Object.values(ratesByUser).some(r => r > 0)
+  const hasRates = Object.values(ratesByPerson).some(r => r > 0)
 
   return { month, startDate, endDate, projects, people, totalHours: round2(totalHours), totalCost: round2(totalCost), hasRates }
 }

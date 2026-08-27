@@ -14,29 +14,31 @@ import { rateFor, standardI7Rate, type Assignment } from './rates'
  * with a failing test to read, instead of a surprise on a client's invoice.
  */
 
-const a = (userId: number, rate: number, from: string, to: string | null = null): Assignment =>
-  ({ userId, rate, from, to })
+// Person ids are uuids in life; short strings keep the cases readable, and
+// the helper takes a number so every case below reads exactly as before.
+const a = (person: number, rate: number, from: string, to: string | null = null): Assignment =>
+  ({ personId: `p${person}`, rate, from, to })
 
 describe('rateFor', () => {
   it('returns the rate of an open-ended assignment', () => {
-    expect(rateFor([a(1, 95, '2026-01-01')], 1, '2026-08')).toBe(95)
+    expect(rateFor([a(1, 95, '2026-01-01')], 'p1', '2026-08')).toBe(95)
   })
 
   it('returns 0 for a person with no assignment at all', () => {
     // Audit finding M3-1. The report multiplies this into a cost of zero, so
     // the hours show and the money does not, and nothing warns. Pinned so the
     // day someone changes it, they see this case and the note above it.
-    expect(rateFor([a(1, 95, '2026-01-01')], 999, '2026-08')).toBe(0)
+    expect(rateFor([a(1, 95, '2026-01-01')], 'p999', '2026-08')).toBe(0)
   })
 
   it('ignores other people entirely', () => {
     const rows = [a(1, 95, '2026-01-01'), a(2, 150, '2026-01-01')]
-    expect(rateFor(rows, 1, '2026-08')).toBe(95)
-    expect(rateFor(rows, 2, '2026-08')).toBe(150)
+    expect(rateFor(rows, 'p1', '2026-08')).toBe(95)
+    expect(rateFor(rows, 'p2', '2026-08')).toBe(150)
   })
 
   it('returns 0 when the list is empty', () => {
-    expect(rateFor([], 1, '2026-08')).toBe(0)
+    expect(rateFor([], 'p1', '2026-08')).toBe(0)
   })
 
   describe('rate history', () => {
@@ -47,54 +49,54 @@ describe('rateFor', () => {
     ]
 
     it('uses the old rate for a month before the change', () => {
-      expect(rateFor(rows, 1, '2026-04')).toBe(95)
+      expect(rateFor(rows, 'p1', '2026-04')).toBe(95)
     })
 
     it('uses the old rate for the last month it covers', () => {
-      expect(rateFor(rows, 1, '2026-05')).toBe(95)
+      expect(rateFor(rows, 'p1', '2026-05')).toBe(95)
     })
 
     it('uses the new rate from the month it starts', () => {
-      expect(rateFor(rows, 1, '2026-06')).toBe(120)
+      expect(rateFor(rows, 'p1', '2026-06')).toBe(120)
     })
 
     it('keeps the new rate for later months', () => {
-      expect(rateFor(rows, 1, '2026-11')).toBe(120)
+      expect(rateFor(rows, 'p1', '2026-11')).toBe(120)
     })
 
     it('returns 0 for a month before any assignment existed', () => {
-      expect(rateFor(rows, 1, '2025-12')).toBe(0)
+      expect(rateFor(rows, 'p1', '2025-12')).toBe(0)
     })
   })
 
   describe('month boundaries', () => {
     it('excludes an assignment that starts after the month ends', () => {
-      expect(rateFor([a(1, 95, '2026-09-01')], 1, '2026-08')).toBe(0)
+      expect(rateFor([a(1, 95, '2026-09-01')], 'p1', '2026-08')).toBe(0)
     })
 
     it('excludes an assignment that ended before the month began', () => {
-      expect(rateFor([a(1, 95, '2026-01-01', '2026-07-31')], 1, '2026-08')).toBe(0)
+      expect(rateFor([a(1, 95, '2026-01-01', '2026-07-31')], 'p1', '2026-08')).toBe(0)
     })
 
     it('includes an assignment that ends on the first day of the month', () => {
-      expect(rateFor([a(1, 95, '2026-01-01', '2026-08-01')], 1, '2026-08')).toBe(95)
+      expect(rateFor([a(1, 95, '2026-01-01', '2026-08-01')], 'p1', '2026-08')).toBe(95)
     })
 
     it('includes an assignment that starts on the last day of the month', () => {
-      expect(rateFor([a(1, 95, '2026-08-31')], 1, '2026-08')).toBe(95)
+      expect(rateFor([a(1, 95, '2026-08-31')], 'p1', '2026-08')).toBe(95)
     })
 
     it('handles February, where the 31st does not exist', () => {
       // The bound is the string `2026-02-31`. It is not a real date and does
       // not need to be: every February day sorts before it, and 1 March after.
-      expect(rateFor([a(1, 95, '2026-02-28')], 1, '2026-02')).toBe(95)
-      expect(rateFor([a(1, 95, '2026-03-01')], 1, '2026-02')).toBe(0)
+      expect(rateFor([a(1, 95, '2026-02-28')], 'p1', '2026-02')).toBe(95)
+      expect(rateFor([a(1, 95, '2026-03-01')], 'p1', '2026-02')).toBe(0)
     })
 
     it('handles the December to January turn', () => {
       const rows = [a(1, 95, '2026-01-01', '2026-12-31'), a(1, 110, '2027-01-01')]
-      expect(rateFor(rows, 1, '2026-12')).toBe(95)
-      expect(rateFor(rows, 1, '2027-01')).toBe(110)
+      expect(rateFor(rows, 'p1', '2026-12')).toBe(95)
+      expect(rateFor(rows, 'p1', '2027-01')).toBe(110)
     })
   })
 
@@ -105,13 +107,13 @@ describe('rateFor', () => {
       // rate that began on the 15th. Rates are meant to be dated to the first
       // of a month, and nothing enforces that (audit finding M3-2).
       const rows = [a(1, 95, '2026-01-01', '2026-08-14'), a(1, 120, '2026-08-15')]
-      expect(rateFor(rows, 1, '2026-08')).toBe(120)
+      expect(rateFor(rows, 'p1', '2026-08')).toBe(120)
     })
   })
 
   it('takes the later start when two assignments overlap the month', () => {
     const rows = [a(1, 95, '2026-01-01'), a(1, 120, '2026-06-01')]
-    expect(rateFor(rows, 1, '2026-08')).toBe(120)
+    expect(rateFor(rows, 'p1', '2026-08')).toBe(120)
   })
 })
 

@@ -63,6 +63,8 @@ export async function loadCompensationByPerson(): Promise<Map<string, Compensati
 export interface AssignmentRate {
   id: number
   tsheetsUserId: number
+  /** Who the rate belongs to. Null for a rate whose account nobody has linked. */
+  personId: string | null
   clientId: number
   hourlyRate: number
   effectiveFrom: string | null
@@ -82,18 +84,19 @@ export async function loadAssignmentRates(
   const admin = createAdminClient()
   let q = admin
     .from('tr_assignments')
-    .select('id, tsheets_user_id, client_id, hourly_rate, effective_from, effective_to')
+    .select('id, tsheets_user_id, person_id, client_id, hourly_rate, effective_from, effective_to')
   if (opts.clientId != null) q = q.eq('client_id', opts.clientId)
   if (opts.activeOnly) q = q.is('effective_to', null).eq('active', true)
 
   const { data } = await q
   const rows = (data ?? []) as {
-    id: number; tsheets_user_id: number; client_id: number
+    id: number; tsheets_user_id: number; person_id: string | null; client_id: number
     hourly_rate: number; effective_from: string | null; effective_to: string | null
   }[]
   return rows.map(r => ({
     id: r.id,
     tsheetsUserId: r.tsheets_user_id,
+    personId: r.person_id,
     clientId: r.client_id,
     hourlyRate: Number(r.hourly_rate),
     effectiveFrom: r.effective_from,

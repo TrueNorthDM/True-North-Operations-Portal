@@ -23,6 +23,7 @@
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
+import type { I7Entry } from '@/lib/tsheets/types'
 import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
@@ -334,14 +335,25 @@ export async function GET(request: Request) {
     }
     const fresh = await loadI7EntriesHere(supabase, start, end)
 
-    const sum = (rows: Row[]) => rows.reduce((a, r) => a + r.duration, 0)
+    // The two sides no longer share a key: the old cache is keyed by TSheets
+    // account, the report by directory person. The comparison still has to
+    // hold, so the old side is translated rather than the probe abandoned.
+    const { data: linked } = await supabase
+      .from('people').select('id, tsheets_user_id').not('tsheets_user_id', 'is', null)
+    const personOf = new Map(
+      ((linked ?? []) as { id: string; tsheets_user_id: number }[])
+        .map(p => [p.tsheets_user_id, p.id]),
+    )
+
+    const sum = (rows: { duration: number }[]) => rows.reduce((a, r) => a + r.duration, 0)
     say(`old cache : ${cached.length} entries, ${sum(cached)} seconds`)
     say(`clocky    : ${fresh.length} entries, ${sum(fresh)} seconds`)
 
     // Compared as buckets rather than row by row: the two have no shared id, and
     // what the report actually renders is the bucket, not the row.
-    const key = (r: Row) => `${r.date}|${r.user_id}|${r.i7Code}|${r.activity}`
-    const bucket = (rows: Row[]) => {
+    const key = (r: Row | I7Entry) =>
+      `${r.date}|${'personId' in r ? r.personId : personOf.get(r.user_id) ?? `unlinked:${r.user_id}`}|${r.i7Code}|${r.activity}`
+    const bucket = (rows: (Row | I7Entry)[]) => {
       const m = new Map<string, number>()
       for (const r of rows) m.set(key(r), (m.get(key(r)) ?? 0) + r.duration)
       return m

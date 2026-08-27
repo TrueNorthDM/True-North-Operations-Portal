@@ -56,11 +56,16 @@ async function loadUniverse(): Promise<{ jobcodes: string[] }> {
 }
 
 // tsheets_user_id → display (first) name, from the synced directory.
-async function loadNames(): Promise<Record<number, string>> {
+// person id → display (first) name. Every active person, not only the ones
+// with a TSheets account: a contractor whose hours are added by hand has a
+// name here and nowhere else.
+async function loadNames(): Promise<Record<string, string>> {
   const supabase = await createClient()
-  const { data } = await supabase.from('people').select('tsheets_user_id, full_name').not('tsheets_user_id', 'is', null)
-  const out: Record<number, string> = {}
-  for (const p of data ?? []) if (p.tsheets_user_id != null) out[p.tsheets_user_id] = (p.full_name || '').split(' ')[0] || `User ${p.tsheets_user_id}`
+  const { data } = await supabase.from('people').select('id, full_name')
+  const out: Record<string, string> = {}
+  for (const p of (data ?? []) as { id: string; full_name: string | null }[]) {
+    out[p.id] = (p.full_name || '').split(' ')[0] || `Person ${p.id.slice(0, 8)}`
+  }
   return out
 }
 
@@ -72,7 +77,12 @@ async function loadI7Assignments(): Promise<Assignment[]> {
   // 054). The rates never leave this function: they are multiplied into the
   // costs the report already showed, which team leaders are meant to see.
   const rates = await loadAssignmentRates({ clientId: i7.id })
-  return rates.map(a => ({ userId: a.tsheetsUserId, rate: a.hourlyRate, from: a.effectiveFrom ?? '', to: a.effectiveTo }))
+  // A rate with no person is one whose TSheets account nobody has linked. It
+  // is skipped rather than matched to a placeholder: an unlinked rate applied
+  // to the wrong person is worse than a rate that goes unused.
+  return rates
+    .filter(a => a.personId)
+    .map(a => ({ personId: a.personId as string, rate: a.hourlyRate, from: a.effectiveFrom ?? '', to: a.effectiveTo }))
 }
 
 export interface BudgetInputs {
@@ -129,8 +139,8 @@ export async function loadProjectDirectory(ym: string): Promise<ProjectDirectory
   for (const code of universe.jobcodes) (codesByProject[mapCodeToProject(code)] ??= []).push(code)
   for (const list of Object.values(codesByProject)) list.sort((a, b) => a.localeCompare(b))
 
-  const userIds = [...new Set(assignments.map(a => a.userId))]
-  const highestRate = userIds.reduce((mx, uid) => Math.max(mx, rateFor(assignments, uid, ym)), 0)
+  const personIds = [...new Set(assignments.map(a => a.personId))]
+  const highestRate = personIds.reduce((mx, pid) => Math.max(mx, rateFor(assignments, pid, ym)), 0)
 
   const rows: ProjectDirectoryRow[] = I7_PROJECTS.map(project => ({ project, jobCodes: codesByProject[project] ?? [] }))
 
@@ -172,21 +182,23 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   const universeArg = { projects: [...projSet], jobcodesByProject }
 
   const selEntries = entries.filter(e => e.date.slice(0, 7) === selectedMonth)
-  const ratesSel: Record<number, number> = {}
-  for (const uid of new Set(selEntries.map(e => e.user_id))) ratesSel[uid] = rateFor(assignments, uid, selectedMonth)
+  const ratesSel: Record<string, number> = {}
+  for (const pid of new Set(selEntries.map(e => e.personId))) {
+    ratesSel[pid] = rateFor(assignments, pid, selectedMonth)
+  }
   const report = buildI7Report(selEntries, ratesSel, names, startDate, universeArg)
   const stdRate = standardI7Rate(assignments, selectedMonth)
   // display name → hourly rate for the month, so per-person cost can be derived
   // (report.byPerson only carries hours). Keyed the same way as report.people.
   const personRates: Record<string, number> = {}
-  for (const [uid, r] of Object.entries(ratesSel)) personRates[names[Number(uid)] ?? `User ${uid}`] = r
+  for (const [pid, r] of Object.entries(ratesSel)) personRates[names[pid] ?? `Person ${pid.slice(0, 8)}`] = r
 
   // Anyone who logged i7 time this month with no rate covering it. Their hours
   // are counted and their cost is zero, so the budget reads as less consumed
   // than it is, and nothing used to say so (audit finding M3-1).
   const unratedPeople = Object.entries(ratesSel)
     .filter(([, rate]) => rate === 0)
-    .map(([uid]) => names[Number(uid)] ?? `User ${uid}`)
+    .map(([pid]) => names[pid] ?? `Person ${pid.slice(0, 8)}`)
     .sort((a, b) => a.localeCompare(b))
 
   // Budget minus cost over a run of months, the shape both the opening balance
@@ -197,7 +209,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
       budget += monthlyBudgets[ym] ?? 0
       cost += entries
         .filter(e => e.date.slice(0, 7) === ym)
-        .reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.user_id, ym), 0)
+        .reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)
     }
     return { budget, cost }
   }
@@ -230,7 +242,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     const ym = `${year}-${String(m).padStart(2, '0')}`
     const me = entries.filter(e => e.date.slice(0, 7) === ym)
     const h = me.reduce((s, e) => s + e.duration / 3600, 0)
-    const c = me.reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.user_id, ym), 0)
+    const c = me.reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)
     const b = monthlyBudgets[ym] ?? 0
     tB += b; tC += c
     trend.push({ month: ym, hours: round2(h), cost: round2(c), budget: b, balance: round2(tB - tC) })

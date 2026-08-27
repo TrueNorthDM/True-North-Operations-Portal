@@ -283,8 +283,17 @@ export async function saveProjectBudget(input: {
 
 // ─── Assignment (rate history) ────────────────────────────────────────────────
 
+/**
+ * Set somebody's billing rate.
+ *
+ * Keyed by the person. tsheetsUserId is still written when there is one, for
+ * the sync and for anything that has not moved over yet, but it stopped being
+ * the identity: a contractor with no TSheets account bills hours too, and had
+ * nowhere to keep the rate their invoice is priced at.
+ */
 export async function saveTrAssignment(input: {
-  tsheetsUserId: number
+  personId: string
+  tsheetsUserId: number | null
   clientId: number
   hourlyRate: number
   effectiveFrom: string  // YYYY-MM-DD
@@ -300,7 +309,7 @@ export async function saveTrAssignment(input: {
   const { data: current } = await supabase
     .from('tr_assignments')
     .select('*')
-    .eq('tsheets_user_id', input.tsheetsUserId)
+    .eq('person_id', input.personId)
     .eq('client_id', input.clientId)
     .is('effective_to', null)
     .eq('active', true)
@@ -320,6 +329,7 @@ export async function saveTrAssignment(input: {
   const { data: inserted, error: insertErr } = await supabase
     .from('tr_assignments')
     .insert({
+      person_id: input.personId,
       tsheets_user_id: input.tsheetsUserId,
       client_id: input.clientId,
       hourly_rate: input.hourlyRate,
@@ -514,7 +524,7 @@ export async function saveProjectRoster(input: {
 }
 
 export async function deactivateTrAssignment(input: {
-  tsheetsUserId: number
+  personId: string
   clientId: number
   effectiveFrom: string
   justification: string
@@ -528,7 +538,7 @@ export async function deactivateTrAssignment(input: {
   const { data: current } = await supabase
     .from('tr_assignments')
     .select('*')
-    .eq('tsheets_user_id', input.tsheetsUserId)
+    .eq('person_id', input.personId)
     .eq('client_id', input.clientId)
     .is('effective_to', null)
     .eq('active', true)

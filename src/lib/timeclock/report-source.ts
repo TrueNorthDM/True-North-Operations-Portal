@@ -72,30 +72,15 @@ export async function i7JobcodeIdsHere(supabase: Client): Promise<Set<number>> {
   return ids
 }
 
-/** person_id → tsheets_user_id, which is what the rates and names are keyed by. */
-async function userIdByPerson(supabase: Client): Promise<Map<string, number>> {
-  const map = new Map<string, number>()
-  for (let from = 0; ; from += PAGE) {
-    const { data } = await supabase
-      .from('people').select('id, tsheets_user_id')
-      .not('tsheets_user_id', 'is', null).range(from, from + PAGE - 1)
-    const rows = (data ?? []) as { id: string; tsheets_user_id: number }[]
-    for (const r of rows) map.set(r.id, r.tsheets_user_id)
-    if (rows.length < PAGE) break
-  }
-  return map
-}
-
 /** The i7 entries of a date range, in the shape buildI7Report already expects. */
 export async function loadI7EntriesHere(
   supabase: Client,
   start: string,
   end: string,
 ): Promise<I7Entry[]> {
-  const [keys, jobcodeIds, people] = await Promise.all([
+  const [keys, jobcodeIds] = await Promise.all([
     fieldKeys(supabase),
     i7JobcodeIdsHere(supabase),
-    userIdByPerson(supabase),
   ])
   if (!jobcodeIds.size) return []
 
@@ -115,15 +100,12 @@ export async function loadI7EntriesHere(
 
     for (const r of rows) {
       if (r.jobcode_id == null || !jobcodeIds.has(r.jobcode_id)) continue
-      const userId = people.get(r.person_id)
-      // An entry whose person has no TSheets id cannot be placed in a column
-      // keyed by one. That is nobody today, and dropping it silently is how a
-      // report starts quietly under-reporting, so it is worth knowing this is
-      // the line that would do it.
-      if (userId == null) continue
+      // Nothing is dropped here any more. This used to require a TSheets id,
+      // which was fine while everybody billing hours had one and became silent
+      // under-reporting the moment a contractor's hours were added by hand.
       const f = r.fields ?? {}
       out.push({
-        user_id: userId,
+        personId: r.person_id,
         duration: r.duration_seconds,
         date: r.entry_date,
         i7Code: (keys.code ? f[keys.code] : '') ?? '',

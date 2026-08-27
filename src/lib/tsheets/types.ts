@@ -42,7 +42,15 @@ export interface TsheetsTimesheet {
 // the cache table (tsheets_timesheets). i7Code/activity come from the two custom
 // fields; duration stays in seconds.
 export interface I7Entry {
-  user_id: number
+  /**
+   * The directory person, not the TSheets account.
+   *
+   * A TSheets id was the key while everybody who billed hours had one. It
+   * stopped being an identity the first time a contractor's hours were added
+   * by hand from an invoice: no account, no key, and the entry was dropped on
+   * its way into the report.
+   */
+  personId: string
   duration: number
   date: string       // YYYY-MM-DD
   i7Code: string

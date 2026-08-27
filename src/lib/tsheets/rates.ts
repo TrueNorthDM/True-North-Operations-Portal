@@ -13,7 +13,8 @@
  */
 
 export interface Assignment {
-  userId: number
+  /** The directory person this rate belongs to. */
+  personId: string
   rate: number
   /** effective_from, YYYY-MM-DD. */
   from: string
@@ -34,7 +35,7 @@ export interface Assignment {
  * month resolves to one rate. Rates are meant to be dated to the first of a
  * month; nothing enforces it (audit finding M3-2).
  */
-export function rateFor(assignments: Assignment[], userId: number, ym: string): number {
+export function rateFor(assignments: Assignment[], personId: string, ym: string): number {
   // `-31` is not a real date in most months, and does not need to be: as a
   // string it sits after every day of `ym` and before every day of the next
   // month, which is exactly the bound wanted.
@@ -43,7 +44,7 @@ export function rateFor(assignments: Assignment[], userId: number, ym: string): 
 
   let best: Assignment | null = null
   for (const a of assignments) {
-    if (a.userId !== userId) continue
+    if (a.personId !== personId) continue
     if (a.from > monthEnd) continue            // starts after this month
     if (a.to && a.to < monthStart) continue    // ended before this month
     // Overlaps the month. With several, the latest one to start wins.
@@ -63,10 +64,10 @@ export function rateFor(assignments: Assignment[], userId: number, ym: string): 
  * missing a rate row.
  */
 export function standardI7Rate(assignments: Assignment[], ym: string): number {
-  const userIds = [...new Set(assignments.map(a => a.userId))]
+  const personIds = [...new Set(assignments.map(a => a.personId))]
   const counts = new Map<number, number>()
-  for (const uid of userIds) {
-    const r = rateFor(assignments, uid, ym)
+  for (const pid of personIds) {
+    const r = rateFor(assignments, pid, ym)
     if (r > 0) counts.set(r, (counts.get(r) ?? 0) + 1)
   }
   let best = 0, bestCount = -1

@@ -26,7 +26,7 @@ import type { FilterCond, GridColumn, SortState } from '@/components/admin/grid/
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
 // Only `name`, `teamName`, `managerName`, `hireDate`, `costRate`, `assignments`,
-// and `tsheetsUserId` drive this view; the rest ride along for other consumers.
+// and `id` drive this view; the rest ride along for other consumers.
 export interface PersonWithAssignments {
   id: string
   name: string
@@ -39,7 +39,8 @@ export interface PersonWithAssignments {
   costRate: number | null
   monthlySalary: number | null
   projects: string[]
-  tsheetsUserId: number
+  /** Null for somebody who bills hours without a TSheets account. */
+  tsheetsUserId: number | null
   tsheetsOnly: boolean
   assignments: {
     id: number
@@ -200,7 +201,14 @@ export function PeopleTab({ people, allClients }: Props) {
       const newClient = d.client.trim() === '' ? null : Number(d.client)
       if (newClient != null && newClient > 0 && newClient !== rateOf(p)) {
         if (i7ClientId == null) { setError('No i7 client found to attach the rate to.'); setSaving(false); return }
-        ops.push(saveTrAssignment({ tsheetsUserId: p.tsheetsUserId, clientId: i7ClientId, hourlyRate: newClient, effectiveFrom, justification: AUTO_REASON }))
+        ops.push(saveTrAssignment({
+          personId: p.id,
+          tsheetsUserId: p.tsheetsUserId ?? null,
+          clientId: i7ClientId,
+          hourlyRate: newClient,
+          effectiveFrom,
+          justification: AUTO_REASON,
+        }))
       }
       // Cost rate, only when it changed.
       const newCost = d.cost.trim() === '' ? null : Number(d.cost)

@@ -67,14 +67,22 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     (async () => {
       const WITH_HIRE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, hire_date, i7_projects'
       const BASE = 'id, full_name, title, tsheets_user_id, tsheets_only, manager_id, i7_projects'
-      const withHire = await supabase.from('people').select(WITH_HIRE).not('tsheets_user_id', 'is', null).order('full_name')
+      // Everybody active, not only the ones with a TSheets account. The tab
+      // says "everyone who logs time on i7", and the query used to say
+      // "everyone with a TSheets account". They agreed until the first
+      // contractor whose hours are added by hand: no account, no row here, and
+      // nowhere to put the rate their invoice is priced at.
+      const withHire = await supabase.from('people').select(WITH_HIRE).eq('status', 'active').order('full_name')
       return withHire.error
-        ? await supabase.from('people').select(BASE).not('tsheets_user_id', 'is', null).order('full_name')
+        ? await supabase.from('people').select(BASE).eq('status', 'active').order('full_name')
         : withHire
     })(),
     // Rates likewise: privileged read, merged back in below.
     loadAssignmentRates({ activeOnly: true }).then(rows => ({
-      data: rows.map(r => ({ id: r.id, tsheets_user_id: r.tsheetsUserId, client_id: r.clientId, hourly_rate: r.hourlyRate, effective_from: r.effectiveFrom ?? '' })),
+      data: rows.map(r => ({
+        id: r.id, tsheets_user_id: r.tsheetsUserId, person_id: r.personId,
+        client_id: r.clientId, hourly_rate: r.hourlyRate, effective_from: r.effectiveFrom ?? '',
+      })),
     })),
     // The change history repeats the pay values it recorded, so it is a
     // privileged read for the same reason the columns are.
@@ -158,11 +166,14 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
 
   const clientNameMap = new Map(clients.map(c => [c.id, c.name]))
 
-  const assignmentsByUser = new Map<number, NonNullable<typeof assignments>[number][]>()
+  // Keyed by person. A rate whose TSheets account nobody has linked has no
+  // person yet and is skipped rather than shown against a guess.
+  const assignmentsByPerson = new Map<string, NonNullable<typeof assignments>[number][]>()
   for (const a of (assignments ?? [])) {
-    const list = assignmentsByUser.get(a.tsheets_user_id) ?? []
+    if (!a.person_id) continue
+    const list = assignmentsByPerson.get(a.person_id) ?? []
     list.push(a)
-    assignmentsByUser.set(a.tsheets_user_id, list)
+    assignmentsByPerson.set(a.person_id, list)
   }
 
   const people: PersonWithAssignments[] = (peopleRaw ?? []).map(p => {
@@ -183,9 +194,9 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       costRate: internalRate != null ? Number(internalRate) : null,
       monthlySalary: monthlySalary != null ? Number(monthlySalary) : null,
       projects: (p as { i7_projects?: string[] | null }).i7_projects ?? [],
-      tsheetsUserId: p.tsheets_user_id as number,
+      tsheetsUserId: (p.tsheets_user_id as number | null) ?? null,
       tsheetsOnly: p.tsheets_only ?? false,
-      assignments: (assignmentsByUser.get(p.tsheets_user_id as number) ?? []).map(a => ({
+      assignments: (assignmentsByPerson.get(p.id) ?? []).map(a => ({
         id: a.id,
         clientId: a.client_id,
         clientName: clientNameMap.get(a.client_id) ?? 'Unknown',

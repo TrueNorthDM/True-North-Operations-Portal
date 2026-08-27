@@ -19,12 +19,12 @@ describe('mapCodeToProject', () => {
 
 describe('buildI7Report', () => {
   const entries: I7Entry[] = [
-    { user_id: 1, duration: 3600, date: '2026-07-01', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
-    { user_id: 1, duration: 1800, date: '2026-07-02', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
-    { user_id: 2, duration: 3600, date: '2026-07-03', i7Code: 'BE-CONTENT', activity: 'Content: Writing' },
+    { personId: 'p1', duration: 3600, date: '2026-07-01', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 'p1', duration: 1800, date: '2026-07-02', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 'p2', duration: 3600, date: '2026-07-03', i7Code: 'BE-CONTENT', activity: 'Content: Writing' },
   ]
-  const rates = { 1: 60, 2: 60 }
-  const names = { 1: 'Alice', 2: 'Bob' }
+  const rates = { p1: 60, p2: 60 }
+  const names = { p1: 'Alice', p2: 'Bob' }
 
   it('rolls hours + cost up the project → job code → activity tree', () => {
     const r = buildI7Report(entries, rates, names, '2026-07-01')
@@ -49,7 +49,7 @@ describe('buildI7Report', () => {
   // The rows behave the other way round on purpose: a budgeted project that was
   // not worked still shows, reading zero.
   it('gives a column only to people with hours in the month', () => {
-    const r = buildI7Report(entries, rates, { ...names, 3: 'Barack' }, '2026-07-01')
+    const r = buildI7Report(entries, rates, { ...names, p3: 'Barack' }, '2026-07-01')
     expect(r.people).toEqual(['Alice', 'Bob'])
     expect(r.people).not.toContain('Barack')
   })
@@ -66,8 +66,8 @@ describe('buildI7Report', () => {
 
   it('does not buy a column with an entry that rounds to nothing', () => {
     const r = buildI7Report(
-      [...entries, { user_id: 3, duration: 1, date: '2026-07-04', i7Code: 'WM-SEO', activity: 'SEO: Routine' }],
-      rates, { ...names, 3: 'Barack' }, '2026-07-01',
+      [...entries, { personId: 'p3', duration: 1, date: '2026-07-04', i7Code: 'WM-SEO', activity: 'SEO: Routine' }],
+      rates, { ...names, p3: 'Barack' }, '2026-07-01',
     )
     expect(r.people).not.toContain('Barack')
   })
