@@ -22,8 +22,6 @@
 
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
-import type { I7Entry } from '@/lib/tsheets/types'
 import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
@@ -313,71 +311,10 @@ export async function GET(request: Request) {
     say('  ' + ([...keys].join(', ') || 'none'))
   }
 
-  // The old cache against the new source, for one month, before the report is
-  // pointed at the second one. Same discipline as the import reconciliation:
-  // a swap you cannot check is a swap you have to trust.
-  if (part === 'report' && url.searchParams.get('month')) {
-    const month = url.searchParams.get('month')!
-    const [y, m] = month.split('-').map(Number)
-    const start = `${month}-01`
-    const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
-    head(`REPORT SOURCES, ${month}`)
-
-    type Row = { user_id: number; duration: number; date: string; i7Code: string; activity: string }
-    const cached: Row[] = []
-    for (let from = 0; ; from += 1000) {
-      const { data } = await supabase
-        .from('tsheets_timesheets').select('user_id, duration, date, i7_code, activity')
-        .gte('date', start).lte('date', end).order('id', { ascending: true }).range(from, from + 999)
-      const rows = (data ?? []) as { user_id: number; duration: number; date: string; i7_code: string | null; activity: string | null }[]
-      for (const r of rows) cached.push({ user_id: r.user_id, duration: r.duration, date: r.date, i7Code: r.i7_code ?? '', activity: r.activity ?? '' })
-      if (rows.length < 1000) break
-    }
-    const fresh = await loadI7EntriesHere(supabase, start, end)
-
-    // The two sides no longer share a key: the old cache is keyed by TSheets
-    // account, the report by directory person. The comparison still has to
-    // hold, so the old side is translated rather than the probe abandoned.
-    const { data: linked } = await supabase
-      .from('people').select('id, tsheets_user_id').not('tsheets_user_id', 'is', null)
-    const personOf = new Map(
-      ((linked ?? []) as { id: string; tsheets_user_id: number }[])
-        .map(p => [p.tsheets_user_id, p.id]),
-    )
-
-    const sum = (rows: { duration: number }[]) => rows.reduce((a, r) => a + r.duration, 0)
-    say(`old cache : ${cached.length} entries, ${sum(cached)} seconds`)
-    say(`clocky    : ${fresh.length} entries, ${sum(fresh)} seconds`)
-
-    // Compared as buckets rather than row by row: the two have no shared id, and
-    // what the report actually renders is the bucket, not the row.
-    const key = (r: Row | I7Entry) =>
-      `${r.date}|${'personId' in r ? r.personId : personOf.get(r.user_id) ?? `unlinked:${r.user_id}`}|${r.i7Code}|${r.activity}`
-    const bucket = (rows: (Row | I7Entry)[]) => {
-      const m = new Map<string, number>()
-      for (const r of rows) m.set(key(r), (m.get(key(r)) ?? 0) + r.duration)
-      return m
-    }
-    const a = bucket(cached), b = bucket(fresh)
-    const keys = new Set([...a.keys(), ...b.keys()])
-    const off = [...keys].filter(k => (a.get(k) ?? 0) !== (b.get(k) ?? 0))
-    say(`\n${keys.size} buckets (day + person + code + activity), ${off.length} disagree`)
-    for (const k of off.slice(0, 25)) {
-      say(`  ${k}  old ${a.get(k) ?? 0}s  clocky ${b.get(k) ?? 0}s`)
-    }
-    if (off.length > 25) say(`  ... and ${off.length - 25} more`)
-
-    // Equal totals with unequal row counts is the case a value comparison
-    // cannot see: two buckets holding zero seconds each look identical whether
-    // one of them exists or not. Named explicitly so it cannot pass as a match.
-    say(`\nzero-second rows: old ${cached.filter(r => !r.duration).length}, clocky ${fresh.filter(r => !r.duration).length}`)
-    const onlyOld = [...a.keys()].filter(k => !b.has(k))
-    const onlyNew = [...b.keys()].filter(k => !a.has(k))
-    say(`buckets only in the old cache: ${onlyOld.length}`)
-    for (const k of onlyOld.slice(0, 10)) say(`  ${k}  ${a.get(k)}s`)
-    say(`buckets only in clocky: ${onlyNew.length}`)
-    for (const k of onlyNew.slice(0, 10)) say(`  ${k}  ${b.get(k)}s`)
-  }
+  // The probe that compared the old cache against tc_entries lived here. It
+  // was the check for phase 5, and it retired with the cache it read: once
+  // tsheets_timesheets stopped being filled, the two sides would drift apart
+  // by design and the probe would report that drift as a fault.
 
   // Grant Pass is identifiable two ways: the "2 Project" field carries
   // 'GP School' / 'GP church', and there are deactivated job codes of the same

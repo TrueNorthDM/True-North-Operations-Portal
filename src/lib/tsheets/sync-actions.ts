@@ -6,6 +6,7 @@
  *     real directory person (People tab).
  *   - syncAllFromTsheets: the "Sync now" button: clients + people + timesheets,
  *     then stamp tsheets_synced_at. The cron runs the same cores on schedule.
+ *     Hours are NOT pulled here: they come through the Clocky import.
  *
  * (Four granular wrappers, syncTrClients / syncPeopleFromTsheets /
  * syncClientsFromPortal / syncPeopleFromPortal, were removed in the audit:
@@ -14,7 +15,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { syncClientsCore, syncPeopleCore, syncTimesheetsCore } from '@/lib/tsheets/sync'
+import { syncClientsCore, syncPeopleCore } from '@/lib/tsheets/sync'
 import { requireAdmin } from '@/lib/tsheets/require-admin'
 
 // ─── Manually link a TSheets-only import to an existing directory person ─────
@@ -58,19 +59,16 @@ export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: strin
   const supabase = await createClient()
   const { data: settings } = await supabase
     .from('app_settings')
-    .select('tsheets_api_token, tsheets_synced_at')
+    .select('tsheets_api_token')
     .eq('singleton_id', 1)
     .maybeSingle()
   if (!settings?.tsheets_api_token) return { ok: false, error: 'No TSheets token configured in Settings.' }
   const token = settings.tsheets_api_token
-  const lastSyncedAt = settings.tsheets_synced_at ?? null
 
   const clients = await syncClientsCore(supabase, token)
   if (!clients.ok) return { ok: false, error: clients.error }
   const people = await syncPeopleCore(supabase, token)
   if (!people.ok) return { ok: false, error: people.error }
-  const timesheets = await syncTimesheetsCore(supabase, token, lastSyncedAt)
-  if (!timesheets.ok) return { ok: false, error: timesheets.error }
 
   await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
 

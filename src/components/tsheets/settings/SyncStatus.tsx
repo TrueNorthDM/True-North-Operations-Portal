@@ -8,6 +8,12 @@ interface Props {
   syncedAt: string | null
   /** Admins get a clickable "sync now"; everyone else sees a read-only badge. */
   interactive?: boolean
+  /**
+   * The last import attempt failed, so `syncedAt` is older than it reads.
+   * Worth its own state: a timestamp that only moves on success makes a
+   * failure look identical to a quiet hour.
+   */
+  failed?: boolean
 }
 
 function timeAgo(iso: string): string {
@@ -22,7 +28,7 @@ function timeAgo(iso: string): string {
   return `${day} day${day !== 1 ? 's' : ''} ago`
 }
 
-export function SyncStatus({ syncedAt, interactive = false }: Props) {
+export function SyncStatus({ syncedAt, interactive = false, failed = false }: Props) {
   const router = useRouter()
   const [, setTick] = useState(0)
   const [syncing, setSyncing] = useState(false)
@@ -34,7 +40,9 @@ export function SyncStatus({ syncedAt, interactive = false }: Props) {
     return () => clearInterval(id)
   }, [])
 
-  const label = syncedAt ? `Last synced ${timeAgo(syncedAt)}` : 'Never synced'
+  const label = failed
+    ? (syncedAt ? `Import failed, data from ${timeAgo(syncedAt)}` : 'Import failed, no data yet')
+    : syncedAt ? `Last synced ${timeAgo(syncedAt)}` : 'Never synced'
 
   async function onClick() {
     if (!interactive || syncing) return
@@ -55,7 +63,9 @@ export function SyncStatus({ syncedAt, interactive = false }: Props) {
     </>
   )
 
-  const base = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs'
+  const base = failed
+    ? 'inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 text-[#7a4e05] px-3 py-1.5 text-xs'
+    : 'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs'
 
   return (
     <div className="flex flex-wrap items-center gap-2">

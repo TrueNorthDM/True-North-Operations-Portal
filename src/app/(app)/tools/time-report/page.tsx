@@ -22,6 +22,7 @@ import { narrowReport } from '@/lib/tsheets/narrow'
 import { loadManualHours } from '@/lib/timeclock/manual-data'
 import { ManualHours } from '@/components/tsheets/ManualHours'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
+import { getHoursImportStatus } from '@/lib/timeclock/import-status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
@@ -162,16 +163,22 @@ async function I7Tab({ month, team }: { month?: string; team?: string }) {
   const requested = month ?? currentYearMonth()
   const selectedMonth = months.includes(requested) ? requested : months[0]
 
-  // Only "is TSheets connected" and "when did it last sync" are needed here,
-  // never the token itself, so this goes through the narrow reader instead of
-  // the user's client. See lib/tsheets/status.ts.
-  const { configured, syncedAt } = await getTsheetsStatus()
+  // Two different questions, and they used to be answered by one timestamp.
+  // Whether TSheets is connected at all comes from app_settings; how fresh the
+  // HOURS are comes from the Clocky import, which is the pipeline this report
+  // actually reads. The old badge showed the clients-and-people sync, so it
+  // described a pipeline the report does not use: if the import died, the page
+  // would have kept saying "last synced an hour ago" forever.
+  const [{ configured }, hours] = await Promise.all([
+    getTsheetsStatus(),
+    getHoursImportStatus(),
+  ])
 
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2.5 flex-wrap">
         <p className="text-sm text-muted leading-relaxed m-0 mr-1">
-          Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client, pulled directly from QuickBooks Time.
+          Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client. The hours come from QuickBooks Time, imported into the portal, plus anything added by hand below.
         </p>
         <Link
           href="/tools/time-report/guide"
@@ -181,7 +188,7 @@ async function I7Tab({ month, team }: { month?: string; team?: string }) {
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
         </Link>
-        <SyncStatus syncedAt={syncedAt} />
+        <SyncStatus syncedAt={hours.syncedAt} failed={hours.failed} />
       </div>
 
       {!configured ? (

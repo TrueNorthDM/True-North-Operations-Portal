@@ -730,12 +730,6 @@ export type Database = {
         Update: Partial<{ tsheets_entries: number; tsheets_seconds: number; portal_entries: number; portal_seconds: number; checked_at: string }>
         Relationships: []
       }
-      tsheets_timesheets: {
-        Row: { id: number; user_id: number; jobcode_id: number; duration: number; date: string; i7_code: string | null; activity: string | null; synced_at: string }
-        Insert: { id: number; user_id: number; jobcode_id: number; duration: number; date: string; i7_code?: string | null; activity?: string | null; synced_at?: string }
-        Update: Partial<{ id: number; user_id: number; jobcode_id: number; duration: number; date: string; i7_code: string | null; activity: string | null; synced_at: string }>
-        Relationships: []
-      }
       i7_project_month_hours: {
         Row: { id: number; client_id: number; project: string; month: string; hours_allocated: number; justification: string; created_by: string | null; created_at: string }
         Insert: { id?: number; client_id: number; project: string; month: string; hours_allocated: number; justification: string; created_by?: string | null; created_at?: string }

@@ -10,7 +10,7 @@
 
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { syncClientsCore, syncPeopleCore, syncTimesheetsCore } from '@/lib/tsheets/sync'
+import { syncClientsCore, syncPeopleCore } from '@/lib/tsheets/sync'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -32,29 +32,29 @@ export async function GET(request: Request) {
     .eq('singleton_id', 1)
     .maybeSingle()
 
-  const row = settings as { tsheets_api_token?: string | null; tsheets_synced_at?: string | null } | null
+  const row = settings as { tsheets_api_token?: string | null } | null
   const token = row?.tsheets_api_token
   if (!token) {
     return NextResponse.json({ error: 'TSheets token not configured (Settings → QuickBooks Time).' }, { status: 500 })
   }
 
-  // The previous sync time is the watermark for the incremental timesheet pull,
-  // read it before we overwrite it below.
-  const lastSyncedAt = row?.tsheets_synced_at ?? null
-
+  // Clients and people only. The timesheet pull that used to run here filled
+  // tsheets_timesheets, a cache no report has read since the hours moved to
+  // tc_entries, so it was spending API calls to keep a table nobody opened.
+  // The hours arrive through the Clocky import instead (/api/cron/clocky-delta).
   const t0 = Date.now()
   const clients = await syncClientsCore(supabase, token)
   const people = await syncPeopleCore(supabase, token)
-  const timesheets = await syncTimesheetsCore(supabase, token, lastSyncedAt)
 
-  // Stamp the last-synced time so the UI can show "Last synced X ago".
+  // Still stamped, but it now means only what it says: when the clients and
+  // people were last pulled. The report's freshness badge no longer reads it,
+  // because the report's hours do not come from here.
   await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
 
   return NextResponse.json({
-    ok: clients.ok && people.ok && timesheets.ok,
+    ok: clients.ok && people.ok,
     elapsedMs: Date.now() - t0,
     clients,
     people,
-    timesheets,
   })
 }
