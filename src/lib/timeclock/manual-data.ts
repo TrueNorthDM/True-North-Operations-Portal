@@ -8,7 +8,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { i7JobcodeIdsHere } from './report-source'
-import { loadAssignmentRates } from '@/lib/hr/compensation'
+import { loadI7Assignments } from '@/lib/tsheets/report-data'
+import { rateStateFor } from '@/lib/tsheets/rates'
 import { I7_CODE_CF, ACTIVITY_CF } from '@/lib/tsheets/i7report'
 import type { ManualOptions, ManualRow } from '@/components/tsheets/ManualHours'
 
@@ -59,7 +60,7 @@ export async function loadManualHours(
       .limit(20_000),
   ])
 
-  const people = await peopleForEntry(supabase)
+  const people = await peopleForEntry(supabase, month)
 
   const nameById = new Map(people.map(p => [p.id, p.name]))
   const jobcodeName = new Map(
@@ -104,24 +105,41 @@ export async function loadManualHours(
 }
 
 /**
- * Who the hours can be added for, and whether a rate exists for them.
+ * Who the hours can be added for, and whether the report will actually cost them.
  *
- * The rate is carried so the form can say "this will count as zero" before
- * the entry is saved, rather than after the invoice has gone out.
+ * The rate is carried so the form can say "this will count as zero" before the
+ * entry is saved, rather than after the invoice has gone out.
+ *
+ * It asks the question through loadI7Assignments and rateFor, which is what the
+ * report itself uses, so the warning cannot disagree with the number it is
+ * warning about. Asking separately is how it went wrong: the check read every
+ * active rate for every client, while the sentence promised something about the
+ * i7 rate for the month being reported. Those coincided until they did not.
+ *
+ * Two cases the old check waved through, both of which cost zero:
+ *   - a rate for another client and none for i7
+ *   - an i7 rate that starts after the month being reported, which is exactly
+ *     what "Start on 1 September" produces while August is still being invoiced
  */
-async function peopleForEntry(supabase: Client) {
-  const [{ data: peopleRows }, rates] = await Promise.all([
+async function peopleForEntry(supabase: Client, month: string) {
+  const [{ data: peopleRows }, assignments] = await Promise.all([
     supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name'),
-    // Through the privileged client, like every other reader of this table:
-    // migration 054 revoked SELECT on tr_assignments from `authenticated` and
-    // re-granted a column list that cannot include person_id, since that
-    // column was added long afterwards. A session client reading it gets
-    // permission denied, and an unchecked error here would quietly tell
+    // Reaches tr_assignments through the privileged client, like every other
+    // reader of that table: migration 054 revoked SELECT on it from
+    // `authenticated` and re-granted a column list that cannot include
+    // person_id, since that column arrived long afterwards. A session client
+    // gets permission denied, and an unchecked error here would quietly tell
     // everybody they have no rate.
-    loadAssignmentRates({ activeOnly: true }),
+    loadI7Assignments(),
   ])
 
-  const rated = new Set(rates.map(r => r.personId).filter(Boolean) as string[])
-  return ((peopleRows ?? []) as { id: string; full_name: string }[])
-    .map(p => ({ id: p.id, name: p.full_name, hasRate: rated.has(p.id) }))
+  return ((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => {
+    const state = rateStateFor(assignments, p.id, month)
+    return {
+      id: p.id,
+      name: p.full_name,
+      hasRate: state === 'rated',
+      rateOutsideMonth: state === 'outside',
+    }
+  })
 }

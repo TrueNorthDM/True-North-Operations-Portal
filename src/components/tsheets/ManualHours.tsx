@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { addManualEntry, deleteManualEntry } from '@/lib/timeclock/manual-actions'
 import { MAX_HOURS_PER_ENTRY } from '@/lib/timeclock/manual-entry'
+import { monthName } from '@/lib/timeclock/periods'
 
 export type ManualRow = {
   id: number
@@ -27,7 +28,7 @@ export type ManualRow = {
 }
 
 export type ManualOptions = {
-  people: { id: string; name: string; hasRate: boolean }[]
+  people: { id: string; name: string; hasRate: boolean; rateOutsideMonth: boolean }[]
   jobcodes: { id: number; name: string }[]
   i7Codes: string[]
   activities: string[]
@@ -134,7 +135,9 @@ export function ManualHours(
                   twice here: once after the name, once after the full stop. */}
               {chosen && !chosen.hasRate ? (
                 <p className="text-[11.5px] text-[#b06d0a] mt-1.5 m-0 leading-[1.5]">
-                  {`${chosen.name} has no i7 rate. The hours will count and the cost will be zero until one is set in Rates & Costs.`}
+                  {chosen.rateOutsideMonth
+                    ? `${chosen.name} has an i7 rate, but it does not cover ${monthName(month)}. The hours will count and the cost will be zero. In Rates & Costs, start the rate on or before this month.`
+                    : `${chosen.name} has no i7 rate. The hours will count and the cost will be zero until one is set in Rates & Costs.`}
                 </p>
               ) : null}
             </div>

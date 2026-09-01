@@ -54,6 +54,29 @@ export function rateFor(assignments: Assignment[], personId: string, ym: string)
 }
 
 /**
+ * Whether the report will put a cost on a person's hours in a month, and if
+ * not, which of the two reasons it is.
+ *
+ *   'rated'    a rate covers the month, so the hours carry cost
+ *   'outside'  a rate exists, but none that costs this month
+ *   'none'     no rate at all
+ *
+ * The split matters because the two failures look identical on an invoice, both
+ * costing zero, and are fixed by opposite actions: one needs a rate created,
+ * the other needs the rate it already has to start earlier. Telling somebody to
+ * set a rate they already set walks them straight past what is wrong.
+ *
+ * A rate row of zero for the month lands in 'outside'. That is honest: it also
+ * costs nothing, and it is also fixed in Rates & Costs.
+ */
+export function rateStateFor(
+  assignments: Assignment[], personId: string, ym: string,
+): 'rated' | 'outside' | 'none' {
+  if (rateFor(assignments, personId, ym) > 0) return 'rated'
+  return assignments.some(a => a.personId === personId) ? 'outside' : 'none'
+}
+
+/**
  * The "standard" rate for a month: the one the most people are on.
  *
  * Used as a single headline figure (e.g. "$95/h") and to estimate how many

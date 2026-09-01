@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { rateFor, standardI7Rate, type Assignment } from './rates'
+import { rateFor, rateStateFor, standardI7Rate, type Assignment } from './rates'
 
 /**
  * These two functions decide every currency figure on the Clients Report: the
@@ -176,5 +176,41 @@ describe('standardI7Rate', () => {
       a(3, 95, '2026-01-01'),
     ]
     expect(standardI7Rate(rows, '2026-08')).toBe(95)
+  })
+})
+
+/**
+ * The warning shown before hours are added by hand reads this. It is the last
+ * thing between a zero-cost line and an invoice, so the two ways of costing
+ * nothing have to stay told apart: they are fixed by opposite actions.
+ */
+describe('rateStateFor', () => {
+  it('is rated when a rate covers the month', () => {
+    expect(rateStateFor([a(1, 60, '2026-08-01')], 'p1', '2026-08')).toBe('rated')
+  })
+
+  it('is none for somebody with no rate at all', () => {
+    expect(rateStateFor([a(1, 60, '2026-08-01')], 'p2', '2026-08')).toBe('none')
+  })
+
+  // The Jonatas case: the rate was saved with "Start on 1 September" while
+  // August was still being invoiced. Costs zero, and telling them to create a
+  // rate would send them past the start date that is the actual problem.
+  it('is outside when the rate starts after the month', () => {
+    expect(rateStateFor([a(1, 60, '2026-09-01')], 'p1', '2026-08')).toBe('outside')
+  })
+
+  it('is outside when the rate ended before the month', () => {
+    expect(rateStateFor([a(1, 60, '2025-01-01', '2026-07-31')], 'p1', '2026-08')).toBe('outside')
+  })
+
+  it('is rated on the first and last day of the rate window', () => {
+    expect(rateStateFor([a(1, 60, '2026-08-01', '2026-08-31')], 'p1', '2026-08')).toBe('rated')
+  })
+
+  // Costs nothing and is fixed in the same screen, so it is grouped with
+  // 'outside' rather than being called rated and quietly billing zero.
+  it('treats a zero-amount rate as outside, not as rated', () => {
+    expect(rateStateFor([a(1, 0, '2026-08-01')], 'p1', '2026-08')).toBe('outside')
   })
 })
