@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { i7JobcodeIdsHere } from './report-source'
+import { loadAssignmentRates } from '@/lib/hr/compensation'
 import { I7_CODE_CF, ACTIVITY_CF } from '@/lib/tsheets/i7report'
 import type { ManualOptions, ManualRow } from '@/components/tsheets/ManualHours'
 
@@ -109,13 +110,18 @@ export async function loadManualHours(
  * the entry is saved, rather than after the invoice has gone out.
  */
 async function peopleForEntry(supabase: Client) {
-  const [{ data: peopleRows }, { data: rateRows }] = await Promise.all([
+  const [{ data: peopleRows }, rates] = await Promise.all([
     supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name'),
-    supabase.from('tr_assignments').select('person_id')
-      .is('effective_to', null).eq('active', true).not('person_id', 'is', null),
+    // Through the privileged client, like every other reader of this table:
+    // migration 054 revoked SELECT on tr_assignments from `authenticated` and
+    // re-granted a column list that cannot include person_id, since that
+    // column was added long afterwards. A session client reading it gets
+    // permission denied, and an unchecked error here would quietly tell
+    // everybody they have no rate.
+    loadAssignmentRates({ activeOnly: true }),
   ])
 
-  const rated = new Set(((rateRows ?? []) as { person_id: string }[]).map(r => r.person_id))
+  const rated = new Set(rates.map(r => r.personId).filter(Boolean) as string[])
   return ((peopleRows ?? []) as { id: string; full_name: string }[])
     .map(p => ({ id: p.id, name: p.full_name, hasRate: rated.has(p.id) }))
 }

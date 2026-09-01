@@ -125,15 +125,16 @@ export function ManualHours(
               />
               {/* Their hours would count and their cost would be zero, so the
                   budget would read as less consumed than it is. Said before
-                  the entry is saved, not after the invoice is out. */}
+                  the entry is saved, not after the invoice is out.
+
+                  The whole sentence is one expression on one line. JSX trims
+                  every line of a text chunk that runs onto a second line, the
+                  first one included, so any word sitting beside {expr} loses
+                  its space. Wrapping the sentence to fit the margin ate it
+                  twice here: once after the name, once after the full stop. */}
               {chosen && !chosen.hasRate ? (
                 <p className="text-[11.5px] text-[#b06d0a] mt-1.5 m-0 leading-[1.5]">
-                  {/* The name is inside the expression with the words that
-                      follow it. JSX trims every line of a text chunk that runs
-                      onto a second line, including the first, which ate the
-                      space and printed "Queirozhas no i7 rate". */}
-                  {`${chosen.name} has no i7 rate.`} The hours will count and the cost will be
-                  zero until one is set in Rates &amp; Costs.
+                  {`${chosen.name} has no i7 rate. The hours will count and the cost will be zero until one is set in Rates & Costs.`}
                 </p>
               ) : null}
             </div>
