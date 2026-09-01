@@ -171,16 +171,30 @@ async function I7Tab({ month, team }: { month?: string; team?: string }) {
   // actually reads. The old badge showed the clients-and-people sync, so it
   // described a pipeline the report does not use: if the import died, the page
   // would have kept saying "last synced an hour ago" forever.
-  const [{ configured }, hours] = await Promise.all([
+  const [{ configured }, hours, access] = await Promise.all([
     getTsheetsStatus(),
     getHoursImportStatus(),
+    // Memoised per request, so asking here costs nothing: the guard above and
+    // ReportView below already resolved it.
+    loadAccess(),
   ])
+
+  // The panel that takes hand-added hours is admin only, so only an admin is
+  // told about it. Pointing everybody else at something "below" that is not
+  // there is the kind of small lie that makes people stop reading the rest.
+  //
+  // One string, not a sentence stitched out of JSX. Wrapping a line to fit the
+  // margin eats the space beside an expression, and this file has lost that
+  // argument five times.
+  const sourceLine = access.isAdmin
+    ? 'The hours come from QuickBooks Time, imported into the portal, plus any added by hand in the panel below.'
+    : 'The hours come from QuickBooks Time, imported into the portal.'
 
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2.5 flex-wrap">
         <p className="text-sm text-muted leading-relaxed m-0 mr-1">
-          Hours, cost and budget usage for the <span className="font-semibold text-tn-ink">i7 Marketing</span> client. The hours come from QuickBooks Time, imported into the portal, plus anything added by hand below.
+          {sourceLine}
         </p>
         <Link
           href="/tools/time-report/guide"
