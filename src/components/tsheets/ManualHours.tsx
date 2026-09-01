@@ -30,8 +30,10 @@ export type ManualRow = {
 export type ManualOptions = {
   people: { id: string; name: string; hasRate: boolean; rateOutsideMonth: boolean }[]
   jobcodes: { id: number; name: string }[]
-  i7Codes: string[]
+  /** Each code with the project it lands in, which becomes its group heading. */
+  i7Codes: { code: string; project: string }[]
   activities: string[]
+  billable: string[]
 }
 
 const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px] text-tn-ink'
@@ -51,6 +53,7 @@ export function ManualHours(
   const [hours, setHours] = useState('')
   const [i7Code, setI7Code] = useState('')
   const [activity, setActivity] = useState('')
+  const [billable, setBillable] = useState('')
   const [notes, setNotes] = useState('')
 
   const chosen = options.people.find(p => p.id === personId)
@@ -65,6 +68,7 @@ export function ManualHours(
         hours: Number(hours),
         i7Code,
         activity,
+        billable,
         notes,
       })
       if (!r.ok) { setError(r.error ?? 'Something went wrong.'); return }
@@ -157,7 +161,7 @@ export function ManualHours(
             </div>
 
             <div>
-              <label className={LABEL}>Job code</label>
+              <label className={LABEL}>Job</label>
               <Select
                 value={jobcodeId}
                 onChange={setJobcodeId}
@@ -170,22 +174,35 @@ export function ManualHours(
             </div>
 
             <div>
-              <label className={LABEL}>i7 code</label>
+              {/* Numbered the way QuickBooks Time numbers them, so the three
+                  read as the same three fields somebody fills in over there. */}
+              <label className={LABEL}>1 - i7 code</label>
               <Select
                 value={i7Code} onChange={setI7Code} searchable fullWidth ariaLabel="i7 code"
-                options={options.i7Codes.map(c => ({ value: c, label: c }))}
+                options={options.i7Codes.map(c => ({ value: c.code, label: c.code, group: c.project }))}
                 placeholder="Choose…"
               />
             </div>
 
             <div>
-              <label className={LABEL}>Activity</label>
+              <label className={LABEL}>3 Activity</label>
               <Select
                 value={activity} onChange={setActivity} searchable fullWidth ariaLabel="Activity"
                 options={options.activities.map(a => ({ value: a, label: a }))}
                 placeholder="Choose…"
               />
             </div>
+
+            {options.billable.length > 0 && (
+              <div>
+                <label className={LABEL}>4 Billable</label>
+                <Select
+                  value={billable} onChange={setBillable} fullWidth ariaLabel="Billable"
+                  options={options.billable.map(b => ({ value: b, label: b }))}
+                  placeholder="Choose…"
+                />
+              </div>
+            )}
 
             <div className="sm:col-span-3">
               <label className={LABEL}>Note (optional)</label>

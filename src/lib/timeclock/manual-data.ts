@@ -10,7 +10,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { i7JobcodeIdsHere } from './report-source'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateStateFor } from '@/lib/tsheets/rates'
-import { I7_CODE_CF, ACTIVITY_CF } from '@/lib/tsheets/i7report'
+import { I7_CODE_CF, ACTIVITY_CF, mapCodeToProject, I7_PROJECTS } from '@/lib/tsheets/i7report'
+import { loadEntryFieldKeys, loadFieldOptions } from './manual-fields'
 import type { ManualOptions, ManualRow } from '@/components/tsheets/ManualHours'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -46,26 +47,33 @@ export async function loadManualHours(
   const codeKey = keyOf(I7_CODE_CF)
   const activityKey = keyOf(ACTIVITY_CF)
 
-  const [entries, jobcodes, recent] = await Promise.all([
+  const billableKey = (await loadEntryFieldKeys(supabase)).billable
+
+  const [entries, jobcodes, recent, billable] = await Promise.all([
     supabase.from('tc_entries')
       .select('id, person_id, entry_date, duration_seconds, jobcode_id, fields, notes, created_by')
       .eq('kind', 'manual').is('external_id', null)
       .gte('entry_date', start).lte('entry_date', end)
       .order('entry_date', { ascending: false }),
-    supabase.from('tc_jobcodes').select('id, name').in('id', [...jobcodeIds]).order('name'),
+    supabase.from('tc_jobcodes').select('id, name, parent_id, active').in('id', [...jobcodeIds]),
     // The code and activity lists come from what has actually been logged, so
     // they match what people already type rather than a list kept in code.
     supabase.from('tc_entries').select('fields')
       .gte('entry_date', optionsSince(month))
       .limit(20_000),
+    loadFieldOptions(supabase, billableKey),
   ])
 
   const people = await peopleForEntry(supabase, month)
 
+  const allJobcodes = (jobcodes.data ?? []) as {
+    id: number; name: string; parent_id: number | null; active: boolean
+  }[]
+
   const nameById = new Map(people.map(p => [p.id, p.name]))
-  const jobcodeName = new Map(
-    ((jobcodes.data ?? []) as { id: number; name: string }[]).map(j => [j.id, j.name]),
-  )
+  // Every i7 job code, retired ones included, so an OLD entry still shows the
+  // name of the code it was logged under. What may be CHOSEN is narrower, below.
+  const jobcodeName = new Map(allJobcodes.map(j => [j.id, j.name]))
 
   const rows: ManualRow[] = ((entries.data ?? []) as {
     id: number; person_id: string; entry_date: string; duration_seconds: number
@@ -97,11 +105,68 @@ export async function loadManualHours(
     rows,
     options: {
       people,
-      jobcodes: (jobcodes.data ?? []) as { id: number; name: string }[],
-      i7Codes: [...codes].sort(),
-      activities: [...activities].sort(),
+      jobcodes: choosableJobcodes(allJobcodes),
+      i7Codes: groupCodesByProject([...codes]),
+      activities: [...activities].sort(byLabel),
+      billable,
     },
   }
+}
+
+/**
+ * Case-insensitively, or ASCII order buries every lower-case label under the
+ * upper-case ones: i7-ADMIN and i7-MKTG sat below WMW-MKTG, which is the last
+ * place anyone looks for a code beginning with i.
+ */
+const byLabel = (a: string, b: string) => a.localeCompare(b, 'en', { sensitivity: 'base' })
+
+/**
+ * The i7 codes, under the project each one lands in.
+ *
+ * The report decides a code's project from its first letters, and that rule has
+ * never been visible anywhere: it only shows itself afterwards, when the hours
+ * turn up in a row of the tree. Grouping the list by it answers, at the moment
+ * of choosing, the question the person actually has, which is where this hour
+ * will appear on the invoice.
+ *
+ * Group order follows the report's own, so the list reads like the table it
+ * feeds. Anything whose prefix matches no project lands in 'Unassigned' and
+ * sorts last: it still counts hours, and it should look like the loose end it is.
+ */
+export function groupCodesByProject(codes: string[]): { code: string; project: string }[] {
+  const order = new Map<string, number>(I7_PROJECTS.map((p, i) => [p, i]))
+  const rank = (p: string) => order.get(p) ?? I7_PROJECTS.length
+  return codes
+    .map(code => ({ code, project: mapCodeToProject(code) }))
+    .sort((a, b) => rank(a.project) - rank(b.project) || byLabel(a.code, b.code))
+}
+
+/**
+ * The job codes a new entry may be logged against.
+ *
+ * Two narrowings, both of which the list was missing, and both of which TSheets
+ * applies without being asked:
+ *
+ *   Folders are not job codes. "2 - i7 Marketing" is a branch you drill into
+ *   over there, never a thing you log to, and it was sitting in the list beside
+ *   its own children as though it were one of them.
+ *
+ *   Retired codes are not on offer. tc_jobcodes carries `active` and nobody was
+ *   reading it, so codes TSheets has taken out of circulation were still being
+ *   offered for a line on a new invoice.
+ *
+ * The REPORT still reads every code, active or not: the hours logged under a
+ * code before it was retired are real and have to keep counting. It is only the
+ * choosing that narrows.
+ */
+function choosableJobcodes(
+  all: { id: number; name: string; parent_id: number | null; active: boolean }[],
+): { id: number; name: string }[] {
+  const isFolder = new Set(all.map(j => j.parent_id).filter((p): p is number => p != null))
+  return all
+    .filter(j => j.active && !isFolder.has(j.id))
+    .map(j => ({ id: j.id, name: j.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
 }
 
 /**

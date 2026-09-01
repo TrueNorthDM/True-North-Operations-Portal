@@ -8,6 +8,7 @@
  * page). This one is ours end to end, white surface in light mode, dark in dark
  * (the app's tokens remap under .dark), and the brand display font throughout.
  *
+ * Options may carry a `group`, which draws a heading wherever the group changes.
  * The menu is portalled to <body> and positioned `fixed` from the trigger's rect,
  * so it floats above everything and is never clipped inside a scrolling modal,
  * the one thing the native control did for free.
@@ -17,7 +18,19 @@ import { useEffect, useRef, useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
 import { createPortal } from 'react-dom'
 
-export interface SelectOption { value: string; label: string; disabled?: boolean }
+export interface SelectOption {
+  value: string
+  label: string
+  disabled?: boolean
+  /**
+   * Heading this option sits under. Options are NOT reordered here: the caller
+   * sorts them so that a group's members are adjacent, and a heading is drawn
+   * wherever the group changes. Reordering in the component would make the
+   * rendered order differ from the array the caller reasons about, and the
+   * filter would then have to sort again on every keystroke.
+   */
+  group?: string
+}
 
 /** The menu's tallest and shortest useful heights, in pixels. */
 const MAX_MENU_PX = 288
@@ -150,14 +163,24 @@ export function Select({
             </div>
           )}
           {shown.length === 0 && <div className="px-2.5 py-2 text-[13px] text-muted">No matches</div>}
-          {shown.map(o => {
+          {shown.map((o, i) => {
             const active = o.value === value
+            // A heading wherever the group changes, filtering included: search
+            // for "MKTG" and the headings still say which project each hit
+            // belongs to, which is the whole reason they are there.
+            const heading = o.group && o.group !== shown[i - 1]?.group ? o.group : null
             return (
+              <div key={o.value}>
+              {heading && (
+                <div role="presentation" className="px-2.5 pt-2.5 pb-1 font-(family-name:--font-display) font-bold text-[10.5px] uppercase tracking-wider text-tn-teal">
+                  {heading}
+                </div>
+              )}
               <button
-                key={o.value}
                 type="button"
                 role="option"
                 aria-selected={active}
+                aria-label={o.group ? `${o.label}, ${o.group}` : undefined}
                 disabled={o.disabled}
                 onClick={() => { if (!o.disabled) { onChange(o.value); setOpen(false) } }}
                 className={`flex items-center gap-2 w-full text-left px-2.5 py-2 rounded-[8px] font-(family-name:--font-display) font-semibold text-[13px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
@@ -169,6 +192,7 @@ export function Select({
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d="M20 6 9 17l-5-5" /></svg>
                 )}
               </button>
+              </div>
             )
           })}
         </div>,

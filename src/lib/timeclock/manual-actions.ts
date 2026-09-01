@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { I7_CODE_CF, ACTIVITY_CF } from '@/lib/tsheets/i7report'
+import { loadEntryFieldKeys } from './manual-fields'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateStateFor } from '@/lib/tsheets/rates'
 import { monthName } from './periods'
@@ -17,12 +17,8 @@ type Result = { ok: boolean; error?: string }
 
 /** tc_fields ids for the two fields the i7 report groups by. */
 async function fieldIds(supabase: ReturnType<typeof createAdminClient>) {
-  const { data } = await supabase
-    .from('tc_fields').select('id, external_id')
-    .in('external_id', [Number(I7_CODE_CF), Number(ACTIVITY_CF)])
-  const rows = (data ?? []) as { id: number; external_id: number | null }[]
-  const find = (ext: string) => rows.find(r => String(r.external_id) === ext)?.id ?? null
-  return { code: find(I7_CODE_CF), activity: find(ACTIVITY_CF) }
+  const keys = await loadEntryFieldKeys(supabase)
+  return { code: keys.code, activity: keys.activity, billable: keys.billable }
 }
 
 export async function addManualEntry(input: ManualEntryInput): Promise<Result> {
@@ -81,7 +77,11 @@ export async function addManualEntry(input: ManualEntryInput): Promise<Result> {
     // for reasons nobody remembers.
     state: 'approved',
     notes: input.notes || null,
-    fields: { [fields.code]: input.i7Code, [fields.activity]: input.activity },
+    fields: {
+      [fields.code]: input.i7Code,
+      [fields.activity]: input.activity,
+      ...(fields.billable && input.billable ? { [fields.billable]: input.billable } : {}),
+    },
     created_by: me?.id ?? null,
   })
   if (error) return { ok: false, error: error.message }

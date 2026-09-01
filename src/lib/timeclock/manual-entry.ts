@@ -19,6 +19,12 @@ export type ManualEntryInput = {
   /** The i7 code and activity the report groups by. */
   i7Code: string
   activity: string
+  /**
+   * Billable, kept because QuickBooks Time asks for it and somebody comparing
+   * the two screens would notice its absence. No report reads it: it travels
+   * with the entry so the record matches what an imported one carries.
+   */
+  billable?: string
   notes?: string
 }
 
