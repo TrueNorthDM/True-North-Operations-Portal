@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { tokenViewAs } from './actions'
 import { Select } from '@/components/ui/Select'
 import type { ViewAsRole } from '@/lib/auth/view-as'
+import { PREVIEW_CAVEATS } from '@/lib/access/preview-fidelity'
 
 type Tier = ViewAsRole
 const TIERS: Tier[] = ['admin', 'admin_assistant', 'team_leader', 'user']
@@ -106,19 +107,24 @@ export default function ViewStageClient({ myName }: { myName: string }) {
         <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">View Stage</span>
         <span className="text-xs text-muted hidden md:inline">the portal through each access level</span>
         {/*
-          What this preview does and does not prove. Impersonation is resolved
-          in lib/auth/role.ts, so the tier drives the menus, the widgets and the
-          page guards, and all of that is faithful. It never reaches the
-          database: every query still runs on the signed-in admin's own session,
-          so row-level security and column privileges behave the same in every
-          column here. Without this line it is natural to read an empty screen
-          as "locked", when what it shows is "hidden".
+          The badge states where the preview can be believed, and it has to be
+          honest about the answer rather than reassuring.
+          The old wording promised that what each column renders "is accurate",
+          which was true of menus and guards and false of any screen that
+          narrowed its ROWS by who was asking. A team leader's client report was
+          the case that proved it, and the preview showed it as correct.
         */}
         <span
-          className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-[#7a4e05]"
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+            PREVIEW_CAVEATS.length
+              ? 'border-amber-300/60 bg-amber-50 text-[#7a4e05]'
+              : 'border-emerald-300/60 bg-emerald-50 text-emerald-800'
+          }`}
         >
-          <span aria-hidden="true">⚠</span>
-          An empty screen here means hidden, not blocked
+          <span aria-hidden="true">{PREVIEW_CAVEATS.length ? '⚠' : '✓'}</span>
+          {PREVIEW_CAVEATS.length
+            ? `Faithful except on ${PREVIEW_CAVEATS.map(c => c.label).join(', ')}`
+            : 'Every screen here renders exactly what that level sees'}
         </span>
         <span className="flex-1" />
         <div className="flex items-center gap-1 bg-subtle border border-slate-200 rounded-lg p-1">
@@ -129,15 +135,34 @@ export default function ViewStageClient({ myName }: { myName: string }) {
         </div>
       </div>
 
-      {/* What the preview proves, in plain words. The badge above states the
-          conclusion; this states the reason, because the badge on its own read
-          as jargon to the person who has to act on it. */}
-      <div className="shrink-0 bg-amber-50/60 border-b border-amber-200/70 px-5 py-2.5 text-[12.5px] leading-relaxed text-[#7a4e05]">
-        Each column below shows what that access level <strong className="font-semibold">sees</strong> in the portal: its menus, its widgets, and
-        which pages turn it away. That part is accurate. What it cannot show is what someone at that level could
-        <strong className="font-semibold"> pull out of the database directly</strong>, going around the portal, because every screen here is still
-        loaded with your own admin login. So a page looking empty for a level proves the portal hides it from them.
-        It does not prove they have no way to reach the same information.
+      {/* The reason behind the badge. Two separate limits, and they used to be
+          collapsed into one: what the preview cannot show ON SCREEN, and what
+          somebody could reach around the portal entirely. Only the second was
+          ever written down, which is how a wrong report passed review here. */}
+      <div className="shrink-0 bg-subtle border-b border-slate-200 px-5 py-2.5 text-[12.5px] leading-relaxed text-muted">
+        Each column shows what that level reaches and what it is shown: the menus, the widgets, the pages that turn
+        it away, and the contents of those pages. Access is decided in <strong className="font-semibold text-tn-ink">Access levels</strong> and
+        the Teams tab, which is what makes this preview mean something.
+        {PREVIEW_CAVEATS.length > 0 && (
+          <>
+            {' '}
+            <span className="text-[#7a4e05]">
+              With {PREVIEW_CAVEATS.length === 1 ? 'one exception' : `${PREVIEW_CAVEATS.length} exceptions`}, because
+              the preview changes the level but stays signed in as you:
+            </span>
+            <ul className="mt-1.5 mb-0 pl-4 list-disc space-y-0.5 text-[#7a4e05]">
+              {PREVIEW_CAVEATS.map(c => (
+                <li key={c.surfaceKey}>
+                  <strong className="font-semibold">{c.label}</strong> shows {c.shows}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <span className="block mt-1.5">
+          Separately, none of this shows what somebody could pull out of the database directly, going around the
+          portal. A page looking empty proves the portal hides it, not that they have no other way to it.
+        </span>
       </div>
 
       {/* canvas */}

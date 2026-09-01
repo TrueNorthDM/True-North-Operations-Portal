@@ -25,7 +25,8 @@ interface Props {
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
   trend?: I7TrendPoint[]                  // Jan → selected month, for the charts
-  canExport?: boolean                     // privileged tiers see Export / Team Update (Part 4)
+  canExport?: boolean                     // the file exports (PDF, CSV, print)
+  canTeamUpdate?: boolean                 // the Team Update image, granted separately
   /** Names with hours this month but no rate, so their cost lands as zero. */
   unratedPeople?: string[]
   /**
@@ -41,8 +42,6 @@ interface Props {
    * one.
    */
   restricted?: boolean
-  /** First names allowed in the per-person columns while restricted. */
-  visiblePeople?: readonly string[]
   /**
    * Teams offered by the filter beside the pay period, straight from the
    * Directory's Teams tab, with the first names of their members.
@@ -58,7 +57,7 @@ function monthLabel(ym: string): string {
   return `${months[m - 1]} ${y}`
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], canExport = false, unratedPeople = [], restricted = false, visiblePeople, teams = [], selectedTeam = '' }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '' }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -79,14 +78,13 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
     setOpenCodes(new Set())
   }
 
-  // Two independent narrowings of the same list of columns, and both apply. The
-  // permission is a floor the filter cannot lift: picking a team can only take
-  // names away from what the viewer was already allowed to see, never add one.
+  // Only the viewer's own team filter is applied here, and only ever to take
+  // names away. The permission narrowing moved to the server (lib/tsheets/
+  // narrow.ts): what this component receives is already all it may see, so
+  // filtering for permission here would have been a second opinion about a
+  // decision already made, in the one place the viewer can edit.
   const teamPeople = teams.find(t => t.id === selectedTeam)?.members ?? null
-  const people = data.people.filter(n =>
-    (!restricted || !visiblePeople || visiblePeople.includes(n)) &&
-    (!teamPeople || teamPeople.includes(n))
-  )
+  const people = data.people.filter(n => !teamPeople || teamPeople.includes(n))
   // Four columns, four separate decisions. The restricted level hides exactly
   // two of them, Budget hrs and Budget used, and keeps Hrs avail. and Budget
   // avail.: what is left to spend is what a team leader plans against, and it
@@ -158,10 +156,11 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
             />
           </>
         )}
-        {canExport && (
+        {/* Two grants, so either button can appear without the other. */}
+        {(canExport || canTeamUpdate) && (
           <div className="ml-auto flex items-center gap-2.5">
-            <ExportImageButton month={selectedMonth} />
-            <ExportMenu month={selectedMonth} />
+            {canTeamUpdate && <ExportImageButton month={selectedMonth} />}
+            {canExport && <ExportMenu month={selectedMonth} />}
           </div>
         )}
       </div>

@@ -18,6 +18,7 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { narrowReport } from '@/lib/tsheets/narrow'
 import { loadManualHours } from '@/lib/timeclock/manual-data'
 import { ManualHours } from '@/components/tsheets/ManualHours'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
@@ -230,6 +231,13 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
   // Without 'report-full' the report still opens: budget and money columns are
   // hidden and the per-person columns narrow to the viewer's own teammates.
   // Only resolved when it is actually needed, so the full view costs nothing.
+  //
+  // This is now the ONLY thing that narrows the report. It used to have a
+  // silent partner: row-level security on tc_entries, which cut the hours to
+  // whoever the viewer approves. Nobody configured that, no screen showed it,
+  // and it contradicted this line, so a level granted the whole report still
+  // got a fraction of it. The report reads completely now and the narrowing
+  // happens here, where an admin can see the rule and change it.
   const restricted = !access.can('report-full')
 
   // The same roster answers both questions, so it is read once either way: which
@@ -251,13 +259,27 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
   // dead-end message. This keeps the report reachable and the month filter
   // usable even before the current month has any hours, matching the dashboard
   // widget, which already shows the budget for such months.
-  const report = data?.report ?? emptyReport(selectedMonth, (data?.stdRate ?? 0) > 0)
+  const full = data?.report ?? emptyReport(selectedMonth, (data?.stdRate ?? 0) > 0)
+
+  // Narrowed HERE, on the server, not in the component. The component used to
+  // filter the columns while receiving everybody's, which was safe only while
+  // the database had already removed them.
+  const report = restricted
+    ? narrowReport(full, { people: visiblePeople ?? [], keepCost: false })
+    : full
+
+  // The same cut for the unrated warning: it is a list of names, and a name is
+  // exactly what the restricted level does not get to see beyond its own team.
+  const unrated = data?.unratedPeople ?? []
+  const unratedPeople = restricted && visiblePeople
+    ? unrated.filter(n => visiblePeople.includes(n))
+    : unrated
 
   return (
     <>
       <I7ReportView
         data={report}
-        unratedPeople={data?.unratedPeople ?? []}
+        unratedPeople={unratedPeople}
         selectedMonth={selectedMonth}
         availableMonths={availableMonths}
         projectHours={data?.projectHours ?? {}}
@@ -265,8 +287,8 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
         stdRate={data?.stdRate ?? 0}
         trend={data?.trend ?? []}
         canExport={access.can('report-export')}
+        canTeamUpdate={access.can('report-team-update')}
         restricted={restricted}
-        visiblePeople={visiblePeople}
         teams={filterTeams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
         selectedTeam={selectedTeam}
       />

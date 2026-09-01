@@ -5,6 +5,7 @@
 // trend series. No live TSheets calls.
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere, loadI7UniverseHere } from '@/lib/timeclock/report-source'
 import { retentionFloorDate } from './retention'
 import { loadAssignmentRates } from '@/lib/hr/compensation'
@@ -42,17 +43,33 @@ const round2 = (n: number) => Math.round(n * 100) / 100
  * difference was a couple of zero-second rows, which contribute to nothing.
  */
 async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]> {
-  const supabase = await createClient()
-  return loadI7EntriesHere(supabase, start, end)
+  // Privileged, and this is the whole reason the report was wrong.
+  //
+  // tc_entries is the time clock, so its row-level security answers the time
+  // clock's question: you see your own hours, plus the hours of people you
+  // approve. Reading a CLIENT report through that rule made the report mean
+  // something different for each viewer. A team leader who approves nobody saw
+  // no hours, therefore no cost, therefore a carried-in balance that had never
+  // been spent against: the whole year's budget, intact, on a client report.
+  //
+  // Nothing about it was configured, nothing on screen said it was happening,
+  // and the Access levels page said the opposite. Who may open this report is
+  // decided by the tools surface plus the i7-budget team grant, and how much of
+  // it they receive is decided by report-full, applied on the server. Both are
+  // rules an admin can see and change, which the database rule never was.
+  return loadI7EntriesHere(createAdminClient(), start, end)
 }
 
 // Full universe of i7 job codes ever seen (the scaffold that keeps
 // zero-hour projects and codes on screen), from the same source as the entries.
 async function loadUniverse(): Promise<{ jobcodes: string[] }> {
-  const supabase = await createClient()
+  // Privileged for the same reason as the entries: the scaffold of codes has to
+  // be the company's, or a viewer's report loses whole columns of the tree
+  // depending on whose hours they happen to be allowed to read.
+  //
   // The same window the month picker offers, which is what the old cache
   // effectively scanned: it was pruned to exactly this range.
-  return loadI7UniverseHere(supabase, retentionFloorDate(new Date()))
+  return loadI7UniverseHere(createAdminClient(), retentionFloorDate(new Date()))
 }
 
 // tsheets_user_id → display (first) name, from the synced directory.
@@ -69,7 +86,7 @@ async function loadNames(): Promise<Record<string, string>> {
   return out
 }
 
-async function loadI7Assignments(): Promise<Assignment[]> {
+export async function loadI7Assignments(): Promise<Assignment[]> {
   const supabase = await createClient()
   const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
   if (!i7) return []

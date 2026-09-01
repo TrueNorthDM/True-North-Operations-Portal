@@ -12,7 +12,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
@@ -33,8 +33,15 @@ export default async function ProjectHoursPage({
   const { month } = await searchParams
   const selected = month && months.includes(month) ? month : months[0] ?? currentYearMonth()
 
-  const supabase = await createClient()
-  const data = await loadProjectTracking(supabase, selected)
+  // Privileged, for the reason the i7 report was wrong until 2026-09-01.
+  //
+  // tc_entries carries the time clock's row-level security: you read your own
+  // hours plus the hours of people you approve. A client report read through
+  // that rule means a different thing for every viewer, and it fails silently,
+  // as a smaller number rather than an error. Who may open this page is the
+  // tools surface plus the grant-pass-report team grant, checked right above,
+  // and that is the rule an admin can actually see.
+  const data = await loadProjectTracking(createAdminClient(), selected)
 
   return (
     <div className="space-y-6">

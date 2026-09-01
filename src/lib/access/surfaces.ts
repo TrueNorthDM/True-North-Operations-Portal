@@ -143,9 +143,30 @@ export const SURFACES: readonly Surface[] = [
     defaults: PRIV,
     note: 'Without this the report still opens, with two columns hidden (Budget hrs and Budget used) and only their own teammates in the per-person hour columns. Hrs avail. and Budget avail. stay visible, and the team filter is not shown, since the columns are already their own team. The totals stay honest: Hours used is still the figure for everyone, not the sum of the columns they can see, so nobody reads a partial number as the whole.',
   },
-  // Exporting hands out the full budget and per-person cost detail, and the
-  // note is published on the client report, so both stay with admin.
-  { key: 'report-export', label: 'Export (PDF, CSV, image) and Team Update', group: 'Clients Reports', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
+  // Two controls, not one. They were a single row while both were "the buttons
+  // in the corner", which meant nobody could grant one without the other and
+  // the matrix could not say which of the two it was talking about.
+  //
+  // Both stay locked to admin. An export is a file that leaves the portal and
+  // gets sent to a client, so it carries the full budget, every person's cost
+  // and the rates behind them, with nothing on the page afterwards to say who
+  // sent what.
+  {
+    key: 'report-export',
+    label: 'Export the report as a file (PDF, CSV, printable page)',
+    group: 'Clients Reports',
+    locked: 'admin',
+    defaults: { admin_assistant: false, team_leader: false, user: false },
+    note: 'Admin only, and not configurable. The file carries the whole budget, the per-person cost and the hourly rates behind it, and it leaves the portal: once sent, nothing here records who sent which version. The buttons are hidden for every other level and the URLs refuse them too, since a hidden button is not a gate.',
+  },
+  {
+    key: 'report-team-update',
+    label: 'Team Update, the shareable budget image',
+    group: 'Clients Reports',
+    locked: 'admin',
+    defaults: { admin_assistant: false, team_leader: false, user: false },
+    note: 'Admin only, and not configurable. The picture is meant for the team rather than the client, but it still states the budget, how much of it is gone and what is left, so it is granted separately from the file exports rather than riding along with them.',
+  },
   { key: 'report-note', label: "Edit the month's note", group: 'Clients Reports', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
 
   // ── Managing (admin only, never configurable) ─────────────────────────────
