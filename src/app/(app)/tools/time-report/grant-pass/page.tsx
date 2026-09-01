@@ -13,6 +13,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loadProjectManualHours } from '@/lib/timeclock/manual-data'
+import { ManualHours } from '@/components/tsheets/ManualHours'
+import { sideFromText } from '@/lib/timeclock/grant-pass'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
@@ -64,6 +67,34 @@ export default async function ProjectHoursPage({
 
       <MonthPicker months={months} selected={selected} />
       <ProjectHoursReport data={data} />
+      {/* Admins only: this writes hours that reach a client report. Below the
+          report rather than beside it, because it is a correction to what the
+          report already shows and not a second source. */}
+      {access.isAdmin ? <GrantPassManualPanel month={selected} /> : null}
     </div>
+  )
+}
+
+/**
+ * Hand-added hours for Grant Pass.
+ *
+ * The root is found by name because the True North branch has never had an id
+ * written down here: only the i7 one did, and only because the reports needed
+ * it. The project list narrows to the two GP values through the same
+ * `sideFromText` the report reads them with, so the form can only offer what
+ * the report can find. One spelling in two places would eventually be two.
+ */
+async function GrantPassManualPanel({ month }: { month: string }) {
+  const { rows, options } = await loadProjectManualHours(
+    createAdminClient(),
+    month,
+    /^1\s*-\s*True North$/i,
+    label => sideFromText(label) !== null,
+  )
+  return (
+    <ManualHours
+      rows={rows} options={options} month={month}
+      blurb="For Grant Pass work billed without a timeclock account. Tagged the way the report finds it, under 2 Project, so these count exactly like any imported hour."
+    />
   )
 }

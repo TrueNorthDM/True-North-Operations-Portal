@@ -21,17 +21,35 @@ export type ManualRow = {
   entryDate: string
   hours: number
   jobcodeName: string
-  i7Code: string
+  /**
+   * What the entry is tagged with: the i7 code inside the i7 tree, the project
+   * outside it. One column, because it is the same slot in the sentence and the
+   * row reads the same either way.
+   */
+  tag: string
   activity: string
   notes: string | null
   addedBy: string | null
 }
 
 export type ManualOptions = {
-  people: { id: string; name: string; hasRate: boolean; rateOutsideMonth: boolean }[]
+  /**
+   * Rate state is absent where it has no meaning. Only the i7 branch turns an
+   * hour into money, so only there is "this will count as zero" a real warning;
+   * carrying a made-up `hasRate: true` for the others would have been a lie
+   * living in the data rather than an absence the form can read.
+   */
+  people: { id: string; name: string; hasRate?: boolean; rateOutsideMonth?: boolean }[]
   jobcodes: { id: number; name: string }[]
-  /** Each code with the project it lands in, which becomes its group heading. */
-  i7Codes: { code: string; project: string }[]
+  /**
+   * The branch-specific middle of the form, and exactly one of these two is
+   * present. QuickBooks Time does the same thing: inside the i7 tree it asks
+   * for an i7 code, and outside it asks Company and Project instead. One
+   * component renders both rather than two that have to be kept looking alike.
+   */
+  i7Codes?: { code: string; project: string }[]
+  companies?: string[]
+  projects?: string[]
   activities: string[]
   billable: string[]
 }
@@ -40,7 +58,11 @@ const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-whit
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
 
 export function ManualHours(
-  { rows, options, month }: { rows: ManualRow[]; options: ManualOptions; month: string },
+  { rows, options, month, blurb }: {
+    rows: ManualRow[]; options: ManualOptions; month: string
+    /** What these hours are for, in the words of the report they land in. */
+    blurb: string
+  },
 ) {
   const router = useRouter()
   const [busy, start] = useTransition()
@@ -53,6 +75,8 @@ export function ManualHours(
   const [hours, setHours] = useState('')
   const [i7Code, setI7Code] = useState('')
   const [activity, setActivity] = useState('')
+  const [company, setCompany] = useState('')
+  const [project, setProject] = useState('')
   const [billable, setBillable] = useState('')
   const [notes, setNotes] = useState('')
 
@@ -67,6 +91,8 @@ export function ManualHours(
         jobcodeId: Number(jobcodeId),
         hours: Number(hours),
         i7Code,
+        company,
+        project,
         activity,
         billable,
         notes,
@@ -95,11 +121,7 @@ export function ManualHours(
           <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink m-0">
             Hours added by hand
           </h3>
-          <p className="text-[12.5px] text-muted mt-1 m-0 leading-[1.55]">
-            For people who bill i7 work without a timeclock account. These count in the report and
-            the invoice exactly like any other hour, which is why they are listed here rather than
-            only totalled.
-          </p>
+          <p className="text-[12.5px] text-muted mt-1 m-0 leading-[1.55]">{blurb}</p>
         </div>
         <button
           type="button"
@@ -137,7 +159,7 @@ export function ManualHours(
                   first one included, so any word sitting beside {expr} loses
                   its space. Wrapping the sentence to fit the margin ate it
                   twice here: once after the name, once after the full stop. */}
-              {chosen && !chosen.hasRate ? (
+              {chosen && chosen.hasRate === false ? (
                 <p className="text-[11.5px] text-[#b06d0a] mt-1.5 m-0 leading-[1.5]">
                   {chosen.rateOutsideMonth
                     ? `${chosen.name} has an i7 rate, but it does not cover ${monthName(month)}. The hours will count and the cost will be zero. In Rates & Costs, start the rate on or before this month.`
@@ -173,16 +195,40 @@ export function ManualHours(
               />
             </div>
 
-            <div>
-              {/* Numbered the way QuickBooks Time numbers them, so the three
-                  read as the same three fields somebody fills in over there. */}
-              <label className={LABEL}>1 - i7 code</label>
-              <Select
-                value={i7Code} onChange={setI7Code} searchable fullWidth ariaLabel="i7 code"
-                options={options.i7Codes.map(c => ({ value: c.code, label: c.code, group: c.project }))}
-                placeholder="Choose…"
-              />
-            </div>
+            {/* Numbered the way QuickBooks Time numbers them, so they read as
+                the same fields somebody fills in over there. */}
+            {options.i7Codes && (
+              <div>
+                <label className={LABEL}>1 - i7 code</label>
+                <Select
+                  value={i7Code} onChange={setI7Code} searchable fullWidth ariaLabel="i7 code"
+                  options={options.i7Codes.map(c => ({ value: c.code, label: c.code, group: c.project }))}
+                  placeholder="Choose…"
+                />
+              </div>
+            )}
+
+            {options.companies && (
+              <div>
+                <label className={LABEL}>1 Company</label>
+                <Select
+                  value={company} onChange={setCompany} fullWidth ariaLabel="Company"
+                  options={options.companies.map(c => ({ value: c, label: c }))}
+                  placeholder="Choose…"
+                />
+              </div>
+            )}
+
+            {options.projects && (
+              <div>
+                <label className={LABEL}>2 Project</label>
+                <Select
+                  value={project} onChange={setProject} fullWidth ariaLabel="Project"
+                  options={options.projects.map(c => ({ value: c, label: c }))}
+                  placeholder="Choose…"
+                />
+              </div>
+            )}
 
             <div>
               <label className={LABEL}>3 Activity</label>
@@ -235,7 +281,7 @@ export function ManualHours(
                 <span className="w-[100px] flex-none text-[12.5px] text-muted">{r.entryDate}</span>
                 <span className="w-[130px] flex-none text-[13px] font-semibold text-tn-ink truncate">{r.personName}</span>
                 <span className="min-w-0 flex-1 text-[12.5px] text-foreground truncate">
-                  {[r.i7Code, r.activity].filter(Boolean).join(' · ') || r.jobcodeName}
+                  {[r.tag, r.activity].filter(Boolean).join(' · ') || r.jobcodeName}
                   {r.notes ? <span className="text-muted"> · {r.notes}</span> : null}
                 </span>
                 <span className="w-[60px] flex-none text-right text-[13px] font-semibold text-tn-ink">{r.hours}h</span>

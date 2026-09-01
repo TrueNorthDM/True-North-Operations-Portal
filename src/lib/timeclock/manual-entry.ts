@@ -16,8 +16,13 @@ export type ManualEntryInput = {
   entryDate: string
   jobcodeId: number
   hours: number
-  /** The i7 code and activity the report groups by. */
+  /**
+   * The i7 code, inside the i7 tree. Outside it, Company and Project instead:
+   * that is the one place the two branches differ, in QuickBooks Time and here.
+   */
   i7Code: string
+  company?: string
+  project?: string
   activity: string
   /**
    * Billable, kept because QuickBooks Time asks for it and somebody comparing

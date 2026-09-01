@@ -41,16 +41,31 @@ async function fieldKeys(supabase: Client): Promise<{ code: string | null; activ
  * report that is slightly slower to build.
  */
 export async function i7JobcodeIdsHere(supabase: Client): Promise<Set<number>> {
-  const all: { id: number; parent_id: number | null; external_id: number | null }[] = []
+  return jobcodeSubtree(supabase, j => j.external_id === I7_PARENT_JOBCODE_ID)
+}
+
+/**
+ * Every job code under one root, the root included.
+ *
+ * Takes a predicate rather than an id because the roots are found two different
+ * ways: the i7 branch by its TSheets id, which the reports have always known,
+ * and the True North branch by name, which nothing needed until an entry form
+ * had to offer it.
+ */
+export async function jobcodeSubtree(
+  supabase: Client,
+  isRoot: (j: { id: number; name: string; parent_id: number | null; external_id: number | null }) => boolean,
+): Promise<Set<number>> {
+  const all: { id: number; parent_id: number | null; external_id: number | null; name: string }[] = []
   for (let from = 0; ; from += PAGE) {
     const { data } = await supabase
-      .from('tc_jobcodes').select('id, parent_id, external_id').range(from, from + PAGE - 1)
+      .from('tc_jobcodes').select('id, parent_id, external_id, name').range(from, from + PAGE - 1)
     const rows = (data ?? []) as typeof all
     all.push(...rows)
     if (rows.length < PAGE) break
   }
 
-  const root = all.find(j => j.external_id === I7_PARENT_JOBCODE_ID)
+  const root = all.find(isRoot)
   if (!root) return new Set()
 
   const childrenOf = new Map<number, number[]>()

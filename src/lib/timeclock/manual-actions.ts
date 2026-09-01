@@ -8,18 +8,13 @@ import { createClient } from '@/lib/supabase/server'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { loadEntryFieldKeys } from './manual-fields'
+import { i7JobcodeIdsHere } from './report-source'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateStateFor } from '@/lib/tsheets/rates'
 import { monthName } from './periods'
 import { ERROR_TEXT, toSeconds, validateManualEntry, type ManualEntryInput } from './manual-entry'
 
 type Result = { ok: boolean; error?: string }
-
-/** tc_fields ids for the two fields the i7 report groups by. */
-async function fieldIds(supabase: ReturnType<typeof createAdminClient>) {
-  const keys = await loadEntryFieldKeys(supabase)
-  return { code: keys.code, activity: keys.activity, billable: keys.billable }
-}
 
 export async function addManualEntry(input: ManualEntryInput): Promise<Result> {
   if (!(await isSecurityAdmin())) return { ok: false, error: 'Admins only.' }
@@ -29,6 +24,11 @@ export async function addManualEntry(input: ManualEntryInput): Promise<Result> {
   if (bad) return { ok: false, error: ERROR_TEXT[bad] }
 
   const supabase = createAdminClient()
+  const keys = await loadEntryFieldKeys(supabase)
+
+  // Whether this entry lands in the i7 report, which is the branch that groups
+  // by the i7 code and the only one where an hour becomes money.
+  const isI7 = (await i7JobcodeIdsHere(supabase)).has(input.jobcodeId)
 
   // A rate has to cover the day being added, or this entry reaches an invoice
   // costing nothing. The form warns about it, but a warning is only advice and
@@ -37,8 +37,12 @@ export async function addManualEntry(input: ManualEntryInput): Promise<Result> {
   //
   // Asked through the same lookup the report uses, so a refusal here always
   // means the report really would have counted the hours at zero.
+  //
+  // Only inside the i7 tree. The Grant Pass report counts hours and shows no
+  // cost, so demanding a rate for one of its entries would enforce a rule that
+  // does not exist over there.
   const month = input.entryDate.slice(0, 7)
-  const state = rateStateFor(await loadI7Assignments(), input.personId, month)
+  const state = isI7 ? rateStateFor(await loadI7Assignments(), input.personId, month) : 'rated'
   if (state !== 'rated') {
     const { data: who } = await supabase
       .from('people').select('full_name').eq('id', input.personId).maybeSingle()
@@ -51,12 +55,11 @@ export async function addManualEntry(input: ManualEntryInput): Promise<Result> {
     }
   }
 
-  const fields = await fieldIds(supabase)
-
-  // The report groups by these two, so an entry missing them lands in the
-  // tree under a blank code and is effectively invisible where it matters.
-  if (!fields.code || !fields.activity) {
-    return { ok: false, error: 'The i7 code and activity fields are not synced yet.' }
+  // A report groups by the activity, so an entry missing it lands under a blank
+  // one and is effectively invisible where it matters. The i7 code is required
+  // only for an i7 entry, which is the branch that groups by it.
+  if (!keys.activity || (isI7 && !keys.code)) {
+    return { ok: false, error: 'The QuickBooks Time fields are not synced yet.' }
   }
 
   // Who is adding it. The entry says manual and says who, which together are
@@ -78,15 +81,18 @@ export async function addManualEntry(input: ManualEntryInput): Promise<Result> {
     state: 'approved',
     notes: input.notes || null,
     fields: {
-      [fields.code]: input.i7Code,
-      [fields.activity]: input.activity,
-      ...(fields.billable && input.billable ? { [fields.billable]: input.billable } : {}),
+      ...(keys.code && input.i7Code ? { [keys.code]: input.i7Code } : {}),
+      [keys.activity]: input.activity,
+      ...(keys.company && input.company ? { [keys.company]: input.company } : {}),
+      ...(keys.project && input.project ? { [keys.project]: input.project } : {}),
+      ...(keys.billable && input.billable ? { [keys.billable]: input.billable } : {}),
     },
     created_by: me?.id ?? null,
   })
   if (error) return { ok: false, error: error.message }
 
   revalidatePath('/tools/time-report')
+  revalidatePath('/tools/time-report/grant-pass')
   return { ok: true }
 }
 
@@ -104,5 +110,6 @@ export async function deleteManualEntry(id: number): Promise<Result> {
   if (error) return { ok: false, error: error.message }
 
   revalidatePath('/tools/time-report')
+  revalidatePath('/tools/time-report/grant-pass')
   return { ok: true }
 }

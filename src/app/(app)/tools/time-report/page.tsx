@@ -328,7 +328,12 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
 async function ManualHoursPanel({ month }: { month: string }) {
   const supabase = await createClient()
   const { rows, options } = await loadManualHours(supabase, month)
-  return <ManualHours rows={rows} options={options} month={month} />
+  return (
+    <ManualHours
+      rows={rows} options={options} month={month}
+      blurb="For people who bill i7 work without a timeclock account. These count in the report and the invoice exactly like any other hour, which is why they are listed here rather than only totalled."
+    />
+  )
 }
 
 // A zero-hours report for a month with nothing cached yet, so the page still

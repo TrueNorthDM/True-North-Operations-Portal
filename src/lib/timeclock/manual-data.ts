@@ -7,7 +7,7 @@
 // not have, which shows as hours that are counted and invisible.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { i7JobcodeIdsHere } from './report-source'
+import { i7JobcodeIdsHere, jobcodeSubtree } from './report-source'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateStateFor } from '@/lib/tsheets/rates'
 import { I7_CODE_CF, ACTIVITY_CF, mapCodeToProject, I7_PROJECTS } from '@/lib/tsheets/i7report'
@@ -86,7 +86,7 @@ export async function loadManualHours(
     // One decimal: these are read off an invoice, not clocked to the second.
     hours: Math.round((e.duration_seconds / 3600) * 100) / 100,
     jobcodeName: e.jobcode_id ? jobcodeName.get(e.jobcode_id) ?? '' : '',
-    i7Code: (codeKey ? e.fields?.[codeKey] : '') ?? '',
+    tag: (codeKey ? e.fields?.[codeKey] : '') ?? '',
     activity: (activityKey ? e.fields?.[activityKey] : '') ?? '',
     notes: e.notes,
     addedBy: e.created_by ? nameById.get(e.created_by) ?? null : null,
@@ -207,4 +207,104 @@ async function peopleForEntry(supabase: Client, month: string) {
       rateOutsideMonth: state === 'outside',
     }
   })
+}
+
+/**
+ * Everyone, with no word about rates.
+ *
+ * The Grant Pass report counts hours and shows no cost, so a rate warning there
+ * would be inventing a rule. Saying "hasRate: true" for everybody would have
+ * been the shorter path and a lie in the data: the field is absent instead, and
+ * the form has nothing to warn about.
+ */
+async function peopleForProjectEntry(supabase: Client) {
+  const { data } = await supabase
+    .from('people').select('id, full_name').eq('status', 'active').order('full_name')
+  return ((data ?? []) as { id: string; full_name: string }[])
+    .map(p => ({ id: p.id, name: p.full_name }))
+}
+
+/**
+ * The Grant Pass panel: the same form, filled in the way the work outside the
+ * i7 tree is tagged.
+ *
+ * Grant Pass has never had a way to add an hour by hand. It did not need a
+ * screen of its own: its report finds hours by looking for `GP church` and
+ * `GP School` inside the "2 Project" field, without caring where they came
+ * from, so an entry written here is picked up with no further wiring.
+ *
+ * The project list is narrowed to those two values on purpose. Every other
+ * value of that field belongs to some other work, and this panel sits on the
+ * Grant Pass page: offering them would be offering to file an hour where nobody
+ * would look for it again.
+ */
+export async function loadProjectManualHours(
+  supabase: Client, month: string, root: RegExp, projectValues: (label: string) => boolean,
+): Promise<{ rows: ManualRow[]; options: ManualOptions }> {
+  const start = `${month}-01`
+  const end = `${month}-31`
+
+  const keys = await loadEntryFieldKeys(supabase)
+  const branch = await jobcodeSubtree(supabase, j => j.parent_id === null && root.test(j.name))
+
+  const [{ data: jobRows }, { data: entryRows }, people, companies, billable, projectOptions] =
+    await Promise.all([
+      supabase.from('tc_jobcodes').select('id, name, parent_id, active').in('id', [...branch]),
+      supabase.from('tc_entries')
+        .select('id, person_id, entry_date, duration_seconds, jobcode_id, fields, notes, created_by')
+        .eq('kind', 'manual').is('external_id', null)
+        .gte('entry_date', start).lte('entry_date', end)
+        .order('entry_date', { ascending: false }),
+      peopleForProjectEntry(supabase),
+      loadFieldOptions(supabase, keys.company),
+      loadFieldOptions(supabase, keys.billable),
+      loadFieldOptions(supabase, keys.project),
+    ])
+
+  const allJobcodes = (jobRows ?? []) as {
+    id: number; name: string; parent_id: number | null; active: boolean
+  }[]
+  const jobcodeName = new Map(allJobcodes.map(j => [j.id, j.name]))
+  const nameById = new Map(people.map(p => [p.id, p.name]))
+
+  const projects = projectOptions.filter(projectValues)
+  const wanted = new Set(projects)
+
+  const rows: ManualRow[] = ((entryRows ?? []) as {
+    id: number; person_id: string; entry_date: string; duration_seconds: number
+    jobcode_id: number | null; fields: Record<string, string> | null
+    notes: string | null; created_by: string | null
+  }[])
+    // Listed by what the entry is TAGGED as, not by which job code it sits
+    // under, because that tag is exactly what the Grant Pass report reads.
+    .filter(e => wanted.has((keys.project ? e.fields?.[keys.project] : '') ?? ''))
+    .map(e => ({
+      id: e.id,
+      personName: nameById.get(e.person_id) ?? 'Unknown',
+      entryDate: e.entry_date,
+      hours: Math.round((e.duration_seconds / 3600) * 100) / 100,
+      jobcodeName: e.jobcode_id ? jobcodeName.get(e.jobcode_id) ?? '' : '',
+      tag: (keys.project ? e.fields?.[keys.project] : '') ?? '',
+      activity: (keys.activity ? e.fields?.[keys.activity] : '') ?? '',
+      notes: e.notes,
+      addedBy: e.created_by ? nameById.get(e.created_by) ?? null : null,
+    }))
+
+  const recentActivities = new Set<string>()
+  for (const r of (entryRows ?? []) as { fields: Record<string, string> | null }[]) {
+    const a = keys.activity ? r.fields?.[keys.activity] : null
+    if (a) recentActivities.add(a)
+  }
+
+  return {
+    rows,
+    options: {
+      people,
+      jobcodes: choosableJobcodes(allJobcodes),
+      companies,
+      projects,
+      activities: [...new Set([...recentActivities, ...(await loadFieldOptions(supabase, keys.activity))])].sort(byLabel),
+      billable,
+    },
+  }
 }
