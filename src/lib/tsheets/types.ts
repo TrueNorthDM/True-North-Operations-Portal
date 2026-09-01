@@ -38,9 +38,12 @@ export interface TsheetsTimesheet {
   customfields?: Record<string, string>
 }
 
-// A flattened i7 timesheet entry, the shape the report is built from, matching
-// the cache table (tsheets_timesheets). i7Code/activity come from the two custom
-// fields; duration stays in seconds.
+// A flattened i7 timesheet entry, the shape the report is built from. It began
+// as the row shape of a cache table that no longer exists, and is now just the
+// contract between report-source.ts and buildI7Report: the seam that let the
+// source move to tc_entries without touching the tree, the charts or the
+// exports. i7Code/activity come from the two custom fields; duration stays in
+// seconds.
 export interface I7Entry {
   /**
    * The directory person, not the TSheets account.

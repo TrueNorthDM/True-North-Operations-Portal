@@ -1,9 +1,11 @@
 // Client Report, i7 Marketing.
 //
-// Renders the Project → Job code → Activity tree from the LOCAL cache of i7
-// timesheets (table tsheets_timesheets), which the background sync keeps fresh,
-// so it makes no live TSheets calls and renders instantly (data loading lives
-// in report-data.ts, shared with the print/PDF page).
+// Renders the Project → Job code → Activity tree from tc_entries, the portal's
+// own hours, which the Clocky import keeps fresh from QuickBooks Time and which
+// hand-added hours also write to. No live TSheets calls, so it renders
+// instantly. Data loading lives in report-data.ts, shared with the print/PDF
+// page, and it reads privileged: access is decided on the Access levels page,
+// not by row-level security on a time clock table.
 //
 // One client per page and per tool grant. This used to be one page with a tab
 // per client, which meant one permission for all of them: whoever could see i7
