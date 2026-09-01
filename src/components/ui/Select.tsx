@@ -19,6 +19,12 @@ import { createPortal } from 'react-dom'
 
 export interface SelectOption { value: string; label: string; disabled?: boolean }
 
+/** The menu's tallest and shortest useful heights, in pixels. */
+const MAX_MENU_PX = 288
+// Below this a menu is a scroll bar with a hint of content, and flipping to
+// the roomier side is always better than honouring the preferred one.
+const MIN_MENU_PX = 140
+
 export function Select({
   value,
   onChange,
@@ -53,7 +59,7 @@ export function Select({
   id?: string
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null)
   const [query, setQuery] = useState(defaultQuery)
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -80,7 +86,27 @@ export function Select({
       const r = el.getBoundingClientRect()
       // Clamp within the viewport so a wide menu never spills off the right edge.
       const left = Math.min(r.left, window.innerWidth - r.width - 8)
-      setPos({ top: r.bottom + 6, left: Math.max(8, left), width: r.width })
+
+      // And off the bottom edge, which is the same mistake one axis over. A
+      // control near the foot of a page opened a menu whose lower half was
+      // unreachable: the page cannot scroll to it, because the menu is fixed
+      // and moves with the trigger.
+      const GAP = 6
+      const EDGE = 8
+      const below = window.innerHeight - r.bottom - GAP - EDGE
+      const above = r.top - GAP - EDGE
+
+      // Flip up only when it genuinely helps. A menu that jumps sides for two
+      // extra pixels is harder to use than one that is slightly short.
+      const flip = below < Math.min(MAX_MENU_PX, above) && above > below
+      const space = Math.max(MIN_MENU_PX, Math.min(MAX_MENU_PX, flip ? above : below))
+
+      setPos({
+        top: flip ? Math.max(EDGE, r.top - GAP - space) : r.bottom + GAP,
+        left: Math.max(8, left),
+        width: r.width,
+        maxHeight: space,
+      })
     }
     place()
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
@@ -106,8 +132,8 @@ export function Select({
         <div
           ref={menuRef}
           role="listbox"
-          style={{ position: 'fixed', top: pos.top, left: pos.left, minWidth: pos.width }}
-          className="z-[9999] w-max max-w-[min(84vw,360px)] max-h-72 overflow-auto bg-white border border-[var(--panel-border)] rounded-[11px] shadow-[0_20px_44px_-18px_rgba(1,35,88,.5)] p-1.5"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, minWidth: pos.width, maxHeight: pos.maxHeight }}
+          className="z-[9999] w-max max-w-[min(84vw,360px)] overflow-auto bg-white border border-[var(--panel-border)] rounded-[11px] shadow-[0_20px_44px_-18px_rgba(1,35,88,.5)] p-1.5"
         >
           {searchable && (
             <div className="sticky top-0 -mx-1.5 -mt-1.5 mb-1.5 px-1.5 pt-1.5 pb-1 bg-white">

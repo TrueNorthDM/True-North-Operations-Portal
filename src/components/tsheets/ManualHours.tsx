@@ -128,8 +128,12 @@ export function ManualHours(
                   the entry is saved, not after the invoice is out. */}
               {chosen && !chosen.hasRate ? (
                 <p className="text-[11.5px] text-[#b06d0a] mt-1.5 m-0 leading-[1.5]">
-                  {chosen.name} has no i7 rate. The hours will count and the cost will be zero
-                  until one is set in Rates &amp; Costs.
+                  {/* The name is inside the expression with the words that
+                      follow it. JSX trims every line of a text chunk that runs
+                      onto a second line, including the first, which ate the
+                      space and printed "Queirozhas no i7 rate". */}
+                  {`${chosen.name} has no i7 rate.`} The hours will count and the cost will be
+                  zero until one is set in Rates &amp; Costs.
                 </p>
               ) : null}
             </div>

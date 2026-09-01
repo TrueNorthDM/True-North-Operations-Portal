@@ -143,8 +143,8 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
             is cheaper than being asked about it every month. */}
         <p className="m-0 text-muted">
           The <span className="font-semibold">last year</span> column is computed from the timesheets
-          as they stand today, so it can differ from what the {lastYear} tracking sheet said at the
-          time: a year of corrections and retroactive approvals sits between them. Across the months
+          as they stand today, so it can differ from what the {`${lastYear} tracking sheet`} said at
+          the time: a year of corrections and retroactive approvals sits between them. Across the months
           that were checked the gap ran from four hours over to eighty-seven under.
         </p>
       </div>
