@@ -9,7 +9,7 @@ export function RatesCostsTab({ people, allClients }: { people: PersonWithAssign
   return (
     <div className="space-y-5">
       <p className="text-[13.5px] text-muted max-w-[720px] leading-relaxed">
-        Everyone who logs time on i7. Person, team, report-to and joined-on come from the <b className="text-foreground font-bold">People</b> tab; here you set <b className="text-foreground font-bold">Rate / client</b> (what the client is billed per hour) and <b className="text-foreground font-bold">Rate / cost</b> (what the hour costs internally).
+        Everyone who logs time on i7. Person, team, report-to and joined-on come from the <b className="text-foreground font-bold">People</b> tab; here you set <b className="text-foreground font-bold">Rate / client</b> (what the client is billed per hour) and <b className="text-foreground font-bold">Rate / cost</b> (what the hour costs internally) and <b className="text-foreground font-bold">Rate / break-even</b> (what it has to earn to cover them, overhead included).
       </p>
       <PeopleTab people={people} allClients={allClients} />
     </div>

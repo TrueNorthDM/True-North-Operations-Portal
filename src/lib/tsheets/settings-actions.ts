@@ -404,6 +404,46 @@ export async function savePersonCostRate(input: {
   return { ok: true }
 }
 
+// Break-even rate (people.be_rate): what an hour has to earn to cover somebody,
+// overhead included. A third figure beside the client rate and the cost rate,
+// answering a third question. Justified + audited like the other two.
+export async function savePersonBeRate(input: {
+  personId: string
+  beRate: number
+  justification: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const notAdmin = await requireAdmin()
+  if (notAdmin) return { ok: false, error: notAdmin }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Read through the privileged reader, like the cost rate: be_rate is excluded
+  // from the `authenticated` column grant for the same reason it is.
+  const before = await loadPersonCompensation(input.personId)
+  if (!before) return { ok: false, error: 'Person not found.' }
+
+  const { error: updErr } = await supabase
+    .from('people')
+    .update({ be_rate: input.beRate })
+    .eq('id', input.personId)
+  if (updErr) return { ok: false, error: updErr.message }
+
+  await supabase.from('tr_audit_log').insert({
+    entity_type: 'person_be_rate',
+    entity_id: 0,
+    action: 'update',
+    before_data: { person_name: before.fullName, be_rate: before.beRate },
+    after_data: { person_name: before.fullName, be_rate: input.beRate },
+    justification: input.justification,
+    changed_by: user?.id,
+  })
+
+  revalidatePath('/settings')
+  revalidatePath('/directory')
+  return { ok: true }
+}
+
 // Fixed monthly cost (people.monthly_salary), for staff paid a flat amount per
 // month rather than by the hour. One value per person, justified + audited like
 // the cost rate. Edited in the Directory's Rates & Costs tab.

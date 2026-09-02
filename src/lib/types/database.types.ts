@@ -124,6 +124,9 @@ export type PersonRow = {
   weekly_hours: number | null
   internal_rate: number | null
   monthly_salary: number | null
+  // Break-even rate (migration 078). A pay column: excluded from the
+  // `authenticated` grant, read through lib/hr/compensation.ts.
+  be_rate: number | null
   reports_to_manager: string | null
   also_reports_to_id: string | null
   email_true_north: string | null

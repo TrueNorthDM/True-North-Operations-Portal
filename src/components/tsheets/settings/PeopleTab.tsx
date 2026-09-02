@@ -15,7 +15,7 @@
 import { useMemo, useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
 import { useRouter } from 'next/navigation'
-import { saveTrAssignment, savePersonCostRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
+import { saveTrAssignment, savePersonCostRate, savePersonBeRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
 import { initialsOf, formatDate } from '@/lib/directory/people-types'
 import { teamColour } from '@/lib/directory/team-colour'
@@ -37,6 +37,7 @@ export interface PersonWithAssignments {
   managerTeam: string | null
   hireDate: string | null
   costRate: number | null
+  beRate: number | null
   monthlySalary: number | null
   projects: string[]
   /** Null for somebody who bills hours without a TSheets account. */
@@ -85,7 +86,7 @@ function monthName(iso: string): string {
   return `${names[m - 1]} ${y}`
 }
 
-const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px] gap-3.5 items-center'
+const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px_224px] gap-3.5 items-center'
 
 export function PeopleTab({ people, allClients }: Props) {
   const router = useRouter()
@@ -109,7 +110,7 @@ export function PeopleTab({ people, allClients }: Props) {
   const [pendingRates, setPendingRates] = useState<{ name: string; from: number | null; to: number }[] | null>(null)
 
   const [editing, setEditing] = useState(false)
-  const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string; salary: string }>>({})
+  const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string; be: string; salary: string }>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -136,6 +137,7 @@ export function PeopleTab({ people, allClients }: Props) {
       { id: 'joined', label: 'Joined on', type: 'date', get: p => p.hireDate },
       { id: 'clientRate', label: 'Rate / client', type: 'number', get: clientRateOf },
       { id: 'costRate', label: 'Rate / cost', type: 'number', get: p => p.costRate },
+      { id: 'beRate', label: 'Rate / break-even', type: 'number', get: p => p.beRate },
       { id: 'salary', label: 'Month / salary', type: 'number', get: p => p.monthlySalary },
     ]
   }, [people, i7ClientId])
@@ -149,10 +151,10 @@ export function PeopleTab({ people, allClients }: Props) {
   }, [people, q, conds, sort, filterColumns])
 
   function enterEdit() {
-    const d: Record<string, { client: string; cost: string; salary: string }> = {}
+    const d: Record<string, { client: string; cost: string; be: string; salary: string }> = {}
     for (const p of people) {
       const cr = rateOf(p)
-      d[p.id] = { client: cr != null ? cr.toFixed(2) : '', cost: p.costRate != null ? p.costRate.toFixed(2) : '', salary: p.monthlySalary != null ? p.monthlySalary.toFixed(2) : '' }
+      d[p.id] = { client: cr != null ? cr.toFixed(2) : '', cost: p.costRate != null ? p.costRate.toFixed(2) : '', be: p.beRate != null ? p.beRate.toFixed(2) : '', salary: p.monthlySalary != null ? p.monthlySalary.toFixed(2) : '' }
     }
     setDrafts(d)
     setEditing(true)
@@ -165,7 +167,7 @@ export function PeopleTab({ people, allClients }: Props) {
     setError(null)
   }
 
-  function setDraft(id: string, field: 'client' | 'cost' | 'salary', val: string) {
+  function setDraft(id: string, field: 'client' | 'cost' | 'be' | 'salary', val: string) {
     setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? { client: '', cost: '', salary: '' }), [field]: val } }))
   }
 
@@ -212,6 +214,10 @@ export function PeopleTab({ people, allClients }: Props) {
       }
       // Cost rate, only when it changed.
       const newCost = d.cost.trim() === '' ? null : Number(d.cost)
+      const newBe = d.be.trim() === '' ? null : Number(d.be)
+      if (newBe != null && newBe > 0 && newBe !== p.beRate) {
+        ops.push(savePersonBeRate({ personId: p.id, beRate: newBe, justification: AUTO_REASON }))
+      }
       if (newCost != null && newCost > 0 && newCost !== p.costRate) {
         ops.push(savePersonCostRate({ personId: p.id, costRate: newCost, justification: AUTO_REASON }))
       }
@@ -286,7 +292,7 @@ export function PeopleTab({ people, allClients }: Props) {
       </div>
 
       <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-        <div className="min-w-[1180px]">
+        <div className="min-w-[1404px]">
           {/* header */}
           <div className={`${GRID} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
             <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
@@ -295,6 +301,7 @@ export function PeopleTab({ people, allClients }: Props) {
             <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />
             <SortHeader label="Rate / client" align="right" active={sort?.id === 'clientRate'} dir={sort?.id === 'clientRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'clientRate'))} />
             <SortHeader label="Rate / cost" align="right" active={sort?.id === 'costRate'} dir={sort?.id === 'costRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'costRate'))} />
+            <SortHeader label="Rate / break-even" align="right" active={sort?.id === 'beRate'} dir={sort?.id === 'beRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'beRate'))} />
             <SortHeader label="Month / salary" align="right" active={sort?.id === 'salary'} dir={sort?.id === 'salary' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'salary'))} />
           </div>
 
@@ -302,6 +309,7 @@ export function PeopleTab({ people, allClients }: Props) {
             const d = drafts[p.id]
             const clientVal = editing ? (d?.client ?? '') : (rateOf(p) != null ? String(rateOf(p)) : '')
             const costVal = editing ? (d?.cost ?? '') : (p.costRate != null ? String(p.costRate) : '')
+            const beVal = editing ? (d?.be ?? '') : (p.beRate != null ? String(p.beRate) : '')
             const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
             return (
               <div key={p.id} className={`${GRID} px-[22px] py-3 border-b border-slate-100 last:border-0`}>
@@ -338,6 +346,9 @@ export function PeopleTab({ people, allClients }: Props) {
 
                 {/* Rate / cost (violet focus) */}
                 {rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0')}
+
+                {/* Rate / break-even (amber focus) */}
+                {rateInput(beVal, v => setDraft(p.id, 'be', v), '#a8660a')}
 
                 {/* Month / salary (green focus) */}
                 {rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}

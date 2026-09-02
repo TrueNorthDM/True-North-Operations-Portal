@@ -39,6 +39,15 @@ export interface Compensation {
   internalRate: number | null
   /** people.monthly_salary: flat monthly cost, for staff not paid hourly. */
   monthlySalary: number | null
+  /**
+   * people.be_rate: what an hour has to earn to break even.
+   *
+   * A third figure, and it answers a third question. The client rate is what
+   * somebody is billed, internalRate is what the hour costs, and this carries
+   * the overhead neither of those sees. It reads a salary through one division,
+   * so it travels with the pay columns and never with the ordinary select.
+   */
+  beRate: number | null
 }
 
 /**
@@ -50,12 +59,25 @@ export interface Compensation {
  */
 export async function loadCompensationByPerson(): Promise<Map<string, Compensation>> {
   const admin = createAdminClient()
-  const { data } = await admin.from('people').select('id, internal_rate, monthly_salary')
-  const rows = (data ?? []) as { id: string; internal_rate: number | null; monthly_salary: number | null }[]
+
+  // Two tiers, because be_rate arrives with migration 078 and selecting a column
+  // that does not exist yet makes PostgREST drop the WHOLE query. The symptom
+  // would be Rates & Costs rendering with no pay at all between the deploy and
+  // the migration being run, which is the same failure the hire_date fallback in
+  // budget-usage-data.ts exists to prevent.
+  const withBe = await admin.from('people').select('id, internal_rate, monthly_salary, be_rate')
+  const { data } = withBe.error
+    ? await admin.from('people').select('id, internal_rate, monthly_salary')
+    : withBe
+
+  const rows = (data ?? []) as {
+    id: string; internal_rate: number | null; monthly_salary: number | null; be_rate?: number | null
+  }[]
   return new Map(
     rows.map(r => [r.id, {
       internalRate: r.internal_rate != null ? Number(r.internal_rate) : null,
       monthlySalary: r.monthly_salary != null ? Number(r.monthly_salary) : null,
+      beRate: r.be_rate != null ? Number(r.be_rate) : null,
     }]),
   )
 }
@@ -125,16 +147,22 @@ export async function loadAuditLog(limit = 100) {
 /** One person's pay, for the audit "before" snapshot on a save. */
 export async function loadPersonCompensation(personId: string): Promise<(Compensation & { fullName: string }) | null> {
   const admin = createAdminClient()
-  const { data } = await admin
+  const one = await admin
     .from('people')
-    .select('id, full_name, internal_rate, monthly_salary')
+    .select('id, full_name, internal_rate, monthly_salary, be_rate')
     .eq('id', personId)
     .maybeSingle()
+  const { data } = one.error
+    ? await admin.from('people').select('id, full_name, internal_rate, monthly_salary').eq('id', personId).maybeSingle()
+    : one
   if (!data) return null
-  const r = data as { full_name: string; internal_rate: number | null; monthly_salary: number | null }
+  const r = data as {
+    full_name: string; internal_rate: number | null; monthly_salary: number | null; be_rate?: number | null
+  }
   return {
     fullName: r.full_name,
     internalRate: r.internal_rate != null ? Number(r.internal_rate) : null,
     monthlySalary: r.monthly_salary != null ? Number(r.monthly_salary) : null,
+    beRate: r.be_rate != null ? Number(r.be_rate) : null,
   }
 }
