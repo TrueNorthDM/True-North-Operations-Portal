@@ -64,6 +64,11 @@ export type ManualOptions = {
 // somebody scans back over to check the line before sending it. Placeholders
 // stay light: an absent answer should not weigh the same as a given one.
 const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px] text-tn-ink font-semibold placeholder:font-normal'
+// The same box for the dropdowns. Six of the ten fields were bare text with a
+// chevron while four had a white box, so more than half of them did not look
+// like fields at all, and the panel read as flat. No text colour here: the
+// Select paints its own value and placeholder.
+const FIELD_SELECT = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px]'
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
 
 export function ManualHours(
@@ -214,6 +219,7 @@ export function ManualHours(
               <label className={LABEL}>Person</label>
               <Select
                 strongValue
+                className={FIELD_SELECT}
                 value={personId}
                 onChange={setPersonId}
                 searchable
@@ -258,6 +264,7 @@ export function ManualHours(
               <label className={LABEL}>Job, top</label>
               <Select
                 strongValue
+                className={FIELD_SELECT}
                 value={topId}
                 // Picking a different root empties the fields below it: the
                 // disciplines are the root's own, and the middle of the form
@@ -274,6 +281,7 @@ export function ManualHours(
               <label className={LABEL}>Job</label>
               <Select
                 strongValue
+                className={FIELD_SELECT}
                 value={jobcodeId}
                 onChange={setJobcodeId}
                 searchable
@@ -292,6 +300,7 @@ export function ManualHours(
                 <label className={LABEL}>1 - i7 code</label>
                 <Select
                   strongValue
+                  className={FIELD_SELECT}
                   value={i7Code} onChange={setI7Code} searchable fullWidth ariaLabel="i7 code"
                   options={options.i7Codes.map(c => ({ value: c.code, label: c.code, group: c.project }))}
                   placeholder="Choose…"
@@ -304,6 +313,7 @@ export function ManualHours(
                 <label className={LABEL}>1 Company</label>
                 <Select
                   strongValue
+                  className={FIELD_SELECT}
                   value={company} onChange={setCompany} fullWidth ariaLabel="Company"
                   options={options.companies.map(c => ({ value: c, label: c }))}
                   placeholder="Choose…"
@@ -316,6 +326,7 @@ export function ManualHours(
                 <label className={LABEL}>2 Project</label>
                 <Select
                   strongValue
+                  className={FIELD_SELECT}
                   value={project} onChange={setProject} fullWidth ariaLabel="Project"
                   options={options.projects.map(c => ({ value: c, label: c }))}
                   placeholder="Choose…"
@@ -327,6 +338,7 @@ export function ManualHours(
               <label className={LABEL}>3 Activity</label>
               <Select
                 strongValue
+                className={FIELD_SELECT}
                 value={activity} onChange={setActivity} searchable fullWidth ariaLabel="Activity"
                 options={options.activities.map(a => ({ value: a, label: a }))}
                 placeholder="Choose…"
@@ -338,6 +350,7 @@ export function ManualHours(
                 <label className={LABEL}>4 Billable</label>
                 <Select
                   strongValue
+                  className={FIELD_SELECT}
                   value={billable} onChange={setBillable} fullWidth ariaLabel="Billable"
                   options={options.billable.map(b => ({ value: b, label: b }))}
                   placeholder="Choose…"
