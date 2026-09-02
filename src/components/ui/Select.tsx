@@ -49,6 +49,7 @@ export function Select({
   ariaLabel,
   disabled = false,
   searchable = false,
+  strongValue = false,
   id,
   defaultOpen = false,
   defaultQuery = '',
@@ -65,6 +66,13 @@ export function Select({
   disabled?: boolean
   /** Add a filter box at the top of the menu (for long lists like countries). */
   searchable?: boolean
+  /**
+   * Draw the chosen value in bold. For forms where the fields sit close
+   * together and the answers, not the labels, are what somebody reads back to
+   * check their work. The placeholder stays light either way: bolding "Choose"
+   * would give the same weight to an answer and to its absence.
+   */
+  strongValue?: boolean
   /** Design check only: render the menu already open. */
   defaultOpen?: boolean
   /** Design check only: render the menu's filter already typed into. */
@@ -215,7 +223,7 @@ export function Select({
       >
         {/* A chosen value reads as ink and an unchosen one as muted, which is
             how the trigger says whether it is filtering anything. */}
-        <span className={`truncate ${selected ? 'text-tn-ink' : mutePlaceholder ? 'text-muted' : ''}`}>
+        <span className={`truncate ${selected ? `text-tn-ink${strongValue ? ' font-semibold' : ''}` : mutePlaceholder ? 'text-muted' : ''}`}>
           {selected ? selected.label : placeholder}
         </span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>
