@@ -18,9 +18,14 @@ import { availableMonths } from '@/lib/tsheets/retention'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
 import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
 import { MonthPicker } from '@/components/tsheets/MonthPicker'
+import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
+import { loadAllManualHours } from '@/lib/timeclock/manual-data'
 
 export const metadata = { title: 'Client Report · Project Hours' }
 export const dynamic = 'force-dynamic'
+
+const MANUAL_BLURB =
+  'Every hour added by hand this month, whichever client it belongs to. They count in the client reports exactly like an imported hour, which is why they are listed here rather than only totalled.'
 
 export default async function ProjectHoursPage({
   searchParams,
@@ -43,6 +48,11 @@ export default async function ProjectHoursPage({
   // and that is the rule an admin can actually see.
   const data = await loadProjectTracking(createAdminClient(), selected)
 
+  // Admins only: these hours reach a client report.
+  const manual = access.isAdmin
+    ? { ...(await loadAllManualHours(createAdminClient(), selected)), blurb: MANUAL_BLURB }
+    : undefined
+
   return (
     <div className="space-y-6">
       <div className="min-w-0">
@@ -62,19 +72,15 @@ export default async function ProjectHoursPage({
         </p>
       </div>
 
-      <MonthPicker months={months} selected={selected} base="/tools/time-report/grant-pass" />
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <MonthPicker months={months} selected={selected} base="/tools/time-report/grant-pass" />
+        {manual && (
+          <ManualHoursDialog
+            rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}
+          />
+        )}
+      </div>
       <ProjectHoursReport data={data} />
-      {/* The panel that used to sit here now lives on its own page, because
-          one form serves every client and this one only knew how to tag its
-          own. The link stays where the panel was, so it is found the same way. */}
-      {access.isAdmin ? (
-        <Link
-          href="/tools/manual-hours"
-          className="inline-flex items-center gap-2 text-[13px] font-bold px-4 py-2 rounded-[10px] bg-tn-primary text-white hover:opacity-90 transition-opacity"
-        >
-          Add hours by hand
-        </Link>
-      ) : null}
     </div>
   )
 }

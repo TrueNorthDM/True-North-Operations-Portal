@@ -16,6 +16,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { loadAllManualHours } from '@/lib/timeclock/manual-data'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
@@ -74,6 +76,9 @@ interface TeamRoster { id: string; name: string; members: string[] }
 interface Props {
   searchParams: Promise<{ month?: string; team?: string }>
 }
+
+const MANUAL_BLURB =
+  'Every hour added by hand this month, whichever client it belongs to. They count in the client reports exactly like an imported hour, which is why they are listed here rather than only totalled.'
 
 export default async function ClientsReportsPage({ searchParams }: Props) {
   // The area comes from the level, the report itself from the team tool grant.
@@ -285,6 +290,12 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
   // Narrowed HERE, on the server, not in the component. The component used to
   // filter the columns while receiving everybody's, which was safe only while
   // the database had already removed them.
+  // Admins only: these hours reach a client invoice. Loaded here so the dialog
+  // in the toolbar opens with its lists already in hand.
+  const manual = access.isAdmin
+    ? { ...(await loadAllManualHours(createAdminClient(), selectedMonth)), blurb: MANUAL_BLURB }
+    : undefined
+
   const report = restricted
     ? narrowReport(full, { people: visiblePeople ?? [], keepCost: false })
     : full
@@ -307,6 +318,7 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
         carryover={data?.carryover ?? null}
         stdRate={data?.stdRate ?? 0}
         trend={data?.trend ?? []}
+        manual={manual}
         canExport={access.can('report-export')}
         canTeamUpdate={access.can('report-team-update')}
         restricted={restricted}
@@ -314,17 +326,6 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
         selectedTeam={selectedTeam}
       />
       <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
-      {/* The panel that used to sit here now lives on its own page, because
-          one form serves every client and this one only knew how to tag its
-          own. The link stays where the panel was, so it is found the same way. */}
-      {access.isAdmin ? (
-        <Link
-          href="/tools/manual-hours"
-          className="inline-flex items-center gap-2 text-[13px] font-bold px-4 py-2 rounded-[10px] bg-tn-primary text-white hover:opacity-90 transition-opacity"
-        >
-          Add hours by hand
-        </Link>
-      ) : null}
     </>
   )
 }

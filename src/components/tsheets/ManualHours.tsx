@@ -63,16 +63,22 @@ const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-whit
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
 
 export function ManualHours(
-  { rows, options, month, blurb }: {
+  { rows, options, month, blurb, embedded = false }: {
     rows: ManualRow[]; options: ManualOptions; month: string
     /** What these hours are for, in the words of the report they land in. */
     blurb: string
+    /**
+     * Inside a dialog that already frames it: no card border, no heading, and
+     * the form open from the start, because opening the dialog was the click
+     * that used to open the form.
+     */
+    embedded?: boolean
   },
 ) {
   const router = useRouter()
   const [busy, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(embedded)
 
   const [personId, setPersonId] = useState('')
   const [entryDate, setEntryDate] = useState(`${month}-01`)
@@ -126,21 +132,23 @@ export function ManualHours(
   const total = rows.reduce((s, r) => s + r.hours, 0)
 
   return (
-    <section className={`border border-[var(--panel-border)] bg-white rounded-[14px] px-5 pt-[18px] pb-5 transition-opacity ${busy ? 'opacity-60' : ''}`}>
+    <section className={`${embedded ? '' : 'border border-[var(--panel-border)] bg-white rounded-[14px] px-5 pt-[18px] pb-5'} transition-opacity ${busy ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink m-0">
-            Hours added by hand
-          </h3>
+          {!embedded && (
+            <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink m-0">
+              Hours added by hand
+            </h3>
+          )}
           <p className="text-[12.5px] text-muted mt-1 m-0 leading-[1.55]">{blurb}</p>
         </div>
-        <button
+        {!embedded && <button
           type="button"
           onClick={() => setOpen(o => !o)}
           className="shrink-0 text-[13px] font-semibold px-3.5 py-2 rounded-[10px] border border-[var(--panel-border)] text-tn-ink hover:bg-[var(--row-hover)] transition-colors"
         >
           {open ? 'Cancel' : 'Add hours'}
-        </button>
+        </button>}
       </div>
 
       {error ? (

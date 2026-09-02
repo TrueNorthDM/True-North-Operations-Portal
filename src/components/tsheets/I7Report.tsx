@@ -12,6 +12,8 @@ import { Select } from '@/components/ui/Select'
 import { I7Charts } from './I7Charts'
 import { ProjectRows } from './I7ProjectRows'
 import { ExportMenu, ExportImageButton } from './I7ReportParts'
+import { ManualHoursDialog } from './ManualHoursDialog'
+import type { ManualOptions, ManualRow } from './ManualHours'
 import { CarryoverPanel } from './I7CarryoverPanel'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
@@ -25,6 +27,8 @@ interface Props {
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
   trend?: I7TrendPoint[]                  // Jan → selected month, for the charts
+  /** Hand-entry, opened from here rather than from the foot of the page. */
+  manual?: { rows: ManualRow[]; options: ManualOptions; blurb: string }
   canExport?: boolean                     // the file exports (PDF, CSV, print)
   canTeamUpdate?: boolean                 // the Team Update image, granted separately
   /** Names with hours this month but no rate, so their cost lands as zero. */
@@ -57,7 +61,7 @@ function monthLabel(ym: string): string {
   return `${months[m - 1]} ${y}`
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '' }: Props) {
+export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '' }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -156,9 +160,17 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
             />
           </>
         )}
-        {/* Two grants, so either button can appear without the other. */}
-        {(canExport || canTeamUpdate) && (
+        {/* The things you do TO this report, in one group: add an hour to the
+            month, share it, export it. Two grants for the last two, so either
+            can appear without the other. */}
+        {(manual || canExport || canTeamUpdate) && (
           <div className="ml-auto flex items-center gap-2.5">
+            {manual && (
+              <ManualHoursDialog
+                rows={manual.rows} options={manual.options}
+                month={selectedMonth} blurb={manual.blurb}
+              />
+            )}
             {canTeamUpdate && <ExportImageButton month={selectedMonth} />}
             {canExport && <ExportMenu month={selectedMonth} />}
           </div>
