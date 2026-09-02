@@ -7,10 +7,10 @@
 // not have, which shows as hours that are counted and invisible.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { i7JobcodeIdsHere, jobcodeSubtree } from './report-source'
+import { i7JobcodeIdsHere } from './report-source'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateStateFor } from '@/lib/tsheets/rates'
-import { I7_CODE_CF, ACTIVITY_CF, mapCodeToProject, I7_PROJECTS } from '@/lib/tsheets/i7report'
+import { mapCodeToProject, I7_PROJECTS } from '@/lib/tsheets/i7report'
 import { loadEntryFieldKeys, loadFieldOptions } from './manual-fields'
 import type { ManualOptions, ManualRow } from '@/components/tsheets/ManualHours'
 
@@ -26,91 +26,6 @@ function optionsSince(month: string): string {
   const d = new Date(Date.UTC(y, m - 1, 1))
   d.setUTCMonth(d.getUTCMonth() - OPTION_MONTHS)
   return d.toISOString().slice(0, 10)
-}
-
-export async function loadManualHours(
-  supabase: Client, month: string,
-): Promise<{ rows: ManualRow[]; options: ManualOptions }> {
-  const start = `${month}-01`
-  const end = `${month}-31`
-
-  const [{ data: fieldRows }, jobcodeIds] = await Promise.all([
-    supabase.from('tc_fields').select('id, external_id')
-      .in('external_id', [Number(I7_CODE_CF), Number(ACTIVITY_CF)]),
-    i7JobcodeIdsHere(supabase),
-  ])
-  const fields = (fieldRows ?? []) as { id: number; external_id: number | null }[]
-  const keyOf = (ext: string) => {
-    const f = fields.find(r => String(r.external_id) === ext)
-    return f ? String(f.id) : null
-  }
-  const codeKey = keyOf(I7_CODE_CF)
-  const activityKey = keyOf(ACTIVITY_CF)
-
-  const billableKey = (await loadEntryFieldKeys(supabase)).billable
-
-  const [entries, jobcodes, recent, billable] = await Promise.all([
-    supabase.from('tc_entries')
-      .select('id, person_id, entry_date, duration_seconds, jobcode_id, fields, notes, created_by')
-      .eq('kind', 'manual').is('external_id', null)
-      .gte('entry_date', start).lte('entry_date', end)
-      .order('entry_date', { ascending: false }),
-    supabase.from('tc_jobcodes').select('id, name, parent_id, active').in('id', [...jobcodeIds]),
-    // The code and activity lists come from what has actually been logged, so
-    // they match what people already type rather than a list kept in code.
-    supabase.from('tc_entries').select('fields')
-      .gte('entry_date', optionsSince(month))
-      .limit(20_000),
-    loadFieldOptions(supabase, billableKey),
-  ])
-
-  const people = await peopleForEntry(supabase, month)
-
-  const allJobcodes = (jobcodes.data ?? []) as {
-    id: number; name: string; parent_id: number | null; active: boolean
-  }[]
-
-  const nameById = new Map(people.map(p => [p.id, p.name]))
-  // Every i7 job code, retired ones included, so an OLD entry still shows the
-  // name of the code it was logged under. What may be CHOSEN is narrower, below.
-  const jobcodeName = new Map(allJobcodes.map(j => [j.id, j.name]))
-
-  const rows: ManualRow[] = ((entries.data ?? []) as {
-    id: number; person_id: string; entry_date: string; duration_seconds: number
-    jobcode_id: number | null; fields: Record<string, string> | null
-    notes: string | null; created_by: string | null
-  }[]).map(e => ({
-    id: e.id,
-    personName: nameById.get(e.person_id) ?? 'Unknown',
-    entryDate: e.entry_date,
-    // One decimal: these are read off an invoice, not clocked to the second.
-    hours: Math.round((e.duration_seconds / 3600) * 100) / 100,
-    jobcodeName: e.jobcode_id ? jobcodeName.get(e.jobcode_id) ?? '' : '',
-    tag: (codeKey ? e.fields?.[codeKey] : '') ?? '',
-    activity: (activityKey ? e.fields?.[activityKey] : '') ?? '',
-    notes: e.notes,
-    addedBy: e.created_by ? nameById.get(e.created_by) ?? null : null,
-  }))
-
-  const codes = new Set<string>()
-  const activities = new Set<string>()
-  for (const r of (recent.data ?? []) as { fields: Record<string, string> | null }[]) {
-    const c = codeKey ? r.fields?.[codeKey] : null
-    const a = activityKey ? r.fields?.[activityKey] : null
-    if (c) codes.add(c)
-    if (a) activities.add(a)
-  }
-
-  return {
-    rows,
-    options: {
-      people,
-      jobcodes: choosableJobcodes(allJobcodes),
-      i7Codes: groupCodesByProject([...codes]),
-      activities: [...activities].sort(byLabel),
-      billable,
-    },
-  }
 }
 
 /**
@@ -210,101 +125,127 @@ async function peopleForEntry(supabase: Client, month: string) {
 }
 
 /**
- * Everyone, with no word about rates.
+ * One form for every branch, the way QuickBooks Time asks: the top job first,
+ * then the discipline inside it, then a middle that depends on which branch you
+ * entered by.
  *
- * The Grant Pass report counts hours and shows no cost, so a rate warning there
- * would be inventing a rule. Saying "hasRate: true" for everybody would have
- * been the shorter path and a lie in the data: the field is absent instead, and
- * the form has nothing to warn about.
+ * This replaced two panels, one per client report, each of which only knew how
+ * to tag its own client. Two nearly identical forms that had to keep behaving
+ * alike is the shape of a defect waiting to happen, and neither of them could
+ * ever have added an hour for a client that did not yet have a report.
  */
-async function peopleForProjectEntry(supabase: Client) {
-  const { data } = await supabase
-    .from('people').select('id, full_name').eq('status', 'active').order('full_name')
-  return ((data ?? []) as { id: string; full_name: string }[])
-    .map(p => ({ id: p.id, name: p.full_name }))
-}
-
-/**
- * The Grant Pass panel: the same form, filled in the way the work outside the
- * i7 tree is tagged.
- *
- * Grant Pass has never had a way to add an hour by hand. It did not need a
- * screen of its own: its report finds hours by looking for `GP church` and
- * `GP School` inside the "2 Project" field, without caring where they came
- * from, so an entry written here is picked up with no further wiring.
- *
- * The project list is narrowed to those two values on purpose. Every other
- * value of that field belongs to some other work, and this panel sits on the
- * Grant Pass page: offering them would be offering to file an hour where nobody
- * would look for it again.
- */
-export async function loadProjectManualHours(
-  supabase: Client, month: string, root: RegExp, projectValues: (label: string) => boolean,
+export async function loadAllManualHours(
+  supabase: Client, month: string,
 ): Promise<{ rows: ManualRow[]; options: ManualOptions }> {
   const start = `${month}-01`
   const end = `${month}-31`
 
   const keys = await loadEntryFieldKeys(supabase)
-  const branch = await jobcodeSubtree(supabase, j => j.parent_id === null && root.test(j.name))
 
-  const [{ data: jobRows }, { data: entryRows }, people, companies, billable, projectOptions] =
+  const [{ data: jobRows }, { data: entryRows }, people, companies, projects, billable, i7Ids] =
     await Promise.all([
-      supabase.from('tc_jobcodes').select('id, name, parent_id, active').in('id', [...branch]),
+      supabase.from('tc_jobcodes').select('id, name, parent_id, active, external_id'),
       supabase.from('tc_entries')
         .select('id, person_id, entry_date, duration_seconds, jobcode_id, fields, notes, created_by')
         .eq('kind', 'manual').is('external_id', null)
         .gte('entry_date', start).lte('entry_date', end)
         .order('entry_date', { ascending: false }),
-      peopleForProjectEntry(supabase),
+      peopleForEntry(supabase, month),
       loadFieldOptions(supabase, keys.company),
-      loadFieldOptions(supabase, keys.billable),
       loadFieldOptions(supabase, keys.project),
+      loadFieldOptions(supabase, keys.billable),
+      i7JobcodeIdsHere(supabase),
     ])
 
-  const allJobcodes = (jobRows ?? []) as {
-    id: number; name: string; parent_id: number | null; active: boolean
+  const all = (jobRows ?? []) as {
+    id: number; name: string; parent_id: number | null; active: boolean; external_id: number | null
   }[]
-  const jobcodeName = new Map(allJobcodes.map(j => [j.id, j.name]))
-  const nameById = new Map(people.map(p => [p.id, p.name]))
+  const jobcodeName = new Map(all.map(j => [j.id, j.name]))
+  const childrenOf = new Map<number, typeof all>()
+  for (const j of all) {
+    if (j.parent_id == null) continue
+    childrenOf.set(j.parent_id, [...(childrenOf.get(j.parent_id) ?? []), j])
+  }
 
-  const projects = projectOptions.filter(projectValues)
-  const wanted = new Set(projects)
+  // Every active root. QuickBooks Time also assigns each job to people and shows
+  // only the assigned ones, but the portal does not import that, so narrowing to
+  // the three everybody has would mean writing three names into the code and
+  // watching them go stale. The screen says what it is offering instead.
+  const tops = all
+    .filter(j => j.parent_id === null && j.active)
+    .sort((a, b) => byLabel(a.name, b.name))
+    .map(j => ({
+      id: String(j.id),
+      name: j.name,
+      branch: (i7Ids.has(j.id) ? 'i7' : 'project') as 'i7' | 'project',
+    }))
+
+  // A root with no children is the job itself, which is how Adventist
+  // Messengers works over there: you pick it and there is nothing to drill into.
+  const jobsByTop: Record<string, { id: number; name: string }[]> = {}
+  for (const t of tops) {
+    const kids = childrenOf.get(Number(t.id)) ?? []
+    jobsByTop[t.id] = choosableJobcodes(kids.length ? kids : all.filter(j => String(j.id) === t.id))
+  }
+
+  const codes = new Set<string>()
+  const activities = new Set<string>()
+  for (const r of (entryRows ?? []) as { fields: Record<string, string> | null }[]) {
+    const c = keys.code ? r.fields?.[keys.code] : null
+    const a = keys.activity ? r.fields?.[keys.activity] : null
+    if (c) codes.add(c)
+    if (a) activities.add(a)
+  }
+  const recentCodes = await recentI7Codes(supabase, month, keys.code)
+  for (const c of recentCodes) codes.add(c)
 
   const rows: ManualRow[] = ((entryRows ?? []) as {
     id: number; person_id: string; entry_date: string; duration_seconds: number
     jobcode_id: number | null; fields: Record<string, string> | null
     notes: string | null; created_by: string | null
-  }[])
-    // Listed by what the entry is TAGGED as, not by which job code it sits
-    // under, because that tag is exactly what the Grant Pass report reads.
-    .filter(e => wanted.has((keys.project ? e.fields?.[keys.project] : '') ?? ''))
-    .map(e => ({
+  }[]).map(e => {
+    const f = e.fields ?? {}
+    const code = keys.code ? f[keys.code] : ''
+    const project = keys.project ? f[keys.project] : ''
+    return {
       id: e.id,
-      personName: nameById.get(e.person_id) ?? 'Unknown',
+      personName: people.find(p => p.id === e.person_id)?.name ?? 'Unknown',
       entryDate: e.entry_date,
       hours: Math.round((e.duration_seconds / 3600) * 100) / 100,
       jobcodeName: e.jobcode_id ? jobcodeName.get(e.jobcode_id) ?? '' : '',
-      tag: (keys.project ? e.fields?.[keys.project] : '') ?? '',
-      activity: (keys.activity ? e.fields?.[keys.activity] : '') ?? '',
+      // Whichever of the two the branch filled in. They are the same slot in
+      // the sentence, so the row reads the same either way.
+      tag: code || project || '',
+      activity: (keys.activity ? f[keys.activity] : '') ?? '',
       notes: e.notes,
-      addedBy: e.created_by ? nameById.get(e.created_by) ?? null : null,
-    }))
-
-  const recentActivities = new Set<string>()
-  for (const r of (entryRows ?? []) as { fields: Record<string, string> | null }[]) {
-    const a = keys.activity ? r.fields?.[keys.activity] : null
-    if (a) recentActivities.add(a)
-  }
+      addedBy: e.created_by ? people.find(p => p.id === e.created_by)?.name ?? null : null,
+    }
+  })
 
   return {
     rows,
     options: {
       people,
-      jobcodes: choosableJobcodes(allJobcodes),
+      tops,
+      jobsByTop,
+      i7Codes: groupCodesByProject([...codes]),
       companies,
       projects,
-      activities: [...new Set([...recentActivities, ...(await loadFieldOptions(supabase, keys.activity))])].sort(byLabel),
+      activities: [...new Set([...activities, ...(await loadFieldOptions(supabase, keys.activity))])].sort(byLabel),
       billable,
     },
   }
+}
+
+/** i7 codes seen in the last year, so the list matches what people already type. */
+async function recentI7Codes(supabase: Client, month: string, codeKey: string | null): Promise<string[]> {
+  if (!codeKey) return []
+  const { data } = await supabase.from('tc_entries').select('fields')
+    .gte('entry_date', optionsSince(month)).limit(20_000)
+  const out = new Set<string>()
+  for (const r of (data ?? []) as { fields: Record<string, string> | null }[]) {
+    const c = r.fields?.[codeKey]
+    if (c) out.add(c)
+  }
+  return [...out]
 }

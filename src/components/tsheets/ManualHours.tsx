@@ -40,16 +40,21 @@ export type ManualOptions = {
    * living in the data rather than an absence the form can read.
    */
   people: { id: string; name: string; hasRate?: boolean; rateOutsideMonth?: boolean }[]
-  jobcodes: { id: number; name: string }[]
   /**
-   * The branch-specific middle of the form, and exactly one of these two is
-   * present. QuickBooks Time does the same thing: inside the i7 tree it asks
-   * for an i7 code, and outside it asks Company and Project instead. One
-   * component renders both rather than two that have to be kept looking alike.
+   * The roots, chosen first, exactly as QuickBooks Time asks. `branch` says
+   * which middle the form shows once one is picked: an i7 code inside the i7
+   * tree, a Company and a Project outside it.
    */
-  i7Codes?: { code: string; project: string }[]
-  companies?: string[]
-  projects?: string[]
+  tops: { id: string; name: string; branch: 'i7' | 'project' }[]
+  /** The disciplines inside each root, keyed by the root's id. */
+  jobsByTop: Record<string, { id: number; name: string }[]>
+  /**
+   * The branch-specific middle. Both are carried and the chosen root decides
+   * which one is drawn, the same swap QuickBooks Time makes at the same point.
+   */
+  i7Codes: { code: string; project: string }[]
+  companies: string[]
+  projects: string[]
   activities: string[]
   billable: string[]
 }
@@ -71,6 +76,7 @@ export function ManualHours(
 
   const [personId, setPersonId] = useState('')
   const [entryDate, setEntryDate] = useState(`${month}-01`)
+  const [topId, setTopId] = useState('')
   const [jobcodeId, setJobcodeId] = useState('')
   const [hours, setHours] = useState('')
   const [i7Code, setI7Code] = useState('')
@@ -81,6 +87,11 @@ export function ManualHours(
   const [notes, setNotes] = useState('')
 
   const chosen = options.people.find(p => p.id === personId)
+  const top = options.tops.find(t => t.id === topId)
+  const jobs = topId ? options.jobsByTop[topId] ?? [] : []
+  // The rate only means something inside the i7 tree, which is the only branch
+  // where an hour becomes money. Outside it there is nothing to warn about.
+  const warnRate = top?.branch === 'i7' && chosen?.hasRate === false
 
   const submit = () => {
     setError(null)
@@ -159,7 +170,7 @@ export function ManualHours(
                   first one included, so any word sitting beside {expr} loses
                   its space. Wrapping the sentence to fit the margin ate it
                   twice here: once after the name, once after the full stop. */}
-              {chosen && chosen.hasRate === false ? (
+              {chosen && warnRate ? (
                 <p className="text-[11.5px] text-[#b06d0a] mt-1.5 m-0 leading-[1.5]">
                   {chosen.rateOutsideMonth
                     ? `${chosen.name} has an i7 rate, but it does not cover ${monthName(month)}. The hours will count and the cost will be zero. In Rates & Costs, start the rate on or before this month.`
@@ -183,21 +194,37 @@ export function ManualHours(
             </div>
 
             <div>
+              <label className={LABEL}>Job, top</label>
+              <Select
+                value={topId}
+                // Picking a different root empties the fields below it: the
+                // disciplines are the root's own, and the middle of the form
+                // may swap entirely. Leaving a stale choice sitting there is
+                // how an hour gets filed under a code from the other branch.
+                onChange={v => { setTopId(v); setJobcodeId(''); setI7Code(''); setCompany(''); setProject('') }}
+                searchable fullWidth ariaLabel="Job, top"
+                options={options.tops.map(t => ({ value: t.id, label: t.name }))}
+                placeholder="Choose…"
+              />
+            </div>
+
+            <div>
               <label className={LABEL}>Job</label>
               <Select
                 value={jobcodeId}
                 onChange={setJobcodeId}
                 searchable
                 fullWidth
-                ariaLabel="Job code"
-                options={options.jobcodes.map(j => ({ value: String(j.id), label: j.name }))}
-                placeholder="Choose…"
+                disabled={!topId}
+                ariaLabel="Job"
+                options={jobs.map(j => ({ value: String(j.id), label: j.name }))}
+                placeholder={topId ? 'Choose…' : 'Choose the top first'}
               />
             </div>
 
             {/* Numbered the way QuickBooks Time numbers them, so they read as
                 the same fields somebody fills in over there. */}
-            {options.i7Codes && (
+            {top?.branch === 'i7' && (
               <div>
                 <label className={LABEL}>1 - i7 code</label>
                 <Select
@@ -208,7 +235,7 @@ export function ManualHours(
               </div>
             )}
 
-            {options.companies && (
+            {top?.branch === 'project' && (
               <div>
                 <label className={LABEL}>1 Company</label>
                 <Select
@@ -219,7 +246,7 @@ export function ManualHours(
               </div>
             )}
 
-            {options.projects && (
+            {top?.branch === 'project' && (
               <div>
                 <label className={LABEL}>2 Project</label>
                 <Select

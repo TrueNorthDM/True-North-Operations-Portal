@@ -21,8 +21,6 @@ import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { narrowReport } from '@/lib/tsheets/narrow'
-import { loadManualHours } from '@/lib/timeclock/manual-data'
-import { ManualHours } from '@/components/tsheets/ManualHours'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { getHoursImportStatus } from '@/lib/timeclock/import-status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
@@ -316,23 +314,18 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
         selectedTeam={selectedTeam}
       />
       <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
-      {/* Admins only: this writes hours that become an invoice. Below the
-          report rather than beside it, because it is a correction to what the
-          report already shows and not a second source. */}
-      {access.isAdmin ? <ManualHoursPanel month={selectedMonth} /> : null}
+      {/* The panel that used to sit here now lives on its own page, because
+          one form serves every client and this one only knew how to tag its
+          own. The link stays where the panel was, so it is found the same way. */}
+      {access.isAdmin ? (
+        <Link
+          href="/tools/manual-hours"
+          className="inline-flex items-center gap-2 text-[13px] font-bold px-4 py-2 rounded-[10px] border border-[var(--panel-border)] bg-white text-tn-ink hover:border-tn-teal transition-colors"
+        >
+          Add hours by hand
+        </Link>
+      ) : null}
     </>
-  )
-}
-
-/** The hand-added hours for the month on screen. */
-async function ManualHoursPanel({ month }: { month: string }) {
-  const supabase = await createClient()
-  const { rows, options } = await loadManualHours(supabase, month)
-  return (
-    <ManualHours
-      rows={rows} options={options} month={month}
-      blurb="For people who bill i7 work without a timeclock account. These count in the report and the invoice exactly like any other hour, which is why they are listed here rather than only totalled."
-    />
   )
 }
 
