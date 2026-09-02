@@ -95,9 +95,14 @@ export function ManualHours(
   const chosen = options.people.find(p => p.id === personId)
   const top = options.tops.find(t => t.id === topId)
   const jobs = topId ? options.jobsByTop[topId] ?? [] : []
-  // The rate only means something inside the i7 tree, which is the only branch
-  // where an hour becomes money. Outside it there is nothing to warn about.
-  const warnRate = top?.branch === 'i7' && chosen?.hasRate === false
+  // Warned the moment the person is chosen, not after the branch is.
+  //
+  // Waiting for the top meant the warning arrived once the form was half filled
+  // in, which is the wrong end of the work: knowing that somebody has no rate is
+  // most useful before you type their hours, because the fix is on another
+  // screen. So it shows as soon as there is a person, and retracts if the top
+  // turns out to be a branch where an hour never becomes money.
+  const warnRate = chosen?.hasRate === false && top?.branch !== 'project'
 
   const submit = () => {
     setError(null)
