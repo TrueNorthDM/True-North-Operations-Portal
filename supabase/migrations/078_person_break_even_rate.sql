@@ -22,6 +22,12 @@
 -- "Teixeira De Queiroz" for the person the portal calls Jônatas Queiroz), and a
 -- first-name match would be one collision away from putting somebody else's
 -- rate on somebody's row.
+--
+-- A fragment is a substring, so it collides too: on the first run 'Manzi' found
+-- Samuel Manzi and also Rafiki Mureramanzi, who has left. The `hits = 1` guard
+-- caught it and wrote neither, which is the whole reason it is there. Both
+-- narrowings below exist because of that one row: active people only, and still
+-- only where exactly one of them matches.
 
 ALTER TABLE people ADD COLUMN IF NOT EXISTS be_rate NUMERIC(8,2);
 
@@ -62,7 +68,10 @@ WITH src(frag, rate) AS (
 m AS (
   SELECT s.frag, s.rate, p.id, count(*) OVER (PARTITION BY s.frag) AS hits
   FROM src s
-  JOIN people p ON p.full_name ILIKE '%' || s.frag || '%'
+  -- Active only. Every name in the workbook is current staff, and a leaver can
+  -- carry a surname that contains somebody else's: 'Manzi' reaches both Samuel
+  -- Manzi and Rafiki Mureramanzi, who left.
+  JOIN people p ON p.full_name ILIKE '%' || s.frag || '%' AND p.status = 'active'
 )
 UPDATE people p SET be_rate = m.rate
 FROM m
@@ -132,7 +141,7 @@ SELECT s.frag,
        count(p.id) AS matches,
        CASE WHEN count(p.id) = 0 THEN 'nobody' ELSE 'more than one' END AS problem
 FROM src s
-LEFT JOIN people p ON p.full_name ILIKE '%' || s.frag || '%'
+LEFT JOIN people p ON p.full_name ILIKE '%' || s.frag || '%' AND p.status = 'active'
 GROUP BY s.frag
 HAVING count(p.id) <> 1
 ORDER BY s.frag;
