@@ -11,7 +11,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
-import { addManualEntry, deleteManualEntry } from '@/lib/timeclock/manual-actions'
+import { addManualEntries, deleteManualEntry } from '@/lib/timeclock/manual-actions'
+import type { ManualEntryInput } from '@/lib/timeclock/manual-entry'
 import { MAX_HOURS_PER_ENTRY } from '@/lib/timeclock/manual-entry'
 import { monthName } from '@/lib/timeclock/periods'
 
@@ -91,6 +92,8 @@ export function ManualHours(
   const [project, setProject] = useState('')
   const [billable, setBillable] = useState('')
   const [notes, setNotes] = useState('')
+  /** Lines already staged, each carrying the sentence the list shows. */
+  const [lines, setLines] = useState<(ManualEntryInput & { label: string })[]>([])
 
   const chosen = options.people.find(p => p.id === personId)
   const top = options.tops.find(t => t.id === topId)
@@ -104,23 +107,59 @@ export function ManualHours(
   // turns out to be a branch where an hour never becomes money.
   const warnRate = chosen?.hasRate === false && top?.branch !== 'project'
 
+  /** The line currently being typed, as the server wants it. */
+  const draft = (): ManualEntryInput => ({
+    personId,
+    entryDate,
+    jobcodeId: Number(jobcodeId),
+    hours: Number(hours),
+    i7Code,
+    company,
+    project,
+    activity,
+    billable,
+    notes,
+  })
+
+  /** What the staged list shows for a line, so it reads like the report will. */
+  const describe = (d: ManualEntryInput) => [
+    options.tops.find(t => t.id === topId)?.name,
+    (options.jobsByTop[topId] ?? []).find(j => j.id === d.jobcodeId)?.name,
+    d.i7Code || d.project,
+    d.activity,
+  ].filter(Boolean).join(' › ')
+
+  const stage = () => {
+    setError(null)
+    // The line has to stand on its own before it joins the others, or an empty
+    // one sits in the list looking like work that is done.
+    if (!personId || !jobcodeId || !entryDate || !(Number(hours) > 0)) {
+      setError('Fill the day, the hours and the job before adding the line.')
+      return
+    }
+    const d = draft()
+    setLines(ls => [...ls, { ...d, label: describe(d), billable: d.billable }])
+    // Cleared: what belongs to this line. Kept: what an invoice repeats down
+    // its own lines, which is everything above the day.
+    setHours(''); setNotes('')
+  }
+
   const submit = () => {
     setError(null)
+    // The line still in the fields counts. Making somebody stage it first, then
+    // press a second button, is a rule that only exists because of how this is
+    // built.
+    const pending = Number(hours) > 0 && jobcodeId ? [...lines, draft()] : lines
     start(async () => {
-      const r = await addManualEntry({
-        personId,
-        entryDate,
-        jobcodeId: Number(jobcodeId),
-        hours: Number(hours),
-        i7Code,
-        company,
-        project,
-        activity,
-        billable,
-        notes,
-      })
+      // Rebuilt field by field: the staged lines carry the sentence the list
+      // shows, and that belongs to the screen, not to the write.
+      const r = await addManualEntries(pending.map(d => ({
+        personId: d.personId, entryDate: d.entryDate, jobcodeId: d.jobcodeId,
+        hours: d.hours, i7Code: d.i7Code, company: d.company, project: d.project,
+        activity: d.activity, billable: d.billable, notes: d.notes,
+      })))
       if (!r.ok) { setError(r.error ?? 'Something went wrong.'); return }
-      setHours(''); setNotes('')
+      setLines([]); setHours(''); setNotes('')
       router.refresh()
     })
   }
@@ -135,6 +174,11 @@ export function ManualHours(
   }
 
   const total = rows.reduce((s, r) => s + r.hours, 0)
+  // The line still in the fields counts towards what the button says it
+  // will send, because it is going to be sent.
+  const typing = Number(hours) > 0 && Boolean(jobcodeId)
+  const pendingCount = lines.length + (typing ? 1 : 0)
+  const pendingHours = Math.round((lines.reduce((a, l) => a + l.hours, 0) + (typing ? Number(hours) : 0)) * 100) / 100
 
   return (
     <section className={`${embedded ? '' : 'border border-[var(--panel-border)] bg-white rounded-[14px] px-5 pt-[18px] pb-5'} transition-opacity ${busy ? 'opacity-60' : ''}`}>
@@ -302,14 +346,61 @@ export function ManualHours(
 
           <button
             type="button"
-            onClick={submit}
+            onClick={stage}
             disabled={busy}
-            className="mt-4 text-[13px] font-bold px-4 py-2 rounded-[10px] bg-tn-ink text-white hover:opacity-90 transition-opacity"
+            className="mt-4 text-[13px] font-semibold px-4 py-2 rounded-[10px] border border-dashed border-[var(--panel-border)] text-tn-ink hover:bg-[var(--row-hover)] transition-colors"
           >
-            Add to the report
+            + Add another line
           </button>
         </div>
       ) : null}
+
+      {/* Staged lines. Dashed above, solid below: the two buttons do different
+          things and used to look the same, which is the one confusion this
+          shape can cause. */}
+      {open && lines.length > 0 && (
+        <div className="mt-3 rounded-[12px] border border-[var(--panel-border)] overflow-hidden">
+          {lines.map((l, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 px-4 py-2.5 text-[13px] border-b border-[var(--panel-border)] last:border-b-0 bg-subtle"
+            >
+              <span className="w-[62px] shrink-0 text-muted tabular-nums">{l.entryDate.slice(8)}/{l.entryDate.slice(5, 7)}</span>
+              <span className="flex-1 min-w-0 truncate text-foreground">
+                {l.label}
+                {/* Only when it is not billable. A tag on every line is a column
+                    that says the same thing every time, and stops being read. */}
+                {l.billable && l.billable.toLowerCase() === 'no' && (
+                  <span className="ml-2 text-[10.5px] font-bold uppercase tracking-wider text-[#b06d0a]">not billable</span>
+                )}
+              </span>
+              <span className="w-[56px] shrink-0 text-right font-semibold text-tn-ink tabular-nums">{l.hours}h</span>
+              <button
+                type="button"
+                onClick={() => setLines(ls => ls.filter((_, j) => j !== i))}
+                aria-label={`Remove line ${i + 1}`}
+                className="shrink-0 text-muted hover:text-tn-ink transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {open && (lines.length > 0 || Number(hours) > 0) && (
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy}
+            className="text-[13px] font-bold px-4 py-2 rounded-[10px] bg-tn-ink text-white hover:opacity-90 transition-opacity"
+          >
+            {pendingCount === 1 ? 'Add to the report' : `Add ${pendingCount} lines to the reports`}
+          </button>
+          <span className="text-[12.5px] text-muted">{pendingHours}h in total</span>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-[13px] text-muted m-0">Nothing added by hand this month.</p>
