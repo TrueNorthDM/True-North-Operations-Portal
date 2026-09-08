@@ -30,7 +30,16 @@ export function ClientFullHistory(
   const ytdPct = ytdBudget > 0 ? Math.round((ytdUsed / ytdBudget) * 100) : 0
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 pt-10">
+      {/* A divider, not a full rule. The table above ends in its own borders,
+          and a line spanning the whole width would read as one more of them.
+          Seventy per cent, centred, leaves air on both sides so it reads as a
+          break between two blocks rather than the bottom of the first. Same
+          two pixels as the underline on the In Numbers / In Graphics tabs. */}
+      <div className="flex justify-center pb-6" aria-hidden="true">
+        <span className="block w-[70%] h-0.5 rounded-full bg-tn-primary/85" />
+      </div>
+
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-baseline gap-3">
           <h3 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">Full history</h3>
