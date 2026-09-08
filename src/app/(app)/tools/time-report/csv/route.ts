@@ -17,7 +17,7 @@
  */
 
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
-import { loadI7ByMonth } from '@/lib/tsheets/report-data'
+import { loadI7ByMonth, loadI7Days } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
@@ -52,9 +52,14 @@ export async function GET(request: Request) {
   const range = resolveRange(q.get('from') ?? legacy, q.get('to') ?? legacy, newestMonth())
   const type = q.get('type') === 'internal' ? 'internal' : 'client'
 
-  let months
+  // Two shapes on purpose. The internal file is worked through day by day, so
+  // it carries dates. The client file is a summary somebody invoices from, and
+  // a month is the unit it is invoiced in.
+  let months: Awaited<ReturnType<typeof loadI7ByMonth>> = []
+  let days: Awaited<ReturnType<typeof loadI7Days>> = []
   try {
-    months = await loadI7ByMonth(range.from, range.to)
+    if (type === 'internal') days = await loadI7Days(range.from, range.to)
+    else months = await loadI7ByMonth(range.from, range.to)
   } catch {
     return new Response('Could not load the report.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
   }
@@ -71,32 +76,17 @@ export async function GET(request: Request) {
   // export says. A spreadsheet sorts the first correctly and the second into
   // Apr, Aug, Dec, and this file exists to be sorted by month.
   const HEAD = type === 'internal'
-    ? ['Month', 'Invoice', 'Project', 'Job code', 'Activity', 'Person', 'Hours', 'Cost (USD)']
+    ? ['Date', 'Invoice', 'Project', 'Job code', 'Activity', 'Person', 'Hours', 'Cost (USD)']
     : ['Month', 'Invoice', 'Project', 'Job code', 'Hours', 'Investment (USD)', 'Share of month (%)']
   lines.push(row(HEAD))
 
-  if (months.length === 0) {
-    lines.push(`No i7 hours for ${label}.`)
-  } else if (type === 'internal') {
-    for (const { month, report, personRates } of months) {
-      for (const p of report.projects) {
-        const inv = isMME(p.project) ? 'MME' : 'i7'
-        for (const jc of p.jobcodes) {
-          // Deepest level carrying per-person hours: activity, else the job code.
-          const nodes = jc.activities.length
-            ? jc.activities.map(a => ({ activity: a.activity, byPerson: a.byPerson }))
-            : [{ activity: '', byPerson: jc.byPerson }]
-          for (const node of nodes) {
-            for (const person of report.people) {
-              const hours = node.byPerson[person] ?? 0
-              if (hours <= 0) continue
-              const cost = round2(hours * (personRates[person] ?? 0))
-              lines.push(row([month, inv, p.project, jc.code, node.activity, person, hours, cost]))
-            }
-          }
-        }
-      }
+  if (type === 'internal') {
+    if (days.length === 0) lines.push(`No i7 hours for ${label}.`)
+    for (const d of days) {
+      lines.push(row([d.date, d.invoice, d.project, d.code, d.activity, d.person, d.hours, d.cost]))
     }
+  } else if (months.length === 0) {
+    lines.push(`No i7 hours for ${label}.`)
   } else {
     for (const { month, report } of months) {
       const total = report.totalCost

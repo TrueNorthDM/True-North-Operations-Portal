@@ -13,7 +13,8 @@ import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
 import { monthBounds, monthsBetween } from '@/lib/tsheets/report'
 import { spanWording } from '@/lib/tsheets/range'
 import { DATA_START, retentionFloor } from '@/lib/tsheets/retention'
-import { buildI7Report, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
+import { buildI7Report, buildI7Days, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
+import type { I7DayRow } from '@/lib/tsheets/i7report'
 import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
 
 export interface I7ReportData {
@@ -29,6 +30,7 @@ export interface I7ReportData {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
+
 
 /**
  * i7 entries for a date range, now read from the portal's own hours.
@@ -323,6 +325,25 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   }
 
   return { report: report.totalHours > 0 ? report : null, unratedPeople, projectHours, carryover, stdRate, personRates, trend, note }
+}
+
+/**
+ * The range as dated rows, for the internal export.
+ *
+ * Reads the entries and hands them to buildI7Days. See there for why an export
+ * does not go through the tree.
+ */
+export async function loadI7Days(from: string, to: string): Promise<I7DayRow[]> {
+  const { startDate } = monthBounds(from)
+  const { endDate } = monthBounds(to)
+
+  const [entries, names, assignments] = await Promise.all([
+    loadCachedEntries(startDate, endDate),
+    loadNames(),
+    loadI7Assignments(),
+  ])
+
+  return buildI7Days(entries, (pid, ym) => rateFor(assignments, pid, ym), names)
 }
 
 /** One month of the report, for an export that has to say which month a row is. */

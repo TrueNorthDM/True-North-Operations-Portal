@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapCodeToProject, buildI7Report } from './i7report'
+import { mapCodeToProject, buildI7Report, buildI7Days } from './i7report'
 import type { I7Entry } from './types'
 
 describe('mapCodeToProject', () => {
@@ -124,5 +124,56 @@ describe('a range split by month', () => {
     const april = buildI7Report(spread.filter(e => e.date.slice(0, 7) === '2026-04'), rate, names, '2026-04-01')
     expect(april.totalHours).toBe(0)
     expect(april.people).toEqual([])
+  })
+})
+
+// The dated export and the screen read the same entries. If they ever stop
+// agreeing, the person reconciling the file has no way to tell which is right.
+describe('buildI7Days', () => {
+  const names = { p1: 'Alice', p2: 'Bob' }
+  const rate = (_pid: string, ym: string) => (ym >= '2026-02' ? 100 : 80)
+  const spread: I7Entry[] = [
+    { personId: 'p1', duration: 3600, date: '2026-01-05', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 'p1', duration: 5400, date: '2026-02-11', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 'p2', duration: 7200, date: '2026-02-20', i7Code: 'MME-MKTG', activity: 'Content: Writing' },
+    { personId: 'p2', duration: 1800, date: '2026-03-02', i7Code: 'BE-CONTENT', activity: 'Content: Writing' },
+  ]
+
+  it('adds back up to the tree over the same entries', () => {
+    const tree = buildI7Report(spread, rate, names, '2026-01-01')
+    const days = buildI7Days(spread, rate, names)
+
+    expect(days.reduce((s, d) => s + d.hours, 0)).toBeCloseTo(tree.totalHours, 2)
+    expect(days.reduce((s, d) => s + d.cost, 0)).toBeCloseTo(tree.totalCost, 2)
+  })
+
+  it('gives every row a real date, in order', () => {
+    const days = buildI7Days(spread, rate, names)
+    expect(days.map(d => d.date)).toEqual(['2026-01-05', '2026-02-11', '2026-02-20', '2026-03-02'])
+    for (const d of days) expect(d.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  // One person, one code, one day, two punches. That is one line of work, and
+  // two rows of it would read as a double entry.
+  it('joins two entries on the same day into one row', () => {
+    const twice: I7Entry[] = [
+      { personId: 'p1', duration: 3600, date: '2026-01-05', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+      { personId: 'p1', duration: 1800, date: '2026-01-05', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    ]
+    const days = buildI7Days(twice, rate, names)
+    expect(days).toHaveLength(1)
+    expect(days[0].hours).toBeCloseTo(1.5, 2)
+  })
+
+  it('sends Moisture Meters to its own invoice', () => {
+    const days = buildI7Days(spread, rate, names)
+    expect(days.find(d => d.code === 'MME-MKTG')?.invoice).toBe('MME')
+    expect(days.find(d => d.code === 'WM-SEO')?.invoice).toBe('i7')
+  })
+
+  it('costs a day at the rate its own month had', () => {
+    const days = buildI7Days(spread, rate, names)
+    expect(days.find(d => d.date === '2026-01-05')?.cost).toBeCloseTo(80, 2)
+    expect(days.find(d => d.date === '2026-02-11')?.cost).toBeCloseTo(150, 2)
   })
 })

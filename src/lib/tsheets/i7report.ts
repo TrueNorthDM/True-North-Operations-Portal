@@ -20,8 +20,10 @@ export const PROJECT_CF = '129636'
 // The four i7 projects (top level of the report + budget-hours guide targets).
 export const I7_PROJECTS = ['i7 Marketing', 'Moisture Meters (MME)', 'Wagner Meters (WM)', 'Bessemeter'] as const
 
-const NO_CODE = '(no code)'
-const NO_ACTIVITY = '(no activity)'
+/** What an entry is filed under when it arrived without one. Exported so an
+ *  export that reads entries directly files them exactly as the tree does. */
+export const NO_CODE = '(no code)'
+export const NO_ACTIVITY = '(no activity)'
 
 /** Group an i7 code into its project by prefix. */
 export function mapCodeToProject(code: string): string {
@@ -199,4 +201,69 @@ export function buildI7Report(
   const endDate = span?.endDate ?? new Date(year, monthIdx, 0).toISOString().slice(0, 10)
 
   return { month, startDate, endDate, projects, people, totalHours: round2(totalHours), totalCost: round2(totalCost), hasRates: sawRate }
+}
+
+
+/** A day's work on one job code by one person, which is as fine as an export gets. */
+export interface I7DayRow {
+  date: string        // YYYY-MM-DD
+  invoice: string     // 'i7' or 'MME', the invoice the project bills to
+  project: string
+  code: string
+  activity: string
+  person: string
+  hours: number
+  cost: number
+}
+
+/** Moisture Meters bills separately from the rest of i7. */
+const isMMEProject = (name: string) => /mme|moisture/i.test(name)
+
+/**
+ * The same entries buildI7Report adds up, kept apart and dated.
+ *
+ * The tree answers "what did this cost" and so discards the day on the way in.
+ * That is right on screen and wrong in a spreadsheet somebody reconciles, so an
+ * export builds from here instead. Both file entries under the same code and
+ * activity, which is why the fallbacks are shared rather than spelled twice:
+ * a row with no activity has to be called the same thing in both.
+ *
+ * Summed per day, not per entry. Two entries by one person on one code on one
+ * day are one line of work, and splitting them makes a file where the same row
+ * appears twice for no reason a reader can see.
+ */
+export function buildI7Days(
+  entries: I7Entry[],
+  rateOf: (personId: string, ym: string) => number,
+  namesByPerson: Record<string, string>,
+): I7DayRow[] {
+  const acc = new Map<string, I7DayRow>()
+  for (const e of entries) {
+    const code = (e.i7Code || NO_CODE).trim() || NO_CODE
+    const activity = (e.activity || NO_ACTIVITY).trim() || NO_ACTIVITY
+    const project = mapCodeToProject(code)
+    const person = namesByPerson[e.personId] ?? `Person ${e.personId.slice(0, 8)}`
+    const hours = e.duration / 3600
+    // Costed at the rate for the month the day falls in, the rule the screen
+    // uses, so a rate change mid-range lands on the right side of it.
+    const cost = hours * rateOf(e.personId, e.date.slice(0, 7))
+
+    const key = `${e.date}|${code}|${activity}|${person}`
+    const row = acc.get(key)
+    if (row) { row.hours += hours; row.cost += cost }
+    else acc.set(key, {
+      date: e.date, invoice: isMMEProject(project) ? 'MME' : 'i7',
+      project, code, activity, person, hours, cost,
+    })
+  }
+
+  return [...acc.values()]
+    .map(r => ({ ...r, hours: round2(r.hours), cost: round2(r.cost) }))
+    .filter(r => r.hours > 0)
+    // Date first: the file is read forwards through the month, and everything
+    // under a day is ordered the way the report's own table is.
+    .sort((a, b) =>
+      a.date.localeCompare(b.date) || a.project.localeCompare(b.project) ||
+      a.code.localeCompare(b.code) || a.activity.localeCompare(b.activity) ||
+      a.person.localeCompare(b.person))
 }
