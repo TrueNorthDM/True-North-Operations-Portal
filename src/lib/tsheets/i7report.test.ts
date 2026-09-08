@@ -83,3 +83,46 @@ describe('buildI7Report', () => {
     expect(buildI7Report(entries, flat(rates), names, '2026-07-01').month).toBe('July 2026')
   })
 })
+
+// The export splits a range back into months, while the screen adds the range
+// up. If those two ever disagree, the CSV stops being the same report, and the
+// person reconciling it has no way to tell which one is lying.
+describe('a range split by month', () => {
+  const names = { p1: 'Alice', p2: 'Bob' }
+  const spread: I7Entry[] = [
+    { personId: 'p1', duration: 3600, date: '2026-01-05', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 'p1', duration: 5400, date: '2026-02-11', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 'p2', duration: 7200, date: '2026-02-20', i7Code: 'BE-CONTENT', activity: 'Content: Writing' },
+    { personId: 'p2', duration: 1800, date: '2026-03-02', i7Code: 'BE-CONTENT', activity: 'Content: Writing' },
+  ]
+  // A rate that changes inside the range, which is the case a single number per
+  // person could not carry and the reason the builder asks per month.
+  const rate = (_pid: string, ym: string) => (ym >= '2026-02' ? 100 : 80)
+  const months = ['2026-01', '2026-02', '2026-03']
+
+  it('adds back up to the range built in one go', () => {
+    const whole = buildI7Report(spread, rate, names, '2026-01-01')
+    const parts = months.map(ym =>
+      buildI7Report(spread.filter(e => e.date.slice(0, 7) === ym), rate, names, `${ym}-01`))
+
+    const hours = parts.reduce((s, r) => s + r.totalHours, 0)
+    const cost = parts.reduce((s, r) => s + r.totalCost, 0)
+
+    expect(hours).toBeCloseTo(whole.totalHours, 2)
+    expect(cost).toBeCloseTo(whole.totalCost, 2)
+  })
+
+  it('costs each month at the rate that month had', () => {
+    const [jan, feb] = months.map(ym =>
+      buildI7Report(spread.filter(e => e.date.slice(0, 7) === ym), rate, names, `${ym}-01`))
+
+    expect(jan.totalCost).toBeCloseTo(1 * 80, 2)          // one hour at the old rate
+    expect(feb.totalCost).toBeCloseTo((1.5 + 2) * 100, 2) // three and a half at the new one
+  })
+
+  it('gives a month nobody logged to no rows at all', () => {
+    const april = buildI7Report(spread.filter(e => e.date.slice(0, 7) === '2026-04'), rate, names, '2026-04-01')
+    expect(april.totalHours).toBe(0)
+    expect(april.people).toEqual([])
+  })
+})

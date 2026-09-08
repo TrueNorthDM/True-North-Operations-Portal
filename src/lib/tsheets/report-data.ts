@@ -325,6 +325,69 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   return { report: report.totalHours > 0 ? report : null, unratedPeople, projectHours, carryover, stdRate, personRates, trend, note }
 }
 
+/** One month of the report, for an export that has to say which month a row is. */
+export interface I7MonthSlice {
+  month: string                          // YYYY-MM
+  report: I7Report
+  personRates: Record<string, number>    // display name → that month's rate
+}
+
+/**
+ * The range broken back apart, one report per month.
+ *
+ * The report adds a range up before anyone sees it, which is right on screen:
+ * you asked what the year cost. It is wrong in a spreadsheet. A CSV of a
+ * nine-month range came out as 166 rows that each looked exactly like a month's
+ * row, one of them reading 850.25 hours for one person, with the only mention
+ * of a period anywhere in the file being its name. Open it, or paste the rows
+ * into a sheet of your own, and there is nothing left saying what it covers.
+ *
+ * So exports build from this instead, and every row carries its month.
+ *
+ * One read, then a build per month in memory. Asking loadI7ReportData once per
+ * month would re-read every entry since January 2026 each time, to walk a
+ * balance no export uses.
+ *
+ * No universe scaffold here, unlike the screen: a spreadsheet wants the rows
+ * that happened, not a line for every job code that could have.
+ */
+export async function loadI7ByMonth(from: string, to: string): Promise<I7MonthSlice[]> {
+  const { startDate } = monthBounds(from)
+  const { endDate } = monthBounds(to)
+
+  const [entries, names, assignments] = await Promise.all([
+    loadCachedEntries(startDate, endDate),
+    loadNames(),
+    loadI7Assignments(),
+  ])
+
+  const byMonth = new Map<string, I7Entry[]>()
+  for (const e of entries) {
+    const ym = e.date.slice(0, 7)
+    const list = byMonth.get(ym)
+    if (list) list.push(e); else byMonth.set(ym, [e])
+  }
+
+  const out: I7MonthSlice[] = []
+  for (const ym of monthsBetween(from, to).concat(to)) {
+    const mine = byMonth.get(ym) ?? []
+    // A month nobody logged to contributes no rows. A blank month in a
+    // spreadsheet is a row somebody has to work out the meaning of.
+    if (mine.length === 0) continue
+
+    const report = buildI7Report(mine, (pid, m) => rateFor(assignments, pid, m), names, monthBounds(ym).startDate)
+
+    // Within one month a person has one rate, so this needs no weighting.
+    const personRates: Record<string, number> = {}
+    for (const pid of new Set(mine.map(e => e.personId))) {
+      personRates[names[pid] ?? `Person ${pid.slice(0, 8)}`] = rateFor(assignments, pid, ym)
+    }
+
+    out.push({ month: ym, report, personRates })
+  }
+  return out
+}
+
 // The optional narrative for a month (empty string when none).
 export async function loadReportNote(month: string): Promise<string> {
   const supabase = await createClient()

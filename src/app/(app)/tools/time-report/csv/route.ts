@@ -17,7 +17,7 @@
  */
 
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
-import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { loadI7ByMonth } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
@@ -52,9 +52,9 @@ export async function GET(request: Request) {
   const range = resolveRange(q.get('from') ?? legacy, q.get('to') ?? legacy, newestMonth())
   const type = q.get('type') === 'internal' ? 'internal' : 'client'
 
-  let data
+  let months
   try {
-    data = await loadI7ReportData(range.from, range.to)
+    months = await loadI7ByMonth(range.from, range.to)
   } catch {
     return new Response('Could not load the report.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
   }
@@ -62,44 +62,56 @@ export async function GET(request: Request) {
   const label = spanWording(range.from, range.to)
   const lines: string[] = []
 
-  if (!data.report) {
-    lines.push(type === 'internal'
-      ? 'Invoice,Project,Job code,Activity,Person,Hours,Cost (USD)'
-      : 'Invoice,Project,Job code,Hours,Investment (USD),Share of total (%)')
+  // Month first, on every row, because that is the column somebody sorts and
+  // pivots by. It is here even for a single month: the period used to live only
+  // in the file's name, so opening the file, or pasting its rows into a sheet,
+  // lost it.
+  //
+  // Written as 2026-01 rather than "Jan 2026", which is what the Full history
+  // export says. A spreadsheet sorts the first correctly and the second into
+  // Apr, Aug, Dec, and this file exists to be sorted by month.
+  const HEAD = type === 'internal'
+    ? ['Month', 'Invoice', 'Project', 'Job code', 'Activity', 'Person', 'Hours', 'Cost (USD)']
+    : ['Month', 'Invoice', 'Project', 'Job code', 'Hours', 'Investment (USD)', 'Share of month (%)']
+  lines.push(row(HEAD))
+
+  if (months.length === 0) {
     lines.push(`No i7 hours for ${label}.`)
   } else if (type === 'internal') {
-    const { report, personRates } = data
-    lines.push('Invoice,Project,Job code,Activity,Person,Hours,Cost (USD)')
-    for (const p of report.projects) {
-      const inv = isMME(p.project) ? 'MME' : 'i7'
-      for (const jc of p.jobcodes) {
-        // Deepest level carrying per-person hours: activity, else the job code.
-        const nodes = jc.activities.length
-          ? jc.activities.map(a => ({ activity: a.activity, byPerson: a.byPerson }))
-          : [{ activity: '', byPerson: jc.byPerson }]
-        for (const node of nodes) {
-          for (const person of report.people) {
-            const hours = node.byPerson[person] ?? 0
-            if (hours <= 0) continue
-            const cost = round2(hours * (personRates[person] ?? 0))
-            lines.push(row([inv, p.project, jc.code, node.activity, person, hours, cost]))
+    for (const { month, report, personRates } of months) {
+      for (const p of report.projects) {
+        const inv = isMME(p.project) ? 'MME' : 'i7'
+        for (const jc of p.jobcodes) {
+          // Deepest level carrying per-person hours: activity, else the job code.
+          const nodes = jc.activities.length
+            ? jc.activities.map(a => ({ activity: a.activity, byPerson: a.byPerson }))
+            : [{ activity: '', byPerson: jc.byPerson }]
+          for (const node of nodes) {
+            for (const person of report.people) {
+              const hours = node.byPerson[person] ?? 0
+              if (hours <= 0) continue
+              const cost = round2(hours * (personRates[person] ?? 0))
+              lines.push(row([month, inv, p.project, jc.code, node.activity, person, hours, cost]))
+            }
           }
         }
       }
     }
   } else {
-    const { report } = data
-    const total = report.totalCost
-    lines.push('Invoice,Project,Job code,Hours,Investment (USD),Share of total (%)')
-    for (const p of report.projects) {
-      const inv = isMME(p.project) ? 'MME invoice' : 'i7 invoice'
-      for (const jc of p.jobcodes) {
-        if (jc.hours <= 0) continue
-        // Two decimals, not whole dollars: this file is opened by accounting.
-        lines.push(row([inv, p.project, jc.code, jc.hours, round2(jc.cost).toFixed(2), pct(jc.cost, total)]))
+    for (const { month, report } of months) {
+      const total = report.totalCost
+      for (const p of report.projects) {
+        const inv = isMME(p.project) ? 'MME invoice' : 'i7 invoice'
+        for (const jc of p.jobcodes) {
+          if (jc.hours <= 0) continue
+          // Two decimals, not whole dollars: this file is opened by accounting.
+          lines.push(row([month, inv, p.project, jc.code, jc.hours, round2(jc.cost).toFixed(2), pct(jc.cost, total)]))
+        }
       }
+      // A total per month, not one for the range. A single figure at the foot
+      // of a file covering nine months is the same trap the rows had.
+      lines.push(row([month, '', `TOTAL ${month}`, '', report.totalHours, round2(total).toFixed(2), 100]))
     }
-    lines.push(row(['', 'TOTAL', '', report.totalHours, round2(total).toFixed(2), 100]))
   }
 
   // BOM so Excel reads UTF-8 (accented names, the em dash) correctly.
