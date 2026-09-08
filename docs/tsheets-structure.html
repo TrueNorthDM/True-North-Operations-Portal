@@ -1,0 +1,389 @@
+<title>Como o TSheets está montado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --ink: #12243d;
+    --ink-soft: #5c6b73;
+    --paper: #f7f8f6;
+    --card: #ffffff;
+    --rule: #d8dcd6;
+    --rule-soft: #e8ebe6;
+    --teal: #1e7d7f;
+    --teal-wash: #e7f1f0;
+    --amber: #a8660a;
+    --amber-wash: #f8f0e2;
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Serif 4", Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e6ebe8;
+      --ink-soft: #9aa8ad;
+      --paper: #101a24;
+      --card: #17232f;
+      --rule: #2b3a47;
+      --rule-soft: #223140;
+      --teal: #5cbdbb;
+      --teal-wash: #16302f;
+      --amber: #d9a24e;
+      --amber-wash: #2e2618;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e6ebe8;
+    --ink-soft: #9aa8ad;
+    --paper: #101a24;
+    --card: #17232f;
+    --rule: #2b3a47;
+    --rule-soft: #223140;
+    --teal: #5cbdbb;
+    --teal-wash: #16302f;
+    --amber: #d9a24e;
+    --amber-wash: #2e2618;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 20px 96px;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  .prose { max-width: 64ch; }
+
+  header { padding: 72px 0 40px; border-bottom: 2px solid var(--ink); margin-bottom: 44px; }
+  .eyebrow {
+    font-family: var(--display); font-weight: 600; font-size: 12px;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--teal); margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 700; font-size: clamp(34px, 5.5vw, 52px);
+    line-height: 1.05; letter-spacing: -.02em; margin: 0 0 18px; text-wrap: balance;
+  }
+  .standfirst { font-size: 20px; line-height: 1.55; color: var(--ink-soft); margin: 0; max-width: 60ch; }
+
+  h2 {
+    font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .13em;
+    text-transform: uppercase; margin: 0 0 6px; color: var(--teal);
+  }
+  .h2sub {
+    font-family: var(--display); font-weight: 600; font-size: clamp(22px, 3vw, 28px);
+    letter-spacing: -.01em; margin: 0 0 20px; color: var(--ink); text-wrap: balance;
+  }
+  section { padding: 44px 0; border-top: 1px solid var(--rule); }
+  section:first-of-type { border-top: none; padding-top: 0; }
+  p { margin: 0 0 18px; }
+  p:last-child { margin-bottom: 0; }
+
+  code, .mono { font-family: var(--mono); font-size: .88em; }
+  code {
+    background: var(--rule-soft); padding: 1px 5px; border-radius: 3px;
+    border: 1px solid var(--rule);
+  }
+
+  .axes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin: 28px 0 0; }
+  .panel { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; }
+  .panel h3 {
+    font-family: var(--display); font-weight: 700; font-size: 15px; margin: 0 0 4px; color: var(--ink);
+  }
+  .panel .note { font-size: 14px; color: var(--ink-soft); margin: 0 0 16px; line-height: 1.5; }
+
+  ul.tree { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: 13.5px; line-height: 1.9; }
+  ul.tree > li { border-top: 1px solid var(--rule-soft); padding-top: 6px; margin-top: 6px; }
+  ul.tree > li:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .folder { font-weight: 500; color: var(--ink); }
+  .kids { color: var(--ink-soft); font-size: 12.5px; line-height: 1.75; margin: 2px 0 0; }
+  .flat { color: var(--ink); }
+  .tag {
+    font-family: var(--display); font-size: 10.5px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--teal); background: var(--teal-wash);
+    border-radius: 3px; padding: 2px 6px; margin-left: 6px; white-space: nowrap;
+  }
+  .tag.amber { color: var(--amber); background: var(--amber-wash); }
+
+  .scroll { overflow-x: auto; margin: 24px 0 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+  th, td { text-align: left; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th {
+    font-family: var(--display); font-weight: 600; font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-soft); border-bottom: 1px solid var(--rule);
+  }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .field { font-family: var(--mono); font-size: 13.5px; font-weight: 500; }
+  td .vals { display: block; font-size: 13.5px; color: var(--ink-soft); margin-top: 3px; line-height: 1.5; }
+
+  .flows { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 28px; }
+  .flow { border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; background: var(--card); }
+  .flow.i7 { border-color: var(--teal); }
+  .flow h3 { font-family: var(--display); font-weight: 700; font-size: 15px; margin: 0 0 16px; color: var(--ink); }
+  ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; }
+  ol.steps li {
+    counter-increment: s; position: relative; padding: 0 0 14px 34px;
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.5;
+  }
+  ol.steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0;
+    font-family: var(--display); font-size: 11px; font-weight: 700; color: var(--teal);
+    background: var(--teal-wash); width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center;
+  }
+  ol.steps li span { display: block; font-family: var(--body); font-size: 14px; color: var(--ink-soft); margin-top: 2px; }
+  ol.steps li:last-child { padding-bottom: 0; }
+
+  .trap { border-left: 3px solid var(--amber); background: var(--amber-wash); padding: 18px 22px; margin: 22px 0 0; border-radius: 0; }
+  .trap h3 { font-family: var(--display); font-weight: 700; font-size: 15px; margin: 0 0 8px; color: var(--ink); }
+  .trap p { font-size: 15.5px; margin-bottom: 10px; }
+
+  .pull { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; margin-top: 24px; }
+  .pull p { font-size: 15px; }
+  .url { font-family: var(--mono); font-size: 13px; word-break: break-all; color: var(--teal); display: block; margin: 4px 0 14px; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">QuickBooks Time, setembro de 2026</p>
+    <h1>Como o TSheets está montado</h1>
+    <p class="standfirst">
+      A estrutura não é uma hierarquia só. São dois eixos independentes, e o formulário
+      pergunta coisas diferentes conforme o ramo em que você está. É por isso que o
+      quebra-cabeça não fecha quando se tenta ler tudo como uma árvore única.
+    </p>
+  </header>
+
+  <section>
+    <h2>O princípio</h2>
+    <p class="h2sub">Dois eixos, não uma árvore</p>
+    <div class="prose">
+      <p>
+        Todo lançamento carrega duas coisas que não dependem uma da outra. Primeiro o
+        <strong>Job</strong>, escolhido em dois passos: a pasta do topo, depois a disciplina
+        dentro dela. Depois um conjunto de <strong>campos personalizados</strong>, e quais
+        deles aparecem <em>depende do ramo em que você entrou</em>. Não existe um caminho
+        único do topo até a folha.
+      </p>
+      <p>
+        E existe um terceiro corte que não aparece em lugar nenhum do formulário:
+        <strong>cada job é designado a pessoas</strong>. A tela de administração lista 21,
+        mas a tela de lançamento mostra só os designados a quem está lançando. É por isso
+        que o topo tem seis entradas para um admin e três para quem só vai apontar horas.
+      </p>
+    </div>
+
+    <div class="axes">
+      <div class="panel">
+        <h3>Eixo 1, o Job</h3>
+        <p class="note">Dois níveis, escolhidos em sequência: primeiro a pasta do topo, depois a disciplina dentro dela. Existem 21 jobs, mas ninguém vê os 21.</p>
+        <ul class="tree">
+          <li>
+            <span class="folder">1 - True North</span><span class="tag">8 filhos, 4 abertos</span>
+            <p class="kids">Administrative · Marketing · Meetings · Project Management</p>
+            <p class="kids" style="opacity:.6">fechados: Content · Management · SEO · Web Dev</p>
+          </li>
+          <li>
+            <span class="folder">2 - i7 Marketing</span><span class="tag">9 filhos, 5 abertos</span>
+            <p class="kids">Administrative · Management · Marketing · Meetings · Project Management</p>
+            <p class="kids" style="opacity:.6">fechados: Content · SEO · Strategy Sprint · Web Dev</p>
+          </li>
+          <li><span class="flat">Adventist Messengers/HFA</span><span class="tag">sem filhos</span></li>
+          <li><span class="flat">A.org Job</span><span class="tag amber">só quem for designado</span></li>
+          <li><span class="flat">DDI (Project)</span><span class="tag amber">também é Company</span></li>
+          <li><span class="flat">GNA (Project)</span><span class="tag amber">também é Company</span></li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>Eixo 2, os campos</h3>
+        <p class="note">Seis campos ativos. A coluna da direita é em quantos jobs cada um aparece, e é ela que revela a regra sem precisar abrir job por job.</p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Campo</th><th>Itens</th><th>Aparece em</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="field">1 - i7 Code</span></td><td class="num">22</td><td class="num">9 jobs</td></tr>
+              <tr><td><span class="field">1 Company</span></td><td class="num">4</td><td class="num">10 jobs</td></tr>
+              <tr><td><span class="field">2 Project</span></td><td class="num">13</td><td class="num">12 jobs</td></tr>
+              <tr><td><span class="field">3 Activity</span></td><td class="num">34</td><td class="num">21 jobs</td></tr>
+              <tr><td><span class="field">4 Billable</span></td><td class="num">2</td><td class="num">todos</td></tr>
+              <tr><td><span class="field">Tasks</span><span class="vals">o único opcional</span></td><td class="num">17</td><td class="num">7 jobs</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="prose" style="margin-top:28px">
+      <p>
+        Os números fecham, e é assim que se lê a regra sem precisar abrir cada job.
+        8 mais 9 mais 4 dá <strong>21</strong>, que é todo job selecionável: por isso
+        <code>3 Activity</code> e <code>4 Billable</code> aparecem em todos. O
+        <code>1 - i7 Code</code> aparece em <strong>9</strong>, exatamente os filhos de
+        <code>2 - i7 Marketing</code>. E o <code>2 Project</code> aparece em
+        <strong>12</strong>, que é 8 mais 4, ou seja, tudo <em>menos</em> o ramo i7.
+      </p>
+      <p>
+        Em outras palavras: <strong>o i7 Code e o 2 Project ocupam o mesmo lugar
+        na frase.</strong> Um vale dentro do i7, o outro vale fora dele. Nunca os dois.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Preenchimento</h2>
+    <p class="h2sub">As duas formas que um lançamento pode ter</p>
+    <div class="prose">
+      <p>
+        A numeração dos campos é do próprio TSheets, e ela indica a ordem em que
+        eles devem ser preenchidos. Os dois caminhos abaixo só divergem num ponto:
+        <strong>o i7 troca a dupla Company e Project por um único i7 Code.</strong>
+        Antes e depois desse ponto, são idênticos.
+      </p>
+    </div>
+
+    <div class="flows">
+      <div class="flow i7">
+        <h3>Entrando por 2 - i7 Marketing</h3>
+        <ol class="steps">
+          <li>Job, o topo<span>2 - i7 Marketing</span></li>
+          <li>Job, a disciplina<span>Administrative, Marketing, Meetings e as outras</span></li>
+          <li>1 - i7 Code<span>o código do produto, por exemplo BE-MKTG</span></li>
+          <li>3 Activity<span>o que foi feito</span></li>
+          <li>4 Billable<span>yes ou no</span></li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>Entrando por 1 - True North</h3>
+        <ol class="steps">
+          <li>Job, o topo<span>1 - True North, ou um job sem filhos</span></li>
+          <li>Job, a disciplina<span>Administrative, Marketing, Meetings e as outras</span></li>
+          <li>1 Company<span>COE, DDI, GNA/COEI ou True North</span></li>
+          <li>2 Project<span>In-House, GP School, Rwanda, NAD e outros</span></li>
+          <li>3 Activity<span>o que foi feito</span></li>
+          <li>4 Billable<span>yes ou no</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Do TSheets ao portal</h2>
+    <p class="h2sub">O que cada relatório de cliente lê</p>
+    <div class="prose">
+      <p>
+        Os dois relatórios do portal leem a mesma tabela de horas, mas identificam
+        o cliente por caminhos diferentes, porque o TSheets foi usado de duas maneiras
+        diferentes ao longo dos anos.
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Relatório</th><th>Como acha as horas</th><th>Como monta a árvore</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="field">Client Report i7</span></td>
+            <td>tudo que estiver sob o Job <code>2 - i7 Marketing</code>, em qualquer profundidade</td>
+            <td>Projeto vem do <strong>prefixo</strong> do <code>1 - i7 Code</code>, depois o próprio código, depois <code>3 Activity</code></td>
+          </tr>
+          <tr>
+            <td><span class="field">Client Report Grant Pass</span></td>
+            <td>de 2023 em diante, <code>2 Project</code> igual a <code>GP church</code> ou <code>GP School</code>. De 2017 a 2021, os job codes <code>GP Church</code> e <code>GP School</code>, hoje desativados</td>
+            <td>School e Church, mês a mês</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose" style="margin-top:28px">
+      <p>
+        O prefixo do i7 Code é o que decide o projeto no relatório, por estas quatro
+        regras e nada mais:
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Começa com</th><th>Vira o projeto</th></tr></thead>
+        <tbody>
+          <tr><td><span class="field">I7</span></td><td>i7 Marketing</td></tr>
+          <tr><td><span class="field">MME</span></td><td>Moisture Meters (MME)</td></tr>
+          <tr><td><span class="field">BE</span></td><td>Bessemeter</td></tr>
+          <tr><td><span class="field">WM</span></td><td>Wagner Meters (WM)</td></tr>
+          <tr><td><span class="field">qualquer outra coisa</span></td><td>Unassigned</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Onde tropeçar</h2>
+    <p class="h2sub">Três coisas que o desenho não conta sozinho</p>
+
+    <div class="trap">
+      <h3>A palavra "projeto" significa duas coisas</h3>
+      <p>
+        O campo <code>2 Project</code> guarda coisas como In-House, GYC, NAD, Rwanda.
+        A coluna <strong>Project</strong> do relatório i7 guarda Bessemeter, MME, Wagner
+        e i7 Marketing. São conceitos diferentes com o mesmo nome, e não se cruzam
+        em lugar nenhum: dentro do i7 o campo <code>2 Project</code> nem aparece.
+      </p>
+    </div>
+
+    <div class="trap">
+      <h3>O projeto do relatório i7 não é um campo que alguém preenche</h3>
+      <p>
+        Ninguém escolhe "Bessemeter" em lugar nenhum do TSheets. O relatório deduz isso
+        das <strong>primeiras letras do código</strong>. Um código novo que não comece com
+        I7, MME, BE ou WM cai em <code>Unassigned</code>, e as horas continuam contando.
+      </p>
+    </div>
+
+    <div class="trap">
+      <h3>DDI e GNA existem nos dois eixos</h3>
+      <p>
+        Aparecem como Job no topo da árvore <em>e</em> como valores do campo
+        <code>1 Company</code>. Duas pessoas podem lançar a mesma hora de dois jeitos
+        defensáveis, e nada no formulário avisa. Vale conferir onde essas horas caíram
+        de verdade antes de confiar em qualquer contagem por DDI ou GNA.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Listas completas</h2>
+    <p class="h2sub">Como puxar tudo, sem depender do que cabe na tela</p>
+    <div class="prose">
+      <p>
+        As contagens acima vêm da tela de configuração. Os valores em si estão truncados
+        aqui, porque as listas rolam. O portal tem duas rotas de diagnóstico que despejam
+        tudo, e elas leem o TSheets ao vivo. Basta estar logado como admin e abrir.
+      </p>
+    </div>
+
+    <div class="pull">
+      <p><strong>A árvore de jobs inteira</strong>, incluindo os desativados, que é onde
+      moram os GP Church e GP School antigos:</p>
+      <span class="url">/api/admin/tsheets-inventory?part=jobcodes</span>
+
+      <p><strong>Os seis campos com todos os seus valores</strong>, um a um, marcando os
+      que estão desligados:</p>
+      <span class="url">/api/admin/tsheets-inventory?part=overview</span>
+
+      <p style="margin-bottom:0">
+        A primeira é curta. A segunda também traz as configurações da conta e os grupos,
+        então desça até o bloco <code>CUSTOM FIELDS</code>.
+      </p>
+    </div>
+  </section>
+
+</div>

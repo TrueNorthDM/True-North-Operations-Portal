@@ -1,0 +1,290 @@
+<title>Lançar várias horas de uma vez</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ink: #0e2a4d; --ink-soft: #64707d; --ink-faint: #9aa4ae;
+    --paper: #efedE8; --card: #ffffff; --field: #f4f3ef; --stage: #f6f8f7;
+    --rule: #dcdad3; --rule-soft: #e8e6e0;
+    --teal: #1e7d7f; --teal-wash: #e4f0ef;
+    --amber: #a8660a; --amber-wash: #f9f1e3;
+    --sans: "Raleway", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e7ecf1; --ink-soft: #9aa6b2; --ink-faint: #6b7885;
+      --paper: #0d1621; --card: #16222e; --field: #1d2a37; --stage: #182833;
+      --rule: #2b3947; --rule-soft: #223040;
+      --teal: #5cbdbb; --teal-wash: #16302f; --amber: #dda75a; --amber-wash: #2d2517;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e7ecf1; --ink-soft: #9aa6b2; --ink-faint: #6b7885;
+    --paper: #0d1621; --card: #16222e; --field: #1d2a37; --stage: #182833;
+    --rule: #2b3947; --rule-soft: #223040;
+    --teal: #5cbdbb; --teal-wash: #16302f; --amber: #dda75a; --amber-wash: #2d2517;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans);
+    font-size: 16px; line-height: 1.6; margin: 0; padding: 0 20px 96px; }
+  .wrap { max-width: 1020px; margin: 0 auto; }
+
+  header { padding: 62px 0 30px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--teal); margin: 0 0 12px; }
+  h1 { font-weight: 800; font-size: clamp(30px, 5vw, 44px); line-height: 1.07;
+    letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
+  .lede { font-size: 18px; color: var(--ink-soft); margin: 0; max-width: 62ch; }
+
+  .opt { padding: 46px 0; border-bottom: 1px solid var(--rule); }
+  .opt:last-of-type { border-bottom: none; }
+  .oh { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tag { font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--teal); background: var(--teal-wash); padding: 3px 9px; border-radius: 4px; }
+  h2 { font-weight: 700; font-size: 25px; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  .say { font-size: 16.5px; color: var(--ink-soft); margin: 0 0 24px; max-width: 68ch; }
+  .say b { color: var(--ink); font-weight: 700; }
+
+  .modal { background: var(--card); border: 1px solid var(--rule); border-radius: 16px;
+    padding: 22px 24px; box-shadow: 0 18px 50px -30px rgba(14,42,77,.55); }
+  .mtitle { font-weight: 800; font-size: 17px; margin: 0 0 16px; }
+
+  .who { background: var(--field); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+  .grid { display: grid; gap: 12px 16px; }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .g4 { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  .inp { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 8px 11px; font-size: 14px; display: flex; align-items: center;
+    justify-content: space-between; gap: 8px; }
+  .inp.set { background: var(--field); }
+  .inp .ph { color: var(--ink-faint); }
+  .chev { color: var(--ink-faint); font-size: 10px; }
+  .mono { font-family: var(--mono); font-size: 13px; }
+
+  .line { border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; margin-top: 12px; background: var(--card); }
+  .lhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .lnum { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--teal); }
+  .rm { font-size: 12px; color: var(--ink-faint); }
+
+  .staged { background: var(--stage); border: 1px solid var(--rule); border-radius: 12px; margin-top: 14px; overflow: hidden; }
+  .srow { display: flex; align-items: center; gap: 12px; padding: 10px 16px; font-size: 13.5px; border-bottom: 1px solid var(--rule-soft); }
+  .srow:last-child { border-bottom: none; }
+  .srow .d { width: 74px; flex: none; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .srow .w { flex: 1; min-width: 0; }
+  .srow .h { width: 56px; flex: none; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .nb { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--amber); background: var(--amber-wash); border-radius: 3px; padding: 1px 6px; margin-left: 6px; }
+  .srow .x { width: 18px; flex: none; text-align: right; color: var(--ink-faint); font-size: 12px; }
+
+  .btn { background: var(--ink); color: var(--paper); border-radius: 9px; padding: 10px 18px;
+    font-size: 14px; font-weight: 700; display: inline-block; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px dashed var(--rule); font-weight: 600; }
+  .foot { margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .foot .note { font-size: 13px; color: var(--ink-soft); }
+
+  .warn { font-size: 12.5px; color: var(--amber); margin: 8px 0 0; line-height: 1.5; }
+
+  .trade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 26px; }
+  .box { border-left: 3px solid var(--teal); padding: 2px 0 2px 18px; }
+  .box.warn2 { border-left-color: var(--amber); }
+  .box h4 { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+  .box p { font-size: 14.5px; color: var(--ink-soft); margin: 0; line-height: 1.55; }
+
+  code { font-family: var(--mono); font-size: .87em; background: var(--rule-soft);
+    border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; }
+  .close { padding: 42px 0 0; }
+  .close p { font-size: 16.5px; color: var(--ink-soft); max-width: 68ch; margin: 0 0 14px; }
+  .close p b { color: var(--ink); font-weight: 700; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Lançamento manual, em lote</p>
+    <h1>Lançar várias horas de uma vez</h1>
+    <p class="lede">
+      Uma fatura traz várias linhas da mesma pessoa, em dias diferentes e às vezes em
+      clientes diferentes. Hoje isso é abrir e fechar o formulário uma vez por linha.
+      Duas formas de resolver, e elas erram de lados opostos.
+    </p>
+  </header>
+
+  <div class="opt">
+    <div class="oh"><span class="tag">Opção A</span><h2>Uma linha por vez, empilhando abaixo</h2></div>
+    <p class="say">
+      Você preenche uma linha e clica em <b>Add another</b>. Ela desce para a lista, o
+      formulário se limpa <b>guardando o que costuma repetir</b>, e no fim um botão só
+      manda todas.
+    </p>
+
+    <div class="modal">
+      <p class="mtitle">Hours added by hand</p>
+
+      <div class="who">
+        <div class="grid g3">
+          <div class="f">
+            <label>Person</label>
+            <div class="inp set">Barack Owilli <span class="chev">&#9662;</span></div>
+          </div>
+        </div>
+        <p class="warn">Barack Owilli has no i7 rate. The hours will count and the cost will be zero until one is set in Rates &amp; Costs.</p>
+      </div>
+
+      <div class="grid g4">
+        <div class="f"><label>Day</label><div class="inp set">03/08/2026</div></div>
+        <div class="f"><label>Hours</label><div class="inp set mono">2.00</div></div>
+        <div class="f"><label>Job, top</label><div class="inp set">2 - i7 Marketing <span class="chev">&#9662;</span></div></div>
+        <div class="f"><label>Job</label><div class="inp set">Content <span class="chev">&#9662;</span></div></div>
+        <div class="f"><label>1 - i7 code</label><div class="inp set mono">BE-MKTG <span class="chev">&#9662;</span></div></div>
+        <div class="f"><label>3 Activity</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+        <div class="f"><label>4 Billable</label><div class="inp set">yes <span class="chev">&#9662;</span></div></div>
+      </div>
+      <div class="grid" style="margin-top:12px">
+        <div class="f"><label>Note (optional)</label><div class="inp"><span class="ph">Invoice number, or what the hours were for</span></div></div>
+      </div>
+
+      <div class="foot">
+        <span class="btn ghost">+ Add another line</span>
+      </div>
+
+      <div class="staged">
+        <div class="srow"><span class="d">01/08</span><span class="w">2 - i7 Marketing &#8250; Content &#8250; BE-MKTG &#8250; Content: Writing</span><span class="h">3.50h</span><span class="x">&#10005;</span></div>
+        <div class="srow"><span class="d">02/08</span><span class="w">2 - i7 Marketing &#8250; Web Dev &#8250; BE-WEBDVT &#8250; General admin</span><span class="h">4.00h</span><span class="x">&#10005;</span></div>
+        <div class="srow"><span class="d">02/08</span><span class="w">1 - True North &#8250; Marketing &#8250; GP School &#8250; Fundraising <span class="nb">not billable</span></span><span class="h">1.25h</span><span class="x">&#10005;</span></div>
+      </div>
+
+      <div class="foot">
+        <span class="btn">Add 3 lines to the reports</span>
+        <span class="note">8.75h · 2 clientes</span>
+      </div>
+    </div>
+
+    <div class="trade">
+      <div class="box">
+        <h4>O que ganha</h4>
+        <p>
+          Cabe na janela em qualquer largura, porque só uma linha está aberta por vez. O
+          que repete vem preenchido, então a segunda linha custa dois campos, não seis.
+        </p>
+      </div>
+      <div class="box">
+        <h4>A pilha mostra o que não se vê</h4>
+        <p>
+          Cada linha empilhada resume o caminho e as horas. <code>not billable</code>
+          aparece só quando é o caso: o comum fica limpo e a exceção fica visível, que é o
+          contrário de repetir <code>billable</code> em toda linha até ninguém mais ler.
+        </p>
+      </div>
+      <div class="box warn2">
+        <h4>O que custa</h4>
+        <p>
+          Uma linha já empilhada não se edita, só se remove e refaz. E existem dois
+          cliques de significado parecido, <code>Add another</code> e <code>Add 3 lines</code>,
+          que precisam ficar visivelmente diferentes.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <div class="oh"><span class="tag">Opção B</span><h2>Todas as linhas abertas ao mesmo tempo</h2></div>
+    <p class="say">
+      Cada linha é um bloco completo e editável. Você vê tudo o que vai mandar,
+      <b>e pode corrigir qualquer campo de qualquer linha</b> antes de enviar.
+    </p>
+
+    <div class="modal">
+      <p class="mtitle">Hours added by hand</p>
+
+      <div class="who">
+        <div class="grid g3">
+          <div class="f">
+            <label>Person</label>
+            <div class="inp set">Barack Owilli <span class="chev">&#9662;</span></div>
+          </div>
+        </div>
+        <p class="warn">Barack Owilli has no i7 rate. The hours will count and the cost will be zero until one is set in Rates &amp; Costs.</p>
+      </div>
+
+      <div class="line">
+        <div class="lhead"><span class="lnum">Linha 1</span><span class="rm">remover</span></div>
+        <div class="grid g4">
+          <div class="f"><label>Day</label><div class="inp set">01/08/2026</div></div>
+          <div class="f"><label>Hours</label><div class="inp set mono">3.50</div></div>
+          <div class="f"><label>Job, top</label><div class="inp set">2 - i7 Marketing <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>Job</label><div class="inp set">Content <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>1 - i7 code</label><div class="inp set mono">BE-MKTG <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>3 Activity</label><div class="inp set">Content: Writing <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>4 Billable</label><div class="inp set">yes <span class="chev">&#9662;</span></div></div>
+        </div>
+        <div class="grid" style="margin-top:12px">
+          <div class="f"><label>Note (optional)</label><div class="inp set">Invoice 2026-08</div></div>
+        </div>
+      </div>
+
+      <div class="line">
+        <div class="lhead"><span class="lnum">Linha 2</span><span class="rm">remover</span></div>
+        <div class="grid g4">
+          <div class="f"><label>Day</label><div class="inp set">02/08/2026</div></div>
+          <div class="f"><label>Hours</label><div class="inp set mono">1.25</div></div>
+          <div class="f"><label>Job, top</label><div class="inp set">1 - True North <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>2 Project</label><div class="inp set">GP School <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>3 Activity</label><div class="inp set">Fundraising <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>4 Billable</label><div class="inp set">no <span class="chev">&#9662;</span></div></div>
+        </div>
+        <div class="grid" style="margin-top:12px">
+          <div class="f"><label>Note (optional)</label><div class="inp"><span class="ph">Invoice number, or what the hours were for</span></div></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="btn ghost">+ Add another line</span>
+        <span class="btn">Add 2 lines to the reports</span>
+        <span class="note">4.75h · 2 clientes</span>
+      </div>
+    </div>
+
+    <div class="trade">
+      <div class="box">
+        <h4>O que ganha</h4>
+        <p>
+          Nada fica fora de alcance: cinco linhas na tela são cinco linhas corrigíveis.
+          É o mais parecido com conferir uma fatura ao lado da tela.
+        </p>
+      </div>
+      <div class="box warn2">
+        <h4>O que custa</h4>
+        <p>
+          Cresce rápido. Cinco linhas já são uma janela que rola bastante, e a repetição
+          fica visível: seis campos idênticos, um embaixo do outro, em cada bloco.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="close">
+    <p>
+      <b>A pessoa fica fora das linhas nas duas.</b> Ela é o que a fatura tem de comum, e
+      é ela que decide o aviso da taxa, então perguntá-la uma vez por linha seria repetir
+      a pergunta e repetir o aviso.
+    </p>
+    <p>
+      <b>O que eu faria: a opção A.</b> Uma fatura se digita linha a linha, olhando para
+      ela, e o que repete entre linhas de uma mesma fatura é quase tudo. A B é melhor
+      para conferir e pior para digitar, e a conferência já existe: as linhas ficam
+      listadas no painel depois de mandar, com quem as adicionou.
+    </p>
+    <p>
+      Se a correção antes de enviar for importante para você, a A ganha um meio-termo
+      barato: clicar numa linha empilhada a devolve para o formulário, em vez de só
+      removê-la.
+    </p>
+  </div>
+
+</div>

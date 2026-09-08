@@ -1,0 +1,245 @@
+<title>O job do topo, duas formas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ink: #0e2a4d; --ink-soft: #64707d; --ink-faint: #9aa4ae;
+    --paper: #efedE8; --card: #ffffff; --field: #f6f5f1; --locked: #eceae4;
+    --rule: #dcdad3; --rule-soft: #e8e6e0;
+    --teal: #1e7d7f; --teal-wash: #e4f0ef;
+    --amber: #a8660a; --amber-wash: #f9f1e3;
+    --sans: "Raleway", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e7ecf1; --ink-soft: #9aa6b2; --ink-faint: #6b7885;
+      --paper: #0d1621; --card: #16222e; --field: #1d2a37; --locked: #1a2632;
+      --rule: #2b3947; --rule-soft: #223040;
+      --teal: #5cbdbb; --teal-wash: #16302f;
+      --amber: #dda75a; --amber-wash: #2d2517;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e7ecf1; --ink-soft: #9aa6b2; --ink-faint: #6b7885;
+    --paper: #0d1621; --card: #16222e; --field: #1d2a37; --locked: #1a2632;
+    --rule: #2b3947; --rule-soft: #223040;
+    --teal: #5cbdbb; --teal-wash: #16302f;
+    --amber: #dda75a; --amber-wash: #2d2517;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans);
+    font-size: 16px; line-height: 1.6; margin: 0; padding: 0 20px 96px; }
+  .wrap { max-width: 1020px; margin: 0 auto; }
+
+  header { padding: 62px 0 30px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--teal); margin: 0 0 12px; }
+  h1 { font-weight: 800; font-size: clamp(30px, 5vw, 44px); line-height: 1.07;
+    letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
+  .lede { font-size: 18px; color: var(--ink-soft); margin: 0; max-width: 62ch; }
+
+  .opt { padding: 46px 0; border-bottom: 1px solid var(--rule); }
+  .opt:last-of-type { border-bottom: none; }
+  .oh { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tag { font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--teal); background: var(--teal-wash); padding: 3px 9px; border-radius: 4px; }
+  h2 { font-weight: 700; font-size: 25px; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  .say { font-size: 16.5px; color: var(--ink-soft); margin: 0 0 24px; max-width: 68ch; }
+  .say b { color: var(--ink); font-weight: 700; }
+
+  h3.cap { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 30px 0 12px; }
+
+  .panel { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 22px 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 18px; }
+  .f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  label { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  .inp { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 9px 12px; font-size: 14.5px; display: flex; align-items: center;
+    justify-content: space-between; gap: 8px; min-height: 20px; }
+  .inp.set { background: var(--field); }
+  .inp.open { border-color: var(--teal); }
+  .inp.lock { background: var(--locked); border-style: dashed; color: var(--ink-soft); }
+  .inp .ph { color: var(--ink-faint); }
+  .chev { color: var(--ink-faint); font-size: 11px; }
+  .lockmark { font-size: 10.5px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-faint); }
+  .mono { font-family: var(--mono); font-size: 13.5px; }
+
+  .menu { background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+    margin-top: 7px; padding: 6px 0; box-shadow: 0 8px 26px -18px rgba(14,42,77,.5); }
+  .menu .row { padding: 7px 14px; font-size: 14px; }
+  .menu .row.on { background: var(--teal-wash); color: var(--teal); font-weight: 600; }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+  .cap2 { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
+  .cap2 b { color: var(--ink); font-weight: 700; }
+
+  .trade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 26px; }
+  .box { border-left: 3px solid var(--teal); padding: 2px 0 2px 18px; }
+  .box.warn { border-left-color: var(--amber); }
+  .box h4 { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+  .box p { font-size: 14.5px; color: var(--ink-soft); margin: 0; line-height: 1.55; }
+
+  code { font-family: var(--mono); font-size: .87em; background: var(--rule-soft);
+    border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; }
+  .close { padding: 42px 0 0; }
+  .close p { font-size: 16.5px; color: var(--ink-soft); max-width: 68ch; margin: 0 0 14px; }
+  .close p b { color: var(--ink); font-weight: 700; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Lançamento manual, decisão em aberto</p>
+    <h1>O job do topo, duas formas</h1>
+    <p class="lede">
+      No QuickBooks Time você escolhe o job do topo antes de tudo. No portal esse passo
+      não existe. Estas são as duas maneiras de trazê-lo, e elas não custam a mesma coisa.
+    </p>
+  </header>
+
+  <div class="opt">
+    <div class="oh"><span class="tag">Opção 1</span><h2>Um painel só, com o topo aberto</h2></div>
+    <p class="say">
+      Os dois painéis de hoje viram um. Você escolhe o topo de verdade, e o formulário
+      <b>muda de forma conforme o ramo</b>, exatamente como lá.
+    </p>
+
+    <h3 class="cap">Primeiro, o topo</h3>
+    <div class="panel" style="max-width:420px">
+      <div class="f">
+        <label>Job, top</label>
+        <div class="inp open"><span class="ph">Choose&#8230;</span> <span class="chev">&#9652;</span></div>
+        <div class="menu">
+          <div class="row">1 - True North</div>
+          <div class="row on">2 - i7 Marketing</div>
+          <div class="row">Adventist Messengers/HFA</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="cap">Depois, o formulário muda</h3>
+    <div class="two">
+      <div>
+        <p class="cap2">Escolheu <b>2 - i7 Marketing</b></p>
+        <div class="panel">
+          <div class="grid" style="grid-template-columns:1fr">
+            <div class="f"><label>Job, top</label><div class="inp set">2 - i7 Marketing <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>1 - i7 code</label><div class="inp set mono">BE-MKTG <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>3 Activity</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>4 Billable</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="cap2">Escolheu <b>1 - True North</b></p>
+        <div class="panel">
+          <div class="grid" style="grid-template-columns:1fr">
+            <div class="f"><label>Job, top</label><div class="inp set">1 - True North <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>1 Company</label><div class="inp set">True North <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>2 Project</label><div class="inp set">GP School <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>3 Activity</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trade">
+      <div class="box">
+        <h4>O que ganha</h4>
+        <p>
+          O caminho do QuickBooks Time, inteiro e igual. Um lugar só para lançar hora à
+          mão, e pronto para o dia em que aparecer um terceiro cliente.
+        </p>
+      </div>
+      <div class="box warn">
+        <h4>O que custa</h4>
+        <p>
+          Deixa de ser o painel do i7, então precisa sair do fim daquele relatório e morar
+          numa página própria. E nada mais impede que uma hora de i7 caia em True North
+          por um clique errado, porque o campo passa a aceitar as duas.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <div class="oh"><span class="tag">Opção 2</span><h2>O campo aparece, já preenchido</h2></div>
+    <p class="say">
+      Cada relatório mantém o seu painel onde está. O campo do topo aparece
+      <b>preenchido e travado</b>, dizendo onde você está em vez de perguntar.
+    </p>
+
+    <div class="two">
+      <div>
+        <p class="cap2">No <b>Client Report i7</b></p>
+        <div class="panel">
+          <div class="grid" style="grid-template-columns:1fr">
+            <div class="f">
+              <label>Job, top</label>
+              <div class="inp lock">2 - i7 Marketing <span class="lockmark">fixo</span></div>
+            </div>
+            <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>1 - i7 code</label><div class="inp set mono">BE-MKTG <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>3 Activity</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>4 Billable</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="cap2">No <b>Client Report Grant Pass</b></p>
+        <div class="panel">
+          <div class="grid" style="grid-template-columns:1fr">
+            <div class="f">
+              <label>Job, top</label>
+              <div class="inp lock">1 - True North <span class="lockmark">fixo</span></div>
+            </div>
+            <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>1 Company</label><div class="inp set">True North <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>2 Project</label><div class="inp set">GP School <span class="chev">&#9662;</span></div></div>
+            <div class="f"><label>3 Activity</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trade">
+      <div class="box">
+        <h4>O que ganha</h4>
+        <p>
+          A mesma sequência de campos do QuickBooks Time na tela, e impossível lançar no
+          cliente errado, porque o campo não aceita outra coisa. Nada muda de lugar.
+        </p>
+      </div>
+      <div class="box warn">
+        <h4>O que custa</h4>
+        <p>
+          O campo não decide nada. Ele existe para você reconhecer a sequência, e um
+          campo que só se pode ler é uma linha a mais entre você e o botão.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="close">
+    <p>
+      <b>A diferença real não é o campo, é quantos painéis existem.</b> A opção 2 é o
+      desenho de hoje com uma linha a mais em cada tela. A opção 1 funde os dois painéis,
+      e a partir daí a pergunta deixa de ser sobre familiaridade e passa a ser sobre onde
+      se lança hora à mão neste portal.
+    </p>
+    <p>
+      Vale escolher pelo segundo critério, não pelo primeiro: se um dia o Clocky
+      prosseguir e o portal virar o relógio, um lugar só para lançamento manual é o
+      caminho. Se ele não prosseguir, dois painéis presos a dois relatórios envelhecem
+      melhor.
+    </p>
+  </div>
+
+</div>

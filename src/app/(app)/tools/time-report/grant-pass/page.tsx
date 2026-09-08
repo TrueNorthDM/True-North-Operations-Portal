@@ -19,6 +19,9 @@ import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
 import { MonthPicker } from '@/components/tsheets/MonthPicker'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
+import { loadMoneyIn } from '@/lib/timeclock/money-in-data'
+import { MoneyInDialog } from '@/components/tsheets/MoneyInDialog'
+import { TRACKED_PROJECTS } from '@/lib/timeclock/projects'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const metadata = { title: 'Client Report · Project Hours & Others' }
@@ -48,6 +51,13 @@ export default async function ProjectHoursPage({
   // and that is the rule an admin can actually see.
   const data = await loadProjectTracking(createAdminClient(), selected)
 
+  // Donations and prepaid hours, for whoever may edit them. isPrivileged, not
+  // isAdmin: the Admin Assistant is the person who holds these figures, and
+  // isAdmin is roleType === 'admin' exactly, which is not her.
+  const moneyIn = access.isPrivileged
+    ? await loadMoneyIn(createAdminClient(), selected)
+    : null
+
   // Admins only: these hours reach a client report.
   const manual = access.isAdmin
     ? { ...(await loadAllManualHours(createAdminClient(), selected)), blurb: MANUAL_BLURB }
@@ -68,6 +78,7 @@ export default async function ProjectHoursPage({
 
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <MonthPicker months={months} selected={selected} base="/tools/time-report/grant-pass" />
+        {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
         {manual && (
           <ManualHoursDialog
             rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}

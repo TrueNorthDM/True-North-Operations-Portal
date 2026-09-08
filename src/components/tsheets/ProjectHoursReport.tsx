@@ -52,7 +52,15 @@ function monthName(ym: string): string {
 
 export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
   const [view, setView] = useState<'costs' | 'people'>('costs')
-  const { rows, people, totals, unratedPeople } = data
+  const { rows, people, totals, unratedPeople, unrestricted } = data
+  // Everything given, projects and the fund together. Null while nobody has
+  // entered anything, so the totals line stays as blank as the rows above it.
+  const sumGiven = (pick: (r: typeof rows[number]) => number | null, fund: number | null) => {
+    const parts = [...rows.map(pick), fund].filter((n): n is number => n != null)
+    return parts.length === 0 ? null : Math.round(parts.reduce((s, n) => s + n, 0) * 100) / 100
+  }
+  const givenMonth = sumGiven(r => r.donationsThisMonth, unrestricted.thisMonth)
+  const givenYtd = sumGiven(r => r.donationsYtd, unrestricted.ytd)
   const lastYear = `${Number(data.month.slice(0, 4)) - 1}`
   const thisYear = data.month.slice(0, 4)
   const prepaid = rows.filter(r => r.prepaid)
@@ -221,19 +229,45 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
                     <td className={num}>{m0(r.contractorCostThisMonth)}</td>
                     {/* Blank while there is nowhere to enter one. Zero would say
                         nothing was donated; blank says nobody has told us. */}
-                    <td className={`${num} text-slate-300`}>{r.donationsThisMonth == null ? '' : money(r.donationsThisMonth)}</td>
+                    <td className={num}>{r.donationsThisMonth == null ? '' : money(r.donationsThisMonth)}</td>
                   </>
                 )}
                 <td className={`${num} ${edge}`}>{h2(r.yearToDate)}</td>
                 {view === 'costs' && (
                   <>
-                    <td className={`${num} text-slate-300`}>{r.donationsYtd == null ? '' : money(r.donationsYtd)}</td>
+                    <td className={num}>{r.donationsYtd == null ? '' : money(r.donationsYtd)}</td>
                     <td className={`${num} font-semibold text-tn-ink`}>{m0(r.totalCosts)}</td>
                   </>
                 )}
                 <td className={`${num} ${edge} text-muted`}>{h2(r.sameMonthLastYear)}</td>
               </tr>
             ))}
+
+            {/* Money given without a project attached. It gets a row rather
+                than a share of the four, because dividing it would invent an
+                allocation nobody asked for. Every cell that is about work is
+                left empty on purpose: a fund has no hours and no rate. */}
+            {view === 'costs' && (unrestricted.thisMonth != null || unrestricted.ytd != null) && (
+              <tr className="border-b border-slate-100 bg-[rgba(1,35,88,0.02)]">
+                <td className="px-4 py-3 sticky left-0 bg-white z-10">
+                  <span className="font-(family-name:--font-display) font-bold text-tn-ink whitespace-nowrap">Unrestricted</span>
+                  <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-muted">not a project</span>
+                </td>
+                <td className={bal} /><td className={bal} />
+                <td className={`${bal} border-r border-[rgba(1,35,88,0.1)]`} />
+                <td className={`${num} ${hi} border-l border-[rgba(224,138,30,0.18)]`} />
+                <td className={num} /><td className={num} />
+                <td className={`${num} font-semibold text-tn-ink`}>
+                  {unrestricted.thisMonth == null ? '' : money(unrestricted.thisMonth)}
+                </td>
+                <td className={`${num} ${edge}`} />
+                <td className={`${num} font-semibold text-tn-ink`}>
+                  {unrestricted.ytd == null ? '' : money(unrestricted.ytd)}
+                </td>
+                <td className={num} />
+                <td className={`${num} ${edge}`} />
+              </tr>
+            )}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-slate-300 bg-subtle">
@@ -251,13 +285,16 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
                 <>
                   <td className={`${num} font-extrabold`}>{money(totals.employeeCostThisMonth)}</td>
                   <td className={`${num} font-extrabold`}>{money(totals.contractorCostThisMonth)}</td>
-                  <td className={num} />
+                  {/* The four projects plus the fund. Said here because the
+                      Unrestricted row sits directly above, so the arithmetic is
+                      on screen rather than hidden in a footer. */}
+                  <td className={`${num} font-extrabold`}>{givenMonth == null ? '' : money(givenMonth)}</td>
                 </>
               )}
               <td className={`${num} ${edge} font-extrabold`}>{totals.yearToDate.toFixed(2)}</td>
               {view === 'costs' && (
                 <>
-                  <td className={num} />
+                  <td className={`${num} font-extrabold`}>{givenYtd == null ? '' : money(givenYtd)}</td>
                   <td className={`${num} font-extrabold`}>{money(totals.totalCosts)}</td>
                 </>
               )}

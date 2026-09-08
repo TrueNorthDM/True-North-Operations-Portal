@@ -1,0 +1,395 @@
+<title>Lançar horas à mão</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ink: #0e2a4d; --ink-soft: #64707d; --paper: #efedE8; --card: #ffffff;
+    --field: #f6f5f1; --rule: #dcdad3; --rule-soft: #e8e6e0;
+    --teal: #1e7d7f; --teal-wash: #e4f0ef;
+    --amber: #a8660a; --amber-wash: #f9f1e3; --amber-line: #e2c68e;
+    --sans: "Raleway", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e7ecf1; --ink-soft: #9aa6b2; --paper: #0d1621; --card: #16222e;
+      --field: #1d2a37; --rule: #2b3947; --rule-soft: #223040;
+      --teal: #5cbdbb; --teal-wash: #16302f;
+      --amber: #dda75a; --amber-wash: #2d2517; --amber-line: #5a4826;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e7ecf1; --ink-soft: #9aa6b2; --paper: #0d1621; --card: #16222e;
+    --field: #1d2a37; --rule: #2b3947; --rule-soft: #223040;
+    --teal: #5cbdbb; --teal-wash: #16302f;
+    --amber: #dda75a; --amber-wash: #2d2517; --amber-line: #5a4826;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans);
+    font-size: 16px; line-height: 1.6; margin: 0; padding: 0 20px 96px; }
+  .wrap { max-width: 1020px; margin: 0 auto; }
+
+  header { padding: 64px 0 34px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--teal); margin: 0 0 12px; }
+  h1 { font-weight: 800; font-size: clamp(30px, 5vw, 46px); line-height: 1.06;
+    letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance; }
+  .lede { font-size: 18.5px; color: var(--ink-soft); margin: 0; max-width: 62ch; }
+
+  .step { padding: 46px 0; border-bottom: 1px solid var(--rule); }
+  .step-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .n { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--teal);
+    background: var(--teal-wash); border-radius: 4px; padding: 3px 9px; }
+  h2 { font-weight: 700; font-size: 24px; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+  .say { font-size: 16.5px; color: var(--ink-soft); margin: 0 0 24px; max-width: 68ch; }
+  .say b { color: var(--ink); font-weight: 700; }
+
+  .panel { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 24px 26px; }
+  .ptitle { font-weight: 700; font-size: 17px; margin: 0; }
+  .psub { font-size: 13.5px; color: var(--ink-soft); margin: 4px 0 0; max-width: 76ch; line-height: 1.5; }
+  .prow { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px 20px; margin-top: 22px; }
+  .f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .f.wide { grid-column: 1 / -1; }
+  label { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  .inp { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 9px 12px; font-size: 14.5px; display: flex; align-items: center;
+    justify-content: space-between; gap: 8px; min-height: 20px; }
+  .inp.set { background: var(--field); }
+  .inp.open { border-color: var(--teal); }
+  .inp .ph { color: var(--ink-soft); }
+  .chev { color: var(--ink-soft); font-size: 11px; }
+  .mono { font-family: var(--mono); font-size: 13.5px; }
+
+  .btn { background: var(--ink); color: var(--paper); border-radius: 8px; padding: 11px 20px;
+    font-size: 14.5px; font-weight: 700; display: inline-block; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
+  .btn.sm { padding: 7px 14px; font-size: 13px; }
+  .foot { margin-top: 22px; display: flex; gap: 12px; align-items: center; }
+
+  .menu { background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+    margin-top: 7px; padding: 6px 0; box-shadow: 0 8px 26px -18px rgba(14,42,77,.5); }
+  .menu .search { margin: 6px 10px 8px; border: 1px solid var(--teal); border-radius: 7px;
+    padding: 7px 11px; font-size: 13.5px; color: var(--ink-soft); }
+  .menu .g { padding: 9px 14px 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--teal); }
+  .menu .row { padding: 6px 14px; font-size: 14px; display: flex; justify-content: space-between; gap: 12px; }
+  .menu .row.mono { font-family: var(--mono); font-size: 13px; }
+  .menu .row .to { color: var(--ink-soft); font-family: var(--sans); font-size: 12.5px; }
+  .menu .row.on { background: var(--teal-wash); }
+
+  .warn { margin-top: 10px; font-size: 13.5px; color: var(--amber); line-height: 1.5; }
+  .banner { border: 1px solid var(--amber-line); background: var(--amber-wash); color: var(--amber);
+    border-radius: 8px; padding: 11px 14px; font-size: 14px; margin-top: 18px; line-height: 1.5; }
+
+  table { border-collapse: collapse; width: 100%; margin-top: 20px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rule-soft); }
+  th { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-soft); border-bottom: 1px solid var(--rule); }
+  td.num { font-variant-numeric: tabular-nums; }
+  td .who { color: var(--ink-soft); font-size: 13px; }
+  .rm { color: var(--ink-soft); font-size: 13px; }
+  .total { font-size: 13.5px; color: var(--ink-soft); margin-top: 16px; }
+  .empty { font-size: 14px; color: var(--ink-soft); margin-top: 18px; }
+  .scroll { overflow-x: auto; }
+  .cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; align-items: start; }
+  .grid1 { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
+
+  .why { border-left: 3px solid var(--teal); padding: 4px 0 4px 20px; margin-top: 24px; max-width: 68ch; }
+  .why h3 { font-size: 14.5px; font-weight: 700; margin: 0 0 6px; }
+  .why p { font-size: 15px; margin: 0; color: var(--ink-soft); }
+  .why p + p { margin-top: 10px; }
+  code { font-family: var(--mono); font-size: .87em; background: var(--rule-soft);
+    border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Portal, lançamento manual de horas</p>
+    <h1>Lançar horas à mão</h1>
+    <p class="lede">
+      O caminho do QuickBooks Time, reproduzido no portal: o job do topo, depois a
+      disciplina, e a partir daí um formulário que muda de forma conforme o ramo. Escreve
+      na mesma tabela que a importação, então existe um total só.
+    </p>
+  </header>
+
+  <div class="step">
+    <div class="step-head"><span class="n">01</span><h2>Em repouso</h2></div>
+    <p class="say">
+      Fechado, mostrando o que já foi lançado no mês. <b>Lista o que foi adicionado, não só o
+      total</b>, porque o risco aqui não é errar um número uma vez: é lançar a mesma fatura
+      duas vezes com um mês de intervalo e não ter nada na tela para perceber.
+    </p>
+    <div class="panel">
+      <div class="prow">
+        <div>
+          <p class="ptitle">Hours added by hand</p>
+          <p class="psub">For people who bill work without a timeclock account. These count in the client reports exactly like any imported hour, which is why they are listed here rather than only totalled.</p>
+        </div>
+        <span class="btn sm">Add hours</span>
+      </div>
+      <p class="empty">Nothing added by hand this month.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="n">02</span><h2>O job, em dois passos</h2></div>
+    <p class="say">
+      Igual ao TSheets: primeiro o topo, depois a disciplina dentro dele. O segundo campo
+      fica vazio e desabilitado até o primeiro ser escolhido, porque a lista dele depende
+      do ramo. <b>Só entram jobs ativos</b>, e a pasta não é uma opção, do mesmo jeito que
+      lá você entra nela em vez de lançar nela.
+    </p>
+    <div class="panel">
+      <div class="grid">
+        <div class="f"><label>Person</label><div class="inp set">Jônatas Queiroz <span class="chev">&#9662;</span></div></div>
+        <div class="f"><label>Day</label><div class="inp set">28/08/2026</div></div>
+        <div class="f"><label>Hours</label><div class="inp set mono">6.50</div></div>
+        <div class="f">
+          <label>Job, top</label>
+          <div class="inp open"><span class="ph">Choose&#8230;</span> <span class="chev">&#9652;</span></div>
+          <div class="menu">
+            <div class="row">1 - True North</div>
+            <div class="row on">2 - i7 Marketing</div>
+            <div class="row">Adventist Messengers/HFA</div>
+          </div>
+        </div>
+        <div class="f"><label>Job</label><div class="inp"><span class="ph">Choose the top first</span></div></div>
+      </div>
+    </div>
+    <div class="why">
+      <h3>Por que o topo tem três opções, e não seis</h3>
+      <p>
+        O TSheets tem seis jobs no topo, mas designa cada um a pessoas, e a tela de
+        lançamento mostra só os designados. Três estão abertos a todos:
+        <code>1 - True North</code>, <code>2 - i7 Marketing</code> e
+        <code>Adventist Messengers/HFA</code>. Os outros três,
+        <code>A.org Job</code>, <code>DDI</code> e <code>GNA</code>, são de pessoas
+        específicas.
+      </p>
+      <p>
+        O portal não guarda essa designação hoje. Enquanto não guardar, o mais honesto é
+        oferecer os três abertos e nada mais.
+      </p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="n">03</span><h2>O formulário muda de forma</h2></div>
+    <p class="say">
+      A partir daqui os dois ramos divergem num ponto e só num: <b>o i7 troca a dupla
+      Company e Project por um i7 Code</b>. Activity e Billable vêm depois nos dois casos,
+      exatamente como no TSheets.
+    </p>
+    <div class="cols2">
+      <div class="panel">
+        <p class="ptitle">Ramo 2 - i7 Marketing</p>
+        <div class="grid1">
+          <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">&#9662;</span></div></div>
+          <div class="f">
+            <label>1 - i7 code</label>
+            <div class="inp open"><span class="ph">Choose&#8230;</span> <span class="chev">&#9652;</span></div>
+            <div class="menu">
+              <div class="search">Search&#8230;</div>
+              <div class="g">Bessemeter</div>
+              <div class="row mono">BE-ADMIN</div>
+              <div class="row mono on">BE-MKTG</div>
+              <div class="row mono">BE-WEBDVT</div>
+              <div class="g">i7 Marketing</div>
+              <div class="row mono">i7-ADMIN</div>
+              <div class="row mono">i7-MKTG</div>
+            </div>
+          </div>
+          <div class="f"><label>3 Activity</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>4 Billable</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <p class="ptitle">Ramo 1 - True North</p>
+        <div class="grid1">
+          <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>1 Company</label><div class="inp set">True North <span class="chev">&#9662;</span></div></div>
+          <div class="f">
+            <label>2 Project</label>
+            <div class="inp open"><span class="ph">Choose&#8230;</span> <span class="chev">&#9652;</span></div>
+            <div class="menu">
+              <div class="search">Search&#8230;</div>
+              <div class="row">GP church</div>
+              <div class="row on">GP School</div>
+              <div class="row">In-House</div>
+              <div class="row">NAD</div>
+              <div class="row">Rwanda</div>
+            </div>
+          </div>
+          <div class="f"><label>3 Activity</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+          <div class="f"><label>4 Billable</label><div class="inp"><span class="ph">Choose&#8230;</span> <span class="chev">&#9662;</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="why">
+      <h3>O que o ramo True North destrava</h3>
+      <p>
+        O relatório do Grant Pass acha as horas dele procurando <code>GP church</code> e
+        <code>GP School</code> dentro do campo <code>2 Project</code>, sem olhar de onde a
+        hora veio. Então uma hora lançada aqui por esse caminho <b>entra no relatório do
+        Grant Pass sozinha</b>. Hoje aquele relatório não tem nenhuma forma de lançamento
+        manual.
+      </p>
+      <p>
+        É por isso que o campo do topo vale a pena: ele não tem uma opção só, ele tem a
+        diferença entre servir a um cliente e servir aos dois.
+      </p>
+    </div>
+    <div class="why">
+      <h3>O agrupamento dos códigos i7</h3>
+      <p>
+        Os quatro grupos são os projetos do relatório, deduzidos do prefixo do código.
+        Essa regra existe desde sempre e nunca foi visível: hoje ela só se manifesta
+        depois, quando a hora aparece numa linha da tabela. Custa mexer no componente
+        <code>Select</code>, que não tem grupos e é usado no portal inteiro.
+      </p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="n">03</span><h2>Quando falta taxa</h2></div>
+    <p class="say">
+      Só no ramo i7, porque só ali a hora vira dinheiro: o Grant Pass conta horas, não custo.
+      O aviso aparece <b>antes de salvar</b>, e distingue os dois jeitos de custar zero,
+      porque o conserto é oposto em cada um. Aqui a taxa existe e só não cobre o mês, que é
+      o que "Start on 1 September" produz enquanto agosto ainda está sendo faturado.
+    </p>
+    <div class="panel">
+      <div class="grid">
+        <div class="f">
+          <label>Person</label>
+          <div class="inp set">Jônatas Queiroz <span class="chev">▾</span></div>
+          <p class="warn">Jônatas Queiroz has an i7 rate, but it does not cover August 2026. The hours will count and the cost will be zero. In Rates &amp; Costs, start the rate on or before this month.</p>
+        </div>
+        <div class="f"><label>Day</label><div class="inp set">28/08/2026</div></div>
+        <div class="f"><label>Hours</label><div class="inp set mono">6.50</div></div>
+      </div>
+      <div class="banner">Jônatas Queiroz has an i7 rate, but it does not cover August 2026. In Rates &amp; Costs, start the rate on or before this month, then add the hours.</div>
+      <div class="foot"><span class="btn">Add to the report</span><span class="btn ghost">Cancel</span></div>
+    </div>
+    <div class="why">
+      <h3>Avisa, e recusa</h3>
+      <p>
+        A linha âmbar sob o campo é o aviso, enquanto se preenche. A faixa acima do botão é a
+        recusa, se alguém tentar salvar assim mesmo. As duas dizem a mesma coisa de propósito:
+        uma hora sem taxa que cobre o mês chega à fatura custando nada, e uma vez fora,
+        os dois casos ficam indistinguíveis.
+      </p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="n">04</span><h2>Preenchido</h2></div>
+    <p class="say">
+      O <b>Day</b> começa no primeiro dia do mês escolhido no relatório, e recusa data futura,
+      que é sempre erro de digitação. Data de outro mês continua aceita, porque uma fatura
+      atrasada é caso real, mas ela vai contar no mês que estiver escrito ali.
+    </p>
+    <div class="panel">
+      <div class="grid">
+        <div class="f"><label>Person</label><div class="inp set">Jônatas Queiroz <span class="chev">▾</span></div></div>
+        <div class="f"><label>Day</label><div class="inp set">28/08/2026</div></div>
+        <div class="f"><label>Hours</label><div class="inp set mono">6.50</div></div>
+        <div class="f"><label>Job</label><div class="inp set">Marketing <span class="chev">▾</span></div></div>
+        <div class="f"><label>i7 code</label><div class="inp set mono">BE-MKTG <span class="chev">▾</span></div></div>
+        <div class="f"><label>Activity</label><div class="inp set">Content: Writing <span class="chev">▾</span></div></div>
+        <div class="f wide"><label>Note (optional)</label><div class="inp set">Invoice 2026-08, Bessemeter landing pages</div></div>
+      </div>
+      <div class="foot"><span class="btn">Add to the report</span><span class="btn ghost">Cancel</span></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="n">05</span><h2>Depois de adicionar</h2></div>
+    <p class="say">
+      Os totais do relatório acima sobem na hora. O lançamento fica listado com <b>quem o
+      adicionou</b>, porque o registro de que uma pessoa digitou aquilo não existe em
+      nenhum outro lugar.
+    </p>
+    <div class="panel">
+      <div class="prow">
+        <div>
+          <p class="ptitle">Hours added by hand</p>
+          <p class="psub">For people who bill work without a timeclock account. These count in the client reports exactly like any imported hour, which is why they are listed here rather than only totalled.</p>
+        </div>
+        <span class="btn sm">Add hours</span>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Person</th><th>Day</th><th>Hours</th><th>Job</th><th>Code or project</th><th>Activity</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Jônatas Queiroz<span class="who"> · by Arnaldo</span></td>
+              <td class="num">28/08</td><td class="num mono">6.50</td>
+              <td>2 - i7 Marketing &#8250; Marketing</td><td class="mono">BE-MKTG</td><td>Content: Writing</td>
+              <td class="rm">Remove</td>
+            </tr>
+            <tr>
+              <td>Jônatas Queiroz<span class="who"> · by Arnaldo</span></td>
+              <td class="num">29/08</td><td class="num mono">4.00</td>
+              <td>1 - True North &#8250; Marketing</td><td>GP School</td><td>General admin</td>
+              <td class="rm">Remove</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="total">2 entries · 10.50h added by hand this month. The first counts in the i7 report, the second in Grant Pass.</p>
+    </div>
+    <div class="why">
+      <h3>Remove só apaga o que nasceu aqui</h3>
+      <p>
+        Uma hora vinda do QuickBooks Time voltaria na sincronização seguinte, então o botão
+        funcionaria uma vez e depois pareceria quebrado. Por isso ele só aparece nas linhas
+        lançadas à mão, que são as únicas listadas neste painel.
+      </p>
+    </div>
+  </div>
+
+  <div class="step" style="border-bottom:none">
+    <div class="step-head"><span class="n" style="background:transparent;color:var(--ink-soft);padding-left:0">a decidir</span><h2>Onde este painel passa a viver</h2></div>
+    <p class="say">
+      Enquanto ele só sabia lançar i7, o fim do relatório do i7 era o lugar óbvio. Um
+      formulário que também produz horas de Grant Pass e de True North não cabe mais ali,
+      e essa é a única decisão que o desenho não resolve sozinho.
+    </p>
+    <div class="why">
+      <h3>Um painel por relatório, cada um já apontado</h3>
+      <p>
+        O do i7 abre travado em <code>2 - i7 Marketing</code>; o do Grant Pass abre travado
+        em True North com o <code>2 Project</code> limitado a <code>GP church</code> e
+        <code>GP School</code>. Ninguém escolhe o topo, porque a página já sabe. Mais curto
+        de preencher, e impossível lançar no cliente errado.
+      </p>
+    </div>
+    <div class="why">
+      <h3>Um só, numa página própria</h3>
+      <p>
+        O caminho inteiro, como está desenhado acima, num lugar neutro. Fiel ao TSheets e
+        pronto para o terceiro cliente, mas mais longo de preencher e sem nada impedindo
+        que uma hora de i7 caia em True North por um clique errado.
+      </p>
+    </div>
+    <div class="why">
+      <h3>O que eu faria</h3>
+      <p>
+        O primeiro. A familiaridade que você procura está nos <b>campos</b>, que passam a
+        ser os mesmos do TSheets com os mesmos nomes, e não em repetir uma pergunta cuja
+        resposta a página já conhece. E o ganho de verdade continua de pé: o Grant Pass
+        ganha lançamento manual, que hoje não tem.
+      </p>
+    </div>
+  </div>
+
+</div>

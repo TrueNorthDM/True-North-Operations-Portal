@@ -64,18 +64,34 @@ export interface ProjectRow {
   contractorCostThisMonth: number
   totalCosts: number
   /**
-   * Null, not zero. Donations are entered by hand and there is nowhere yet to
-   * enter them, so every cell would read as "nothing was donated" when what is
-   * true is "nobody has said". Zero is an answer; this is the absence of one.
+   * Null, not zero. A month nobody has entered reads empty: zero is a claim
+   * that nothing came in, and these figures are copied into a financial report
+   * for somebody else. Absence and none have to stay different.
    */
   donationsThisMonth: number | null
   donationsYtd: number | null
+}
+
+/**
+ * Money given without a project attached.
+ *
+ * "If the donor requests the donations go to AAAF that's where they go,
+ * otherwise the donation goes under unrestricted and used for all projects."
+ *
+ * It belongs to no row of a report laid out by project, so it gets its own
+ * rather than being divided across the four. Dividing it would invent an
+ * allocation nobody asked for.
+ */
+export interface UnrestrictedDonations {
+  thisMonth: number | null
+  ytd: number | null
 }
 
 export interface ProjectTracking {
   month: string
   people: string[]
   rows: ProjectRow[]
+  unrestricted: UnrestrictedDonations
   totals: {
     workedThisMonth: number
     byPerson: Record<string, number>
@@ -141,10 +157,11 @@ export async function loadProjectTracking(
   supabase: Client,
   month: string,
 ): Promise<ProjectTracking> {
-  const [{ data: fieldRows }, { data: peopleRows }, { data: buyRows }, pay] = await Promise.all([
+  const [{ data: fieldRows }, { data: peopleRows }, { data: buyRows }, { data: giftRows }, pay] = await Promise.all([
     supabase.from('tc_fields').select('id, external_id'),
     supabase.from('people').select('id, full_name, employment_type'),
     supabase.from('tc_project_purchases').select('project_label, month, hours'),
+    supabase.from('tc_project_donations').select('project_label, month, amount_usd'),
     // Break-even rates through the privileged reader: be_rate is out of the
     // `authenticated` column grant, for the same reason internal_rate is.
     loadCompensationByPerson(),
@@ -153,7 +170,7 @@ export async function loadProjectTracking(
   const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
     .find(f => String(f.external_id) === PROJECT_CF)?.id
   if (!projectKey) {
-    return { month, people: [], rows: [], unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
+    return { month, people: [], rows: [], unrestricted: { thisMonth: null, ytd: null }, unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
   }
 
   // First names, because that is what the tracking sheet's columns are.
@@ -185,6 +202,19 @@ export async function loadProjectTracking(
   }
 
   const purchases = (buyRows ?? []) as { project_label: string; month: string; hours: number }[]
+
+  // Donations, entered by hand and read the same way whether or not anyone has
+  // got round to a given month. `null` from the sum below is what keeps an
+  // un-entered month blank rather than $0.00.
+  const gifts = (giftRows ?? []) as { project_label: string | null; month: string; amount_usd: number }[]
+  const giftYear = month.slice(0, 4)
+  /** Total for a bucket over the months matching `covers`, or null if nothing is recorded. */
+  const donated = (label: string | null, covers: (m: string) => boolean): number | null => {
+    const mine = gifts.filter(g => g.project_label === label && covers(g.month))
+    return mine.length === 0 ? null : round2(mine.reduce((s, g) => s + Number(g.amount_usd), 0))
+  }
+  const inMonth = (m: string) => m === month
+  const inYearToDate = (m: string) => m.slice(0, 4) === giftYear && m <= month
   const labels = TRACKED_PROJECTS.map(p => p.label)
   const year = month.slice(0, 4)
   const lastYearMonth = `${Number(year) - 1}-${month.slice(5, 7)}`
@@ -241,10 +271,15 @@ export async function loadProjectTracking(
       employeeCostThisMonth: monthCost.employee,
       contractorCostThisMonth: monthCost.contractor,
       totalCosts: round2(ytdCost.employee + ytdCost.contractor),
-      donationsThisMonth: null,
-      donationsYtd: null,
+      donationsThisMonth: donated(p.label, inMonth),
+      donationsYtd: donated(p.label, inYearToDate),
     }
   })
+
+  const unrestricted: UnrestrictedDonations = {
+    thisMonth: donated(null, inMonth),
+    ytd: donated(null, inYearToDate),
+  }
 
   // One column per person who worked on anything this month, sorted like the
   // sheet: alphabetically.
@@ -259,6 +294,7 @@ export async function loadProjectTracking(
     month,
     people,
     rows,
+    unrestricted,
     totals: {
       workedThisMonth: round2(rows.reduce((s, r) => s + r.workedThisMonth, 0)),
       byPerson,

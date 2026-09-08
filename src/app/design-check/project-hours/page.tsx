@@ -10,6 +10,8 @@
 // unrated warning fires for somebody who genuinely has no rate.
 
 import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
+import { MoneyInDialog } from '@/components/tsheets/MoneyInDialog'
+import { TRACKED_PROJECTS } from '@/lib/timeclock/projects'
 import type { ProjectTracking, ProjectRow } from '@/lib/timeclock/projects'
 
 /** Break-even rate and whether they are on the payroll. Joy has no rate. */
@@ -65,8 +67,10 @@ function build(
     employeeCostThisMonth: c.employee,
     contractorCostThisMonth: c.contractor,
     totalCosts: ytdCost,
-    donationsThisMonth: null,
-    donationsYtd: null,
+    // Only AAAF has restricted gifts in this fixture. The other three stay null
+    // so the preview still shows what an un-entered month looks like.
+    donationsThisMonth: name === 'AskAnAdventistFriend.com' ? 2450 : null,
+    donationsYtd: name === 'AskAnAdventistFriend.com' ? 18730 : null,
   }
 }
 
@@ -97,6 +101,7 @@ const data: ProjectTracking = {
     totalCosts: r2(rows.reduce((s, r) => s + r.totalCosts, 0)),
   },
   unratedPeople: [...new Set(rows.flatMap(r => costs(r.byPerson).unrated))].sort(),
+  unrestricted: { thisMonth: 6100, ytd: 41250 },
 }
 
 export default function ProjectHoursDesignCheck() {
@@ -112,6 +117,17 @@ export default function ProjectHoursDesignCheck() {
             September 2026, real hours and computed costs. Switch between Costs and People below.
           </p>
         </div>
+        {/* The real dialog on fixture figures, so the form can be looked at
+            without a login. Saving from here reaches a server action that will
+            refuse: this checks the shape, not the write. */}
+        <MoneyInDialog
+          data={{
+            month: '2026-09',
+            donations: { AAAF: '2450', 'GP church': '', 'GP School': '', Africa: '', '': '6100' },
+            purchases: { 'GP church': { hours: '', amount: '' }, 'GP School': { hours: '11.25', amount: '1012.50' } },
+          }}
+          projects={TRACKED_PROJECTS}
+        />
         <ProjectHoursReport data={data} />
       </div>
     </div>
