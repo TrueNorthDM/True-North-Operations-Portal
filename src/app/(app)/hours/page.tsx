@@ -257,7 +257,7 @@ export default async function MyHoursPage({
   return (
     <div className="space-y-8">
       <div>
-        <Breadcrumb now="My Hours" />
+        <Breadcrumb self="/hours" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">My Hours</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           Track your hours here. QuickBooks Time is still the official record for now,

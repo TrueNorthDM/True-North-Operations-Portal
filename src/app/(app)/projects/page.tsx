@@ -72,7 +72,7 @@ export default async function ProjectsPage() {
           reader came from: it is a tool inside Tools & Dashboards, and the two
           site pages hang off it. */}
       <div>
-        <Breadcrumb parents={['/tools']} now="Href Link Management" />
+        <Breadcrumb parents={['/tools']} self="/projects" />
         <h1 className="text-2xl font-extrabold text-tn-ink">Href Link Management</h1>
         <p className="text-muted mt-1">
           Manage hreflang tag workflows for AAAF and HFA WordPress sites.

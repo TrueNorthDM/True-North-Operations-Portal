@@ -94,7 +94,7 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Breadcrumb parents={['/tools']} now="Client Report · i7" />
+          <Breadcrumb parents={['/tools']} self="/tools/time-report" />
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Client Report · i7</h1>
           <p className="mt-1.5 text-muted leading-relaxed">
             Hours, cost and budget usage for i7 Marketing.

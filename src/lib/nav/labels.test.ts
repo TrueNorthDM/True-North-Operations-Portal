@@ -46,6 +46,20 @@ describe('breadcrumbs', () => {
     }
   })
 
+  // A page that is one of the named places must say so with `self`, not repeat
+  // the name. The Directory did repeat it, and said "People" while the rail
+  // said "People, Teams and Permissions".
+  it('leave no page repeating a name the table already holds', () => {
+    const names = new Set<string>(Object.values(NAV_LABEL))
+    const offenders: string[] = []
+    for (const f of tsxFiles('src')) {
+      for (const [, quoted] of readFileSync(f, 'utf8').matchAll(/<Breadcrumb[^>]*?\snow="([^"]+)"/g)) {
+        if (names.has(quoted)) offenders.push(`${f}: now="${quoted}" should be self=`)
+      }
+    }
+    expect(offenders, offenders.join('\n  ')).toEqual([])
+  })
+
   // The rail and the trail are the two places a person reads a name. They came
   // from different lists and drifted, so the rail reads this table now. If a
   // name is ever typed back into the rail as a literal, this catches it.

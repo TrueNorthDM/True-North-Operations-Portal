@@ -463,7 +463,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
     return (
       <div className="space-y-6">
-        <Breadcrumb now="People" />
+        <Breadcrumb self="/directory" />
         <RestrictedDirectory people={dirPeople} teams={dirTeams} showTeams={level >= 2} />
       </div>
     )
@@ -508,7 +508,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-6">
-      <Breadcrumb now="People, Teams and Permissions" />
+      <Breadcrumb self="/directory" />
 
       <DirectoryTabs
         people={peopleView}

@@ -94,7 +94,7 @@ export default async function ClockyHoursPage() {
   return (
     <div className="space-y-8">
       <div>
-        <Breadcrumb now="Clocky Hours" />
+        <Breadcrumb self="/clocky-hours" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clocky Hours</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           The time module behind My Hours, under construction. QuickBooks Time is still the system

@@ -55,7 +55,7 @@ export default async function MyWorkPage(
 
   return (
     <div className="space-y-6">
-      <Breadcrumb now="My Work" />
+      <Breadcrumb self="/my-work" />
 
       {/* Title on the left, the two views as a segmented control on the right.
           They are two ways of asking "what is mine", so they sit together as

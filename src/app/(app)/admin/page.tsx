@@ -121,7 +121,7 @@ export default async function AdminPage() {
     <div className="space-y-10">
       <SystemHealthBanner />
       <div>
-        <Breadcrumb now="Admin" />
+        <Breadcrumb self="/admin" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Admin</h1>
         <p className="mt-1.5 text-muted">People, teams, and who can access what.</p>
       </div>

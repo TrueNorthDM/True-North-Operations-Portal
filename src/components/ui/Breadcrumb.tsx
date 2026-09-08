@@ -7,7 +7,11 @@
  * the home page or the tools hub was called.
  *
  * `now` is the only free text, because a leaf is usually the report, the client
- * or the person being looked at, and no table knows those in advance.
+ * or the person being looked at, and no table knows those in advance. A page
+ * that IS one of the named places passes `self` instead and gets its own name
+ * from the table too: the Directory said "People" while the rail said "People,
+ * Teams and Permissions", and a page repeating a name the table already holds
+ * is the same drift one level down.
  *
  * Every trail starts at Home. It is not in `parents` because leaving it to each
  * caller is exactly how three pages ended up starting somewhere else.
@@ -19,18 +23,22 @@ import { NAV_LABEL, type NavHref } from '@/lib/nav/labels'
 /** An ancestor that no table can name in advance, like the site a page belongs to. */
 interface DynamicParent { href: string; label: string }
 
-export function Breadcrumb(
-  { parents = [], now }: {
-    /**
-     * Ancestors between Home and this page, nearest the root first. An href on
-     * its own is named from the table; a {href, label} pair is for the ones
-     * that change per row, like a site code.
-     */
-    parents?: readonly (NavHref | DynamicParent)[]
-    /** This page, in its own words. Not a link: you are already here. */
-    now: string
-  },
-) {
+type Props = {
+  /**
+   * Ancestors between Home and this page, nearest the root first. An href on
+   * its own is named from the table; a {href, label} pair is for the ones that
+   * change per row, like a site code.
+   */
+  parents?: readonly (NavHref | DynamicParent)[]
+} & (
+  /** A leaf: the report, client or person being looked at, in its own words. */
+  | { now: string; self?: never }
+  /** A page that is one of the named places, and takes its name from the table. */
+  | { self: NavHref; now?: never }
+)
+
+export function Breadcrumb({ parents = [], now, self }: Props) {
+  const here = now ?? NAV_LABEL[self!]
   const trail: DynamicParent[] = [
     { href: '/', label: NAV_LABEL['/'] },
     ...parents.map(p => (typeof p === 'string' ? { href: p, label: NAV_LABEL[p] } : p)),
@@ -44,7 +52,7 @@ export function Breadcrumb(
           <span className="text-slate-300">/</span>
         </span>
       ))}
-      <span className="text-foreground font-semibold">{now}</span>
+      <span className="text-foreground font-semibold">{here}</span>
     </div>
   )
 }
