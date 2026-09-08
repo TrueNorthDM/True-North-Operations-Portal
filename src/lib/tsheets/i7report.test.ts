@@ -24,10 +24,12 @@ describe('buildI7Report', () => {
     { personId: 'p2', duration: 3600, date: '2026-07-03', i7Code: 'BE-CONTENT', activity: 'Content: Writing' },
   ]
   const rates = { p1: 60, p2: 60 }
+  /** The builder asks per person and per month now; these fixtures do not vary by month. */
+  const flat = (r: Record<string, number>) => (pid: string) => r[pid] ?? 0
   const names = { p1: 'Alice', p2: 'Bob' }
 
   it('rolls hours + cost up the project → job code → activity tree', () => {
-    const r = buildI7Report(entries, rates, names, '2026-07-01')
+    const r = buildI7Report(entries, flat(rates), names, '2026-07-01')
     expect(r.totalHours).toBe(2.5)  // 1 + 0.5 + 1
     expect(r.totalCost).toBe(150)   // 2.5h × $60
     const wm = r.projects.find(p => p.project === 'Wagner Meters (WM)')!
@@ -39,7 +41,7 @@ describe('buildI7Report', () => {
   })
 
   it('accumulates hours into per-person columns', () => {
-    const r = buildI7Report(entries, rates, names, '2026-07-01')
+    const r = buildI7Report(entries, flat(rates), names, '2026-07-01')
     const wm = r.projects.find(p => p.project === 'Wagner Meters (WM)')!
     expect(wm.byPerson['Alice']).toBe(1.5)
     expect(r.people).toEqual(expect.arrayContaining(['Alice', 'Bob']))
@@ -49,13 +51,13 @@ describe('buildI7Report', () => {
   // The rows behave the other way round on purpose: a budgeted project that was
   // not worked still shows, reading zero.
   it('gives a column only to people with hours in the month', () => {
-    const r = buildI7Report(entries, rates, { ...names, p3: 'Barack' }, '2026-07-01')
+    const r = buildI7Report(entries, flat(rates), { ...names, p3: 'Barack' }, '2026-07-01')
     expect(r.people).toEqual(['Alice', 'Bob'])
     expect(r.people).not.toContain('Barack')
   })
 
   it('keeps a budgeted project without hours, as a row reading zero', () => {
-    const r = buildI7Report(entries, rates, names, '2026-07-01', {
+    const r = buildI7Report(entries, flat(rates), names, '2026-07-01', {
       projects: ['Wagner Meters (WM)', 'Bessemeter', 'Moisture Meters (MME)'],
       jobcodesByProject: { 'Moisture Meters (MME)': ['MME-X'] },
     })
@@ -67,17 +69,17 @@ describe('buildI7Report', () => {
   it('does not buy a column with an entry that rounds to nothing', () => {
     const r = buildI7Report(
       [...entries, { personId: 'p3', duration: 1, date: '2026-07-04', i7Code: 'WM-SEO', activity: 'SEO: Routine' }],
-      rates, { ...names, p3: 'Barack' }, '2026-07-01',
+      flat(rates), { ...names, p3: 'Barack' }, '2026-07-01',
     )
     expect(r.people).not.toContain('Barack')
   })
 
   it('sets hasRates only when a rate is present', () => {
-    expect(buildI7Report(entries, {}, names, '2026-07-01').hasRates).toBe(false)
-    expect(buildI7Report(entries, rates, names, '2026-07-01').hasRates).toBe(true)
+    expect(buildI7Report(entries, flat({}), names, '2026-07-01').hasRates).toBe(false)
+    expect(buildI7Report(entries, flat(rates), names, '2026-07-01').hasRates).toBe(true)
   })
 
   it('derives the month label from the start date', () => {
-    expect(buildI7Report(entries, rates, names, '2026-07-01').month).toBe('July 2026')
+    expect(buildI7Report(entries, flat(rates), names, '2026-07-01').month).toBe('July 2026')
   })
 })

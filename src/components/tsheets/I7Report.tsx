@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
+import { RangeFilter } from './RangeFilter'
 import { I7Charts } from './I7Charts'
 import { ProjectRows } from './I7ProjectRows'
 import { ExportMenu, ExportImageButton } from './I7ReportParts'
@@ -17,16 +18,18 @@ import type { ManualOptions, ManualRow } from './ManualHours'
 import { CarryoverPanel } from './I7CarryoverPanel'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
+import { choiceFromRange, isSingleMonth, rangeOf, spanWording, type Range, type RangeChoice } from '@/lib/tsheets/range'
 
 interface Props {
   data: I7Report
-  selectedMonth: string
+  /** The months on screen. One month unless the filter was widened. */
+  range: Range
   availableMonths: string[]
   preview?: boolean
   projectHours?: Record<string, number>   // project → budgeted hours (guide)
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
-  trend?: I7TrendPoint[]                  // Jan → selected month, for the charts
+  trend?: I7TrendPoint[]                  // the charted months, for the charts
   /** Hand-entry, opened from here rather than from the foot of the page. */
   manual?: { rows: ManualRow[]; options: ManualOptions; blurb: string }
   canExport?: boolean                     // the file exports (PDF, CSV, print)
@@ -51,17 +54,16 @@ interface Props {
    * Directory's Teams tab, with the first names of their members.
    */
   teams?: readonly { id: string; name: string; members: readonly string[] }[]
-  /** Selected team id, or '' for everyone. Lives in the URL, like the month. */
+  /** Selected team id, or '' for everyone. Lives in the URL, like the range. */
   selectedTeam?: string
 }
 
-function monthLabel(ym: string): string {
-  const [y, m] = ym.split('-').map(Number)
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  return `${months[m - 1]} ${y}`
+/** The newest month the report holds, which is the ceiling every mode clamps to. */
+function newestOf(months: string[]): string {
+  return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, selectedMonth, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '' }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '' }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
@@ -110,11 +112,19 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
   // Both filters live in the URL together, so changing one keeps the other and
   // the address stays shareable. Empty team drops the param instead of sending
   // an empty one.
-  function go(patch: { month?: string; team?: string }) {
-    const month = patch.month ?? selectedMonth
+  function go(patch: { range?: Range; team?: string }) {
+    const r = patch.range ?? range
     const team = patch.team ?? selectedTeam
-    router.push(`/tools/time-report?month=${month}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
+    router.push(`/tools/time-report?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
   }
+
+  // The filter is the URL's, so there is no second copy of it to fall out of
+  // step: what the button says is read back from the range on screen, and
+  // choosing navigates rather than setting state here.
+  const newest = availableMonths.length ? newestOf(availableMonths) : range.to
+  const choice = choiceFromRange(range.from, range.to, newest)
+  const oneMonth = isSingleMonth(range)
+  const periodLabel = spanWording(range.from, range.to)
 
   // The line that closes the budget block sits on whichever of its columns is
   // last, since which one that is now depends on the level looking at it.
@@ -135,16 +145,15 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
         </div>
       )}
 
-      {/* Month and team selectors */}
+      {/* Period and team selectors */}
       <div className="flex items-center gap-3 flex-wrap">
-        <label htmlFor="month-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</label>
-        <Select
-          id="month-select"
-          value={selectedMonth}
-          onChange={v => go({ month: v })}
-          options={availableMonths.map(ym => ({ value: ym, label: monthLabel(ym) }))}
-          ariaLabel="Pay period"
-          className={selectCls}
+        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</span>
+        <RangeFilter
+          value={choice}
+          onChange={(next: RangeChoice) => go({ range: rangeOf(next, newest) })}
+          currentMonth={newest}
+          modes={['month', 'year', 'last12', 'custom']}
+          months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
         />
         <span className="text-sm text-muted ml-1 tabular-nums">{data.startDate} → {data.endDate}</span>
         {teams.length > 0 && (
@@ -168,11 +177,11 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
             {manual && (
               <ManualHoursDialog
                 rows={manual.rows} options={manual.options}
-                month={selectedMonth} blurb={manual.blurb}
+                month={range.to} blurb={manual.blurb}
               />
             )}
-            {canTeamUpdate && <ExportImageButton month={selectedMonth} />}
-            {canExport && <ExportMenu month={selectedMonth} />}
+            {canTeamUpdate && <ExportImageButton month={range.to} monthly={oneMonth} />}
+            {canExport && <ExportMenu range={range} monthly={oneMonth} />}
           </div>
         )}
       </div>
@@ -205,7 +214,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
       ) : (
       <>
       {/* Carryover: bank-account running balance */}
-      {carryover && <CarryoverPanel c={carryover} month={selectedMonth} />}
+      {carryover && <CarryoverPanel c={carryover} month={periodLabel} multi={!oneMonth} />}
 
       {/*
         The month note card was here too. It is still printed on the client PDF
@@ -255,7 +264,7 @@ export function I7Report({ data, selectedMonth, availableMonths, preview, projec
           </thead>
           <tbody>
             {data.projects.length === 0 && (
-              <tr><td colSpan={cols} className="px-4 py-6 text-center text-sm text-slate-400">No i7 hours logged in {monthLabel(selectedMonth)}.</td></tr>
+              <tr><td colSpan={cols} className="px-4 py-6 text-center text-sm text-slate-400">No i7 hours logged in {periodLabel}.</td></tr>
             )}
             {data.projects.map(p => (
               <ProjectRows

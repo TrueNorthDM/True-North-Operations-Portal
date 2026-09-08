@@ -20,6 +20,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
+import { resolveRange, spanWording, type Range } from '@/lib/tsheets/range'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { narrowReport } from '@/lib/tsheets/narrow'
@@ -74,7 +75,9 @@ const MOCK_TREND: I7TrendPoint[] = [
 interface TeamRoster { id: string; name: string; members: string[] }
 
 interface Props {
-  searchParams: Promise<{ month?: string; team?: string }>
+  // `month` is the old single-month link, still honoured: it lands as a range of
+  // one, which is the same report it always was.
+  searchParams: Promise<{ month?: string; from?: string; to?: string; team?: string }>
 }
 
 const MANUAL_BLURB =
@@ -84,7 +87,7 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
   // The area comes from the level, the report itself from the team tool grant.
   const access = await requireSurface('tools')
   if (!access.canTool('i7-budget')) redirect('/tools')
-  const { month, team } = await searchParams
+  const { month, from, to, team } = await searchParams
 
   return (
     <div className="space-y-8">
@@ -112,7 +115,7 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      <I7Tab month={month} team={team} />
+      <I7Tab month={month} from={from} to={to} team={team} />
     </div>
   )
 }
@@ -163,10 +166,12 @@ async function loadTeamRoster(): Promise<{ teams: TeamRoster[]; myTeamIds: Set<s
 
 // The report body, still its own function: the month resolution and the sync
 // status only make sense for the cached i7 data.
-async function I7Tab({ month, team }: { month?: string; team?: string }) {
+async function I7Tab({ month, from, to, team }: { month?: string; from?: string; to?: string; team?: string }) {
   const months = availableMonths(new Date())      // Jan 2026 … current (rolling 24-mo window)
-  const requested = month ?? currentYearMonth()
-  const selectedMonth = months.includes(requested) ? requested : months[0]
+  const newest = months.includes(currentYearMonth()) ? currentYearMonth() : months[0]
+  // No parameters is the current month, which is what the report opens on and
+  // the only range a PDF can be made from.
+  const range = resolveRange(from ?? month, to ?? month, newest)
 
   // Two different questions, and they used to be answered by one timestamp.
   // Whether TSheets is connected at all comes from app_settings; how fresh the
@@ -206,7 +211,7 @@ async function I7Tab({ month, team }: { month?: string; team?: string }) {
         <>
           <I7ReportView
             data={MOCK_I7}
-            selectedMonth={selectedMonth}
+            range={{ from: '2026-06', to: '2026-06' }}
             availableMonths={months}
             projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
             carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300, openingFrom: '2026-01', openingComplete: true }}
@@ -217,17 +222,17 @@ async function I7Tab({ month, team }: { month?: string; team?: string }) {
           <ClientFullHistory trend={MOCK_TREND} currentMonth="2026-06" />
         </>
       ) : (
-        <ReportView selectedMonth={selectedMonth} availableMonths={months} team={team} />
+        <ReportView range={range} availableMonths={months} team={team} />
       )}
     </div>
   )
 }
 
-async function ReportView({ selectedMonth, availableMonths, team }: { selectedMonth: string; availableMonths: string[]; team?: string }) {
+async function ReportView({ range, availableMonths, team }: { range: Range; availableMonths: string[]; team?: string }) {
   let data: Awaited<ReturnType<typeof loadI7ReportData>> | null = null
   let fetchError: string | null = null
   try {
-    data = await loadI7ReportData(selectedMonth)
+    data = await loadI7ReportData(range.from, range.to)
   } catch (e) {
     fetchError = e instanceof Error ? e.message : 'Unknown error reading the report.'
   }
@@ -277,15 +282,18 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
   // dead-end message. This keeps the report reachable and the month filter
   // usable even before the current month has any hours, matching the dashboard
   // widget, which already shows the budget for such months.
-  const full = data?.report ?? emptyReport(selectedMonth, (data?.stdRate ?? 0) > 0)
+  const full = data?.report ?? emptyReport(range, (data?.stdRate ?? 0) > 0)
 
   // Narrowed HERE, on the server, not in the component. The component used to
   // filter the columns while receiving everybody's, which was safe only while
   // the database had already removed them.
   // Admins only: these hours reach a client invoice. Loaded here so the dialog
   // in the toolbar opens with its lists already in hand.
+  // The hand-entry panel is a month's business, so over a range it lists the
+  // last month in it: adding an hour means adding it to a month, and the newest
+  // one in view is the one somebody is adding to.
   const manual = access.isAdmin
-    ? { ...(await loadAllManualHours(createAdminClient(), selectedMonth)), blurb: MANUAL_BLURB }
+    ? { ...(await loadAllManualHours(createAdminClient(), range.to)), blurb: MANUAL_BLURB }
     : undefined
 
   const report = restricted
@@ -304,7 +312,7 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
       <I7ReportView
         data={report}
         unratedPeople={unratedPeople}
-        selectedMonth={selectedMonth}
+        range={range}
         availableMonths={availableMonths}
         projectHours={data?.projectHours ?? {}}
         carryover={data?.carryover ?? null}
@@ -328,9 +336,12 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
 
 // A zero-hours report for a month with nothing cached yet, so the page still
 // renders its shell (picker, budget) with an empty hours table.
-function emptyReport(ym: string, hasRates: boolean): I7Report {
-  const { startDate, endDate } = monthBounds(ym)
-  const [y, m] = ym.split('-').map(Number)
-  const month = new Date(Date.UTC(y, m - 1, 1)).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-  return { month, startDate, endDate, projects: [], people: [], totalHours: 0, totalCost: 0, hasRates }
+function emptyReport(range: Range, hasRates: boolean): I7Report {
+  const { startDate } = monthBounds(range.from)
+  const { endDate } = monthBounds(range.to)
+  return {
+    month: spanWording(range.from, range.to),
+    startDate, endDate,
+    projects: [], people: [], totalHours: 0, totalCost: 0, hasRates,
+  }
 }

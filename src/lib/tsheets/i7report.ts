@@ -75,21 +75,41 @@ export interface I7Universe {
 
 export function buildI7Report(
   entries: I7Entry[],                   // already filtered to i7 entries (from cache)
-  ratesByPerson: Record<string, number>, // person id → i7 hourly rate
+  /**
+   * The rate to cost an hour at, asked per person AND per month.
+   *
+   * A record would have done while a report was always one month. Over a range
+   * it would not: a rate that changes in April has to cost March's hours at the
+   * old figure and April's at the new one, and a single number per person can
+   * only be one of the two.
+   */
+  rateOf: (personId: string, ym: string) => number,
   namesByPerson: Record<string, string>, // person id → display name
   startDate: string,
   universe?: I7Universe,                // the always-shown scaffold (projects/codes/people)
+  /**
+   * The last day and the wording, when the report covers more than the month
+   * `startDate` falls in. Derived from `startDate` when absent, which is what a
+   * single-month report wants.
+   */
+  span?: { endDate: string; label: string },
 ): I7Report {
   // project → code → activity → userId → { hours, cost }
   type Leaf = { hours: number; cost: number }
   const tree = new Map<string, Map<string, Map<string, Map<string, Leaf>>>>()
+  // Whether anything here could be costed at all, which is what decides if the
+  // money columns are drawn. Collected as the entries go by, since a rate is
+  // now asked for rather than handed over in a list that could be counted.
+  let sawRate = false
 
   for (const e of entries) {
     const code = (e.i7Code || NO_CODE).trim() || NO_CODE
     const activity = (e.activity || NO_ACTIVITY).trim() || NO_ACTIVITY
     const project = mapCodeToProject(code)
     const hours = e.duration / 3600
-    const cost = hours * (ratesByPerson[e.personId] ?? 0)
+    const rate = rateOf(e.personId, e.date.slice(0, 7))
+    if (rate > 0) sawRate = true
+    const cost = hours * rate
 
     const codes = tree.get(project) ?? new Map()
     tree.set(project, codes)
@@ -175,9 +195,8 @@ export function buildI7Report(
     .sort((a, b) => a.localeCompare(b))
 
   const [year, monthIdx] = startDate.split('-').map(Number)
-  const month = `${MONTH_NAMES[monthIdx - 1]} ${year}`
-  const endDate = new Date(year, monthIdx, 0).toISOString().slice(0, 10)
-  const hasRates = Object.values(ratesByPerson).some(r => r > 0)
+  const month = span?.label ?? `${MONTH_NAMES[monthIdx - 1]} ${year}`
+  const endDate = span?.endDate ?? new Date(year, monthIdx, 0).toISOString().slice(0, 10)
 
-  return { month, startDate, endDate, projects, people, totalHours: round2(totalHours), totalCost: round2(totalCost), hasRates }
+  return { month, startDate, endDate, projects, people, totalHours: round2(totalHours), totalCost: round2(totalCost), hasRates: sawRate }
 }

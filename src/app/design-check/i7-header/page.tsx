@@ -1,20 +1,26 @@
 'use client'
 
-// Design check: the top of the i7 report, where the freshness badge and the
-// guide sit.
+// Design check: the top of the i7 report, the two rows above the table.
 //
-// Only the two rows that had to line up. The real page reads the import status
-// and the whole month's tree before it can draw anything, and none of that
-// changes where these sit, so the fixture stops at the toolbar: the sentence
-// and the badge above, the buttons they have to line up with below.
+// The real page reads the import status and the whole tree before it can draw
+// anything, and none of that changes what this checks, so the fixture stops at
+// the toolbar: where the freshness badge and the guide sit, and what the period
+// filter does to the Export menu.
+//
+// The filter here changes local state instead of the URL, so every mode can be
+// tried without a server that has the months. What it drives is real: the same
+// RangeFilter, and the same Export menu reading the same `monthly` flag, so the
+// PDFs fade exactly where they will on the report.
 
 import { useState } from 'react'
 import Link from 'next/link'
 import { Select } from '@/components/ui/Select'
+import { RangeFilter } from '@/components/tsheets/RangeFilter'
 import { ReportMeta } from '@/components/tsheets/ReportMeta'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { ExportMenu, ExportImageButton } from '@/components/tsheets/I7ReportParts'
 import type { ManualOptions } from '@/components/tsheets/ManualHours'
+import { defaultChoice, isSingleMonth, rangeOf, spanWording } from '@/lib/tsheets/range'
 
 const MONTH = '2026-09'
 
@@ -33,8 +39,12 @@ const SYNCED_AT = new Date(Date.now() - 5 * 60_000).toISOString()
 
 const selectCls = 'px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20'
 
+const MONTHS = ['2026-09', '2026-08', '2026-07', '2026-06', '2026-05', '2026-04', '2026-03', '2026-02', '2026-01']
+
 export default function I7HeaderDesignCheck() {
-  const [month, setMonth] = useState(MONTH)
+  const [choice, setChoice] = useState(defaultChoice(MONTH))
+  const range = rangeOf(choice, MONTH)
+  const monthly = isSingleMonth(range)
 
   return (
     <div className="min-h-screen bg-[var(--page-bg,#efedE8)] px-6 py-10">
@@ -64,16 +74,15 @@ export default function I7HeaderDesignCheck() {
 
           <div className="space-y-6">
             <div className="flex items-center gap-3 flex-wrap">
-              <label htmlFor="month-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</label>
-              <Select
-                id="month-select"
-                value={month}
-                onChange={setMonth}
-                options={[{ value: '2026-09', label: 'September 2026' }, { value: '2026-08', label: 'August 2026' }]}
-                ariaLabel="Pay period"
-                className={selectCls}
+              <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</span>
+              <RangeFilter
+                value={choice}
+                onChange={setChoice}
+                currentMonth={MONTH}
+                modes={['month', 'year', 'last12', 'custom']}
+                months={MONTHS}
               />
-              <span className="text-sm text-muted ml-1 tabular-nums">2026-09-01 → 2026-09-30</span>
+              <span className="text-sm text-muted ml-1 tabular-nums">{spanWording(range.from, range.to)}</span>
               <label htmlFor="team-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</label>
               <Select
                 id="team-select"
@@ -84,9 +93,9 @@ export default function I7HeaderDesignCheck() {
                 className={selectCls}
               />
               <div className="ml-auto flex items-center gap-2.5">
-                <ManualHoursDialog rows={[]} options={NO_OPTIONS} month={month} blurb="" />
-                <ExportImageButton month={month} />
-                <ExportMenu month={month} />
+                <ManualHoursDialog rows={[]} options={NO_OPTIONS} month={range.to} blurb="" />
+                <ExportImageButton month={range.to} monthly={monthly} />
+                <ExportMenu range={range} monthly={monthly} />
               </div>
             </div>
 
@@ -97,7 +106,7 @@ export default function I7HeaderDesignCheck() {
             </div>
 
             <div className="rounded-[14px] border border-slate-200 bg-white h-40 flex items-center justify-center text-sm text-muted">
-              The month&rsquo;s table sits here.
+              The table for {spanWording(range.from, range.to)} sits here.
             </div>
           </div>
         </div>

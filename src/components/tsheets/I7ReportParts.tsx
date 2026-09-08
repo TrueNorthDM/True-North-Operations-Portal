@@ -2,7 +2,10 @@
 
 /**
  * Small chrome pieces of the i7 report, split out of I7Report (audit M5-2):
- *   - ExportMenu: the Export → "Save as PDF" dropdown.
+ *   - ExportMenu: the Export → "Save as PDF" dropdown. The CSVs follow whatever
+ *     range the report is showing; the PDFs are a month's document, laid out for
+ *     a month and headed with one, so they grey out until a single month is
+ *     chosen rather than quietly exporting the first month of a year.
  *   - NoteCard: the editable month narrative (admins), shown + in the PDF.
  */
 
@@ -10,6 +13,7 @@ import { useState } from 'react'
 import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 import { useRouter } from 'next/navigation'
 import { saveReportNote } from '@/lib/tsheets/settings-actions'
+import type { Range } from '@/lib/tsheets/range'
 
 // Small spinner for the "generating…" state.
 function Spinner() {
@@ -24,7 +28,7 @@ function Spinner() {
 // "Export image", a shareable PNG of the budget-at-a-glance (used $ + %, amount
 // left, month total) generated server-side (/tools/time-report/image). The card
 // the team passes around, straight from the app.
-export function ExportImageButton({ month }: { month: string }) {
+export function ExportImageButton({ month, monthly = true }: { month: string; monthly?: boolean }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,7 +54,12 @@ export function ExportImageButton({ month }: { month: string }) {
 
   return (
     <div className="relative">
-      <button onClick={download} disabled={busy} title="Download a shareable budget image for the team" className="inline-flex items-center gap-2.5 bg-white text-tn-ink border border-slate-200 rounded-[10px] px-[16px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:text-tn-teal disabled:opacity-60 disabled:cursor-wait">
+      <button
+        onClick={download}
+        disabled={busy || !monthly}
+        title={monthly ? 'Download a shareable budget image for the team' : 'The team image is a month. Choose a single month to make one.'}
+        className="inline-flex items-center gap-2.5 bg-white text-tn-ink border border-slate-200 rounded-[10px] px-[16px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:text-tn-teal disabled:opacity-45 disabled:hover:border-slate-200 disabled:hover:text-tn-ink disabled:cursor-not-allowed"
+      >
         {busy ? <Spinner /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" /><path d="m21 15-4.5-4.5L7 20" /></svg>}
         <span>{busy ? 'Generating…' : 'Team Update'}</span>
       </button>
@@ -62,7 +71,7 @@ export function ExportImageButton({ month }: { month: string }) {
 // Export dropdown → the two report versions as server-generated PDFs (client =
 // portrait, internal = landscape), plus a browser-print fallback. The PDFs come
 // from /tools/time-report/pdf (headless Chromium) so orientation is guaranteed.
-export function ExportMenu({ month }: { month: string }) {
+export function ExportMenu({ range, monthly }: { range: Range; monthly: boolean }) {
   const [open, setOpen] = useState(false)
   const [pdf, setPdf] = useState<PdfRequest | null>(null)
 
@@ -72,7 +81,7 @@ export function ExportMenu({ month }: { month: string }) {
   function preview(type: 'internal' | 'client') {
     setOpen(false)
     setPdf({
-      url: `/tools/time-report/pdf?month=${month}&type=${type}`,
+      url: `/tools/time-report/pdf?month=${range.from}&type=${type}`,
       title: type === 'internal' ? 'Internal report, per person' : 'Client report, summary',
       fallbackName: `i7-${type}-report.pdf`,
     })
@@ -92,7 +101,7 @@ export function ExportMenu({ month }: { month: string }) {
             {/* Matrix: report (rows) × format (columns). */}
             <div className="grid grid-cols-[1fr_44px_44px] items-center gap-x-2 gap-y-2.5">
               <div className="pl-1 text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted">Report</div>
-              <div className="text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] text-muted">PDF</div>
+              <div className={`text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] ${monthly ? 'text-muted' : 'text-slate-300'}`}>PDF</div>
               <div className="text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] text-muted">CSV</div>
 
               <div className="flex items-center gap-2.5 min-w-0">
@@ -104,10 +113,16 @@ export function ExportMenu({ month }: { month: string }) {
                   <span className="block text-[10px] text-muted leading-snug">Per-person · costs &amp; rates</span>
                 </span>
               </div>
-              <button onClick={() => preview('internal')} aria-label="Download internal report as PDF" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all disabled:opacity-50 disabled:cursor-wait">
+              <button
+                onClick={() => preview('internal')}
+                disabled={!monthly}
+                aria-label="Download internal report as PDF"
+                title={monthly ? undefined : 'A PDF is one month. Choose a single month to make one.'}
+                className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+              >
                 {<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="14 3 14 9 20 9" /><path d="M12 18v-6M9.5 15.5 12 18l2.5-2.5" /></svg>}
               </button>
-              <a href={`/tools/time-report/csv?month=${month}&type=internal`} onClick={() => setOpen(false)} aria-label="Download internal report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all">
+              <a href={`/tools/time-report/csv?from=${range.from}&to=${range.to}&type=internal`} onClick={() => setOpen(false)} aria-label="Download internal report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
               </a>
 
@@ -120,18 +135,36 @@ export function ExportMenu({ month }: { month: string }) {
                   <span className="block text-[10px] text-muted leading-snug">Summary · no names</span>
                 </span>
               </div>
-              <button onClick={() => preview('client')} aria-label="Download client report as PDF" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all disabled:opacity-50 disabled:cursor-wait">
+              <button
+                onClick={() => preview('client')}
+                disabled={!monthly}
+                aria-label="Download client report as PDF"
+                title={monthly ? undefined : 'A PDF is one month. Choose a single month to make one.'}
+                className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+              >
                 {<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="14 3 14 9 20 9" /><path d="M12 18v-6M9.5 15.5 12 18l2.5-2.5" /></svg>}
               </button>
-              <a href={`/tools/time-report/csv?month=${month}&type=client`} onClick={() => setOpen(false)} aria-label="Download client report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all">
+              <a href={`/tools/time-report/csv?from=${range.from}&to=${range.to}&type=client`} onClick={() => setOpen(false)} aria-label="Download client report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
               </a>
             </div>
             <div className="h-px bg-slate-100 mx-1 my-2" />
-            <button onClick={() => { setOpen(false); window.print() }} className="flex items-center gap-2.5 w-full text-left rounded-[8px] px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-subtle transition-colors">
+            <button
+              onClick={() => { setOpen(false); window.print() }}
+              disabled={!monthly}
+              className="flex items-center gap-2.5 w-full text-left rounded-[8px] px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-subtle transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
               Save current view as PDF
             </button>
+
+            {/* Said once, under the things it applies to, rather than three
+                tooltips somebody has to go looking for. */}
+            {!monthly && (
+              <p className="px-3 pt-1 pb-0.5 text-[11px] text-muted leading-[1.5] m-0">
+                The PDFs are a single month, so they wait for one. The CSVs cover whatever is on screen.
+              </p>
+            )}
           </div>
         </>
       )}

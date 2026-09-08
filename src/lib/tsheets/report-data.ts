@@ -11,6 +11,7 @@ import { retentionFloorDate } from './retention'
 import { loadAssignmentRates } from '@/lib/hr/compensation'
 import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
 import { monthBounds, monthsBetween } from '@/lib/tsheets/report'
+import { spanWording } from '@/lib/tsheets/range'
 import { DATA_START, retentionFloor } from '@/lib/tsheets/retention'
 import { buildI7Report, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
@@ -115,14 +116,22 @@ async function loadBudgetInputs(): Promise<BudgetInputs> {
   return { flat }
 }
 
-// project → budgeted hours for the given month.
-async function loadProjectHours(month: string): Promise<Record<string, number>> {
+// project → budgeted hours over a run of months, summed.
+//
+// The guide is planned a month at a time, so a range's guide is the months in
+// it added together: what a quarter was meant to take is what its three months
+// were meant to take.
+async function loadProjectHours(from: string, to: string): Promise<Record<string, number>> {
   const supabase = await createClient()
   const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
   if (!i7) return {}
-  const { data } = await supabase.from('i7_project_month_hours').select('project, hours_allocated').eq('client_id', i7.id).eq('month', `${month}-01`)
+  const { data } = await supabase.from('i7_project_month_hours')
+    .select('project, hours_allocated')
+    .eq('client_id', i7.id)
+    .gte('month', `${from}-01`)
+    .lte('month', `${to}-01`)
   const out: Record<string, number> = {}
-  for (const p of data ?? []) out[p.project] = Number(p.hours_allocated)
+  for (const p of data ?? []) out[p.project] = (out[p.project] ?? 0) + Number(p.hours_allocated)
   return out
 }
 
@@ -164,10 +173,19 @@ export async function loadProjectDirectory(ym: string): Promise<ProjectDirectory
   return { clientName: i7?.name ?? 'i7', month: ym, highestRate, rows }
 }
 
-export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportData> {
-  const { startDate, endDate } = monthBounds(selectedMonth)
-  const year = selectedMonth.slice(0, 4)
-  const selM = Number(selectedMonth.slice(5, 7))
+/**
+ * The report for a stretch of months, defaulting to one.
+ *
+ * `to` defaults to `from`, so every caller that wants a single month keeps
+ * asking the way it always did. Over a longer range everything sums except the
+ * balance, which is a walk rather than a total: what was left entering the
+ * range, plus the range's budgets, minus what the range cost.
+ */
+export async function loadI7ReportData(from: string, to: string = from): Promise<I7ReportData> {
+  const { startDate } = monthBounds(from)
+  const { endDate } = monthBounds(to)
+  const singleMonth = from === to
+  const year = to.slice(0, 4)
   // The balance rolls forward for as long as there is history, rather than
   // restarting every January (audit finding M3-3). January 2026 is the origin
   // because it is the first month ever pulled, so nothing precedes it.
@@ -178,9 +196,12 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     loadNames(),
     loadI7Assignments(),
     loadBudgetInputs(),
-    loadProjectHours(selectedMonth),
+    loadProjectHours(from, to),
     loadUniverse(),
-    loadReportNote(selectedMonth),
+    // A note is written against one month. Over a range there is no single
+    // month it would be about, and showing the last one's would put a sentence
+    // about September over a year of numbers.
+    singleMonth ? loadReportNote(from) : Promise.resolve(''),
   ])
 
   // Monthly $ budget = the flat i7_monthly_budget (budget + extra). The total
@@ -198,24 +219,38 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   }
   const universeArg = { projects: [...projSet], jobcodesByProject }
 
-  const selEntries = entries.filter(e => e.date.slice(0, 7) === selectedMonth)
-  const ratesSel: Record<string, number> = {}
-  for (const pid of new Set(selEntries.map(e => e.personId))) {
-    ratesSel[pid] = rateFor(assignments, pid, selectedMonth)
-  }
-  const report = buildI7Report(selEntries, ratesSel, names, startDate, universeArg)
-  const stdRate = standardI7Rate(assignments, selectedMonth)
-  // display name → hourly rate for the month, so per-person cost can be derived
-  // (report.byPerson only carries hours). Keyed the same way as report.people.
-  const personRates: Record<string, number> = {}
-  for (const [pid, r] of Object.entries(ratesSel)) personRates[names[pid] ?? `Person ${pid.slice(0, 8)}`] = r
+  const inRange = (ym: string) => ym >= from && ym <= to
+  const selEntries = entries.filter(e => inRange(e.date.slice(0, 7)))
+  const rateAt = (pid: string, ym: string) => rateFor(assignments, pid, ym)
+  const report = buildI7Report(
+    selEntries, rateAt, names, startDate, universeArg,
+    singleMonth ? undefined : { endDate, label: spanWording(from, to) },
+  )
+  const stdRate = standardI7Rate(assignments, to)
 
-  // Anyone who logged i7 time this month with no rate covering it. Their hours
-  // are counted and their cost is zero, so the budget reads as less consumed
-  // than it is, and nothing used to say so (audit finding M3-1).
-  const unratedPeople = Object.entries(ratesSel)
-    .filter(([, rate]) => rate === 0)
-    .map(([pid]) => names[pid] ?? `Person ${pid.slice(0, 8)}`)
+  // display name → hourly rate, so per-person cost can be derived (report
+  // .byPerson only carries hours). Over a range a person can have had two
+  // rates, so this is their hours-weighted average: the one number that makes
+  // hours × rate come back to the cost the report already shows.
+  const hoursByPerson: Record<string, number> = {}
+  const costByPerson: Record<string, number> = {}
+  for (const e of selEntries) {
+    const name = names[e.personId] ?? `Person ${e.personId.slice(0, 8)}`
+    const hours = e.duration / 3600
+    hoursByPerson[name] = (hoursByPerson[name] ?? 0) + hours
+    costByPerson[name] = (costByPerson[name] ?? 0) + hours * rateAt(e.personId, e.date.slice(0, 7))
+  }
+  const personRates: Record<string, number> = {}
+  for (const [name, hours] of Object.entries(hoursByPerson)) {
+    personRates[name] = hours > 0 ? round2(costByPerson[name] / hours) : 0
+  }
+
+  // Anyone who logged i7 time in the range with no rate covering any of it.
+  // Their hours are counted and their cost is zero, so the budget reads as less
+  // consumed than it is, and nothing used to say so (audit finding M3-1).
+  const unratedPeople = Object.entries(hoursByPerson)
+    .filter(([name, hours]) => round2(hours) > 0 && (costByPerson[name] ?? 0) === 0)
+    .map(([name]) => name)
     .sort((a, b) => a.localeCompare(b))
 
   // Budget minus cost over a run of months, the shape both the opening balance
@@ -231,7 +266,7 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     return { budget, cost }
   }
 
-  const before = accumulate(monthsBetween(DATA_START, selectedMonth))
+  const before = accumulate(monthsBetween(DATA_START, from))
   const opening = round2(before.budget - before.cost)
 
   // The sync prunes timesheets older than 24 months, so from January 2028 the
@@ -240,7 +275,10 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
   // higher than it should. Flagged rather than silently shown, until the month
   // closings are stored somewhere the prune cannot reach.
   const openingComplete = retentionFloor(new Date()) <= DATA_START
-  const monthBudget = monthlyBudgets[selectedMonth] ?? 0
+  // Over a range this is the range's budget, every month in it added up, and
+  // the balance below still reads as one sum: what was left coming in, plus
+  // what was granted, minus what was spent.
+  const monthBudget = monthsBetween(from, to).concat(to).reduce((sum, ym) => sum + (monthlyBudgets[ym] ?? 0), 0)
   const monthUsed = report.totalCost
   const totalAvailable = round2(opening + monthBudget)
   const carryover: I7Carryover = {
@@ -250,13 +288,20 @@ export async function loadI7ReportData(selectedMonth: string): Promise<I7ReportD
     openingComplete,
   }
 
-  // The chart still shows the selected year month by month, but its balance
-  // line continues from what came before January instead of dropping to zero.
+  // The chart shows month by month, and its balance line continues from what
+  // came before instead of dropping to zero at the start.
+  //
+  // For one month that is the year it falls in, January to it, which is the
+  // shape a budget year is read in. For a longer range it is the range itself:
+  // asked for two years, a chart of the second one only would answer a
+  // different question than the table beside it.
+  const chartMonths = singleMonth
+    ? monthsBetween(`${year}-01`, to).concat(to)
+    : monthsBetween(from, to).concat(to)
   const trend: I7TrendPoint[] = []
-  const priorYears = accumulate(monthsBetween(DATA_START, `${year}-01`))
-  let tB = priorYears.budget, tC = priorYears.cost
-  for (let m = 1; m <= selM; m++) {
-    const ym = `${year}-${String(m).padStart(2, '0')}`
+  const priorMonths = accumulate(monthsBetween(DATA_START, chartMonths[0]))
+  let tB = priorMonths.budget, tC = priorMonths.cost
+  for (const ym of chartMonths) {
     const me = entries.filter(e => e.date.slice(0, 7) === ym)
     const h = me.reduce((s, e) => s + e.duration / 3600, 0)
     const c = me.reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)

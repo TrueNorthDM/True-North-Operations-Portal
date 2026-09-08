@@ -2,9 +2,13 @@
 
 /**
  * CarryoverPanel: the i7 budget-balance widget. Left block (20%): carried-in
- * balance. Right block (80%): BudgetBalanceCard, this month's total budget,
- * closing balance, and an animated usage bar. "Budget total" = carried-in + this
- * month's budget, so Balance left = Budget total − Used stays consistent.
+ * balance. Right block (80%): BudgetBalanceCard, the period's total budget,
+ * closing balance, and an animated usage bar. "Budget total" = carried-in + the
+ * period's budget, so Balance left = Budget total − Used stays consistent.
+ *
+ * The period is one month unless the report says otherwise. Over a range the
+ * arithmetic is the same sum, so only the wording changes: `multi` stops the
+ * labels from calling a year "this month".
  *
  * BudgetBalanceCard is exported and reused on the Home page (same card, same
  * navy header, same animation) so the two surfaces mirror each other.
@@ -34,7 +38,15 @@ const PILL: Record<Status, { cls: string; label: string }> = {
 
 /** The budget-balance card: navy header + this month's total, balance left and
  *  the animated usage bar. Shared by the i7 report and the Home page. */
-export function BudgetBalanceCard({ c, month }: { c: I7Carryover; month: string }) {
+export function BudgetBalanceCard(
+  { c, month, multi = false }: {
+    c: I7Carryover
+    /** The header's label. A YYYY-MM is spelled out; anything else is shown as given. */
+    month: string
+    /** The figures cover more than one month, so the wording stops saying "this month". */
+    multi?: boolean
+  },
+) {
   const neg = c.totalLeft < 0
   const pill = PILL[statusOf(c.monthUsed, c.totalAvailable)]
   return (
@@ -54,7 +66,7 @@ export function BudgetBalanceCard({ c, month }: { c: I7Carryover; month: string 
         </div>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Budget total this month</div>
+            <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">{multi ? 'Budget total, these months' : 'Budget total this month'}</div>
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums text-tn-ink">{moneySigned(c.totalAvailable)}</span>
               {c.opening !== 0 && (
@@ -73,19 +85,19 @@ export function BudgetBalanceCard({ c, month }: { c: I7Carryover; month: string 
   )
 }
 
-export function CarryoverPanel({ c, month }: { c: I7Carryover; month: string }) {
+export function CarryoverPanel({ c, month, multi = false }: { c: I7Carryover; month: string; multi?: boolean }) {
   return (
     <div className="flex flex-col lg:flex-row gap-4 items-stretch">
       {/* Left 20%, Carried in */}
       <div className="lg:w-1/5 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(1,35,88,.06)] flex flex-col justify-center">
         <div className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Carried in</div>
         <div className={`text-[26px] font-(family-name:--font-display) font-extrabold tabular-nums mt-1 ${c.opening < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{moneySigned(c.opening)}</div>
-        <div className="text-xs text-muted mt-1">Balance brought from last month</div>
+        <div className="text-xs text-muted mt-1">{multi ? 'Balance brought into these months' : 'Balance brought from last month'}</div>
       </div>
 
       {/* Right 80%, Budget balance card (navy header + animated usage bar) */}
       <div className="lg:w-4/5">
-        <BudgetBalanceCard c={c} month={month} />
+        <BudgetBalanceCard c={c} month={month} multi={multi} />
       </div>
     </div>
   )
