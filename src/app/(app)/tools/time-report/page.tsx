@@ -27,7 +27,7 @@ import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { getHoursImportStatus } from '@/lib/timeclock/import-status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
-import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
+import { ReportMeta } from '@/components/tsheets/ReportMeta'
 import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
 
 // Sample tree shown when no API token is configured, so the structure is visible.
@@ -195,20 +195,12 @@ async function I7Tab({ month, team }: { month?: string; team?: string }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <p className="text-sm text-muted leading-relaxed m-0 mr-1">
-          {sourceLine}
-        </p>
-        <Link
-          href="/tools/time-report/guide"
-          title="How the report works"
-          aria-label="How the report works"
-          className="shrink-0 w-9 h-9 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-        </Link>
-        <SyncStatus syncedAt={hours.syncedAt} failed={hours.failed} />
-      </div>
+      <ReportMeta
+        sourceLine={sourceLine}
+        guideHref="/tools/time-report/guide"
+        syncedAt={hours.syncedAt}
+        failed={hours.failed}
+      />
 
       {!configured ? (
         <>
