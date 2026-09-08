@@ -20,11 +20,24 @@ import { money } from '@/lib/tsheets/format'
 import { InfoDialog } from '@/components/ui/InfoDialog'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 
-const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-3 whitespace-nowrap'
+// Two header rows: what a block of columns is about, then what each one holds.
+//
+// One row could not do it. "Donations this month" and "2025 hours same month"
+// are wider than any figure under them, so twelve headers were setting the
+// width of a table whose cells are six characters wide, and the last two
+// columns fell off the right edge. Saying "this month" once over four columns
+// instead of in four of them is what brings it back inside the page.
+const thGroup = 'text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted px-2.5 pt-3 pb-1.5 whitespace-nowrap'
+// px-2.5, not px-3, on the eleven number columns. The sidebar and the page
+// padding take 112px, so a 1280-wide laptop has 1168 to give a table that wants
+// 1153: fifteen pixels, which a scrollbar or a notch of browser zoom eats.
+const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-2.5 pb-3 pt-1 whitespace-nowrap'
+/** The line that starts a block of columns, drawn in the head, body and foot alike. */
+const edge = 'border-l border-[rgba(1,35,88,0.1)]'
 const card = 'rounded-[14px] border border-slate-200 bg-white p-5'
 const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
 const big = 'mt-1 font-(family-name:--font-display) font-extrabold text-[26px] text-tn-ink tabular-nums leading-tight'
-const num = 'px-3 py-3 text-right tabular-nums'
+const num = 'px-2.5 py-3 text-right tabular-nums'
 const bal = 'bg-[rgba(30,125,127,0.06)]'
 const hi = 'bg-[rgba(224,138,30,0.07)]'
 
@@ -150,28 +163,36 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
       <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
         <table className="min-w-full text-sm">
           <thead>
+            <tr className="bg-subtle">
+              <th rowSpan={2} className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10 align-bottom">Project</th>
+              <th colSpan={3} className={`${thGroup} ${bal} border-r border-[rgba(1,35,88,0.1)]`}>Prepaid hours</th>
+              {/* In the People view the person columns and their total are all
+                  this month's hours, so they sit under the one heading. */}
+              <th colSpan={view === 'costs' ? 4 : people.length + 1} className={thGroup}>This month</th>
+              <th colSpan={view === 'costs' ? 3 : 1} className={`${thGroup} ${edge}`}>{thisYear} to date</th>
+              <th className={`${thGroup} ${edge}`}>{lastYear}</th>
+            </tr>
             <tr className="bg-subtle border-b border-slate-200">
-              <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10">Project</th>
               <th className={`${thNum} ${bal}`}>Carried in</th>
               <th className={`${thNum} ${bal}`}>Prepaid</th>
               <th className={`${thNum} ${bal} border-r border-[rgba(1,35,88,0.1)]`}>Remaining</th>
               {view === 'people' && people.map(p => <th key={p} className={thNum}>{p}</th>)}
-              <th className={`${thNum} ${hi} border-l border-[rgba(224,138,30,0.18)]`}>Hours this month</th>
+              <th className={`${thNum} ${hi} border-l border-[rgba(224,138,30,0.18)]`}>{view === 'costs' ? 'Hours' : 'Total'}</th>
               {view === 'costs' && (
                 <>
-                  <th className={thNum}>Employee costs</th>
-                  <th className={thNum}>Contractor costs</th>
-                  <th className={thNum}>Donations this month</th>
+                  <th className={thNum}>Employee</th>
+                  <th className={thNum}>Contractor</th>
+                  <th className={thNum}>Donations</th>
                 </>
               )}
-              <th className={thNum}>Total hours {thisYear}</th>
+              <th className={`${thNum} ${edge}`}>Hours</th>
               {view === 'costs' && (
                 <>
-                  <th className={thNum}>Total donations {thisYear}</th>
-                  <th className={thNum}>Total costs {thisYear}</th>
+                  <th className={thNum}>Donations</th>
+                  <th className={thNum}>Costs</th>
                 </>
               )}
-              <th className={thNum}>{lastYear} hours same month</th>
+              <th className={`${thNum} ${edge}`}>Same month</th>
             </tr>
           </thead>
           <tbody>
@@ -203,14 +224,14 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
                     <td className={`${num} text-slate-300`}>{r.donationsThisMonth == null ? '' : money(r.donationsThisMonth)}</td>
                   </>
                 )}
-                <td className={num}>{h2(r.yearToDate)}</td>
+                <td className={`${num} ${edge}`}>{h2(r.yearToDate)}</td>
                 {view === 'costs' && (
                   <>
                     <td className={`${num} text-slate-300`}>{r.donationsYtd == null ? '' : money(r.donationsYtd)}</td>
                     <td className={`${num} font-semibold text-tn-ink`}>{m0(r.totalCosts)}</td>
                   </>
                 )}
-                <td className={`${num} text-muted`}>{h2(r.sameMonthLastYear)}</td>
+                <td className={`${num} ${edge} text-muted`}>{h2(r.sameMonthLastYear)}</td>
               </tr>
             ))}
           </tbody>
@@ -233,14 +254,14 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
                   <td className={num} />
                 </>
               )}
-              <td className={`${num} font-extrabold`}>{totals.yearToDate.toFixed(2)}</td>
+              <td className={`${num} ${edge} font-extrabold`}>{totals.yearToDate.toFixed(2)}</td>
               {view === 'costs' && (
                 <>
                   <td className={num} />
                   <td className={`${num} font-extrabold`}>{money(totals.totalCosts)}</td>
                 </>
               )}
-              <td className={`${num} font-extrabold text-muted`}>{totals.sameMonthLastYear.toFixed(2)}</td>
+              <td className={`${num} ${edge} font-extrabold text-muted`}>{totals.sameMonthLastYear.toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>
