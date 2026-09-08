@@ -61,8 +61,6 @@ function LegendRow({ color, label, value, extra }: { color: string; label: strin
 // ── main ────────────────────────────────────────────────────────────────────
 export function ReportPrint({ report, projectHours, carryover, stdRate, type, monthLabel, generatedOn, note }: Props) {
   useEffect(() => {
-    document.documentElement.classList.remove('dark')
-    document.documentElement.style.colorScheme = 'light'
     // Server-side PDF (Puppeteer, ?pdf=1) prints via page.pdf() itself, don't
     // pop the browser print dialog in that headless render.
     if (new URLSearchParams(window.location.search).has('pdf')) return

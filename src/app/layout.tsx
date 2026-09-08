@@ -23,19 +23,14 @@ export const metadata: Metadata = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // suppressHydrationWarning on <html>: /theme-init.js adds `.dark` before
-    // React hydrates, so the server-rendered class list intentionally differs.
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} ${openSans.variable} ${bebas.variable} ${raleway.variable} h-full antialiased`} suppressHydrationWarning>
-      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) inject
-          attributes like data-gr-ext-installed into <body> before React
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} ${openSans.variable} ${bebas.variable} ${raleway.variable} h-full antialiased`}>
+      {/* suppressHydrationWarning on <body>: browser extensions (e.g. Grammarly)
+          inject attributes like data-gr-ext-installed into <body> before React
           hydrates, causing a harmless attribute mismatch. This suppresses the
           warning for <body>'s own attributes only, it does NOT mask real
-          hydration bugs deeper in the tree. */}
+          hydration bugs deeper in the tree. Nothing to do with the theme: the
+          portal is light, and no script touches <html> before paint. */}
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        {/* Blocking on purpose: applies the saved/system theme pre-paint so
-            dark-mode users never see a light flash. */}
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="/theme-init.js" />
         {children}
       </body>
     </html>

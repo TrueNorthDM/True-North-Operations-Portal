@@ -6,7 +6,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { UserMenu } from '@/components/UserMenu'
 import { AccessPing } from '@/components/AccessPing'
 import { ViewAsKeeper } from '@/components/ViewAsKeeper'
@@ -40,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* True North lockup. On dark the navy wordmark sits on a white chip so
             it stays legible; on the white light bar the chip is invisible. */}
         <Link href="/" className="flex items-end gap-2.5 group" aria-label="Go to dashboard">
-          <span className="rounded-lg dark:bg-[#ffffff] dark:px-2 dark:py-1">
+          <span className="rounded-lg">
             <Image
               src="/logos/true-north.png"
               alt="True North Digital Marketing"
@@ -56,7 +55,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
           <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} />

@@ -5,7 +5,6 @@
 import { Suspense } from 'react'
 import Image from 'next/image'
 import { LoginForm } from '@/components/LoginForm'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { Sunrise } from '@/components/Sunrise'
 
 export default function LoginPage() {
@@ -14,9 +13,8 @@ export default function LoginPage() {
       {/* Theme toggle, the top-bar toggle only exists once signed in, so the
           login screen gets its own so you can switch before logging in. */}
       <div className="absolute right-5 top-5 z-10">
-        <ThemeToggle />
       </div>
-      <div className="flex w-full max-w-[1120px] min-h-[620px] overflow-hidden rounded-[22px] bg-card shadow-[0_24px_60px_-24px_rgba(1,35,88,.30)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,.65)]">
+      <div className="flex w-full max-w-[1120px] min-h-[620px] overflow-hidden rounded-[22px] bg-card shadow-[0_24px_60px_-24px_rgba(1,35,88,.30)],0,0,.65)]">
         {/* Left brand panel, hidden on small screens */}
         <div
           className="relative hidden w-[480px] shrink-0 flex-col justify-end overflow-hidden p-12 text-white md:flex"
@@ -40,7 +38,7 @@ export default function LoginPage() {
         {/* Right panel, logo + form */}
         <div className="flex flex-1 flex-col items-center justify-center px-8 py-14 sm:px-14">
           <div className="w-full max-w-sm text-center">
-            <span className="mb-9 inline-block rounded-lg dark:bg-[#ffffff] dark:p-2">
+            <span className="mb-9 inline-block rounded-lg">
               <Image src="/logos/true-north.png" alt="True North Digital Marketing" width={1352} height={705} priority className="h-12 w-auto" />
             </span>
             <Suspense fallback={null}>

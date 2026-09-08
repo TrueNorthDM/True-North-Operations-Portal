@@ -97,10 +97,7 @@ export async function proxy(request: NextRequest) {
 // Match all routes except Next.js internals and static files.
 export const config = {
   matcher: [
-    // Exclude Next internals + static public assets. theme-init.js MUST be here:
-    // it's requested pre-auth on /login, and without the exclusion the gate
-    // 307s it to /login, so the saved/system theme never applies on the login
-    // screen.
-    '/((?!_next/static|_next/image|favicon.ico|logos/|theme-init.js|.*\\.svg|.*\\.png|.*\\.jpg).*)',
+    // Exclude Next internals + static public assets.
+    '/((?!_next/static|_next/image|favicon.ico|logos/|.*\\.svg|.*\\.png|.*\\.jpg).*)',
   ],
 }
