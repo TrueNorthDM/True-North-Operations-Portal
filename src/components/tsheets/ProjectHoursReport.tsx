@@ -17,6 +17,7 @@
 
 import { useState } from 'react'
 import { money } from '@/lib/tsheets/format'
+import { InfoDialog } from '@/components/ui/InfoDialog'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 
 const thNum = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-3 whitespace-nowrap'
@@ -95,7 +96,7 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
         </div>
       </div>
 
-      <div className="border-b border-slate-200 flex gap-1">
+      <div className="border-b border-slate-200 flex items-center gap-1">
         {(['costs', 'people'] as const).map(v => (
           <button
             key={v}
@@ -108,6 +109,42 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
             {v === 'costs' ? 'Costs' : 'People'}
           </button>
         ))}
+        {/* Beside the tabs rather than under the table: the questions it
+            answers are asked while looking at a cell, not after scrolling
+            past everything. */}
+        <span className="ml-auto pb-1.5">
+          <InfoDialog title="How this report is built" label="How this report is built">
+            <p className="m-0">
+              <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Costs here are what a project consumed, not what left the bank.</strong>{' '}
+              They are hours × each person&rsquo;s break-even rate. For somebody on the payroll that is an
+              attribution: they are paid the same whether they logged ten hours or a hundred.
+            </p>
+            <p className="m-0">
+              <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Nothing here is billed.</strong>{' '}
+              These projects are donation funded. Grants Pass Church and School are the exception: they buy
+              hours in advance at $90, which is what the three balance columns track. The other two have no
+              allowance, so those cells are blank rather than zero.
+            </p>
+            <p className="m-0 text-muted">
+              Donations are entered by hand and there is nowhere to enter them yet, so both donation
+              columns are blank. Blank rather than zero: zero would say nothing came in.
+            </p>
+            <p className="m-0 text-muted">
+              All four projects are recognised by the <span className="font-semibold">“2 Project”</span>{' '}
+              field on each entry. Hope for Africa in particular is not a job code: its work sits under two
+              different ones and only the project value joins them, which is why counting by job code came
+              out 120 to 190 hours short every month.
+            </p>
+            {/* The one column that compares two different kinds of truth. Saying so
+                is cheaper than being asked about it every month. */}
+            <p className="m-0 text-muted">
+              The <span className="font-semibold">{lastYear} same month</span> column is computed from the
+              timesheets as they stand today, so it can differ from what the {`${lastYear} tracking sheet`}{' '}
+              said at the time: a year of corrections and retroactive approvals sits between them. Across the
+              months that were checked the gap ran from four hours over to eighty-seven under.
+            </p>
+          </InfoDialog>
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
@@ -220,38 +257,6 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
           </p>
         </div>
       )}
-
-      <div className="rounded-[12px] border border-slate-200 bg-subtle p-4 text-sm leading-relaxed space-y-2">
-        <p className="m-0">
-          <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Costs here are what a project consumed, not what left the bank.</strong>{' '}
-          They are hours × each person&rsquo;s break-even rate. For somebody on the payroll that is an
-          attribution: they are paid the same whether they logged ten hours or a hundred.
-        </p>
-        <p className="m-0">
-          <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Nothing here is billed.</strong>{' '}
-          These projects are donation funded. Grants Pass Church and School are the exception: they buy
-          hours in advance at $90, which is what the three balance columns track. The other two have no
-          allowance, so those cells are blank rather than zero.
-        </p>
-        <p className="m-0 text-muted">
-          Donations are entered by hand and there is nowhere to enter them yet, so both donation
-          columns are blank. Blank rather than zero: zero would say nothing came in.
-        </p>
-        <p className="m-0 text-muted">
-          All four projects are recognised by the <span className="font-semibold">“2 Project”</span>{' '}
-          field on each entry. Hope for Africa in particular is not a job code: its work sits under two
-          different ones and only the project value joins them, which is why counting by job code came
-          out 120 to 190 hours short every month.
-        </p>
-        {/* The one column that compares two different kinds of truth. Saying so
-            is cheaper than being asked about it every month. */}
-        <p className="m-0 text-muted">
-          The <span className="font-semibold">{lastYear} same month</span> column is computed from the
-          timesheets as they stand today, so it can differ from what the {`${lastYear} tracking sheet`}{' '}
-          said at the time: a year of corrections and retroactive approvals sits between them. Across the
-          months that were checked the gap ran from four hours over to eighty-seven under.
-        </p>
-      </div>
     </div>
   )
 }
