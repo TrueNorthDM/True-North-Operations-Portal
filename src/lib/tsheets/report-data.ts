@@ -222,6 +222,19 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   const inRange = (ym: string) => ym >= from && ym <= to
   const selEntries = entries.filter(e => inRange(e.date.slice(0, 7)))
   const rateAt = (pid: string, ym: string) => rateFor(assignments, pid, ym)
+
+  // Bucketed once, because everything below asks the same question of the same
+  // list. The balance walk and the chart both go month by month from January
+  // 2026, and each used to re-scan every entry ever loaded to find its month:
+  // over a year's range that is twenty passes of the whole array before a single
+  // number is drawn.
+  const byMonth = new Map<string, I7Entry[]>()
+  for (const e of entries) {
+    const ym = e.date.slice(0, 7)
+    const list = byMonth.get(ym)
+    if (list) list.push(e); else byMonth.set(ym, [e])
+  }
+  const monthEntries = (ym: string) => byMonth.get(ym) ?? []
   const report = buildI7Report(
     selEntries, rateAt, names, startDate, universeArg,
     singleMonth ? undefined : { endDate, label: spanWording(from, to) },
@@ -259,8 +272,7 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
     let budget = 0, cost = 0
     for (const ym of months) {
       budget += monthlyBudgets[ym] ?? 0
-      cost += entries
-        .filter(e => e.date.slice(0, 7) === ym)
+      cost += monthEntries(ym)
         .reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)
     }
     return { budget, cost }
@@ -302,7 +314,7 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   const priorMonths = accumulate(monthsBetween(DATA_START, chartMonths[0]))
   let tB = priorMonths.budget, tC = priorMonths.cost
   for (const ym of chartMonths) {
-    const me = entries.filter(e => e.date.slice(0, 7) === ym)
+    const me = monthEntries(ym)
     const h = me.reduce((s, e) => s + e.duration / 3600, 0)
     const c = me.reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)
     const b = monthlyBudgets[ym] ?? 0
@@ -354,13 +366,21 @@ export async function loadI7History(from: string, to: string): Promise<HistoryRo
   ])
   const monthlyBudgets: Record<string, number> = { ...budgetInputs.flat }
 
+  // One pass to bucket, rather than one pass per month inside the walk below.
+  const byMonth = new Map<string, I7Entry[]>()
+  for (const e of entries) {
+    const ym = e.date.slice(0, 7)
+    const list = byMonth.get(ym)
+    if (list) list.push(e); else byMonth.set(ym, [e])
+  }
+
   const rows: HistoryRow[] = []
   let balance = 0
   // Walked from DATA_START even when the range starts later: the carry-in of
   // the first row is the whole history before it, not zero.
   for (const ym of [...monthsBetween(DATA_START, to), to]) {
     const carryIn = balance
-    const me = entries.filter(e => e.date.slice(0, 7) === ym)
+    const me = byMonth.get(ym) ?? []
     const hours = me.reduce((s, e) => s + e.duration / 3600, 0)
     const used = me.reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)
     const budget = monthlyBudgets[ym] ?? 0

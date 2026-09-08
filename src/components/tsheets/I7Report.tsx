@@ -6,7 +6,7 @@
 // is computed server-side and passed in.
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { RangeFilter } from './RangeFilter'
@@ -65,6 +65,7 @@ function newestOf(months: string[]): string {
 
 export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '' }: Props) {
   const router = useRouter()
+  const [navigating, startNav] = useTransition()
   const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
   const [openCodes, setOpenCodes] = useState<Set<string>>(new Set())
@@ -112,17 +113,46 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
   // Both filters live in the URL together, so changing one keeps the other and
   // the address stays shareable. Empty team drops the param instead of sending
   // an empty one.
+  //
+  // In a transition, so choosing a period never blocks the click that chose it.
+  // Reloading this report means re-reading every i7 entry since January 2026 to
+  // walk the balance forward, which is not instant, and React would otherwise
+  // hold the whole tree still until it came back.
   function go(patch: { range?: Range; team?: string }) {
     const r = patch.range ?? range
     const team = patch.team ?? selectedTeam
-    router.push(`/tools/time-report?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
+    startNav(() => {
+      router.push(`/tools/time-report?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
+    })
   }
 
-  // The filter is the URL's, so there is no second copy of it to fall out of
-  // step: what the button says is read back from the range on screen, and
-  // choosing navigates rather than setting state here.
   const newest = availableMonths.length ? newestOf(availableMonths) : range.to
-  const choice = choiceFromRange(range.from, range.to, newest)
+
+  // The filter answers the click, not the server.
+  //
+  // It used to read its state straight back out of the URL, which meant the
+  // radio dot did not move until the new month's data had arrived: a second or
+  // more of a control that looked broken. It holds its own answer now and the
+  // URL catches up behind it.
+  const urlKey = `${range.from}|${range.to}`
+  const [chosen, setChosen] = useState(() => choiceFromRange(range.from, range.to, newest))
+  const [lastUrl, setLastUrl] = useState(urlKey)
+  // Adjusting state during render rather than in an effect, the React-documented
+  // way to follow a prop. This fires on Back and Forward, where the URL moves
+  // without anybody touching the filter.
+  if (lastUrl !== urlKey) {
+    setLastUrl(urlKey)
+    setChosen(choiceFromRange(range.from, range.to, newest))
+  }
+
+  function pickRange(next: RangeChoice) {
+    setChosen(next)
+    const r = rangeOf(next, newest)
+    // A half-typed custom range (first month after the last) is not worth a
+    // round trip. The popover says so; nothing is fetched until it is fixed.
+    if (r.from <= r.to) go({ range: r })
+  }
+
   const oneMonth = isSingleMonth(range)
   const periodLabel = spanWording(range.from, range.to)
 
@@ -149,8 +179,8 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</span>
         <RangeFilter
-          value={choice}
-          onChange={(next: RangeChoice) => go({ range: rangeOf(next, newest) })}
+          value={chosen}
+          onChange={pickRange}
           currentMonth={newest}
           modes={['month', 'year', 'last12', 'custom']}
           months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
@@ -186,134 +216,142 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         )}
       </div>
 
-      {/* The filter changes which columns are shown, never what the report says
-          the month cost. Saying so on screen is cheaper than someone adding up
-          three columns and reporting the difference as a discrepancy. */}
-      {teamPeople && (
-        <p className="text-sm text-muted m-0">
-          Showing the hour columns for <span className="font-semibold text-tn-ink">{teams.find(t => t.id === selectedTeam)?.name}</span> only.
-          Hours used, cost and budget stay the figures for everyone.
-        </p>
-      )}
+      {/* Dimmed, not replaced, while the next period loads. The figures on
+          screen are still the last real answer, and blanking them would make
+          a one-second wait look like a month with no hours. */}
+      <div
+        aria-busy={navigating}
+        className={`space-y-6 transition-opacity duration-150 ${navigating ? 'opacity-45' : ''}`}
+      >
+        {/* The filter changes which columns are shown, never what the report says
+            the month cost. Saying so on screen is cheaper than someone adding up
+            three columns and reporting the difference as a discrepancy. */}
+        {teamPeople && (
+          <p className="text-sm text-muted m-0">
+            Showing the hour columns for <span className="font-semibold text-tn-ink">{teams.find(t => t.id === selectedTeam)?.name}</span> only.
+            Hours used, cost and budget stay the figures for everyone.
+          </p>
+        )}
 
-      {/* View tabs, the same month's data as a table (In Numbers) or charts (In Graphics) */}
-      <div className="flex gap-1 border-b border-slate-200">
-        {(['numbers', 'graphics'] as const).map(v => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'}`}
-          >
-            {v === 'numbers' ? 'In Numbers' : 'In Graphics'}
-          </button>
-        ))}
-      </div>
-
-      {view === 'graphics' ? (
-        <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} trend={trend} />
-      ) : (
-      <>
-      {/* Carryover: bank-account running balance */}
-      {carryover && <CarryoverPanel c={carryover} month={periodLabel} multi={!oneMonth} />}
-
-      {/*
-        The month note card was here too. It is still printed on the client PDF
-        as "Highlights"; what moved is only where it gets written, since the
-        report page is for reading the month, not editing it.
-      */}
-
-      {/*
-        Hours with no rate behind them. rateFor() returns 0 when no assignment
-        covers a person for the month, so their hours are counted and their
-        cost is not: the budget reads as less consumed than it really is. This
-        is the only place that says so, because the totals themselves look
-        perfectly ordinary (audit finding M3-1). Internal only, never printed
-        on the client report.
-      */}
-      {unratedPeople.length > 0 && (
-        <div className="rounded-[14px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-[13px] text-[#7a4e05]">
-          <div className="font-semibold">
-            {unratedPeople.length === 1 ? '1 person has hours but no rate' : `${unratedPeople.length} people have hours but no rate`}
-          </div>
-          <div className="mt-1 leading-relaxed">
-            {unratedPeople.join(', ')}. Their hours are in the totals below and their cost is counted as $0,
-            so the budget shows less used than it really is. Set a rate in{' '}
-            <a href="/directory#rates" className="underline font-semibold">People, Teams and Permissions → Rates &amp; Costs</a>.
-          </div>
+        {/* View tabs, the same month's data as a table (In Numbers) or charts (In Graphics) */}
+        <div className="flex gap-1 border-b border-slate-200">
+          {(['numbers', 'graphics'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'}`}
+            >
+              {v === 'numbers' ? 'In Numbers' : 'In Graphics'}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/*
-        The summary chips (Total hours, Total cost, Projects, People) used to
-        sit here. Every one of them is the table's own footer row restated a few
-        centimetres above it, so they added a second place for the same number
-        to be read from, and one more thing to keep in step.
-      */}
-      <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-subtle border-b border-slate-200">
-              <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10">Project · Job code · Activity</th>
-              {showBudgetHrs && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget hrs</th>}
-              {showHrsAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${hrsAvailSep}`}>Hrs avail.</th>}
-              {showBudgetAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${availSep}`}>Budget avail.</th>}
-              {showCost && <th className={`${thNum} bg-[rgba(30,125,127,0.06)] ${sep}`}>Budget used</th>}
-              {people.map(name => <th key={name} className={thNum}>{name}</th>)}
-              <th className={`${thNum} bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]`}>Hours used</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.projects.length === 0 && (
-              <tr><td colSpan={cols} className="px-4 py-6 text-center text-sm text-slate-400">No i7 hours logged in {periodLabel}.</td></tr>
-            )}
-            {data.projects.map(p => (
-              <ProjectRows
-                key={p.project}
-                project={p}
-                people={people}
-                pOpen={openProjects.has(p.project)}
-                openCodes={openCodes}
-                showCost={showCost}
-                showBudgetHrs={showBudgetHrs}
-                showHrsAvail={showHrsAvail}
-                showBudgetAvail={showBudgetAvail}
-                stdRate={stdRate}
-                budgetHours={projectHours[p.project] ?? null}
-                onToggleProject={() => toggle(openProjects, p.project, setOpenProjects)}
-                onToggleCode={(code) => toggle(openCodes, `${p.project}|${code}`, setOpenCodes)}
-              />
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-slate-300 bg-subtle">
-              <td className="px-4 py-3 font-(family-name:--font-display) font-extrabold text-tn-ink sticky left-0 bg-subtle z-10">Total</td>
-              {showBudgetHrs && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)]">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '-'}</td>}
-              {showHrsAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)]${hrsAvailSep} ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '-'}</td>}
-              {showBudgetAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)]${availSep} ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '-'}</td>}
-              {showCost && <td className={`px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)] ${sep}`}>{money(data.totalCost)}</td>}
-              {people.map(name => (
-                <td key={name} className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">-</span>}</td>
+        {view === 'graphics' ? (
+          <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} trend={trend} />
+        ) : (
+        <>
+        {/* Carryover: bank-account running balance */}
+        {carryover && <CarryoverPanel c={carryover} month={periodLabel} multi={!oneMonth} />}
+
+        {/*
+          The month note card was here too. It is still printed on the client PDF
+          as "Highlights"; what moved is only where it gets written, since the
+          report page is for reading the month, not editing it.
+        */}
+
+        {/*
+          Hours with no rate behind them. rateFor() returns 0 when no assignment
+          covers a person for the month, so their hours are counted and their
+          cost is not: the budget reads as less consumed than it really is. This
+          is the only place that says so, because the totals themselves look
+          perfectly ordinary (audit finding M3-1). Internal only, never printed
+          on the client report.
+        */}
+        {unratedPeople.length > 0 && (
+          <div className="rounded-[14px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-[13px] text-[#7a4e05]">
+            <div className="font-semibold">
+              {unratedPeople.length === 1 ? '1 person has hours but no rate' : `${unratedPeople.length} people have hours but no rate`}
+            </div>
+            <div className="mt-1 leading-relaxed">
+              {unratedPeople.join(', ')}. Their hours are in the totals below and their cost is counted as $0,
+              so the budget shows less used than it really is. Set a rate in{' '}
+              <a href="/directory#rates" className="underline font-semibold">People, Teams and Permissions → Rates &amp; Costs</a>.
+            </div>
+          </div>
+        )}
+
+        {/*
+          The summary chips (Total hours, Total cost, Projects, People) used to
+          sit here. Every one of them is the table's own footer row restated a few
+          centimetres above it, so they added a second place for the same number
+          to be read from, and one more thing to keep in step.
+        */}
+        <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-subtle border-b border-slate-200">
+                <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-4 py-3 sticky left-0 bg-subtle z-10">Project · Job code · Activity</th>
+                {showBudgetHrs && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]`}>Budget hrs</th>}
+                {showHrsAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${hrsAvailSep}`}>Hrs avail.</th>}
+                {showBudgetAvail && <th className={`${thNum} bg-[rgba(30,125,127,0.06)]${availSep}`}>Budget avail.</th>}
+                {showCost && <th className={`${thNum} bg-[rgba(30,125,127,0.06)] ${sep}`}>Budget used</th>}
+                {people.map(name => <th key={name} className={thNum}>{name}</th>)}
+                <th className={`${thNum} bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]`}>Hours used</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.projects.length === 0 && (
+                <tr><td colSpan={cols} className="px-4 py-6 text-center text-sm text-slate-400">No i7 hours logged in {periodLabel}.</td></tr>
+              )}
+              {data.projects.map(p => (
+                <ProjectRows
+                  key={p.project}
+                  project={p}
+                  people={people}
+                  pOpen={openProjects.has(p.project)}
+                  openCodes={openCodes}
+                  showCost={showCost}
+                  showBudgetHrs={showBudgetHrs}
+                  showHrsAvail={showHrsAvail}
+                  showBudgetAvail={showBudgetAvail}
+                  stdRate={stdRate}
+                  budgetHours={projectHours[p.project] ?? null}
+                  onToggleProject={() => toggle(openProjects, p.project, setOpenProjects)}
+                  onToggleCode={(code) => toggle(openCodes, `${p.project}|${code}`, setOpenCodes)}
+                />
               ))}
-              <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]">{data.totalHours.toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs text-muted leading-relaxed">
-          Hours pulled from QuickBooks Time · grouped by the “1 - i7 Code” &amp; “3 Activity” fields · one hours column per person
-          {showCost && <> · Budget used = hours × each person&apos;s rate</>}
-          {showBudgetAvail && <> · Budget avail. = hours available × the i7 rate (${stdRate}/h)</>}
-        </p>
-        <div className="flex gap-2 text-xs font-(family-name:--font-display) font-bold">
-          <button onClick={expandAll} className="text-tn-teal hover:underline underline-offset-2">Expand all</button>
-          <span className="text-slate-300">·</span>
-          <button onClick={collapseAll} className="text-tn-teal hover:underline underline-offset-2">Collapse all</button>
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-slate-300 bg-subtle">
+                <td className="px-4 py-3 font-(family-name:--font-display) font-extrabold text-tn-ink sticky left-0 bg-subtle z-10">Total</td>
+                {showBudgetHrs && <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)]">{totalBudgetHours ? totalBudgetHours.toLocaleString() : '-'}</td>}
+                {showHrsAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)]${hrsAvailSep} ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-tn-ink'}`}>{totalBudgetHours ? totalHrsAvail.toFixed(2) : '-'}</td>}
+                {showBudgetAvail && <td className={`px-3 py-3 text-right font-extrabold tabular-nums bg-[rgba(30,125,127,0.06)]${availSep} ${totalHrsAvail < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}>{totalBudgetHours ? moneySigned(totalHrsAvail * stdRate) : '-'}</td>}
+                {showCost && <td className={`px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(30,125,127,0.06)] ${sep}`}>{money(data.totalCost)}</td>}
+                {people.map(name => (
+                  <td key={name} className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums whitespace-nowrap">{totalByPerson[name] ? fmtHours(Math.round((totalByPerson[name]) * 100) / 100) : <span className="text-slate-300">-</span>}</td>
+                ))}
+                <td className="px-3 py-3 text-right font-extrabold text-tn-ink tabular-nums bg-[rgba(224,138,30,0.07)] border-l border-[rgba(224,138,30,0.18)]">{data.totalHours.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
+
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className="text-xs text-muted leading-relaxed">
+            Hours pulled from QuickBooks Time · grouped by the “1 - i7 Code” &amp; “3 Activity” fields · one hours column per person
+            {showCost && <> · Budget used = hours × each person&apos;s rate</>}
+            {showBudgetAvail && <> · Budget avail. = hours available × the i7 rate (${stdRate}/h)</>}
+          </p>
+          <div className="flex gap-2 text-xs font-(family-name:--font-display) font-bold">
+            <button onClick={expandAll} className="text-tn-teal hover:underline underline-offset-2">Expand all</button>
+            <span className="text-slate-300">·</span>
+            <button onClick={collapseAll} className="text-tn-teal hover:underline underline-offset-2">Collapse all</button>
+          </div>
+        </div>
+        </>
+        )}
       </div>
-      </>
-      )}
     </div>
   )
 }
