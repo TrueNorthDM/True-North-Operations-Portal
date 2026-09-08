@@ -4,12 +4,12 @@
 // four hundred assignments is the first thing on the screen and the one with
 // two is at the bottom where it belongs.
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLinkBoard } from '@/lib/monday/worklist/links'
 import { MondayLinksClient } from '@/components/monday/MondayLinksClient'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const metadata = { title: 'Monday accounts' }
 export const dynamic = 'force-dynamic'
@@ -29,13 +29,7 @@ export default async function MondayLinksPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-1">
-          <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <Link href="/admin" className="font-semibold hover:text-tn-ink transition-colors">Admin</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">Monday accounts</span>
-        </div>
+        <Breadcrumb parents={['/admin']} now="Monday accounts" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Monday accounts</h1>
         <p className="text-muted mt-1.5 leading-relaxed">
           Every assignment in My Work carries a Monday account. Until that account is attached to somebody in

@@ -7,10 +7,10 @@
  * in the repo. Styling matches the handoff prototype.
  */
 
-import Link from 'next/link'
 import { SearchField } from '@/components/ui/SearchField'
 import { useMemo, useState } from 'react'
 import { Select } from '@/components/ui/Select'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import {
   TICKETS,
   TYPE_META,
@@ -115,13 +115,7 @@ export function TicketsClient() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-2">
-          <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <Link href="/admin" className="font-semibold hover:text-tn-ink transition-colors">Admin</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">Tickets</span>
-        </div>
+        <Breadcrumb parents={['/admin']} now="Tickets" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Tickets</h1>
         <p className="mt-1.5 text-muted">Everything we need to resolve, so nothing gets lost.</p>
       </div>

@@ -30,6 +30,7 @@ import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
 import { ClientFullHistory } from '@/components/tsheets/ClientFullHistory'
 import { ReportMeta } from '@/components/tsheets/ReportMeta'
 import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 // Sample tree shown when no API token is configured, so the structure is visible.
 const MOCK_I7: I7Report = {
@@ -93,13 +94,7 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm text-muted mb-1">
-            <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
-            <span>/</span>
-            <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools</Link>
-            <span>/</span>
-            <span className="text-foreground font-semibold">Client Report · i7</span>
-          </div>
+          <Breadcrumb parents={['/tools']} now="Client Report · i7" />
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Client Report · i7</h1>
           <p className="mt-1.5 text-muted leading-relaxed">
             Hours, cost and budget usage for i7 Marketing.

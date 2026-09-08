@@ -10,6 +10,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 // ── Icons (line style, system look) ─────────────────────────────────
 const S = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
@@ -108,13 +109,7 @@ export function SystemManual() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-2">
-          <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <Link href="/admin" className="font-semibold hover:text-tn-ink transition-colors">Admin</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">System manual</span>
-        </div>
+        <Breadcrumb parents={['/admin']} now="System manual" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">System manual</h1>
         <p className="mt-1.5 max-w-2xl text-muted">How the Operations Portal is put together, every page, who can see what, and how Monday, WordPress and QuickBooks Time feed the numbers you see.</p>
       </div>

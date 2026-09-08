@@ -7,9 +7,9 @@
  * maintained in the repo. Styling matches the handoff prototype.
  */
 
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { TEST_AREAS } from '@/lib/tests/data'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 type Result = 'pass' | 'fail' | 'skip'
 type Filter = 'all' | 'pass' | 'fail' | 'skip' | 'none'
@@ -125,13 +125,7 @@ export function TestChecklist() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div>
-          <div className="flex items-center gap-2 text-sm text-muted mb-2">
-            <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>
-            <span className="text-slate-300">/</span>
-            <Link href="/admin" className="font-semibold hover:text-tn-ink transition-colors">Admin</Link>
-            <span className="text-slate-300">/</span>
-            <span className="font-semibold text-tn-ink">Tests</span>
-          </div>
+          <Breadcrumb parents={['/admin']} now="Tests" />
           <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Tests</h1>
           <p className="mt-1.5 max-w-2xl text-muted">A pre-launch checklist to verify the whole system end-to-end. Walk each area, tick off what works, flag what doesn’t.</p>
         </div>

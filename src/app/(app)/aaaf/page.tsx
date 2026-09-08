@@ -1,12 +1,12 @@
 // AAAF: page list (Server Component)
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSitePageData } from '@/lib/pages-data'
 import { PageList } from '@/components/PageList'
 import { WpLinks } from '@/components/WpLinks'
 import { canAccessSite } from '@/lib/auth/access'
 import { requireSurface } from '@/lib/access/resolve'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export default async function AaafPagesPage() {
   // Href Link Management is a tool inside Tools & Dashboards, not a sidebar
@@ -22,13 +22,7 @@ export default async function AaafPagesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-1">
-          <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools &amp; Dashboards</Link>
-          <span>/</span>
-          <Link href="/projects" className="hover:text-tn-ink transition-colors">Href Link Management</Link>
-          <span>/</span>
-          <span className="text-foreground">AAAF</span>
-        </div>
+        <Breadcrumb parents={['/tools', '/projects']} now="AAAF" />
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-extrabold text-aaaf-primary font-(family-name:--font-aaaf-display)">

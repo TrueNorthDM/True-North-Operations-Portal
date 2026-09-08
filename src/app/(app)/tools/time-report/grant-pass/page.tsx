@@ -9,7 +9,6 @@
 // stored against, and renaming it would silently revoke access for whoever has
 // it today.
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -20,6 +19,7 @@ import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
 import { MonthPicker } from '@/components/tsheets/MonthPicker'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const metadata = { title: 'Client Report · Project Hours & Others' }
 export const dynamic = 'force-dynamic'
@@ -56,13 +56,7 @@ export default async function ProjectHoursPage({
   return (
     <div className="space-y-6">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 text-sm text-muted mb-1">
-          <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
-          <span>/</span>
-          <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools</Link>
-          <span>/</span>
-          <span className="text-foreground font-semibold">Client Report · Project Hours &amp; Others</span>
-        </div>
+        <Breadcrumb parents={['/tools']} now="Client Report · Project Hours & Others" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
           Client Report · Project Hours &amp; Others
         </h1>

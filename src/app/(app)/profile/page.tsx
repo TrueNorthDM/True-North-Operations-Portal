@@ -19,6 +19,7 @@ import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profil
 import type { PersonRow } from '@/lib/types/database.types'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { PersonalDetails } from '@/components/PersonalDetails'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 
@@ -146,11 +147,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-[920px] mx-auto space-y-6">
-      <div className="flex items-center gap-2 text-[13px] text-muted">
-        <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
-        <span className="text-slate-300">/</span>
-        <span className="font-semibold text-tn-ink">My profile</span>
-      </div>
+      <Breadcrumb now="My profile" />
 
       <div className="rounded-[18px] border border-slate-200 bg-white overflow-hidden">
         {/* header, larger avatar */}

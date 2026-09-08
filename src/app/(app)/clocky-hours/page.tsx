@@ -12,12 +12,12 @@
 // tells you it finished, not that it is right; this ends in their number beside
 // ours, month by month, for every month since 2017.
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ImportRunner } from './ImportRunner'
 import { RulesForm, type Rules } from './RulesForm'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Clocky Hours' }
@@ -94,11 +94,7 @@ export default async function ClockyHoursPage() {
   return (
     <div className="space-y-8">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-1">
-          <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
-          <span>/</span>
-          <span className="text-foreground font-semibold">Clocky Hours</span>
-        </div>
+        <Breadcrumb now="Clocky Hours" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clocky Hours</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           The time module behind My Hours, under construction. QuickBooks Time is still the system

@@ -9,7 +9,6 @@
 // My team rides along as a second tab: both answer "what is mine". The tab is a
 // search param so the page stays a server component and each tab is linkable.
 
-import Link from 'next/link'
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
@@ -21,6 +20,7 @@ import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { resolvePersonFilter } from '@/lib/monday/worklist/filters'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
@@ -55,11 +55,7 @@ export default async function MyWorkPage(
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-[13px]">
-        <Link href="/" className="font-semibold text-muted hover:text-tn-ink transition-colors">Dashboard</Link>
-        <span className="text-[var(--faint)]">/</span>
-        <span className="font-semibold text-tn-ink">My Work</span>
-      </div>
+      <Breadcrumb now="My Work" />
 
       {/* Title on the left, the two views as a segmented control on the right.
           They are two ways of asking "what is mine", so they sit together as

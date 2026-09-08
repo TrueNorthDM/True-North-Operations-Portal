@@ -26,6 +26,7 @@ import type { WorkloadRow } from '@/lib/report/workload'
 import { ReportTabs } from '@/components/report/ReportTabs'
 import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
 import { AGE_BUCKETS, type Overview } from '@/lib/report/overview'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 
@@ -225,11 +226,7 @@ export default async function ReportPreview(
   return (
     <div className="p-8 bg-app min-h-screen">
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-[13px]">
-          <span className="font-semibold text-muted">Dashboard</span>
-          <span className="text-[var(--faint)]">/</span>
-          <span className="font-semibold text-tn-ink">My Work</span>
-        </div>
+        <Breadcrumb now="Report" />
 
         <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[var(--panel-border)]">
           <div>

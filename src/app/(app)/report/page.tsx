@@ -8,7 +8,6 @@
 // not entry: level 1 sees themselves, level 2 their team, level 3 everybody
 // plus the Workload tab.
 
-import Link from 'next/link'
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
@@ -32,6 +31,7 @@ import { activePeople, primaryTeams } from '@/lib/report/directory'
 import { ReportControls } from '@/components/report/ReportControls'
 import { resolvePeriod, resolveScope, type ReportState } from '@/lib/report/scope'
 import { loadReportOverview, readRecording, type Recording } from '@/lib/report/data'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const metadata = { title: 'Report' }
 export const dynamic = 'force-dynamic'
@@ -78,11 +78,7 @@ export default async function ReportPage(
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-[13px]">
-        <Link href="/" className="font-semibold text-muted hover:text-tn-ink transition-colors">Dashboard</Link>
-        <span className="text-[var(--faint)]">/</span>
-        <span className="font-semibold text-tn-ink">My Work</span>
-      </div>
+      <Breadcrumb now="Report" />
 
       <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[var(--panel-border)]">
         <div>

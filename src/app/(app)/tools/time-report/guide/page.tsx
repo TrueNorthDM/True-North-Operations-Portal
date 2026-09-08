@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 // How the i7 Budget Usage Report is built, a plain-language explainer linked
 // from the info icon in Settings. Static content (the July 2026 numbers are an
 // illustrative worked example).
@@ -50,11 +51,7 @@ export default async function ReportGuidePage() {
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-3">
-          <Link href="/settings" className="hover:text-slate-800">Settings</Link>
-          <span>/</span>
-          <span>How the report works</span>
-        </div>
+        <Breadcrumb parents={['/tools', '/tools/time-report']} now="How the report works" />
         <div className="flex items-start gap-4">
           <span className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-slate-900 text-white shrink-0">
             <InfoMark className="w-6 h-6" />

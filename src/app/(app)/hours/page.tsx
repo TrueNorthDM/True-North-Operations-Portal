@@ -9,7 +9,6 @@
 // policy from 057 also satisfies the read, and without the filter this page
 // showed the whole company's week under the title "My Time".
 
-import Link from 'next/link'
 import { requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -19,6 +18,7 @@ import { workingDays } from '@/lib/timeclock/absence'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { HoursClient } from './HoursClient'
 import type { TcEntryRow } from '@/lib/types/database.types'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'My Hours' }
@@ -257,11 +257,7 @@ export default async function MyHoursPage({
   return (
     <div className="space-y-8">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-1">
-          <Link href="/" className="hover:text-tn-ink transition-colors">Home</Link>
-          <span>/</span>
-          <span className="text-foreground font-semibold">My Hours</span>
-        </div>
+        <Breadcrumb now="My Hours" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">My Hours</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           Track your hours here. QuickBooks Time is still the official record for now,

@@ -3,13 +3,13 @@
 // monitor it. Renders straight from the code registry (lib/automations/registry)
 // so the list can't silently drift from what's actually deployed.
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AUTOMATIONS, type AutomationKind } from '@/lib/automations/registry'
 import { latestHealth, HEALTH_LABEL, type HealthResult, type HealthStatus } from '@/lib/health/checks'
 import { runChecksNow } from './actions'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,13 +60,7 @@ export default async function AutomationsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-2">
-          <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <Link href="/admin" className="font-semibold hover:text-tn-ink transition-colors">Admin</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">Automations</span>
-        </div>
+        <Breadcrumb parents={['/admin']} now="Automations" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Automations</h1>
         <p className="mt-1.5 text-muted max-w-[760px]">
           Every automated moving part in the portal, and whether it is working. This list is the source of truth: it is defined in code and updated whenever an automation is added or changed.

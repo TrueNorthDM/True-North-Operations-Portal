@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 // Each card's icon is a system-style line SVG whose animated parts carry the
 // `tn-anim` class (so prefers-reduced-motion disables them via globals.css).
@@ -120,11 +121,7 @@ export default async function AdminPage() {
     <div className="space-y-10">
       <SystemHealthBanner />
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-2">
-          <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">Admin</span>
-        </div>
+        <Breadcrumb now="Admin" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Admin</h1>
         <p className="mt-1.5 text-muted">People, teams, and who can access what.</p>
       </div>

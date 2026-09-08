@@ -13,6 +13,7 @@ import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadContactByPerson } from '@/lib/hr/contact'
 import { asRoleType } from '@/lib/auth/tier'
 import { AccessLevelsBoard, type AccessPerson } from '@/components/admin/AccessLevelsBoard'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,13 +83,7 @@ export default async function AccessLevelsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-2">
-          <Link href="/" className="font-semibold hover:text-tn-ink transition-colors">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <Link href="/admin" className="font-semibold hover:text-tn-ink transition-colors">Admin</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">Access levels</span>
-        </div>
+        <Breadcrumb parents={['/admin']} now="Access levels" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Access levels</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           The four access levels, what each one can reach, and who has it today.

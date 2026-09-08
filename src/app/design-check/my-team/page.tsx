@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { TeamPeople } from '@/components/team/TeamPeople'
 import { teamColour } from '@/lib/directory/team-colour'
 import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,11 +69,7 @@ export default function DesignCheckTeam() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-[1340px] mx-auto space-y-6">
-        <div className="flex items-center gap-2 text-[13px]">
-          <span className="font-semibold text-muted">Dashboard</span>
-          <span className="text-[#cbd2da]">/</span>
-          <span className="font-semibold text-tn-ink">My Work</span>
-        </div>
+        <Breadcrumb now="My Team" />
 
         <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[#e4e7ec]">
           <div>

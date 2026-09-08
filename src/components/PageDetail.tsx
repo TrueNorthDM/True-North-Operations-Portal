@@ -12,13 +12,13 @@
  *   - 'confirmed live' is disabled until a URL is saved for that language
  */
 
-import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { HreflangCodeBlock } from '@/components/HreflangCodeBlock'
 import { DeletePageButton } from '@/components/DeletePageButton'
 import { NotRelevantButton } from '@/components/NotRelevantButton'
 import { savePageUrls, toggleConfirmation } from '@/app/actions'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 interface ConfirmationState {
   language_code: string
@@ -157,15 +157,10 @@ export function PageDetail({
     <div className="space-y-6">
       {/* Header + at-a-glance status */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted mb-1">
-          <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools &amp; Dashboards</Link>
-          <span>/</span>
-          <Link href="/projects" className="hover:text-tn-ink transition-colors">Href Link Management</Link>
-          <span>/</span>
-          <Link href={`/${siteCode}`} className="hover:text-tn-ink transition-colors uppercase">{siteCode}</Link>
-          <span>/</span>
-          <span className="text-foreground">{pageName}</span>
-        </div>
+        <Breadcrumb
+          parents={['/tools', '/projects', { href: `/${siteCode}`, label: siteCode.toUpperCase() }]}
+          now={pageName}
+        />
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-2xl font-(family-name:--font-display) font-extrabold text-tn-ink">{pageName}</h1>

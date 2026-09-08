@@ -1,7 +1,6 @@
 // Admin → Directory. The single surface for People · Emails · Teams · Access,
 // all controlled from one page. Gated to admins.
 
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
@@ -21,6 +20,7 @@ import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { TOOLS } from '@/lib/access/tools'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
@@ -463,11 +463,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-[13px] text-muted">
-          <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
-          <span className="text-slate-300">/</span>
-          <span className="font-semibold text-tn-ink">People</span>
-        </div>
+        <Breadcrumb now="People" />
         <RestrictedDirectory people={dirPeople} teams={dirTeams} showTeams={level >= 2} />
       </div>
     )
@@ -512,11 +508,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-[13px] text-muted">
-        <Link href="/" className="font-semibold hover:text-tn-ink">Dashboard</Link>
-        <span className="text-slate-300">/</span>
-        <span className="font-semibold text-tn-ink">People, Teams and Permissions</span>
-      </div>
+      <Breadcrumb now="People, Teams and Permissions" />
 
       <DirectoryTabs
         people={peopleView}

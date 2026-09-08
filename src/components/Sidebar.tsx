@@ -10,6 +10,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
+import { NAV_LABEL } from '@/lib/nav/labels'
 
 const iconClass = 'w-6 h-6 shrink-0'
 
@@ -81,7 +82,7 @@ interface Item {
 
 const home: Item = {
   href: '/',
-  label: 'Home',
+  label: NAV_LABEL['/'],
   icon: HomeIcon,
   match: p => p === '/',
 }
@@ -90,7 +91,7 @@ const home: Item = {
 // used inside a project). Highlights across /tools, /dashboards and /boards-beta.
 const toolsDash: Item = {
   href: '/tools',
-  label: 'Tools & Dashboards',
+  label: NAV_LABEL['/tools'],
   icon: DashboardIcon,
   match: p => p === '/tools' || p.startsWith('/tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
 }
@@ -102,7 +103,7 @@ const toolsDash: Item = {
 // to land on the Report rather than on a redirect to login.
 const myWorkNav: Item = {
   href: '/my-work',
-  label: 'My Work',
+  label: NAV_LABEL['/my-work'],
   icon: WorkIcon,
   match: p => p === '/my-work' || p === '/report',
 }
@@ -119,7 +120,7 @@ const ClockIcon = (
 
 const myHoursNav: Item = {
   href: '/hours',
-  label: 'My Hours',
+  label: NAV_LABEL['/hours'],
   icon: ClockIcon,
   match: p => p === '/hours' || p.startsWith('/hours/'),
 }
@@ -137,7 +138,7 @@ const ClockyIcon = (
 
 const clockyHoursNav: Item = {
   href: '/clocky-hours',
-  label: 'Clocky Hours',
+  label: NAV_LABEL['/clocky-hours'],
   icon: ClockyIcon,
   match: p => p === '/clocky-hours' || p.startsWith('/clocky-hours/'),
 }
@@ -146,7 +147,7 @@ const clockyHoursNav: Item = {
 // like Admin; the /directory route also guards server-side.
 const directoryNav: Item = {
   href: '/directory',
-  label: 'People, Teams and Permissions',
+  label: NAV_LABEL['/directory'],
   icon: DirectoryIcon,
   match: p => p === '/directory' || p.startsWith('/directory/'),
 }
@@ -155,7 +156,7 @@ const directoryNav: Item = {
 // /admin route also guards server-side, so hiding the link is convenience only.
 const adminNav: Item = {
   href: '/admin',
-  label: 'Admin',
+  label: NAV_LABEL['/admin'],
   icon: AdminIcon,
   match: p => p === '/admin' || p.startsWith('/admin/'),
 }
@@ -163,14 +164,14 @@ const adminNav: Item = {
 // Human Resources, anniversary badges (for now). Privileged only.
 const hrNav: Item = {
   href: '/human-resources',
-  label: 'Human Resources',
+  label: NAV_LABEL['/human-resources'],
   icon: HrIcon,
   match: p => p === '/human-resources' || p.startsWith('/human-resources/'),
 }
 
 const settingsNav: Item = {
   href: '/settings',
-  label: 'Settings',
+  label: NAV_LABEL['/settings'],
   icon: SettingsIcon,
   match: p => p === '/settings' || p.startsWith('/settings/'),
 }
