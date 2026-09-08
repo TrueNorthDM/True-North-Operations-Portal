@@ -325,7 +325,11 @@ async function ReportView({ selectedMonth, availableMonths, team }: { selectedMo
         teams={filterTeams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
         selectedTeam={selectedTeam}
       />
-      <ClientFullHistory trend={data?.trend ?? []} currentMonth={currentYearMonth()} />
+      <ClientFullHistory
+        trend={data?.trend ?? []}
+        currentMonth={currentYearMonth()}
+        canExport={access.can('report-export')}
+      />
     </>
   )
 }

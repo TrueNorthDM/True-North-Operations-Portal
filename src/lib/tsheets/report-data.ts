@@ -274,3 +274,62 @@ export async function loadReportNote(month: string): Promise<string> {
   const { data } = await supabase.from('i7_report_notes').select('note').eq('month', `${month}-01`).maybeSingle()
   return data?.note ?? ''
 }
+
+/**
+ * The month-by-month history over an arbitrary range, for the CSV.
+ *
+ * Same shape as the Full history table: budget, what came in from the month
+ * before, what was used, and the hours behind it. Carry-in is the previous
+ * month's closing balance, so a range that starts mid-year still opens with the
+ * balance it really had rather than at zero.
+ *
+ * `from` is clamped to DATA_START. Months before it have hours in tc_entries
+ * going back to 2017 but no budget and no rate, so they would come out with real
+ * hours beside zero money: a row that is arithmetically true and reads as a
+ * month where nothing was spent.
+ */
+export interface HistoryRow {
+  month: string
+  budget: number
+  carryIn: number
+  used: number
+  hours: number
+  balance: number
+}
+
+export async function loadI7History(from: string, to: string): Promise<HistoryRow[]> {
+  const start = from < DATA_START ? DATA_START : from
+  if (to < start) return []
+
+  const { endDate } = monthBounds(to)
+  const [entries, assignments, budgetInputs] = await Promise.all([
+    loadCachedEntries(`${DATA_START}-01`, endDate),
+    loadI7Assignments(),
+    loadBudgetInputs(),
+  ])
+  const monthlyBudgets: Record<string, number> = { ...budgetInputs.flat }
+
+  const rows: HistoryRow[] = []
+  let balance = 0
+  // Walked from DATA_START even when the range starts later: the carry-in of
+  // the first row is the whole history before it, not zero.
+  for (const ym of [...monthsBetween(DATA_START, to), to]) {
+    const carryIn = balance
+    const me = entries.filter(e => e.date.slice(0, 7) === ym)
+    const hours = me.reduce((s, e) => s + e.duration / 3600, 0)
+    const used = me.reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)
+    const budget = monthlyBudgets[ym] ?? 0
+    balance = round2(carryIn + budget - used)
+    if (ym >= start) {
+      rows.push({
+        month: ym,
+        budget,
+        carryIn: round2(carryIn),
+        used: round2(used),
+        hours: round2(hours),
+        balance,
+      })
+    }
+  }
+  return rows
+}

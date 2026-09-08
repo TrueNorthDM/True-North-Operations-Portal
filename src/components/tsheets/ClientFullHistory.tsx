@@ -8,6 +8,7 @@
 
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7TrendPoint } from '@/lib/tsheets/types'
+import { HistoryExport } from '@/components/tsheets/HistoryExport'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 function monthLabel(ym: string): string {
@@ -15,7 +16,11 @@ function monthLabel(ym: string): string {
   return `${MONTHS[m - 1]} ${y}`
 }
 
-export function ClientFullHistory({ trend, currentMonth }: { trend: I7TrendPoint[]; currentMonth?: string }) {
+export function ClientFullHistory(
+  { trend, currentMonth, canExport = false }: {
+    trend: I7TrendPoint[]; currentMonth?: string; canExport?: boolean
+  },
+) {
   const year = trend[0]?.month.slice(0, 4) ?? new Date().getUTCFullYear().toString()
 
   // Year-to-date totals.
@@ -26,9 +31,15 @@ export function ClientFullHistory({ trend, currentMonth }: { trend: I7TrendPoint
 
   return (
     <section className="space-y-4">
-      <div className="flex items-baseline gap-3">
-        <h3 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">Full history</h3>
-        <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal bg-tn-teal-soft border border-tn-teal/25 rounded-full px-2.5 py-0.5">{year}</span>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-baseline gap-3">
+          <h3 className="font-(family-name:--font-display) font-extrabold text-[19px] text-tn-ink m-0">Full history</h3>
+          <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-tn-teal bg-tn-teal-soft border border-tn-teal/25 rounded-full px-2.5 py-0.5">{year}</span>
+        </div>
+        {/* The table is one calendar year, because that is how a budget is
+            planned. The export is not tied to that: the questions people bring
+            here cross year ends. */}
+        {canExport && currentMonth ? <HistoryExport currentMonth={currentMonth} /> : null}
       </div>
 
       {trend.length === 0 ? (
