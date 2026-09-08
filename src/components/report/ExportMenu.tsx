@@ -8,6 +8,7 @@
 // an export that quietly gives you the default view is worse than no export.
 
 import { useEffect, useRef, useState } from 'react'
+import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 
 const BUTTON =
   'inline-flex items-center gap-[7px] text-[13px] font-semibold px-[13px] py-[9px] rounded-[10px] border border-[var(--panel-border)] bg-white text-foreground hover:bg-[var(--row-hover)] transition-colors'
@@ -27,6 +28,7 @@ function DownloadIcon() {
 export function ExportMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: string }) {
   const [open, setOpen] = useState(false)
   const [landscape, setLandscape] = useState(true)
+  const [pdf, setPdf] = useState<PdfRequest | null>(null)
   const box = useRef<HTMLDivElement>(null)
 
   // Clicking anywhere else closes it. Without this the menu stays open behind
@@ -76,16 +78,23 @@ export function ExportMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: str
                 </button>
               ))}
             </div>
-            <a
-              href={href}
-              onClick={() => setOpen(false)}
-              className="block text-center text-[12.5px] font-bold py-2 rounded-lg bg-tn-ink text-white hover:opacity-90 transition-opacity"
+            {/* Built and shown before it is offered, the portal's rule for
+                every PDF. The orientation chosen above is part of the request,
+                so the preview is the document that would be saved. */}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setPdf({ url: href, title: `Report, ${landscape ? 'landscape' : 'portrait'}`, fallbackName: 'report.pdf' })
+              }}
+              className="block w-full text-center text-[12.5px] font-bold py-2 rounded-lg bg-tn-ink text-white hover:opacity-90 transition-opacity"
             >
-              Download PDF
-            </a>
+              Build the PDF
+            </button>
           </div>
         ) : null}
       </div>
+      <PdfPreview request={pdf} onClose={() => setPdf(null)} />
     </div>
   )
 }
