@@ -25,6 +25,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { PROJECT_CF } from '@/lib/tsheets/i7report'
+import { loadCompensationByPerson } from '@/lib/hr/compensation'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -53,6 +54,22 @@ export interface ProjectRow {
   byPerson: Record<string, number>
   yearToDate: number
   sameMonthLastYear: number
+  /**
+   * Hours × each person's break-even rate, split by whether they are on the
+   * payroll. Attribution rather than outflow for an employee, who is paid the
+   * same whether they logged ten hours or a hundred: the figure says what a
+   * project consumed, not what left the bank.
+   */
+  employeeCostThisMonth: number
+  contractorCostThisMonth: number
+  totalCosts: number
+  /**
+   * Null, not zero. Donations are entered by hand and there is nowhere yet to
+   * enter them, so every cell would read as "nothing was donated" when what is
+   * true is "nobody has said". Zero is an answer; this is the absence of one.
+   */
+  donationsThisMonth: number | null
+  donationsYtd: number | null
 }
 
 export interface ProjectTracking {
@@ -64,7 +81,12 @@ export interface ProjectTracking {
     byPerson: Record<string, number>
     yearToDate: number
     sameMonthLastYear: number
+    employeeCostThisMonth: number
+    contractorCostThisMonth: number
+    totalCosts: number
   }
+  /** Worked on a project this year with no break-even rate, so costing zero. */
+  unratedPeople: string[]
 }
 
 function monthEnd(month: string): string {
@@ -73,6 +95,8 @@ function monthEnd(month: string): string {
 }
 
 /** Hours by project and person over a date range, from the "2 Project" field. */
+interface Bucket { total: number; byPerson: Map<string, number>; byId: Map<string, number> }
+
 async function hoursIn(
   supabase: Client,
   projectKey: number,
@@ -80,10 +104,13 @@ async function hoursIn(
   start: string,
   end: string,
   firstNameById: Map<string, string>,
-): Promise<Map<string, { total: number; byPerson: Map<string, number> }>> {
-  const out = new Map<string, { total: number; byPerson: Map<string, number> }>()
+): Promise<Map<string, Bucket>> {
+  const out = new Map<string, Bucket>()
   for (const label of labels) {
-    const bucket = { total: 0, byPerson: new Map<string, number>() }
+    // byPerson is keyed by first name, which is what the sheet's columns are.
+    // byId is keyed by person, which is what a rate is keyed by: cost cannot be
+    // worked out from a display name, and two Amys would share one.
+    const bucket: Bucket = { total: 0, byPerson: new Map(), byId: new Map() }
     // One containment query per project, which the GIN index on `fields` can
     // answer. A scan of all 136,000 entries is what froze this page once.
     for (let from = 0; ; from += PAGE) {
@@ -99,6 +126,7 @@ async function hoursIn(
         bucket.total += hours
         const who = firstNameById.get(r.person_id) ?? 'Unknown'
         bucket.byPerson.set(who, (bucket.byPerson.get(who) ?? 0) + hours)
+        bucket.byId.set(r.person_id, (bucket.byId.get(r.person_id) ?? 0) + hours)
       }
       if (rows.length < PAGE) break
     }
@@ -113,21 +141,48 @@ export async function loadProjectTracking(
   supabase: Client,
   month: string,
 ): Promise<ProjectTracking> {
-  const [{ data: fieldRows }, { data: peopleRows }, { data: buyRows }] = await Promise.all([
+  const [{ data: fieldRows }, { data: peopleRows }, { data: buyRows }, pay] = await Promise.all([
     supabase.from('tc_fields').select('id, external_id'),
-    supabase.from('people').select('id, full_name'),
+    supabase.from('people').select('id, full_name, employment_type'),
     supabase.from('tc_project_purchases').select('project_label, month, hours'),
+    // Break-even rates through the privileged reader: be_rate is out of the
+    // `authenticated` column grant, for the same reason internal_rate is.
+    loadCompensationByPerson(),
   ])
 
   const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
     .find(f => String(f.external_id) === PROJECT_CF)?.id
   if (!projectKey) {
-    return { month, people: [], rows: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0 } }
+    return { month, people: [], rows: [], unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
   }
 
   // First names, because that is what the tracking sheet's columns are.
-  const firstNameById = new Map(((peopleRows ?? []) as { id: string; full_name: string }[])
-    .map(p => [p.id, (p.full_name || '').split(' ')[0]]))
+  const roster = (peopleRows ?? []) as { id: string; full_name: string; employment_type: string | null }[]
+  const firstNameById = new Map(roster.map(p => [p.id, (p.full_name || '').split(' ')[0]]))
+  const kindById = new Map(roster.map(p => [p.id, p.employment_type]))
+
+  /**
+   * Hours × break-even rate, split by whether the person is on the payroll.
+   *
+   * Somebody with no break-even rate contributes nothing, which is the same
+   * silence the i7 report used to keep about a missing client rate. The names
+   * come back with the totals so the screen can say who, rather than leaving a
+   * project looking cheaper than it was.
+   */
+  const costOf = (byId: Map<string, number>) => {
+    let employee = 0, contractor = 0
+    const unrated: string[] = []
+    for (const [id, hours] of byId) {
+      const rate = pay.get(id)?.beRate ?? null
+      if (rate == null) {
+        if (hours > 0) unrated.push(firstNameById.get(id) ?? 'Unknown')
+        continue
+      }
+      if (kindById.get(id) === 'contractor') contractor += hours * rate
+      else employee += hours * rate
+    }
+    return { employee: round2(employee), contractor: round2(contractor), unrated }
+  }
 
   const purchases = (buyRows ?? []) as { project_label: string; month: string; hours: number }[]
   const labels = TRACKED_PROJECTS.map(p => p.label)
@@ -140,9 +195,13 @@ export async function loadProjectTracking(
     hoursIn(supabase, projectKey, labels, `${lastYearMonth}-01`, monthEnd(lastYearMonth), firstNameById),
   ])
 
+  const unratedAll = new Set<string>()
   const rows: ProjectRow[] = TRACKED_PROJECTS.map(p => {
     const here = thisMonth.get(p.label)!
     const worked = round2(here.total)
+    const monthCost = costOf(here.byId)
+    const ytdCost = costOf(ytd.get(p.label)?.byId ?? new Map())
+    for (const who of [...monthCost.unrated, ...ytdCost.unrated]) unratedAll.add(who)
 
     let carriedIn: number | null = null
     let bought: number | null = null
@@ -179,6 +238,11 @@ export async function loadProjectTracking(
       byPerson: Object.fromEntries([...here.byPerson].map(([k, v]) => [k, round2(v)])),
       yearToDate: round2(ytd.get(p.label)?.total ?? 0),
       sameMonthLastYear: round2(lastYear.get(p.label)?.total ?? 0),
+      employeeCostThisMonth: monthCost.employee,
+      contractorCostThisMonth: monthCost.contractor,
+      totalCosts: round2(ytdCost.employee + ytdCost.contractor),
+      donationsThisMonth: null,
+      donationsYtd: null,
     }
   })
 
@@ -200,6 +264,13 @@ export async function loadProjectTracking(
       byPerson,
       yearToDate: round2(rows.reduce((s, r) => s + r.yearToDate, 0)),
       sameMonthLastYear: round2(rows.reduce((s, r) => s + r.sameMonthLastYear, 0)),
+      employeeCostThisMonth: round2(rows.reduce((s, r) => s + r.employeeCostThisMonth, 0)),
+      contractorCostThisMonth: round2(rows.reduce((s, r) => s + r.contractorCostThisMonth, 0)),
+      totalCosts: round2(rows.reduce((s, r) => s + r.totalCosts, 0)),
     },
+    // Anyone who worked on one of these and has no break-even rate. Their hours
+    // count and their cost is nothing, so the project reads cheaper than it was,
+    // and this is what the screen says so instead of the total quietly shrinking.
+    unratedPeople: [...unratedAll].sort((a, b) => a.localeCompare(b)),
   }
 }

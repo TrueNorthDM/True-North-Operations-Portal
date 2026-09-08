@@ -70,10 +70,10 @@ export const TOOLS: ToolDef[] = [
   },
   {
     key: 'grant-pass-report',
-    label: 'Client Report - Project Hours (AAAF, Grants Pass, HFA)',
+    label: 'Client Report - Project Hours & Others',
     href: '/tools/time-report/grant-pass',
     group: 'Tools',
-    description: 'Hours and budget usage for Grant Pass. Waiting on its data source in QuickBooks Time.',
+    description: 'Hours, costs and donations for AskAnAdventistFriend, Grants Pass and Hope for Africa.',
     sensitive: true,
   },
 ]

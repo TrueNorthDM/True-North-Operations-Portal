@@ -1,4 +1,4 @@
-// Client Report, Project Hours.
+// Client Report, Project Hours & Others.
 //
 // This page was "Grant Pass" while nobody knew what it was for. Accounting's own
 // tracking sheet settled it: Grants Pass is two rows of a four-project sheet,
@@ -21,7 +21,7 @@ import { MonthPicker } from '@/components/tsheets/MonthPicker'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
 
-export const metadata = { title: 'Client Report · Project Hours' }
+export const metadata = { title: 'Client Report · Project Hours & Others' }
 export const dynamic = 'force-dynamic'
 
 const MANUAL_BLURB =
@@ -61,10 +61,10 @@ export default async function ProjectHoursPage({
           <span>/</span>
           <Link href="/tools" className="hover:text-tn-ink transition-colors">Tools</Link>
           <span>/</span>
-          <span className="text-foreground font-semibold">Client Report · Project Hours</span>
+          <span className="text-foreground font-semibold">Client Report · Project Hours &amp; Others</span>
         </div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
-          Client Report · Project Hours
+          Client Report · Project Hours &amp; Others
         </h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           AskAnAdventistFriend.com, Grants Pass Church and School, and Hope for Africa. Hours by
