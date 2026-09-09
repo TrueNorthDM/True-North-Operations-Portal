@@ -20,6 +20,8 @@ import { ProjectPeriodFilter } from '@/components/tsheets/ProjectPeriodFilter'
 import { ProjectExportMenu } from '@/components/tsheets/ProjectExportMenu'
 import { ProjectHoursNotes } from '@/components/tsheets/ProjectHoursNotes'
 import { loadTeamRoster } from '@/lib/directory/team-roster'
+import { loadLastUpdated } from '@/lib/timeclock/last-updated'
+import { LastUpdatedBadge } from '@/components/tsheets/LastUpdatedBadge'
 import { resolveRange } from '@/lib/tsheets/range'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
@@ -62,6 +64,7 @@ export default async function ProjectHoursPage({
   // The same roster the i7 report filters by, so "Team" means one thing across
   // both reports rather than two.
   const { teams } = await loadTeamRoster()
+  const lastUpdated = await loadLastUpdated(createAdminClient(), range.from, range.to)
   const selectedTeam = teams.some(t => t.id === team) ? team! : ''
 
   // Donations and prepaid hours, for whoever may edit them. isPrivileged, not
@@ -89,8 +92,11 @@ export default async function ProjectHoursPage({
         </p>
       </div>
 
-      {/* The "i" sits above the buttons, where the i7 report keeps its own. */}
-      <div className="flex justify-end -mb-2">
+      {/* The badge and the "i" sit above the buttons, where the i7 report keeps
+          its own. "Last updated" rather than "Last synced": a sync is one of the
+          three things that can change this page. */}
+      <div className="flex items-center justify-end gap-2.5 -mb-2">
+        <LastUpdatedBadge status={lastUpdated} />
         <ProjectHoursNotes lastYear={String(Number(range.to.slice(0, 4)) - 1)} />
       </div>
 
