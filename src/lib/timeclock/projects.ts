@@ -71,25 +71,18 @@ export interface ProjectRow {
    * Null, not zero. A month nobody has entered reads empty: zero is a claim
    * that nothing came in, and these figures are copied into a financial report
    * for somebody else. Absence and none have to stay different.
+   *
+   * Always null for the prepaid two: "These two are client projects (work on
+   * their websites), so they do not get donations."
    */
   donationsThisMonth: number | null
   donationsYtd: number | null
 }
 
-/**
- * Money given without a project attached.
- *
- * "If the donor requests the donations go to AAAF that's where they go,
- * otherwise the donation goes under unrestricted and used for all projects."
- *
- * It belongs to no row of a report laid out by project, so it gets its own
- * rather than being divided across the four. Dividing it would invent an
- * allocation nobody asked for.
- */
-export interface UnrestrictedDonations {
-  thisMonth: number | null
-  ytd: number | null
-}
+// Restricted and unrestricted do not appear here, and that is the answer rather
+// than an omission. Asked directly: "These reports should never show restricted
+// verses unrestricted. That part is all done in our accounting." So what arrives
+// is already resolved to a project, and the split lives where it is decided.
 
 export interface ProjectTracking {
   /** First month on screen. Equal to `month` when the range is one month. */
@@ -98,7 +91,6 @@ export interface ProjectTracking {
   month: string
   people: string[]
   rows: ProjectRow[]
-  unrestricted: UnrestrictedDonations
   totals: {
     workedThisMonth: number
     byPerson: Record<string, number>
@@ -186,7 +178,7 @@ export async function loadProjectTracking(
   const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
     .find(f => String(f.external_id) === PROJECT_CF)?.id
   if (!projectKey) {
-    return { from, month, people: [], rows: [], unrestricted: { thisMonth: null, ytd: null }, unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
+    return { from, month, people: [], rows: [], unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
   }
 
   // First names, because that is what the tracking sheet's columns are.
@@ -297,15 +289,10 @@ export async function loadProjectTracking(
       employeeCostThisMonth: monthCost.employee,
       contractorCostThisMonth: monthCost.contractor,
       totalCosts: round2(ytdCost.employee + ytdCost.contractor),
-      donationsThisMonth: donated(p.label, inMonth),
-      donationsYtd: donated(p.label, inYearToDate),
+      donationsThisMonth: p.prepaid ? null : donated(p.label, inMonth),
+      donationsYtd: p.prepaid ? null : donated(p.label, inYearToDate),
     }
   })
-
-  const unrestricted: UnrestrictedDonations = {
-    thisMonth: donated(null, inMonth),
-    ytd: donated(null, inYearToDate),
-  }
 
   // One column per person who worked on anything this month, sorted like the
   // sheet: alphabetically.
@@ -321,7 +308,6 @@ export async function loadProjectTracking(
     month,
     people,
     rows,
-    unrestricted,
     totals: {
       workedThisMonth: round2(rows.reduce((s, r) => s + r.workedThisMonth, 0)),
       byPerson,

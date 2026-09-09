@@ -55,11 +55,11 @@ export function ProjectHoursPrint(
 ) {
   const year = data.month.slice(0, 4)
   const lastYear = String(Number(year) - 1)
-  const { rows, totals, unrestricted } = data
+  const { rows, totals } = data
   const people = [...data.people].sort((a, b) => a.localeCompare(b))
 
-  const given = (pick: (r: typeof rows[number]) => number | null, fund: number | null) => {
-    const parts = [...rows.map(pick), fund].filter((n): n is number => n != null)
+  const given = (pick: (r: typeof rows[number]) => number | null) => {
+    const parts = rows.map(pick).filter((n): n is number => n != null)
     return parts.length === 0 ? null : parts.reduce((s, n) => s + n, 0)
   }
 
@@ -123,18 +123,6 @@ export function ProjectHoursPrint(
                 <td style={{ ...td, color: MUTED }}>{hours(r.sameMonthLastYear)}</td>
               </tr>
             ))}
-            {/* Money given to no project. Its work columns stay empty, as on screen. */}
-            {(unrestricted.thisMonth != null || unrestricted.ytd != null) && (
-              <tr>
-                <td style={tdL}>Unrestricted <span style={{ fontWeight: 400, color: MUTED }}>(no project)</span></td>
-                <td style={td} /><td style={td} /><td style={td} /><td style={td} />
-                <td style={td} /><td style={td} />
-                <td style={td}>{money(unrestricted.thisMonth)}</td>
-                <td style={td} />
-                <td style={td}>{money(unrestricted.ytd)}</td>
-                <td style={td} /><td style={td} />
-              </tr>
-            )}
           </tbody>
           <tfoot>
             <tr>
@@ -144,9 +132,9 @@ export function ProjectHoursPrint(
               <td style={foot}>{hours(totals.workedThisMonth)}</td>
               <td style={foot}>{money(totals.employeeCostThisMonth)}</td>
               <td style={foot}>{money(totals.contractorCostThisMonth)}</td>
-              <td style={foot}>{money(given(r => r.donationsThisMonth, unrestricted.thisMonth))}</td>
+              <td style={foot}>{money(given(r => r.donationsThisMonth))}</td>
               <td style={foot}>{hours(totals.yearToDate)}</td>
-              <td style={foot}>{money(given(r => r.donationsYtd, unrestricted.ytd))}</td>
+              <td style={foot}>{money(given(r => r.donationsYtd))}</td>
               <td style={foot}>{money(totals.totalCosts)}</td>
               <td style={{ ...foot, color: MUTED }}>{hours(totals.sameMonthLastYear)}</td>
             </tr>

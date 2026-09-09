@@ -79,7 +79,7 @@ export default async function ProjectHoursDesignCheck(
               <MoneyInDialog
                 data={{
                   month: range.to,
-                  donations: { AAAF: '2450', 'GP church': '', 'GP School': '', Africa: '', '': '6100' },
+                  donations: { AAAF: '2450', Africa: '1200' },
                   purchases: { 'GP church': { hours: '', amount: '' }, 'GP School': { hours: '11.25', amount: '1012.50' } },
                 }}
                 projects={TRACKED_PROJECTS}

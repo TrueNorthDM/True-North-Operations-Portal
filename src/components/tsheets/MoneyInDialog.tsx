@@ -4,9 +4,13 @@
  * The money that arrived this month, typed in from the report it feeds.
  *
  * Two things on one screen because they are one act from the report's side:
- * money arriving for a project in a month. Donations are given, restricted to a
- * project or not; prepaid hours are bought, and only Grants Pass Church and
- * School buy them.
+ * money arriving for a project in a month. Donations go to the two projects that
+ * receive them; prepaid hours are bought, and only Grants Pass Church and School
+ * buy those. No project appears under both, so the form asks each question once.
+ *
+ * Restricted and unrestricted are not asked about here: "These reports should
+ * never show restricted verses unrestricted. That part is all done in our
+ * accounting." What arrives is already resolved to a project.
  *
  * Opened from the report rather than living on a page of its own, for the same
  * reason hand-entered hours are: you are looking at a month, you put a figure
@@ -20,7 +24,7 @@
 import { Fragment, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDonation, savePurchase } from '@/lib/timeclock/money-in-actions'
-import { UNRESTRICTED, type MoneyInMonth } from '@/lib/timeclock/money-in-data'
+import { type MoneyInMonth } from '@/lib/timeclock/money-in-data'
 
 const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px] text-tn-ink font-semibold placeholder:font-normal text-right tabular-nums'
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
@@ -68,12 +72,10 @@ export function MoneyInDialog(
       // Sequentially, and stopping at the first refusal. A batch that half
       // applies leaves somebody guessing which half, and there are seven rows
       // at most so nothing is gained by firing them together.
-      for (const p of projects) {
+      for (const p of projects.filter(p => !p.prepaid)) {
         const r = await saveDonation({ project: p.label, month: data.month, amount: gifts[p.label] ?? '' })
         if (!r.ok) { setError(r.error ?? 'Could not save.'); return }
       }
-      const fund = await saveDonation({ project: null, month: data.month, amount: gifts[UNRESTRICTED] ?? '' })
-      if (!fund.ok) { setError(fund.error ?? 'Could not save.'); return }
 
       for (const p of projects.filter(p => p.prepaid)) {
         const b = buys[p.label] ?? { hours: '', amount: '' }
@@ -136,8 +138,13 @@ export function MoneyInDialog(
             </div>
 
             <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 pb-2">Donations</p>
+            {/* Only the two that receive them: "These two are client projects
+                (work on their websites), so they do not get donations. AAAF and
+                HFA are projects that we sometimes get donations for." The two
+                that buy hours are the two that do not, so `prepaid` already
+                says which is which. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-              {projects.map(p => (
+              {projects.filter(p => !p.prepaid).map(p => (
                 <label key={p.label} className="block">
                   <span className={LABEL}>{p.name}</span>
                   <input
@@ -148,19 +155,6 @@ export function MoneyInDialog(
               ))}
             </div>
 
-            {/* Across the full width and behind a rule, because it is not a
-                fifth project: "otherwise the donation goes under unrestricted
-                and used for all projects". Sitting it in the grid beside the
-                four would say it was one of them. */}
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <label className="block sm:w-1/2 sm:pr-2">
-                <span className={LABEL}>Unrestricted <span className="normal-case font-normal tracking-normal text-muted">no project</span></span>
-                <input
-                  inputMode="decimal" placeholder="0.00" className={FIELD}
-                  value={gifts[UNRESTRICTED] ?? ''} onChange={e => setGift(UNRESTRICTED, e.target.value)}
-                />
-              </label>
-            </div>
 
             <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 pt-6 pb-1">
               Hours bought in advance

@@ -24,10 +24,11 @@ export function ProjectHoursNotes({ lastYear }: { lastYear: string }) {
       </p>
       <p className="m-0 text-muted">
         <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Donations are entered by hand</strong>, from
-        cheques and online giving, using <span className="font-semibold">Money in</span> above. A donation
-        a donor ties to a project sits on that project&rsquo;s row; one given without a project sits on the
-        Unrestricted row, because it belongs to none of the four. A blank means nobody has entered a figure,
-        not that nothing came in.
+        cheques and online giving, using <span className="font-semibold">Money in</span> above, as a total
+        for the month. Only AskAnAdventistFriend.com and Hope for Africa receive them: the other two are
+        client projects that buy hours instead. Whether a gift was restricted or unrestricted is settled in
+        accounting before it reaches here, so this report does not show the split. A blank means nobody has
+        entered a figure, not that nothing came in.
       </p>
       <p className="m-0 text-muted">
         All four projects are recognised by the <span className="font-semibold">“2 Project”</span>{' '}

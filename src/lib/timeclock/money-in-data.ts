@@ -16,14 +16,11 @@ type Client = SupabaseClient<any, any, any>
 
 export interface MoneyInMonth {
   month: string
-  /** Amount given, keyed by project label, plus '' for the unrestricted fund. */
+  /** Amount given, keyed by project label. Only the donation-funded two can have one. */
   donations: Record<string, string>
   /** Hours bought, keyed by project label. Only the prepaid two can have any. */
   purchases: Record<string, { hours: string; amount: string }>
 }
-
-/** The key the unrestricted fund goes under, which is no project at all. */
-export const UNRESTRICTED = ''
 
 export async function loadMoneyIn(supabase: Client, month: string): Promise<MoneyInMonth> {
   const [{ data: giftRows }, { data: buyRows }] = await Promise.all([
@@ -33,7 +30,7 @@ export async function loadMoneyIn(supabase: Client, month: string): Promise<Mone
 
   const donations: Record<string, string> = {}
   for (const g of (giftRows ?? []) as { project_label: string | null; amount_usd: number }[]) {
-    donations[g.project_label ?? UNRESTRICTED] = String(Number(g.amount_usd))
+    if (g.project_label) donations[g.project_label] = String(Number(g.amount_usd))
   }
 
   const purchases: Record<string, { hours: string; amount: string }> = {}
@@ -48,10 +45,9 @@ export async function loadMoneyIn(supabase: Client, month: string): Promise<Mone
   // anybody has entered one. An absent key and an empty one mean the same thing
   // to the form and it should not have to know the difference.
   for (const p of TRACKED_PROJECTS) {
-    donations[p.label] ??= ''
     if (p.prepaid) purchases[p.label] ??= { hours: '', amount: '' }
+    else donations[p.label] ??= ''
   }
-  donations[UNRESTRICTED] ??= ''
 
   return { month, donations, purchases }
 }

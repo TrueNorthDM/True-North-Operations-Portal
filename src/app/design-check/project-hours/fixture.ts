@@ -69,8 +69,8 @@ function build(
     totalCosts: ytdCost,
     // Only AAAF has restricted gifts in this fixture. The other three stay null
     // so the preview still shows what an un-entered month looks like.
-    donationsThisMonth: name === 'AskAnAdventistFriend.com' ? 2450 : null,
-    donationsYtd: name === 'AskAnAdventistFriend.com' ? 18730 : null,
+    donationsThisMonth: prepaid ? null : name === 'AskAnAdventistFriend.com' ? 2450 : 1200,
+    donationsYtd: prepaid ? null : name === 'AskAnAdventistFriend.com' ? 39429 : 6800,
   }
 }
 
@@ -102,5 +102,4 @@ export const DATA: ProjectTracking = {
     totalCosts: r2(rows.reduce((s, r) => s + r.totalCosts, 0)),
   },
   unratedPeople: [...new Set(rows.flatMap(r => costs(r.byPerson).unrated))].sort(),
-  unrestricted: { thisMonth: 6100, ytd: 41250 },
 }

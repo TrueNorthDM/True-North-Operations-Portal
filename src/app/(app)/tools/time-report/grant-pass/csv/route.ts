@@ -90,19 +90,8 @@ export async function GET(request: Request) {
       ]))
     }
 
-    // Its own row, as on screen: money given to no project at all. Every column
-    // about work is left empty, because a fund has no hours and no rate.
-    if (data.unrestricted.thisMonth != null || data.unrestricted.ytd != null) {
-      lines.push(row([
-        label, 'Unrestricted (no project)', '', '', '', '', '', '',
-        cash(data.unrestricted.thisMonth), '', cash(data.unrestricted.ytd), '', '',
-      ]))
-    }
-
-    const givenNow = [...data.rows.map(r => r.donationsThisMonth), data.unrestricted.thisMonth]
-      .filter((n): n is number => n != null)
-    const givenYtd = [...data.rows.map(r => r.donationsYtd), data.unrestricted.ytd]
-      .filter((n): n is number => n != null)
+    const givenNow = data.rows.map(r => r.donationsThisMonth).filter((n): n is number => n != null)
+    const givenYtd = data.rows.map(r => r.donationsYtd).filter((n): n is number => n != null)
 
     lines.push(row([
       label, 'TOTAL', '', '', hrs(data.rows.reduce((s, r) => s + (r.remaining ?? 0), 0)),
