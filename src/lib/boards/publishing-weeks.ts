@@ -12,11 +12,19 @@
  * `monday_snapshot`, the warm store the nightly cron fills, and
  * `publishing_targets`. No Monday API call, so this costs the Home page a
  * couple of indexed reads rather than a third-party round trip.
+ *
+ * It also counts with the dashboard's own function rather than a second copy of
+ * the rules. The card is a link to that dashboard, so a number here that does
+ * not match the number there is worse than no number: both pages look
+ * authoritative and only one can be right. Calling `computePublishingMetrics`
+ * once per week is a few more objects allocated and makes disagreement
+ * impossible.
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { BOARDS } from './config'
-import { enrichPublishingBoard } from './publishing'
+import { computePublishingMetrics, enrichPublishingBoard } from './publishing'
+import type { PublishedItem } from './publishing'
 import type { SnapshotBoard, TargetsMap } from './types'
 
 export interface PublishingWeek {
@@ -90,29 +98,46 @@ export async function loadPublishingWeeks(now = new Date()): Promise<PublishingB
   }
 
   const weeks = lastFourWeeks(now)
-  const out: PublishingBoardWeeks[] = []
 
+  // One flat list, the shape the dashboard's aggregator takes. It does its own
+  // per-board filtering, so there is nothing to keep separated here.
+  const items: PublishedItem[] = []
+  const names: Record<string, string> = {}
   for (const row of (snapRows ?? []) as { board_id: string; data: SnapshotBoard }[]) {
     const config = BOARDS[row.board_id]
     if (!config) continue
+    names[row.board_id] = clientName(config.name)
+    items.push(...enrichPublishingBoard(row.data, config))
+  }
 
-    // Summed across languages: the widget answers "did the client's week land",
-    // and the per-language split is what the dashboard behind it is for.
-    const perWeek = Object.values(targets[row.board_id] ?? {}).reduce((s, n) => s + n, 0)
-    const items = enrichPublishingBoard(row.data, config)
+  // "lastweek" only for its arithmetic: it is the period that means exactly one
+  // week, so a board's target comes back as its weekly target rather than a
+  // multiple of it. The label it carries is thrown away.
+  const perWeekStats = weeks.map(({ start, end }) => {
+    const m = computePublishingMetrics(items, targets, 'lastweek', start, end)
+    return Object.fromEntries(m.boards.map(b => [b.boardId, b]))
+  })
 
-    const counted = weeks.map(({ start, end }) => {
-      const done = items.filter(it => {
-        if (!it.isPublished || !it.publishedDate) return false
-        const d = new Date(it.publishedDate)
-        return d >= start && d <= end
-      }).length
-      return { start: ymd(start), label: weekLabel(start), done, target: perWeek }
-    })
+  const out: PublishingBoardWeeks[] = []
+  for (const boardId of Object.keys(names)) {
+    // Summed across languages, which is the dashboard's own board total: the
+    // widget answers "did the client's week land", and which languages made it
+    // up is what the dashboard behind it is for.
+    const perWeek = Object.values(targets[boardId] ?? {}).reduce((s, n) => s + n, 0)
+
+    const counted = weeks.map(({ start }, i) => ({
+      start: ymd(start),
+      label: weekLabel(start),
+      // A board with no targets row gets no stat at all, which is not the same
+      // as a bad week: `perWeek` is 0 too, and the widget says so instead of
+      // drawing four empty bars.
+      done: perWeekStats[i][boardId]?.done ?? 0,
+      target: perWeek,
+    }))
 
     out.push({
-      boardId: row.board_id,
-      name: clientName(config.name),
+      boardId,
+      name: names[boardId],
       perWeek,
       weeks: counted,
       hits: counted.filter(w => w.target > 0 && w.done >= w.target).length,
