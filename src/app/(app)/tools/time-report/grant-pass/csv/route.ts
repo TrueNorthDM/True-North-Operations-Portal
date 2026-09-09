@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     lines.push(row([
       'Period', 'Project', 'Carried in', 'Prepaid', 'Remaining',
       'Hours', 'Employee costs (USD)', 'Contractor costs (USD)', 'Donations (USD)', 'Net (USD)',
-      `Total hours ${year}`, `Total donations ${year} (USD)`, `Total costs ${year} (USD)`, `Net ${year} (USD)`,
+      `Total hours ${year}`, `Total donations ${year} (USD)`, `Total costs ${year} (USD)`,
       `${lastYear} hours, same period`,
     ]))
     for (const r of data.rows) {
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
         label, r.name, hrs(r.carriedIn), hrs(r.boughtThisMonth), hrs(r.remaining),
         hrs(r.workedThisMonth), cash(r.employeeCostThisMonth), cash(r.contractorCostThisMonth),
         cash(r.donationsThisMonth), cash(r.netThisMonth), hrs(r.yearToDate), cash(r.donationsYtd),
-        cash(r.totalCosts), cash(r.netYtd), hrs(r.sameMonthLastYear),
+        cash(r.totalCosts), hrs(r.sameMonthLastYear),
       ]))
     }
 
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
       cash(sum(r => r.netThisMonth)),
       hrs(data.totals.yearToDate),
       givenYtd.length ? cash(givenYtd.reduce((s, n) => s + n, 0)) : '',
-      cash(data.totals.totalCosts), cash(sum(r => r.netYtd)), hrs(data.totals.sameMonthLastYear),
+      cash(data.totals.totalCosts), hrs(data.totals.sameMonthLastYear),
     ]))
   }
 

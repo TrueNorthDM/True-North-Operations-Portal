@@ -104,7 +104,6 @@ export function ProjectHoursPrint(
               <th style={th}>Hours {year}</th>
               <th style={th}>Donations {year}</th>
               <th style={th}>Costs {year}</th>
-              <th style={th}>Net {year}</th>
               <th style={th}>{lastYear} same period</th>
             </tr>
           </thead>
@@ -123,7 +122,6 @@ export function ProjectHoursPrint(
                 <td style={td}>{hours(r.yearToDate)}</td>
                 <td style={td}>{money(r.donationsYtd)}</td>
                 <td style={td}>{money(r.totalCosts)}</td>
-                <td style={{ ...td, fontWeight: 600, color: r.netYtd == null ? INK : r.netYtd < 0 ? '#c2410c' : '#1E9E6A' }}>{money(r.netYtd)}</td>
                 <td style={{ ...td, color: MUTED }}>{hours(r.sameMonthLastYear)}</td>
               </tr>
             ))}
@@ -141,7 +139,6 @@ export function ProjectHoursPrint(
               <td style={foot}>{hours(totals.yearToDate)}</td>
               <td style={foot}>{money(given(r => r.donationsYtd))}</td>
               <td style={foot}>{money(totals.totalCosts)}</td>
-              <td style={foot}>{money(given(r => r.netYtd))}</td>
               <td style={{ ...foot, color: MUTED }}>{hours(totals.sameMonthLastYear)}</td>
             </tr>
           </tfoot>

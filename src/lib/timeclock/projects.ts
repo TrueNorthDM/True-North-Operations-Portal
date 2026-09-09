@@ -91,9 +91,12 @@ export interface ProjectRow {
    * Null for the two that buy hours. Their income is prepaid hours, not gifts,
    * so donations minus costs would not be their net of anything, and her sheet
    * does not compute one for them either.
+   *
+   * For the period only. A year-to-date net was tried and dropped: her sheet
+   * does not have one, and at 109 pixels it was what pushed the table back into
+   * scrolling on a 1280 laptop. Both its inputs are still on the row.
    */
   netThisMonth: number | null
-  netYtd: number | null
 }
 
 // Restricted and unrestricted do not appear here, and that is the answer rather
@@ -312,8 +315,6 @@ export async function loadProjectTracking(
       // true: nothing came in against them. Only the prepaid two get null.
       netThisMonth: p.prepaid ? null
         : round2((donated(p.label, inMonth) ?? 0) - (monthCost.employee + monthCost.contractor)),
-      netYtd: p.prepaid ? null
-        : round2((donated(p.label, inYearToDate) ?? 0) - (ytdCost.employee + ytdCost.contractor)),
     }
   })
 

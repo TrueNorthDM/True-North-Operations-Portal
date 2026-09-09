@@ -72,7 +72,6 @@ function build(
     donationsThisMonth: prepaid ? null : name === 'AskAnAdventistFriend.com' ? 2450 : 1200,
     donationsYtd: prepaid ? null : name === 'AskAnAdventistFriend.com' ? 39429 : 6800,
     netThisMonth: prepaid ? null : r2((name === 'AskAnAdventistFriend.com' ? 2450 : 1200) - (c.employee + c.contractor)),
-    netYtd: prepaid ? null : r2((name === 'AskAnAdventistFriend.com' ? 39429 : 6800) - ytdCost),
   }
 }
 
