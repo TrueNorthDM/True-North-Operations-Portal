@@ -20,11 +20,17 @@ import { Select } from '@/components/ui/Select'
 import { choiceFromRange, rangeOf, type Range, type RangeChoice } from '@/lib/tsheets/range'
 
 export function ProjectPeriodFilter(
-  { range, availableMonths, team = '', teams = [] }: {
+  { range, availableMonths, team = '', teams = [], basePath = '/tools/time-report/grant-pass' }: {
     range: Range
     availableMonths: string[]
     team?: string
     teams?: readonly { id: string; name: string }[]
+    /**
+     * Where choosing a period goes. A prop so the design check can point it at
+     * itself: the toolbar is only on a page behind a login, which is how a
+     * negative margin that overlapped the buttons once shipped unseen.
+     */
+    basePath?: string
   },
 ) {
   const router = useRouter()
@@ -56,7 +62,7 @@ export function ProjectPeriodFilter(
   // Both filters live in the URL together, so changing one keeps the other and
   // the address stays shareable.
   const href = (r: { from: string; to: string }, t: string = team) =>
-    `/tools/time-report/grant-pass?from=${r.from}&to=${r.to}${t ? `&team=${encodeURIComponent(t)}` : ''}`
+    `${basePath}?from=${r.from}&to=${r.to}${t ? `&team=${encodeURIComponent(t)}` : ''}`
 
   return (
     <>
