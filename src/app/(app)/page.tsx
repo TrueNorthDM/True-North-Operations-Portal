@@ -1,16 +1,19 @@
-// Home: welcome banner, destination widgets, the i7 budget at a glance
-// (privileged tiers), and the company org chart. Admin is reachable from the
-// sidebar. Uses the wide Home container (see MainContent) so widgets sit side
-// by side.
+// Home: welcome banner, the i7 budget at a glance (privileged tiers),
+// publishing goals, this month's celebrations, and the company org chart.
+//
+// The three shortcut cards (My Work, My Team, Tools & Dashboards) were removed:
+// every one of them is a rail item two pixels away, so they spent the top of the
+// screen repeating the navigation instead of telling anybody anything.
 
 import { createClient } from '@/lib/supabase/server'
-import { HomeWidgets } from '@/components/home/HomeWidgets'
 import { WelcomeBanner } from '@/components/home/WelcomeBanner'
 import { OrgChart } from '@/components/OrgChart'
 import { getOrgChart } from '@/lib/org/data'
 import { loadAccess } from '@/lib/access/resolve'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
+import { PublishingGoalsWidget } from '@/components/home/PublishingGoalsWidget'
+import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
 import { Anniversaries } from '@/components/home/Anniversaries'
 import { Birthdays } from '@/components/home/Birthdays'
 import { loadCelebrationPeople } from '@/lib/hr/celebrations'
@@ -21,7 +24,13 @@ import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const [org, access, me, celebPeople] = await Promise.all([getOrgChart(), loadAccess(), loadCurrentPerson(supabase, user), loadCelebrationPeople()])
+  // Publishing goals is for everyone, so it is loaded for everyone. It reads
+  // the warm snapshot store the nightly cron fills, not Monday, so it costs a
+  // couple of indexed reads rather than a third-party round trip.
+  const [org, access, me, celebPeople, publishing] = await Promise.all([
+    getOrgChart(), loadAccess(), loadCurrentPerson(supabase, user), loadCelebrationPeople(),
+    loadPublishingWeeks(),
+  ])
   // Budget at a glance. The widget is not a card on Tools & Dashboards, so it
   // is not a team-grantable tool: it follows the access level alone. (Team
   // grants govern the Clients Reports PAGE, which is such a card.)
@@ -36,16 +45,17 @@ export default async function HomePage() {
       {/* Surfaces a red alert to admins if a monitored integration is down. */}
       <SystemHealthBanner />
 
-      {/* Destination widgets (My Team is a placeholder). */}
-      <HomeWidgets />
-
       {/* Budget at a glance, gated by level + team tool grant. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
-      {/* This month's work anniversaries + birthdays, side by side. */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Anniversaries people={celebPeople} />
-        <Birthdays people={celebPeople} />
+      {/* Publishing goals is the tall one, so the two short celebration cards
+          stack beside it rather than leaving a column of white. */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <PublishingGoalsWidget boards={publishing} />
+        <div className="space-y-6">
+          <Birthdays people={celebPeople} />
+          <Anniversaries people={celebPeople} />
+        </div>
       </section>
 
       {/* Company org chart, permanent fixture of the home page. */}
