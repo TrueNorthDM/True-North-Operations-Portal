@@ -26,8 +26,8 @@ const week = (label: string, done: number, target: number) => ({ start: label, l
 
 const PUBLISHING: PublishingBoardWeeks[] = [
   {
-    boardId: 'aaaf', name: 'AskAnAdventistFriend', perWeek: 9, hits: 3,
-    weeks: [week('Aug 10', 9, 9), week('Aug 17', 11, 9), week('Aug 24', 7, 9), week('Aug 31', 14, 9)],
+    boardId: 'aaaf', name: 'AskAnAdventistFriend', perWeek: 11, hits: 2,
+    weeks: [week('Aug 10', 9, 11), week('Aug 17', 12, 11), week('Aug 24', 3, 11), week('Aug 31', 14, 11)],
   },
   {
     boardId: 'hfa', name: 'Hope for Africa', perWeek: 8, hits: 1,
@@ -60,12 +60,10 @@ export default function HomeWidgetsDesignCheck() {
 
         <I7BudgetWidget month="2026-09" carryover={CARRYOVER} />
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
           <PublishingGoalsWidget boards={PUBLISHING} linked />
-          <div className="space-y-6">
-            <Birthdays people={PEOPLE} />
-            <Anniversaries people={PEOPLE} />
-          </div>
+          <Birthdays people={PEOPLE} />
+          <Anniversaries people={PEOPLE} />
         </section>
 
         <div>

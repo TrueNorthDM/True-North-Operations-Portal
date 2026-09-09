@@ -48,16 +48,12 @@ export default async function HomePage() {
       {/* Budget at a glance, gated by level + team tool grant. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
-      {/* Publishing goals is the tall one, so the two short celebration cards
-          stack beside it rather than leaving a column of white.
-          The figures are for everyone; only the people who can open the page
-          behind it get a card that behaves like a link. */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* Three columns. Publishing goals' figures are for everyone; only the
+          people who can open the page behind it get a card that links. */}
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
         <PublishingGoalsWidget boards={publishing} linked={access.canTool('publishing')} />
-        <div className="space-y-6">
-          <Birthdays people={celebPeople} />
-          <Anniversaries people={celebPeople} />
-        </div>
+        <Birthdays people={celebPeople} />
+        <Anniversaries people={celebPeople} />
       </section>
 
       {/* Company org chart, permanent fixture of the home page. */}
