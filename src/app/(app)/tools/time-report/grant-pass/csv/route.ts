@@ -51,7 +51,7 @@ export async function GET(request: Request) {
   const range = resolveRange(q.get('from') ?? legacy, q.get('to') ?? legacy, newest)
   const type = q.get('type') === 'internal' ? 'internal' : 'client'
 
-  let data
+  let data: Awaited<ReturnType<typeof loadProjectTracking>>
   try {
     data = await loadProjectTracking(createAdminClient(), range.from, range.to)
   } catch {
@@ -77,19 +77,24 @@ export async function GET(request: Request) {
   } else {
     lines.push(row([
       'Period', 'Project', 'Carried in', 'Prepaid', 'Remaining',
-      'Hours', 'Employee costs (USD)', 'Contractor costs (USD)', 'Donations (USD)',
-      `Total hours ${year}`, `Total donations ${year} (USD)`, `Total costs ${year} (USD)`,
+      'Hours', 'Employee costs (USD)', 'Contractor costs (USD)', 'Donations (USD)', 'Net (USD)',
+      `Total hours ${year}`, `Total donations ${year} (USD)`, `Total costs ${year} (USD)`, `Net ${year} (USD)`,
       `${lastYear} hours, same period`,
     ]))
     for (const r of data.rows) {
       lines.push(row([
         label, r.name, hrs(r.carriedIn), hrs(r.boughtThisMonth), hrs(r.remaining),
         hrs(r.workedThisMonth), cash(r.employeeCostThisMonth), cash(r.contractorCostThisMonth),
-        cash(r.donationsThisMonth), hrs(r.yearToDate), cash(r.donationsYtd),
-        cash(r.totalCosts), hrs(r.sameMonthLastYear),
+        cash(r.donationsThisMonth), cash(r.netThisMonth), hrs(r.yearToDate), cash(r.donationsYtd),
+        cash(r.totalCosts), cash(r.netYtd), hrs(r.sameMonthLastYear),
       ]))
     }
 
+    /** Only the rows that have one contribute, so a total is of the same rows the column shows. */
+    const sum = (pick: (r: typeof data.rows[number]) => number | null) => {
+      const parts = data.rows.map(pick).filter((n): n is number => n != null)
+      return parts.length === 0 ? null : parts.reduce((a, b) => a + b, 0)
+    }
     const givenNow = data.rows.map(r => r.donationsThisMonth).filter((n): n is number => n != null)
     const givenYtd = data.rows.map(r => r.donationsYtd).filter((n): n is number => n != null)
 
@@ -98,9 +103,10 @@ export async function GET(request: Request) {
       hrs(data.totals.workedThisMonth), cash(data.totals.employeeCostThisMonth),
       cash(data.totals.contractorCostThisMonth),
       givenNow.length ? cash(givenNow.reduce((s, n) => s + n, 0)) : '',
+      cash(sum(r => r.netThisMonth)),
       hrs(data.totals.yearToDate),
       givenYtd.length ? cash(givenYtd.reduce((s, n) => s + n, 0)) : '',
-      cash(data.totals.totalCosts), hrs(data.totals.sameMonthLastYear),
+      cash(data.totals.totalCosts), cash(sum(r => r.netYtd)), hrs(data.totals.sameMonthLastYear),
     ]))
   }
 

@@ -77,6 +77,23 @@ export interface ProjectRow {
    */
   donationsThisMonth: number | null
   donationsYtd: number | null
+  /**
+   * Donations minus costs: what a project is short by, which is the figure the
+   * financial planning is actually about.
+   *
+   * Her sheet computes it the same way with one difference. Hers folds the
+   * Grants Pass school-website and church-invoice income into AskAnAdventist's
+   * and Hope for Africa's rows, because her layout has nowhere else to put it.
+   * The portal has somewhere: those amounts sit on the Grants Pass rows as
+   * hours bought in advance, and she said so herself ("already accounted for on
+   * the portal report"). Adding them here as well would count them twice.
+   *
+   * Null for the two that buy hours. Their income is prepaid hours, not gifts,
+   * so donations minus costs would not be their net of anything, and her sheet
+   * does not compute one for them either.
+   */
+  netThisMonth: number | null
+  netYtd: number | null
 }
 
 // Restricted and unrestricted do not appear here, and that is the answer rather
@@ -291,6 +308,12 @@ export async function loadProjectTracking(
       totalCosts: round2(ytdCost.employee + ytdCost.contractor),
       donationsThisMonth: p.prepaid ? null : donated(p.label, inMonth),
       donationsYtd: p.prepaid ? null : donated(p.label, inYearToDate),
+      // A month with no donation entered nets to minus its costs, which is
+      // true: nothing came in against them. Only the prepaid two get null.
+      netThisMonth: p.prepaid ? null
+        : round2((donated(p.label, inMonth) ?? 0) - (monthCost.employee + monthCost.contractor)),
+      netYtd: p.prepaid ? null
+        : round2((donated(p.label, inYearToDate) ?? 0) - (ytdCost.employee + ytdCost.contractor)),
     }
   })
 

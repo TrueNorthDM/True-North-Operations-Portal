@@ -16,7 +16,7 @@
 // allowance; only Grants Pass Church and School buy hours in advance, at $90.
 
 import { useState } from 'react'
-import { money } from '@/lib/tsheets/format'
+import { money, moneySigned } from '@/lib/tsheets/format'
 import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 
@@ -37,9 +37,12 @@ const edge = 'border-l border-[rgba(1,35,88,0.1)]'
 const card = 'rounded-[14px] border border-slate-200 bg-white p-5'
 const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted'
 const big = 'mt-1 font-(family-name:--font-display) font-extrabold text-[26px] text-tn-ink tabular-nums leading-tight'
-const num = 'px-2.5 py-3 text-right tabular-nums'
+const num = 'px-2.5 py-3 text-right tabular-nums whitespace-nowrap'
 const bal = 'bg-[rgba(30,125,127,0.06)]'
 const hi = 'bg-[rgba(224,138,30,0.07)]'
+/** Donations minus costs, which is almost always short. Red when it is. */
+const netCell = (n: number | null) =>
+  n == null ? '' : n < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'
 
 /** Hours as the sheet writes them: 854.25, not 854:15. */
 const h2 = (n: number) => n === 0 ? '-' : n.toFixed(2)
@@ -76,6 +79,10 @@ export function ProjectHoursReport(
   }
   const givenMonth = sumGiven(r => r.donationsThisMonth)
   const givenYtd = sumGiven(r => r.donationsYtd)
+  // Only the projects that have a net contribute one, so the total is the sum
+  // of the same two rows the column shows rather than of everything.
+  const netMonth = sumGiven(r => r.netThisMonth)
+  const netYtdTotal = sumGiven(r => r.netYtd)
   const lastYear = `${Number(data.month.slice(0, 4)) - 1}`
   const thisYear = data.month.slice(0, 4)
   const prepaid = rows.filter(r => r.prepaid)
@@ -155,8 +162,8 @@ export function ProjectHoursReport(
               <th colSpan={3} className={`${thGroup} ${bal} border-r border-[rgba(1,35,88,0.1)]`}>Prepaid hours</th>
               {/* In the People view the person columns and their total are all
                   this month's hours, so they sit under the one heading. */}
-              <th colSpan={view === 'costs' ? 4 : people.length + 1} className={thGroup}>{period}</th>
-              <th colSpan={view === 'costs' ? 3 : 1} className={`${thGroup} ${edge}`}>{thisYear} to date</th>
+              <th colSpan={view === 'costs' ? 5 : people.length + 1} className={thGroup}>{period}</th>
+              <th colSpan={view === 'costs' ? 4 : 1} className={`${thGroup} ${edge}`}>{thisYear} to date</th>
               <th className={`${thGroup} ${edge}`}>{lastYear}</th>
             </tr>
             <tr className="bg-subtle border-b border-slate-200">
@@ -170,6 +177,7 @@ export function ProjectHoursReport(
                   <th className={thNum}>Employee</th>
                   <th className={thNum}>Contractor</th>
                   <th className={thNum}>Donations</th>
+                  <th className={thNum}>Net</th>
                 </>
               )}
               <th className={`${thNum} ${edge}`}>Hours</th>
@@ -177,6 +185,7 @@ export function ProjectHoursReport(
                 <>
                   <th className={thNum}>Donations</th>
                   <th className={thNum}>Costs</th>
+                  <th className={thNum}>Net</th>
                 </>
               )}
               <th className={`${thNum} ${edge}`}>Same month</th>
@@ -209,6 +218,9 @@ export function ProjectHoursReport(
                     {/* Blank while there is nowhere to enter one. Zero would say
                         nothing was donated; blank says nobody has told us. */}
                     <td className={num}>{r.donationsThisMonth == null ? '' : money(r.donationsThisMonth)}</td>
+                    <td className={`${num} font-semibold ${netCell(r.netThisMonth)}`}>
+                      {r.netThisMonth == null ? '' : moneySigned(r.netThisMonth)}
+                    </td>
                   </>
                 )}
                 <td className={`${num} ${edge}`}>{h2(r.yearToDate)}</td>
@@ -216,6 +228,9 @@ export function ProjectHoursReport(
                   <>
                     <td className={num}>{r.donationsYtd == null ? '' : money(r.donationsYtd)}</td>
                     <td className={`${num} font-semibold text-tn-ink`}>{m0(r.totalCosts)}</td>
+                    <td className={`${num} font-semibold ${netCell(r.netYtd)}`}>
+                      {r.netYtd == null ? '' : moneySigned(r.netYtd)}
+                    </td>
                   </>
                 )}
                 <td className={`${num} ${edge} text-muted`}>{h2(r.sameMonthLastYear)}</td>
@@ -243,6 +258,7 @@ export function ProjectHoursReport(
                       Unrestricted row sits directly above, so the arithmetic is
                       on screen rather than hidden in a footer. */}
                   <td className={`${num} font-extrabold`}>{givenMonth == null ? '' : money(givenMonth)}</td>
+                  <td className={`${num} font-extrabold ${netCell(netMonth)}`}>{netMonth == null ? '' : moneySigned(netMonth)}</td>
                 </>
               )}
               <td className={`${num} ${edge} font-extrabold`}>{totals.yearToDate.toFixed(2)}</td>
@@ -250,6 +266,7 @@ export function ProjectHoursReport(
                 <>
                   <td className={`${num} font-extrabold`}>{givenYtd == null ? '' : money(givenYtd)}</td>
                   <td className={`${num} font-extrabold`}>{money(totals.totalCosts)}</td>
+                  <td className={`${num} font-extrabold ${netCell(netYtdTotal)}`}>{netYtdTotal == null ? '' : moneySigned(netYtdTotal)}</td>
                 </>
               )}
               <td className={`${num} ${edge} font-extrabold text-muted`}>{totals.sameMonthLastYear.toFixed(2)}</td>
