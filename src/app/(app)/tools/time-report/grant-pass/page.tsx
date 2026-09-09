@@ -16,7 +16,8 @@ import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
 import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
-import { MonthPicker } from '@/components/tsheets/MonthPicker'
+import { ProjectPeriodFilter } from '@/components/tsheets/ProjectPeriodFilter'
+import { resolveRange } from '@/lib/tsheets/range'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
 import { loadMoneyIn } from '@/lib/timeclock/money-in-data'
@@ -32,14 +33,18 @@ const MANUAL_BLURB =
 
 export default async function ProjectHoursPage({
   searchParams,
-}: { searchParams: Promise<{ month?: string }> }) {
+}: { searchParams: Promise<{ month?: string; from?: string; to?: string }> }) {
   // The area comes from the level, the report from its own team tool grant.
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/tools')
 
   const months = availableMonths(new Date())
-  const { month } = await searchParams
-  const selected = month && months.includes(month) ? month : months[0] ?? currentYearMonth()
+  const { month, from, to } = await searchParams
+  const newest = months.includes(currentYearMonth()) ? currentYearMonth() : months[0]
+  // `month` still works: an old link is a range of one, which is the report it
+  // always was. No parameters is the current month, which is what it opens on.
+  const range = resolveRange(from ?? month, to ?? month, newest)
+  const selected = range.to
 
   // Privileged, for the reason the i7 report was wrong until 2026-09-01.
   //
@@ -49,7 +54,7 @@ export default async function ProjectHoursPage({
   // as a smaller number rather than an error. Who may open this page is the
   // tools surface plus the grant-pass-report team grant, checked right above,
   // and that is the rule an admin can actually see.
-  const data = await loadProjectTracking(createAdminClient(), selected)
+  const data = await loadProjectTracking(createAdminClient(), range.from, range.to)
 
   // Donations and prepaid hours, for whoever may edit them. isPrivileged, not
   // isAdmin: the Admin Assistant is the person who holds these figures, and
@@ -77,13 +82,19 @@ export default async function ProjectHoursPage({
       </div>
 
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <MonthPicker months={months} selected={selected} base="/tools/time-report/grant-pass" />
-        {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
-        {manual && (
-          <ManualHoursDialog
-            rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}
-          />
-        )}
+        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
+        <ProjectPeriodFilter range={range} availableMonths={months} />
+        {/* One group, right of the month, the way the i7 toolbar carries its
+            own. justify-between had pushed these to opposite ends of the row. */}
+        <div className="ml-auto flex items-center gap-2.5">
+          {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
+          {manual && (
+            <ManualHoursDialog
+              rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}
+              tone="secondary"
+            />
+          )}
+        </div>
       </div>
       <ProjectHoursReport data={data} />
     </div>

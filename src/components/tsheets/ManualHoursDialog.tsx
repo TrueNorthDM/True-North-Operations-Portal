@@ -17,8 +17,14 @@ import { useEffect, useState } from 'react'
 import { ManualHours, type ManualOptions, type ManualRow } from './ManualHours'
 
 export function ManualHoursDialog(
-  { rows, options, month, blurb }: {
+  { rows, options, month, blurb, tone = 'primary' }: {
     rows: ManualRow[]; options: ManualOptions; month: string; blurb: string
+    /**
+     * Which half of the pair this is. A toolbar carries one navy button and the
+     * rest in white; on the i7 report this is the navy one, and on Project
+     * Hours & Others "Money in" takes that place and this answers it.
+     */
+    tone?: 'primary' | 'secondary'
   },
 ) {
   const [open, setOpen] = useState(false)
@@ -41,9 +47,11 @@ export function ManualHoursDialog(
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 text-[13px] font-bold px-4 py-2.5 rounded-[10px] bg-tn-primary text-white hover:opacity-90 transition-opacity"
+        className={tone === 'primary'
+          ? 'inline-flex items-center gap-2 text-[13px] font-bold px-4 py-2.5 rounded-[10px] bg-tn-primary text-white hover:opacity-90 transition-opacity'
+          : 'inline-flex items-center gap-2.5 bg-white text-tn-ink border border-slate-200 rounded-[10px] px-[16px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:text-tn-teal'}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tone === 'primary' ? 'currentColor' : '#1E7D7F'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         Add hours
       </button>
 

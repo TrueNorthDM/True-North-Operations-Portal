@@ -18,6 +18,7 @@
 import { useState } from 'react'
 import { money } from '@/lib/tsheets/format'
 import { InfoDialog } from '@/components/ui/InfoDialog'
+import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 
 // Two header rows: what a block of columns is about, then what each one holds.
@@ -53,6 +54,10 @@ function monthName(ym: string): string {
 export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
   const [view, setView] = useState<'costs' | 'people'>('costs')
   const { rows, people, totals, unratedPeople, unrestricted } = data
+  const oneMonth = data.from === data.month
+  // What the middle block of columns covers. "This month" is a lie over a range,
+  // and the range is the only thing on screen that says which months these are.
+  const period = oneMonth ? 'This month' : spanWording(data.from, data.month)
   // Everything given, projects and the fund together. Null while nobody has
   // entered anything, so the totals line stays as blank as the rows above it.
   const sumGiven = (pick: (r: typeof rows[number]) => number | null, fund: number | null) => {
@@ -73,7 +78,7 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
           table below is answering. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className={card}>
-          <div className={label}>Worked this month</div>
+          <div className={label}>Worked {oneMonth ? "this month" : "in this period"}</div>
           <div className={big}>{totals.workedThisMonth.toFixed(2)}</div>
           <div className="text-xs text-muted mt-0.5">across {rows.filter(r => r.workedThisMonth > 0).length} projects</div>
         </div>
@@ -176,7 +181,7 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
               <th colSpan={3} className={`${thGroup} ${bal} border-r border-[rgba(1,35,88,0.1)]`}>Prepaid hours</th>
               {/* In the People view the person columns and their total are all
                   this month's hours, so they sit under the one heading. */}
-              <th colSpan={view === 'costs' ? 4 : people.length + 1} className={thGroup}>This month</th>
+              <th colSpan={view === 'costs' ? 4 : people.length + 1} className={thGroup}>{period}</th>
               <th colSpan={view === 'costs' ? 3 : 1} className={`${thGroup} ${edge}`}>{thisYear} to date</th>
               <th className={`${thGroup} ${edge}`}>{lastYear}</th>
             </tr>

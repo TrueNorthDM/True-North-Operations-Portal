@@ -88,6 +88,7 @@ const byPerson: Record<string, number> = {}
 for (const r of rows) for (const [who, h] of Object.entries(r.byPerson)) byPerson[who] = r2((byPerson[who] ?? 0) + h)
 
 const data: ProjectTracking = {
+  from: '2026-09',
   month: '2026-09',
   people,
   rows,

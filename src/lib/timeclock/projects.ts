@@ -26,6 +26,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { PROJECT_CF } from '@/lib/tsheets/i7report'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
+import { shiftMonth, RANGE_FLOOR } from '@/lib/tsheets/range'
+
+/** The sheet starts here, as the i7 report does: budgets and rates begin in 2026. */
+const DATA_FLOOR = RANGE_FLOOR
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -88,6 +92,9 @@ export interface UnrestrictedDonations {
 }
 
 export interface ProjectTracking {
+  /** First month on screen. Equal to `month` when the range is one month. */
+  from: string
+  /** Last month on screen. The year columns and the year labels end here. */
   month: string
   people: string[]
   rows: ProjectRow[]
@@ -153,10 +160,19 @@ async function hoursIn(
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/**
+ * The report for a stretch of months, defaulting to one.
+ *
+ * Everything sums over the range except the prepaid balance, which is a walk:
+ * carried in is what was left entering `from`, and remaining is where it stands
+ * at `to`. The year columns stay year to date, ending at `to`.
+ */
 export async function loadProjectTracking(
   supabase: Client,
-  month: string,
+  from: string,
+  to: string = from,
 ): Promise<ProjectTracking> {
+  const month = to
   const [{ data: fieldRows }, { data: peopleRows }, { data: buyRows }, { data: giftRows }, pay] = await Promise.all([
     supabase.from('tc_fields').select('id, external_id'),
     supabase.from('people').select('id, full_name, employment_type'),
@@ -170,7 +186,7 @@ export async function loadProjectTracking(
   const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
     .find(f => String(f.external_id) === PROJECT_CF)?.id
   if (!projectKey) {
-    return { month, people: [], rows: [], unrestricted: { thisMonth: null, ytd: null }, unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
+    return { from, month, people: [], rows: [], unrestricted: { thisMonth: null, ytd: null }, unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
   }
 
   // First names, because that is what the tracking sheet's columns are.
@@ -213,16 +229,27 @@ export async function loadProjectTracking(
     const mine = gifts.filter(g => g.project_label === label && covers(g.month))
     return mine.length === 0 ? null : round2(mine.reduce((s, g) => s + Number(g.amount_usd), 0))
   }
-  const inMonth = (m: string) => m === month
-  const inYearToDate = (m: string) => m.slice(0, 4) === giftYear && m <= month
+  const inMonth = (m: string) => m >= from && m <= to
+  const inYearToDate = (m: string) => m.slice(0, 4) === giftYear && m <= to
   const labels = TRACKED_PROJECTS.map(p => p.label)
-  const year = month.slice(0, 4)
-  const lastYearMonth = `${Number(year) - 1}-${month.slice(5, 7)}`
+  const year = to.slice(0, 4)
+  // The same stretch a year earlier, both ends moved back, so a range of three
+  // months is compared with three months rather than with one.
+  const lastFrom = `${Number(from.slice(0, 4)) - 1}-${from.slice(5, 7)}`
+  const lastTo = `${Number(to.slice(0, 4)) - 1}-${to.slice(5, 7)}`
+  // The month before the range starts, for the prepaid balance carried into it.
+  const beforeEnd = shiftMonth(from, -1)
 
-  const [thisMonth, ytd, lastYear] = await Promise.all([
-    hoursIn(supabase, projectKey, labels, `${month}-01`, monthEnd(month), firstNameById),
-    hoursIn(supabase, projectKey, labels, `${year}-01-01`, monthEnd(month), firstNameById),
-    hoursIn(supabase, projectKey, labels, `${lastYearMonth}-01`, monthEnd(lastYearMonth), firstNameById),
+  const [thisMonth, ytd, lastYear, before] = await Promise.all([
+    hoursIn(supabase, projectKey, labels, `${from}-01`, monthEnd(to), firstNameById),
+    hoursIn(supabase, projectKey, labels, `${year}-01-01`, monthEnd(to), firstNameById),
+    hoursIn(supabase, projectKey, labels, `${lastFrom}-01`, monthEnd(lastTo), firstNameById),
+    // Asked for rather than derived from the year to date. Subtracting one from
+    // the other is only right while the range sits inside a single year, and
+    // "last 12 months" stops doing that the moment it crosses a January.
+    beforeEnd < DATA_FLOOR
+      ? Promise.resolve(new Map<string, { total: number }>())
+      : hoursIn(supabase, projectKey, labels, `${DATA_FLOOR}-01`, monthEnd(beforeEnd), firstNameById),
   ])
 
   const unratedAll = new Set<string>()
@@ -242,17 +269,16 @@ export async function loadProjectTracking(
       // hour worked is already here, and a balance that is recomputed cannot
       // drift from the entries behind it the way a stored one does.
       let balance = 0
-      for (const buy of purchases.filter(b => b.project_label === p.label && b.month < month)) {
+      for (const buy of purchases.filter(b => b.project_label === p.label && b.month < from)) {
         balance += Number(buy.hours)
       }
-      // Work done before this month, drawn against those purchases.
-      const workedBefore = round2((ytd.get(p.label)?.total ?? 0) - here.total)
-      const priorYears = 0   // the sheet starts at January 2026, as the i7 report does
-      balance -= workedBefore + priorYears
+      // Work done before the range, drawn against those purchases.
+      const workedBefore = round2(before.get(p.label)?.total ?? 0)
+      balance -= workedBefore
       carriedIn = round2(balance)
 
       bought = round2(purchases
-        .filter(b => b.project_label === p.label && b.month === month)
+        .filter(b => b.project_label === p.label && b.month >= from && b.month <= to)
         .reduce((s, b) => s + Number(b.hours), 0))
       remaining = round2(carriedIn + bought - worked)
     }
@@ -291,6 +317,7 @@ export async function loadProjectTracking(
   }
 
   return {
+    from,
     month,
     people,
     rows,

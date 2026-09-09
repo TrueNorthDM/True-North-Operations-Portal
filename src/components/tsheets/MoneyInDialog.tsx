@@ -17,7 +17,7 @@
  * more clicks and six more chances to leave half of it done.
  */
 
-import { useEffect, useState, useTransition } from 'react'
+import { Fragment, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDonation, savePurchase } from '@/lib/timeclock/money-in-actions'
 import { UNRESTRICTED, type MoneyInMonth } from '@/lib/timeclock/money-in-data'
@@ -92,13 +92,15 @@ export function MoneyInDialog(
 
   return (
     <>
+      {/* The navy-and-gold pair from the i7 toolbar, where Export wears the
+          gold mark on navy and Team Update answers it in white. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 text-[13px] font-bold px-4 py-2.5 rounded-[10px] bg-tn-primary text-white hover:opacity-90 transition-opacity"
+        className="inline-flex items-center gap-2.5 bg-tn-primary text-white rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-transform hover:-translate-y-px"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        Money in
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <span className="text-[#ffffff]">Money in</span>
       </button>
 
       {open && (
@@ -134,7 +136,7 @@ export function MoneyInDialog(
             </div>
 
             <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 pb-2">Donations</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
               {projects.map(p => (
                 <label key={p.label} className="block">
                   <span className={LABEL}>{p.name}</span>
@@ -144,11 +146,15 @@ export function MoneyInDialog(
                   />
                 </label>
               ))}
-              {/* Its own field, not a project's, because it belongs to none of
-                  them: "otherwise the donation goes under unrestricted and used
-                  for all projects". */}
-              <label className="block">
-                <span className={LABEL}>Unrestricted <span className="normal-case font-normal tracking-normal">(no project)</span></span>
+            </div>
+
+            {/* Across the full width and behind a rule, because it is not a
+                fifth project: "otherwise the donation goes under unrestricted
+                and used for all projects". Sitting it in the grid beside the
+                four would say it was one of them. */}
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <label className="block sm:w-1/2 sm:pr-2">
+                <span className={LABEL}>Unrestricted <span className="normal-case font-normal tracking-normal text-muted">no project</span></span>
                 <input
                   inputMode="decimal" placeholder="0.00" className={FIELD}
                   value={gifts[UNRESTRICTED] ?? ''} onChange={e => setGift(UNRESTRICTED, e.target.value)}
@@ -156,31 +162,36 @@ export function MoneyInDialog(
               </label>
             </div>
 
-            <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 pt-5 pb-1">
+            <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 pt-6 pb-1">
               Hours bought in advance
             </p>
-            <p className="text-[12.5px] text-muted leading-relaxed m-0 pb-2">
+            <p className="text-[12.5px] text-muted leading-relaxed m-0 pb-3">
               Church and School only, at $90 an hour. The amount invoiced is optional and is kept
               beside the hours it bought so the two can be checked against each other.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+
+            {/* A row per project rather than two nested grids. The labels are
+                different lengths, so putting one over each field staggered the
+                boxes: "Grants Pass Church, hours" wrapped to two lines while
+                "Invoiced" did not. Naming the columns once fixes both the
+                alignment and the repetition. */}
+            <div className="grid grid-cols-[1fr_minmax(0,7rem)_minmax(0,7rem)] gap-x-3 gap-y-2 items-center">
+              <span />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted text-right pr-1">Hours</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted text-right pr-1">Invoiced</span>
+
               {projects.filter(p => p.prepaid).map(p => (
-                <div key={p.label} className="grid grid-cols-2 gap-2">
-                  <label className="block">
-                    <span className={LABEL}>{p.name}, hours</span>
-                    <input
-                      inputMode="decimal" placeholder="0.00" className={FIELD}
-                      value={buys[p.label]?.hours ?? ''} onChange={e => setBuy(p.label, 'hours', e.target.value)}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className={LABEL}>Invoiced</span>
-                    <input
-                      inputMode="decimal" placeholder="0.00" className={FIELD}
-                      value={buys[p.label]?.amount ?? ''} onChange={e => setBuy(p.label, 'amount', e.target.value)}
-                    />
-                  </label>
-                </div>
+                <Fragment key={p.label}>
+                  <span className="text-[13.5px] font-semibold text-tn-ink">{p.name}</span>
+                  <input
+                    inputMode="decimal" placeholder="0.00" className={FIELD} aria-label={`${p.name}, hours bought`}
+                    value={buys[p.label]?.hours ?? ''} onChange={e => setBuy(p.label, 'hours', e.target.value)}
+                  />
+                  <input
+                    inputMode="decimal" placeholder="0.00" className={FIELD} aria-label={`${p.name}, amount invoiced`}
+                    value={buys[p.label]?.amount ?? ''} onChange={e => setBuy(p.label, 'amount', e.target.value)}
+                  />
+                </Fragment>
               ))}
             </div>
 
