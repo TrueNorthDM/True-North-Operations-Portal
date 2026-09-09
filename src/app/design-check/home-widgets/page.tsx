@@ -61,12 +61,21 @@ export default function HomeWidgetsDesignCheck() {
         <I7BudgetWidget month="2026-09" carryover={CARRYOVER} />
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <PublishingGoalsWidget boards={PUBLISHING} />
+          <PublishingGoalsWidget boards={PUBLISHING} linked />
           <div className="space-y-6">
             <Birthdays people={PEOPLE} />
             <Anniversaries people={PEOPLE} />
           </div>
         </section>
+
+        <div>
+          <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 mb-2">
+            The same card for somebody without the Publishing grant: same figures, no hover, not a link
+          </p>
+          <div className="lg:w-1/2">
+            <PublishingGoalsWidget boards={PUBLISHING} />
+          </div>
+        </div>
       </div>
     </div>
   )

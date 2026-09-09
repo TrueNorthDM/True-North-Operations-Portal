@@ -9,19 +9,32 @@
  * The whole card is the link. A card with one small "open" link in the corner
  * gives a mouse a target the size of two words when the obvious target is the
  * card itself.
+ *
+ * It is only a link for people who can open the page behind it. The figures are
+ * for everyone, but /dashboards/publishing is gated on its own tool grant, and a
+ * card that looks clickable and bounces you to /tools is worse than a card that
+ * never offered.
  */
 
 import Link from 'next/link'
 import type { PublishingBoardWeeks } from '@/lib/boards/publishing-weeks'
 
-export function PublishingGoalsWidget({ boards }: { boards: PublishingBoardWeeks[] }) {
+export function PublishingGoalsWidget(
+  { boards, linked = false }: {
+    boards: PublishingBoardWeeks[]
+    /** Whether the reader may open the Publishing Goals page. */
+    linked?: boolean
+  },
+) {
   if (boards.length === 0) return null
 
-  return (
-    <Link
-      href="/dashboards/publishing"
-      className="block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]"
-    >
+  const shell = 'block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]'
+
+  // The card's contents, wrapped below in whichever of the two the reader gets.
+  // Not a component defined here: one built during render is a new type on
+  // every pass, which remounts its whole subtree.
+  const inner = (
+    <>
       <div className="flex items-center justify-between gap-3 bg-tn-primary px-5 py-3">
         <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-white">Publishing goals</span>
         <span className="font-(family-name:--font-display) font-bold text-[12px] text-white/70">Last 4 weeks</span>
@@ -69,6 +82,17 @@ export function PublishingGoalsWidget({ boards }: { boards: PublishingBoardWeeks
           </div>
         ))}
       </div>
-    </Link>
+    </>
   )
+
+  return linked
+    ? (
+      <Link
+        href="/dashboards/publishing"
+        className={`${shell} transition-all hover:border-tn-teal hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]`}
+      >
+        {inner}
+      </Link>
+    )
+    : <div className={shell}>{inner}</div>
 }
