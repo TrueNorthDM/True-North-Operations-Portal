@@ -60,7 +60,13 @@ export function RangeFilter(
   useEffect(() => {
     if (!open) return
     const away = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as HTMLElement | null
+      // The month and year Selects render their menus through a portal, so an
+      // option is not a descendant of `box` and counted as "outside". Pressing
+      // one closed this popover on mousedown, which unmounted the Select before
+      // its own click landed: the month you picked simply never arrived.
+      if (t?.closest?.('[role="listbox"]')) return
+      if (box.current && t && !box.current.contains(t)) setOpen(false)
     }
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('mousedown', away)
