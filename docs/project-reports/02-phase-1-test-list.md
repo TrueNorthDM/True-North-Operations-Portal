@@ -11,7 +11,10 @@ The report is at **Tools & Dashboards → Client Report · Project Hours & Other
 | --- | --- | --- |
 | The donation columns should hold real figures | Her layout has "Donations this month" and "Total Donations 2026" | Both columns read from `tc_project_donations` |
 | The figures are entered by hand | "I will need to manually enter the donations as there isn't a way to add that in the workflow" | A **Money in** dialog on the report toolbar |
-| A donation may belong to no project | "otherwise the donation goes under unrestricted and used for all projects" | The project is nullable, and the fund gets its **own row** rather than a share of the four |
+| Only two projects receive donations | "These two are client projects, so they do not get donations. AAAF and HFA are projects that we sometimes get donations for" | The form offers two donation fields; Church and School have none |
+| Never show restricted versus unrestricted | "That part is all done in our accounting" | The Unrestricted row, field and bucket were built and then removed |
+| Donations are a monthly total | "I don't list each donation. Only the total donated for the month" | One row per project per month, which is what the table already was |
+| Net: donations minus costs | Her sheet has it as a row per month | On screen, in the printed sheet and in both CSVs, red when short and green when ahead |
 | Donations are money, never hours | "It doesn't translate into hours for this purpose" | No rate, no conversion. That row's hours and cost cells stay empty |
 | Prepaid stays separate | "The pre-paid is separate and only for the Church and School. That is the $90 hourly rate" | Unchanged, and now editable from the same dialog |
 | The toolbar should match the i7 report | Asked while looking at the page | Navy, white, navy with the gold on Export; the "i" above the buttons |
@@ -42,14 +45,18 @@ Open **Money in**, type `2450` under AskAnAdventistFriend.com, Save.
 - **Total Donations 2026** shows the same, it being the only month entered
 - The Totals row shows `$2,450.00`
 
-### 3. An unrestricted donation
+### 3. Only two projects can receive one
 
-Type `6100` under **Unrestricted (no project)**, Save.
+Open **Money in**.
 
-- A new row appears under Hope for Africa: **Unrestricted / not a project**
-- Its donation cells show `$6,100.00`, and every other cell on that row is empty:
-  no hours, no costs, no prepaid
-- Totals now reads `$8,550.00`, which is 2,450 + 6,100
+- There are exactly **two** donation fields: AskAnAdventistFriend.com and Hope
+  for Africa
+- Grants Pass Church and School have none. "These two are client projects (work
+  on their websites), so they do not get donations"
+- There is no Unrestricted field. "These reports should never show restricted
+  verses unrestricted. That part is all done in our accounting"
+- On the report, the donation cells for Church and School are blank permanently,
+  and there is no fifth row under Hope for Africa
 
 ### 4. Blank means blank, and is how you undo
 
@@ -62,11 +69,23 @@ only way to take out a figure entered by mistake.
 - Clear the field entirely, Save. The cell goes **back to empty** and the row is
   removed
 
+Watch the **Net** column while doing this. With no donation it is minus the
+costs; entering one moves it by exactly that amount.
+
 ### 5. The period filter
 
+**Do not skip the second step.** Choosing a *mode* always worked; choosing a
+*month or year* inside it did nothing at all until 9 September, because the
+dropdown's menu renders in a portal and the popover treated clicking an option as
+clicking outside itself. This was broken on the i7 report and the Full history
+export too.
+
 - It opens on **the current month**, and the PDF options in Export are available
-- Choose **A calendar year**. The middle block of columns is now headed with the
-  span, not "This month", and the figures cover the whole range
+- Open it and **pick a different month from the dropdown**. The report must
+  change, and the button must show the month you chose
+- Choose **A calendar year**, then **pick a year from the dropdown**. Same test
+- The middle block of columns is now headed with the span, not "This month", and
+  the figures cover the whole range
 - The prepaid balance still walks: **Carried in** is what was left entering the
   range, **Remaining** is where it stands at the end
 - Choose **Last 12 months**. It stops at January 2026, because there is no budget
@@ -77,18 +96,27 @@ only way to take out a figure entered by mistake.
 - Pick a team. On the **People** tab, only that team's people keep columns
 - The **Totals** row does not change. A partial view must not read as a whole one
 
-### 7. Export
+### 7. Net
+
+- **Net** sits at the end of the This month block: donations minus employee and
+  contractor costs. Red when short, green when ahead
+- It is **blank for Church and School**. Their income is prepaid hours, not
+  gifts, so donations minus costs would not be their net of anything
+- There is deliberately **no year-to-date Net**. Her sheet has none, and its two
+  inputs are both on the row
+
+### 8. Export
 
 - With a **single month** chosen, all four buttons are live
 - Choose a **year**. The two PDF buttons and the PDF column header go grey, the
   CSVs stay live, and a line appears saying why
-- **Client CSV**: one row per project, plus the Unrestricted row and a total
+- **Client CSV**: one row per project, with Net, and a total
 - **Internal CSV**: one row per project per person, with hours. It carries names
 - **Client PDF**: opens a preview first, and only then offers the download.
   *This is the least-tested thing in the phase: it has never been generated,
   because it runs headless Chromium behind the login. Try it early.*
 
-### 8. Prepaid hours, which used to need a developer
+### 9. Prepaid hours, which used to need a developer
 
 Under **Hours bought in advance**, put `11.25` against Grants Pass School with
 `1012.50` invoiced. Save.
@@ -98,20 +126,20 @@ Under **Hours bought in advance**, put `11.25` against Grants Pass School with
 - Pick **May 2026** and reopen the dialog: it should already show `11.25`, from
   the figure migration 062 seeded
 
-### 9. Bad input is refused, not stored
+### 10. Bad input is refused, not stored
 
 - `-50` → "The amount cannot be negative." Nothing saved
 - `two thousand` → "The amount has to be a number."
 - `$1,234.56` → accepted as `1234.56`. Figures pasted from a bank statement keep
   their dollar sign and commas, so those are stripped rather than refused
 
-### 10. Reopening shows what is stored
+### 11. Reopening shows what is stored
 
 Save some figures, close the dialog, reopen it. The fields are filled with what
 was saved, not empty. A form that opened empty over existing figures would invite
 somebody to type them twice.
 
-### 11. Last updated
+### 12. Last updated
 
 - Enter a donation. The badge should move to **"Last updated just now"**
 - Hover it: it names which of the three sources moved
@@ -129,27 +157,23 @@ the range built in one go.
 dialog saving, the report reading it back, who can see the button, and the PDF
 generating. That is what the list above is for.
 
-## A known gap, not a bug
+## What the model cannot do, by her own choice
 
-**There is no donation history.** The table holds one row per project per month.
-Saving overwrites it and clearing deletes it, so if a figure is corrected from
-2,450 to 2,600 the 2,450 is gone, and nothing records who changed it. The month
-is the finest date there is: no donation carries a day.
+**The month is the finest date there is.** "I don't list each donation. Only the
+total donated for the month." So a donations report can say which month and which
+project, never which day, and there is no record of a figure before it was
+corrected. That is her working method rather than a gap to close.
 
-This was a deliberate choice when nobody had asked for donation reporting. That
-has now changed, and answering "how much was donated, when, and to which project"
-needs one row per donation rather than one per month. See
-`04-donation-history.md` once the questions in `03-questions-for-tina.md` come
-back.
+## Still open
 
-The table is currently **empty**, so the model can still be changed for the cost
-of a migration. That stops being true once figures are entered.
+1. **Her January to July figures** are sent and not entered. August to follow.
+2. **A donations report**: how much, when, for which project. Possible at month
+   granularity.
+3. **Who may open this.** "These reports are only for Dave, myself and Ed."
+   Worth checking against who holds the `grant-pass-report` grant.
+4. **The AAAF Net difference.** The portal does not fold the Grants Pass
+   school-website income into AAAF, so its net differs from her sheet by exactly
+   that line, $325 in March. Ours is the correct attribution. She has not been
+   told.
 
-## Still open, worth asking her
-
-Now written up as questions in `03-questions-for-tina.md`:
-
-1. Whether the unrestricted fund belongs inside the Totals line or outside it
-2. Whether Grants Pass Church or School ever receive donations
-3. Whether a donation needs a note against it
-4. Whether donations should be recorded one by one, with a date
+Her answers are recorded in `03-questions-for-tina.md`.

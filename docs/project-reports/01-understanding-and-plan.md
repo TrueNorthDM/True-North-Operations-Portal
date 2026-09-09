@@ -1,108 +1,124 @@
 # Client reports: what was asked for, and the plan
 
-Written as a proposal. Phase 1 is being built; phases 2 and 3 are outlines and
-nothing in them is committed to.
+Phase 1 is built and in production. Phases 2 and 3 are outlines and nothing in
+them is committed to.
 
 ## Where this comes from
 
-Two sources, both from the Admin Assistant (Tina), and this document exists so
-neither has to be read again to know what was decided:
+Three sources, all from the Admin Assistant (Tina), and this document exists so
+none of them has to be read again to know what was decided:
 
 1. **The workbook** `Portal reports and Info 8-2026.xlsx`, five sheets, handed
    over as the shape the reports should take.
-2. **A Slack thread of 2 September 2026**, where the questions the workbook left
-   open were put to her and answered.
+2. **A Slack thread of 2 September 2026**, answering the questions the workbook
+   left open.
+3. **A Slack thread of 9 September 2026**, answering five follow-up questions.
+   Two of its answers removed work rather than adding any.
 
 ## The workbook, sheet by sheet
 
 | Sheet | What it is | Status |
 | --- | --- | --- |
-| Needs | An earlier draft of the project table | Retired. She asked for it to be merged into Project costs: "the information in the needs tab should be merged with the Project Costs. We can eliminate the needs tab." |
+| Needs | An earlier draft of the project table | Retired: "the information in the needs tab should be merged with the Project Costs. We can eliminate the needs tab." |
 | Project costs report | Projects down the side, money and hours across | **Shipped** as Client Report · Project Hours & Others |
 | People report | Projects down the side, people across, hours in the cells | Believed **already shipped** as that report's People tab. To be confirmed with her rather than built twice. |
 | Dept report | Projects down the side, departments across, hours and costs | **Not built.** Needs a field the portal does not have. See phase 2. |
-| Rates | Break-even rates per person | Not a report: "I didn't want the rates tab listed, that was just for your information to be able to do the formulas." It carries something else valuable, though. See phase 2. |
+| Rates | Break-even rates per person | Not a report: "that was just for your information to be able to do the formulas." It carries something else valuable though. See phase 2. |
 
-She also caught her own mistake in the merged layout: "Sorry I have donations
-listed twice, remove the first donations column." The shipped report has one
-pair of donation columns, not two, so this was already right.
-
-## What the Slack thread settles
+## What the two threads settle
 
 ### Donations
 
-Four things, and one of them overturned the model that had been assumed.
+- **Manual entry, permanently.** "I will need to manually enter the donations as
+  there isn't a way to add that in the workflow. The figures come from checks and
+  online donations." There is no accounting or donor platform to read, and
+  QuickBooks Time carries hours only.
+- **Monthly totals, not individual donations.** "I don't list each donation. Only
+  the total donated for the month." This is what the table was built for, so it
+  did not change. The consequence is that **the month is the finest date there
+  is**: a donations report can say which month, never which day.
+- **They never convert to hours.** "It doesn't translate into hours for this
+  purpose." Unlike the prepaid, which does.
+- **Only two projects receive them.** "These two are client projects (work on
+  their websites), so they do not get donations. AAAF and HFA are projects that we
+  sometimes get donations for." Grants Pass Church and School buy hours instead,
+  so `prepaid` in `TRACKED_PROJECTS` already says which is which and the code
+  reads that rather than carrying a second list.
+- **Restricted and unrestricted do not appear.** "These reports should never show
+  restricted verses unrestricted. That part is all done in our accounting." So
+  what reaches the portal is already resolved to a project.
+- **No donor names.** "We have a donor database that tracks everything. These
+  reports are just cost information for our financial planning." Nothing here is
+  personal data, which is why the read policy is "anyone who can open the report".
 
-1. **Manual entry, and not as a stopgap.** "I will need to manually enter the
-   donations as there isn't a way to add that in the workflow." The figures come
-   from **checks and online donations**, so there is no system holding them to
-   integrate with. The portal has no accounting, bank or donor-platform
-   connection, and QuickBooks Time carries hours only.
-2. **A donation is not always attached to a project.** "Donations are not all
-   for just AAAF. If the donor requests the donations go to AAAF that's where
-   they go, otherwise the donation goes under unrestricted and used for all
-   projects." So there are two kinds, **restricted** to a named project and
-   **unrestricted**. A table keyed only by project could not hold the second.
-3. **They never convert to hours.** "It doesn't translate into hours for this
-   purpose." Unlike the prepaid, which does.
-4. **The point of the report is a financial report for Ed.** "This report will
-   allow me to pull figures from one area in order to create a financial report
-   for Ed." So the figures are read and copied out, which is why blank and zero
-   have to stay distinguishable.
+### Costs and prepaid, confirmed rather than changed
 
-### Two things confirmed rather than changed
+- **Contractor cost is the break-even rate times TSheets hours.** Asked directly,
+  answered "Correct."
+- **Prepaid is $90 an hour, Church and School only**, and separate from donations.
 
-- **Contractor cost is the break-even rate times TSheets hours.** Asked
-  directly, answered "Correct." This is what the shipped report already does.
-- **Prepaid is $90 an hour, Church and School only**, and separate from
-  donations: "The pre-paid is separate and only for the Church and School."
+### Net
 
-## Phase 1: donations
+Her sheet has a **Net (Donations minus all costs)** row per month, which the
+portal did not have although it held every input. It is now on screen, in the
+printed sheet and in both CSVs.
+
+**One deliberate difference from her sheet.** Hers folds the Grants Pass
+school-website and church-invoice income into AskAnAdventist's and Hope for
+Africa's rows, because her layout has nowhere else to put it. The portal has
+somewhere: those sit on the Grants Pass rows as hours bought in advance, and she
+said so herself, "already accounted for on the portal report". Adding them here
+too would count them twice.
+
+So the portal's AAAF net differs from hers by exactly the school-website line:
+March reads −47,912.23 here against −47,587.23 on her sheet. The portal's is the
+correct attribution. **She has not been told this yet.**
+
+A year-to-date net was built and then dropped. Her sheet has no such figure, and
+at 109 pixels it was the single widest column and the reason the table went back
+to scrolling on a 1280-wide laptop. Both its inputs are still on the row.
+
+## Phase 1: donations. Built.
 
 ### The model
 
-One row per **bucket** per month, where a bucket is a project or the
-unrestricted fund, holding an amount and an optional note.
+One row per project per month in `tc_project_donations`, holding an amount and an
+optional note. Migration 079, applied 8 September 2026.
 
-Deliberately not one row per donation. She totals cheques and online payments
-herself before writing them down, and donor-level records would be a much larger
-build serving reporting nobody has asked for. If donor history is ever wanted,
-this table is what it would be summarised into, so nothing here blocks it.
+`project_label` is nullable, which is now dead capability: it was for unrestricted
+money before her answer removed the idea. The column and its partial unique index
+are harmless and are left rather than migrated away.
 
-### Decisions taken, and why
+### Decisions, and why
 
-1. **Unrestricted money gets its own row**, below the four projects, rather than
-   being divided across them. Splitting it would invent an allocation nobody
-   asked for, and she described it as a pool "used for all projects" rather than
-   as an amount belonging to each.
-2. **Blank still means blank.** A month nobody has entered reads empty, not
-   `$0.00`. Zero is a claim that nothing came in, and this report is copied into
-   a financial report for someone else.
-3. **The entry screen takes prepaid hours as well.** `tc_project_purchases` has
-   had a table since migration 062 and no way to write to it, so every Grants
-   Pass purchase is a hand-written SQL insert. It is the same act as a donation,
-   money arriving for a project in a month, and it belongs on the same screen.
-4. **The Admin Assistant can write, and already could.** This was assumed to
-   need a widened policy and does not. `is_admin()` reads `profiles.role`, and
-   migration 038 set that to `'admin'` for the `admin_assistant` tier too, so
-   the database has never excluded her. The gate that WOULD have shut her out
-   is in the app: `access.isAdmin` is `roleType === 'admin'` exactly, so the
-   entry screen checks `isPrivileged` instead. Worth writing down because the
-   two names disagree: at the database an assistant is an admin, in the app she
-   is not.
+1. **Blank is not zero.** A month nobody has entered reads empty; typing `0` reads
+   `$0.00`. Zero is a claim that nothing came in, and this report is copied into a
+   financial report for someone else. An empty field deletes the row, which is
+   also the only way to undo a figure entered by mistake.
+2. **The entry screen takes prepaid hours as well.** `tc_project_purchases` had a
+   table since migration 062 and no way to write to it, so every Grants Pass
+   purchase was a hand-written SQL insert. It is the same act, money arriving for
+   a project in a month.
+3. **The Admin Assistant can write, and already could.** This was assumed to need
+   a widened policy and did not. `is_admin()` reads `profiles.role`, and migration
+   038 set that to `'admin'` for the `admin_assistant` tier too. The gate that
+   WOULD have shut her out is in the app: `access.isAdmin` is
+   `roleType === 'admin'` exactly, so the entry screen checks `isPrivileged`.
+   Worth writing down because the two names disagree: at the database an assistant
+   is an admin, in the app she is not.
 
-### Open, and worth confirming with her
+### What else shipped with it
 
-- Whether the unrestricted row should also appear in the totals line, or sit
-  outside it. Adding a fund to a set of projects makes a number that is correct
-  but has no name.
-- Whether donations are ever recorded against Grants Pass Church or School. Her
-  own layout gives them a donations column, but they are prepaid rather than
-  donation funded, so the column may be blank for them permanently.
+The report was brought level with the i7 one while this was being built: the
+period filter and team filter, the navy-white-navy toolbar, the Export menu with
+client and internal as PDF and CSV, and a **Last updated** badge that takes the
+newest of three sources rather than copying i7's "Last synced". A sync is only one
+of the three things that change this page, so a sync badge would not move when
+Tina enters a donation.
 
 ## Phase 2: the department report
 
-Not started, and it needs a decision from her first.
+Not started, and it needs one answer from her first.
 
 The report was thought unbuildable because the portal has no field saying what a
 person does. **The Rates sheet is that field**: it carries a `Dept` for all 25
@@ -110,11 +126,11 @@ people, with the values `Writers`, `SEO`, `Web`, `Admin`, `Special Projects`,
 `Translator`, `Graphics` (and one spelling to normalise, `Writer` against
 `Writers`).
 
-The portal's nearest concept is the primary team, which is only `seo`,
-`writing`, `web`, `lead`, `other`. That covers three of the seven and drops
-Admin, Graphics, Translator and Special Projects into "other". Department and
-team are different axes, so this needs its own column on `people`, seeded from
-the sheet the same way `be_rate` was in migration 078.
+The portal's nearest concept is the primary team, which is only `seo`, `writing`,
+`web`, `lead`, `other`. That covers three of the seven and drops Admin, Graphics,
+Translator and Special Projects into "other". Department and team are different
+axes, so this needs its own column on `people`, seeded from the sheet the same way
+`be_rate` was in migration 078.
 
 **The question for her:** her sketch shows only SEO, Writing and Web as columns.
 The Rates sheet has seven departments. Admin and Special Projects hours have to
@@ -123,10 +139,17 @@ out.
 
 ## Phase 3: the people report
 
-Probably already delivered. Her sheet is projects down the side, people across,
-hours in the cells, Total Hours at the foot, which is the People tab of the
-shipped report. The one difference is that her sheet lists every person as a
-column while the tab shows only those with hours in the period.
+Probably already delivered as the People tab. The one difference is that her sheet
+lists every person as a column while the tab shows only those with hours in the
+period. Show her the live tab and ask whether that closes it, rather than building
+a second report.
 
-The next step is to show her the live tab and ask whether that closes it, not to
-build a second report.
+## Still open
+
+1. **Her January to July figures** have been sent and are not entered. August to
+   follow.
+2. **A donations report** of how much, when and for which project. Possible at
+   month granularity, which is as fine as her data goes.
+3. **"These reports are only for Dave, myself and Ed."** Worth checking who holds
+   the `grant-pass-report` grant against that.
+4. **The AAAF net difference** above, which she has not been told about.
