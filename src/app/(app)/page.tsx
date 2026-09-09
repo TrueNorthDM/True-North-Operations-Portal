@@ -48,25 +48,28 @@ export default async function HomePage() {
       {/* Budget at a glance, gated by level + team tool grant. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
-      {/* Three columns. Publishing goals' figures are for everyone; only the
-          people who can open the page behind it get a card that links. */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+      {/* Half the width each. Publishing goals is four weeks of two clients,
+          so it runs as tall as the two short celebration cards stacked, and the
+          three of them fill the row without leaving a column of white.
+          Its figures are for everyone; only those who can open the page behind
+          it get a card that links. */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <PublishingGoalsWidget boards={publishing} linked={access.canTool('publishing')} />
-        <Birthdays people={celebPeople} />
-        <Anniversaries people={celebPeople} />
+        <div className="space-y-6">
+          <Birthdays people={celebPeople} />
+          <Anniversaries people={celebPeople} />
+        </div>
       </section>
 
-      {/* Company org chart, permanent fixture of the home page. */}
-      <section>
-        <div className="flex items-baseline justify-between gap-3 mb-3">
-          <h2 className="text-lg font-bold text-tn-ink">Organization</h2>
-          {org.total > 0 && (
-            <span className="text-xs text-muted">{org.total} people</span>
-          )}
+      {/* Company org chart, permanent fixture of the home page. Its title sits
+          inside the card, like the two above it, with the headcount beside the
+          name rather than pushed to the far end of the row. */}
+      <section className="rounded-xl border border-slate-200 bg-white/60 p-4">
+        <div className="flex items-baseline gap-2.5 mb-3">
+          <h2 className="text-lg font-bold text-tn-ink m-0">Organization</h2>
+          {org.total > 0 && <span className="text-[13px] text-muted">{org.total} people</span>}
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white/60 p-4">
-          <OrgChart roots={org.roots} />
-        </div>
+        <OrgChart roots={org.roots} />
       </section>
     </div>
   )

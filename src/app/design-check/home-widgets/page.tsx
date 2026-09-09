@@ -11,6 +11,9 @@ import { Birthdays } from '@/components/home/Birthdays'
 import type { PublishingBoardWeeks } from '@/lib/boards/publishing-weeks'
 import type { CelebrationPerson } from '@/lib/hr/celebrations'
 import type { I7Carryover } from '@/lib/tsheets/types'
+import { WelcomeBanner } from '@/components/home/WelcomeBanner'
+import { OrgChart } from '@/components/OrgChart'
+import type { OrgPerson } from '@/lib/org/data'
 
 const CARRYOVER: I7Carryover = {
   opening: 20047.38,
@@ -41,6 +44,19 @@ const PEOPLE: CelebrationPerson[] = [
   { id: '3', name: 'Wendy Cacka', avatarUrl: null, hireDate: '2023-09-25', dob: '1988-09-30', teamName: 'Web', teamKey: 'web', color: '#6d5ae0' },
 ]
 
+/** A founder and two leads. Enough for the chart to draw itself and be measured. */
+const person = (id: string, name: string, title: string, color: string, children: OrgPerson[] = []): OrgPerson => ({
+  id, name, title, color,
+  teams: [], ledTeams: [], secondaryManagerId: null, primaryTeamName: null, ghosts: [], children,
+})
+
+const ORG: OrgPerson[] = [
+  person('1', 'Arnaldo Oliveira', 'Founder', '#012358', [
+    person('2', 'Jeannette Owens', 'SEO lead', '#1E7D7F'),
+    person('3', 'Wendy Cacka', 'Web lead', '#6d5ae0'),
+  ]),
+]
+
 export default function HomeWidgetsDesignCheck() {
   return (
     <div className="min-h-screen bg-[var(--page-bg,#efedE8)] px-6 py-10">
@@ -53,27 +69,27 @@ export default function HomeWidgetsDesignCheck() {
           </p>
         </div>
 
-        <div className="rounded-2xl bg-tn-primary px-7 py-6 text-white">
-          <div className="font-(family-name:--font-display) font-extrabold text-[22px]">Good afternoon, Arnaldo</div>
-          <div className="text-white/70 text-[13.5px] mt-1">One home for the tools, dashboards and tasks that keep your team moving every day.</div>
-        </div>
+        <WelcomeBanner name="Arnaldo Oliveira" />
 
         <I7BudgetWidget month="2026-09" carryover={CARRYOVER} />
 
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <PublishingGoalsWidget boards={PUBLISHING} linked />
-          <Birthdays people={PEOPLE} />
-          <Anniversaries people={PEOPLE} />
+          <div className="space-y-6">
+            <Birthdays people={PEOPLE} />
+            <Anniversaries people={PEOPLE} />
+          </div>
         </section>
 
-        <div>
-          <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted m-0 mb-2">
-            The same card for somebody without the Publishing grant: same figures, no hover, not a link
-          </p>
-          <div className="lg:w-1/2">
-            <PublishingGoalsWidget boards={PUBLISHING} />
+        {/* The org chart closes the Home page. It belongs here or this check
+            stops being what the page looks like. */}
+        <section className="rounded-xl border border-slate-200 bg-white/60 p-4">
+          <div className="flex items-baseline gap-2.5 mb-3">
+            <h2 className="text-lg font-bold text-tn-ink m-0">Organization</h2>
+            <span className="text-[13px] text-muted">32 people</span>
           </div>
-        </div>
+          <OrgChart roots={ORG} />
+        </section>
       </div>
     </div>
   )

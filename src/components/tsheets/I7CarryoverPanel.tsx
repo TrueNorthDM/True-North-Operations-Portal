@@ -39,12 +39,20 @@ const PILL: Record<Status, { cls: string; label: string }> = {
 /** The budget-balance card: navy header + this month's total, balance left and
  *  the animated usage bar. Shared by the i7 report and the Home page. */
 export function BudgetBalanceCard(
-  { c, month, multi = false }: {
+  { c, month, multi = false, title = 'i7 Marketing budget', large = false }: {
     c: I7Carryover
     /** The header's label. A YYYY-MM is spelled out; anything else is shown as given. */
     month: string
     /** The figures cover more than one month, so the wording stops saying "this month". */
     multi?: boolean
+    /**
+     * What the navy header calls this. On the report it is the client's budget;
+     * on Home it is the widget's own title, since the heading that used to sit
+     * above the card is gone.
+     */
+    title?: string
+    /** Home sizes its titles to match the widgets beside it. The report does not. */
+    large?: boolean
   },
 ) {
   const neg = c.totalLeft < 0
@@ -53,7 +61,7 @@ export function BudgetBalanceCard(
     <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
       {/* navy header */}
       <div className="flex items-center justify-between gap-3 bg-tn-primary px-5 py-3.5">
-        <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-white">i7 Marketing budget</span>
+        <span className={`font-(family-name:--font-display) font-extrabold text-white ${large ? 'text-lg' : 'text-[13px]'}`}>{title}</span>
         <span className="font-(family-name:--font-display) font-bold text-[12px] text-white/70">{fmtMonth(month)}</span>
       </div>
 

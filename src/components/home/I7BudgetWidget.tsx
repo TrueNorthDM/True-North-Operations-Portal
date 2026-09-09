@@ -9,6 +9,10 @@
 // What stayed from that pass is the click. The whole card is the link, so there
 // is no "Open report" in the corner: a two-word link is a far smaller target
 // than the card it sits in.
+//
+// The "i7 Budget" heading that used to sit above the card is now the card's own
+// title, sized to match Birthdays and the rest of the row. A heading outside a
+// card and a title inside it are two names for one thing.
 
 import Link from 'next/link'
 import { BudgetBalanceCard } from '@/components/tsheets/I7CarryoverPanel'
@@ -16,14 +20,11 @@ import type { I7Carryover } from '@/lib/tsheets/types'
 
 export function I7BudgetWidget({ month, carryover }: { month: string; carryover: I7Carryover }) {
   return (
-    <section>
-      <h2 className="text-lg font-bold text-tn-ink mb-3">i7 Budget</h2>
-      <Link
-        href="/tools/time-report"
-        className="block rounded-2xl transition-shadow hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]"
-      >
-        <BudgetBalanceCard c={carryover} month={month} />
-      </Link>
-    </section>
+    <Link
+      href="/tools/time-report"
+      className="block rounded-2xl transition-shadow hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]"
+    >
+      <BudgetBalanceCard c={carryover} month={month} title="i7 Budget" large />
+    </Link>
   )
 }

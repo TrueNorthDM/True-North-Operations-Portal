@@ -36,7 +36,7 @@ export function PublishingGoalsWidget(
   const inner = (
     <>
       <div className="flex items-center justify-between gap-3 bg-tn-primary px-5 py-3">
-        <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-white">Publishing goals</span>
+        <span className="font-(family-name:--font-display) font-extrabold text-lg text-white">Publishing goals</span>
         <span className="font-(family-name:--font-display) font-bold text-[12px] text-white/70">Last 4 weeks</span>
       </div>
 
@@ -58,31 +58,33 @@ export function PublishingGoalsWidget(
             {b.perWeek === 0 ? (
               <p className="text-[12px] text-muted m-0">No weekly target set for this board.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {b.weeks.map(w => {
                   const hit = w.done >= w.target
                   const pct = Math.round((w.done / w.target) * 100)
                   return (
-                    <div key={w.start}>
-                      {/* The count and the percentage both, and both readable.
-                          A bar alone says "about right"; the target is a number
-                          somebody committed to, so it is printed next to what
-                          was actually done. */}
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-[11.5px] text-muted tabular-nums">{w.label}</span>
-                        <span className="flex items-baseline gap-1.5">
-                          <span className={`text-[13px] font-(family-name:--font-display) font-extrabold tabular-nums ${hit ? 'text-[#1E9E6A]' : 'text-[#b06d0a]'}`}>
-                            {w.done}/{w.target}
-                          </span>
-                          <span className="text-[11px] text-muted tabular-nums">{pct}%</span>
-                        </span>
-                      </div>
-                      <div className="mt-1 h-2 rounded-full bg-subtle overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${hit ? 'bg-[#1E9E6A]' : 'bg-[#e08a1e]'}`}
+                    // One line, left to right: which week, what was done
+                    // against the target, what share of it that is, then the
+                    // bar. Stacking the bar under the row put the date at one
+                    // end of the screen and the figure at the other.
+                    <div key={w.start} className="flex items-center gap-4">
+                      <span className="w-[52px] shrink-0 text-[11.5px] text-muted tabular-nums">{w.label}</span>
+                      <span className={`w-[54px] shrink-0 text-right text-[13px] font-(family-name:--font-display) font-extrabold tabular-nums ${hit ? 'text-[#1E9E6A]' : 'text-[#b06d0a]'}`}>
+                        {w.done}/{w.target}
+                      </span>
+                      {/* The percentage is the headline and the count is the
+                          working. Navy on every week: the bar and the count
+                          already say pass or fail, and a 26px figure in amber
+                          reads as an alarm rather than a measurement. */}
+                      <span className="w-[74px] shrink-0 text-right text-[26px] leading-none font-(family-name:--font-display) font-extrabold tabular-nums text-tn-ink">
+                        {pct}<span className="text-[15px]">%</span>
+                      </span>
+                      <span className="flex-1 h-2.5 rounded-full bg-subtle overflow-hidden">
+                        <span
+                          className={`block h-full rounded-full ${hit ? 'bg-[#1E9E6A]' : 'bg-[#e08a1e]'}`}
                           style={{ width: `${Math.min(100, pct)}%` }}
                         />
-                      </div>
+                      </span>
                     </div>
                   )
                 })}
