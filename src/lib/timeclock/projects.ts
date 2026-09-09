@@ -170,6 +170,44 @@ async function hoursIn(
   return out
 }
 
+/**
+ * The same containment query as hoursIn, kept month by month.
+ *
+ * The history table wants a column per month, and asking hoursIn twelve times
+ * would run twelve paged scans per project to answer what one pass already
+ * knows. The date comes back with the row and the bucketing happens here.
+ */
+async function hoursByMonth(
+  supabase: Client,
+  projectKey: number,
+  labels: string[],
+  start: string,
+  end: string,
+): Promise<Map<string, Map<string, Map<string, number>>>> {
+  const out = new Map<string, Map<string, Map<string, number>>>()
+  for (const label of labels) {
+    const byMonth = new Map<string, Map<string, number>>()
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('tc_entries').select('person_id, duration_seconds, entry_date')
+        .contains('fields', { [String(projectKey)]: label })
+        .gte('entry_date', start).lte('entry_date', end)
+        .order('id', { ascending: true }).range(from, from + PAGE - 1)
+      if (error) throw new Error(error.message)
+      const rows = (data ?? []) as { person_id: string; duration_seconds: number; entry_date: string }[]
+      for (const r of rows) {
+        const ym = r.entry_date.slice(0, 7)
+        const byId = byMonth.get(ym) ?? new Map<string, number>()
+        byMonth.set(ym, byId)
+        byId.set(r.person_id, (byId.get(r.person_id) ?? 0) + r.duration_seconds / 3600)
+      }
+      if (rows.length < PAGE) break
+    }
+    out.set(label, byMonth)
+  }
+  return out
+}
+
 const round2 = (n: number) => Math.round(n * 100) / 100
 
 /**
@@ -346,4 +384,107 @@ export async function loadProjectTracking(
     // and this is what the screen says so instead of the total quietly shrinking.
     unratedPeople: [...unratedAll].sort((a, b) => a.localeCompare(b)),
   }
+}
+
+/** Every month from `from` to `to`, both ends included. */
+function monthsOf(from: string, to: string): string[] {
+  const out: string[] = []
+  let [y, m] = from.split('-').map(Number)
+  for (;;) {
+    const ym = `${y}-${String(m).padStart(2, '0')}`
+    out.push(ym)
+    if (ym >= to) break
+    m += 1
+    if (m > 12) { m = 1; y += 1 }
+  }
+  return out
+}
+
+// ── The year, month by month ────────────────────────────────────────────────
+//
+// Tina's own sheet transposed: metrics down the side, months across. The report
+// above answers "what did this period cost"; this answers "how has the year
+// gone", which is the question her tracking sheet was built to answer and the
+// one the portal could not.
+
+/** One month of one project, in the rows her sheet has. */
+export interface ProjectMonthRow {
+  month: string
+  hours: number
+  employeeCost: number
+  contractorCost: number
+  /** Null for the two that buy hours, and for a month nobody has entered. */
+  donations: number | null
+  /** Donations minus costs. Null wherever donations are. */
+  net: number | null
+}
+
+export interface ProjectHistoryBlock {
+  label: string
+  name: string
+  prepaid: boolean
+  months: ProjectMonthRow[]
+}
+
+/**
+ * Every tracked project across a run of months.
+ *
+ * A month with no hours and no donation still gets a row, because a gap in a
+ * year is a fact about the year and a missing column would just look like a
+ * layout bug.
+ */
+export async function loadProjectHistory(
+  supabase: Client,
+  from: string,
+  to: string,
+): Promise<ProjectHistoryBlock[]> {
+  const [{ data: fieldRows }, { data: peopleRows }, { data: giftRows }, pay] = await Promise.all([
+    supabase.from('tc_fields').select('id, external_id'),
+    supabase.from('people').select('id, employment_type'),
+    supabase.from('tc_project_donations').select('project_label, month, amount_usd')
+      .gte('month', from).lte('month', to),
+    loadCompensationByPerson(),
+  ])
+
+  const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
+    .find(f => String(f.external_id) === PROJECT_CF)?.id
+  if (!projectKey) return []
+
+  const labels = TRACKED_PROJECTS.map(p => p.label)
+  const kindById = new Map(((peopleRows ?? []) as { id: string; employment_type: string | null }[])
+    .map(p => [p.id, p.employment_type]))
+  const byProject = await hoursByMonth(supabase, projectKey, labels, `${from}-01`, monthEnd(to))
+
+  const gifts = (giftRows ?? []) as { project_label: string | null; month: string; amount_usd: number }[]
+  const months = monthsOf(from, to)
+
+  return TRACKED_PROJECTS.map(p => ({
+    label: p.label,
+    name: p.name,
+    prepaid: p.prepaid,
+    months: months.map(ym => {
+      const byId = byProject.get(p.label)?.get(ym) ?? new Map<string, number>()
+      let hours = 0, employeeCost = 0, contractorCost = 0
+      for (const [id, h] of byId) {
+        hours += h
+        const cost = h * (pay.get(id)?.beRate ?? 0)
+        if (kindById.get(id) === 'contractor') contractorCost += cost
+        else employeeCost += cost
+      }
+      const gift = p.prepaid
+        ? null
+        : gifts.find(g => g.project_label === p.label && g.month === ym)?.amount_usd ?? null
+      const donations = gift == null ? null : Number(gift)
+      return {
+        month: ym,
+        hours: round2(hours),
+        employeeCost: round2(employeeCost),
+        contractorCost: round2(contractorCost),
+        donations,
+        // A month with no donation entered still has a net: minus its costs.
+        // Only the prepaid two, whose income is not gifts, have none at all.
+        net: p.prepaid ? null : round2((donations ?? 0) - (employeeCost + contractorCost)),
+      }
+    }),
+  }))
 }

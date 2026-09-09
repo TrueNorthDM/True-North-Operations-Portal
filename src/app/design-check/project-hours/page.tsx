@@ -20,7 +20,48 @@ import { LastUpdatedBadge } from '@/components/tsheets/LastUpdatedBadge'
 import { TRACKED_PROJECTS } from '@/lib/timeclock/projects'
 import type { ManualOptions } from '@/components/tsheets/ManualHours'
 import { resolveRange } from '@/lib/tsheets/range'
+import { ProjectFullHistory } from '@/components/tsheets/ProjectFullHistory'
+import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
 import { DATA as data } from './fixture'
+
+// Tina's own January to July figures, so the table can be checked against the
+// sheet it is copying. Donations are her "Ed & other Donations" row; the Grants
+// Pass lines are deliberately absent, being prepaid income on other rows.
+const AAAF: [number, number, number, number][] = [
+  // hours, employee, contractor, donations
+  [914.13, 35382.46, 8235.38, 12104], [921.40, 33215.07, 10707.10, 425],
+  [1042.70, 35908.31, 12470.92, 467], [841.05, 29223.48, 9902.07, 385],
+  [905.78, 35739.50, 9167.09, 2936], [1075.63, 43869.02, 10580.08, 22482],
+  [907.08, 33411.66, 10127.28, 630],
+]
+const HFA: [number, number, number, number | null][] = [
+  [548.00, 10818.47, 3952.99, null], [456.00, 9458.99, 3066.53, null],
+  [467.27, 9304.00, 3219.56, null], [463.89, 8252.67, 3996.28, null],
+  [561.85, 9721.23, 4248.67, null], [580.23, 9077.19, 4648.64, null],
+  [472.96, 5910.44, 4068.03, null],
+]
+const MONTHS_2026 = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07']
+
+const block = (
+  label: string, name: string, prepaid: boolean,
+  rows: [number, number, number, number | null][],
+): ProjectHistoryBlock => ({
+  label, name, prepaid,
+  months: MONTHS_2026.map((month, i) => {
+    const [hours, employeeCost, contractorCost, donations] = rows[i] ?? [0, 0, 0, null]
+    return {
+      month, hours, employeeCost, contractorCost, donations,
+      net: prepaid ? null : Math.round(((donations ?? 0) - (employeeCost + contractorCost)) * 100) / 100,
+    }
+  }),
+})
+
+const HISTORY: ProjectHistoryBlock[] = [
+  block('AAAF', 'AskAnAdventistFriend.com', false, AAAF),
+  block('GP church', 'Grants Pass Church', true, MONTHS_2026.map(() => [0, 0, 0, null] as [number, number, number, number | null])),
+  block('GP School', 'Grants Pass School', true, MONTHS_2026.map(() => [0, 0, 0, null] as [number, number, number, number | null])),
+  block('Africa', 'Hope for Africa', false, HFA),
+]
 
 const MONTHS = ['2026-09', '2026-08', '2026-07', '2026-06', '2026-05', '2026-04', '2026-03', '2026-02', '2026-01']
 const TEAMS = [
@@ -90,6 +131,7 @@ export default async function ProjectHoursDesignCheck(
           </div>
 
           <ProjectHoursReport data={data} teams={TEAMS.map(t => ({ ...t, members: [] }))} selectedTeam="" />
+          <ProjectFullHistory blocks={HISTORY} year="2026" />
         </div>
       </div>
     </div>

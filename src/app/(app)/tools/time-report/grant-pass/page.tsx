@@ -14,11 +14,12 @@ import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
-import { loadProjectTracking } from '@/lib/timeclock/projects'
+import { loadProjectTracking, loadProjectHistory } from '@/lib/timeclock/projects'
 import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
 import { ProjectPeriodFilter } from '@/components/tsheets/ProjectPeriodFilter'
 import { ProjectExportMenu } from '@/components/tsheets/ProjectExportMenu'
 import { ProjectHoursNotes } from '@/components/tsheets/ProjectHoursNotes'
+import { ProjectFullHistory } from '@/components/tsheets/ProjectFullHistory'
 import { loadTeamRoster } from '@/lib/directory/team-roster'
 import { loadLastUpdated } from '@/lib/timeclock/last-updated'
 import { LastUpdatedBadge } from '@/components/tsheets/LastUpdatedBadge'
@@ -65,6 +66,7 @@ export default async function ProjectHoursPage({
   // both reports rather than two.
   const { teams } = await loadTeamRoster()
   const lastUpdated = await loadLastUpdated(createAdminClient(), range.from, range.to)
+  const history = await loadProjectHistory(createAdminClient(), `${range.to.slice(0, 4)}-01`, range.to)
   const selectedTeam = teams.some(t => t.id === team) ? team! : ''
 
   // Donations and prepaid hours, for whoever may edit them. isPrivileged, not
@@ -125,6 +127,10 @@ export default async function ProjectHoursPage({
           </div>
         </div>
         <ProjectHoursReport data={data} teams={teams} selectedTeam={selectedTeam} />
+
+        {/* January to the month on screen, which is what her tracking sheet
+            covers and what the report's own year columns run to. */}
+        <ProjectFullHistory blocks={history} year={range.to.slice(0, 4)} />
         </div>
     </div>
   )
