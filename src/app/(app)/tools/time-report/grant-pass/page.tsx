@@ -18,6 +18,8 @@ import { loadProjectTracking } from '@/lib/timeclock/projects'
 import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
 import { ProjectPeriodFilter } from '@/components/tsheets/ProjectPeriodFilter'
 import { ProjectExportMenu } from '@/components/tsheets/ProjectExportMenu'
+import { ProjectHoursNotes } from '@/components/tsheets/ProjectHoursNotes'
+import { loadTeamRoster } from '@/lib/directory/team-roster'
 import { resolveRange } from '@/lib/tsheets/range'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
@@ -34,13 +36,13 @@ const MANUAL_BLURB =
 
 export default async function ProjectHoursPage({
   searchParams,
-}: { searchParams: Promise<{ month?: string; from?: string; to?: string }> }) {
+}: { searchParams: Promise<{ month?: string; from?: string; to?: string; team?: string }> }) {
   // The area comes from the level, the report from its own team tool grant.
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/tools')
 
   const months = availableMonths(new Date())
-  const { month, from, to } = await searchParams
+  const { month, from, to, team } = await searchParams
   const newest = months.includes(currentYearMonth()) ? currentYearMonth() : months[0]
   // `month` still works: an old link is a range of one, which is the report it
   // always was. No parameters is the current month, which is what it opens on.
@@ -56,6 +58,11 @@ export default async function ProjectHoursPage({
   // tools surface plus the grant-pass-report team grant, checked right above,
   // and that is the rule an admin can actually see.
   const data = await loadProjectTracking(createAdminClient(), range.from, range.to)
+
+  // The same roster the i7 report filters by, so "Team" means one thing across
+  // both reports rather than two.
+  const { teams } = await loadTeamRoster()
+  const selectedTeam = teams.some(t => t.id === team) ? team! : ''
 
   // Donations and prepaid hours, for whoever may edit them. isPrivileged, not
   // isAdmin: the Admin Assistant is the person who holds these figures, and
@@ -82,9 +89,14 @@ export default async function ProjectHoursPage({
         </p>
       </div>
 
+      {/* The "i" sits above the buttons, where the i7 report keeps its own. */}
+      <div className="flex justify-end -mb-2">
+        <ProjectHoursNotes lastYear={String(Number(range.to.slice(0, 4)) - 1)} />
+      </div>
+
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
-        <ProjectPeriodFilter range={range} availableMonths={months} />
+        <ProjectPeriodFilter range={range} availableMonths={months} team={selectedTeam} teams={teams} />
         {/* One group, right of the month, the way the i7 toolbar carries its
             own. justify-between had pushed these to opposite ends of the row. */}
         <div className="ml-auto flex items-center gap-2.5">
@@ -102,7 +114,7 @@ export default async function ProjectHoursPage({
           )}
         </div>
       </div>
-      <ProjectHoursReport data={data} />
+      <ProjectHoursReport data={data} teams={teams} selectedTeam={selectedTeam} />
     </div>
   )
 }

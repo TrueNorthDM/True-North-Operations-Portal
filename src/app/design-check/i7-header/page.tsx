@@ -74,7 +74,7 @@ export default function I7HeaderDesignCheck() {
 
           <div className="space-y-6">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</span>
+              <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
               <RangeFilter
                 value={choice}
                 onChange={setChoice}
@@ -82,7 +82,6 @@ export default function I7HeaderDesignCheck() {
                 modes={['month', 'year', 'last12', 'custom']}
                 months={MONTHS}
               />
-              <span className="text-sm text-muted ml-1 tabular-nums">{spanWording(range.from, range.to)}</span>
               <label htmlFor="team-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</label>
               <Select
                 id="team-select"

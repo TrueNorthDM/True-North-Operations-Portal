@@ -92,14 +92,14 @@ export function MoneyInDialog(
 
   return (
     <>
-      {/* The navy-and-gold pair from the i7 toolbar, where Export wears the
-          gold mark on navy and Team Update answers it in white. */}
+      {/* Leftmost of three, navy with a white mark: on the i7 toolbar the gold
+          belongs to Export at the far end, not to the button that opens a form. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2.5 bg-tn-primary text-white rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-transform hover:-translate-y-px"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         <span className="text-[#ffffff]">Money in</span>
       </button>
 

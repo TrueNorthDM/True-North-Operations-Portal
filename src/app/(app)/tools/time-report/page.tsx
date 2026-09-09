@@ -15,10 +15,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { loadTeamRoster } from '@/lib/directory/team-roster'
 import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { resolveRange, spanWording, type Range } from '@/lib/tsheets/range'
 import { availableMonths } from '@/lib/tsheets/retention'
@@ -71,9 +70,6 @@ const MOCK_TREND: I7TrendPoint[] = [
   { month: '2026-06', hours: 340, cost: 41000, budget: 45000, balance: 53000 },
 ]
 
-// Next validates a page's exports, so this stays local to the file.
-/** A team as the report's filter needs it: a name, and who is in it. */
-interface TeamRoster { id: string; name: string; members: string[] }
 
 interface Props {
   // `month` is the old single-month link, still honoured: it lands as a range of
@@ -113,50 +109,6 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
       <I7Tab month={month} from={from} to={to} team={team} />
     </div>
   )
-}
-
-/**
- * Every team with the first names of its members, plus which of them the viewer
- * belongs to.
- *
- * One loader for two jobs that ask the same question: the team filter beside the
- * pay period, and the restricted view's "only your own teammates". Splitting
- * them would have meant two ways to decide who counts as a teammate.
- *
- * First names because that is what the report's columns are: loadNames() keys
- * them by the first word of full_name. Two Amys would both show, the same
- * collision the report already lives with and not worth solving twice.
- */
-async function loadTeamRoster(): Promise<{ teams: TeamRoster[]; myTeamIds: Set<string> }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const me = await loadCurrentPerson(supabase, user)
-
-  const [{ data: teamRows }, { data: memberRows }, { data: peopleRows }] = await Promise.all([
-    supabase.from('teams').select('id, name').order('name'),
-    supabase.from('team_members').select('team_id, person_id'),
-    supabase.from('people').select('id, full_name'),
-  ])
-
-  const firstNameById = new Map((peopleRows ?? []).map(p => [p.id, (p.full_name || '').split(' ')[0]]))
-  const byTeam = new Map<string, string[]>()
-  const myTeamIds = new Set<string>()
-  for (const m of memberRows ?? []) {
-    const first = firstNameById.get(m.person_id)
-    if (first) {
-      const list = byTeam.get(m.team_id) ?? []
-      if (!list.includes(first)) list.push(first)
-      byTeam.set(m.team_id, list)
-    }
-    if (me && m.person_id === me.id) myTeamIds.add(m.team_id)
-  }
-
-  const teams: TeamRoster[] = (teamRows ?? []).map(t => ({
-    id: t.id,
-    name: t.name,
-    members: (byTeam.get(t.id) ?? []).sort((a, b) => a.localeCompare(b)),
-  }))
-  return { teams, myTeamIds }
 }
 
 // The report body, still its own function: the month resolution and the sync

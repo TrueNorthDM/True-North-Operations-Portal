@@ -17,7 +17,6 @@
 
 import { useState } from 'react'
 import { money } from '@/lib/tsheets/format'
-import { InfoDialog } from '@/components/ui/InfoDialog'
 import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
 
@@ -51,9 +50,20 @@ function monthName(ym: string): string {
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
-export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
+export function ProjectHoursReport(
+  { data, teams = [], selectedTeam = '' }: {
+    data: ProjectTracking
+    /** Teams the filter offers, with the first names of their members. */
+    teams?: readonly { id: string; name: string; members: readonly string[] }[]
+    selectedTeam?: string
+  },
+) {
   const [view, setView] = useState<'costs' | 'people'>('costs')
-  const { rows, people, totals, unratedPeople, unrestricted } = data
+  const { rows, totals, unratedPeople, unrestricted } = data
+  // Only ever takes names away, and only from the People columns. The totals
+  // stay everyone's: a partial view should not read as a whole one.
+  const teamPeople = teams.find(t => t.id === selectedTeam)?.members ?? null
+  const people = data.people.filter(n => !teamPeople || teamPeople.includes(n))
   const oneMonth = data.from === data.month
   // What the middle block of columns covers. "This month" is a lie over a range,
   // and the range is the only thing on screen that says which months these are.
@@ -122,7 +132,7 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
         </div>
       </div>
 
-      <div className="border-b border-slate-200 flex items-center gap-1">
+      <div className="border-b border-slate-200 flex gap-1">
         {(['costs', 'people'] as const).map(v => (
           <button
             key={v}
@@ -135,42 +145,6 @@ export function ProjectHoursReport({ data }: { data: ProjectTracking }) {
             {v === 'costs' ? 'Costs' : 'People'}
           </button>
         ))}
-        {/* Beside the tabs rather than under the table: the questions it
-            answers are asked while looking at a cell, not after scrolling
-            past everything. */}
-        <span className="ml-auto pb-1.5">
-          <InfoDialog title="How this report is built" label="How this report is built">
-            <p className="m-0">
-              <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Costs here are what a project consumed, not what left the bank.</strong>{' '}
-              They are hours × each person&rsquo;s break-even rate. For somebody on the payroll that is an
-              attribution: they are paid the same whether they logged ten hours or a hundred.
-            </p>
-            <p className="m-0">
-              <strong className="font-(family-name:--font-display) font-extrabold text-tn-ink">Nothing here is billed.</strong>{' '}
-              These projects are donation funded. Grants Pass Church and School are the exception: they buy
-              hours in advance at $90, which is what the three balance columns track. The other two have no
-              allowance, so those cells are blank rather than zero.
-            </p>
-            <p className="m-0 text-muted">
-              Donations are entered by hand and there is nowhere to enter them yet, so both donation
-              columns are blank. Blank rather than zero: zero would say nothing came in.
-            </p>
-            <p className="m-0 text-muted">
-              All four projects are recognised by the <span className="font-semibold">“2 Project”</span>{' '}
-              field on each entry. Hope for Africa in particular is not a job code: its work sits under two
-              different ones and only the project value joins them, which is why counting by job code came
-              out 120 to 190 hours short every month.
-            </p>
-            {/* The one column that compares two different kinds of truth. Saying so
-                is cheaper than being asked about it every month. */}
-            <p className="m-0 text-muted">
-              The <span className="font-semibold">{lastYear} same month</span> column is computed from the
-              timesheets as they stand today, so it can differ from what the {`${lastYear} tracking sheet`}{' '}
-              said at the time: a year of corrections and retroactive approvals sits between them. Across the
-              months that were checked the gap ran from four hours over to eighty-seven under.
-            </p>
-          </InfoDialog>
-        </span>
       </div>
 
       <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">

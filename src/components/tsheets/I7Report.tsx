@@ -177,7 +177,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
 
       {/* Period and team selectors */}
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Pay period</span>
+        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
         <RangeFilter
           value={chosen}
           onChange={pickRange}
@@ -185,7 +185,6 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
           modes={['month', 'year', 'last12', 'custom']}
           months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
         />
-        <span className="text-sm text-muted ml-1 tabular-nums">{data.startDate} → {data.endDate}</span>
         {teams.length > 0 && (
           <>
             <label htmlFor="team-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</label>

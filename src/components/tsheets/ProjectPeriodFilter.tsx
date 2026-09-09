@@ -16,10 +16,16 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { RangeFilter } from './RangeFilter'
+import { Select } from '@/components/ui/Select'
 import { choiceFromRange, rangeOf, type Range, type RangeChoice } from '@/lib/tsheets/range'
 
 export function ProjectPeriodFilter(
-  { range, availableMonths }: { range: Range; availableMonths: string[] },
+  { range, availableMonths, team = '', teams = [] }: {
+    range: Range
+    availableMonths: string[]
+    team?: string
+    teams?: readonly { id: string; name: string }[]
+  },
 ) {
   const router = useRouter()
   const [, startNav] = useTransition()
@@ -43,17 +49,36 @@ export function ProjectPeriodFilter(
     const r = rangeOf(next, newest)
     // A half-typed custom range is not worth a round trip. The popover says so.
     if (r.from <= r.to) {
-      startNav(() => router.push(`/tools/time-report/grant-pass?from=${r.from}&to=${r.to}`))
+      startNav(() => router.push(href({ from: r.from, to: r.to })))
     }
   }
 
+  // Both filters live in the URL together, so changing one keeps the other and
+  // the address stays shareable.
+  const href = (r: { from: string; to: string }, t: string = team) =>
+    `/tools/time-report/grant-pass?from=${r.from}&to=${r.to}${t ? `&team=${encodeURIComponent(t)}` : ''}`
+
   return (
-    <RangeFilter
-      value={chosen}
-      onChange={pick}
-      currentMonth={newest}
-      modes={['month', 'year', 'last12', 'custom']}
-      months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
-    />
+    <>
+      <RangeFilter
+        value={chosen}
+        onChange={pick}
+        currentMonth={newest}
+        modes={['month', 'year', 'last12', 'custom']}
+        months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
+      />
+      {teams.length > 0 && (
+      <>
+        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</span>
+        <Select
+          value={team}
+          onChange={t => startNav(() => router.push(href(range, t)))}
+          options={[{ value: '', label: 'All teams' }, ...teams.map(t => ({ value: t.id, label: t.name }))]}
+          ariaLabel="Team"
+          className="px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20"
+        />
+      </>
+      )}
+    </>
   )
 }
