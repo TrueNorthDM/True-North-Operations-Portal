@@ -51,9 +51,15 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const month = url.searchParams.get('month') ?? ''
   const type = url.searchParams.get('type') === 'internal' ? 'internal' : 'client'
+  // Which report. One route rather than two, because everything below it is
+  // launching a headless browser and setting margins, and none of that differs.
+  const report = url.searchParams.get('report') === 'projects' ? 'projects' : 'i7'
+  const printPath = report === 'projects'
+    ? '/tools/time-report/grant-pass/print'
+    : '/tools/time-report/print'
 
   // The page we screenshot to PDF, same origin, cookies forwarded for auth.
-  const target = `${url.origin}/tools/time-report/print?month=${encodeURIComponent(month)}&type=${type}&pdf=1`
+  const target = `${url.origin}${printPath}?month=${encodeURIComponent(month)}&type=${type}&pdf=1`
   const cookie = request.headers.get('cookie') ?? ''
 
   let browser: Browser | null = null
@@ -71,7 +77,9 @@ export async function GET(request: Request) {
     // inline styles + system fonts only.
     const footerLeft = type === 'internal'
       ? 'True North Digital Marketing · Operations Portal · Confidential'
-      : 'Prepared for i7 Marketing by True North Digital Marketing'
+      : report === 'projects'
+        ? 'True North Digital Marketing · Operations Portal'
+        : 'Prepared for i7 Marketing by True North Digital Marketing'
     const esc = (s: string) => s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!))
     const footerTemplate =
       `<div style="width:100%;font-size:7px;color:#8593a4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:0 9mm;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;">`
@@ -92,9 +100,13 @@ export async function GET(request: Request) {
       margin: { top: '9mm', right: '9mm', bottom: '13mm', left: '9mm' },
     })
 
-    const name = type === 'internal'
-      ? `i7 Budget Internal Report - ${label}.pdf`
-      : `i7 Budget Month Report - ${label}.pdf`
+    const name = report === 'projects'
+      ? (type === 'internal'
+        ? `Project Hours by Person - ${label}.pdf`
+        : `Project Hours and Others - ${label}.pdf`)
+      : (type === 'internal'
+        ? `i7 Budget Internal Report - ${label}.pdf`
+        : `i7 Budget Month Report - ${label}.pdf`)
     // HTTP headers are Latin-1: an em dash character breaks a plain filename="...".
     // Provide an ASCII fallback + RFC 5987 UTF-8 form so the nice name survives.
     const asciiName = name.replace(/[^\x20-\x7e]/g, '-')

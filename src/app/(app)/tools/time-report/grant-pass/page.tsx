@@ -17,6 +17,7 @@ import { availableMonths } from '@/lib/tsheets/retention'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
 import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
 import { ProjectPeriodFilter } from '@/components/tsheets/ProjectPeriodFilter'
+import { ProjectExportMenu } from '@/components/tsheets/ProjectExportMenu'
 import { resolveRange } from '@/lib/tsheets/range'
 import { ManualHoursDialog } from '@/components/tsheets/ManualHoursDialog'
 import { loadAllManualHours } from '@/lib/timeclock/manual-data'
@@ -93,6 +94,11 @@ export default async function ProjectHoursPage({
               rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}
               tone="secondary"
             />
+          )}
+          {/* The file exports, on the same grant the i7 ones use: this carries
+              the same figures and, for the internal one, the same names. */}
+          {access.can('report-export') && (
+            <ProjectExportMenu range={range} monthly={range.from === range.to} />
           )}
         </div>
       </div>
