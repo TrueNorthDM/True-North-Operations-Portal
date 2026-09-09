@@ -92,35 +92,40 @@ export default async function ProjectHoursPage({
         </p>
       </div>
 
-      {/* The badge and the "i" sit above the buttons, where the i7 report keeps
-          its own. "Last updated" rather than "Last synced": a sync is one of the
-          three things that can change this page. */}
-      <div className="flex items-center justify-end gap-2.5 -mb-2">
-        <LastUpdatedBadge status={lastUpdated} />
-        <ProjectHoursNotes lastYear={String(Number(range.to.slice(0, 4)) - 1)} />
-      </div>
-
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
-        <ProjectPeriodFilter range={range} availableMonths={months} team={selectedTeam} teams={teams} />
-        {/* One group, right of the month, the way the i7 toolbar carries its
-            own. justify-between had pushed these to opposite ends of the row. */}
-        <div className="ml-auto flex items-center gap-2.5">
-          {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
-          {manual && (
-            <ManualHoursDialog
-              rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}
-              tone="secondary"
-            />
-          )}
-          {/* The file exports, on the same grant the i7 ones use: this carries
-              the same figures and, for the internal one, the same names. */}
-          {access.can('report-export') && (
-            <ProjectExportMenu range={range} monthly={range.from === range.to} />
-          )}
+      {/* space-y-5 from here down, which is the gap the i7 report puts between
+          its own badge row and its toolbar. This had a -mb-2 pulling the two
+          together, and at the badge's height that was not tight, it overlapped. */}
+      <div className="space-y-5">
+        {/* The badge and the "i" sit above the buttons, where the i7 report keeps
+            its own. "Last updated" rather than "Last synced": a sync is one of the
+            three things that can change this page. */}
+        <div className="flex items-center justify-end gap-2.5">
+          <LastUpdatedBadge status={lastUpdated} />
+          <ProjectHoursNotes lastYear={String(Number(range.to.slice(0, 4)) - 1)} />
         </div>
-      </div>
-      <ProjectHoursReport data={data} teams={teams} selectedTeam={selectedTeam} />
+
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
+          <ProjectPeriodFilter range={range} availableMonths={months} team={selectedTeam} teams={teams} />
+          {/* One group, right of the month, the way the i7 toolbar carries its
+              own. justify-between had pushed these to opposite ends of the row. */}
+          <div className="ml-auto flex items-center gap-2.5">
+            {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
+            {manual && (
+              <ManualHoursDialog
+                rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}
+                tone="secondary"
+              />
+            )}
+            {/* The file exports, on the same grant the i7 ones use: this carries
+                the same figures and, for the internal one, the same names. */}
+            {access.can('report-export') && (
+              <ProjectExportMenu range={range} monthly={range.from === range.to} />
+            )}
+          </div>
+        </div>
+        <ProjectHoursReport data={data} teams={teams} selectedTeam={selectedTeam} />
+        </div>
     </div>
   )
 }
