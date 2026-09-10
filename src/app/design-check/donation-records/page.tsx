@@ -7,6 +7,7 @@
 
 import { DonationRecords } from '@/components/tsheets/DonationRecords'
 import type { DonationEntry, DonationLogEntry } from '@/lib/timeclock/donations-ledger'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 const IMPORT = 'Imported from the tracking sheet'
 
@@ -64,7 +65,10 @@ export default function DonationRecordsDesignCheck() {
     // measures a layout the product does not have.
     <div className="min-h-screen bg-[var(--page-bg,#efedE8)] px-6 py-8">
       <div className="space-y-6">
-        <div>
+        {/* The real page puts the way back beside the title. A check whose
+            header is missing a control is the drift it exists to catch. */}
+        <div className="flex items-start justify-between gap-5 flex-wrap">
+          <div className="min-w-0">
           <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.14em] text-tn-teal m-0">Design check</p>
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Donation records</h1>
           <p className="mt-1.5 text-muted leading-relaxed m-0">
@@ -75,6 +79,12 @@ export default function DonationRecordsDesignCheck() {
             Fixture rows: the live data is seven imported months nothing has touched, so these add a
             correction, a deletion and an entry someone typed.
           </p>
+          </div>
+
+          <a href="/design-check/project-hours" className={`${BTN.white} shrink-0 whitespace-nowrap`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+            Back to report
+          </a>
         </div>
 
         <DonationRecords entries={ENTRIES} log={LOG} years={['2026', '2025']} year={null} logMissing={false} canEdit />

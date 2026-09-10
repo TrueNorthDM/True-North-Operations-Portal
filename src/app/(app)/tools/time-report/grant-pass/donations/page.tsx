@@ -17,7 +17,9 @@ import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { loadDonationLedger } from '@/lib/timeclock/donations-ledger'
 import { DonationRecords } from '@/components/tsheets/DonationRecords'
+import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 export const metadata = { title: 'Donation records' }
 export const dynamic = 'force-dynamic'
@@ -42,18 +44,31 @@ export default async function DonationRecordsPage(
     // padding and a max-width gets both twice over and sits in a 1200px column
     // on a screen with room for far more.
     <div className="space-y-6">
-      <div className="min-w-0">
-        <Breadcrumb parents={['/tools', '/tools/time-report/grant-pass']} now="Donation records" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
-          Donation records
-        </h1>
-        {/* One line on a normal screen. Nothing constrains its width, so it
-            breaks at the edge of the display and nowhere else, but a sentence
-            long enough to wrap twice at 1500px is a sentence, not a subtitle. */}
-        <p className="mt-1.5 text-muted leading-relaxed">
-          Every donation figure entered, and every change made to one. Money arrives as a monthly
-          total per project, so there is no per-donation date and no donor here.
-        </p>
+      {/* The way back sits beside the title rather than under it. The trail
+          above already links the report, but a trail is where you are, not a
+          way out, and this is a side road you come back from. */}
+      <div className="flex items-start justify-between gap-5 flex-wrap">
+        <div className="min-w-0">
+          <Breadcrumb parents={['/tools', '/tools/time-report/grant-pass']} now="Donation records" />
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
+            Donation records
+          </h1>
+          {/* One line on a normal screen. Nothing constrains its width, so it
+              breaks at the edge of the display and nowhere else, but a sentence
+              long enough to wrap twice at 1500px is a sentence, not a subtitle. */}
+          <p className="mt-1.5 text-muted leading-relaxed">
+            Every donation figure entered, and every change made to one. Money arrives as a monthly
+            total per project, so there is no per-donation date and no donor here.
+          </p>
+        </div>
+
+        <Link
+          href="/tools/time-report/grant-pass"
+          className={`${BTN.white} shrink-0 whitespace-nowrap`}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+          Back to report
+        </Link>
       </div>
 
       <DonationRecords
