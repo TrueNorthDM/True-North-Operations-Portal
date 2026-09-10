@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Nunito, Open_Sans, Bebas_Neue, Raleway } from 'next/font/google'
 import './globals.css'
 
@@ -14,6 +14,19 @@ const raleway = Raleway({ variable: '--font-raleway', subsets: ['latin'], weight
 export const metadata: Metadata = {
   title: 'True North Operations Portal',
   description: 'Operations portal for AAAF and HFA, editorial pipeline, publishing goals, and hreflang workflows',
+}
+
+/**
+ * Navy behind the browser chrome on Android and in an installed window, so the
+ * app does not sit under a strip of default grey.
+ *
+ * The icons themselves are not declared here. `favicon.ico`, `icon.svg` and
+ * `apple-icon.png` sit beside this file and Next writes their <link> tags from
+ * the filenames, as does `manifest.webmanifest`. Declaring them twice is how
+ * they drift.
+ */
+export const viewport: Viewport = {
+  themeColor: '#012358',
 }
 
 /**

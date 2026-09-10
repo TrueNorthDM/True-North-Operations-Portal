@@ -98,6 +98,13 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Exclude Next internals + static public assets.
-    '/((?!_next/static|_next/image|favicon.ico|logos/|.*\\.svg|.*\\.png|.*\\.jpg).*)',
+    //
+    // manifest.webmanifest belongs here for a reason that is easy to miss: the
+    // browser fetches it with no session in order to offer installing the app,
+    // so gating it sends the browser a login redirect instead of the manifest
+    // and the install never appears. It names the app and its icons and holds
+    // nothing private. The icon files are already covered by the .svg/.png/.ico
+    // rules, which is why only this one had to be named.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|logos/|.*\\.svg|.*\\.png|.*\\.jpg).*)',
   ],
 }
