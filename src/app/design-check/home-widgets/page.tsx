@@ -25,16 +25,30 @@ const CARRYOVER: I7Carryover = {
   openingComplete: true,
 }
 
-const week = (label: string, done: number, target: number) => ({ start: label, label, done, target })
+// The real figures from the snapshot, so the check shows what the widget shows:
+// AAAF's English is 2 of 11 and was missed in three of these four weeks while
+// the total read 82%, 27%, 136% and 82%.
+const week = (label: string, done: number, target: number, en: [number, number]) =>
+  ({ start: label, label, done, target, en: { done: en[0], target: en[1] } })
 
 const PUBLISHING: PublishingBoardWeeks[] = [
   {
-    boardId: 'aaaf', name: 'AskAnAdventistFriend', perWeek: 11, hits: 2,
-    weeks: [week('Aug 10', 9, 11), week('Aug 17', 12, 11), week('Aug 24', 3, 11), week('Aug 31', 14, 11)],
+    boardId: 'aaaf', name: 'AskAnAdventistFriend', perWeek: 11, enPerWeek: 2, hits: 2, enHits: 0,
+    weeks: [
+      week('Aug 10-16', 9, 11, [0, 2]),
+      week('Aug 17-23', 3, 11, [0, 2]),
+      week('Aug 24-30', 15, 11, [0, 2]),
+      week('Aug 31-Sep 6', 9, 11, [1, 2]),
+    ],
   },
   {
-    boardId: 'hfa', name: 'Hope for Africa', perWeek: 8, hits: 1,
-    weeks: [week('Aug 10', 6, 8), week('Aug 17', 8, 8), week('Aug 24', 5, 8), week('Aug 31', 3, 8)],
+    boardId: 'hfa', name: 'Hope for Africa', perWeek: 10, enPerWeek: 5, hits: 2, enHits: 2,
+    weeks: [
+      week('Aug 10-16', 10, 10, [5, 5]),
+      week('Aug 17-23', 4, 10, [2, 5]),
+      week('Aug 24-30', 16, 10, [8, 5]),
+      week('Aug 31-Sep 6', 8, 10, [3, 5]),
+    ],
   },
 ]
 

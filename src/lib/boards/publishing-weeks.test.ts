@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { lastFourWeeks } from './publishing-weeks'
+import { lastFourWeeks, weekLabel } from './publishing-weeks'
 
 const at = (iso: string) => new Date(`${iso}T12:00:00Z`)
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
@@ -62,5 +62,42 @@ describe('lastFourWeeks', () => {
       const gap = (+weeks[i].start - +weeks[i - 1].start) / 86_400_000
       expect(gap).toBe(7)
     }
+  })
+})
+
+describe('weekLabel', () => {
+  // A single date does not say whether it is the week's first day or its last,
+  // and readers guessed wrong, so both ends are printed.
+  it('gives both ends of the week', () => {
+    expect(weekLabel(at('2026-08-10'), at('2026-08-16'))).toBe('Aug 10-16')
+  })
+
+  // Repeating the month when it has not changed wastes the column, and the
+  // column has to fit the longest label without pushing into the bar.
+  it('names the month once when the week does not cross one', () => {
+    expect(weekLabel(at('2026-09-07'), at('2026-09-13'))).toBe('Sep 7-13')
+  })
+
+  it('names both months when the week crosses one', () => {
+    expect(weekLabel(at('2026-08-31'), at('2026-09-06'))).toBe('Aug 31-Sep 6')
+  })
+
+  it('names both months when the week crosses a year', () => {
+    expect(weekLabel(at('2026-12-28'), at('2027-01-03'))).toBe('Dec 28-Jan 3')
+  })
+
+  // The loader passes the end of Sunday, not its start, so the label has to
+  // read the date rather than round the timestamp into Monday.
+  it('reads the last moment of Sunday as Sunday', () => {
+    const end = new Date('2026-08-16T23:59:59.999Z')
+    expect(weekLabel(at('2026-08-10'), end)).toBe('Aug 10-16')
+  })
+
+  // Every label the loader can produce, against the column's width budget.
+  it('never exceeds twelve characters', () => {
+    for (const { start, end } of lastFourWeeks(at('2026-01-05'))) {
+      expect(weekLabel(start, end).length).toBeLessThanOrEqual(12)
+    }
+    expect(weekLabel(at('2026-08-31'), at('2026-09-06')).length).toBe(12)
   })
 })

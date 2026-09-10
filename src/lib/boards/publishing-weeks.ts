@@ -30,10 +30,19 @@ import type { SnapshotBoard, TargetsMap } from './types'
 export interface PublishingWeek {
   /** The Monday, as YYYY-MM-DD. */
   start: string
-  /** "Aug 11", what the widget prints. */
+  /** "Aug 10-16", what the widget prints. */
   label: string
   done: number
   target: number
+  /**
+   * English on its own, or null when the board has no English target.
+   *
+   * It is carried separately because the total can hide it completely: in the
+   * week of 24 August, AskAnAdventistFriend published 15 against a target of 11
+   * while English sat at 0 of 2, and three overachieving translations covered
+   * the whole miss.
+   */
+  en: { done: number; target: number } | null
 }
 
 export interface PublishingBoardWeeks {
@@ -41,10 +50,23 @@ export interface PublishingBoardWeeks {
   /** The client, not the board: "AskAnAdventistFriend", not "AAAF · Publishing". */
   name: string
   perWeek: number
+  /** The English slice of `perWeek`, 0 when the board has no English target. */
+  enPerWeek: number
   weeks: PublishingWeek[]
-  /** How many of the four met their target. */
+  /** How many of the four met their target, all languages together. */
   hits: number
+  /** How many of the four met the English target alone. */
+  enHits: number
 }
+
+/**
+ * The language key, exactly as `publishing_targets` and Monday spell it.
+ *
+ * It is the text of a Monday dropdown, so a rename on the board would silently
+ * turn the English column into a dash rather than crash. That is the reason the
+ * widget treats "no English target" as a real state instead of assuming one.
+ */
+const ENGLISH = 'English'
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -80,7 +102,21 @@ export function lastFourWeeks(now: Date): { start: Date; end: Date }[] {
 }
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
-const weekLabel = (d: Date) => `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`
+
+/**
+ * "Aug 10-16": both ends, because a single date does not say whether it is the
+ * week's first day or its last, and readers guessed wrong.
+ *
+ * The month is repeated only when the week crosses one, so the common case
+ * stays short enough for the column: "Aug 31-Sep 6", but "Aug 10-16".
+ */
+export function weekLabel(start: Date, end: Date): string {
+  const from = `${MON[start.getUTCMonth()]} ${start.getUTCDate()}`
+  const to = start.getUTCMonth() === end.getUTCMonth()
+    ? `${end.getUTCDate()}`
+    : `${MON[end.getUTCMonth()]} ${end.getUTCDate()}`
+  return `${from}-${to}`
+}
 
 export async function loadPublishingWeeks(now = new Date()): Promise<PublishingBoardWeeks[]> {
   const boardIds = Object.keys(BOARDS).filter(id => BOARDS[id].publishingMode)
@@ -121,26 +157,36 @@ export async function loadPublishingWeeks(now = new Date()): Promise<PublishingB
   const out: PublishingBoardWeeks[] = []
   for (const boardId of Object.keys(names)) {
     // Summed across languages, which is the dashboard's own board total: the
-    // widget answers "did the client's week land", and which languages made it
-    // up is what the dashboard behind it is for.
-    const perWeek = Object.values(targets[boardId] ?? {}).reduce((s, n) => s + n, 0)
+    // widget answers "did the client's week land", and the full per-language
+    // split is what the dashboard behind it is for. English is the one language
+    // pulled back out, because it is the one that goes missing unnoticed.
+    const langTargets = targets[boardId] ?? {}
+    const perWeek = Object.values(langTargets).reduce((s, n) => s + n, 0)
+    const enPerWeek = langTargets[ENGLISH] ?? 0
 
-    const counted = weeks.map(({ start }, i) => ({
-      start: ymd(start),
-      label: weekLabel(start),
+    const counted = weeks.map(({ start, end }, i) => {
       // A board with no targets row gets no stat at all, which is not the same
       // as a bad week: `perWeek` is 0 too, and the widget says so instead of
-      // drawing four empty bars.
-      done: perWeekStats[i][boardId]?.done ?? 0,
-      target: perWeek,
-    }))
+      // drawing four failed weeks.
+      const stat = perWeekStats[i][boardId]
+      const en = stat?.langs.find(l => l.lang === ENGLISH)
+      return {
+        start: ymd(start),
+        label: weekLabel(start, end),
+        done: stat?.done ?? 0,
+        target: perWeek,
+        en: enPerWeek > 0 ? { done: en?.done ?? 0, target: enPerWeek } : null,
+      }
+    })
 
     out.push({
       boardId,
       name: names[boardId],
       perWeek,
+      enPerWeek,
       weeks: counted,
       hits: counted.filter(w => w.target > 0 && w.done >= w.target).length,
+      enHits: counted.filter(w => w.en && w.en.done >= w.en.target).length,
     })
   }
 
