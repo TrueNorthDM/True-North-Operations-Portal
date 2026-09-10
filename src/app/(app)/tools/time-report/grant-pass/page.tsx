@@ -30,6 +30,7 @@ import { loadMoneyIn } from '@/lib/timeclock/money-in-data'
 import { MoneyInDialog } from '@/components/tsheets/MoneyInDialog'
 import { TRACKED_PROJECTS } from '@/lib/timeclock/projects'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import Link from 'next/link'
 
 export const metadata = { title: 'Client Report · Project Hours & Others' }
 export const dynamic = 'force-dynamic'
@@ -84,7 +85,7 @@ export default async function ProjectHoursPage({
   return (
     <div className="space-y-6">
       <div className="min-w-0">
-        <Breadcrumb parents={['/tools']} now="Client Report · Project Hours & Others" />
+        <Breadcrumb parents={['/tools']} self="/tools/time-report/grant-pass" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
           Client Report · Project Hours &amp; Others
         </h1>
@@ -113,6 +114,17 @@ export default async function ProjectHoursPage({
               own. justify-between had pushed these to opposite ends of the row. */}
           <div className="ml-auto flex items-center gap-2.5">
             {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
+            {/* Beside the button that enters them, because "where did that
+                figure come from" is asked in the same breath as entering one.
+                Same tier as the dialog: the page redirects anyone else. */}
+            {moneyIn && (
+              <Link
+                href="/tools/time-report/grant-pass/donations"
+                className="text-[12.5px] font-semibold text-tn-teal hover:underline whitespace-nowrap"
+              >
+                Donation records
+              </Link>
+            )}
             {manual && (
               <ManualHoursDialog
                 rows={manual.rows} options={manual.options} month={selected} blurb={manual.blurb}

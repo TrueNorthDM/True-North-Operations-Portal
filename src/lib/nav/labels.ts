@@ -30,6 +30,10 @@ export const NAV_LABEL = {
   '/projects': 'Href Link Management',
   /** The i7 report, which is the parent of its own guide. */
   '/tools/time-report': 'Client Report · i7',
+  /** Sits under the i7 report's path but is its own report, and the parent of
+   *  the donation records. The trail says so rather than implying it is a page
+   *  of the i7 one. */
+  '/tools/time-report/grant-pass': 'Client Report · Project Hours & Others',
 } as const
 
 export type NavHref = keyof typeof NAV_LABEL

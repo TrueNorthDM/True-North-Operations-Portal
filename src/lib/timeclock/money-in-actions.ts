@@ -23,6 +23,7 @@ import { loadAccess } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { TRACKED_PROJECTS } from './projects'
 import { parseMoney } from './money-in-data'
+import { currentActor, logDonationChange } from './donations-log'
 
 export interface MoneyResult {
   ok: boolean
@@ -69,27 +70,68 @@ export async function saveDonation(input: {
   const { value, error } = parseMoney(input.amount, 'The amount')
   if (error) return { ok: false, error }
 
+  // Undefined and empty are different answers, and the difference is a data
+  // loss bug. The month dialog sends the amounts only, so treating "no note
+  // given" as "clear the note" would wipe what someone had written the moment
+  // anybody re-entered that month's figures, and the log would record a note
+  // change nobody made. Undefined leaves it alone; an empty string clears it.
+  const noteGiven = input.note !== undefined
+  const note = input.note?.trim() || null
   const supabase = createAdminClient()
-  const where = supabase.from('tc_project_donations').select('id').eq('month', input.month)
+  // The amount and note come back too, not just the id: they are what the log
+  // entry needs as "before", and after the write they are gone.
+  const where = supabase.from('tc_project_donations').select('id, amount_usd, note').eq('month', input.month)
   const { data: existing } = await (input.project === null
     ? where.is('project_label', null)
     : where.eq('project_label', input.project)
   ).maybeSingle()
 
+  const actor = await currentActor()
+  const common = { project: input.project, month: input.month }
+
   if (value === null) {
-    if (existing) await supabase.from('tc_project_donations').delete().eq('id', existing.id)
+    if (existing) {
+      const { error: e } = await supabase.from('tc_project_donations').delete().eq('id', existing.id)
+      if (e) return { ok: false, error: e.message }
+      await logDonationChange({
+        ...common, donationId: existing.id, action: 'deleted',
+        amountBefore: Number(existing.amount_usd), noteBefore: existing.note,
+      }, actor)
+    }
+    // Nothing there and nothing asked for is not a change, so it is not logged.
   } else if (existing) {
+    const before = Number(existing.amount_usd)
+    const noteAfter = noteGiven ? note : (existing.note ?? null)
     const { error: e } = await supabase.from('tc_project_donations')
-      .update({ amount_usd: value, note: input.note?.trim() || null, updated_at: new Date().toISOString() })
+      .update({
+        amount_usd: value,
+        ...(noteGiven ? { note } : {}),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', existing.id)
     if (e) return { ok: false, error: e.message }
+    // Re-saving the same figure is not a change. Logging it would bury the real
+    // corrections under entries that say nothing happened.
+    if (before !== value || (existing.note ?? null) !== noteAfter) {
+      await logDonationChange({
+        ...common, donationId: existing.id, action: 'updated',
+        amountBefore: before, amountAfter: value,
+        noteBefore: existing.note, noteAfter,
+      }, actor)
+    }
   } else {
-    const { error: e } = await supabase.from('tc_project_donations')
-      .insert({ project_label: input.project, month: input.month, amount_usd: value, note: input.note?.trim() || null })
+    const { data: created, error: e } = await supabase.from('tc_project_donations')
+      .insert({ project_label: input.project, month: input.month, amount_usd: value, note })
+      .select('id').maybeSingle()
     if (e) return { ok: false, error: e.message }
+    await logDonationChange({
+      ...common, donationId: created?.id ?? null, action: 'created',
+      amountAfter: value, noteAfter: note,
+    }, actor)
   }
 
   revalidatePath('/tools/time-report/grant-pass')
+  revalidatePath('/tools/time-report/grant-pass/donations')
   return { ok: true }
 }
 
