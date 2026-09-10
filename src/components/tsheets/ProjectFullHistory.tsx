@@ -18,9 +18,17 @@ import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const shortMonth = (ym: string) => MON[Number(ym.slice(5, 7)) - 1]
 
-const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-2 py-2.5 whitespace-nowrap'
-const cell = 'px-2 py-2 text-right tabular-nums whitespace-nowrap text-[13px]'
-const label = 'px-3 py-2 text-left text-[12.5px] text-tn-ink whitespace-nowrap'
+// 14px body and 10px headings, which is what the Costs table above uses. This
+// table had 13px cells and 12.5px row labels, so one page carried three body
+// sizes and read as three different tables.
+//
+// The months have a floor width so they stay legible instead of compressing to
+// fit: twelve of them plus the project column do not belong on one screen, and
+// squeezing them until they do is how a figure ends up mid-air between two
+// columns. Past the floor the wrapper scrolls and the project column stays.
+const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-2 py-2.5 whitespace-nowrap min-w-[94px]'
+const cell = 'px-2 py-2 text-right tabular-nums whitespace-nowrap text-[14px] min-w-[94px]'
+const label = 'px-3 py-2 text-left text-[14px] text-tn-ink whitespace-nowrap'
 
 const h2 = (n: number) => (n === 0 ? '-' : n.toFixed(2))
 const m0 = (n: number | null) => (n == null ? '' : n === 0 ? '-' : money(n))
@@ -48,7 +56,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-subtle border-b border-slate-200">
-              <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle z-10">
+              <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 sticky left-0 bg-subtle z-10 border-r border-slate-200">
                 Project
               </th>
               {months.map(m => <th key={m.month} className={th}>{shortMonth(m.month)}</th>)}
@@ -58,8 +66,8 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
           {blocks.map(b => (
             <tbody key={b.label} className="border-b border-slate-200 last:border-b-0">
               <tr className="bg-[rgba(1,35,88,0.03)]">
-                <td className="px-3 py-2.5 sticky left-0 bg-[#f6f7f9] z-10" colSpan={1}>
-                  <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink whitespace-nowrap">{b.name}</span>
+                <td className="px-3 py-2.5 sticky left-0 bg-[#f6f7f9] z-10 border-r border-slate-200" colSpan={1}>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap">{b.name}</span>
                   {b.prepaid && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-tn-teal">prepaid</span>}
                 </td>
                 <td colSpan={months.length} className="bg-[rgba(1,35,88,0.03)]" />
@@ -76,7 +84,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
                 <>
                   <Row name="Donations" cells={b.months.map(m => m0(m.donations))} />
                   <tr className="border-t border-slate-100">
-                    <td className={`${label} sticky left-0 bg-white z-10 font-semibold`}>Net</td>
+                    <td className={`${label} sticky left-0 bg-white z-10 border-r border-slate-200 font-semibold`}>Net</td>
                     {b.months.map(m => (
                       <td
                         key={m.month}
@@ -93,7 +101,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
         </table>
       </div>
 
-      <p className="text-[12.5px] text-muted leading-relaxed m-0">
+      <p className="text-[13.5px] text-muted leading-relaxed m-0">
         Net is donations minus employee and contractor costs, for that month alone. It differs from the
         same figure on the tracking sheet by the Grants Pass school-website and church-invoice lines:
         those sit on the Grants Pass rows here as hours bought in advance, so counting them again
@@ -106,7 +114,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
 function Row({ name, cells }: { name: string; cells: string[] }) {
   return (
     <tr className="border-t border-slate-100">
-      <td className={`${label} sticky left-0 bg-white z-10`}>{name}</td>
+      <td className={`${label} sticky left-0 bg-white z-10 border-r border-slate-200`}>{name}</td>
       {cells.map((c, i) => <td key={i} className={cell}>{c}</td>)}
     </tr>
   )

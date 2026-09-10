@@ -84,11 +84,11 @@ export function ClientFullHistory(
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-subtle border-b border-slate-200">
-                    <th className="text-left text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Month</th>
-                    <th className="text-right text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Budget</th>
-                    <th className="text-right text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Carry-in</th>
-                    <th className="text-right text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Used</th>
-                    <th className="text-right text-[10.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Hours used</th>
+                    <th className="text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Month</th>
+                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Budget</th>
+                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Carry-in</th>
+                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Used</th>
+                    <th className="text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-5 py-3">Hours used</th>
                   </tr>
                 </thead>
                 <tbody>

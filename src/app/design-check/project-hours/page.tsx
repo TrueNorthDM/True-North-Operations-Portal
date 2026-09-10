@@ -34,14 +34,24 @@ const AAAF: [number, number, number, number][] = [
   [1042.70, 35908.31, 12470.92, 467], [841.05, 29223.48, 9902.07, 385],
   [905.78, 35739.50, 9167.09, 2936], [1075.63, 43869.02, 10580.08, 22482],
   [907.08, 33411.66, 10127.28, 630],
+  // August to December, so the check runs a full year. Seven months fitted the
+  // screen and never scrolled, which meant the month table's scrolling was
+  // never once looked at here.
+  [978.70, 37012.89, 14638.45, 0], [289.17, 9760.75, 4801.17, 0],
+  [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],
 ]
 const HFA: [number, number, number, number | null][] = [
   [548.00, 10818.47, 3952.99, null], [456.00, 9458.99, 3066.53, null],
   [467.27, 9304.00, 3219.56, null], [463.89, 8252.67, 3996.28, null],
   [561.85, 9721.23, 4248.67, null], [580.23, 9077.19, 4648.64, null],
   [472.96, 5910.44, 4068.03, null],
+  [512.40, 8140.22, 4390.11, null], [201.25, 1762.58, 4366.49, null],
+  [0, 0, 0, null], [0, 0, 0, null], [0, 0, 0, null],
 ]
-const MONTHS_2026 = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07']
+const MONTHS_2026 = [
+  '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06',
+  '2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12',
+]
 
 const block = (
   label: string, name: string, prepaid: boolean,
@@ -117,7 +127,10 @@ export default async function ProjectHoursDesignCheck(
               teams={TEAMS}
               basePath="/design-check/project-hours"
             />
-            <div className="ml-auto flex items-center gap-2.5">
+            {/* Wraps as well as the row around it. The outer row wrapped and this
+                  group did not, so on a phone the four buttons stayed on one line
+                  and pushed the whole page sideways. */}
+            <div className="ml-auto flex items-center gap-2.5 flex-wrap">
               <MoneyInDialog
                 data={{
                   month: range.to,

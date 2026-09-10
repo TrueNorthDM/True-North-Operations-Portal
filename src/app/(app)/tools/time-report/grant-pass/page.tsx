@@ -113,7 +113,10 @@ export default async function ProjectHoursPage({
           <ProjectPeriodFilter range={range} availableMonths={months} team={selectedTeam} teams={teams} />
           {/* One group, right of the month, the way the i7 toolbar carries its
               own. justify-between had pushed these to opposite ends of the row. */}
-          <div className="ml-auto flex items-center gap-2.5">
+          {/* Wraps as well as the row around it. The outer row wrapped and this
+              group did not, so on a phone the four buttons stayed on one line
+              and pushed the whole page sideways. */}
+          <div className="ml-auto flex items-center gap-2.5 flex-wrap">
             {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
             {/* Beside the button that enters them, because "where did that
                 figure come from" is asked in the same breath as entering one.

@@ -25,7 +25,7 @@ function PersonCells({ people, byPerson, muted }: { people: string[]; byPerson: 
       {people.map(name => {
         const h = byPerson[name] ?? 0
         return (
-          <td key={name} className={`px-3 py-2 text-right tabular-nums whitespace-nowrap ${muted ? 'text-muted text-[13px]' : 'text-foreground'}`}>
+          <td key={name} className={`px-3 py-2 text-right tabular-nums whitespace-nowrap ${muted ? 'text-muted' : 'text-foreground'}`}>
             {h ? fmtHours(h) : <span className="text-slate-300">-</span>}
           </td>
         )

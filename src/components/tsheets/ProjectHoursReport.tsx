@@ -27,7 +27,10 @@ import type { ProjectTracking } from '@/lib/timeclock/projects'
 // width of a table whose cells are six characters wide, and the last two
 // columns fell off the right edge. Saying "this month" once over four columns
 // instead of in four of them is what brings it back inside the page.
-const thGroup = 'text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted px-2 pt-3 pb-1.5 whitespace-nowrap'
+// 10px like every other heading on the page. It was 9.5px, and half a pixel
+// does not read as a tier, it reads as a heading that failed to line up. The
+// wider tracking is what says this one spans the columns beneath it.
+const thGroup = 'text-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted px-2 pt-3 pb-1.5 whitespace-nowrap'
 // px-2 on the number columns, which is the last of the width. The sidebar and
 // the page padding take 112px, so a 1280-wide laptop has 1168 for a table that
 // wants 1148 once the year-to-date net is out of it. Twelve columns each giving
