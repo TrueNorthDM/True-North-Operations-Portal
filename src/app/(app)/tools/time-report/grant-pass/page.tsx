@@ -30,6 +30,7 @@ import { loadMoneyIn } from '@/lib/timeclock/money-in-data'
 import { MoneyInDialog } from '@/components/tsheets/MoneyInDialog'
 import { TRACKED_PROJECTS } from '@/lib/timeclock/projects'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import Link from 'next/link'
 
 export const metadata = { title: 'Client Report · Project Hours & Others' }
@@ -118,10 +119,8 @@ export default async function ProjectHoursPage({
                 figure come from" is asked in the same breath as entering one.
                 Same tier as the dialog: the page redirects anyone else. */}
             {moneyIn && (
-              <Link
-                href="/tools/time-report/grant-pass/donations"
-                className="text-[12.5px] font-semibold text-tn-teal hover:underline whitespace-nowrap"
-              >
+              <Link href="/tools/time-report/grant-pass/donations" className={`${BTN.white} whitespace-nowrap`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
                 Donation records
               </Link>
             )}

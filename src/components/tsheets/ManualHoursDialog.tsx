@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from 'react'
 import { ManualHours, type ManualOptions, type ManualRow } from './ManualHours'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 export function ManualHoursDialog(
   { rows, options, month, blurb, tone = 'primary' }: {
@@ -47,11 +48,9 @@ export function ManualHoursDialog(
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={tone === 'primary'
-          ? 'inline-flex items-center gap-2 text-[13px] font-bold px-4 py-2.5 rounded-[10px] bg-tn-primary text-white hover:opacity-90 transition-opacity'
-          : 'inline-flex items-center gap-2.5 bg-white text-tn-ink border border-slate-200 rounded-[10px] px-[16px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:text-tn-teal'}
+        className={tone === 'primary' ? BTN.navy : BTN.white}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tone === 'primary' ? 'currentColor' : '#1E7D7F'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tone === 'primary' ? BTN_ICON.navy : BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         Add hours
       </button>
 

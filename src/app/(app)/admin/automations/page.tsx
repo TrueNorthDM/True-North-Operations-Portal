@@ -10,6 +10,7 @@ import { AUTOMATIONS, type AutomationKind } from '@/lib/automations/registry'
 import { latestHealth, HEALTH_LABEL, type HealthResult, type HealthStatus } from '@/lib/health/checks'
 import { runChecksNow } from './actions'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { BTN_ICON } from '@/lib/ui/buttons'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,7 +79,7 @@ export default async function AutomationsPage() {
         </div>
         <form action={runChecksNow}>
           <button type="submit" className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-4 py-2.5 shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
             <span className="text-[#ffffff]">Run checks now</span>
           </button>
         </form>

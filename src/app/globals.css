@@ -23,6 +23,22 @@
   --role-bg: #eef2f7;                        /* the pill that names a role */
   --stat-total: #0f2036;   /* Tickets "Total" stat card */
 
+  /* Buttons carry their symbol in a different colour from their words, so the
+     symbol reads as the action and the words as the label. Two rules, and only
+     two, so a button is never a third thing:
+
+       navy button  -> white words, gold symbol
+       white button -> navy words,  green symbol
+
+     Here and not in @theme, which is where they were first written and where
+     they silently did not work: Tailwind v4 only emits a theme variable that
+     some generated utility uses, and these are only ever read by var() inside
+     an svg stroke, which it cannot see. The variables were dropped, the stroke
+     resolved to nothing, and every button icon disappeared. Nothing in this
+     block is tree-shaken. src/lib/ui/buttons.ts reads them. */
+  --color-btn-on-navy: #F2C40A;     /* the gold, as a button symbol */
+  --color-btn-on-white: #1E9E6A;    /* the green, as a button symbol */
+
   /* Ticket status/priority/type badge palette (see TicketsClient). Literal in
      light. */
   --bdg-bar-muted: rgba(120,135,160,.30);
@@ -77,6 +93,7 @@
   --color-tn-teal: #1E7D7F;         /* teal, active nav, links, focus ring */
   --color-tn-teal-soft: #eaf4f4;    /* soft teal fills (icon chips) */
   --color-tn-lightteal: #94C4C5;    /* light teal, chart Target bars, soft fills */
+  --color-tn-green: #1E9E6A;        /* green, icons on white buttons, figures met */
 
   /* AAAF brand, sampled from askanadventistfriend.com */
   --color-aaaf-primary: #44ad85;

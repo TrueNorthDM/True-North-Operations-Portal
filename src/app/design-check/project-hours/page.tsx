@@ -23,6 +23,7 @@ import { resolveRange } from '@/lib/tsheets/range'
 import { ProjectFullHistory } from '@/components/tsheets/ProjectFullHistory'
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
 import { DATA as data } from './fixture'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 // Tina's own January to July figures, so the table can be checked against the
 // sheet it is copying. Donations are her "Ed & other Donations" row; the Grants
@@ -128,10 +129,8 @@ export default async function ProjectHoursDesignCheck(
               {/* The real page shows this to the same tier that gets the dialog
                   above. Here it always shows: a check whose toolbar is missing
                   a control is the drift this page exists to catch. */}
-              <a
-                href="/design-check/donation-records"
-                className="text-[12.5px] font-semibold text-tn-teal hover:underline whitespace-nowrap"
-              >
+              <a href="/design-check/donation-records" className={`${BTN.white} whitespace-nowrap`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
                 Donation records
               </a>
               <ManualHoursDialog rows={[]} options={NO_OPTIONS} month={range.to} blurb="" tone="secondary" />

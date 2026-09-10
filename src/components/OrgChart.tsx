@@ -12,6 +12,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { OrgPerson, OrgGhost } from '@/lib/org/data'
 import { layoutOrg, CARD_W, CARD_H } from '@/lib/org/layout'
+import { BTN_ICON } from '@/lib/ui/buttons'
 
 const NEUTRAL = '#cbd5e1'
 
@@ -269,7 +270,7 @@ export function OrgChart({ roots }: { roots: OrgPerson[] }) {
           onClick={() => setFull(true)}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-tn-ink border border-slate-200 hover:border-tn-teal rounded-[9px] px-[13px] py-1.5 bg-white transition-colors"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
           </svg>
           Full screen

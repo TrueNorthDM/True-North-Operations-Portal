@@ -14,6 +14,7 @@ import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 import { useRouter } from 'next/navigation'
 import { saveReportNote } from '@/lib/tsheets/settings-actions'
 import type { Range } from '@/lib/tsheets/range'
+import { BTN_ICON } from '@/lib/ui/buttons'
 
 // Small spinner for the "generating…" state.
 function Spinner() {
@@ -60,7 +61,7 @@ export function ExportImageButton({ month, monthly = true }: { month: string; mo
         title={monthly ? 'Download a shareable budget image for the team' : 'The team image is a month. Choose a single month to make one.'}
         className="inline-flex items-center gap-2.5 bg-white text-tn-ink border border-slate-200 rounded-[10px] px-[16px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_1px_2px_rgba(1,35,88,.06)] transition-all hover:border-tn-teal hover:text-tn-teal disabled:opacity-45 disabled:hover:border-slate-200 disabled:hover:text-tn-ink disabled:cursor-not-allowed"
       >
-        {busy ? <Spinner /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" /><path d="m21 15-4.5-4.5L7 20" /></svg>}
+        {busy ? <Spinner /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.6" /><path d="m21 15-4.5-4.5L7 20" /></svg>}
         <span>{busy ? 'Generating…' : 'Team Update'}</span>
       </button>
       {error && <div className="absolute right-0 mt-2 z-20 w-64 rounded-[10px] border border-red-200 bg-white p-2.5 text-[11px] text-[var(--bdg-red-fg)] shadow-[0_10px_30px_-10px_rgba(1,35,88,.35)]">{error}</div>}

@@ -24,6 +24,7 @@
 import { Fragment, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDonation, savePurchase } from '@/lib/timeclock/money-in-actions'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { type MoneyInMonth } from '@/lib/timeclock/money-in-data'
 
 const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px] text-tn-ink font-semibold placeholder:font-normal text-right tabular-nums'
@@ -99,9 +100,9 @@ export function MoneyInDialog(
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2.5 bg-tn-primary text-white rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-transform hover:-translate-y-px"
+        className={BTN.navy}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         <span className="text-[#ffffff]">Money in</span>
       </button>
 

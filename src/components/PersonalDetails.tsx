@@ -9,6 +9,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateMyProfile, type MyProfileInput } from '@/app/(app)/profile/profile-actions'
 import { formatDate, ynPill, PILL_CLASS } from '@/lib/directory/people-types'
+import { BTN_ICON } from '@/lib/ui/buttons'
 
 export interface PersonalFields {
   lastName: string
@@ -81,7 +82,7 @@ export function PersonalDetails({ initial }: { initial: PersonalFields }) {
         <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal">Your details · you can edit these</span>
         {!editing ? (
           <button type="button" onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12px] text-tn-teal hover:text-tn-ink transition-colors">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
             Edit
           </button>
         ) : (

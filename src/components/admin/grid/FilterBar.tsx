@@ -9,6 +9,7 @@ import { useRef, useState } from 'react'
 import type { FilterCond, GridColumn, Operator } from './types'
 import { chipText, isValuelessOp, operatorsFor } from './utils'
 import { Select } from '@/components/ui/Select'
+import { BTN_ICON } from '@/lib/ui/buttons'
 
 const inputCls = 'w-full text-[13px] text-tn-ink bg-white border border-slate-200 rounded-[9px] px-2.5 py-2 focus:outline-none focus:border-tn-teal'
 const labelCls = 'font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.07em] uppercase text-muted mb-1 block'
@@ -78,7 +79,7 @@ export function FilterBar<T>({ columns, conds, onChange }: {
             open || conds.length > 0 ? 'border-tn-teal bg-tn-teal-soft text-tn-teal' : 'border-slate-200 bg-white text-foreground hover:border-tn-teal hover:text-tn-teal'
           }`}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
           Filter
           {conds.length > 0 && <span className="font-(family-name:--font-display) font-extrabold text-[11px] text-tn-teal bg-white/70 rounded-full px-[7px] py-px">{conds.length}</span>}
         </button>

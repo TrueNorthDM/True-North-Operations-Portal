@@ -27,6 +27,7 @@ import { FilterBar } from './grid/FilterBar'
 import { SortHeader } from './grid/SortHeader'
 import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
+import { BTN_ICON } from '@/lib/ui/buttons'
 
 type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status' | 'tsheets'
 
@@ -161,7 +162,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
             onClick={() => setColMenu(v => !v)}
             className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-foreground bg-white border border-slate-200 rounded-full px-3.5 py-[7px] transition-all hover:border-tn-teal hover:text-tn-teal"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M15 3v18" /></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M15 3v18" /></svg>
             Columns
             <span className="font-(family-name:--font-display) font-extrabold text-[11px] text-muted bg-subtle rounded-full px-[7px] py-px">{visCols.length}</span>
           </button>
