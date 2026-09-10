@@ -168,21 +168,35 @@ Checked against the database and the code on 10 September 2026, not from memory.
 
 ### Needs us
 
-5. **Ed cannot open the report.** She wrote "These reports are only for Dave,
-   myself and Ed." Checked: the `grant-pass-report` grant sits on the Admin
-   Assistants team with audience `lead`, so of that team only Tina Gennette gets
-   it, and admins get everything. The three active admins are Arnaldo Oliveira,
-   David Sharpe and Tina Gennette. **Ed Wagner is `role_type: user`**, the
-   lowest tier, so he is locked out. The access is narrower than she believes,
-   not wider: a gap, not a leak. Someone has to decide whether Ed gets the tier
-   or the team.
-
-6. **The PDF has never been generated.** The route handles `report=projects` and
+5. **The PDF has never been generated.** The route handles `report=projects` and
    points at `/tools/time-report/grant-pass/print`, so the path exists, but it
    needs a login and headless Chromium and has not once been run end to end.
    Both CSV exports have.
 
 ### Done since this document was written
+
+- **Ed can open the report.** She wrote "These reports are only for Dave, myself
+  and Ed", and he was the one who could not: `role_type: user`, the lowest tier.
+  The grant lived only on Admin Assistants at audience `lead`, which of that team
+  is Tina alone.
+
+  Ed is a founder and sits in the Leadership team, where he already had
+  publishing, workload, href-links and i7-budget. Only this report was missing,
+  so the grant was added to **Leadership at audience `lead`**, one row. That is
+  the honest place for it: the leadership sees the cost reports.
+
+  Putting him in Admin Assistants instead would have granted the same one tool,
+  since he held the rest already, but `ledTeams` feeds the org chart on the Home
+  page, so a founder would have appeared leading the admin assistants above
+  Tina. A grant is not worth a wrong reporting line on the page everyone opens.
+
+  It reaches one person nobody named: **Kim Wagner**, a manager in Leadership.
+  Accepted deliberately rather than overlooked. Grants are per team and there is
+  no per-person mechanism, so the alternatives were a team that is not a team or
+  the wrong org chart.
+
+  Now open to: Ed Wagner, Kim Wagner, David Sharpe, Tina Gennette and Arnaldo
+  Oliveira.
 
 - January to July entered, seven months, AAAF only.
 - The donations report asked for ("how much, when, for which project") shipped

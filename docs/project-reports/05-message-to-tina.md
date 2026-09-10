@@ -3,9 +3,9 @@
 Covers the four things that need her, from `01-understanding-and-plan.md`. Kept
 short on purpose: the last set of questions came back as "muito longas".
 
-Ed's access is deliberately not in here. She named who the reports are for, but
-whether Ed gets the tier is our decision, not a question for her. The optional
-line at the bottom is there if we would rather she confirm it.
+Ed's access is now settled, so it is stated rather than asked. Kim Wagner is
+named because she gained it too and Tina did not list her: telling her is
+cheaper than her finding out.
 
 ---
 
@@ -20,6 +20,9 @@ invoice lines. The portal can't add those to AAAF: that money already sits on
 the Grants Pass rows as prepaid hours, so counting it again would count it
 twice. The portal's AAAF Net differs from yours by exactly those lines, $325 in
 March and $1,000 in May. Every other month matches.
+
+**Ed can open the reports now.** He was the only one of the three who couldn't.
+Kim can too, since the access follows the Leadership team.
 
 Two questions and one thing to look at:
 
@@ -37,9 +40,3 @@ Two questions and one thing to look at:
 Thanks,
 Arnaldo
 
----
-
-## Optional line, if we want her to confirm Ed
-
-> You mentioned these reports are for Dave, you and Ed. Ed doesn't have access
-> at the moment. Should I set him up?
