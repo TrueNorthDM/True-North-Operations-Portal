@@ -125,6 +125,15 @@ export default async function ProjectHoursDesignCheck(
                 }}
                 projects={TRACKED_PROJECTS}
               />
+              {/* The real page shows this to the same tier that gets the dialog
+                  above. Here it always shows: a check whose toolbar is missing
+                  a control is the drift this page exists to catch. */}
+              <a
+                href="/design-check/donation-records"
+                className="text-[12.5px] font-semibold text-tn-teal hover:underline whitespace-nowrap"
+              >
+                Donation records
+              </a>
               <ManualHoursDialog rows={[]} options={NO_OPTIONS} month={range.to} blurb="" tone="secondary" />
               <ProjectExportMenu range={range} monthly={range.from === range.to} />
             </div>
