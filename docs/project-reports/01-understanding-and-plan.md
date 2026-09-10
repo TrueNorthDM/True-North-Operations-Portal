@@ -146,10 +146,45 @@ a second report.
 
 ## Still open
 
-1. **Her January to July figures** have been sent and are not entered. August to
-   follow.
-2. **A donations report** of how much, when and for which project. Possible at
-   month granularity, which is as fine as her data goes.
-3. **"These reports are only for Dave, myself and Ed."** Worth checking who holds
-   the `grant-pass-report` grant against that.
-4. **The AAAF net difference** above, which she has not been told about.
+Checked against the database and the code on 10 September 2026, not from memory.
+
+### Needs her
+
+1. **August's donation figures.** January to July are entered; she said August
+   would follow.
+2. **Phase 2 needs one answer.** Her sketch shows SEO, Writing and Web as
+   columns, and the Rates sheet has seven departments. Admin and Special
+   Projects hours have to land somewhere, so either those columns exist or the
+   report says what it leaves out. Nothing can be built until she picks.
+3. **Phase 3 needs showing, not building.** The People tab is probably already
+   her people report. The one difference is that her sheet lists every person as
+   a column while the tab shows only those with hours in the period. Show her
+   the live tab rather than building a second report.
+4. **The AAAF net difference.** Her Net row includes the GP School Website and GP
+   Church invoice lines; the portal's cannot, because that income already sits
+   on the Grants Pass rows as hours bought in advance. So the portal's AAAF net
+   differs from her sheet by exactly those lines, March by $325 and May by
+   $1,000, and the portal's is the correct attribution. She has not been told.
+
+### Needs us
+
+5. **Ed cannot open the report.** She wrote "These reports are only for Dave,
+   myself and Ed." Checked: the `grant-pass-report` grant sits on the Admin
+   Assistants team with audience `lead`, so of that team only Tina Gennette gets
+   it, and admins get everything. The three active admins are Arnaldo Oliveira,
+   David Sharpe and Tina Gennette. **Ed Wagner is `role_type: user`**, the
+   lowest tier, so he is locked out. The access is narrower than she believes,
+   not wider: a gap, not a leak. Someone has to decide whether Ed gets the tier
+   or the team.
+
+6. **The PDF has never been generated.** The route handles `report=projects` and
+   points at `/tools/time-report/grant-pass/print`, so the path exists, but it
+   needs a login and headless Chromium and has not once been run end to end.
+   Both CSV exports have.
+
+### Done since this document was written
+
+- January to July entered, seven months, AAAF only.
+- The donations report asked for ("how much, when, for which project") shipped
+  twice over: the month-by-month table under the report, and the Donation
+  records screen with its change log.
