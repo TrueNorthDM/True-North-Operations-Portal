@@ -32,8 +32,8 @@ function when(iso: string): string {
 }
 
 const TH = 'text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 whitespace-nowrap'
-const TD = 'px-3 py-2.5 text-[13px] text-tn-ink align-top'
-const FIELD = 'rounded-[10px] border border-[var(--panel-border)] bg-white px-2.5 py-1.5 text-[13px] text-tn-ink'
+const TD = 'px-3 py-2.5 text-[14px] text-tn-ink align-top'
+const FIELD = 'rounded-[10px] border border-[var(--panel-border)] bg-white px-2.5 py-1.5 text-[14px] text-tn-ink'
 
 export function DonationRecords(
   { entries, log, years, year, logMissing, canEdit }: {
@@ -54,7 +54,7 @@ export function DonationRecords(
     <div className="space-y-8">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Year</span>
+          <span className="text-[11.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Year</span>
           {/* Offered from the years that exist, so it never lists an empty one. */}
           <div className="flex items-center gap-1.5">
             <YearChip label="All" active={year === null} href="/tools/time-report/grant-pass/donations" />
@@ -63,7 +63,7 @@ export function DonationRecords(
             ))}
           </div>
         </div>
-        <span className="text-[13px] text-muted">
+        <span className="text-[14px] text-muted">
           {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
           <span className="mx-1.5">·</span>
           <span className="font-bold text-tn-ink tabular-nums">{money(total)}</span> in total
@@ -108,7 +108,7 @@ export function DonationRecords(
       <section className="space-y-3">
         <div>
           <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">Change log</h2>
-          <p className="text-[12.5px] text-muted mt-1 mb-0 leading-relaxed">
+          <p className="text-[13.5px] text-muted mt-1 mb-0 leading-relaxed">
             Every entry, correction and removal, newest first. Nothing here can be edited.
           </p>
         </div>
@@ -150,7 +150,7 @@ export function DonationRecords(
                           with it: saying "note changed" on either was reading
                           null !== text as a change. */}
                       {l.action === 'updated' && l.noteBefore !== l.noteAfter && (
-                        <span className="block text-[11.5px] text-muted mt-0.5">note changed</span>
+                        <span className="block text-[12.5px] text-muted mt-0.5">note changed</span>
                       )}
                     </td>
                   </tr>
@@ -166,7 +166,7 @@ export function DonationRecords(
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-[14px] border border-dashed border-slate-300 bg-white/60 px-4 py-6 text-center text-[13px] text-muted m-0">
+    <p className="rounded-[14px] border border-dashed border-slate-300 bg-white/60 px-4 py-6 text-center text-[14px] text-muted m-0">
       {children}
     </p>
   )
@@ -176,7 +176,7 @@ function YearChip({ label, active, href }: { label: string; active: boolean; hre
   return (
     <a
       href={href}
-      className={`rounded-full px-3 py-1 text-[12.5px] font-semibold transition-colors ${
+      className={`rounded-full px-3 py-1 text-[13.5px] font-semibold transition-colors ${
         active ? 'bg-tn-primary text-white' : 'bg-subtle text-tn-ink hover:bg-slate-200'
       }`}
     >
@@ -192,7 +192,7 @@ function ActionChip({ action }: { action: DonationLogEntry['action'] }) {
       ? 'bg-[#fdece5] text-[#c2410c]'
       : 'bg-[#fdf3e2] text-[#b06d0a]'
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${tone}`}>
+    <span className={`inline-block rounded-full px-2 py-0.5 text-[11.5px] font-bold uppercase tracking-wide ${tone}`}>
       {action}
     </span>
   )
@@ -246,7 +246,7 @@ function Row(
         <td className={`${TD} whitespace-nowrap`}>{monthLabel(entry.month)}</td>
         <td className={`${TD} text-right tabular-nums font-semibold whitespace-nowrap`}>{money(entry.amount)}</td>
         <td className={`${TD} text-muted max-w-[280px]`}>{entry.note || <span className="text-slate-300">-</span>}</td>
-        <td className={`${TD} text-muted text-[12px] whitespace-nowrap`}>
+        <td className={`${TD} text-muted text-[13px] whitespace-nowrap`}>
           {entry.lastChangedAt ? (
             <>
               {when(entry.lastChangedAt)}
@@ -265,7 +265,7 @@ function Row(
         </td>
         {canEdit && (
           <td className={`${TD} text-right`}>
-            <button type="button" onClick={onOpen} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
+            <button type="button" onClick={onOpen} className="text-[13.5px] font-semibold text-tn-teal hover:underline">
               Edit
             </button>
           </td>
@@ -290,7 +290,7 @@ function Row(
           placeholder="What this was, where it came from" aria-label="Note"
           className={`${FIELD} w-full`}
         />
-        {error && <p className="text-[12px] text-[#c2410c] mt-1.5 mb-0">{error}</p>}
+        {error && <p className="text-[13px] text-[#c2410c] mt-1.5 mb-0">{error}</p>}
       </td>
       <td className={`${TD} text-right whitespace-nowrap`}>
         <div className="flex items-center justify-end gap-2">
@@ -298,19 +298,19 @@ function Row(
               already had: a blank month and a zero month are different things. */}
           <button
             type="button" disabled={pending} onClick={() => submit('')}
-            className="text-[12.5px] font-semibold text-[#c2410c] hover:underline disabled:opacity-50"
+            className="text-[13.5px] font-semibold text-[#c2410c] hover:underline disabled:opacity-50"
           >
             Delete
           </button>
           <button
             type="button" disabled={pending} onClick={onClose}
-            className="text-[12.5px] font-semibold text-muted hover:underline disabled:opacity-50"
+            className="text-[13.5px] font-semibold text-muted hover:underline disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="button" disabled={pending} onClick={() => submit(amount)}
-            className="rounded-[10px] bg-tn-primary px-3 py-1.5 text-[12.5px] font-bold text-white disabled:opacity-50"
+            className="rounded-[10px] bg-tn-primary px-3 py-1.5 text-[13.5px] font-bold text-white disabled:opacity-50"
           >
             {pending ? 'Saving' : 'Save'}
           </button>

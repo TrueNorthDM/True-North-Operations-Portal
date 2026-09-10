@@ -59,15 +59,21 @@ const LOG: DonationLogEntry[] = [
 
 export default function DonationRecordsDesignCheck() {
   return (
-    <div className="min-h-screen bg-[var(--page-bg,#efedE8)] px-6 py-10">
-      <div className="max-w-[1200px] mx-auto space-y-6">
+    // px-6 py-8 and no max-width, which is what MainContent gives every page
+    // in the app. A check that boxes the screen narrower than the real one
+    // measures a layout the product does not have.
+    <div className="min-h-screen bg-[var(--page-bg,#efedE8)] px-6 py-8">
+      <div className="space-y-6">
         <div>
           <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.14em] text-tn-teal m-0">Design check</p>
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Donation records</h1>
-          <p className="mt-1.5 text-muted leading-relaxed max-w-[760px] m-0">
-            The real screen on fixture rows. The live data is seven imported months that have never
-            been touched, so these add a corrected figure, a deletion, and one an entry someone typed,
-            to show what the log looks like once it has something in it.
+          <p className="mt-1.5 text-muted leading-relaxed m-0">
+            Every donation figure entered, and every change made to one. Money arrives as a monthly
+            total per project, so there is no per-donation date and no donor here.
+          </p>
+          <p className="mt-2 text-[13px] text-muted m-0">
+            Fixture rows: the live data is seven imported months nothing has touched, so these add a
+            correction, a deletion and an entry someone typed.
           </p>
         </div>
 

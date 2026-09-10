@@ -37,16 +37,22 @@ export default async function DonationRecordsPage(
   const ledger = await loadDonationLedger(year)
 
   return (
-    <div className="p-6 md:p-8 max-w-[1200px] mx-auto space-y-6">
-      <div>
+    // The shell the report next door uses, exactly. MainContent already gives
+    // every page px-6 py-8 across the full width, so a page that adds its own
+    // padding and a max-width gets both twice over and sits in a 1200px column
+    // on a screen with room for far more.
+    <div className="space-y-6">
+      <div className="min-w-0">
         <Breadcrumb parents={['/tools', '/tools/time-report/grant-pass']} now="Donation records" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink mt-2 mb-1.5">
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
           Donation records
         </h1>
-        <p className="text-muted leading-relaxed max-w-[760px] m-0">
-          Every donation figure that has been entered, and every change made to one. Money is recorded
-          as a monthly total per project, which is how it arrives: cheques and online donations are
-          added up before they are written down, so there is no per-donation date and no donor here.
+        {/* One line on a normal screen. Nothing constrains its width, so it
+            breaks at the edge of the display and nowhere else, but a sentence
+            long enough to wrap twice at 1500px is a sentence, not a subtitle. */}
+        <p className="mt-1.5 text-muted leading-relaxed">
+          Every donation figure entered, and every change made to one. Money arrives as a monthly
+          total per project, so there is no per-donation date and no donor here.
         </p>
       </div>
 
