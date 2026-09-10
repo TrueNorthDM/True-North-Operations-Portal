@@ -152,7 +152,10 @@ export async function loadDonationLedger(year: string | null): Promise<DonationL
       .order('month', { ascending: false }),
     supabase.from('tc_project_donations_log')
       .select('id, donation_id, project_label, month, action, amount_before, amount_after, note_before, note_after, actor_name, actor_email, at')
-      .order('at', { ascending: false }),
+      // Month breaks the tie. The seven imported rows share a timestamp to the
+      // second, so time alone left them in insert order: July, March, January.
+      .order('at', { ascending: false })
+      .order('month', { ascending: false }),
   ])
 
   // The log table arriving missing is not an error worth a crash: PostgREST

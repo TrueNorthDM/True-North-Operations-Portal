@@ -145,7 +145,11 @@ export function DonationRecords(
                     <td className={`${TD} whitespace-nowrap`}>{monthLabel(l.month)}</td>
                     <td className={`${TD} text-right tabular-nums whitespace-nowrap`}>
                       <Delta before={l.amountBefore} after={l.amountAfter} />
-                      {(l.noteBefore || l.noteAfter) && l.noteBefore !== l.noteAfter && (
+                      {/* Only on a correction. A creation sets the note, it does
+                          not change one, and a deletion takes the whole row
+                          with it: saying "note changed" on either was reading
+                          null !== text as a change. */}
+                      {l.action === 'updated' && l.noteBefore !== l.noteAfter && (
                         <span className="block text-[11.5px] text-muted mt-0.5">note changed</span>
                       )}
                     </td>
@@ -246,8 +250,11 @@ function Row(
           {entry.lastChangedAt ? (
             <>
               {when(entry.lastChangedAt)}
+              {/* The actor stands on its own rather than following "by". The
+                  imported months are attributed to the import, and "by Imported
+                  from the tracking sheet" assumes every author is a person. */}
               <span className="block">
-                by {entry.lastChangedBy}
+                {entry.lastChangedBy}
                 {/* Only worth saying when it has actually been corrected. */}
                 {entry.changes > 0 && <span> · corrected {entry.changes}×</span>}
               </span>
