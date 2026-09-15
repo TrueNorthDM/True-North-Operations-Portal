@@ -17,7 +17,7 @@ import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
 import { Anniversaries } from '@/components/home/Anniversaries'
 import { Birthdays } from '@/components/home/Birthdays'
 import { loadCelebrationPeople } from '@/lib/hr/celebrations'
-import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { loadI7Carryover } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 import { perfRun } from '@/lib/perf'
@@ -34,8 +34,11 @@ export default async function HomePage() {
   // start after all of it, so the i7 figures waited on the Publishing card,
   // which until September 2026 was reading 26.7 MB of snapshot.
   const accessP = loadAccess()
+  // loadI7Carryover, not loadI7ReportData: the widget shows the balance and
+  // nothing else, and building the whole report to keep one figure of it was
+  // 1.2 of the page's 1.24 seconds.
   const carryoverP = accessP.then(a =>
-    a.can('report-widget') ? loadI7ReportData(month).then(d => d.carryover) : null)
+    a.can('report-widget') ? loadI7Carryover(month) : null)
 
   // Publishing goals is for everyone, so it is loaded for everyone. It reads the
   // published facts the ingest stores beside the snapshot, about 20 KB, not the

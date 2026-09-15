@@ -12,10 +12,11 @@ import { loadAssignmentRates } from '@/lib/hr/compensation'
 import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
 import { monthBounds, monthsBetween } from '@/lib/tsheets/report'
 import { spanWording } from '@/lib/tsheets/range'
-import { DATA_START, retentionFloor } from '@/lib/tsheets/retention'
+import { DATA_START } from '@/lib/tsheets/retention'
 import { buildI7Report, buildI7Days, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import type { I7DayRow } from '@/lib/tsheets/i7report'
 import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
+import { accumulateMonths, bucketByMonth, computeI7Carryover } from '@/lib/tsheets/carryover'
 
 export interface I7ReportData {
   report: I7Report | null                 // null when the month has no hours
@@ -230,12 +231,7 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   // 2026, and each used to re-scan every entry ever loaded to find its month:
   // over a year's range that is twenty passes of the whole array before a single
   // number is drawn.
-  const byMonth = new Map<string, I7Entry[]>()
-  for (const e of entries) {
-    const ym = e.date.slice(0, 7)
-    const list = byMonth.get(ym)
-    if (list) list.push(e); else byMonth.set(ym, [e])
-  }
+  const byMonth = bucketByMonth(entries)
   const monthEntries = (ym: string) => byMonth.get(ym) ?? []
   const report = buildI7Report(
     selEntries, rateAt, names, startDate, universeArg,
@@ -268,39 +264,12 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
     .map(([name]) => name)
     .sort((a, b) => a.localeCompare(b))
 
-  // Budget minus cost over a run of months, the shape both the opening balance
-  // and the trend's running balance need.
-  const accumulate = (months: string[]) => {
-    let budget = 0, cost = 0
-    for (const ym of months) {
-      budget += monthlyBudgets[ym] ?? 0
-      cost += monthEntries(ym)
-        .reduce((s, e) => s + (e.duration / 3600) * rateFor(assignments, e.personId, ym), 0)
-    }
-    return { budget, cost }
-  }
-
-  const before = accumulate(monthsBetween(DATA_START, from))
-  const opening = round2(before.budget - before.cost)
-
-  // The sync prunes timesheets older than 24 months, so from January 2028 the
-  // earliest retained month moves past the origin and those hours are gone for
-  // good. The balance would then quietly start from a later month and read
-  // higher than it should. Flagged rather than silently shown, until the month
-  // closings are stored somewhere the prune cannot reach.
-  const openingComplete = retentionFloor(new Date()) <= DATA_START
-  // Over a range this is the range's budget, every month in it added up, and
-  // the balance below still reads as one sum: what was left coming in, plus
-  // what was granted, minus what was spent.
-  const monthBudget = monthsBetween(from, to).concat(to).reduce((sum, ym) => sum + (monthlyBudgets[ym] ?? 0), 0)
-  const monthUsed = report.totalCost
-  const totalAvailable = round2(opening + monthBudget)
-  const carryover: I7Carryover = {
-    opening, monthBudget, monthUsed, totalAvailable,
-    totalLeft: round2(totalAvailable - monthUsed),
-    openingFrom: DATA_START,
-    openingComplete,
-  }
+  // Budget minus cost over a run of months, which the trend's running balance
+  // needs. The balance itself is computed by computeI7Carryover, the one
+  // function the Home widget and the image export also use, so the report and
+  // the widget cannot disagree about it.
+  const accumulate = (months: string[]) => accumulateMonths(byMonth, assignments, monthlyBudgets, months)
+  const carryover: I7Carryover = computeI7Carryover({ entries, assignments, monthlyBudgets, from, to, now: new Date() })
 
   // The chart shows month by month, and its balance line continues from what
   // came before instead of dropping to zero at the start.
@@ -325,6 +294,28 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   }
 
   return { report: report.totalHours > 0 ? report : null, unratedPeople, projectHours, carryover, stdRate, personRates, trend, note }
+}
+
+/**
+ * Just the balance for one month, for the places that show nothing else.
+ *
+ * The Home widget and the image export used to call loadI7ReportData and keep
+ * only its carryover, which meant building the whole report and reading the
+ * year's entries a second time to list job codes for rows they never drew. On
+ * Home that was 1.2 of its 1.24 seconds in September 2026. This reads the three
+ * things the balance is made of, the entries, the rates and the budgets, and
+ * computes it with the same function the report uses.
+ */
+export async function loadI7Carryover(month: string): Promise<I7Carryover> {
+  const { endDate } = monthBounds(month)
+  const [entries, assignments, budgetInputs] = await Promise.all([
+    loadCachedEntries(`${DATA_START}-01`, endDate),
+    loadI7Assignments(),
+    loadBudgetInputs(),
+  ])
+  return computeI7Carryover({
+    entries, assignments, monthlyBudgets: { ...budgetInputs.flat }, from: month, to: month, now: new Date(),
+  })
 }
 
 /**

@@ -15,7 +15,7 @@
 import puppeteer, { type Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
-import { loadI7ReportData } from '@/lib/tsheets/report-data'
+import { loadI7Carryover } from '@/lib/tsheets/report-data'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -116,7 +116,9 @@ export async function GET(request: Request) {
 
   let browser: Browser | null = null
   try {
-    const { carryover } = await loadI7ReportData(month)
+    // The card is the balance and nothing else, so it reads the balance and
+    // nothing else, rather than the whole report.
+    const carryover = await loadI7Carryover(month)
     const html = cardHtml(month, carryover)
 
     browser = await launch()

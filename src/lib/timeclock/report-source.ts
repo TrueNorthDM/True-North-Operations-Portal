@@ -99,12 +99,20 @@ export async function loadI7EntriesHere(
   ])
   if (!jobcodeIds.size) return []
 
+  // Filtered by the database, not after it. This used to read every entry in
+  // the range for every client and keep the i7 ones in JavaScript: measured in
+  // September 2026, 12,102 rows in 13 sequential pages to keep 2,403 of them,
+  // on every Home visit and every load of the i7 report. The same 2,403 rows,
+  // in the same order, checked by id, now come back in 3 pages. tc_entries has
+  // an index on jobcode_id (migration 057).
+  const idList = [...jobcodeIds]
   const out: I7Entry[] = []
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from('tc_entries')
       .select('person_id, jobcode_id, duration_seconds, entry_date, fields')
       .gte('entry_date', start).lte('entry_date', end)
+      .in('jobcode_id', idList)
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1)
     if (error) throw new Error(error.message)
@@ -114,6 +122,8 @@ export async function loadI7EntriesHere(
     }[]
 
     for (const r of rows) {
+      // Redundant with the filter above, and kept: if the query ever loses it,
+      // the report stays an i7 report instead of quietly becoming every client's.
       if (r.jobcode_id == null || !jobcodeIds.has(r.jobcode_id)) continue
       // Nothing is dropped here any more. This used to require a TSheets id,
       // which was fine while everybody billing hours had one and became silent
@@ -156,11 +166,19 @@ export async function loadI7UniverseHere(
   // everyone who had touched i7 in the window. Columns now follow the month
   // being read, so this no longer resolves people at all: one query fewer, and
   // no list that looks like it still decides something.
+  // An empty list cannot go into .in(): PostgREST reads in.() as a malformed
+  // filter rather than as "nothing". No i7 job codes means no i7 codes.
+  if (!jobcodeIds.size) return { jobcodes: [] }
+
+  // Filtered by the database for the same reason as loadI7EntriesHere, and it
+  // was the second full pass over the same rows on every load of the report.
+  const idList = [...jobcodeIds]
   const codes = new Set<string>()
   for (let from = 0; ; from += PAGE) {
     const { data } = await supabase
       .from('tc_entries').select('jobcode_id, fields')
       .gte('entry_date', since)
+      .in('jobcode_id', idList)
       .order('id', { ascending: true }).range(from, from + PAGE - 1)
     const rows = (data ?? []) as {
       jobcode_id: number | null; fields: Record<string, string> | null
