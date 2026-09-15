@@ -164,7 +164,10 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
 export interface BoardSyncResult {
   boards: number
   withPeople: number
+  /** People-column rows written from the layout, steps and non-steps alike. */
   stepsSeeded: number
+  /** Of those, how many own at least one status with a deadline: the ones My Work shows. */
+  stepsWithDeadline: number
   stepsKept: number
 }
 
@@ -180,18 +183,22 @@ interface RawBoard {
 
 async function allBoards(token: string): Promise<RawBoard[]> {
   const out: RawBoard[] = []
-  for (let page = 1; page <= 40; page++) {
+  // Twenty-five a page rather than fifty since columns carry their settings:
+  // the step rule needs each status column's done labels, and settings on
+  // every column of fifty boards is a heavy query to ask for at once.
+  const LIMIT = 25
+  for (let page = 1; page <= 80; page++) {
     const d = await gql<{ boards: RawBoard[] }>(token, `
-      query ($page: Int!) {
-        boards(limit: 50, page: $page, order_by: created_at) {
+      query ($page: Int!, $limit: Int!) {
+        boards(limit: $limit, page: $page, order_by: created_at) {
           id name state board_kind items_count
           workspace { id name }
-          columns { id title type }
+          columns { id title type settings_str }
         }
-      }`, { page })
+      }`, { page, limit: LIMIT })
     const got = d.boards ?? []
     out.push(...got)
-    if (got.length < 50) break
+    if (got.length < LIMIT) break
   }
   return out.filter(b => b.state === 'active')
 }
@@ -263,9 +270,11 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
       .map(r => `${r.board_id}:${r.people_col}`))
 
   const seeded: Record<string, unknown>[] = []
+  let withDeadline = 0
   for (const b of withPeople) {
     for (const st of seedSteps(b.columns ?? [])) {
       if (reviewed.has(`${b.id}:${st.peopleCol}`)) continue
+      if (st.stages.length) withDeadline++
       seeded.push({
         board_id: Number(b.id),
         people_col: st.peopleCol,
@@ -273,14 +282,36 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
         status_col: st.statusCol,
         step_name: st.stepName,
         position: st.position,
+        // Written for every people column, steps or not. An empty list is an
+        // answer ("owns no status with a deadline") that the page and the
+        // review screen both read; leaving the row out would look the same as
+        // a board nobody has read yet.
+        stages: st.stages,
         source: 'guess',
         updated_at: now,
       })
     }
   }
+  const withoutStages = (r: Record<string, unknown>) => {
+    const copy = { ...r }
+    delete copy.stages
+    return copy
+  }
+  let writeStages = true
   for (let i = 0; i < seeded.length; i += 200) {
-    const { error } = await supabase
-      .from('monday_board_steps').upsert(seeded.slice(i, i + 200), { onConflict: 'board_id,people_col' })
+    const chunk = seeded.slice(i, i + 200)
+    let { error } = await supabase
+      .from('monday_board_steps')
+      .upsert(writeStages ? chunk : chunk.map(withoutStages), { onConflict: 'board_id,people_col' })
+    // Migration 082 not run yet: keep the old pairing working rather than
+    // failing the whole sync, and say so where the cron's log will show it.
+    if (writeStages && error?.message?.includes('stages')) {
+      writeStages = false
+      console.warn('[monday-discover] monday_board_steps.stages is missing: run migration 082')
+      ;({ error } = await supabase
+        .from('monday_board_steps')
+        .upsert(chunk.map(withoutStages), { onConflict: 'board_id,people_col' }))
+    }
     if (error) throw new Error(`monday_board_steps upsert: ${error.message}`)
   }
 
@@ -288,6 +319,7 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     boards: boards.length,
     withPeople: withPeople.length,
     stepsSeeded: seeded.length,
+    stepsWithDeadline: withDeadline,
     stepsKept: reviewed.size,
   }
 }

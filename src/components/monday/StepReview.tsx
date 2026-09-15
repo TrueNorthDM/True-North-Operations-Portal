@@ -14,14 +14,14 @@ import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
 import { setStepSource } from '@/app/(app)/settings/monday/actions'
 import { chip } from '@/components/monday/tokens'
-import type { StepUnderReview } from '@/lib/monday/worklist/steps-review'
+import { isNotAStep, type StepUnderReview } from '@/lib/monday/worklist/steps-review'
 
 const BUTTON = 'text-[12px] font-semibold px-2.5 py-1 rounded-md border transition-colors'
 
 export function StepReview(
   { steps, progress }: {
     steps: StepUnderReview[]
-    progress: { total: number; settled: number; suspicious: number; unverifiedAssignments: number }
+    progress: { total: number; settled: number; suspicious: number; notSteps: number; unverifiedAssignments: number }
   },
 ) {
   const router = useRouter()
@@ -31,9 +31,9 @@ export function StepReview(
 
   const q = query.trim().toLowerCase()
   const shown = steps.filter(s => {
-    if (onlyPending && s.source !== 'guess') return false
+    if (onlyPending && (s.source !== 'guess' || isNotAStep(s))) return false
     if (!q) return true
-    return `${s.boardName} ${s.stepName} ${s.workspaceName ?? ''}`.toLowerCase().includes(q)
+    return `${s.boardName} ${s.stepName} ${s.peopleTitle} ${s.workspaceName ?? ''}`.toLowerCase().includes(q)
   })
 
   const decide = (s: StepUnderReview, source: 'guess' | 'confirmed' | 'off') => {
@@ -57,6 +57,13 @@ export function StepReview(
         {progress.suspicious > 0 ? (
           <span className={`${chip} bg-[rgba(194,65,12,.12)] text-[#c2410c]`}>
             {`${progress.suspicious} look wrong`}
+          </span>
+        ) : null}
+        {/* Said, not hidden: these are off My Work because of the rule, and
+            the person reading this is the one who can tell it missed a stage. */}
+        {progress.notSteps > 0 ? (
+          <span className="text-[13px] text-muted">
+            {`${progress.notSteps} people columns own no status with a deadline and stay off My Work`}
           </span>
         ) : null}
       </div>
@@ -96,6 +103,16 @@ export function StepReview(
                   </span>
                 ) : null}
               </span>
+              {/* What the rule read, so a wrong pairing is visible without opening
+                  Monday: each status, and the deadline beside it. */}
+              <span className="block text-[11.5px] text-muted truncate">
+                {`${s.peopleTitle} · `}
+                {s.stages == null
+                  ? 'paired before steps had deadlines'
+                  : s.stages.length === 0
+                    ? 'no status with a deadline'
+                    : s.stages.map(st => `${st.statusTitle} by ${st.dateTitle}`).join(', then ')}
+              </span>
               <span className="block text-[11.5px] text-muted truncate">
                 {s.workspaceName ? `${s.workspaceName} · ${s.boardName}` : s.boardName}
               </span>
@@ -105,7 +122,9 @@ export function StepReview(
               {`${s.assignments.toLocaleString('en-US')} rows`}
             </span>
 
-            {s.source === 'guess' ? (
+            {isNotAStep(s) ? (
+              <span className={`flex-none ${chip} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>not a step</span>
+            ) : s.source === 'guess' ? (
               <span className="flex-none flex items-center gap-2">
                 <button type="button" onClick={() => decide(s, 'confirmed')}
                   className={`${BUTTON} border-[var(--panel-border)] text-tn-ink hover:bg-[var(--row-hover)]`}>

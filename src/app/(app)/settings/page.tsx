@@ -209,7 +209,7 @@ export default async function SettingsPage() {
           <div className="mt-8">
             <SectionHead
               title="Steps the ingest guessed"
-              desc="A step is a people column paired with the status column beside it, and the pairing is a guess until somebody looks. It is right most of the time and wrong loudly when it is not: a people column sitting next to a Priority dropdown produces a step called Priority, and every row of it lands on somebody's list. The ones that read like a dropdown rather than a stage come first, then the ones carrying the most work, so a few minutes here fixes most of the data."
+              desc="A step is a status with a deadline: on each board, the status column that sits before a date column, owned by the people column beside it. Statuses with no deadline, like Kick-Off, Design Needs or an Assigner's Assign, are not steps and stay off My Work. The rule reads the board's layout, because Monday does not share its Deadline Mode links, so it is a guess until somebody looks. Each row shows what it read; switch off anything that is not a stage of work. The ones that read like a dropdown come first, then the ones carrying the most work."
             />
             <StepReview steps={stepsForReview} progress={reviewProgress(stepsForReview)} />
           </div>

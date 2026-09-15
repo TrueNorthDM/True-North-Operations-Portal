@@ -55,13 +55,14 @@ export async function GET(request: Request) {
 
     const b = await syncMondayBoards(supabase, token)
     out.push(`BOARDS     ${b.boards} active, ${b.withPeople} carry people columns`)
-    out.push(`STEPS      ${b.stepsSeeded} seeded from the layout, ${b.stepsKept} left as you confirmed them`)
+    out.push(`STEPS      ${b.stepsWithDeadline} people columns own a status with a deadline and are steps;`)
+    out.push(`           ${b.stepsSeeded - b.stepsWithDeadline} own none and stay off My Work; ${b.stepsKept} left as you set them`)
     out.push('')
     out.push(`Done in ${Math.round((Date.now() - started) / 1000)}s.`)
     out.push('')
-    out.push('Every seeded step is a guess until somebody looks at it. The guess')
-    out.push('cannot tell a workflow step from a tag, so expect a few steps named')
-    out.push('after things like "Priority" and correct those on the review screen.')
+    out.push('A step is a status with a deadline beside it, read from the board\'s')
+    out.push('layout. Every seeded step is still a guess until somebody looks at it:')
+    out.push('switch off anything that is not a stage of work on the review screen.')
     return new Response(out.join('\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
   } catch (e) {
     out.push(`FAILED after ${Math.round((Date.now() - started) / 1000)}s: ${(e as Error).message}`)

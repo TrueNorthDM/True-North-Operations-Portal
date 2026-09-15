@@ -3,8 +3,9 @@
 Porta de entrada do assunto. Quando voltar ao My Work, comece aqui. A evidência completa,
 com arquivo:linha para cada afirmação, está em `01-feedback-analysis.md`.
 
-**Estado em 14/09/2026:** análise feita em 10/09, nada implementado. Próximo passo
-proposto: fase 1. Aguardando sua decisão.
+**Estado em 15/09/2026:** você respondeu ponto a ponto e o plano mudou (seções 10 e 11).
+Implementado no código, ainda não em produção: depende da migration 082 e do deploy. J2
+aguarda a escolha de um dos três mockups.
 
 > **Não envie nada à equipe a partir do `01-feedback-analysis.md`.** As respostas prontas
 > daquele arquivo foram escritas antes da verificação, e sete delas estão erradas. As
@@ -39,10 +40,10 @@ proposto: fase 1. Aguardando sua decisão.
 > Thanks,
 > Jeannette Owens
 
-### Segunda revisora, provavelmente Stephanie Aguirre
+### Segunda revisora, Stephanie Aguirre
 
-"Provavelmente" porque o nome não veio no texto: as seis linhas da captura dela estão no
-nome Stephanie Aguirre, e ela escreve "It shows I have 6 that are late". Confirme.
+O nome não veio no texto, e foi deduzido da captura (as seis linhas estão no nome dela, e
+ela escreve "It shows I have 6 that are late"). Confirmado por você em 15/09.
 
 **Item 1 - Portal**
 
@@ -438,3 +439,38 @@ Números são fotografia do dia em que foram tirados. O Monday muda todo dia.
 | Página | `src/app/(app)/my-work/page.tsx` |
 | Report e Workload | `src/lib/report/`, `src/components/report/` |
 | Script do workflow de análise | `~/.claude/projects/-Users-arnaldodlanra-Downloads-Claude-01--TN-Op-Portal/3fe03310-9fac-4f58-bc25-d447fdb931c6/workflows/scripts/my-work-feedback-wf_794e258b-918.js` |
+
+---
+
+## 10. Decisões de 15/09 e o que foi feito
+
+Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substituído por isto.
+
+| Ponto | Sua decisão | O que foi feito |
+| --- | --- | --- |
+| J1 | Ícone do Monday na 1ª coluna, ícone de histórico na 2ª | Feito. Clicar na linha não abre mais nada |
+| J2 | Duas visões de prioridade (minha e True North) com comparação | Três mockups em `/design-check/my-work-priority`, aguardando escolha |
+| J3 | Lista separada de consertos no Monday | Lista feita; números reconferidos no Monday em 15/09 |
+| J4 | Exemplos reais | Varredura feita (seção 11) e filtro "Last change" na lista |
+| A1 | Mover para a 1ª coluna | Feito. O link também passa a ser montado para quem não é admin |
+| A2 | Só o que está atribuído e não Done | Regra por prazo: cada passo lê o próprio status e o próprio prazo |
+| A3 | Só status conectado a uma coluna de Deadline | É a regra do passo (`steps.ts`) |
+| A4 | Resolve com A3 | Confirmado para o Assign; restam os "Not Relevant" do AAAF (lista do Monday) |
+| A5 | Você marcou Not Relevant como Done no BM Photo Curation | Conferido na configuração do board em 15/09 |
+| A6 | Implementar filtros e ordenação | Filtros de status, board, prazo e última alteração; cabeçalhos ordenáveis |
+| A7 | Investigar | Confirmado: 14 das 19 linhas dela estão Done no Monday; B82 não é bug |
+| A8 | Fora do escopo | Nada |
+
+**A regra do passo.** O Monday não devolve pela API o vínculo do Deadline Mode (conferido nas versões 2024-10 a 2026-01), então o vínculo é lido do layout: cada coluna de data fecha um trecho; o passo é o último status do trecho que pode ficar Done e não é atributo (Priority, Type, Kick-Off, "... Needs"); o dono é a coluna de pessoa mais próxima. Uma pessoa com dois prazos seguidos (Editor 2) fica numa linha só, no estágio em aberto.
+
+**Medido antes de implementar (dry run, 43 boards incluídos, 15/09):** Stephanie 341 abertas → 133; atrasadas 101 → 46. Jeannette 451 → 347; atrasadas 273 → 170. Todos 4.619 → 3.664.
+
+**Dependências.** Migration 082 (`stages` em `monday_board_steps`, `due_col` em `monday_assignments`). O código funciona sem ela, com a regra antiga. Depois dela: descoberta + sincronização completa. A primeira sincronização não grava eventos falsos no histórico (linhas remapeadas e colunas que deixaram de ser passo são ignoradas pelo change log).
+
+**Fica para depois:** J5 (team leaders verem o Report), a fase 5 (leitura resiliente do Monday), marcar "aguardando o passo anterior".
+
+## 11. Exemplos do J4 (15/09)
+
+- Boards com trabalho aberto todo velho: SOP's for the SEO's (54 abertas, nenhuma mexida há mais de 1 ano, várias com contas removidas), SOP's Development (55, 54 velhas), AAAF - General (briefs de estratégia de 2021, On Hold).
+- "Not Relevant" que não conta como Done: Subitems of AAAF - Translations · Proof Design (538), Subitems of Graphics - Social Media · Overlays (432), AAAF - SEO & Writing · ReWrite 2 (291), AAAF - Photo Curation Audits · Writing (104).
+- Itens em grupos "Completed" ainda abertos: AAAF - Social Media Planning (160), AAAF - Photo Curation Audits (109), AAAF - Schema Audits (36, 34 Stuck).

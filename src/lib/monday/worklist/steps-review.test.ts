@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { looksSuspicious, orderForReview, reviewProgress, type StepUnderReview } from './steps-review'
 
 const step = (o: Partial<StepUnderReview> = {}): StepUnderReview => ({
-  boardId: 1, boardName: 'B', workspaceName: null, peopleCol: 'p',
-  stepName: 'Approve', source: 'guess', assignments: 10, suspicious: false, ...o,
+  boardId: 1, boardName: 'B', workspaceName: null, peopleCol: 'p', peopleTitle: 'Approver',
+  stepName: 'Approve', stages: [{ statusCol: 's', statusTitle: 'Approve', dateCol: 'd', dateTitle: 'Approve By' }],
+  source: 'guess', assignments: 10, suspicious: false, ...o,
 })
 
 describe('looksSuspicious', () => {
@@ -11,8 +12,14 @@ describe('looksSuspicious', () => {
   // "Lana, Priority: High" was never a task.
   it('flags a column that is not a stage of work', () => {
     expect(looksSuspicious('Priority')).toBe(true)
-    expect(looksSuspicious('  status ')).toBe(true)
+    expect(looksSuspicious('  type ')).toBe(true)
     expect(looksSuspicious('Notes')).toBe(true)
+  })
+
+  // A step needs a deadline now, and on the simple boards a Status column with a
+  // date after it is the stage of work.
+  it('no longer flags a step called Status', () => {
+    expect(looksSuspicious('Status')).toBe(false)
   })
 
   it('leaves a real step alone', () => {
@@ -50,6 +57,22 @@ describe('reviewProgress', () => {
       step({ assignments: 40 }),
       step({ suspicious: true, assignments: 7 }),
     ])
-    expect(p).toEqual({ total: 3, settled: 1, suspicious: 1, unverifiedAssignments: 47 })
+    expect(p).toEqual({ total: 3, settled: 1, suspicious: 1, notSteps: 0, unverifiedAssignments: 47 })
+  })
+})
+
+describe('columns that are not steps', () => {
+  const notAStep = (o: Partial<StepUnderReview> = {}) => step({ stages: [], stepName: 'Assigner', assignments: 0, ...o })
+
+  it('waits at the end of the review, after every real step', () => {
+    const sorted = [notAStep({ peopleCol: 'a' }), step({ peopleCol: 'b', source: 'confirmed' })].sort(orderForReview)
+    expect(sorted.map(s => s.peopleCol)).toEqual(['b', 'a'])
+  })
+
+  it('is counted apart, not as a step waiting for review', () => {
+    const p = reviewProgress([notAStep(), step(), step({ source: 'confirmed' })])
+    expect(p.total).toBe(2)
+    expect(p.settled).toBe(1)
+    expect(p.notSteps).toBe(1)
   })
 })

@@ -10,6 +10,12 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { unresolvedAccounts } from './links'
+import { readStages, type StepStage } from './steps'
+import { missingColumn } from './ingest'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { COMPLETED_MONTHS } from './constants'
+
+export { COMPLETED_MONTHS }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -31,21 +37,6 @@ const PAGE = 1000
  */
 const UNFILTERED_CAP = 5000
 
-/**
- * How far back finished work is kept on the page.
- *
- * Everything ever assigned is in the database and none of it is deleted, but a
- * work list that opens on nine years of finished steps is not a work list. Six
- * months is the span in which "did we do that?" is still a live question:
- * long enough to cover a quarter and the one before it, short enough that the
- * finished block stays readable.
- *
- * Measured on when the ITEM last changed in Monday, because a step does not
- * record when it was completed. That is an approximation and the page says so:
- * an item touched for an unrelated reason keeps its finished steps in view
- * longer than they deserve.
- */
-export const COMPLETED_MONTHS = 6
 
 export interface WorkRow {
   id: number
@@ -133,6 +124,30 @@ export interface Worklist {
   oldestSyncAt: string | null
 }
 
+/**
+ * The Monday account's subdomain, which every "open in Monday" link is built on.
+ *
+ * Read with the caller's client first and the privileged one if that comes back
+ * empty. app_settings is admin-only (migration 052, because it holds API tokens),
+ * so for everyone who is not an admin the plain read returned nothing and every
+ * row lost its link. Admins saw links, which is why it went unnoticed until
+ * Stephanie asked where they were. The subdomain is in every link it builds, so
+ * handing it to a signed-in reader discloses nothing.
+ */
+async function mondaySlug(supabase: Client): Promise<string | null> {
+  const read = async (c: Client) => {
+    const { data } = await c.from('app_settings').select('monday_account_slug').eq('singleton_id', 1).maybeSingle()
+    return (data as { monday_account_slug: string | null } | null)?.monday_account_slug ?? null
+  }
+  const own = await read(supabase)
+  if (own) return own
+  try {
+    return await read(createAdminClient())
+  } catch {
+    return null
+  }
+}
+
 /** Monday accounts belonging to a set of directory people. */
 async function accountsFor(supabase: Client, personIds: string[]): Promise<number[]> {
   if (!personIds.length) return []
@@ -153,18 +168,22 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     onlyAccounts = await accountsFor(supabase, ((members ?? []) as { person_id: string }[]).map(m => m.person_id))
   }
 
-  const [{ data: boardRows }, { data: stepRows }, { data: linkRows }, { data: userRows }, { data: peopleRows }] =
+  const [{ data: boardRows }, firstSteps, { data: linkRows }, { data: userRows }, { data: peopleRows }] =
     await Promise.all([
       supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at, date_title, priority'),
-      supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source'),
+      supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source, stages'),
       supabase.from('monday_user_links').select('monday_user_id, person_id'),
       supabase.from('monday_users').select('id, name, is_external, hidden'),
       supabase.from('people').select('id, full_name'),
     ])
+  // Migration 082 adds stages. Until it is run, every step reads as seeded
+  // before stages existed, which is how the page behaved before it.
+  let stepRows: unknown[] | null = firstSteps.data
+  if (missingColumn(firstSteps.error, 'stages')) {
+    stepRows = (await supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source')).data
+  }
 
-  const { data: settings } = await supabase
-    .from('app_settings').select('monday_account_slug').eq('singleton_id', 1).maybeSingle()
-  const slug = (settings as { monday_account_slug: string | null } | null)?.monday_account_slug ?? null
+  const slug = await mondaySlug(supabase)
 
   /**
    * A subitem's own board cannot be opened in Monday, so a subitem links to
@@ -194,8 +213,12 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   }
   const boardList = (boardRows ?? []) as B[]
   const boards = new Map(boardList.map(b => [b.id, b]))
-  const steps = new Map(((stepRows ?? []) as { board_id: number; people_col: string; step_name: string; position: number; source: string }[])
-    .map(s => [`${s.board_id}:${s.people_col}`, s]))
+  type S = { board_id: number; people_col: string; step_name: string; position: number; source: string; stages?: unknown }
+  const steps = new Map(((stepRows ?? []) as S[])
+    .map(s => [`${s.board_id}:${s.people_col}`, { ...s, stageList: readStages(s.stages) }]))
+  /** The stage a row was read from, by the columns written on the row. */
+  const stageOf = (list: StepStage[] | null, a: { status_col: string | null; due_col?: string | null }) =>
+    list?.find(st => st.statusCol === a.status_col && (a.due_col == null || st.dateCol === a.due_col)) ?? null
   const personByAccount = new Map(((linkRows ?? []) as { monday_user_id: number; person_id: string }[])
     .map(l => [l.monday_user_id, l.person_id]))
   const users = (userRows ?? []) as { id: number; name: string; is_external: boolean; hidden: boolean }[]
@@ -219,6 +242,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     status_text: string | null; status_done: boolean | null; status_color: string | null
     due_date: string | null; item_updated_at: string | null
     parent_item_id: number | null; parent_board_id: number | null
+    status_col: string | null; due_col?: string | null
   }
   const since = new Date()
   since.setMonth(since.getMonth() - COMPLETED_MONTHS)
@@ -233,7 +257,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   // make room, otherwise hiding a board makes the list worse instead of shorter.
   const includedBoards = boardList.filter(b => b.included).map(b => b.id)
 
-  const SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at'
+  let SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at, status_col, due_col'
   const applyFilters = (q: any): any => {
     let out = q
     out = out.in('board_id', includedBoards)
@@ -261,9 +285,21 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   const rows: A[] = []
   let truncated = false
   for (let from = 0; from < cap; from += PAGE) {
-    const { data, error } = (await applyFilters(
-      supabase.from('monday_assignments').select(SELECT).order('id', { ascending: true }).range(from, from + PAGE - 1),
-    )) as { data: A[] | null; error: { message: string } | null }
+    // Open work first, soonest deadline first, when the Everyone view stops at
+    // its cap. Ordered by id it kept whichever rows happened to be inserted
+    // first, which after every sync is a different, arbitrary 5,000.
+    const page$ = () => applyFilters(
+      supabase.from('monday_assignments').select(SELECT)
+        .order('status_done', { ascending: true, nullsFirst: true })
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1),
+    )
+    let { data, error } = (await page$()) as { data: A[] | null; error: { message: string } | null }
+    if (from === 0 && missingColumn(error, 'due_col')) {
+      SELECT = SELECT.replace(', due_col', '')
+      ;({ data, error } = (await page$()) as { data: A[] | null; error: { message: string } | null })
+    }
     if (error) throw new Error(error.message)
     const page = (data ?? []) as A[]
     rows.push(...page)
@@ -284,6 +320,11 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     const st = steps.get(`${a.board_id}:${a.people_col}`)
     // A column switched off is not a step, so it is not work.
     if (st?.source === 'off') continue
+    // Nor is a people column that owns no status with a deadline. Hidden here
+    // as well as by the ingest, so it takes effect the moment discovery says
+    // so rather than when the board's turn in the sync comes round.
+    if (st?.stageList && st.stageList.length === 0) continue
+    const stage = stageOf(st?.stageList ?? null, a)
 
     const pid = personByAccount.get(a.monday_user_id)
     accountsOnWork.add(a.monday_user_id)
@@ -300,14 +341,16 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       itemName: a.item_name,
       parentItemName: a.parent_item_name,
       groupTitle: a.group_title,
-      stepName: st?.step_name ?? a.people_col,
+      stepName: stage?.statusTitle ?? st?.step_name ?? a.people_col,
       peopleCol: a.people_col,
       statusText: a.status_text,
       statusDone: a.status_done,
       statusColor: a.status_color,
       dueDate: a.due_date,
       dueSuspect: a.due_date != null && !plausible(a.due_date),
-      dueLabel: b.date_title ?? null,
+      // The step's own deadline column when it has one: "Review by", not the
+      // board's "Audit By".
+      dueLabel: stage?.dateTitle ?? b.date_title ?? null,
       url: itemUrl(a),
       assigneeKnown: pid != null,
       priority: b.priority ?? 'medium',

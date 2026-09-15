@@ -47,7 +47,7 @@ const day = (offset: number) => {
 }
 
 const OPEN: WorkRow[] = [
-  row(1, { itemName: 'i7 Monthly Report — MME billing', boardName: 'i7 Marketing', workspaceName: 'i7', who: 'Kevin Brown', priority: 'high', stepName: 'Approve', statusText: 'Stuck', statusColor: '#E2445C', dueDate: day(-12) }),
+  row(1, { itemName: 'i7 Monthly Report - MME billing', boardName: 'i7 Marketing', workspaceName: 'i7', who: 'Kevin Brown', priority: 'high', stepName: 'Approve', statusText: 'Stuck', statusColor: '#E2445C', dueDate: day(-12) }),
   row(2, { itemName: 'SEO Bi-Weekly Company Report, Nov 25 2025', boardName: 'Team Reports Scheduled', workspaceName: 'Reports', who: 'Amy Marsh', priority: 'high', stepName: 'Write', statusText: 'Working on it', statusColor: '#FDAB3D', dueDate: day(-269) }),
   row(3, { itemName: 'Portuguese', parentItemName: 'How do Adventists read the Bible?', boardName: 'AAAF Publishing', workspaceName: 'AAAF', who: 'Lana Prado', priority: 'high', stepName: 'Translate', statusText: 'Working on it', statusColor: '#FDAB3D', dueDate: day(0) }),
   row(4, { itemName: 'SEO Bi-Weekly Company Report, Dec 9 2025', boardName: 'Team Reports Scheduled', workspaceName: 'Reports', who: 'Amy Marsh', priority: 'medium', stepName: 'Write', statusText: 'Working on it', statusColor: '#FDAB3D', dueDate: day(-254) }),
@@ -87,6 +87,9 @@ export default async function DesignCheck(
   if (process.env.NODE_ENV === 'production') notFound()
   const { view } = await searchParams
   const everyone = view === 'everyone'
+  // ?view=filtered: the filter row with two filters chosen and the list sorted
+  // by due date, the state Stephanie asked for, held open so it can be looked at.
+  const filtered = view === 'filtered'
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-[1340px] mx-auto space-y-6">
@@ -115,6 +118,7 @@ export default async function DesignCheck(
           teams={everyone ? [{ value: 't1', label: 'SEO' }, { value: 't2', label: 'Writing' }] : []}
           selfPersonId="me"
           isAdmin={false}
+          preview={filtered ? { filters: { status: 'Working on it', due: 'late' }, sort: { key: 'due', dir: 'asc' } } : undefined}
         />
       </div>
     </div>

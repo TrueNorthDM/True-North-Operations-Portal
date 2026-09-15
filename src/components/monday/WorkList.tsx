@@ -3,13 +3,16 @@
 /**
  * My Work: every step assigned to somebody, across every board.
  *
- * Grouped workspace → board → step, because that is how the question is asked.
  * The thing Monday's own dashboards could not do is here by construction: an
  * item where one person owns three steps produces three rows, not one, since a
  * row is a step rather than an item.
  *
- * Clicking a row asks Monday for that item's history, live. No history is
- * stored, so what opens is current by definition.
+ * The first two columns are the two ways out of a row: the item in Monday, and
+ * its history. Clicking the row itself used to open the history, and Jeannette
+ * asked for the opposite in August 2026, wanting Monday to be the direct
+ * action. Two labelled icons at the start of the row make both one click away
+ * and neither a surprise. The history is still asked of Monday live, so what
+ * opens is current by definition.
  */
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
@@ -17,9 +20,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { PullInfo } from '@/components/PullInfo'
-import { COMPLETED_MONTHS } from '@/lib/monday/worklist/data'
+import { COMPLETED_MONTHS } from '@/lib/monday/worklist/constants'
 import { chip, PRIORITY_CHIP, PRIORITY_RANK, DUE_BADGE, DUE_TIME, type DueState } from './tokens'
 import { personSelectValue, isMine } from '@/lib/monday/worklist/filters'
+import {
+  applyListFilters, sortRows, nextSort, readListParams, writeListParams, activeFilterCount,
+  DUE_OPTIONS, CHANGE_OPTIONS, NO_FILTERS, NO_STATUS, type ListFilters, type Sort, type SortKey,
+} from '@/lib/monday/worklist/list-view'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
 
 interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: string }
@@ -48,20 +55,16 @@ export interface HistoryEvent {
 //   #f8f7f3  row hover
 
 /**
- * The twelve columns.
+ * The thirteen columns: two icons, then the eleven the handoff draws.
  *
- * Two of the handoff's widths do not fit their own contents at the 1180px it
- * sets, and copying them exactly would copy the bug:
- *
- *   badge 5%   59px for an "UPCOMING" 62px wide, so in the mock itself the
- *              badge paints over the eye beside it. Now 9%.
- *   Monday 3%  35px, which is 11px of usable width after padding, for a 17px
- *              icon under a header word that needs about 55px. Now 7%.
- *
- * The text columns give up the difference, since they wrap and these do not. A
- * design file describes an intent, and the intent is plainly not "clip this".
+ * The icons have fixed widths, since they hold a 28px chip and nothing else.
+ * The text columns keep the handoff's proportions as fractions of what is left,
+ * which at the list's 1180px minimum is the same pixel width the percentages
+ * gave. Two of the handoff's own widths were already widened here because they
+ * did not fit their contents: the badge (5% to 9%, "UPCOMING" is 62px) and the
+ * Monday column, which is now the first icon column instead.
  */
-const GRID = '13% 9% 8% 7% 10% 6% 8% 9% 8% 6% 9% 7%'
+const GRID = '44px 44px minmax(0,13fr) minmax(0,9fr) minmax(0,8fr) minmax(0,7fr) minmax(0,10fr) minmax(0,6fr) minmax(0,8fr) minmax(0,9fr) minmax(0,8fr) minmax(0,6fr) minmax(0,9fr)'
 
 // min-w-0 on every cell, so a grid column can never be widened by its content,
 // and overflow-hidden so nothing can be drawn outside the column that owns it.
@@ -107,9 +110,6 @@ export function OpenInMonday({ href, label, showLabel = false }: {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        // The row opens the history; this opens Monday. The inner target has
-        // to stop the outer one or one click does both.
-        onClick={e => e.stopPropagation()}
         onMouseEnter={() => setOver(true)}
         onMouseLeave={() => setOver(false)}
         onFocus={() => setOver(true)}
@@ -122,12 +122,60 @@ export function OpenInMonday({ href, label, showLabel = false }: {
       {over && (
         <span
           role="tooltip"
-          className="absolute top-[calc(100%+8px)] right-0 z-20 whitespace-nowrap rounded-[8px] bg-tn-primary px-2.5 py-[7px] text-[12px] text-[#dfe8f5] shadow-[0_12px_26px_-14px_rgba(1,35,88,.6)]"
+          className="absolute top-[calc(100%+8px)] left-0 z-20 whitespace-nowrap rounded-[8px] bg-tn-primary px-2.5 py-[7px] text-[12px] text-[#dfe8f5] shadow-[0_12px_26px_-14px_rgba(1,35,88,.6)]"
         >
           Open in Monday
         </span>
       )}
     </span>
+  )
+}
+
+/**
+ * The history of an item, beside the Monday link and drawn the same way, so the
+ * two ways out of a row read as a pair.
+ */
+export function OpenHistory({ label, onOpen, showLabel = false }: {
+  label: string
+  onOpen: () => void
+  /** Design check only: hold the label open. */
+  showLabel?: boolean
+}) {
+  const [over, setOver] = useState(showLabel)
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={onOpen}
+        onMouseEnter={() => setOver(true)}
+        onMouseLeave={() => setOver(false)}
+        onFocus={() => setOver(true)}
+        onBlur={() => setOver(false)}
+        aria-label={`Show the history of ${label}`}
+        className="inline-flex items-center justify-center w-7 h-7 rounded-[7px] bg-[var(--chip-neutral-bg)] text-tn-teal hover:bg-[rgba(30,125,127,.12)] transition-colors"
+      >
+        <HistoryIcon />
+      </button>
+      {over && (
+        <span
+          role="tooltip"
+          className="absolute top-[calc(100%+8px)] left-0 z-20 whitespace-nowrap rounded-[8px] bg-tn-primary px-2.5 py-[7px] text-[12px] text-[#dfe8f5] shadow-[0_12px_26px_-14px_rgba(1,35,88,.6)]"
+        >
+          Show history
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** A clock turning back: the history of the item. */
+function HistoryIcon() {
+  return (
+    <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 2.64-6.36" />
+      <polyline points="3 4 3 9 8 9" />
+      <polyline points="12 7.5 12 12 15 14" />
+    </svg>
   )
 }
 
@@ -301,8 +349,34 @@ export function HistoryPanel({ row, onClose, state }: {
  */
 const FIRST_ROWS = 200
 
+/** A column heading that sorts. Arrow shown only on the column in use, so the row of headings stays quiet. */
+function SortHead({ label, k, sort, onSort, align = 'left' }: {
+  label: string
+  k: SortKey
+  sort: Sort | null
+  onSort: (k: SortKey) => void
+  align?: 'left' | 'right'
+}) {
+  const on = sort?.key === k
+  const next = !on ? 'ascending' : sort?.dir === 'asc' ? 'descending' : 'the list order'
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(k)}
+      title={`Sort by ${label.toLowerCase()}, ${next}`}
+      className={`${HEAD_CELL} flex items-center gap-1 whitespace-nowrap transition-colors hover:text-tn-ink ${align === 'right' ? 'justify-end text-right' : 'text-left'} ${on ? 'text-tn-ink' : ''}`}
+    >
+      {/* Not truncated: the handoff's widths leave "Workspace" a few pixels
+          wider than its column, and it has always run into the padding beside
+          it rather than being cut to "Worksp…". */}
+      <span>{label}</span>
+      {on && <span aria-hidden="true" className="text-tn-teal text-[11px] leading-none">{sort!.dir === 'asc' ? '↑' : '↓'}</span>}
+    </button>
+  )
+}
+
 function Block({
-  title, note, rows, open, onToggle, onPick, tone = 'default',
+  title, note, rows, open, onToggle, onPick, sort, onSort, tone = 'default',
 }: {
   title: string
   note?: string
@@ -310,6 +384,8 @@ function Block({
   open: boolean
   onToggle: () => void
   onPick: (r: WorkRow) => void
+  sort: Sort | null
+  onSort: (k: SortKey) => void
   tone?: 'default' | 'quiet'
 }) {
   const [all, setAll] = useState(false)
@@ -335,31 +411,36 @@ function Block({
         <div>
         <div className="border-t border-[var(--row-rule)] overflow-x-auto">
           <div className="min-w-[1180px]">
-            {/* A grid, not a table: the handoff fixes the twelve widths as
-                percentages, and a grid honours them without the browser
-                measuring the content first. */}
+            {/* A grid, not a table: the handoff fixes the widths, and a grid
+                honours them without the browser measuring the content first. */}
             <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={{ gridTemplateColumns: GRID }}>
-              <div className={HEAD_CELL}>Item</div>
-              <div className={HEAD_CELL}>Parent item</div>
-              <div className={HEAD_CELL}>Board</div>
-              <div className={HEAD_CELL}>Workspace</div>
-              <div className={HEAD_CELL}>Assignee</div>
-              <div className={HEAD_CELL}>Priority</div>
-              <div className={HEAD_CELL}>Step</div>
-              <div className={HEAD_CELL}>Status</div>
-              <div className={`${HEAD_CELL} text-right`}>Due</div>
+              <div className="px-2 py-[11px] min-w-0"><span className="sr-only">Open in Monday</span></div>
+              <div className="px-2 py-[11px] min-w-0"><span className="sr-only">History</span></div>
+              <SortHead label="Item" k="item" sort={sort} onSort={onSort} />
+              <SortHead label="Parent item" k="parent" sort={sort} onSort={onSort} />
+              <SortHead label="Board" k="board" sort={sort} onSort={onSort} />
+              <SortHead label="Workspace" k="workspace" sort={sort} onSort={onSort} />
+              <SortHead label="Assignee" k="who" sort={sort} onSort={onSort} />
+              <SortHead label="Priority" k="priority" sort={sort} onSort={onSort} />
+              <SortHead label="Step" k="step" sort={sort} onSort={onSort} />
+              <SortHead label="Status" k="status" sort={sort} onSort={onSort} />
+              <SortHead label="Due" k="due" sort={sort} onSort={onSort} align="right" />
               <div className={`${HEAD_CELL} text-right`}>Time</div>
               <div className="px-3 py-[11px] min-w-0" />
-              <div className={`${HEAD_CELL} text-right`}>Monday</div>
             </div>
 
             {shown.map(({ row: r, due: d }) => (
               <div
                 key={r.id}
-                onClick={() => onPick(r)}
-                className="grid border-b border-[var(--row-rule)] last:border-b-0 cursor-pointer hover:bg-[var(--row-hover)] transition-colors"
+                className="grid border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)] transition-colors"
                 style={{ gridTemplateColumns: GRID }}
               >
+                <div className="px-2 py-2.5 min-w-0 flex justify-center">
+                  {r.url ? <OpenInMonday href={r.url} label={r.itemName} /> : <span className="text-[var(--faint)] leading-7">-</span>}
+                </div>
+                <div className="px-2 py-2.5 min-w-0 flex justify-center">
+                  <OpenHistory label={r.itemName} onOpen={() => onPick(r)} />
+                </div>
                 <div className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>
                   <span className="line-clamp-2">{r.itemName}</span>
                 </div>
@@ -382,7 +463,7 @@ function Block({
                     ? <StatusChip text={r.statusText} colour={r.statusColor} />
                     : <span className="text-[var(--faint)] text-[13px]">-</span>}
                 </div>
-                <div className={`${CELL} text-tn-ink text-right whitespace-nowrap`}>
+                <div className={`${CELL} text-tn-ink text-right whitespace-nowrap`} title={r.dueLabel ?? undefined}>
                   {d ? d.date : <span className="text-[var(--faint)]">-</span>}
                 </div>
                 <div className={`px-3 py-2.5 min-w-0 overflow-hidden text-[12px] text-right ${d ? DUE_TIME[d.state] : ''}`}>
@@ -390,9 +471,6 @@ function Block({
                 </div>
                 <div className="px-3 py-2.5 min-w-0 overflow-hidden">
                   {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
-                </div>
-                <div className="px-3 py-2.5 min-w-0 text-right">
-                  {r.url ? <OpenInMonday href={r.url} label={r.itemName} /> : <span className="text-[var(--faint)]">-</span>}
                 </div>
               </div>
             ))}
@@ -434,6 +512,10 @@ export interface PreviewState {
   done?: boolean
   /** Start with Completed open. */
   openCompleted?: boolean
+  /** Start with these filters chosen, which the URL normally decides. */
+  filters?: Partial<ListFilters>
+  /** Start sorted by a column. */
+  sort?: Sort
 }
 
 export function WorkList({
@@ -467,6 +549,32 @@ export function WorkList({
       completed: preview?.openCompleted ?? false,
     })
   const [tip, setTip] = useState(preview?.tip ?? false)
+  // Filters and sort are the reader's own narrowing of rows already loaded, so
+  // they answer at once and are written to the address bar without asking the
+  // server anything: window.history keeps the URL shareable and Next's router
+  // in step without a round trip.
+  const [filters, setFilters] = useState<ListFilters>(() => ({ ...readListParams(params).filters, ...preview?.filters }))
+  const [sort, setSort] = useState<Sort | null>(() => preview?.sort ?? readListParams(params).sort)
+  const remember = (f: ListFilters, so: Sort | null) => {
+    if (preview) return
+    const next = writeListParams(new URLSearchParams(window.location.search), f, so)
+    const qs = next.toString()
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+  }
+  const updateFilters = (patch: Partial<ListFilters>) => {
+    const f = { ...filters, ...patch }
+    setFilters(f)
+    remember(f, sort)
+  }
+  const clearFilters = () => {
+    setFilters(NO_FILTERS)
+    remember(NO_FILTERS, sort)
+  }
+  const onSort = (k: SortKey) => {
+    const so = nextSort(sort, k)
+    setSort(so)
+    remember(filters, so)
+  }
 
   const team = preview?.team ?? params.get('team') ?? ''
   const person = personSelectValue(params.get('person'), team, selfPersonId)
@@ -506,7 +614,10 @@ export function WorkList({
     // filter to Writers and Arnaldo at once.
     if (key === 'team' && value) next.set('person', '')
     next.set('tab', 'work')
-    startTransition(() => router.push(`/my-work?${next.toString()}`))
+    // The narrowing the reader chose rides along: changing whose work is shown
+    // should not quietly undo the filters on it.
+    const withList = writeListParams(next, filters, sort)
+    startTransition(() => router.push(`/my-work?${withList.toString()}`))
   }
 
   /**
@@ -533,7 +644,32 @@ export function WorkList({
   }), [data.rows])
 
   const needle = q.trim().toLowerCase()
-  const rows = needle ? prepared.filter(p2 => p2.hay.includes(needle)) : prepared
+  const searched = needle ? prepared.filter(p2 => p2.hay.includes(needle)) : prepared
+  const rows = applyListFilters(searched, filters)
+  const filtering = activeFilterCount(filters)
+
+  // What the filters can offer is what is on the page, each with how many rows
+  // it would keep, so a choice never leads to an empty list by surprise.
+  const statusOptions = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const { row } of prepared) {
+      const k = row.statusText || NO_STATUS
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([value, count]) => ({ value, label: `${value === NO_STATUS ? 'No status' : value} (${n(count)})` }))
+  }, [prepared])
+  const boardOptions = useMemo(() => {
+    const counts = new Map<string, { name: string; count: number }>()
+    for (const { row } of prepared) {
+      const k = String(row.boardId)
+      counts.set(k, { name: row.boardName, count: (counts.get(k)?.count ?? 0) + 1 })
+    }
+    return [...counts.entries()]
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .map(([value, b]) => ({ value, label: `${b.name} (${n(b.count)})` }))
+  }, [prepared])
 
   // Nobody behind the account comes first as a category, because those rows
   // cannot be filtered by team and would otherwise sit unexplained among work
@@ -543,14 +679,19 @@ export function WorkList({
   // On-going is the only block sorted by priority. Completed is a record, and
   // Unknown user is a queue for an admin; ordering either by importance would
   // be answering a question nobody asks of them.
-  const ongoing = known.filter(r => r.row.statusDone !== true).sort((a, b) =>
+  // A column the reader chose to sort by wins over every block's own order.
+  const openRows = known.filter(r => r.row.statusDone !== true)
+  const ongoing = sort ? sortRows(openRows, sort) : openRows.sort((a, b) =>
     PRIORITY_RANK[a.row.priority] - PRIORITY_RANK[b.row.priority]
     // Within a priority the deadline decides, which keeps the previous order
     // intact inside each band rather than replacing it.
     || (a.due && !a.row.dueSuspect ? 0 : 1) - (b.due && !b.row.dueSuspect ? 0 : 1)
     || (a.row.dueDate ?? '').localeCompare(b.row.dueDate ?? '')
     || a.row.itemName.localeCompare(b.row.itemName))
-  const completed = known.filter(r => r.row.statusDone === true)
+  const completed = sort ? sortRows(known.filter(r => r.row.statusDone === true), sort) : known.filter(r => r.row.statusDone === true)
+  const unknownRows = sort ? sortRows(unknown, sort) : unknown
+  const filterSelect = (on: boolean) =>
+    `gap-2 px-3 py-[9px] rounded-[10px] border bg-white font-(family-name:--font-display) font-semibold text-[13px] ${on ? 'border-tn-teal text-tn-teal' : 'border-[var(--panel-border)] text-muted'}`
 
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
@@ -632,12 +773,58 @@ export function WorkList({
         </button>
 
         <span className="text-[13.5px] text-muted ml-auto">
-          {needle
-            ? `${n(rows.length)} matching`
+          {needle || filtering
+            ? `${n(rows.length)} of ${n(prepared.length)} shown`
             : data.truncated
               ? `${n(data.total)} shown of ${n(data.matching)}`
               : `${n(data.open)} open${data.total !== data.open ? ` · ${n(data.total)} in view` : ''}`}
         </span>
+      </div>
+
+      {/* Narrowing what is on the page. Every chosen filter is drawn in teal and
+          the count beside Clear says how many rows they are leaving out, so a
+          short list never reads as a finished one. */}
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.07em] text-muted">Filter</span>
+        <Select
+          value={filters.status}
+          onChange={v => updateFilters({ status: v })}
+          options={[{ value: '', label: 'Any status' }, ...statusOptions]}
+          ariaLabel="Status"
+          className={filterSelect(!!filters.status)}
+          searchable
+        />
+        <Select
+          value={filters.board}
+          onChange={v => updateFilters({ board: v })}
+          options={[{ value: '', label: 'Any board' }, ...boardOptions]}
+          ariaLabel="Board"
+          className={filterSelect(!!filters.board)}
+          searchable
+        />
+        <Select
+          value={filters.due}
+          onChange={v => updateFilters({ due: v as ListFilters['due'] })}
+          options={DUE_OPTIONS}
+          ariaLabel="Due date"
+          className={filterSelect(!!filters.due)}
+        />
+        <Select
+          value={filters.change}
+          onChange={v => updateFilters({ change: v as ListFilters['change'] })}
+          options={CHANGE_OPTIONS}
+          ariaLabel="Last change in Monday"
+          className={filterSelect(!!filters.change)}
+        />
+        {filtering > 0 && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-[13px] font-semibold text-tn-teal hover:underline"
+          >
+            {`Clear filters · ${n(searched.length - rows.length)} hidden`}
+          </button>
+        )}
       </div>
 
       {/* Same footer the API cards use, so "how current is this" reads the
@@ -690,10 +877,12 @@ export function WorkList({
         <Block
           title="Unknown user"
           note="Work on a Monday account with nobody behind it"
-          rows={unknown}
+          rows={unknownRows}
           open={openBlocks.unknown}
           onToggle={() => setOpenBlocks(b => ({ ...b, unknown: !b.unknown }))}
           onPick={setOpenRow}
+          sort={sort}
+          onSort={onSort}
           tone="quiet"
         />
       )}
@@ -705,6 +894,8 @@ export function WorkList({
         open={openBlocks.ongoing}
         onToggle={() => setOpenBlocks(b => ({ ...b, ongoing: !b.ongoing }))}
         onPick={setOpenRow}
+        sort={sort}
+        onSort={onSort}
       />
 
       <Block
@@ -716,6 +907,8 @@ export function WorkList({
         open={openBlocks.completed}
         onToggle={() => setOpenBlocks(b => ({ ...b, completed: !b.completed }))}
         onPick={setOpenRow}
+        sort={sort}
+        onSort={onSort}
       />
 
       <p className="text-[12px] text-muted leading-[1.65] m-0 mt-3.5">

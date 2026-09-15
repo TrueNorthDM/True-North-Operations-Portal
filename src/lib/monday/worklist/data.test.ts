@@ -1,5 +1,19 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { loadWorklist } from './data'
+
+// The privileged reader, for the one value a non-admin's own read cannot see.
+// A module-level switch rather than a fixed mock, so each test says what the
+// admin read returns.
+const adminSettings: { slug: string | null } = { slug: null }
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: async () => ({ data: { monday_account_slug: adminSettings.slug }, error: null }) }),
+      }),
+    }),
+  }),
+}))
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -132,5 +146,49 @@ describe('loadWorklist and the Settings switches', () => {
     const { client } = fakeClient(t)
     const r = await loadWorklist(client, { includeDone: true })
     expect(r.rows).toHaveLength(3)
+  })
+})
+
+describe('loadWorklist and steps read by deadline', () => {
+  const stages = [
+    { statusCol: 'status8', statusTitle: 'Audit', dateCol: 'date', dateTitle: 'Audit By' },
+  ]
+  const withSteps = () => {
+    const t = base()
+    t.monday_board_steps = [
+      { board_id: 10, people_col: 'people1', step_name: 'Audit', position: 1, source: 'guess', stages } as any,
+      { board_id: 10, people_col: 'assigner', step_name: 'Assigner', position: 0, source: 'guess', stages: [] } as any,
+    ]
+    t.monday_assignments = [
+      assignment({ id: 1, people_col: 'people1', status_col: 'status8', due_col: 'date', item_name: 'Audit row' }),
+      assignment({ id: 2, people_col: 'assigner', status_col: 'status', due_col: null, item_name: 'Assigner row' }),
+    ]
+    return t
+  }
+
+  // Stephanie's "No edits needed": the Assign column has no deadline, so the
+  // Assigner is not a step, and the row goes the moment discovery says so.
+  it('leaves out a people column that owns no status with a deadline', async () => {
+    const { client } = fakeClient(withSteps())
+    const r = await loadWorklist(client, { includeDone: true })
+    expect(r.rows.map(x => x.itemName)).toEqual(['Audit row'])
+  })
+
+  it('names the step and its deadline from the stage the row was read from', async () => {
+    const { client } = fakeClient(withSteps())
+    const [row] = (await loadWorklist(client, { includeDone: true })).rows
+    expect(row.stepName).toBe('Audit')
+    expect(row.dueLabel).toBe('Audit By')
+  })
+
+  // A1. app_settings is admin-only, so a team leader's own read comes back
+  // empty. The link has to be built anyway.
+  it('builds the Monday link for somebody who cannot read the settings themselves', async () => {
+    const t = withSteps()
+    t.app_settings = []
+    adminSettings.slug = 'truenorthdigitalmarketing'
+    const { client } = fakeClient(t)
+    const [row] = (await loadWorklist(client, { includeDone: true })).rows
+    expect(row.url).toBe('https://truenorthdigitalmarketing.monday.com/boards/10/pulses/100')
   })
 })

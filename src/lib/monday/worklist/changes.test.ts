@@ -101,3 +101,33 @@ describe('keyOf', () => {
     expect(keyOf(row({ monday_user_id: 43 }))).not.toBe(keyOf(row()))
   })
 })
+
+// 15 September 2026: steps started reading the status that has a deadline. On
+// the first sync after that, rows switched columns without anybody doing
+// anything, and the Report reads this table as history.
+describe('diffAssignments when the way steps are read changes', () => {
+  it('writes nothing for a row that is now read from different columns', () => {
+    const before = row({ status_text: "Let's do this!", status_done: false, due_date: '2026-08-19', status_col: 'status2', due_col: null })
+    const after = row({ status_text: 'Done', status_done: true, due_date: '2026-08-12', status_col: 'status8', due_col: 'date' })
+    expect(diffAssignments(7, [before], [after], NOW, { remapped: new Set([keyOf(after)]) })).toEqual([])
+  })
+
+  it('still records real changes on rows that were not remapped', () => {
+    const before = row({ item_id: 2, status_text: 'Working on it', status_done: false })
+    const after = row({ item_id: 2, status_text: 'Done', status_done: true })
+    const other = row({ item_id: 3 })
+    const e = diffAssignments(7, [before, other], [after, other], NOW, { remapped: new Set([keyOf(other)]) })
+    expect(kinds(e)).toEqual(['done'])
+  })
+
+  it('does not record an unassignment for a column that stopped being a step', () => {
+    const assigner = row({ people_col: 'people_assigner' })
+    const e = diffAssignments(7, [assigner, row()], [row()], NOW, { untracked: new Set(['people_assigner']) })
+    expect(e).toEqual([])
+  })
+
+  it('still records a real unassignment on a column that is a step', () => {
+    const e = diffAssignments(7, [row()], [], NOW, { untracked: new Set(['people_assigner']) })
+    expect(kinds(e)).toEqual(['unassigned'])
+  })
+})

@@ -15,10 +15,16 @@
 //         Monday itself treats as finished (the green ones). That answers "has
 //         this step happened" from the board's own configuration instead of
 //         asking a person to declare which label means done on 197 boards.
+//
+// Since September 2026 a step reads its own stages (steps.ts): the status that
+// has a deadline, and that deadline. A row's status and due date come from the
+// stage the step is on, so a step already delivered is not late because the
+// item's next stage is.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { gql } from './discover'
-import { diffAssignments, type AssignmentSnapshot } from './changes'
+import { diffAssignments, keyOf, type AssignmentSnapshot } from './changes'
+import { currentStage, readStages, type StepStage } from './steps'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -38,6 +44,26 @@ interface StepRow {
   people_col: string
   status_col: string | null
   source: string
+  /** Null on a row seeded before stages existed; see readStages. */
+  stages?: unknown
+}
+
+/**
+ * How one people column is read on this board.
+ *
+ * `legacy` is a step seeded before stages existed: the old pairing, with the
+ * board's one date column. It lasts until discovery rewrites the row, which the
+ * sync does at the head of every chain, so in practice it covers the window
+ * between a deploy and the next discovery.
+ */
+type Plan =
+  | { peopleCol: string; kind: 'stages'; stages: StepStage[] }
+  | { peopleCol: string; kind: 'legacy'; statusCol: string | null }
+
+/** True when PostgREST says a column is not there, which is what a migration not yet run looks like. */
+export function missingColumn(error: { message?: string } | null | undefined, column: string): boolean {
+  return !!error?.message && error.message.includes(column)
+    && /does not exist|could not find|schema cache/i.test(error.message)
 }
 
 interface ItemRow {
@@ -120,15 +146,52 @@ export interface BoardIngestResult {
  * updating is a board missing from My Work, which people use every day. The
  * first loss is the smaller one, so it is logged and swallowed.
  */
-async function recordChanges(supabase: Client, boardId: number, after: AssignmentSnapshot[]) {
+async function recordChanges(
+  supabase: Client,
+  boardId: number,
+  after: AssignmentSnapshot[],
+  plans: Plan[],
+  untracked: Set<string>,
+) {
   try {
-    const { data, error } = await supabase
+    const first = await supabase
       .from('monday_assignments')
-      .select('item_id, people_col, monday_user_id, status_text, status_done, due_date')
+      .select('item_id, people_col, monday_user_id, status_text, status_done, due_date, status_col, due_col')
       .eq('board_id', boardId)
+    let data: unknown[] | null = first.data
+    let error = first.error
+    if (missingColumn(error, 'due_col')) {
+      const second = await supabase
+        .from('monday_assignments')
+        .select('item_id, people_col, monday_user_id, status_text, status_done, due_date, status_col')
+        .eq('board_id', boardId)
+      data = second.data
+      error = second.error
+    }
     if (error) throw error
+    const before = (data ?? []) as AssignmentSnapshot[]
 
-    const events = diffAssignments(boardId, (data ?? []) as AssignmentSnapshot[], after, new Date().toISOString())
+    // A row is remapped when it used to be read from a column this step does
+    // not read any more, or from before steps had deadlines of their own (no
+    // due_col). Moving from one of a step's stages to the next is NOT that: it
+    // is the work moving, and it is recorded.
+    const readsFrom = new Map<string, Set<string>>()
+    for (const pl of plans) {
+      readsFrom.set(pl.peopleCol, new Set(pl.kind === 'stages'
+        ? pl.stages.flatMap(st => [st.statusCol, st.dateCol])
+        : [pl.statusCol ?? '']))
+    }
+    const was = new Map(before.map(r => [keyOf(r), r]))
+    const remapped = new Set<string>()
+    for (const row of after) {
+      const old = was.get(keyOf(row))
+      const plan = plans.find(pl => pl.peopleCol === row.people_col)
+      if (!old || plan?.kind !== 'stages') continue
+      const cols = readsFrom.get(row.people_col)!
+      if (old.due_col == null || !cols.has(old.status_col ?? '') || !cols.has(old.due_col)) remapped.add(keyOf(row))
+    }
+
+    const events = diffAssignments(boardId, before, after, new Date().toISOString(), { remapped, untracked })
     if (!events.length) return
 
     for (let i = 0; i < events.length; i += 500) {
@@ -153,16 +216,50 @@ export async function ingestBoard(
   token: string,
   board: BoardRow,
 ): Promise<BoardIngestResult> {
-  const { data: stepRows } = await supabase
+  const firstSteps = await supabase
     .from('monday_board_steps')
-    .select('board_id, people_col, status_col, source')
+    .select('board_id, people_col, status_col, source, stages')
     .eq('board_id', board.id)
-  const steps = ((stepRows ?? []) as StepRow[]).filter(s => s.source !== 'off')
-  if (!steps.length) return { board: board.name, items: 0, assignments: 0 }
+  let stepRows: unknown[] | null = firstSteps.data
+  let stepErr = firstSteps.error
+  if (missingColumn(stepErr, 'stages')) {
+    const legacy = await supabase
+      .from('monday_board_steps')
+      .select('board_id, people_col, status_col, source')
+      .eq('board_id', board.id)
+    stepRows = legacy.data
+    stepErr = legacy.error
+  }
+  if (stepErr) throw new Error(`steps for board ${board.id}: ${stepErr.message}`)
+  const allSteps = (stepRows ?? []) as StepRow[]
 
-  const peopleCols = steps.map(s => s.people_col)
-  const statusCols = [...new Set(steps.map(s => s.status_col).filter(Boolean) as string[])]
-  const wanted = [...peopleCols, ...statusCols, ...(board.date_col ? [board.date_col] : [])]
+  const plans: Plan[] = []
+  for (const st of allSteps) {
+    if (st.source === 'off') continue
+    const stages = readStages(st.stages)
+    if (stages === null) plans.push({ peopleCol: st.people_col, kind: 'legacy', statusCol: st.status_col })
+    else if (stages.length) plans.push({ peopleCol: st.people_col, kind: 'stages', stages })
+  }
+  // People columns whose rows leave because of a setting rather than the work.
+  const untracked = new Set(allSteps.map(st => st.people_col).filter(pc => !plans.some(pl => pl.peopleCol === pc)))
+
+  // Nothing on this board is a step any more: every people column is switched
+  // off or owns no status with a deadline. Its rows go, without history events
+  // (it is a setting, not the work), and the board is stamped. Returning early
+  // without the stamp left it first in the queue forever and pinned the page's
+  // "refreshed" footer, which reads the oldest stamp, to the day it happened.
+  if (!plans.length) {
+    const { error: clearErr } = await supabase.from('monday_assignments').delete().eq('board_id', board.id)
+    if (clearErr) throw new Error(`clear board ${board.id}: ${clearErr.message}`)
+    await supabase.from('monday_boards')
+      .update({ items_synced_at: new Date().toISOString(), assignments_count: 0 })
+      .eq('id', board.id)
+    return { board: board.name, items: 0, assignments: 0 }
+  }
+
+  const wanted = [...new Set(plans.flatMap(pl => pl.kind === 'stages'
+    ? [pl.peopleCol, ...pl.stages.flatMap(st => [st.statusCol, st.dateCol])]
+    : [pl.peopleCol, ...(pl.statusCol ? [pl.statusCol] : []), ...(board.date_col ? [board.date_col] : [])]))]
 
   // Done flags and label colours per status column, read once for the board.
   const cd = await gql<{ boards: { columns: { id: string; settings_str: string | null }[] }[] }>(
@@ -201,20 +298,40 @@ export async function ingestBoard(
     for (const it of page.items ?? []) {
       items++
       const byCol = new Map(it.column_values.map(c => [c.id, c]))
-      for (const st of steps) {
-        const pc = byCol.get(st.people_col)
-        const ids = peopleIn(pc?.value ?? null)
+      for (const pl of plans) {
+        const ids = peopleIn(byCol.get(pl.peopleCol)?.value ?? null)
         if (!ids.length) continue
 
-        const sc = st.status_col ? byCol.get(st.status_col) : undefined
-        let index: number | null = null
-        if (sc?.value) {
-          try { index = (JSON.parse(sc.value) as { index?: number }).index ?? null } catch { index = null }
+        // Each stage read the same way: which label, whether Monday counts it
+        // as done, its colour, and the stage's own deadline.
+        const read = (statusCol: string | null, dateCol: string | null) => {
+          const sc = statusCol ? byCol.get(statusCol) : undefined
+          let index: number | null = null
+          if (sc?.value) {
+            try { index = (JSON.parse(sc.value) as { index?: number }).index ?? null } catch { index = null }
+          }
+          const cfg = statusCol ? settingsBy.get(statusCol) : undefined
+          return {
+            statusCol,
+            dateCol,
+            text: sc?.text ?? null,
+            index,
+            done: statusCol && index != null ? cfg?.done.has(index) ?? false : null,
+            colour: index != null ? cfg?.colour.get(index) ?? null : null,
+            due: dateCol ? dateOf(byCol.get(dateCol)?.value ?? null) : null,
+          }
         }
-        const cfg = st.status_col ? settingsBy.get(st.status_col) : undefined
-        const done = st.status_col && index != null ? cfg?.done.has(index) ?? false : null
-        const colour = index != null ? cfg?.colour.get(index) ?? null : null
-        const due = board.date_col ? dateOf(byCol.get(board.date_col)?.value ?? null) : null
+
+        let at: ReturnType<typeof read>
+        let done: boolean | null
+        if (pl.kind === 'stages') {
+          const cur = currentStage(pl.stages.map(st => read(st.statusCol, st.dateCol)))!
+          at = cur.stage
+          done = cur.allDone ? true : cur.stage.done
+        } else {
+          at = read(pl.statusCol, board.date_col ?? null)
+          done = at.done
+        }
 
         for (const uid of ids) {
           rows.push({
@@ -227,14 +344,15 @@ export async function ingestBoard(
             // to the parent, on the parent's own board.
             parent_board_id: it.parent_item?.board ? Number(it.parent_item.board.id) : null,
             group_title: it.group?.title ?? null,
-            people_col: st.people_col,
+            people_col: pl.peopleCol,
             monday_user_id: uid,
-            status_col: st.status_col,
-            status_text: sc?.text ?? null,
-            status_index: index,
+            status_col: at.statusCol,
+            status_text: at.text,
+            status_index: at.index,
             status_done: done,
-            status_color: colour,
-            due_date: due,
+            status_color: at.colour,
+            due_date: at.due,
+            due_col: at.dateCol,
             item_updated_at: it.updated_at,
           })
         }
@@ -248,12 +366,26 @@ export async function ingestBoard(
   // halves exist, and the difference between them is the only record of the
   // past this system will ever have: monday_assignments keeps the present and
   // Monday does not keep the rest.
-  await recordChanges(supabase, board.id, rows as unknown as AssignmentSnapshot[])
+  await recordChanges(supabase, board.id, rows as unknown as AssignmentSnapshot[], plans, untracked)
 
   const { error: delErr } = await supabase.from('monday_assignments').delete().eq('board_id', board.id)
   if (delErr) throw new Error(`clear board ${board.id}: ${delErr.message}`)
+  const withoutDueCol = (r: Record<string, unknown>) => {
+    const copy = { ...r }
+    delete copy.due_col
+    return copy
+  }
+  let withDueCol = true
   for (let i = 0; i < rows.length; i += 500) {
-    const { error } = await supabase.from('monday_assignments').insert(rows.slice(i, i + 500))
+    const chunk = rows.slice(i, i + 500)
+    let { error } = await supabase.from('monday_assignments').insert(withDueCol ? chunk : chunk.map(withoutDueCol))
+    // Migration 082 not run yet. The rows are still right without it; only the
+    // name of the deadline column is lost until it is.
+    if (withDueCol && missingColumn(error, 'due_col')) {
+      withDueCol = false
+      console.warn('[monday-ingest] monday_assignments.due_col is missing: run migration 082')
+      ;({ error } = await supabase.from('monday_assignments').insert(chunk.map(withoutDueCol)))
+    }
     if (error) throw new Error(`assignments insert (${board.name}): ${error.message}`)
   }
 
