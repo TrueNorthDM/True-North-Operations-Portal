@@ -11,20 +11,25 @@
  * Thin on purpose. Everything it knows lives in lib/tsheets/range.ts and in
  * RangeFilter, so the two reports cannot drift into meaning different things by
  * "a calendar year".
+ *
+ * The Team filter used to sit here too, and moved to the People tab in September
+ * 2026. Up here it looked like it filtered the whole report, and it only ever
+ * filtered the People columns, so on the Costs tab, where the report opens,
+ * choosing a team visibly did nothing. The chosen team still rides along in the
+ * URL when the period changes.
  */
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { RangeFilter } from './RangeFilter'
-import { Select } from '@/components/ui/Select'
 import { choiceFromRange, rangeOf, type Range, type RangeChoice } from '@/lib/tsheets/range'
 
 export function ProjectPeriodFilter(
-  { range, availableMonths, team = '', teams = [], basePath = '/tools/time-report/grant-pass' }: {
+  { range, availableMonths, team = '', basePath = '/tools/time-report/grant-pass' }: {
     range: Range
     availableMonths: string[]
+    /** The team chosen on the People tab, kept in the URL when the period changes. */
     team?: string
-    teams?: readonly { id: string; name: string }[]
     /**
      * Where choosing a period goes. A prop so the design check can point it at
      * itself: the toolbar is only on a page behind a login, which is how a
@@ -61,30 +66,16 @@ export function ProjectPeriodFilter(
 
   // Both filters live in the URL together, so changing one keeps the other and
   // the address stays shareable.
-  const href = (r: { from: string; to: string }, t: string = team) =>
-    `${basePath}?from=${r.from}&to=${r.to}${t ? `&team=${encodeURIComponent(t)}` : ''}`
+  const href = (r: { from: string; to: string }) =>
+    `${basePath}?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`
 
   return (
-    <>
-      <RangeFilter
-        value={chosen}
-        onChange={pick}
-        currentMonth={newest}
-        modes={['month', 'year', 'last12', 'custom']}
-        months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
-      />
-      {teams.length > 0 && (
-      <>
-        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</span>
-        <Select
-          value={team}
-          onChange={t => startNav(() => router.push(href(range, t)))}
-          options={[{ value: '', label: 'All teams' }, ...teams.map(t => ({ value: t.id, label: t.name }))]}
-          ariaLabel="Team"
-          className="px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20"
-        />
-      </>
-      )}
-    </>
+    <RangeFilter
+      value={chosen}
+      onChange={pick}
+      currentMonth={newest}
+      modes={['month', 'year', 'last12', 'custom']}
+      months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
+    />
   )
 }

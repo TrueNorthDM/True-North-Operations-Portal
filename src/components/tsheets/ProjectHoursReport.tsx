@@ -15,7 +15,9 @@
 // correct rather than missing. Those are donation funded with no hour
 // allowance; only Grants Pass Church and School buy hours in advance, at $90.
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { Select } from '@/components/ui/Select'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
@@ -65,11 +67,38 @@ export function ProjectHoursReport(
     selectedTeam?: string
   },
 ) {
-  const [view, setView] = useState<'costs' | 'people'>('costs')
+  // A link that arrives with a team opens on People, the only tab a team changes.
+  const [view, setView] = useState<'costs' | 'people'>(() => (selectedTeam ? 'people' : 'costs'))
   const { rows, totals, unratedPeople } = data
+
+  // The Team filter, on the People tab since September 2026 (it used to sit in
+  // the toolbar, where it looked like it filtered the whole report). Everything
+  // it needs is already on the page, so it answers the click at once and lets
+  // the URL catch up behind it, the way the period filter does, and keeps the
+  // address shareable. The URL is also what Back and Forward move, so the
+  // choice follows it when it changes underneath.
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [, startNav] = useTransition()
+  const [team, setTeam] = useState(selectedTeam)
+  const [urlTeam, setUrlTeam] = useState(selectedTeam)
+  if (urlTeam !== selectedTeam) {
+    setUrlTeam(selectedTeam)
+    setTeam(selectedTeam)
+  }
+  function chooseTeam(next: string) {
+    setTeam(next)
+    const q = new URLSearchParams(searchParams.toString())
+    if (next) q.set('team', next); else q.delete('team')
+    // scroll: false, because the control is halfway down the page now and the
+    // report should not jump back to the top under the person using it.
+    startNav(() => router.push(`${pathname}?${q.toString()}`, { scroll: false }))
+  }
+
   // Only ever takes names away, and only from the People columns. The totals
   // stay everyone's: a partial view should not read as a whole one.
-  const teamPeople = teams.find(t => t.id === selectedTeam)?.members ?? null
+  const teamPeople = teams.find(t => t.id === team)?.members ?? null
   const people = data.people.filter(n => !teamPeople || teamPeople.includes(n))
   const oneMonth = data.from === data.month
   // What the middle block of columns covers. "This month" is a lie over a range,
@@ -142,19 +171,40 @@ export function ProjectHoursReport(
         </div>
       </div>
 
-      <div className="border-b border-slate-200 flex gap-1">
-        {(['costs', 'people'] as const).map(v => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setView(v)}
-            className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${
-              view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'
-            }`}
-          >
-            {v === 'costs' ? 'Costs' : 'People'}
-          </button>
-        ))}
+      {/* The tabs, and on People the Team filter at the far end of the same
+          line. On a phone the filter drops to its own line under the tabs, so
+          the underline moves from the row to the tabs themselves: otherwise it
+          would run under the filter and leave the tabs floating above it. */}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 sm:border-b sm:border-slate-200">
+        <div className="flex gap-1 w-full sm:w-auto border-b border-slate-200 sm:border-b-0">
+          {(['costs', 'people'] as const).map(v => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${
+                view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'
+              }`}
+            >
+              {v === 'costs' ? 'Costs' : 'People'}
+            </button>
+          ))}
+        </div>
+        {view === 'people' && teams.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 sm:ml-auto sm:pb-1.5">
+            <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Team</span>
+            <Select
+              value={team}
+              onChange={chooseTeam}
+              options={[{ value: '', label: 'All teams' }, ...teams.map(t => ({ value: t.id, label: t.name }))]}
+              ariaLabel="Team"
+              className="px-3 py-2 rounded-[9px] border border-slate-200 text-sm bg-white text-tn-ink font-(family-name:--font-display) font-bold focus:outline-none focus:border-tn-teal focus:ring-2 focus:ring-tn-teal/20"
+            />
+            {/* Said while a team is chosen, because it is the next question:
+                the person columns shrink and the totals beside them do not. */}
+            {team && <span className="text-[12px] text-muted">Totals still count everyone</span>}
+          </div>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">

@@ -147,24 +147,28 @@ a second report.
 ## Still open
 
 Checked against the database and the code on 10 September 2026, not from memory.
+Updated on 15 September 2026 with Tina's reply to the questions below.
 
 ### Needs her
 
-1. **August's donation figures.** January to July are entered; she said August
-   would follow.
-2. **Phase 2 needs one answer.** Her sketch shows SEO, Writing and Web as
-   columns, and the Rates sheet has seven departments. Admin and Special
-   Projects hours have to land somewhere, so either those columns exist or the
-   report says what it leaves out. Nothing can be built until she picks.
-3. **Phase 3 needs showing, not building.** The People tab is probably already
-   her people report. The one difference is that her sheet lists every person as
-   a column while the tab shows only those with hours in the period. Show her
-   the live tab rather than building a second report.
-4. **The AAAF net difference.** Her Net row includes the GP School Website and GP
-   Church invoice lines; the portal's cannot, because that income already sits
-   on the Grants Pass rows as hours bought in advance. So the portal's AAAF net
-   differs from her sheet by exactly those lines, March by $325 and May by
-   $1,000, and the portal's is the correct attribution. She has not been told.
+1. **August's donation figures.** Answered: entered, and she keeps them current
+   as money comes in. The change log shows her own entries for August and
+   September, corrections included.
+2. **Phase 2, the department report.** Paused at her request: she is changing
+   the job codes in T-Sheets first. Nothing to build until she says it is done.
+3. **Phase 3, the people report.** Closed: keep the People tab as it is, listing
+   only the people with hours in the period. Nothing to build.
+4. **The AAAF net difference.** Told, and she said to leave it as it is. She will
+   discuss that section with Ed, who can now open the report, so it may change
+   after that conversation.
+
+### Watch
+
+- **Her T-Sheets code changes can move hours out of the i7 report.** Project
+  Hours counts by the "2 Project" field, so it does not care where a job code
+  sits. The i7 report adds up everything under the i7 parent job code, so a code
+  moved out of that tree takes its hours with it, silently. Compare both reports
+  once she has finished.
 
 ### Needs us
 
@@ -174,6 +178,23 @@ Checked against the database and the code on 10 September 2026, not from memory.
    Both CSV exports have.
 
 ### Done since this document was written
+
+- **Four fixes from her reply, 15 September 2026.**
+  1. *The "i" text.* It said Hope for Africa had no job code, and it has one
+     (Adventist Messengers/HFA). What is true is that part of its work is logged
+     under True North job codes with "2 Project" set to Africa, about a quarter of
+     its 2026 hours, which is why the report counts by the field. The two hour
+     gaps it quoted were measurements from while the report was being built and
+     had already gone stale, so the text carries no figures now.
+  2. *No Contractor costs row for Grants Pass Church and School* in the month by
+     month table: no contractor worked on either in 2025 or 2026. The row comes
+     back by itself the first month one does, so no cost is ever hidden.
+  3. *A CSV of the month by month table*, under Export, where she looked for it.
+     Same rows as the screen, decided by the same function.
+  4. *Team moved to the People tab.* In the toolbar it looked like a filter for
+     the whole report, and it only ever narrowed the People columns, so on the
+     Costs tab it visibly did nothing. That was her "the Team filter does not
+     change anything". A note says the totals still count everyone.
 
 - **Ed can open the report.** She wrote "These reports are only for Dave, myself
   and Ed", and he was the one who could not: `role_type: user`, the lowest tier.

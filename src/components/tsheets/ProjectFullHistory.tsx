@@ -8,12 +8,15 @@
  * under the report the way Full history sits under the i7 one.
  *
  * Her rows exactly: hours, employee costs, contractor costs, donations, net.
- * The two client projects have no donations and therefore no net, so their
- * blocks stop at contractor costs rather than showing two rows of nothing.
+ * Which of them each project gets is decided in historyRows, not here, so the
+ * Export CSV of this table cannot come out with different rows. In short: the
+ * two client projects have no donations and no net, and no Contractor costs
+ * until a contractor actually works on one of them.
  */
 
 import { money, moneySigned } from '@/lib/tsheets/format'
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
+import { historyRows, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const shortMonth = (ym: string) => MON[Number(ym.slice(5, 7)) - 1]
@@ -73,29 +76,25 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
                 <td colSpan={months.length} className="bg-[rgba(1,35,88,0.03)]" />
               </tr>
 
-              <Row name="Hours" cells={b.months.map(m => h2(m.hours))} />
-              <Row name="Employee costs" cells={b.months.map(m => m0(m.employeeCost))} />
-              <Row name="Contractor costs" cells={b.months.map(m => m0(m.contractorCost))} />
-
-              {/* The two client projects buy hours instead of receiving gifts,
-                  so a donations row for them would be a row of blanks and a net
-                  of minus their costs, which is not their net of anything. */}
-              {!b.prepaid && (
-                <>
-                  <Row name="Donations" cells={b.months.map(m => m0(m.donations))} />
-                  <tr className="border-t border-slate-100">
-                    <td className={`${label} sticky left-0 bg-white z-10 border-r border-slate-200 font-semibold`}>Net</td>
-                    {b.months.map(m => (
-                      <td
-                        key={m.month}
-                        className={`${cell} font-semibold ${m.net == null ? '' : m.net < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}
-                      >
-                        {m.net == null ? '' : moneySigned(m.net)}
-                      </td>
-                    ))}
-                  </tr>
-                </>
-              )}
+              {historyRows(b).map(key => key === 'net' ? (
+                <tr key={key} className="border-t border-slate-100">
+                  <td className={`${label} sticky left-0 bg-white z-10 border-r border-slate-200 font-semibold`}>{HISTORY_ROW_NAMES.net}</td>
+                  {b.months.map(m => (
+                    <td
+                      key={m.month}
+                      className={`${cell} font-semibold ${m.net == null ? '' : m.net < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}
+                    >
+                      {m.net == null ? '' : moneySigned(m.net)}
+                    </td>
+                  ))}
+                </tr>
+              ) : (
+                <Row
+                  key={key}
+                  name={HISTORY_ROW_NAMES[key]}
+                  cells={b.months.map(m => (key === 'hours' ? h2(m.hours) : m0(m[key])))}
+                />
+              ))}
             </tbody>
           ))}
         </table>

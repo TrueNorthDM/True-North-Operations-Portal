@@ -30,19 +30,24 @@ export function ProjectHoursNotes({ lastYear }: { lastYear: string }) {
         accounting before it reaches here, so this report does not show the split. A blank means nobody has
         entered a figure, not that nothing came in.
       </p>
+      {/* Rewritten in September 2026 after Tina read the first version. It said
+          Hope for Africa had no job code, which was wrong (Adventist
+          Messengers/HFA is one), and it quoted hour gaps measured while the
+          report was being built, which had already aged. No figures here now:
+          a number in help text goes stale without anybody noticing. */}
       <p className="m-0 text-muted">
-        All four projects are recognised by the <span className="font-semibold">“2 Project”</span>{' '}
-        field on each entry. Hope for Africa in particular is not a job code: its work sits under two
-        different ones and only the project value joins them, which is why counting by job code came
-        out 120 to 190 hours short every month.
+        All four projects are identified by the <span className="font-semibold">“2 Project”</span>{' '}
+        field on each time entry, not by job code. Hope for Africa has its own job code (Adventist
+        Messengers/HFA), but part of its work is logged under True North job codes, such as Project
+        Management and Web Dev, with <span className="font-semibold">“2 Project”</span> set to Africa.
+        Counting by the field includes those hours.
       </p>
       {/* The one column that compares two different kinds of truth. Saying so
           is cheaper than being asked about it every month. */}
       <p className="m-0 text-muted">
-        The <span className="font-semibold">{lastYear} same period</span> column is computed from the
-        timesheets as they stand today, so it can differ from what the {`${lastYear} tracking sheet`}{' '}
-        said at the time: a year of corrections and retroactive approvals sits between them. Across the
-        months that were checked the gap ran from four hours over to eighty-seven under.
+        The <span className="font-semibold">{lastYear}</span> column, the same period a year earlier, is
+        recalculated from the timesheets as they are today. If a {lastYear} timesheet was edited after
+        the {lastYear} tracking sheet was filled in, the two will not match.
       </p>
     </InfoDialog>
   )

@@ -75,10 +75,13 @@ const HISTORY: ProjectHistoryBlock[] = [
 ]
 
 const MONTHS = ['2026-09', '2026-08', '2026-07', '2026-06', '2026-05', '2026-04', '2026-03', '2026-02', '2026-01']
+// With members from the fixture, so choosing a team on the People tab visibly
+// takes columns away here, as it does on the real page. Empty member lists made
+// every team hide every person, which is not a thing the real roster does.
 const TEAMS = [
-  { id: 't-seo', name: 'SEO' },
-  { id: 't-writing', name: 'Writing' },
-  { id: 't-web', name: 'Web' },
+  { id: 't-seo', name: 'SEO', members: ['Alyssa', 'Cheyenne', 'Kevin'] },
+  { id: 't-writing', name: 'Writing', members: ['Jeannette', 'Lana', 'Olivia', 'Wendy'] },
+  { id: 't-web', name: 'Web', members: ['Barack', 'Benjamin', 'Hosea', 'Justus'] },
 ]
 
 // Enough for the closed button. Opening the hand-entry form is checked elsewhere.
@@ -124,7 +127,6 @@ export default async function ProjectHoursDesignCheck(
               range={range}
               availableMonths={MONTHS}
               team={selectedTeam}
-              teams={TEAMS}
               basePath="/design-check/project-hours"
             />
             {/* Wraps as well as the row around it. The outer row wrapped and this
@@ -151,7 +153,7 @@ export default async function ProjectHoursDesignCheck(
             </div>
           </div>
 
-          <ProjectHoursReport data={data} teams={TEAMS.map(t => ({ ...t, members: [] }))} selectedTeam="" />
+          <ProjectHoursReport data={data} teams={TEAMS} selectedTeam={selectedTeam} />
           <ProjectFullHistory blocks={HISTORY} year="2026" />
         </div>
       </div>

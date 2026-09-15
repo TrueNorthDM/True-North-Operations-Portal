@@ -110,7 +110,7 @@ export default async function ProjectHoursPage({
 
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Period</span>
-          <ProjectPeriodFilter range={range} availableMonths={months} team={selectedTeam} teams={teams} />
+          <ProjectPeriodFilter range={range} availableMonths={months} team={selectedTeam} />
           {/* One group, right of the month, the way the i7 toolbar carries its
               own. justify-between had pushed these to opposite ends of the row. */}
           {/* Wraps as well as the row around it. The outer row wrapped and this
@@ -140,6 +140,7 @@ export default async function ProjectHoursPage({
             )}
           </div>
         </div>
+        {/* The Team filter is inside, on the People tab: the only place it does anything. */}
         <ProjectHoursReport data={data} teams={teams} selectedTeam={selectedTeam} />
 
         {/* January to the month on screen, which is what her tracking sheet
