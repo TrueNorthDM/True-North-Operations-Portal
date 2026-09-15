@@ -20,7 +20,7 @@ import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentTier } from '@/lib/auth/role'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { getCurrentPerson } from '@/lib/auth/session'
 import { teamPositionLeads } from '@/lib/directory/people-types'
 import { surfaceAllowed } from '@/lib/access/surfaces'
 import { TOOL_KEYS } from '@/lib/access/tools'
@@ -43,16 +43,17 @@ export interface Access {
 // each guarded page resolves it again, which would otherwise repeat the same
 // three queries on every navigation.
 export const loadAccess = cache(async function loadAccess(): Promise<Access> {
-  const tier = await getCurrentTier()
-  const isAdmin = tier.roleType === 'admin'
-
+  // Read together: the tier, the page table and the person do not depend on each
+  // other. This used to wait for the tier, then ask Supabase who was signed in a
+  // second time, then load the person the tier had just loaded. Identity and
+  // person now come from auth/session.ts, once per request.
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const [{ data: pageRows }, me] = await Promise.all([
+  const [tier, { data: pageRows }, me] = await Promise.all([
+    getCurrentTier(),
     supabase.from('access_level_pages').select('role_type, surface_key, allowed'),
-    loadCurrentPerson(supabase, user),
+    getCurrentPerson(),
   ])
+  const isAdmin = tier.roleType === 'admin'
 
   const configured = new Map<string, boolean>()
   for (const r of pageRows ?? []) configured.set(`${r.role_type}:${r.surface_key}`, r.allowed)

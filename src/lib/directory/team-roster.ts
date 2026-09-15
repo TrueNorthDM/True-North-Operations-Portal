@@ -15,17 +15,18 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { getCurrentPerson } from '@/lib/auth/session'
 
 /** A team as a report's filter needs it: a name, and who is in it. */
 export interface TeamRoster { id: string; name: string; members: string[] }
 
 export async function loadTeamRoster(): Promise<{ teams: TeamRoster[]; myTeamIds: Set<string> }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const me = await loadCurrentPerson(supabase, user)
 
-  const [{ data: teamRows }, { data: memberRows }, { data: peopleRows }] = await Promise.all([
+  // The person is shared with the layout and loadAccess, and read alongside the
+  // roster rather than before it.
+  const [me, { data: teamRows }, { data: memberRows }, { data: peopleRows }] = await Promise.all([
+    getCurrentPerson(),
     supabase.from('teams').select('id, name').order('name'),
     supabase.from('team_members').select('team_id, person_id'),
     supabase.from('people').select('id, full_name'),

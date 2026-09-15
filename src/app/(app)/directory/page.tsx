@@ -14,13 +14,13 @@ import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { ToolAudience } from '@/lib/access/tools'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { TOOLS } from '@/lib/access/tools'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
@@ -45,14 +45,14 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const level = directoryLevel(access.can)
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) redirect('/login')
   // ?open=<personId>, deep-link a person's card open (e.g. from Human Resources).
   const openId = (await searchParams).open ?? null
   // Directory is reachable by everyone; the configured directory level decides
   // the view (see access/surfaces.ts): level 3 gets the full admin tabs,
   // levels 1 and 2 the read-only, team-scoped list below.
-  const mePerson = await loadCurrentPerson(supabase, user)
+  const mePerson = await getCurrentPerson()
 
   // People, with graceful degradation, then the rest in parallel.
   //

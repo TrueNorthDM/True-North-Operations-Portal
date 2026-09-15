@@ -8,6 +8,7 @@
  * The signed-in block moved to the top-bar avatar (UserMenu).
  */
 
+import { useEffect, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { NAV_LABEL } from '@/lib/nav/labels'
@@ -192,14 +193,20 @@ const NAV: readonly { key: string; item: Item }[] = [
 
 function NavLink({ item, active }: { item: Item; active: boolean }) {
   const router = useRouter()
+  // The click is acknowledged on this item at once, before the server has said
+  // anything. next/link's useLinkStatus does this for links, and this rail is
+  // buttons, so a transition stands in for it: pending from the click until the
+  // new page, or its loading skeleton, is on screen.
+  const [pending, start] = useTransition()
   return (
     // A button (not an <a href>) so the browser never surfaces the destination
     // URL on hover, the friendly name tooltip below is all we want to show.
     // router.push keeps SPA navigation. (Trade-off: no cmd/middle-click new tab.)
     <button
       type="button"
-      onClick={() => router.push(withViewAs(item.href))}
+      onClick={() => start(() => router.push(withViewAs(item.href)))}
       aria-label={item.label}
+      aria-busy={pending || undefined}
       aria-current={active ? 'page' : undefined}
       className={`group relative mx-auto flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${
         active
@@ -208,6 +215,13 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       }`}
     >
       {item.icon}
+      {/* Always rendered and faded in, so marking the click never shifts the rail. */}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-tn-teal transition-opacity ${
+          pending ? 'opacity-100 motion-safe:animate-pulse' : 'opacity-0'
+        }`}
+      />
       {/* Name tooltip, appears to the right on hover/focus. bg-slate-800 +
           text-white auto-invert in dark mode via the palette remap. */}
       <span
@@ -229,11 +243,30 @@ export function Sidebar(
   { allowed, hrefs }: { allowed: readonly string[]; hrefs?: Record<string, string> },
 ) {
   const pathname = usePathname()
+  const router = useRouter()
   const on = new Set(allowed)
   const items = NAV
     .filter(n => on.has(n.key))
     // A module's destination depends on which of its views this person has.
     .map(n => (hrefs?.[n.key] ? { ...n, item: { ...n.item, href: hrefs[n.key] } } : n))
+
+  // Prefetch every destination on the rail. A <Link> does this by itself; these
+  // are buttons, so until September 2026 the portal's main navigation never
+  // prefetched anything and every click waited on a cold request. Each prefetch
+  // fetches the destination's loading skeleton, which is what lets the click show
+  // it at once. Deferred until the browser is idle so it never competes with the
+  // page that is still loading. Keyed on the destinations as a string, because the
+  // array is rebuilt on every render.
+  const destinations = items.map(n => n.item.href).join('|')
+  useEffect(() => {
+    const run = () => { for (const href of destinations.split('|')) router.prefetch(withViewAs(href)) }
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(run, { timeout: 3000 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const id = window.setTimeout(run, 1500)
+    return () => window.clearTimeout(id)
+  }, [router, destinations])
 
   return (
     // Icon-only rail. No overflow clipping, so the hover tooltips can extend

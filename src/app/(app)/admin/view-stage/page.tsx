@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { isSecurityAdmin } from '@/lib/auth/role'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import ViewStageClient from './ViewStageClient'
+import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 
 // View Stage lives inside /admin, a preview of the portal through each
 // permission tier. Impersonation is server-render only (writes use the real
@@ -11,10 +10,9 @@ import ViewStageClient from './ViewStageClient'
 export const dynamic = 'force-dynamic'
 
 export default async function ViewStagePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) redirect('/login')
   if (!(await isSecurityAdmin())) redirect('/')
-  const me = await loadCurrentPerson(supabase, user)
+  const me = await getCurrentPerson()
   return <ViewStageClient myName={me?.full_name ?? user.email ?? 'Admin'} />
 }

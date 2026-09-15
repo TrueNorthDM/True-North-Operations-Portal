@@ -20,9 +20,10 @@
  * the rendering answer when it needs the writing one.
  */
 
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { ProfileRow } from '@/lib/types/database.types'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { tierOf, type Tier } from '@/lib/auth/tier'
 import { getViewAs } from '@/lib/auth/view-as-server'
 
@@ -59,17 +60,22 @@ export async function isSecurityAdmin(): Promise<boolean> {
  * account is not linked to a directory person yet, so nobody holding the hard
  * gate is locked into the restricted UI by a missing link.
  */
-export async function getCurrentTier(): Promise<Tier> {
+// Memoised per request. loadAccess asks for it, and so do the pages that read the
+// tier directly (Human Resources, Profile), which also render the layout that calls
+// loadAccess: without this they paid for it twice.
+export const getCurrentTier = cache(async function getCurrentTier(): Promise<Tier> {
   // View Stage: while impersonating, the tier IS the impersonated role.
   const vs = await getViewAs()
   if (vs) return tierOf(vs.role)
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // The identity and the directory person are shared with the layout and with
+  // loadAccess (auth/session.ts), so this reads neither again. Only the profile
+  // role is its own question.
+  const [user, supabase] = await Promise.all([getSessionUser(), createClient()])
   const [me, { data: profile }] = await Promise.all([
-    loadCurrentPerson(supabase, user),
+    getCurrentPerson(),
     user ? supabase.from('profiles').select('role').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null }),
   ])
   let roleType = me?.roleType ?? 'user'
   if (profile?.role === 'admin' && roleType !== 'admin' && roleType !== 'admin_assistant') roleType = 'admin'
   return tierOf(roleType)
-}
+})

@@ -45,7 +45,12 @@ const dbRows = {
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
-    auth: { getUser: async () => ({ data: { user: { id: 'user-1' } } }) },
+    // getClaims is how a render learns who is signed in (lib/auth/session.ts);
+    // getUser stays for anything that still verifies with the Auth server.
+    auth: {
+      getClaims: async () => ({ data: { claims: { sub: 'user-1' } } }),
+      getUser: async () => ({ data: { user: { id: 'user-1' } } }),
+    },
     from(table: keyof typeof dbRows) {
       // Every call in the resolver ends in an await, so one thenable that
       // ignores the filters is enough: the filters only ever narrow to the

@@ -21,6 +21,7 @@
 import { revalidatePath } from 'next/cache'
 import { loadAccess } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { TRACKED_PROJECTS } from './projects'
 import { parseMoney } from './money-in-data'
 import { currentActor, logDonationChange } from './donations-log'
@@ -43,8 +44,14 @@ const LABELS: string[] = TRACKED_PROJECTS.map(p => p.label)
  * would have shut her out.
  */
 async function mayWrite(): Promise<boolean> {
-  const access = await loadAccess()
-  return access.isPrivileged
+  // Asked of the Auth server, not read from the token. loadAccess takes the
+  // signed-in identity from the token's claims so that pages render fast, which
+  // trusts an unexpired token without asking whether its session was revoked.
+  // Right for reading a page, wrong for writing money: of every server action in
+  // the portal, this was the one that authorised through loadAccess alone.
+  const supabase = await createClient()
+  const [{ data: { user } }, access] = await Promise.all([supabase.auth.getUser(), loadAccess()])
+  return !!user && access.isPrivileged
 }
 
 /**

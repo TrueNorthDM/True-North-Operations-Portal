@@ -18,9 +18,9 @@ import { WorkList } from '@/components/monday/WorkList'
 import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { resolvePersonFilter } from '@/lib/monday/worklist/filters'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
@@ -85,14 +85,13 @@ export default async function MyWorkPage(
  */
 async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: string } }) {
   const supabase = await createClient()
-  const { data: auth } = await supabase.auth.getUser()
 
   // The portal already knows how to answer "who is signed in", and this had
   // written a weaker version of it: profile_id only. A person whose row was
   // never linked to their login came out as nobody, so the My tasks tab asked
   // to filter by nobody, which is the same as everybody, and clicking it did
-  // nothing at all. loadCurrentPerson falls back to matching the email.
-  const me = await loadCurrentPerson(supabase, auth?.user ?? null)
+  // nothing at all. getCurrentPerson falls back to matching the email.
+  const me = await getCurrentPerson()
   const selfPersonId = me?.id ?? null
 
   const personId = resolvePersonFilter(sp, selfPersonId)
@@ -117,7 +116,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
 
 async function MyTeamTab() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   // Same rule the Directory follows: level 3 opens every teammate's card,
   // levels 1 and 2 only your own.
   const access = await loadAccess()

@@ -42,7 +42,14 @@ const shape = (row: PersonRow): CurrentPerson => ({
  * own email). `avatar_url` (036) / `role_type` (035) degrade gracefully if the
  * migration isn't applied yet.
  */
-export async function loadCurrentPerson(_supabase: Client, user: User | null): Promise<CurrentPerson | null> {
+/**
+ * The part of a signed-in user this reads: the id, and the email as a fallback
+ * match. Structural, so a full Supabase `User` and the claims-based identity from
+ * auth/session.ts both fit, without this module importing that one back.
+ */
+export type SignedInIdentity = Pick<User, 'id'> & { email?: string | null }
+
+export async function loadCurrentPerson(_supabase: Client, user: SignedInIdentity | null): Promise<CurrentPerson | null> {
   // Resolved with the service-role client, not the caller's.
   //
   // Two reasons. email_personal is one of the mailboxes a login is matched

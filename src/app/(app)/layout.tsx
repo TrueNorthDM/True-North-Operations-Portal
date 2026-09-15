@@ -9,18 +9,19 @@ import { MainContent } from '@/components/MainContent'
 import { UserMenu } from '@/components/UserMenu'
 import { AccessPing } from '@/components/AccessPing'
 import { ViewAsKeeper } from '@/components/ViewAsKeeper'
-import { createClient } from '@/lib/supabase/server'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadAccess } from '@/lib/access/resolve'
 import { NAV_SURFACES, navHref, navVisible } from '@/lib/access/nav'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
   // Nav visibility comes from the configured per-level surfaces (Admin →
   // Access levels), not from the tier alone. profiles.role='admin' is still a
   // floor inside loadAccess, so a real admin is never hidden out of anything.
-  const [access, me] = await Promise.all([loadAccess(), loadCurrentPerson(supabase, user)])
+  //
+  // Identity and person come from auth/session.ts, shared with loadAccess and
+  // the page underneath, so this layout no longer asks Supabase who is signed in
+  // a second time or loads the person a third.
+  const [user, access, me] = await Promise.all([getSessionUser(), loadAccess(), getCurrentPerson()])
   const allowedNav = NAV_SURFACES.filter(k => navVisible(k, access.can))
   // A module rail opens whichever of its views this person may reach, so its
   // destination is resolved here rather than hardcoded on the item.

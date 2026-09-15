@@ -5,12 +5,12 @@
 // every one of them is a rail item two pixels away, so they spent the top of the
 // screen repeating the navigation instead of telling anybody anything.
 
-import { createClient } from '@/lib/supabase/server'
+import { Suspense } from 'react'
 import { WelcomeBanner } from '@/components/home/WelcomeBanner'
 import { OrgChart } from '@/components/OrgChart'
 import { getOrgChart } from '@/lib/org/data'
 import { loadAccess } from '@/lib/access/resolve'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { getCurrentPerson } from '@/lib/auth/session'
 import { I7BudgetWidget } from '@/components/home/I7BudgetWidget'
 import { PublishingGoalsWidget } from '@/components/home/PublishingGoalsWidget'
 import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
@@ -20,30 +20,48 @@ import { loadCelebrationPeople } from '@/lib/hr/celebrations'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
+import { perfRun } from '@/lib/perf'
 
 export default async function HomePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  // Publishing goals is for everyone, so it is loaded for everyone. It reads
-  // the warm snapshot store the nightly cron fills, not Monday, so it costs a
-  // couple of indexed reads rather than a third-party round trip.
-  const [org, access, me, celebPeople, publishing] = await Promise.all([
-    getOrgChart(), loadAccess(), loadCurrentPerson(supabase, user), loadCelebrationPeople(),
-    loadPublishingWeeks(),
-  ])
+  const perf = perfRun('home')
+  const month = currentYearMonth()
+
   // Budget at a glance. The widget is not a card on Tools & Dashboards, so it
   // is not a team-grantable tool: it follows the access level alone. (Team
   // grants govern the Clients Reports PAGE, which is such a card.)
-  const month = currentYearMonth()
-  const showBudget = access.can('report-widget')
-  const i7Carryover = showBudget ? (await loadI7ReportData(month)).carryover : null
+  //
+  // Started the moment access is known, alongside everything else. It used to
+  // start after all of it, so the i7 figures waited on the Publishing card,
+  // which until September 2026 was reading 26.7 MB of snapshot.
+  const accessP = loadAccess()
+  const carryoverP = accessP.then(a =>
+    a.can('report-widget') ? loadI7ReportData(month).then(d => d.carryover) : null)
+
+  // Publishing goals is for everyone, so it is loaded for everyone. It reads the
+  // published facts the ingest stores beside the snapshot, about 20 KB, not the
+  // snapshot itself; see lib/boards/published-items.ts.
+  const [org, access, me, celebPeople, publishing, i7Carryover] = await Promise.all([
+    perf.time('org', getOrgChart()),
+    perf.time('access', accessP),
+    perf.time('person', getCurrentPerson()),
+    perf.time('celebrations', loadCelebrationPeople()),
+    perf.time('publishing', loadPublishingWeeks()),
+    perf.time('i7', carryoverP),
+  ])
+  perf.done({ budget: i7Carryover !== null })
 
   return (
     <div className="space-y-8">
       <WelcomeBanner name={me?.full_name ?? null} />
 
-      {/* Surfaces a red alert to admins if a monitored integration is down. */}
-      <SystemHealthBanner />
+      {/* Surfaces a red alert to admins if a monitored integration is down.
+          In its own boundary: it checks the security role with a full round
+          trip to the Auth server, for everyone, before deciding to render
+          nothing for almost everyone. Outside a boundary the whole page waited
+          for that answer. */}
+      <Suspense fallback={null}>
+        <SystemHealthBanner />
+      </Suspense>
 
       {/* Budget at a glance, gated by level + team tool grant. */}
       {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}

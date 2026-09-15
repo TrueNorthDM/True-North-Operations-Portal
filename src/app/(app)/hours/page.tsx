@@ -11,7 +11,6 @@
 
 import { requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
 import { periodFor, type SubmissionState } from '@/lib/timeclock/periods'
 import { workingDays } from '@/lib/timeclock/absence'
@@ -19,6 +18,7 @@ import { isSecurityAdmin } from '@/lib/auth/role'
 import { HoursClient } from './HoursClient'
 import type { TcEntryRow } from '@/lib/types/database.types'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { getCurrentPerson } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'My Hours' }
@@ -73,8 +73,7 @@ export default async function MyHoursPage({
 }: { searchParams: Promise<{ week?: string }> }) {
   await requireSurface('my-hours')
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const me = await loadCurrentPerson(supabase, user)
+  const me = await getCurrentPerson()
 
   if (!me) {
     return (

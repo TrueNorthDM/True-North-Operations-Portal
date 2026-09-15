@@ -11,7 +11,6 @@
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { ReportTabs, resolveTab, type ReportTabKey } from '@/components/report/ReportTabs'
 import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
@@ -32,6 +31,7 @@ import { ReportControls } from '@/components/report/ReportControls'
 import { resolvePeriod, resolveScope, type ReportState } from '@/lib/report/scope'
 import { loadReportOverview, readRecording, type Recording } from '@/lib/report/data'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { getCurrentPerson } from '@/lib/auth/session'
 
 export const metadata = { title: 'Report' }
 export const dynamic = 'force-dynamic'
@@ -61,8 +61,7 @@ export default async function ReportPage(
   const state: ReportState = { tab, scope, period, team: sp.team }
 
   const supabase = await createClient()
-  const { data: auth } = await supabase.auth.getUser()
-  const me = await loadCurrentPerson(supabase, auth?.user ?? null)
+  const me = await getCurrentPerson()
 
   // Me means this person; My team means the team filter if one is set and
   // otherwise everyone they may see. resolveScope has already refused any

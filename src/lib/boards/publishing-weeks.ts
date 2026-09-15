@@ -8,10 +8,11 @@
  * current week is deliberately left out: it is always partly unfinished and
  * would read as behind every day until Friday.
  *
- * Reads the same two sources the dashboard reads, and reads them directly:
- * `monday_snapshot`, the warm store the nightly cron fills, and
- * `publishing_targets`. No Monday API call, so this costs the Home page a
- * couple of indexed reads rather than a third-party round trip.
+ * Reads `monday_snapshot.published_items` and `publishing_targets`: two small
+ * indexed reads. It used to read `monday_snapshot.data`, and this comment used to
+ * say that was cheap. It was 26.7 MB of JSON between the two boards, on every load
+ * of the Home page, to count a few dozen pages. The ingest now stores just the
+ * facts the count needs beside the snapshot; see published-items.ts.
  *
  * It also counts with the dashboard's own function rather than a second copy of
  * the rules. The card is a link to that dashboard, so a number here that does
@@ -25,6 +26,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { BOARDS } from './config'
 import { computePublishingMetrics, enrichPublishingBoard } from './publishing'
 import type { PublishedItem } from './publishing'
+import { isCompactList, toPublishedItems } from './published-items'
 import type { SnapshotBoard, TargetsMap } from './types'
 
 export interface PublishingWeek {
@@ -123,8 +125,8 @@ export async function loadPublishingWeeks(now = new Date()): Promise<PublishingB
   if (boardIds.length === 0) return []
 
   const supabase = createAdminClient()
-  const [{ data: snapRows }, { data: targetRows }] = await Promise.all([
-    supabase.from('monday_snapshot').select('board_id, data').in('board_id', boardIds),
+  const [factRes, { data: targetRows }] = await Promise.all([
+    supabase.from('monday_snapshot').select('board_id, published_items').in('board_id', boardIds),
     supabase.from('publishing_targets').select('board_id, language, target_value').eq('period_type', 'weekly'),
   ])
 
@@ -139,11 +141,36 @@ export async function loadPublishingWeeks(now = new Date()): Promise<PublishingB
   // per-board filtering, so there is nothing to keep separated here.
   const items: PublishedItem[] = []
   const names: Record<string, string> = {}
-  for (const row of (snapRows ?? []) as { board_id: string; data: SnapshotBoard }[]) {
+
+  // Before migration 081 the column does not exist and the whole select fails;
+  // after it, a board the ingest has not written since is null. Both mean "not
+  // computed yet", and only those boards go to the slow path, so one board being
+  // late does not put the other back on 13 MB.
+  const factRows = (factRes.error ? [] : factRes.data ?? []) as { board_id: string; published_items: unknown }[]
+  const stale: string[] = []
+  for (const row of factRows) {
     const config = BOARDS[row.board_id]
     if (!config) continue
+    if (!isCompactList(row.published_items)) { stale.push(row.board_id); continue }
     names[row.board_id] = clientName(config.name)
-    items.push(...enrichPublishingBoard(row.data, config))
+    items.push(...toPublishedItems(row.board_id, config.short, row.published_items))
+  }
+  // A missing column tells us nothing about which boards have a snapshot, so
+  // every board is tried. A board with no snapshot row at all is left out, as it
+  // always was: there is nothing to read and nothing to warn about.
+  if (factRes.error) stale.push(...boardIds)
+
+  if (stale.length > 0) {
+    // Loud on purpose: this is the path that made Home slow, and it should only
+    // ever run between applying migration 081 and the next ingest.
+    console.warn(`[publishing-weeks] no stored facts for ${stale.join(', ')}; reading the full snapshot`)
+    const { data: snapRows } = await supabase.from('monday_snapshot').select('board_id, data').in('board_id', stale)
+    for (const row of (snapRows ?? []) as { board_id: string; data: SnapshotBoard }[]) {
+      const config = BOARDS[row.board_id]
+      if (!config) continue
+      names[row.board_id] = clientName(config.name)
+      items.push(...enrichPublishingBoard(row.data, config))
+    }
   }
 
   // "lastweek" only for its arithmetic: it is the period that means exactly one

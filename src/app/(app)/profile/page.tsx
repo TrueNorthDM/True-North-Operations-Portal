@@ -8,7 +8,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadOwnContact } from '@/lib/hr/contact'
 import { getCurrentTier } from '@/lib/auth/role'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import {
   initialsOf, formatDate,
   typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill,
@@ -20,6 +19,7 @@ import type { PersonRow } from '@/lib/types/database.types'
 import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { PersonalDetails } from '@/components/PersonalDetails'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,13 +42,13 @@ const PROFILE_COLS =
 
 export default async function ProfilePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) redirect('/login')
 
-  // Who "me" is comes from loadCurrentPerson, the one resolver that honours a
-  // View Stage preview. Resolving it here from user.id instead meant a preview
+  // Who "me" is comes from getCurrentPerson (loadCurrentPerson, read once per
+  // request), the one resolver that honours a View Stage preview. Resolving it here from user.id instead meant a preview
   // of another level rendered the real admin's own card.
-  const current = await loadCurrentPerson(supabase, user)
+  const current = await getCurrentPerson()
   const { data: row } = current
     ? await supabase.from('people').select(PROFILE_COLS).eq('id', current.id).maybeSingle()
     : { data: null }

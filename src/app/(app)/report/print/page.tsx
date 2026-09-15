@@ -10,7 +10,6 @@
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { resolveTab } from '@/components/report/ReportTabs'
 import { resolvePeriod, resolveScope, SCOPE_LABEL } from '@/lib/report/scope'
 import { loadReportOverview, readRecording } from '@/lib/report/data'
@@ -24,6 +23,7 @@ import { ReportWaits } from '@/components/report/ReportWaits'
 import { ReportWorkload } from '@/components/report/ReportWorkload'
 import { ReportMethod } from '@/components/report/ReportMethod'
 import { EstimateAudit } from '@/components/report/WorkloadHoldings'
+import { getCurrentPerson } from '@/lib/auth/session'
 
 export const metadata = { title: 'Report' }
 export const dynamic = 'force-dynamic'
@@ -44,8 +44,7 @@ export default async function ReportPrintPage(
   const period = resolvePeriod(sp.period)
 
   const supabase = await createClient()
-  const { data: auth } = await supabase.auth.getUser()
-  const me = await loadCurrentPerson(supabase, auth?.user ?? null)
+  const me = await getCurrentPerson()
   const filters = scope === 'me' ? { personId: me?.id ?? null } : { teamId: sp.team || null }
 
   const printed = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })

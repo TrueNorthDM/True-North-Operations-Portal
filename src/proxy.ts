@@ -12,6 +12,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { skipsSession } from '@/lib/auth/no-session-paths'
 
 // Paths that bypass the user-session auth gate.
 //   /login + /auth, sign-in flow itself
@@ -20,6 +21,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 //                        cookie. Without this exception, Monday's POSTs get
 //                        a 307 → /login and the webhook test fails.
 const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron']
+
 
 // Design checks run without a login, and only ever in development: the page
 // itself refuses to render in a production build, and this refuses to let the
@@ -44,6 +46,14 @@ export async function proxy(request: NextRequest) {
   if (vs) requestHeaders.set('x-vs', vs)
   else requestHeaders.delete('x-vs')
 
+  // Before any session work, and after the header is cleaned: skipping the
+  // session must never also skip stripping a forged x-vs.
+  const { pathname } = request.nextUrl
+  // Machine routes: see lib/auth/no-session-paths.ts for which, and why.
+  if (skipsSession(pathname)) {
+    return NextResponse.next({ request: { headers: requestHeaders } })
+  }
+
   let response = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
@@ -65,11 +75,19 @@ export async function proxy(request: NextRequest) {
     },
   )
 
-  // IMPORTANT: getUser() will refresh the session if it's expired.
-  // Don't use getSession() in middleware, it doesn't revalidate.
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const { pathname } = request.nextUrl
+  // getClaims(), not getUser(). It refreshes an expired session exactly as
+  // getUser() did, because it goes through getSession() first, and then verifies
+  // the token's signature locally against the project's public key (ES256), where
+  // getUser() asked the Auth server over the network on every single request,
+  // prefetches included. Never getSession() on its own: that reads the cookie
+  // without verifying anything.
+  //
+  // What this gives up: a verified, unexpired token is trusted without asking
+  // whether its session was revoked, so a signed-out user can pass here for up to
+  // the token's hour. Pages then read roles live from the database, and writes
+  // verify with getUser() themselves. See lib/auth/session.ts.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const user = claimsData?.claims ?? null
 
   // Public routes, always allowed
   if (isPublic(pathname)) {

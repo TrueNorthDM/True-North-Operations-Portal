@@ -11,12 +11,13 @@ import { loadAccess } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { getSessionUser } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
 export default async function MyTeamPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   // Same rule the Directory follows: level 3 opens every teammate's card,
   // levels 1 and 2 only your own.
   const access = await loadAccess()

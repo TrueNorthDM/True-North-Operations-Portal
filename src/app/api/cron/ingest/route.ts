@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { processBoard, getMondayToken } from '@/lib/monday/snapshot'
 import { BOARDS, PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
 import { getBoardColumnIds, getBoardSubitemColumnIds, getBoardLogRelevantColumnIds } from '@/lib/boards/data'
+import { compactPublished } from '@/lib/boards/published-items'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -54,9 +55,22 @@ export async function GET(request: Request) {
           subitemColumnIds: getBoardSubitemColumnIds(bid) ?? undefined,
           relevantLogColumnIds: getBoardLogRelevantColumnIds(bid),
         })
-        const { error } = await supabase
+        // The published facts go in the same write as the snapshot they were
+        // taken from, so the Home card can never count a different snapshot
+        // than the dashboard shows. See migration 081.
+        const row = { board_id: bid, data: snap, ingested_at: new Date().toISOString() }
+        let { error } = await supabase
           .from('monday_snapshot')
-          .upsert({ board_id: bid, data: snap, ingested_at: new Date().toISOString() }, { onConflict: 'board_id' })
+          .upsert({ ...row, published_items: compactPublished(snap, BOARDS[bid], new Date()) }, { onConflict: 'board_id' })
+        // Deployed before migration 081 was applied, the column does not exist
+        // and PostgREST rejects the whole row. Losing the snapshot to protect
+        // an optimisation would freeze both publishing dashboards, so the
+        // snapshot is written without the facts and Home keeps its slow path
+        // until the column exists.
+        if (error && /published_items/.test(error.message)) {
+          console.warn('[ingest] published_items column missing, apply migration 081:', error.message)
+          ;({ error } = await supabase.from('monday_snapshot').upsert(row, { onConflict: 'board_id' }))
+        }
         if (error) throw new Error(error.message)
         return { board: short, items: snap.items.length, logs: snap.activity.length, ok: true }
       } catch (e) {

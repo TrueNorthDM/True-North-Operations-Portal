@@ -1,0 +1,35 @@
+-- 081_snapshot_published_items.sql
+--
+-- The facts the Publishing goals card needs, stored beside the snapshot.
+--
+-- The Home page read monday_snapshot.data for both publishing boards on every
+-- visit to count a few dozen published pages. Measured in September 2026 that
+-- column held 26.7 MB of JSON between the two boards, transferred and parsed on
+-- every load of the most visited page in the portal. The same count, computed
+-- from the facts below, needs 21 KB.
+--
+-- A column rather than a table because the facts are derived from exactly one
+-- snapshot and must never describe a different one. The ingest writes both in the
+-- same upsert, so the two cannot drift apart, and a board that stops being
+-- ingested takes its facts with it.
+--
+-- Shape, written by src/lib/boards/published-items.ts:
+--
+--   [{ "id": "...", "language": "English", "publishers": ["..."],
+--      "publishedDate": "2026-09-02T10:00:00Z" }, ...]
+--
+-- Only published items from the last 70 days. The weeks and the targets are not
+-- stored: they are computed when the page is read, so a target edited at noon
+-- shows at noon and a new week starts on Monday rather than at the next ingest.
+--
+-- NULL until the ingest next writes the board. The reader treats NULL as "not
+-- computed yet" and falls back to reading data. Either order of deploy is safe:
+-- applied before the code, the column simply stays NULL; the code before this,
+-- the ingest sees the missing column, writes the snapshot without it and warns,
+-- rather than failing the whole row and freezing both publishing dashboards.
+--
+-- The readers that already exist select explicit columns (ingested_at in
+-- Settings; board_id, data, ingested_at in /api/snapshot), so neither of them
+-- starts carrying this.
+
+ALTER TABLE monday_snapshot ADD COLUMN IF NOT EXISTS published_items JSONB;

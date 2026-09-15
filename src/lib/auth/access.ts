@@ -15,13 +15,12 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import { getSessionUser } from '@/lib/auth/session'
 
 /** Set of reachable site ids, or null when access couldn't be evaluated. */
 export async function getAccessibleSiteIds(): Promise<Set<string> | null> {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return new Set()
   const { data, error } = await supabase.rpc('accessible_site_ids', { uid: user.id })
   if (error) {

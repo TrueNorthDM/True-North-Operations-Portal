@@ -11,7 +11,8 @@
  * cheap even as the directory grows.
  */
 
-import type { SupabaseClient, User } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SignedInIdentity } from './current-person'
 import type { Database } from '@/lib/types/database.types'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { loadContactByPerson } from '@/lib/hr/contact'
@@ -49,7 +50,7 @@ export interface MyTeamView {
  *   teammate's card opens; at 1 and 2 only their own, which is the same rule
  *   the Directory itself follows.
  */
-export async function loadMyTeam(supabase: Client, user: User | null, level: 1 | 2 | 3): Promise<MyTeamView> {
+export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null, level: 1 | 2 | 3): Promise<MyTeamView> {
   const me = await loadCurrentPerson(supabase, user)
   if (!me) return { people: [], teamNames: [], teams: [], profiles: {}, selfId: null }
 
