@@ -453,7 +453,7 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
 | Ponto | Sua decisão | O que foi feito |
 | --- | --- | --- |
 | J1 | Ícone do Monday na 1ª coluna, ícone de histórico na 2ª | Feito. Clicar na linha não abre mais nada |
-| J2 | Prioridade do time, definida pelo team leader | Em 16/09: B descartada, A + C aprovada, e o modelo virou "prioridade do time": o team leader define uma ordem para o time (admin, para qualquer time), e cada pessoa vê os próprios passos nela, só leitura. Mockups em `/design-check/team-priority` (`?only=1`, `2`, `3`) |
+| J2 | Prioridade do time, definida pelo team leader | Em 16/09: B descartada, A + C aprovada, e o modelo virou "prioridade do time": o team leader define uma ordem para o time (admin, para qualquer time), e cada pessoa vê os próprios passos nela, só leitura. Mockups em `/design-check/team-priority` (`?only=1`, `2`, `3`). Acesso: terceira opção "Team priority" ao lado de Mine/Everyone e "Edit order" na faixa acima da lista, só para team leaders e admins (`/design-check/team-priority-entry`) |
 | J3 | Lista separada de consertos no Monday | Lista feita; números reconferidos no Monday em 15/09 |
 | J4 | Exemplos reais | Varredura feita (seção 11) e filtro "Last change" na lista |
 | A1 | Mover para a 1ª coluna | Feito. O link também passa a ser montado para quem não é admin |
