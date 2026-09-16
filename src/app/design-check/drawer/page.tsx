@@ -32,7 +32,7 @@ const NAMES = { 1: 'Lana Prado', 2: 'Wendy Clark' }
 
 const STATES = [
   { id: '4.1', title: 'Carregado', row: row(), state: { loading: false, events: EVENTS, names: NAMES } },
-  { id: '4.2', title: 'Buscando', row: row({ boardName: 'i7 Marketing', itemName: 'i7 Monthly Report — MME billing', parentItemName: null, dueDate: null }), state: { loading: true } },
+  { id: '4.2', title: 'Buscando', row: row({ boardName: 'i7 Marketing', itemName: 'i7 Monthly Report - MME billing', parentItemName: null, dueDate: null }), state: { loading: true } },
   { id: '4.3', title: 'Log vazio', row: row({ boardName: 'Team Reports Scheduled', itemName: 'SEO Bi-Weekly Company Report, Nov 25 2025', parentItemName: null, dueDate: null }), state: { loading: false, events: [] } },
   { id: '4.4', title: 'Erro', row: row({ boardName: 'HFA Publishing', itemName: 'Hope For Africa launch page', parentItemName: null, dueDate: null }), state: { loading: false, error: 'Monday returned 429: rate limit exceeded. Try again in a minute.' } },
 ]
