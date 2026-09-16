@@ -436,7 +436,7 @@ Números são fotografia do dia em que foram tirados. O Monday muda todo dia.
 | Análise completa, 13 itens com evidência e 51 achados | `docs/my-work/01-feedback-analysis.md` |
 | Consertos no Monday, guardados para depois | `docs/my-work/02-monday-fixes.md` |
 | Report para team leaders (J5), plano | `docs/my-work/03-report-for-team-leaders-plan.md` |
-| Mockups do J2 (só no ambiente local) | `/design-check/my-work-priority` (`?only=A`, `B` ou `C`) |
+| Mockups do J2 (só no ambiente local) | `/design-check/team-priority` (modelo decidido) e `/design-check/my-work-priority` (A + C) |
 | Handoff de design do módulo (fora do git) | `Design/My Work : Report/` |
 | Lista do My Work | `src/components/monday/WorkList.tsx` |
 | Leitura, passos, ingest | `src/lib/monday/worklist/` |
@@ -453,7 +453,7 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
 | Ponto | Sua decisão | O que foi feito |
 | --- | --- | --- |
 | J1 | Ícone do Monday na 1ª coluna, ícone de histórico na 2ª | Feito. Clicar na linha não abre mais nada |
-| J2 | Duas visões de prioridade (minha e True North) com comparação | Mockups em `/design-check/my-work-priority`. Em 16/09: B descartada; pedida a mistura A + C (`?only=AC`), aguardando aprovação |
+| J2 | Prioridade do time, definida pelo team leader | Em 16/09: B descartada, A + C aprovada, e o modelo virou "prioridade do time": o team leader define uma ordem para o time (admin, para qualquer time), e cada pessoa vê os próprios passos nela, só leitura. Mockups em `/design-check/team-priority` (`?only=1`, `2`, `3`) |
 | J3 | Lista separada de consertos no Monday | Lista feita; números reconferidos no Monday em 15/09 |
 | J4 | Exemplos reais | Varredura feita (seção 11) e filtro "Last change" na lista |
 | A1 | Mover para a 1ª coluna | Feito. O link também passa a ser montado para quem não é admin |
