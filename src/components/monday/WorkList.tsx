@@ -13,9 +13,15 @@
  * action. Two labelled icons at the start of the row make both one click away
  * and neither a surprise. The history is still asked of Monday live, so what
  * opens is current by definition.
+ *
+ * One column heading for the whole list, pinned under the portal's top bar as
+ * the page scrolls, instead of a heading inside every block: with Completed
+ * open the heading used to scroll away within a screen. The heading and the
+ * blocks scroll sideways together. Which columns show is the reader's choice,
+ * kept in their browser (columns.ts).
  */
 
-import { useState, useEffect, useMemo, useTransition } from 'react'
+import { useState, useEffect, useMemo, useRef, useSyncExternalStore, useTransition, type ReactNode, type UIEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
@@ -27,6 +33,10 @@ import {
   applyListFilters, sortRows, nextSort, readListParams, writeListParams, activeFilterCount,
   DUE_OPTIONS, CHANGE_OPTIONS, NO_FILTERS, NO_STATUS, type ListFilters, type Sort, type SortKey,
 } from '@/lib/monday/worklist/list-view'
+import {
+  COLUMNS, ALL_COLUMNS, gridFor, readColumnChoice, writeColumnChoice, toggleColumn,
+  type ColumnDef, type ColumnKey,
+} from '@/lib/monday/worklist/columns'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
 
 interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: string }
@@ -53,18 +63,6 @@ export interface HistoryEvent {
 //   #e4e7ec  panel and header borders
 //   #eceff3  the rule between rows
 //   #f8f7f3  row hover
-
-/**
- * The thirteen columns: two icons, then the eleven the handoff draws.
- *
- * The icons have fixed widths, since they hold a 28px chip and nothing else.
- * The text columns keep the handoff's proportions as fractions of what is left,
- * which at the list's 1180px minimum is the same pixel width the percentages
- * gave. Two of the handoff's own widths were already widened here because they
- * did not fit their contents: the badge (5% to 9%, "UPCOMING" is 62px) and the
- * Monday column, which is now the first icon column instead.
- */
-const GRID = '44px 44px minmax(0,13fr) minmax(0,9fr) minmax(0,8fr) minmax(0,7fr) minmax(0,10fr) minmax(0,6fr) minmax(0,8fr) minmax(0,9fr) minmax(0,8fr) minmax(0,6fr) minmax(0,9fr)'
 
 // min-w-0 on every cell, so a grid column can never be widened by its content,
 // and overflow-hidden so nothing can be drawn outside the column that owns it.
@@ -262,15 +260,10 @@ export function HistoryPanel({ row, onClose, state }: {
       <div className="relative w-full max-w-[560px] h-full bg-white shadow-[0_24px_50px_-20px_rgba(1,35,88,.6)] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-[var(--panel-border)] px-[18px] py-4 flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">
-              {row.boardName}
-            </div>
-            {/* The parent is the headline when there is one: a subitem called
-                "Portuguese" is not a thing anybody recognises on its own. */}
+            <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">Item</div>
             <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] leading-[1.25] text-tn-ink m-0 mt-[3px]">
-              {row.parentItemName ?? row.itemName}
+              {row.itemName}
             </h3>
-            {row.parentItemName && <div className="text-[13px] text-muted mt-[3px]">{row.itemName}</div>}
           </div>
 
           {/* No close button: clicking away closes it, and the corner belongs
@@ -290,12 +283,30 @@ export function HistoryPanel({ row, onClose, state }: {
         </div>
 
         <div className="px-[18px] pt-4 pb-5">
-          <div className="flex items-center gap-[7px] flex-wrap mb-4">
-            <span className={`${chip} bg-[rgba(30,125,127,.1)] text-tn-teal`}>{row.stepName}</span>
-            {row.statusText && <StatusChip text={row.statusText} colour={row.statusColor} />}
-            {due && <span className="text-[12.5px] text-muted">{row.dueLabel ?? 'Due'}: {due.date}</span>}
-            {due && <span className={`${chip} ${DUE_BADGE[due.state].className}`}>{DUE_BADGE[due.state].label}</span>}
-          </div>
+          {/* Where the step lives, written out. The table can hide Parent item,
+              Board and Workspace, and a subitem called "Portuguese" means
+              nothing without them, so the panel always carries all three. */}
+          <dl className="grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-2.5 m-0 mb-5 rounded-[12px] border border-[var(--panel-border)] bg-subtle px-3.5 py-3">
+            <Detail label="Parent item">{row.parentItemName ?? <span className="text-[var(--faint)]">-</span>}</Detail>
+            <Detail label="Board">{row.boardName}</Detail>
+            <Detail label="Workspace">{row.workspaceName ?? <span className="text-[var(--faint)]">-</span>}</Detail>
+            <Detail label="Assignee">{row.who}</Detail>
+            <Detail label="Step">
+              <span className="inline-flex items-center gap-[7px] flex-wrap">
+                <span>{row.stepName}</span>
+                {row.statusText && <StatusChip text={row.statusText} colour={row.statusColor} />}
+              </span>
+            </Detail>
+            <Detail label={row.dueLabel ?? 'Due'}>
+              {due ? (
+                <span className="inline-flex items-center gap-[7px] flex-wrap">
+                  <span>{due.date}</span>
+                  {due.time && <span className={`text-[12px] ${DUE_TIME[due.state]}`}>{due.time}</span>}
+                  <span className={`${chip} ${DUE_BADGE[due.state].className}`}>{DUE_BADGE[due.state].label}</span>
+                </span>
+              ) : <span className="text-[var(--faint)]">-</span>}
+            </Detail>
+          </dl>
 
           <h4 className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink m-0 mb-3">History</h4>
 
@@ -339,6 +350,16 @@ export function HistoryPanel({ row, onClose, state }: {
   )
 }
 
+/** One line of the panel's details: a small label, then the value. */
+function Detail({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <dt className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted pt-[3px] m-0">{label}</dt>
+      <dd className="text-[13px] leading-[1.45] text-tn-ink min-w-0 break-words m-0">{children}</dd>
+    </>
+  )
+}
+
 /**
  * How many rows a block draws before asking.
  *
@@ -375,8 +396,160 @@ function SortHead({ label, k, sort, onSort, align = 'left' }: {
   )
 }
 
+/** The heading of one column: a sort button, a plain label, or nothing a reader needs to see. */
+function HeadCell({ col, sort, onSort }: { col: ColumnDef; sort: Sort | null; onSort: (k: SortKey) => void }) {
+  if (col.key === 'monday' || col.key === 'history') {
+    return <div className="px-2 py-[11px] min-w-0"><span className="sr-only">{col.label}</span></div>
+  }
+  if (col.sort) return <SortHead label={col.label} k={col.sort} sort={sort} onSort={onSort} align={col.align} />
+  return <div className={`${HEAD_CELL} ${col.align === 'right' ? 'text-right' : ''}`}>{col.label}</div>
+}
+
+/** One row's cells, only for the columns being shown. */
+function RowCells({ r, d, columns, onPick }: {
+  r: WorkRow
+  d: Prepared['due']
+  columns: ColumnDef[]
+  onPick: (r: WorkRow) => void
+}) {
+  const faint = <span className="text-[var(--faint)]">-</span>
+  return (
+    <>
+      {columns.map(c => {
+        switch (c.key) {
+          case 'monday':
+            return (
+              <div key={c.key} className="px-2 py-2.5 min-w-0 flex justify-center">
+                {r.url ? <OpenInMonday href={r.url} label={r.itemName} /> : <span className="text-[var(--faint)] leading-7">-</span>}
+              </div>
+            )
+          case 'history':
+            return (
+              <div key={c.key} className="px-2 py-2.5 min-w-0 flex justify-center">
+                <OpenHistory label={r.itemName} onOpen={() => onPick(r)} />
+              </div>
+            )
+          case 'item':
+            return (
+              <div key={c.key} className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>
+                <span className="line-clamp-2">{r.itemName}</span>
+              </div>
+            )
+          case 'parent':
+            // Only a subitem has one, and the parent is the name a person
+            // recognises: "Portuguese" means nothing without its page.
+            return (
+              <div key={c.key} className={`${CELL} text-muted`} title={r.parentItemName ?? undefined}>
+                {r.parentItemName ? <span className="line-clamp-2">{r.parentItemName}</span> : faint}
+              </div>
+            )
+          case 'board':
+            return (
+              <div key={c.key} className={`${CELL} text-muted`} title={r.boardName}>
+                <span className="line-clamp-2">{r.boardName}</span>
+              </div>
+            )
+          case 'workspace':
+            return <div key={c.key} className={`${CELL} text-muted`}>{r.workspaceName ?? '-'}</div>
+          case 'who':
+            return <div key={c.key} className={`${CELL} text-foreground`}>{r.who}</div>
+          case 'priority':
+            return (
+              <div key={c.key} className="px-3 py-2.5 min-w-0 overflow-hidden">
+                <span className={`${chip} ${PRIORITY_CHIP[r.priority]}`}>{r.priority}</span>
+              </div>
+            )
+          case 'step':
+            return <div key={c.key} className={`${CELL} text-muted`}>{r.stepName}</div>
+          case 'status':
+            return (
+              <div key={c.key} className="px-3 py-2.5 min-w-0 overflow-hidden">
+                {r.statusText ? <StatusChip text={r.statusText} colour={r.statusColor} /> : <span className="text-[var(--faint)] text-[13px]">-</span>}
+              </div>
+            )
+          case 'due':
+            return (
+              <div key={c.key} className={`${CELL} text-tn-ink text-right whitespace-nowrap`} title={r.dueLabel ?? undefined}>
+                {d ? d.date : faint}
+              </div>
+            )
+          case 'time':
+            // The time and the badge in one cell. They were two columns, and
+            // the badge's own column was most of the empty band between
+            // Assignee and the end of the row.
+            return (
+              <div key={c.key} className="px-3 py-2.5 min-w-0 overflow-hidden flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[12px]">
+                {d ? (
+                  <>
+                    {d.time && <span className={`whitespace-nowrap ${DUE_TIME[d.state]}`}>{d.time}</span>}
+                    <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>
+                  </>
+                ) : faint}
+              </div>
+            )
+        }
+      })}
+    </>
+  )
+}
+
+/** Where a person chooses which columns to see. Five are always on, and say so. */
+function ColumnsMenu({ visible, onChange }: { visible: ColumnKey[]; onChange: (v: ColumnKey[]) => void }) {
+  const [open, setOpen] = useState(false)
+  const hidden = COLUMNS.filter(c => !c.required && !visible.includes(c.key)).length
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className={`inline-flex items-center gap-2 px-3 py-[9px] rounded-[10px] border bg-white font-(family-name:--font-display) font-semibold text-[13px] transition-colors ${
+          hidden ? 'border-tn-teal text-tn-teal' : 'border-[var(--panel-border)] text-muted hover:text-tn-ink'
+        }`}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M15 4v16" /></svg>
+        {hidden ? `Columns · ${hidden} hidden` : 'Columns'}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-2 z-40 w-[240px] rounded-[12px] border border-[var(--panel-border)] bg-white p-2 shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)]">
+            <div className="px-2 pt-1 pb-2 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">Columns</div>
+            {COLUMNS.map(c => (
+              <label
+                key={c.key}
+                className={`flex items-center gap-2.5 px-2 py-[7px] rounded-[8px] text-[13px] ${c.required ? 'text-muted' : 'text-tn-ink cursor-pointer hover:bg-[var(--row-hover)]'}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={c.required || visible.includes(c.key)}
+                  disabled={c.required}
+                  onChange={() => onChange(toggleColumn(visible, c.key))}
+                  className="w-4 h-4 accent-[#1E7D7F]"
+                />
+                <span className="flex-1">{c.label}</span>
+                {c.required && <span className="text-[11px] text-muted">always</span>}
+              </label>
+            ))}
+            {hidden > 0 && (
+              <button
+                type="button"
+                onClick={() => onChange(ALL_COLUMNS)}
+                className="w-full text-left px-2 pt-2.5 pb-1 mt-1 border-t border-[var(--row-rule)] text-[12.5px] font-semibold text-tn-teal hover:underline"
+              >
+                Show every column
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function Block({
-  title, note, rows, open, onToggle, onPick, sort, onSort, tone = 'default',
+  title, note, rows, open, onToggle, onPick, columns, template, tone = 'default',
 }: {
   title: string
   note?: string
@@ -384,8 +557,8 @@ function Block({
   open: boolean
   onToggle: () => void
   onPick: (r: WorkRow) => void
-  sort: Sort | null
-  onSort: (k: SortKey) => void
+  columns: ColumnDef[]
+  template: string
   tone?: 'default' | 'quiet'
 }) {
   const [all, setAll] = useState(false)
@@ -408,75 +581,18 @@ function Block({
       )}
 
       {open && rows.length > 0 && (
-        <div>
-        <div className="border-t border-[var(--row-rule)] overflow-x-auto">
-          <div className="min-w-[1180px]">
-            {/* A grid, not a table: the handoff fixes the widths, and a grid
-                honours them without the browser measuring the content first. */}
-            <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={{ gridTemplateColumns: GRID }}>
-              <div className="px-2 py-[11px] min-w-0"><span className="sr-only">Open in Monday</span></div>
-              <div className="px-2 py-[11px] min-w-0"><span className="sr-only">History</span></div>
-              <SortHead label="Item" k="item" sort={sort} onSort={onSort} />
-              <SortHead label="Parent item" k="parent" sort={sort} onSort={onSort} />
-              <SortHead label="Board" k="board" sort={sort} onSort={onSort} />
-              <SortHead label="Workspace" k="workspace" sort={sort} onSort={onSort} />
-              <SortHead label="Assignee" k="who" sort={sort} onSort={onSort} />
-              <SortHead label="Priority" k="priority" sort={sort} onSort={onSort} />
-              <SortHead label="Step" k="step" sort={sort} onSort={onSort} />
-              <SortHead label="Status" k="status" sort={sort} onSort={onSort} />
-              <SortHead label="Due" k="due" sort={sort} onSort={onSort} align="right" />
-              <div className={`${HEAD_CELL} text-right`}>Time</div>
-              <div className="px-3 py-[11px] min-w-0" />
+        <div className="border-t border-[var(--row-rule)]">
+          {/* A grid, not a table, and no heading of its own: the one heading
+              above every block uses the same template, so the columns line up. */}
+          {shown.map(({ row: r, due: d }) => (
+            <div
+              key={r.id}
+              className="grid border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)] transition-colors"
+              style={{ gridTemplateColumns: template }}
+            >
+              <RowCells r={r} d={d} columns={columns} onPick={onPick} />
             </div>
-
-            {shown.map(({ row: r, due: d }) => (
-              <div
-                key={r.id}
-                className="grid border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)] transition-colors"
-                style={{ gridTemplateColumns: GRID }}
-              >
-                <div className="px-2 py-2.5 min-w-0 flex justify-center">
-                  {r.url ? <OpenInMonday href={r.url} label={r.itemName} /> : <span className="text-[var(--faint)] leading-7">-</span>}
-                </div>
-                <div className="px-2 py-2.5 min-w-0 flex justify-center">
-                  <OpenHistory label={r.itemName} onOpen={() => onPick(r)} />
-                </div>
-                <div className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>
-                  <span className="line-clamp-2">{r.itemName}</span>
-                </div>
-                {/* Only a subitem has one, and the parent is the name a person
-                    recognises: "Portuguese" means nothing without its page. */}
-                <div className={`${CELL} text-muted`} title={r.parentItemName ?? undefined}>
-                  {r.parentItemName ? <span className="line-clamp-2">{r.parentItemName}</span> : <span className="text-[var(--faint)]">-</span>}
-                </div>
-                <div className={`${CELL} text-muted`} title={r.boardName}>
-                  <span className="line-clamp-2">{r.boardName}</span>
-                </div>
-                <div className={`${CELL} text-muted`}>{r.workspaceName ?? '-'}</div>
-                <div className={`${CELL} text-foreground`}>{r.who}</div>
-                <div className="px-3 py-2.5 min-w-0 overflow-hidden">
-                  <span className={`${chip} ${PRIORITY_CHIP[r.priority]}`}>{r.priority}</span>
-                </div>
-                <div className={`${CELL} text-muted`}>{r.stepName}</div>
-                <div className="px-3 py-2.5 min-w-0 overflow-hidden">
-                  {r.statusText
-                    ? <StatusChip text={r.statusText} colour={r.statusColor} />
-                    : <span className="text-[var(--faint)] text-[13px]">-</span>}
-                </div>
-                <div className={`${CELL} text-tn-ink text-right whitespace-nowrap`} title={r.dueLabel ?? undefined}>
-                  {d ? d.date : <span className="text-[var(--faint)]">-</span>}
-                </div>
-                <div className={`px-3 py-2.5 min-w-0 overflow-hidden text-[12px] text-right ${d ? DUE_TIME[d.state] : ''}`}>
-                  {d?.time || (d ? '' : <span className="text-[var(--faint)]">-</span>)}
-                </div>
-                <div className="px-3 py-2.5 min-w-0 overflow-hidden">
-                  {d && <span className={`${chip} ${DUE_BADGE[d.state].className}`}>{DUE_BADGE[d.state].label}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
+          ))}
 
           {!all && rows.length > FIRST_ROWS && (
             <button
@@ -490,6 +606,24 @@ function Block({
       )}
     </section>
   )
+}
+
+// The browser's memory of which columns a person hid. Read through
+// useSyncExternalStore rather than an effect: the server renders every column,
+// the browser's first render must match it, and the saved choice then arrives
+// without a mismatch or a second render written by hand.
+const COLUMNS_KEY = 'tn.my-work.hidden-columns'
+const COLUMNS_EVENT = 'tn:my-work-columns'
+function subscribeColumns(onChange: () => void) {
+  window.addEventListener('storage', onChange)
+  window.addEventListener(COLUMNS_EVENT, onChange)
+  return () => {
+    window.removeEventListener('storage', onChange)
+    window.removeEventListener(COLUMNS_EVENT, onChange)
+  }
+}
+function storedColumns(): string | null {
+  try { return window.localStorage.getItem(COLUMNS_KEY) } catch { return null }
 }
 
 /**
@@ -516,10 +650,12 @@ export interface PreviewState {
   filters?: Partial<ListFilters>
   /** Start sorted by a column. */
   sort?: Sort
+  /** Show only these columns, whatever the browser remembers. */
+  columns?: ColumnKey[]
 }
 
 export function WorkList({
-  data, people, teams, selfPersonId, isAdmin = false, preview,
+  data, people, teams, selfPersonId, isAdmin = false, preview, stickyTop = 65,
 }: {
   data: Worklist
   people: Option[]
@@ -527,6 +663,11 @@ export function WorkList({
   selfPersonId: string | null
   isAdmin?: boolean
   preview?: PreviewState
+  /**
+   * Where the column heading pins as the page scrolls: under the portal's top
+   * bar, which is 65px tall. The design check has no top bar and passes 0.
+   */
+  stickyTop?: number
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -574,6 +715,31 @@ export function WorkList({
     const so = nextSort(sort, k)
     setSort(so)
     remember(filters, so)
+  }
+
+  // Which columns show. Kept in this browser, not the URL: it is how a person
+  // likes the page, not part of what they are asking it, and a link somebody
+  // sends should not rearrange the reader's table.
+  const stored = useSyncExternalStore(subscribeColumns, storedColumns, () => null)
+  const [chosen, setChosen] = useState<ColumnKey[] | null>(null)
+  const visible = preview?.columns ?? chosen ?? readColumnChoice(stored)
+  const setVisible = (next: ColumnKey[]) => {
+    setChosen(next)
+    try {
+      window.localStorage.setItem(COLUMNS_KEY, writeColumnChoice(next))
+      window.dispatchEvent(new Event(COLUMNS_EVENT))
+    } catch {
+      // Storage blocked (a private window, a browser setting): the choice
+      // still applies, it just is not remembered next time.
+    }
+  }
+  const grid = gridFor(visible)
+
+  // The heading sits outside the scrolling area so it can pin to the top of the
+  // page; it follows the table sideways by copying its scroll position.
+  const headScroll = useRef<HTMLDivElement>(null)
+  const followBody = (e: UIEvent<HTMLDivElement>) => {
+    if (headScroll.current) headScroll.current.scrollLeft = e.currentTarget.scrollLeft
   }
 
   const team = preview?.team ?? params.get('team') ?? ''
@@ -695,8 +861,11 @@ export function WorkList({
 
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
+      {/* One row for every control, so the table starts higher up the page. The
+          search box takes whatever width the row has left and gives it back
+          as the screen narrows; below its minimum the row wraps. */}
       <div className="flex items-center gap-2.5 flex-wrap">
-        <SearchField value={q} onChange={setQ} placeholder="Search items, boards, people…" className="w-full sm:w-[320px]" />
+        <SearchField value={q} onChange={setQ} placeholder="Search items, boards, people…" className="flex-1 min-w-[220px]" />
 
         {/* Mine or everyone's, as one segmented control rather than two tabs:
             it is a single either/or and the handoff draws it that way. */}
@@ -772,20 +941,9 @@ export function WorkList({
           {includeDone ? 'Finished work: all of it' : `Finished work: ${COMPLETED_MONTHS} months`}
         </button>
 
-        <span className="text-[13.5px] text-muted ml-auto">
-          {needle || filtering
-            ? `${n(rows.length)} of ${n(prepared.length)} shown`
-            : data.truncated
-              ? `${n(data.total)} shown of ${n(data.matching)}`
-              : `${n(data.open)} open${data.total !== data.open ? ` · ${n(data.total)} in view` : ''}`}
-        </span>
-      </div>
-
-      {/* Narrowing what is on the page. Every chosen filter is drawn in teal and
-          the count beside Clear says how many rows they are leaving out, so a
-          short list never reads as a finished one. */}
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <span className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.07em] text-muted">Filter</span>
+        {/* Narrowing what is on the page. Every chosen filter is drawn in teal and
+            the count on Clear says how many rows they leave out, so a short
+            list never reads as a finished one. */}
         <Select
           value={filters.status}
           onChange={v => updateFilters({ status: v })}
@@ -825,19 +983,30 @@ export function WorkList({
             {`Clear filters · ${n(searched.length - rows.length)} hidden`}
           </button>
         )}
+        <ColumnsMenu visible={visible} onChange={setVisible} />
       </div>
 
       {/* Same footer the API cards use, so "how current is this" reads the
           same everywhere. Fed the oldest board's stamp rather than the newest:
-          boards refresh in rotation, so the newest would flatter the page. */}
-      <PullInfo
-        syncedAt={data.oldestSyncAt}
-        utcHours={[1, 5, 9, 13, 17, 21]}
-        utcMinute={15}
-        label="Work pulled from Monday"
-        pastVerb="refreshed"
-        className="flex items-center gap-2 text-[12.5px] text-muted border-t border-[var(--panel-border)] pt-3"
-      />
+          boards refresh in rotation, so the newest would flatter the page. The
+          count sits on this line now that the controls fill the row above. */}
+      <div className="flex items-center gap-3 flex-wrap border-t border-[var(--panel-border)] pt-3">
+        <PullInfo
+          syncedAt={data.oldestSyncAt}
+          utcHours={[1, 5, 9, 13, 17, 21]}
+          utcMinute={15}
+          label="Work pulled from Monday"
+          pastVerb="refreshed"
+          className="flex items-center gap-2 text-[12.5px] text-muted"
+        />
+        <span className="text-[13px] text-muted ml-auto">
+          {needle || filtering
+            ? `${n(rows.length)} of ${n(prepared.length)} shown`
+            : data.truncated
+              ? `${n(data.total)} shown of ${n(data.matching)}`
+              : `${n(data.open)} open${data.total !== data.open ? ` · ${n(data.total)} in view` : ''}`}
+        </span>
+      </div>
 
       {/* Only where it changes the answer.
           A missing account → person link matters for exactly one thing: the
@@ -869,47 +1038,68 @@ export function WorkList({
         </div>
       )}
 
-      {/* Never under My tasks. Those rows belong to an account nobody is
-          behind, so by definition none of them are yours: the block could only
-          ever read zero there, which is a row of furniture asking to be
-          ignored. */}
-      {!mine && (
-        <Block
-          title="Unknown user"
-          note="Work on a Monday account with nobody behind it"
-          rows={unknownRows}
-          open={openBlocks.unknown}
-          onToggle={() => setOpenBlocks(b => ({ ...b, unknown: !b.unknown }))}
-          onPick={setOpenRow}
-          sort={sort}
-          onSort={onSort}
-          tone="quiet"
-        />
-      )}
+      <div>
+        {/* The one column heading. Sticky to the page, so it stays in view the
+            whole way down a long Completed block; its own overflow is hidden and
+            its scroll position follows the table below, so sideways the two
+            move as one. Two pixels narrower than the table's minimum because
+            the blocks' borders take those two pixels from their rows. */}
+        <div
+          ref={headScroll}
+          className="sticky z-10 overflow-hidden rounded-[12px] border border-[var(--panel-border)] bg-subtle shadow-[0_8px_16px_-14px_rgba(1,35,88,.45)]"
+          style={{ top: stickyTop }}
+        >
+          <div className="grid" style={{ gridTemplateColumns: grid.template, minWidth: grid.minWidth - 2 }}>
+            {grid.columns.map(c => <HeadCell key={c.key} col={c} sort={sort} onSort={onSort} />)}
+          </div>
+        </div>
 
-      <Block
-        title="On-going"
-        note="Steps still open"
-        rows={ongoing}
-        open={openBlocks.ongoing}
-        onToggle={() => setOpenBlocks(b => ({ ...b, ongoing: !b.ongoing }))}
-        onPick={setOpenRow}
-        sort={sort}
-        onSort={onSort}
-      />
+        <div className="overflow-x-auto mt-2.5" onScroll={followBody}>
+          <div className="space-y-3" style={{ minWidth: grid.minWidth }}>
+            {/* Never under My tasks. Those rows belong to an account nobody is
+                behind, so by definition none of them are yours: the block could
+                only ever read zero there, which is a row of furniture asking to
+                be ignored. */}
+            {!mine && (
+              <Block
+                title="Unknown user"
+                note="Work on a Monday account with nobody behind it"
+                rows={unknownRows}
+                open={openBlocks.unknown}
+                onToggle={() => setOpenBlocks(b => ({ ...b, unknown: !b.unknown }))}
+                onPick={setOpenRow}
+                columns={grid.columns}
+                template={grid.template}
+                tone="quiet"
+              />
+            )}
 
-      <Block
-        title="Completed"
-        note={includeDone
-          ? 'Finished, all of it'
-          : `Finished, item touched in the last ${COMPLETED_MONTHS} months`}
-        rows={completed}
-        open={openBlocks.completed}
-        onToggle={() => setOpenBlocks(b => ({ ...b, completed: !b.completed }))}
-        onPick={setOpenRow}
-        sort={sort}
-        onSort={onSort}
-      />
+            <Block
+              title="On-going"
+              note="Steps still open"
+              rows={ongoing}
+              open={openBlocks.ongoing}
+              onToggle={() => setOpenBlocks(b => ({ ...b, ongoing: !b.ongoing }))}
+              onPick={setOpenRow}
+              columns={grid.columns}
+              template={grid.template}
+            />
+
+            <Block
+              title="Completed"
+              note={includeDone
+                ? 'Finished, all of it'
+                : `Finished, item touched in the last ${COMPLETED_MONTHS} months`}
+              rows={completed}
+              open={openBlocks.completed}
+              onToggle={() => setOpenBlocks(b => ({ ...b, completed: !b.completed }))}
+              onPick={setOpenRow}
+              columns={grid.columns}
+              template={grid.template}
+            />
+          </div>
+        </div>
+      </div>
 
       <p className="text-[12px] text-muted leading-[1.65] m-0 mt-3.5">
         {`Completed shows steps finished where the item was last changed in Monday within ${COMPLETED_MONTHS} months, which the filter above can widen to everything. Nothing is deleted: older finished work stays in the database and out of this page, because a work list that opens on nine years of finished steps is not a work list. Monday does not record when a step was completed, so the item's last change is used instead, which keeps a step in view a little longer when the item was touched for some other reason.`}

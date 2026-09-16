@@ -90,6 +90,9 @@ export default async function DesignCheck(
   // ?view=filtered: the filter row with two filters chosen and the list sorted
   // by due date, the state Stephanie asked for, held open so it can be looked at.
   const filtered = view === 'filtered'
+  // ?view=columns: Parent item, Workspace, Priority and Step hidden, the state
+  // somebody on a laptop is likely to choose.
+  const narrow = view === 'columns'
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-[1340px] mx-auto space-y-6">
@@ -118,7 +121,10 @@ export default async function DesignCheck(
           teams={everyone ? [{ value: 't1', label: 'SEO' }, { value: 't2', label: 'Writing' }] : []}
           selfPersonId="me"
           isAdmin={false}
-          preview={filtered ? { filters: { status: 'Working on it', due: 'late' }, sort: { key: 'due', dir: 'asc' } } : undefined}
+          preview={filtered
+            ? { filters: { status: 'Working on it', due: 'late' }, sort: { key: 'due', dir: 'asc' } }
+            : narrow ? { columns: ['monday', 'history', 'item', 'board', 'who', 'status', 'due', 'time'], openCompleted: true } : undefined}
+          stickyTop={0}
         />
       </div>
     </div>
