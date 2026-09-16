@@ -21,6 +21,7 @@ const row = (n: number, o: Partial<WorkRow>): WorkRow => ({
   itemId: 100 + n,
   itemName: 'Item',
   parentItemName: null,
+  language: null,
   groupTitle: null,
   stepName: 'Approve',
   peopleCol: 'people',
@@ -49,9 +50,9 @@ const day = (offset: number) => {
 const OPEN: WorkRow[] = [
   row(1, { itemName: 'i7 Monthly Report - MME billing', boardName: 'i7 Marketing', workspaceName: 'i7', who: 'Kevin Brown', priority: 'high', stepName: 'Approve', statusText: 'Stuck', statusColor: '#E2445C', dueDate: day(-12) }),
   row(2, { itemName: 'SEO Bi-Weekly Company Report, Nov 25 2025', boardName: 'Team Reports Scheduled', workspaceName: 'Reports', who: 'Amy Marsh', priority: 'high', stepName: 'Write', statusText: 'Working on it', statusColor: '#FDAB3D', dueDate: day(-269) }),
-  row(3, { itemName: 'Portuguese', parentItemName: 'How do Adventists read the Bible?', boardName: 'AAAF Publishing', workspaceName: 'AAAF', who: 'Lana Prado', priority: 'high', stepName: 'Translate', statusText: 'Working on it', statusColor: '#FDAB3D', dueDate: day(0) }),
+  row(3, { itemName: 'Portuguese', language: 'Portuguese', parentItemName: 'How do Adventists read the Bible?', boardName: 'AAAF Publishing', workspaceName: 'AAAF', who: 'Lana Prado', priority: 'high', stepName: 'Translate', statusText: 'Working on it', statusColor: '#FDAB3D', dueDate: day(0) }),
   row(4, { itemName: 'SEO Bi-Weekly Company Report, Dec 9 2025', boardName: 'Team Reports Scheduled', workspaceName: 'Reports', who: 'Amy Marsh', priority: 'medium', stepName: 'Write', statusText: 'Working on it', statusColor: '#FDAB3D', dueDate: day(-254) }),
-  row(5, { itemName: 'Spanish', parentItemName: 'What Adventists believe about health', boardName: 'AAAF Publishing', workspaceName: 'AAAF', who: 'Lana Prado', priority: 'medium', stepName: 'Review', statusText: 'Waiting for review', statusColor: '#579BFC', dueDate: day(4) }),
+  row(5, { itemName: 'Spanish', language: 'Spanish', parentItemName: 'What Adventists believe about health', boardName: 'AAAF Publishing', workspaceName: 'AAAF', who: 'Lana Prado', priority: 'medium', stepName: 'Review', statusText: 'Waiting for review', statusColor: '#579BFC', dueDate: day(4) }),
   row(6, { itemName: 'Landing copy pass', parentItemName: 'Hope For Africa launch page', boardName: 'HFA Publishing', workspaceName: 'HFA', who: 'Cheyenne Ruiz', priority: 'low', stepName: 'Publish', statusText: 'Ready to publish', statusColor: '#00C875', dueDate: '0202-08-21', dueSuspect: true }),
 ]
 

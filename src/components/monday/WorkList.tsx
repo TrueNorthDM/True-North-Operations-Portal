@@ -287,6 +287,7 @@ export function HistoryPanel({ row, onClose, state }: {
               Board and Workspace, and a subitem called "Portuguese" means
               nothing without them, so the panel always carries all three. */}
           <dl className="grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-2.5 m-0 mb-5 rounded-[12px] border border-[var(--panel-border)] bg-subtle px-3.5 py-3">
+            {row.language && <Detail label="Language">{row.language}</Detail>}
             <Detail label="Parent item">{row.parentItemName ?? <span className="text-[var(--faint)]">-</span>}</Detail>
             <Detail label="Board">{row.boardName}</Detail>
             <Detail label="Workspace">{row.workspaceName ?? <span className="text-[var(--faint)]">-</span>}</Detail>
@@ -435,6 +436,8 @@ function RowCells({ r, d, columns, onPick }: {
                 <span className="line-clamp-2">{r.itemName}</span>
               </div>
             )
+          case 'language':
+            return <div key={c.key} className={`${CELL} text-muted`}>{r.language ?? faint}</div>
           case 'parent':
             // Only a subitem has one, and the parent is the name a person
             // recognises: "Portuguese" means nothing without its page.
@@ -803,7 +806,7 @@ export function WorkList({
       row: r,
       due,
       hay: [
-        r.itemName, r.parentItemName, r.boardName, r.workspaceName, r.who, r.stepName, r.statusText,
+        r.itemName, r.language, r.parentItemName, r.boardName, r.workspaceName, r.who, r.stepName, r.statusText,
         r.dueDate, due?.date, due?.time, due ? DUE_BADGE[due.state].label : null,
       ].filter(Boolean).join(' ').toLowerCase(),
     }

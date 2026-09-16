@@ -47,6 +47,12 @@ export interface WorkRow {
   itemName: string
   /** Set when the step lives on a subitem: the name a person recognises. */
   parentItemName: string | null
+  /**
+   * The item's language, from its board's "Language" column. Five boards keep
+   * one page per language as separate items with the same name, and without it
+   * those rows read as duplicates.
+   */
+  language: string | null
   groupTitle: string | null
   stepName: string
   statusText: string | null
@@ -242,7 +248,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     status_text: string | null; status_done: boolean | null; status_color: string | null
     due_date: string | null; item_updated_at: string | null
     parent_item_id: number | null; parent_board_id: number | null
-    status_col: string | null; due_col?: string | null
+    status_col: string | null; due_col?: string | null; item_language?: string | null
   }
   const since = new Date()
   since.setMonth(since.getMonth() - COMPLETED_MONTHS)
@@ -257,7 +263,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   // make room, otherwise hiding a board makes the list worse instead of shorter.
   const includedBoards = boardList.filter(b => b.included).map(b => b.id)
 
-  let SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at, status_col, due_col'
+  let SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at, status_col, due_col, item_language'
   const applyFilters = (q: any): any => {
     let out = q
     out = out.in('board_id', includedBoards)
@@ -296,9 +302,13 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
         .range(from, from + PAGE - 1),
     )
     let { data, error } = (await page$()) as { data: A[] | null; error: { message: string } | null }
-    if (from === 0 && missingColumn(error, 'due_col')) {
-      SELECT = SELECT.replace(', due_col', '')
-      ;({ data, error } = (await page$()) as { data: A[] | null; error: { message: string } | null })
+    // Columns from migrations that may not have run yet (082, 083): read
+    // without them rather than failing the page.
+    for (const col of ['item_language', 'due_col']) {
+      if (from === 0 && missingColumn(error, col)) {
+        SELECT = SELECT.replace(`, ${col}`, '')
+        ;({ data, error } = (await page$()) as { data: A[] | null; error: { message: string } | null })
+      }
     }
     if (error) throw new Error(error.message)
     const page = (data ?? []) as A[]
@@ -340,6 +350,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       itemId: a.item_id,
       itemName: a.item_name,
       parentItemName: a.parent_item_name,
+      language: a.item_language ?? null,
       groupTitle: a.group_title,
       stepName: stage?.statusTitle ?? st?.step_name ?? a.people_col,
       peopleCol: a.people_col,

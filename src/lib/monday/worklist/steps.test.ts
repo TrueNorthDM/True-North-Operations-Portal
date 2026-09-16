@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seedSteps, pickDateColumn, doneLabelIndices, isStageStatus, currentStage, readStages, type BoardColumn } from './steps'
+import { seedSteps, pickDateColumn, pickLanguageColumn, doneLabelIndices, isStageStatus, currentStage, readStages, type BoardColumn } from './steps'
 
 // Columns as Monday returns them. A status carries its labels and which of them
 // count as done, because the rule reads both.
@@ -191,5 +191,24 @@ describe('pickDateColumn', () => {
   it('reads by and on as the opposites they are', () => {
     expect(pickDateColumn([d('c1', 'Publish By')])?.title).toBe('Publish By')
     expect(pickDateColumn([d('c1', 'Published On')])).toBeNull()
+  })
+})
+
+describe('pickLanguageColumn', () => {
+  it('finds the column called Language', () => {
+    expect(pickLanguageColumn([p('p1', 'SEO 2'), s('color_mkqr7s1t', 'Language', { 0: 'Spanish', 1: 'English' }, [1])])?.id).toBe('color_mkqr7s1t')
+  })
+
+  // Subitems of HFA - Translations has all three.
+  it('ignores columns that only mention the word', () => {
+    expect(pickLanguageColumn([
+      p('people_mkm18azx', 'Language Editor'),
+      step('status_mkm1r1s5', 'Language Editing'),
+      s('status', 'Language', { 0: 'French', 1: 'Swahili' }, []),
+    ])?.id).toBe('status')
+  })
+
+  it('returns nothing on a board without one', () => {
+    expect(pickLanguageColumn([p('p1', 'Writer'), step('s1', 'Writing'), d('d1', 'Write By')])).toBeNull()
   })
 })

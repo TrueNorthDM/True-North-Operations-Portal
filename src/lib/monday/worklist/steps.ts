@@ -137,6 +137,19 @@ export function pickDateColumn(cols: BoardColumn[]): BoardColumn | null {
   return dates.find(c => deadline(c.title)) ?? null
 }
 
+/**
+ * The column saying which language an item is in, or nothing.
+ *
+ * Exactly "Language": the HFA translation subitems also have "Language Editor"
+ * (a people column) and "Language Editing" (a stage of work), and neither says
+ * what language the page is. Checked against every board in September 2026:
+ * five boards have one, all of them a status column.
+ */
+export function pickLanguageColumn(cols: BoardColumn[]): BoardColumn | null {
+  const TYPES = new Set(['status', 'color', 'dropdown', 'text'])
+  return cols.find(c => TYPES.has(c.type) && /^languages?$/i.test(c.title.trim())) ?? null
+}
+
 /** Seed one board's steps from its columns, one per people column, in board order. */
 export function seedSteps(cols: BoardColumn[]): SeededStep[] {
   const stagesByOwner = new Map<number, StepStage[]>()

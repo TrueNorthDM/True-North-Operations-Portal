@@ -24,7 +24,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { gql } from './discover'
 import { diffAssignments, keyOf, type AssignmentSnapshot } from './changes'
-import { currentStage, readStages, type StepStage } from './steps'
+import { currentStage, pickLanguageColumn, readStages, type StepStage } from './steps'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -257,15 +257,21 @@ export async function ingestBoard(
     return { board: board.name, items: 0, assignments: 0 }
   }
 
-  const wanted = [...new Set(plans.flatMap(pl => pl.kind === 'stages'
-    ? [pl.peopleCol, ...pl.stages.flatMap(st => [st.statusCol, st.dateCol])]
-    : [pl.peopleCol, ...(pl.statusCol ? [pl.statusCol] : []), ...(board.date_col ? [board.date_col] : [])]))]
-
-  // Done flags and label colours per status column, read once for the board.
-  const cd = await gql<{ boards: { columns: { id: string; settings_str: string | null }[] }[] }>(
-    token, `query ($id: [ID!]) { boards(ids: $id) { columns { id settings_str } } }`, { id: [String(board.id)] })
+  // Done flags and label colours per status column, read once for the board,
+  // and whether the board says which language each item is in.
+  const cd = await gql<{ boards: { columns: { id: string; title: string; type: string; settings_str: string | null }[] }[] }>(
+    token, `query ($id: [ID!]) { boards(ids: $id) { columns { id title type settings_str } } }`, { id: [String(board.id)] })
+  const boardColumns = cd.boards?.[0]?.columns ?? []
   const settingsBy = new Map<string, StatusSettings>()
-  for (const c of cd.boards?.[0]?.columns ?? []) settingsBy.set(c.id, statusSettings(c.settings_str))
+  for (const c of boardColumns) settingsBy.set(c.id, statusSettings(c.settings_str))
+  const languageCol = pickLanguageColumn(boardColumns)?.id ?? null
+
+  const wanted = [...new Set([
+    ...plans.flatMap(pl => pl.kind === 'stages'
+      ? [pl.peopleCol, ...pl.stages.flatMap(st => [st.statusCol, st.dateCol])]
+      : [pl.peopleCol, ...(pl.statusCol ? [pl.statusCol] : []), ...(board.date_col ? [board.date_col] : [])]),
+    ...(languageCol ? [languageCol] : []),
+  ])]
 
   const ITEM_FIELDS = `
     id name updated_at
@@ -353,6 +359,7 @@ export async function ingestBoard(
             status_color: at.colour,
             due_date: at.due,
             due_col: at.dateCol,
+            item_language: languageCol ? (byCol.get(languageCol)?.text || null) : null,
             item_updated_at: it.updated_at,
           })
         }
@@ -370,21 +377,26 @@ export async function ingestBoard(
 
   const { error: delErr } = await supabase.from('monday_assignments').delete().eq('board_id', board.id)
   if (delErr) throw new Error(`clear board ${board.id}: ${delErr.message}`)
-  const withoutDueCol = (r: Record<string, unknown>) => {
+  // Columns added by migrations the database may not have yet (082: due_col,
+  // 083: item_language). The rows are still right without them, so a missing one
+  // is dropped from the insert, said once in the log, and the board carries on.
+  const optional = ['due_col', 'item_language']
+  const missing = new Set<string>()
+  const trim = (r: Record<string, unknown>) => {
+    if (!missing.size) return r
     const copy = { ...r }
-    delete copy.due_col
+    for (const k of missing) delete copy[k]
     return copy
   }
-  let withDueCol = true
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500)
-    let { error } = await supabase.from('monday_assignments').insert(withDueCol ? chunk : chunk.map(withoutDueCol))
-    // Migration 082 not run yet. The rows are still right without it; only the
-    // name of the deadline column is lost until it is.
-    if (withDueCol && missingColumn(error, 'due_col')) {
-      withDueCol = false
-      console.warn('[monday-ingest] monday_assignments.due_col is missing: run migration 082')
-      ;({ error } = await supabase.from('monday_assignments').insert(chunk.map(withoutDueCol)))
+    let { error } = await supabase.from('monday_assignments').insert(chunk.map(trim))
+    for (let tries = 0; error && tries < optional.length; tries++) {
+      const col = optional.find(k => !missing.has(k) && missingColumn(error, k))
+      if (!col) break
+      missing.add(col)
+      console.warn(`[monday-ingest] monday_assignments.${col} is missing: run its migration`)
+      ;({ error } = await supabase.from('monday_assignments').insert(chunk.map(trim)))
     }
     if (error) throw new Error(`assignments insert (${board.name}): ${error.message}`)
   }

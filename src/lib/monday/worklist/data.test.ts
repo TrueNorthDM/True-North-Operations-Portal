@@ -174,6 +174,18 @@ describe('loadWorklist and steps read by deadline', () => {
     expect(r.rows.map(x => x.itemName)).toEqual(['Audit row'])
   })
 
+  // Four rows called "128 - How do Adventists view the concept of the end of the
+  // world?" were one page in four languages, and looked like duplicates.
+  it('carries the item\'s language, and nothing for a board without one', async () => {
+    const t = withSteps()
+    t.monday_assignments[0] = { ...t.monday_assignments[0], item_language: 'Portuguese' } as any
+    const { client } = fakeClient(t)
+    const [row] = (await loadWorklist(client, { includeDone: true })).rows
+    expect(row.language).toBe('Portuguese')
+    const plain = fakeClient(withSteps())
+    expect((await loadWorklist(plain.client, { includeDone: true })).rows[0].language).toBeNull()
+  })
+
   it('names the step and its deadline from the stage the row was read from', async () => {
     const { client } = fakeClient(withSteps())
     const [row] = (await loadWorklist(client, { includeDone: true })).rows

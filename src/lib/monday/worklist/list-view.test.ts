@@ -11,7 +11,7 @@ const TODAY = '2026-09-15'
 const row = (o: Partial<WorkRow>): { row: WorkRow } => ({
   row: {
     id: 1, boardId: 10, boardName: 'BM - General Audits', workspaceName: 'i7 Projects', itemId: 100,
-    itemName: 'Item', parentItemName: null, groupTitle: null, stepName: 'Audit', statusText: 'Working on it',
+    itemName: 'Item', parentItemName: null, language: null, groupTitle: null, stepName: 'Audit', statusText: 'Working on it',
     statusDone: false, statusColor: null, dueDate: null, dueSuspect: false, dueLabel: 'Audit By', url: null,
     assigneeKnown: true, priority: 'medium', mondayUserId: 1, who: 'Stephanie Aguirre',
     itemUpdatedAt: '2026-09-10T12:00:00Z', peopleCol: 'people4',
@@ -100,6 +100,11 @@ describe('sortRows', () => {
 
   it('keeps rows with no date last when the order is reversed', () => {
     expect(ids(sortRows(rows, { key: 'due', dir: 'desc' }))).toEqual([1, 3, 2])
+  })
+
+  it('sorts by language with the rows that have none last', () => {
+    const langs = [row({ id: 7, language: 'Spanish' }), row({ id: 8, language: null }), row({ id: 9, language: 'English' })]
+    expect(ids(sortRows(langs, { key: 'language', dir: 'asc' }))).toEqual([9, 7, 8])
   })
 
   it('sorts priority by rank, not alphabetically', () => {
