@@ -3,9 +3,10 @@
 Porta de entrada do assunto. Quando voltar ao My Work, comece aqui. A evidência completa,
 com arquivo:linha para cada afirmação, está em `01-feedback-analysis.md`.
 
-**Estado em 15/09/2026:** você respondeu ponto a ponto e o plano mudou (seções 10 e 11).
-Implementado no código, ainda não em produção: depende da migration 082 e do deploy. J2
-aguarda a escolha de um dos três mockups.
+**Estado em 16/09/2026:** seções 10 e 11 implementadas e em produção (regra do passo por
+prazo, filtros, colunas, coluna Language). Em aberto: J2 aguarda a escolha de um dos três
+mockups; a lista de consertos no Monday está guardada em `02-monday-fixes.md`; o plano do
+Report para team leaders (J5, opção c) está em `03-report-for-team-leaders-plan.md`.
 
 > **Não envie nada à equipe a partir do `01-feedback-analysis.md`.** As respostas prontas
 > daquele arquivo foram escritas antes da verificação, e sete delas estão erradas. As
@@ -433,6 +434,9 @@ Números são fotografia do dia em que foram tirados. O Monday muda todo dia.
 | --- | --- |
 | Este briefing | `docs/my-work/00-briefing.md` |
 | Análise completa, 13 itens com evidência e 51 achados | `docs/my-work/01-feedback-analysis.md` |
+| Consertos no Monday, guardados para depois | `docs/my-work/02-monday-fixes.md` |
+| Report para team leaders (J5), plano | `docs/my-work/03-report-for-team-leaders-plan.md` |
+| Mockups do J2 (só no ambiente local) | `/design-check/my-work-priority` (`?only=A`, `B` ou `C`) |
 | Handoff de design do módulo (fora do git) | `Design/My Work : Report/` |
 | Lista do My Work | `src/components/monday/WorkList.tsx` |
 | Leitura, passos, ingest | `src/lib/monday/worklist/` |

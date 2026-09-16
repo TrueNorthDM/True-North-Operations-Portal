@@ -33,8 +33,14 @@ const OPTIONS = [
   },
 ]
 
-export default function PriorityDesignCheck() {
+export default async function PriorityDesignCheck(
+  { searchParams }: { searchParams: Promise<{ only?: string }> },
+) {
   if (process.env.NODE_ENV === 'production') notFound()
+  // ?only=A (or B, C): one option on its own, for a screenshot that shows it
+  // without the other two around it.
+  const { only } = await searchParams
+  const shown = OPTIONS.filter(o => !only || o.key === only.toUpperCase())
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-[1100px] mx-auto space-y-10">
@@ -46,7 +52,7 @@ export default function PriorityDesignCheck() {
           </p>
         </div>
 
-        {OPTIONS.map(o => (
+        {shown.map(o => (
           <section key={o.key} className="space-y-3">
             <div>
               <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0">{o.title}</h2>
