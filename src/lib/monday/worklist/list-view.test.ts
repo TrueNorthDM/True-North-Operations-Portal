@@ -111,6 +111,12 @@ describe('sortRows', () => {
     expect(ids(sortRows(rows, { key: 'priority', dir: 'asc' }))).toEqual([2, 3, 1])
   })
 
+  it('sorts by place in the team order, numerically, with finished steps last', () => {
+    const ranked = [row({ id: 4, teamRank: 12 }), row({ id: 5, teamRank: null }), row({ id: 6, teamRank: 3 })]
+    expect(ids(sortRows(ranked, { key: 'team', dir: 'asc' }))).toEqual([6, 4, 5])
+    expect(readListParams(new URLSearchParams('sort=team')).sort).toEqual({ key: 'team', dir: 'asc' })
+  })
+
   it('does not reorder the rows it was given', () => {
     const copy = [...rows]
     sortRows(rows, { key: 'item', dir: 'asc' })

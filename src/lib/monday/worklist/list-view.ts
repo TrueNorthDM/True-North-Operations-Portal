@@ -29,7 +29,7 @@ export const NO_FILTERS: ListFilters = { status: '', board: '', due: '', change:
 /** The value the Status filter uses for a step whose status is blank. */
 export const NO_STATUS = '__none__'
 
-export type SortKey = 'item' | 'language' | 'parent' | 'board' | 'workspace' | 'who' | 'priority' | 'step' | 'status' | 'due'
+export type SortKey = 'team' | 'item' | 'language' | 'parent' | 'board' | 'workspace' | 'who' | 'priority' | 'step' | 'status' | 'due'
 export interface Sort { key: SortKey; dir: 'asc' | 'desc' }
 
 export const DUE_OPTIONS: { value: DueFilter; label: string }[] = [
@@ -127,6 +127,7 @@ const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 export function sortRows<T extends { row: WorkRow }>(rows: T[], sort: Sort): T[] {
   const value = (r: WorkRow): string | number | null => {
     switch (sort.key) {
+      case 'team': return r.teamRank ?? null
       case 'item': return r.itemName.toLowerCase()
       case 'language': return r.language?.toLowerCase() ?? null
       case 'parent': return r.parentItemName?.toLowerCase() ?? null
@@ -168,7 +169,7 @@ export function readListParams(p: { get(key: string): string | null }): { filter
   const change = p.get('changed') ?? ''
   const rawSort = p.get('sort') ?? ''
   const key = rawSort.replace(/^-/, '') as SortKey
-  const KEYS: SortKey[] = ['item', 'language', 'parent', 'board', 'workspace', 'who', 'priority', 'step', 'status', 'due']
+  const KEYS: SortKey[] = ['team', 'item', 'language', 'parent', 'board', 'workspace', 'who', 'priority', 'step', 'status', 'due']
   return {
     filters: {
       status: p.get('status') ?? '',

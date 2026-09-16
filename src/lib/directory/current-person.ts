@@ -49,7 +49,18 @@ const shape = (row: PersonRow): CurrentPerson => ({
  */
 export type SignedInIdentity = Pick<User, 'id'> & { email?: string | null }
 
-export async function loadCurrentPerson(_supabase: Client, user: SignedInIdentity | null): Promise<CurrentPerson | null> {
+export async function loadCurrentPerson(
+  _supabase: Client,
+  user: SignedInIdentity | null,
+  opts: {
+    /**
+     * The person actually signed in, even while View Stage previews someone
+     * else. For deciding whether a WRITE is allowed: a preview changes what is
+     * rendered, never who is acting.
+     */
+    real?: boolean
+  } = {},
+): Promise<CurrentPerson | null> {
   // Resolved with the service-role client, not the caller's.
   //
   // Two reasons. email_personal is one of the mailboxes a login is matched
@@ -61,7 +72,7 @@ export async function loadCurrentPerson(_supabase: Client, user: SignedInIdentit
   // call site reads the same, and ignored.
   const supabase = createAdminClient()
   // View Stage: while impersonating, resolve the impersonated person directly.
-  const vs = await getViewAs()
+  const vs = opts.real ? null : await getViewAs()
   if (vs) {
     // Resolved on every request, not frozen into the token: change someone's
     // level and the preview follows on the next load, both in who it shows and

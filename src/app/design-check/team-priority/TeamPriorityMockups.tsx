@@ -158,7 +158,7 @@ export function LeaderScreen({ order, setOrder }: { order: string[]; setOrder: (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
         </span>
         <span className="inline-flex items-center gap-1.5 text-[12.5px] text-muted ml-auto">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="stroke-tn-teal"><polyline points="20 6 9 17 4 12" /></svg>
           Saved · the SEO Team sees this order
         </span>
       </div>

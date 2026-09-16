@@ -89,6 +89,12 @@ export interface WorkRow {
    * guessing which step an event belongs to.
    */
   peopleCol: string
+  /**
+   * The step's place in its team's priority order, from 1. Set by the page for
+   * open steps when the list follows a team's order (team-priority.ts); absent
+   * everywhere else.
+   */
+  teamRank?: number | null
 }
 
 // Workspace and board are columns on the row now, not levels of a tree. The
@@ -102,6 +108,11 @@ export interface WorklistFilters {
   /** Portal team, resolved to its members' Monday accounts. */
   teamId?: string | null
   includeDone?: boolean
+  /**
+   * Open steps only, with no finished work at all. What a team's priority order
+   * ranks: a finished step has no place in it.
+   */
+  openOnly?: boolean
 }
 
 export interface Worklist {
@@ -269,7 +280,9 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     out = out.in('board_id', includedBoards)
     if (hiddenAccountIds.length) out = out.not('monday_user_id', 'in', `(${hiddenAccountIds.join(',')})`)
     if (onlyAccounts) out = out.in('monday_user_id', onlyAccounts)
-    if (!f.includeDone) {
+    if (f.openOnly) {
+      out = out.or('status_done.is.null,status_done.eq.false')
+    } else if (!f.includeDone) {
       // Open work, plus finished work from the recent past. Both are wanted on
       // the page; the difference is which block they land in.
       out = out.or(`status_done.is.null,status_done.eq.false,item_updated_at.gte.${sinceIso}`)

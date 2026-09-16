@@ -19,6 +19,12 @@
  * open the heading used to scroll away within a screen. The heading and the
  * blocks scroll sideways together. Which columns show is the reader's choice,
  * kept in their browser (columns.ts).
+ *
+ * A person's list, or a team's, follows that team's priority order when it has
+ * one (team-priority.ts): the On-going block is in the team's order, the Team
+ * column says each step's place in it, and a line above the list says whose
+ * order it is. Team leaders and admins get a third option beside Mine and
+ * Everyone, Team priority, which opens the editor; nobody else changes it.
  */
 
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, useTransition, type ReactNode, type UIEvent } from 'react'
@@ -27,7 +33,7 @@ import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { PullInfo } from '@/components/PullInfo'
 import { COMPLETED_MONTHS } from '@/lib/monday/worklist/constants'
-import { chip, PRIORITY_CHIP, PRIORITY_RANK, DUE_BADGE, DUE_TIME, type DueState } from './tokens'
+import { chip, PRIORITY_CHIP, DUE_BADGE, DUE_TIME, type DueState } from './tokens'
 import { personSelectValue, isMine } from '@/lib/monday/worklist/filters'
 import {
   applyListFilters, sortRows, nextSort, readListParams, writeListParams, activeFilterCount,
@@ -38,6 +44,7 @@ import {
   type ColumnDef, type ColumnKey,
 } from '@/lib/monday/worklist/columns'
 import type { Worklist, WorkRow } from '@/lib/monday/worklist/data'
+import { compareDefault, updatedWhen, type TeamOrderView } from '@/lib/monday/worklist/team-priority'
 
 interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: string }
 
@@ -164,6 +171,22 @@ export function OpenHistory({ label, onOpen, showLabel = false }: {
       )}
     </span>
   )
+}
+
+/** Three lines shortening: a list in an order. */
+function OrderIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="stroke-tn-teal shrink-0">
+      <path d="M4 6h16M4 12h10M4 18h6" />
+    </svg>
+  )
+}
+
+// True in the browser, false while rendering on the server, without an effect:
+// a time in the reader's own clock can only be written on their side.
+const noSubscribe = () => () => {}
+function useIsClient() {
+  return useSyncExternalStore(noSubscribe, () => true, () => false)
 }
 
 /** A clock turning back: the history of the item. */
@@ -430,6 +453,13 @@ function RowCells({ r, d, columns, onPick }: {
                 <OpenHistory label={r.itemName} onOpen={() => onPick(r)} />
               </div>
             )
+          case 'team':
+            // The place in the whole team's list, so a 6 is sixth for the team.
+            return (
+              <div key={c.key} className="px-3 py-2.5 min-w-0 overflow-hidden font-(family-name:--font-display) font-extrabold text-[15px] leading-[1.25] text-tn-ink">
+                {r.teamRank != null ? n(r.teamRank) : faint}
+              </div>
+            )
           case 'item':
             return (
               <div key={c.key} className={`${CELL} font-semibold text-tn-ink`} title={r.itemName}>
@@ -497,9 +527,14 @@ function RowCells({ r, d, columns, onPick }: {
 }
 
 /** Where a person chooses which columns to see. Five are always on, and say so. */
-function ColumnsMenu({ visible, onChange }: { visible: ColumnKey[]; onChange: (v: ColumnKey[]) => void }) {
+function ColumnsMenu({ visible, onChange, offered }: {
+  visible: ColumnKey[]
+  onChange: (v: ColumnKey[]) => void
+  /** The columns this list can show at all: Team only while it follows a team's order. */
+  offered: ColumnDef[]
+}) {
   const [open, setOpen] = useState(false)
-  const hidden = COLUMNS.filter(c => !c.required && !visible.includes(c.key)).length
+  const hidden = offered.filter(c => !c.required && !visible.includes(c.key)).length
   return (
     <div className="relative">
       <button
@@ -519,7 +554,7 @@ function ColumnsMenu({ visible, onChange }: { visible: ColumnKey[]; onChange: (v
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div className="absolute right-0 mt-2 z-40 w-[240px] rounded-[12px] border border-[var(--panel-border)] bg-white p-2 shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)]">
             <div className="px-2 pt-1 pb-2 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">Columns</div>
-            {COLUMNS.map(c => (
+            {offered.map(c => (
               <label
                 key={c.key}
                 className={`flex items-center gap-2.5 px-2 py-[7px] rounded-[8px] text-[13px] ${c.required ? 'text-muted' : 'text-tn-ink cursor-pointer hover:bg-[var(--row-hover)]'}`}
@@ -658,7 +693,7 @@ export interface PreviewState {
 }
 
 export function WorkList({
-  data, people, teams, selfPersonId, isAdmin = false, preview, stickyTop = 65,
+  data, people, teams, selfPersonId, isAdmin = false, preview, stickyTop = 65, teamOrder = null, canSetPriority = false,
 }: {
   data: Worklist
   people: Option[]
@@ -666,6 +701,10 @@ export function WorkList({
   selfPersonId: string | null
   isAdmin?: boolean
   preview?: PreviewState
+  /** The team order this list follows, when it follows one. Rows then carry teamRank. */
+  teamOrder?: TeamOrderView | null
+  /** A team leader or an admin: shows Team priority beside Mine and Everyone. */
+  canSetPriority?: boolean
   /**
    * Where the column heading pins as the page scrolls: under the portal's top
    * bar, which is 65px tall. The design check has no top bar and passes 0.
@@ -719,6 +758,10 @@ export function WorkList({
     setSort(so)
     remember(filters, so)
   }
+  const clearSort = () => {
+    setSort(null)
+    remember(filters, null)
+  }
 
   // Which columns show. Kept in this browser, not the URL: it is how a person
   // likes the page, not part of what they are asking it, and a link somebody
@@ -736,7 +779,13 @@ export function WorkList({
       // still applies, it just is not remembered next time.
     }
   }
-  const grid = gridFor(visible)
+  // The Team column only exists while the list follows a team's order; with no
+  // order there is no place to show, whatever the reader chose.
+  const offered = teamOrder ? COLUMNS : COLUMNS.filter(c => c.key !== 'team')
+  const grid = gridFor(teamOrder ? visible : visible.filter(k => k !== 'team'))
+  const isClient = useIsClient()
+  const priorityHref = `/my-work?tab=work&view=priority${teamOrder?.canEdit ? `&pteam=${teamOrder.teamId}` : ''}`
+  const openEditor = () => startTransition(() => router.push(priorityHref))
 
   // The heading sits outside the scrolling area so it can pin to the top of the
   // page; it follows the table sideways by copying its scroll position.
@@ -850,13 +899,12 @@ export function WorkList({
   // be answering a question nobody asks of them.
   // A column the reader chose to sort by wins over every block's own order.
   const openRows = known.filter(r => r.row.statusDone !== true)
+  // The team's order when the list follows one; otherwise the default order
+  // (board priority, then deadline), which is also what fills in every place a
+  // team leader has not set, so the two can never disagree.
   const ongoing = sort ? sortRows(openRows, sort) : openRows.sort((a, b) =>
-    PRIORITY_RANK[a.row.priority] - PRIORITY_RANK[b.row.priority]
-    // Within a priority the deadline decides, which keeps the previous order
-    // intact inside each band rather than replacing it.
-    || (a.due && !a.row.dueSuspect ? 0 : 1) - (b.due && !b.row.dueSuspect ? 0 : 1)
-    || (a.row.dueDate ?? '').localeCompare(b.row.dueDate ?? '')
-    || a.row.itemName.localeCompare(b.row.itemName))
+    (a.row.teamRank ?? Number.POSITIVE_INFINITY) - (b.row.teamRank ?? Number.POSITIVE_INFINITY)
+    || compareDefault(a.row, b.row))
   const completed = sort ? sortRows(known.filter(r => r.row.statusDone === true), sort) : known.filter(r => r.row.statusDone === true)
   const unknownRows = sort ? sortRows(unknown, sort) : unknown
   const filterSelect = (on: boolean) =>
@@ -912,6 +960,15 @@ export function WorkList({
               </span>
             )
           })}
+          {canSetPriority && (
+            <button
+              type="button"
+              onClick={openEditor}
+              className="font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors text-muted hover:text-tn-ink"
+            >
+              Team priority
+            </button>
+          )}
         </div>
 
         {!mine && (
@@ -986,7 +1043,7 @@ export function WorkList({
             {`Clear filters · ${n(searched.length - rows.length)} hidden`}
           </button>
         )}
-        <ColumnsMenu visible={visible} onChange={setVisible} />
+        <ColumnsMenu visible={visible} onChange={setVisible} offered={offered} />
       </div>
 
       {/* Same footer the API cards use, so "how current is this" reads the
@@ -1010,6 +1067,60 @@ export function WorkList({
               : `${n(data.open)} open${data.total !== data.open ? ` · ${n(data.total)} in view` : ''}`}
         </span>
       </div>
+
+      {/* Whose order the list is in. Said once, above the list: who set it and
+          when, and for the people who can change it, the way in. A member of a
+          team nobody has ordered sees nothing here, because their list is in
+          the order it always was. */}
+      {teamOrder && (teamOrder.placed > 0 || teamOrder.canEdit || teamOrder.choices.length > 1) && (
+        <div className="flex items-center gap-x-3 gap-y-2 flex-wrap rounded-[12px] border border-[rgba(30,125,127,.28)] bg-[rgba(30,125,127,.06)] px-4 py-2.5 min-h-[46px]">
+          <OrderIcon />
+          <span className="text-[13px] text-tn-ink">
+            {teamOrder.placed > 0 ? (
+              <>
+                <span className="font-semibold">{`Ordered by the ${teamOrder.teamName} team's priority`}</span>
+                <span className="text-muted">
+                  {`, set by ${teamOrder.updatedBySelf ? 'you' : teamOrder.updatedBy ?? 'a team leader'}`}
+                  {isClient && teamOrder.updatedAt ? ` · updated ${updatedWhen(teamOrder.updatedAt)}` : ''}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">{`The ${teamOrder.teamName} team has no priority order yet`}</span>
+                <span className="text-muted">, so the list follows board priority, then deadline</span>
+              </>
+            )}
+          </span>
+          {teamOrder.choices.length > 1 && (
+            <Select
+              value={teamOrder.teamId}
+              onChange={v => setParam('pteam', v)}
+              options={teamOrder.choices.map(c => ({ value: c.id, label: `${c.name} order` }))}
+              ariaLabel="Which team's order the list follows"
+              className="gap-2 px-2.5 py-[5px] rounded-[8px] border border-[rgba(30,125,127,.35)] bg-white font-(family-name:--font-display) font-semibold text-[12.5px] text-tn-teal"
+            />
+          )}
+          {sort && (
+            <button type="button" onClick={clearSort} className="text-[13px] font-semibold text-tn-teal hover:underline">
+              Back to the team order
+            </button>
+          )}
+          <span className="ml-auto">
+            {teamOrder.canEdit ? (
+              <a
+                href={`/my-work?tab=work&view=priority&pteam=${teamOrder.teamId}`}
+                onClick={e => { e.preventDefault(); startTransition(() => router.push(`/my-work?tab=work&view=priority&pteam=${teamOrder.teamId}`)) }}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-tn-teal rounded-[8px] px-2 py-1 hover:bg-[rgba(30,125,127,.1)]"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                {teamOrder.placed > 0 ? 'Edit order' : 'Set the order'}
+              </a>
+            ) : (
+              <span className="text-[12px] text-muted">Team leaders and admins set priorities</span>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Only where it changes the answer.
           A missing account → person link matters for exactly one thing: the
@@ -1079,7 +1190,7 @@ export function WorkList({
 
             <Block
               title="On-going"
-              note="Steps still open"
+              note={teamOrder && !sort ? "Steps still open, in the team's order" : 'Steps still open'}
               rows={ongoing}
               open={openBlocks.ongoing}
               onToggle={() => setOpenBlocks(b => ({ ...b, ongoing: !b.ongoing }))}

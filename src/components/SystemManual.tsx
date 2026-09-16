@@ -61,7 +61,7 @@ const SRC: Record<string, { color: string; bg: string }> = {
 }
 const PAGES = [
   { icon: 'home', name: 'Home', desc: 'The landing screen. Surfaces your team at a glance and everything assigned to you, with quick jumps to the rest of the portal.', src: 'Monday', srcKey: 'monday' as const },
-  { icon: 'work', name: 'My Work', desc: 'Everything assigned to you across Monday in one place, switch between a board and a list view.', src: 'Monday', srcKey: 'monday' as const },
+  { icon: 'work', name: 'My Work', desc: 'Everything assigned to you across Monday in one list, in your team\'s priority order. Team leaders and admins set that order.', src: 'Monday', srcKey: 'monday' as const },
   { icon: 'dash', name: 'Dashboards', desc: 'Board review dashboards. Publishing Goals tracks publishing pace versus target for AAAF and HFA over a chosen timeframe.', src: 'Monday', srcKey: 'monday' as const, sub: ['Publishing Goals', 'Workload'] },
   { icon: 'proj', name: 'Projects', desc: 'Manages the hreflang tag workflow for the AAAF and HFA WordPress sites, the one place the portal writes back to Monday.', src: 'Monday + WordPress', srcKey: 'mixed' as const },
   { icon: 'tools', name: 'Tools', desc: 'Utilities the team runs day to day, each launched from one list.', src: 'Varies', srcKey: 'none' as const },

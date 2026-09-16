@@ -4,9 +4,14 @@ Porta de entrada do assunto. Quando voltar ao My Work, comece aqui. A evidência
 com arquivo:linha para cada afirmação, está em `01-feedback-analysis.md`.
 
 **Estado em 16/09/2026:** seções 10 e 11 implementadas e em produção (regra do passo por
-prazo, filtros, colunas, coluna Language). Em aberto: J2, a mistura A + C dos mockups aguarda
-aprovação (B descartada); a lista de consertos no Monday está guardada em `02-monday-fixes.md`; o plano do
-Report para team leaders (J5, opção c) está em `03-report-for-team-leaders-plan.md`.
+prazo, filtros, colunas, coluna Language). J2 virou **prioridade do time** e foi implementada
+no mesmo dia (migration 084): uma ordem por time, definida pelo team leader (posição
+`team_leader` ou `founder`) ou por um admin; cada pessoa vê os próprios passos nessa ordem.
+Quem tem mais de um time segue o time principal e pode trocar na linha acima da lista. Os
+mockups aprovados estão em `/design-check/team-priority` e `/design-check/team-priority-entry`;
+o que foi construído, com dados de exemplo, em `/design-check/team-priority-live`. Em aberto:
+a lista de consertos no Monday está guardada em `02-monday-fixes.md`; o plano do Report para
+team leaders (J5, opção c) está em `03-report-for-team-leaders-plan.md`.
 
 > **Não envie nada à equipe a partir do `01-feedback-analysis.md`.** As respostas prontas
 > daquele arquivo foram escritas antes da verificação, e sete delas estão erradas. As

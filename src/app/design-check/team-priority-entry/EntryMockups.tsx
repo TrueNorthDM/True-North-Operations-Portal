@@ -14,6 +14,8 @@
  */
 
 import { chip } from '@/components/monday/tokens'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { SearchField } from '@/components/ui/SearchField'
 
 const ROWS = [
   { team: 1, item: 'Lead Magnet - How to Use Bessemeter Pro', language: '', board: 'BM - General Audits', step: 'Audit', status: "Hasn't Started Yet", color: '#C4C4C4', due: 'Sep 25, 2026', time: 'in 9d', badge: 'upcoming' },
@@ -50,7 +52,7 @@ function Page({ leader, children }: { leader: boolean; children?: React.ReactNod
       {/* The page header, as it is today. */}
       <div className="flex items-start justify-between gap-5 pb-[18px] border-b border-[var(--panel-border)]">
         <div>
-          <div className="text-[13px] text-muted">Home <span className="mx-1.5 text-[var(--faint)]">/</span> <span className="text-tn-ink font-semibold">My Work</span></div>
+          <Breadcrumb self="/my-work" />
           <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0 mt-1">My Work</h2>
           <p className="text-[14.5px] text-muted mt-1 m-0">Every step assigned to you across Monday, in one list.</p>
         </div>
@@ -63,10 +65,7 @@ function Page({ leader, children }: { leader: boolean; children?: React.ReactNod
 
       {/* The row of controls. */}
       <div className="flex items-center gap-2.5">
-        <span className="flex-1 min-w-[160px] inline-flex items-center gap-2 px-3 py-[10px] rounded-[11px] border border-[var(--panel-border)] bg-white text-[13px] text-[var(--faint)]">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          Search items, boards, people…
-        </span>
+        <SearchField value="" onChange={() => {}} placeholder="Search items, boards, people…" className="flex-1 min-w-[160px]" />
         <span className="inline-flex items-center gap-2">
           <span className="inline-flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]">
             <span className="font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]">Mine</span>
@@ -91,7 +90,7 @@ function Page({ leader, children }: { leader: boolean; children?: React.ReactNod
 
       {/* The line that says whose order the list is in. */}
       <div className="flex items-center gap-3 rounded-[12px] border border-[rgba(30,125,127,.28)] bg-[rgba(30,125,127,.06)] px-4 py-3">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h6" /></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="stroke-tn-teal shrink-0"><path d="M4 6h16M4 12h10M4 18h6" /></svg>
         <span className="text-[13px] text-tn-ink">
           <span className="font-semibold">Ordered by the SEO Team priority</span>
           <span className="text-muted">{leader ? ', set by you · updated today at 10:32' : ', set by Jeannette Owens · updated today at 10:32'}</span>

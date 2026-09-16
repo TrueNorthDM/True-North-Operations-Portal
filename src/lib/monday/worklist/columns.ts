@@ -18,7 +18,7 @@ import type { SortKey } from './list-view'
 export const FITS_LAPTOP = 1320
 
 export type ColumnKey =
-  | 'monday' | 'history' | 'item' | 'language' | 'parent' | 'board' | 'workspace'
+  | 'monday' | 'history' | 'team' | 'item' | 'language' | 'parent' | 'board' | 'workspace'
   | 'who' | 'priority' | 'step' | 'status' | 'due' | 'time'
 
 export interface ColumnDef {
@@ -36,22 +36,26 @@ export interface ColumnDef {
 export const COLUMNS: ColumnDef[] = [
   { key: 'monday', label: 'Open in Monday', required: true, track: '44px', min: 44 },
   { key: 'history', label: 'History', required: true, track: '44px', min: 44 },
+  // The step's place in its team's priority order. Only drawn while the list
+  // follows a team's order (a person, or a team, is chosen); "1,161" fits.
+  { key: 'team', label: 'Team', required: false, track: '64px', min: 64, sort: 'team' },
   // Minimums chosen so every column fits a 1440px laptop (about 1,328px of page
   // beside the sidebar) without scrolling sideways; above that, Item takes the
-  // largest share of the extra width.
-  { key: 'item', label: 'Item', required: true, track: 'minmax(190px,3fr)', min: 190, sort: 'item' },
+  // largest share of the extra width. Team took its 64px from Item, Parent item,
+  // Board, Assignee and Step.
+  { key: 'item', label: 'Item', required: true, track: 'minmax(166px,3fr)', min: 166, sort: 'item' },
   // Beside Item because it is what tells same-named items apart: one page per
   // language on the publishing and translation boards. "Portuguese" is the
   // longest value in use.
   { key: 'language', label: 'Language', required: false, track: '100px', min: 100, sort: 'language' },
-  { key: 'parent', label: 'Parent item', required: false, track: 'minmax(120px,1.5fr)', min: 120, sort: 'parent' },
-  { key: 'board', label: 'Board', required: false, track: 'minmax(100px,1.2fr)', min: 100, sort: 'board' },
+  { key: 'parent', label: 'Parent item', required: false, track: 'minmax(104px,1.5fr)', min: 104, sort: 'parent' },
+  { key: 'board', label: 'Board', required: false, track: 'minmax(92px,1.2fr)', min: 92, sort: 'board' },
   { key: 'workspace', label: 'Workspace', required: false, track: 'minmax(88px,1fr)', min: 88, sort: 'workspace' },
   // A name, but a short one: capped so it never takes width Item could use.
-  { key: 'who', label: 'Assignee', required: false, track: 'minmax(104px,150px)', min: 104, sort: 'who' },
+  { key: 'who', label: 'Assignee', required: false, track: 'minmax(96px,150px)', min: 96, sort: 'who' },
   // "MEDIUM" is the widest chip.
   { key: 'priority', label: 'Priority', required: false, track: '88px', min: 88, sort: 'priority' },
-  { key: 'step', label: 'Step', required: false, track: 'minmax(96px,1fr)', min: 96, sort: 'step' },
+  { key: 'step', label: 'Step', required: false, track: 'minmax(88px,1fr)', min: 88, sort: 'step' },
   // "WORKING ON IT" on one line from 130px, capped for the same reason.
   { key: 'status', label: 'Status', required: false, track: 'minmax(118px,168px)', min: 118, sort: 'status' },
   // "Sep 14, 2026" and its padding.
