@@ -1,34 +1,35 @@
-// Design check: three ways to set "my priority" beside True North's, on My Work.
+// Design check: "my priority" beside True North's, on My Work.
 //
 // Jeannette wrote that none of her 700 rows were "actually my priority tasks
 // right now". The idea in September 2026 was two priority views inside the My
 // Work tab, one True North's and one the person's own, with the difference
 // between them made visible. These are three ways to show that difference, to
 // choose from before anything is built. Development only, like every design
-// check, and nothing on it is saved.
+// check, and nothing on it is saved. Option B was dropped on 16 September
+// 2026; A and C were asked for together, and stay below for comparison.
 
 import { notFound } from 'next/navigation'
-import { OptionA, OptionB, OptionC } from './PriorityMockups'
+import { OptionA, OptionAC, OptionC } from './PriorityMockups'
 
 export const dynamic = 'force-dynamic'
 
 const OPTIONS = [
   {
-    key: 'A',
-    title: 'Option A · Ranks side by side',
-    blurb: 'Two tabs. My priority shows your rank, True North\'s rank and how far you moved each step. The most direct, and the most numbers on screen.',
-    node: <OptionA />,
+    key: 'AC',
+    title: 'A + C · Agreement summary with ranks',
+    blurb: 'C\'s card on top: the agreement score, how many steps moved, and the biggest differences. A\'s list underneath: your rank, True North\'s rank and how far apart they are. Rows two or more places apart are marked on the left in the same colour as their chip.',
+    node: <OptionAC />,
   },
   {
-    key: 'B',
-    title: 'Option B · Compare view',
-    blurb: 'Your list stays plain. A Compare tab draws both orders with a line per step, teal where you put it higher and amber where you put it lower. The fastest to read at a glance; it gets busy past a dozen steps.',
-    node: <OptionB />,
+    key: 'A',
+    title: 'Option A · Ranks side by side',
+    blurb: 'For comparison. Two tabs. My priority shows your rank, True North\'s rank and how far you moved each step.',
+    node: <OptionA />,
   },
   {
     key: 'C',
     title: 'Option C · Agreement summary',
-    blurb: 'Your list stays plain, with a card above it: one agreement score and the steps where you and True North differ by two places or more. The quietest, and the easiest to talk through with a team leader.',
+    blurb: 'For comparison. Your list stays plain, with a card above it: one agreement score and the steps where you and True North differ by two places or more.',
     node: <OptionC />,
   },
 ]

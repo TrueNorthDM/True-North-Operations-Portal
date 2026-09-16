@@ -4,8 +4,8 @@ Porta de entrada do assunto. Quando voltar ao My Work, comece aqui. A evidência
 com arquivo:linha para cada afirmação, está em `01-feedback-analysis.md`.
 
 **Estado em 16/09/2026:** seções 10 e 11 implementadas e em produção (regra do passo por
-prazo, filtros, colunas, coluna Language). Em aberto: J2 aguarda a escolha de um dos três
-mockups; a lista de consertos no Monday está guardada em `02-monday-fixes.md`; o plano do
+prazo, filtros, colunas, coluna Language). Em aberto: J2, a mistura A + C dos mockups aguarda
+aprovação (B descartada); a lista de consertos no Monday está guardada em `02-monday-fixes.md`; o plano do
 Report para team leaders (J5, opção c) está em `03-report-for-team-leaders-plan.md`.
 
 > **Não envie nada à equipe a partir do `01-feedback-analysis.md`.** As respostas prontas
@@ -453,7 +453,7 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
 | Ponto | Sua decisão | O que foi feito |
 | --- | --- | --- |
 | J1 | Ícone do Monday na 1ª coluna, ícone de histórico na 2ª | Feito. Clicar na linha não abre mais nada |
-| J2 | Duas visões de prioridade (minha e True North) com comparação | Três mockups em `/design-check/my-work-priority`, aguardando escolha |
+| J2 | Duas visões de prioridade (minha e True North) com comparação | Mockups em `/design-check/my-work-priority`. Em 16/09: B descartada; pedida a mistura A + C (`?only=AC`), aguardando aprovação |
 | J3 | Lista separada de consertos no Monday | Lista feita; números reconferidos no Monday em 15/09 |
 | J4 | Exemplos reais | Varredura feita (seção 11) e filtro "Last change" na lista |
 | A1 | Mover para a 1ª coluna | Feito. O link também passa a ser montado para quem não é admin |

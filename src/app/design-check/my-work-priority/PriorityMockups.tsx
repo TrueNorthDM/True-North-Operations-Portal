@@ -1,12 +1,16 @@
 'use client'
 
 /**
- * Three ways to put "my priority" beside "True North's priority" on My Work.
+ * Ways to put "my priority" beside "True North's priority" on My Work.
  *
  * Mockups for a decision, not the feature: the rows are a fixture, the order a
  * person sets lives in component state and is gone on reload. Each option can be
  * reordered with the arrows so the comparison can be seen changing, which is the
  * part a static picture cannot show.
+ *
+ * Option B (both orders drawn with a line per step) was dropped on 16 September
+ * 2026: it stops being readable past a dozen steps, and the lists it would show
+ * run from 132 to 348. What was asked for next is A and C together.
  *
  * True North's order is the one the list already uses: board priority first,
  * then the soonest deadline.
@@ -153,86 +157,6 @@ export function OptionA() {
   )
 }
 
-// ── Option B ────────────────────────────────────────────────────────────────
-
-export function OptionB() {
-  const [tab, setTab] = useState<'mine' | 'compare'>('compare')
-  const [mine, setMine] = useState(PRESET_MINE)
-  const [hover, setHover] = useState<string | null>(null)
-  const ROW = 44, TOP = 14, H = TOP * 2 + ROW * ITEMS.length
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Tabs value={tab} onChange={setTab} options={[{ key: 'mine', label: 'My priority' }, { key: 'compare', label: 'Compare with True North' }]} />
-        <button type="button" onClick={() => setMine(TN_ORDER)} className="text-[13px] font-semibold text-tn-teal hover:underline ml-auto">Reset to True North order</button>
-      </div>
-
-      {tab === 'mine' ? (
-        <div className={card}>
-          {mine.map((id, i) => (
-            <div key={id} className="flex items-center gap-3 px-3 py-2 border-b border-[var(--row-rule)] last:border-b-0">
-              <Arrows onUp={() => setMine(o => move(o, id, -1))} onDown={() => setMine(o => move(o, id, 1))} />
-              <span className="w-6 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{i + 1}</span>
-              <ItemCell it={byId.get(id)!} />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className={`${card} p-4`}>
-          <div className="grid gap-0" style={{ gridTemplateColumns: 'minmax(0,1fr) 160px minmax(0,1fr)' }}>
-            <div>
-              <div className={`${head} px-0`}>True North priority</div>
-              <div style={{ height: H }} className="relative">
-                {TN_ORDER.map((id, i) => (
-                  <div key={id} onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)}
-                    className={`absolute left-0 right-0 flex items-center gap-2 px-2 rounded-[8px] ${hover === id ? 'bg-[var(--row-hover)]' : ''}`}
-                    style={{ top: TOP + i * ROW - ROW / 2 + 22, height: ROW - 6 }}>
-                    <span className="w-5 text-right font-(family-name:--font-display) font-extrabold text-[13px] text-muted">{i + 1}</span>
-                    <span className={`${chip} ${PRIORITY_CHIP[byId.get(id)!.priority]}`}>{byId.get(id)!.priority}</span>
-                    <span className="text-[12.5px] text-tn-ink truncate">{byId.get(id)!.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <svg width="160" height={H + 26} className="mt-[26px]" aria-hidden="true">
-              {TN_ORDER.map((id, i) => {
-                const j = mine.indexOf(id)
-                const colour = j < i ? '#1E7D7F' : j > i ? '#E08A1E' : '#c5ccd6'
-                const on = !hover || hover === id
-                return (
-                  // Row centres: the label column's 35px heading, less the 26px
-                  // the drawing is already pushed down, plus half a label.
-                  <line key={id} x1="4" y1={TOP + 28 + i * ROW} x2="156" y2={TOP + 28 + j * ROW}
-                    stroke={colour} strokeWidth={hover === id ? 3 : 2} opacity={on ? 1 : 0.18} strokeLinecap="round" />
-                )
-              })}
-            </svg>
-            <div>
-              <div className={`${head} px-0`}>My priority</div>
-              <div style={{ height: H }} className="relative">
-                {mine.map((id, i) => (
-                  <div key={id} onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)}
-                    className={`absolute left-0 right-0 flex items-center gap-2 px-2 rounded-[8px] ${hover === id ? 'bg-[var(--row-hover)]' : ''}`}
-                    style={{ top: TOP + i * ROW - ROW / 2 + 22, height: ROW - 6 }}>
-                    <span className="w-5 text-right font-(family-name:--font-display) font-extrabold text-[13px] text-muted">{i + 1}</span>
-                    <span className="text-[12.5px] text-tn-ink truncate">{byId.get(id)!.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-[12px] text-muted mt-2">
-            <span className="inline-flex items-center gap-1.5"><span className="w-4 h-[3px] rounded bg-[#1E7D7F]" />You put it higher</span>
-            <span className="inline-flex items-center gap-1.5"><span className="w-4 h-[3px] rounded bg-[#E08A1E]" />You put it lower</span>
-            <span className="inline-flex items-center gap-1.5"><span className="w-4 h-[3px] rounded bg-[#c5ccd6]" />Same place</span>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Option C ────────────────────────────────────────────────────────────────
 
 export function OptionC() {
@@ -293,6 +217,97 @@ export function OptionC() {
               <span className="w-6 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{i + 1}</span>
               <ItemCell it={it} />
               <span className={`${chip} ${PRIORITY_CHIP[it.priority]} ml-auto`}>{it.priority}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Option A + C ────────────────────────────────────────────────────────────
+//
+// C's card on top, A's ranks underneath. The card answers "how far apart are we"
+// at a glance; the list answers "where exactly". Rows that differ by two places
+// or more carry a thin mark on their left edge in the same teal or amber as
+// their chip, so a step named in the card can be found in the list without
+// reading every number.
+
+export function OptionAC() {
+  const [tab, setTab] = useState<'tn' | 'mine'>('mine')
+  const [mine, setMine] = useState(PRESET_MINE)
+  const score = agreement(mine, TN_ORDER)
+  const moved = mine.filter((id, i) => TN_ORDER.indexOf(id) !== i).length
+  const diffs = useMemo(() => mine
+    .map(id => ({ id, by: TN_ORDER.indexOf(id) - mine.indexOf(id) }))
+    .filter(d => Math.abs(d.by) >= 2)
+    .sort((x, y) => Math.abs(y.by) - Math.abs(x.by)), [mine])
+  const higher = diffs.filter(d => d.by > 0)
+  const lower = diffs.filter(d => d.by < 0)
+  const order = tab === 'tn' ? TN_ORDER : mine
+  const cols = '44px 56px minmax(0,1fr) 96px 64px 104px'
+
+  return (
+    <div className="space-y-3">
+      <Tabs value={tab} onChange={setTab} options={[{ key: 'tn', label: 'True North priority' }, { key: 'mine', label: 'My priority' }]} />
+
+      {tab === 'mine' && (
+        <div className="rounded-[14px] border border-[var(--panel-border)] bg-white p-4 grid gap-5" style={{ gridTemplateColumns: '190px minmax(0,1fr) minmax(0,1fr)' }}>
+          <div>
+            <div className={`${head} px-0 py-0`}>Agreement with True North</div>
+            <div className="font-(family-name:--font-display) font-extrabold text-[30px] leading-none text-tn-ink mt-2">{`${score}%`}</div>
+            <div className="h-1.5 rounded-full bg-subtle mt-2 overflow-hidden">
+              <div className="h-full rounded-full bg-tn-teal" style={{ width: `${score}%` }} />
+            </div>
+            <div className="text-[12px] text-muted mt-2">{moved ? `${moved} of ${mine.length} steps moved` : "Same as True North's order"}</div>
+            <button type="button" onClick={() => setMine(TN_ORDER)} className="text-[12.5px] font-semibold text-tn-teal hover:underline mt-1">Reset to True North order</button>
+          </div>
+          <div>
+            <div className={`${head} px-0 py-0`}>You put first, True North later</div>
+            {higher.length === 0 && <div className="text-[12.5px] text-muted mt-2">Nothing</div>}
+            {higher.map(d => (
+              <div key={d.id} className="flex items-center gap-2 mt-2">
+                <Delta by={d.by} />
+                <span className="text-[12.5px] text-tn-ink truncate">{byId.get(d.id)!.name}</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className={`${head} px-0 py-0`}>True North first, you later</div>
+            {lower.length === 0 && <div className="text-[12.5px] text-muted mt-2">Nothing</div>}
+            {lower.map(d => (
+              <div key={d.id} className="flex items-center gap-2 mt-2">
+                <Delta by={d.by} />
+                <span className="text-[12.5px] text-tn-ink truncate">{byId.get(d.id)!.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={card}>
+        {/* The same 3px left edge as the rows, so the columns line up with them. */}
+        <div className="grid bg-subtle border-b border-[var(--panel-border)] border-l-[3px] border-l-transparent" style={{ gridTemplateColumns: cols }}>
+          <div className={head} />
+          <div className={head}>{tab === 'mine' ? 'Mine' : 'TN'}</div>
+          <div className={head}>Step</div>
+          <div className={head}>Priority</div>
+          <div className={head}>{tab === 'mine' ? 'TN' : 'Mine'}</div>
+          <div className={head}>{tab === 'mine' ? 'Against TN' : ''}</div>
+        </div>
+        {order.map((id, i) => {
+          const it = byId.get(id)!
+          const tnRank = TN_ORDER.indexOf(id) + 1, myRank = mine.indexOf(id) + 1
+          const by = tnRank - myRank
+          const mark = tab !== 'mine' || Math.abs(by) < 2 ? 'border-l-transparent' : by > 0 ? 'border-l-tn-teal' : 'border-l-[#E08A1E]'
+          return (
+            <div key={id} className={`grid items-center border-b border-[var(--row-rule)] last:border-b-0 border-l-[3px] ${mark} hover:bg-[var(--row-hover)]`} style={{ gridTemplateColumns: cols }}>
+              <div className="px-2 py-2">{tab === 'mine' && <Arrows onUp={() => setMine(o => move(o, id, -1))} onDown={() => setMine(o => move(o, id, 1))} />}</div>
+              <div className="px-3 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{i + 1}</div>
+              <div className="px-3 py-2.5"><ItemCell it={it} /></div>
+              <div className="px-3"><span className={`${chip} ${PRIORITY_CHIP[it.priority]}`}>{it.priority}</span></div>
+              <div className="px-3 text-[13px] text-muted">{tab === 'mine' ? tnRank : myRank}</div>
+              <div className="px-3">{tab === 'mine' && <Delta by={by} />}</div>
             </div>
           )
         })}
