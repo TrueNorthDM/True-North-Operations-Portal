@@ -490,6 +490,14 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
 
 **Fica para depois:**
 
+- **Urgente, achado em 16/09:** a chave que esconde boards parados está **ligada** em produção
+  (`app_settings.monday_hide_stale_boards = true`) e a metade que traz o board de volta não
+  funciona. A sincronização só lê boards visíveis (`ingest.ts:443`), então a atividade de um
+  board escondido nunca é atualizada. Em 16/09: 264 boards, 43 visíveis, 221 escondidos sem
+  fixar, e nenhum desses 221 relido desde 08/09. Trabalho novo num board escondido não aparece
+  no My Work. Conserto: a sincronização conferir a atividade dos boards escondidos (uma
+  leitura leve por board) antes de a regra decidir. Desligar a chave sozinha não traz ninguém
+  de volta.
 - J5: team leaders verem o Report (plano em `03-report-for-team-leaders-plan.md`).
 - J3: ainda em investigação (decidido em 16/09; a resposta à Jeannette diz só isso). A
   automação que devia marcar On-Page SEO como "Not Relevant" nas páginas que não são em

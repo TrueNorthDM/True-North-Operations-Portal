@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { seedSteps, pickDateColumn, PEOPLE_TYPES, type BoardColumn } from './steps'
+import { missingColumn } from './missing-column'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -177,6 +178,13 @@ interface RawBoard {
   state: string
   board_kind: string
   items_count: number | null
+  /**
+   * When Monday says the board last changed. Free in this query, and the only
+   * sign of life the sync ever gets about a board it does not read: a hidden
+   * board is read again when this is newer than the last read (stale.ts,
+   * boardsToProbe), and the rule then judges it on its items as always.
+   */
+  updated_at: string | null
   workspace: { id: string; name: string } | null
   columns: BoardColumn[]
 }
@@ -191,7 +199,7 @@ async function allBoards(token: string): Promise<RawBoard[]> {
     const d = await gql<{ boards: RawBoard[] }>(token, `
       query ($page: Int!, $limit: Int!) {
         boards(limit: $limit, page: $page, order_by: created_at) {
-          id name state board_kind items_count
+          id name state board_kind items_count updated_at
           workspace { id name }
           columns { id title type settings_str }
         }
@@ -226,6 +234,7 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     // the account reports far more boards than a person would name.
     is_subitem_board: /^Subitems of /i.test(b.name),
     items_count: b.items_count,
+    board_updated_at: b.updated_at,
     ...(() => {
       const c = pickDateColumn(b.columns ?? [])
       return { date_col: c?.id ?? null, date_title: c?.title ?? null }
@@ -238,8 +247,19 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
   const wasUsing = new Map(((before ?? []) as { id: number; date_col: string | null }[])
     .map(b => [b.id, b.date_col]))
 
+  // Migration 086 adds board_updated_at. Until it is run the rest is written
+  // and no hidden board is read again, which is how the sync behaved before it.
+  const withoutUpdated = (row: (typeof boardRows)[number]) => {
+    const copy: Record<string, unknown> = { ...row }
+    delete copy.board_updated_at
+    return copy
+  }
   for (let i = 0; i < boardRows.length; i += 200) {
-    const { error } = await supabase.from('monday_boards').upsert(boardRows.slice(i, i + 200), { onConflict: 'id' })
+    const chunk = boardRows.slice(i, i + 200)
+    let { error } = await supabase.from('monday_boards').upsert(chunk, { onConflict: 'id' })
+    if (missingColumn(error, 'board_updated_at')) {
+      ;({ error } = await supabase.from('monday_boards').upsert(chunk.map(withoutUpdated), { onConflict: 'id' }))
+    }
     if (error) throw new Error(`monday_boards upsert: ${error.message}`)
   }
 

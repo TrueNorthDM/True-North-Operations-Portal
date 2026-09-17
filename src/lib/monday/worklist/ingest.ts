@@ -23,6 +23,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { gql } from './discover'
+import { missingColumn } from './missing-column'
+import { boardsToProbe } from './stale'
 import { diffAssignments, keyOf, type AssignmentSnapshot } from './changes'
 import { currentStage, pickLanguageColumn, readStages, type StepStage } from './steps'
 
@@ -30,6 +32,8 @@ import { currentStage, pickLanguageColumn, readStages, type StepStage } from './
 type Client = SupabaseClient<any, any, any>
 
 const PAGE = 250
+
+export { missingColumn }
 
 export interface BoardRow {
   id: number
@@ -59,12 +63,6 @@ interface StepRow {
 type Plan =
   | { peopleCol: string; kind: 'stages'; stages: StepStage[] }
   | { peopleCol: string; kind: 'legacy'; statusCol: string | null }
-
-/** True when PostgREST says a column is not there, which is what a migration not yet run looks like. */
-export function missingColumn(error: { message?: string } | null | undefined, column: string): boolean {
-  return !!error?.message && error.message.includes(column)
-    && /does not exist|could not find|schema cache/i.test(error.message)
-}
 
 interface ItemRow {
   id: string
@@ -429,6 +427,10 @@ export interface SliceResult {
  * so a slice that dies mid-run costs the board it was on and nothing else. The
  * same shape the TSheets import ended up with, for the same reason: a function
  * that gets killed at 300 seconds cannot be the unit of work.
+ *
+ * Shown boards, and then the hidden ones Monday says have changed since we last
+ * read them (boardsToProbe). Reading those is what lets the stale rule bring a
+ * board back: its activity is its items, and nobody was reading them.
  */
 export async function ingestSlice(
   supabase: Client,
@@ -437,12 +439,34 @@ export async function ingestSlice(
 ): Promise<SliceResult> {
   const started = Date.now()
 
-  const { data: boardRows } = await supabase
+  const COLS = 'id, name, is_subitem_board, date_col, items_synced_at, included, included_pinned'
+  const read = (cols: string) => supabase
     .from('monday_boards')
-    .select('id, name, is_subitem_board, date_col, items_synced_at, included')
-    .eq('included', true)
+    .select(cols)
     .order('items_synced_at', { ascending: true, nullsFirst: true })
-  const boards = (boardRows ?? []) as (BoardRow & { items_synced_at: string | null })[]
+  const first = await read(`${COLS}, board_updated_at`)
+  // Migration 086 adds board_updated_at. Without it no hidden board is read
+  // again, which is how the sync behaved before it.
+  let boardRows = first.data
+  if (missingColumn(first.error, 'board_updated_at')) boardRows = (await read(COLS)).data
+  else if (first.error) throw new Error(`boards: ${first.error.message}`)
+  type Row = BoardRow & {
+    items_synced_at: string | null
+    included: boolean
+    included_pinned?: boolean
+    board_updated_at?: string | null
+  }
+  const all = (boardRows ?? []) as unknown as Row[]
+  const probe = new Set(boardsToProbe(all.map(b => ({
+    id: b.id,
+    included: b.included,
+    includedPinned: b.included_pinned === true,
+    boardUpdatedAt: b.board_updated_at ?? null,
+    itemsSyncedAt: b.items_synced_at,
+  }))))
+  // Shown first: a hidden board is being read to find out whether it belongs
+  // back on the page, which can wait behind the work already on it.
+  const boards = [...all.filter(b => b.included), ...all.filter(b => probe.has(b.id))]
 
   // Only boards that have steps: the other 65 are spreadsheets with nobody on
   // them, and walking their items would be reading for nothing.

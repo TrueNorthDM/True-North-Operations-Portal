@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isStale, STALE_MONTHS, staleCutoff, staleSweep, type BoardStaleness } from './stale'
+import { boardsToProbe, isStale, STALE_MONTHS, staleCutoff, staleSweep, type BoardProbe, type BoardStaleness } from './stale'
 
 const NOW = new Date('2026-08-26T12:00:00Z')
 const ago = (months: number) => {
@@ -64,5 +64,40 @@ describe('staleSweep', () => {
   it('does nothing when every board already matches its activity', () => {
     expect(staleSweep([board(), board({ id: 2, included: false, lastActivityAt: ago(9) })], NOW))
       .toEqual({ hide: [], show: [] })
+  })
+})
+
+describe('boardsToProbe', () => {
+  const hidden = (o: Partial<BoardProbe> = {}): BoardProbe => ({
+    id: 1, included: false, includedPinned: false,
+    boardUpdatedAt: ago(1), itemsSyncedAt: ago(3), ...o,
+  })
+
+  // The hole this closes: a hidden board's activity is its items, and the sync
+  // only read boards that were shown, so it could never come back.
+  it('reads a hidden board Monday has touched since we last read it', () => {
+    expect(boardsToProbe([hidden()])).toEqual([1])
+  })
+
+  it('reads a hidden board that was never read at all', () => {
+    expect(boardsToProbe([hidden({ itemsSyncedAt: null })])).toEqual([1])
+  })
+
+  it('leaves a hidden board alone when nothing has changed since the last read', () => {
+    expect(boardsToProbe([hidden({ boardUpdatedAt: ago(4), itemsSyncedAt: ago(2) })])).toEqual([])
+  })
+
+  it('says nothing about shown boards, which are read anyway', () => {
+    expect(boardsToProbe([hidden({ included: true })])).toEqual([])
+  })
+
+  it('leaves a pinned board to whoever pinned it', () => {
+    expect(boardsToProbe([hidden({ includedPinned: true })])).toEqual([])
+  })
+
+  // Before migration 086 there is no date to compare, and the sync reads
+  // exactly what it read before.
+  it('reads nothing when Monday has not told us a date yet', () => {
+    expect(boardsToProbe([hidden({ boardUpdatedAt: null })])).toEqual([])
   })
 })

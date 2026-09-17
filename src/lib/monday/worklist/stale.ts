@@ -55,3 +55,41 @@ export function staleSweep(
     show: open.filter(b => !b.included && !isStale(b, now)).map(b => b.id),
   }
 }
+
+/** A hidden board, and the two dates that decide whether it is worth reading again. */
+export type BoardProbe = {
+  id: number
+  included: boolean
+  includedPinned: boolean
+  /** Monday's own updated_at for the board, from discovery (migration 086). */
+  boardUpdatedAt: string | null
+  /** When the sync last read this board's items. Null means never. */
+  itemsSyncedAt: string | null
+}
+
+/**
+ * Hidden boards to read once more, so the rule's second half can fire.
+ *
+ * The rule brings a board back when it is touched again, but a board's activity
+ * is read from its items and the sync only reads boards that are shown. So a
+ * hidden board's activity was frozen where it stood, and it could never come
+ * back: on 16 September 2026, with the switch on, 221 boards were hidden and
+ * none had been read in over a week.
+ *
+ * Monday's own updated_at for the board, which discovery now stores for every
+ * board, says whether anything happened there at all. Newer than our last read
+ * of its items means read it once more; the read stamps the board's real item
+ * activity, and staleSweep then decides as it always has. That keeps a board
+ * from coming back on a column rename: Monday bumps updated_at for changes that
+ * are not work, and a board with year-old items stays hidden after the read.
+ *
+ * A board read since its last change is left alone, so this asks Monday for a
+ * board once per change and not once per sync. A pinned board is nobody's
+ * business but the person who pinned it.
+ */
+export function boardsToProbe(boards: BoardProbe[]): number[] {
+  return boards
+    .filter(b => !b.included && !b.includedPinned && b.boardUpdatedAt)
+    .filter(b => !b.itemsSyncedAt || b.boardUpdatedAt! > b.itemsSyncedAt)
+    .map(b => b.id)
+}
