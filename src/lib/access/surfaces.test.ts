@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import {
-  SURFACES, SURFACE_KEYS, CONFIGURABLE_ROLES,
+  SURFACES, SURFACE_KEYS, CONFIGURABLE_ROLES, SURFACE_GROUPS, PRIORITY_OWN, PRIORITY_ALL,
   surfaceAllowed, directoryLevel,
 } from './surfaces'
 import { NAV_SURFACES, navHref, navVisible, surfaceForPath } from './nav'
@@ -172,5 +172,30 @@ describe('My Work, Report and My Team as three grants', () => {
     expect(surfaceForPath('/report')).toBe('report')
     expect(surfaceForPath('/report/csv')).toBe('report')
     expect(surfaceForPath('/my-work')).toBe('my-work')
+  })
+})
+
+describe('Team priority as two rows of the matrix', () => {
+  const row = (k: string) => SURFACES.find(s => s.key === k)!
+
+  it('has its own group, drawn in the table', () => {
+    expect(row(PRIORITY_OWN).group).toBe('Team priority')
+    expect(row(PRIORITY_ALL).group).toBe('Team priority')
+    expect(SURFACE_GROUPS).toContain('Team priority')
+  })
+
+  // Shipping the rows must not change who could set an order the day before:
+  // anyone leading a team, at any level. Admin Assistant was decided on
+  // 16 September 2026 to set every team's.
+  it('defaults to what was decided', () => {
+    expect(row(PRIORITY_OWN).defaults).toEqual({ admin_assistant: true, team_leader: true, user: true })
+    expect(row(PRIORITY_ALL).defaults).toEqual({ admin_assistant: true, team_leader: false, user: false })
+  })
+
+  it('stays configurable, so an admin can hand it to a level', () => {
+    expect(row(PRIORITY_OWN).locked).toBeUndefined()
+    expect(row(PRIORITY_ALL).locked).toBeUndefined()
+    expect(surfaceAllowed('team_leader', PRIORITY_ALL, new Map([['team_leader:priority-all', true]]))).toBe(true)
+    expect(surfaceAllowed('user', PRIORITY_OWN, new Map([['user:priority-own', false]]))).toBe(false)
   })
 })

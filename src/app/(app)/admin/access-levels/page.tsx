@@ -13,6 +13,8 @@ import { isSecurityAdmin } from '@/lib/auth/role'
 import { loadContactByPerson } from '@/lib/hr/contact'
 import { asRoleType } from '@/lib/auth/tier'
 import { AccessLevelsBoard, type AccessPerson } from '@/components/admin/AccessLevelsBoard'
+import { loadPriorityGrants } from '@/lib/monday/worklist/team-priority-data'
+import type { Membership } from '@/lib/monday/worklist/team-priority'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
@@ -35,9 +37,30 @@ export default async function AccessLevelsPage() {
   const contacts = await loadContactByPerson()
   const personalEmails = new Map([...contacts].map(([id, c]) => [id, c.emailPersonal]))
 
-  const { data: surfaceRows } = await supabase.from('access_level_pages').select('role_type, surface_key, allowed')
+  const [{ data: surfaceRows }, { data: teamRows }, { data: memberRows }, grants] = await Promise.all([
+    supabase.from('access_level_pages').select('role_type, surface_key, allowed'),
+    supabase.from('teams').select('id, name').order('name'),
+    supabase.from('team_members').select('team_id, person_id, position'),
+    loadPriorityGrants(supabase),
+  ])
   const configured: Record<string, boolean> = {}
   for (const r of surfaceRows ?? []) configured[`${r.role_type}:${r.surface_key}`] = r.allowed
+
+  // Team priority on My Work: who leads what, for the section that says who can
+  // change a team's order and why.
+  const teams = (teamRows ?? []) as { id: string; name: string }[]
+  const teamName = new Map(teams.map(t => [t.id, t.name]))
+  const memberships: Record<string, Membership[]> = {}
+  for (const m of (memberRows ?? []) as { team_id: string; person_id: string; position: string | null }[]) {
+    ;(memberships[m.person_id] ??= []).push({
+      teamId: m.team_id,
+      teamName: teamName.get(m.team_id) ?? 'Team',
+      // Which team is primary decides whose order a person follows, not who may
+      // change an order, so this page does not need it.
+      isPrimary: false,
+      position: m.position,
+    })
+  }
 
   // Whether someone has actually signed in. people.profile_id is only set when
   // an admin links the account by hand, so most rows have it null even for
@@ -105,7 +128,11 @@ export default async function AccessLevelsPage() {
         </div>
       </div>
 
-      <AccessLevelsBoard people={people} configured={configured} />
+      <AccessLevelsBoard
+        people={people}
+        configured={configured}
+        priority={{ grantsAvailable: grants.available, teams, memberships, grants: grants.grants }}
+      />
     </div>
   )
 }

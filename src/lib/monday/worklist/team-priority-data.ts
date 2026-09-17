@@ -4,7 +4,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
-  defaultOrder, stepKey, teamRanking, type Membership, type Ranking, type SavedOrder,
+  defaultOrder, isGrantScope, stepKey, teamRanking, type GrantScope, type Membership, type Ranking, type SavedOrder,
 } from './team-priority'
 import type { WorkRow } from './data'
 
@@ -36,9 +36,9 @@ export interface SavedTeamOrder {
 }
 
 /** A read that failed because the table is not there yet, rather than for any other reason. */
-function missingTable(error: { code?: string; message?: string } | null): boolean {
+function missingTable(error: { code?: string; message?: string } | null, table = 'monday_team_priority'): boolean {
   if (!error) return false
-  return error.code === 'PGRST205' || error.code === '42P01' || /monday_team_priority/.test(error.message ?? '')
+  return error.code === 'PGRST205' || error.code === '42P01' || (error.message ?? '').includes(table)
 }
 
 /**
@@ -135,4 +135,46 @@ export function rankTeam(rows: WorkRow[], saved: SavedOrder | null): { open: Wor
 export function withTeamRanks(rows: WorkRow[], ranking: Ranking): WorkRow[] {
   const place = new Map(ranking.keys.map((k, i) => [k, i + 1]))
   return rows.map(r => (r.statusDone === true ? r : { ...r, teamRank: place.get(stepKey(r)) ?? null }))
+}
+
+// ── People given team priority by name (migration 085) ─────────────────────
+
+/** This person's by-name right to set team priorities, or null. Null too until migration 085 is run. */
+export async function loadPriorityGrant(supabase: Client, personId: string): Promise<GrantScope | null> {
+  const { data, error } = await supabase
+    .from('monday_priority_grants')
+    .select('scope')
+    .eq('person_id', personId)
+    .maybeSingle()
+  if (error) {
+    if (!missingTable(error, 'monday_priority_grants')) console.error('[team-priority] reading a grant failed:', error.message)
+    return null
+  }
+  const scope = (data as { scope?: unknown } | null)?.scope
+  return isGrantScope(scope) ? scope : null
+}
+
+export interface PriorityGrant {
+  personId: string
+  scope: GrantScope
+  grantedAt: string | null
+  grantedBy: string | null
+}
+
+/** Everyone given team priority by name, for the Access levels page. */
+export async function loadPriorityGrants(supabase: Client): Promise<{ available: boolean; grants: PriorityGrant[] }> {
+  const { data, error } = await supabase
+    .from('monday_priority_grants')
+    .select('person_id, scope, granted_at, granted_by')
+  if (error) {
+    if (!missingTable(error, 'monday_priority_grants')) console.error('[team-priority] reading grants failed:', error.message)
+    return { available: false, grants: [] }
+  }
+  type R = { person_id: string; scope: unknown; granted_at: string | null; granted_by: string | null }
+  return {
+    available: true,
+    grants: ((data ?? []) as R[]).flatMap(r => isGrantScope(r.scope)
+      ? [{ personId: r.person_id, scope: r.scope, grantedAt: r.granted_at, grantedBy: r.granted_by }]
+      : []),
+  }
 }

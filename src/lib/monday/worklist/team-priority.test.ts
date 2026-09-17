@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   stepKey, isStepKey, compareDefault, defaultOrder, teamRanking, pinsFor, moveTo, agreement, displacement,
   cleanSavedOrder, leads, orderTeamFor, canSetOrder, editorTeamFor, updatedWhen, MAX_STEPS,
-  type OrderableStep, type Membership,
+  priorityRights, orderRightFor, settableTeams, isGrantScope, priorityLevel, priorityReach,
+  type OrderableStep, type Membership, type GrantScope,
 } from './team-priority'
 
 let nextItem = 100
@@ -238,18 +239,83 @@ describe('cleanSavedOrder', () => {
 const m = (o: Partial<Membership>): Membership => ({ teamId: 't', teamName: 'Team', isPrimary: false, position: 'collaborator', ...o })
 
 describe('who leads', () => {
-  it('is the team leader or the founder, as on the org chart', () => {
+  it('is a Founder, Manager or Team Leader on that team, the portal\'s one rule for it', () => {
     expect(leads({ position: 'team_leader' })).toBe(true)
     expect(leads({ position: 'founder' })).toBe(true)
+    expect(leads({ position: 'manager' })).toBe(true)
     expect(leads({ position: 'collaborator' })).toBe(false)
     expect(leads({ position: null })).toBe(false)
   })
+})
 
-  it('lets a leader set only the teams they lead, and an admin any', () => {
-    const jeannette = [m({ teamId: 'seo', position: 'team_leader' }), m({ teamId: 'graphics' })]
-    expect(canSetOrder('seo', jeannette, false)).toBe(true)
-    expect(canSetOrder('graphics', jeannette, false)).toBe(false)
-    expect(canSetOrder('graphics', [], true)).toBe(true)
+describe('who may set a team\'s order', () => {
+  /** A level's answers on the Access levels matrix, by row. */
+  const level = (rows: Partial<Record<'priority-own' | 'priority-all', boolean>>) => (key: string) =>
+    rows[key as 'priority-own' | 'priority-all'] ?? false
+  const rights = (o: { isAdmin?: boolean; rows?: Partial<Record<'priority-own' | 'priority-all', boolean>>; grant?: GrantScope | null }) =>
+    priorityRights({ isAdmin: o.isAdmin ?? false, can: o.isAdmin ? () => true : level(o.rows ?? {}), grant: o.grant ?? null })
+
+  const jeannette = [m({ teamId: 'seo', position: 'team_leader' }), m({ teamId: 'graphics' })]
+  const rock = [m({ teamId: 'africa', position: 'manager' })]
+  const jonatas = [m({ teamId: 'assistants' }), m({ teamId: 'translation' })]
+  const TEAMS = [{ id: 'africa' }, { id: 'assistants' }, { id: 'graphics' }, { id: 'seo' }, { id: 'translation' }]
+
+  it('lets an admin set every team, on no team at all', () => {
+    const r = rights({ isAdmin: true })
+    expect(r.everyTeam).toBe('admin')
+    expect(settableTeams(TEAMS, [], r)).toEqual(TEAMS)
+  })
+
+  it('lets a level with "teams they lead" set only the teams whose position leads', () => {
+    const r = rights({ rows: { 'priority-own': true } })
+    expect(canSetOrder('seo', jeannette, r)).toBe(true)
+    expect(canSetOrder('graphics', jeannette, r)).toBe(false)
+    expect(orderRightFor('africa', rock, r)).toBe('leads')
+    expect(settableTeams(TEAMS, jonatas, r)).toEqual([])
+  })
+
+  it('gives nothing to a leader whose level has that row switched off', () => {
+    expect(settableTeams(TEAMS, jeannette, rights({ rows: { 'priority-own': false } }))).toEqual([])
+  })
+
+  it('lets a level with "every team" set every team, including teams they are not on', () => {
+    const r = rights({ rows: { 'priority-all': true } })
+    expect(r.everyTeam).toBe('level')
+    expect(canSetOrder('africa', jeannette, r)).toBe(true)
+  })
+
+  it('lets a person added by name set the teams they are on, in any position', () => {
+    const r = rights({ grant: 'member' })
+    expect(settableTeams(TEAMS, jonatas, r).map(t => t.id)).toEqual(['assistants', 'translation'])
+    expect(orderRightFor('translation', jonatas, r)).toBe('member')
+    expect(canSetOrder('seo', jonatas, r)).toBe(false)
+  })
+
+  it('lets a person added by name for every team set every team', () => {
+    const r = rights({ grant: 'all' })
+    expect(r.everyTeam).toBe('name')
+    expect(settableTeams(TEAMS, [], r)).toEqual(TEAMS)
+  })
+
+  it('names the widest reason when there are several', () => {
+    expect(orderRightFor('seo', jeannette, rights({ rows: { 'priority-own': true, 'priority-all': true } }))).toBe('level')
+    expect(orderRightFor('seo', jeannette, rights({ rows: { 'priority-own': true }, grant: 'member' }))).toBe('leads')
+  })
+
+  it('says what each person reaches, for the Access levels page', () => {
+    const teams = [{ id: 'africa', name: 'Africa' }, { id: 'seo', name: 'SEO' }]
+    expect(priorityReach(teams, rock, rights({ rows: { 'priority-own': true } }))).toEqual({
+      every: null, teams: [{ id: 'africa', name: 'Africa', why: 'leads', position: 'manager' }],
+    })
+    expect(priorityReach(teams, [], rights({ grant: 'all' }))).toEqual({ every: 'name', teams: [] })
+    expect(priorityReach(teams, jeannette, rights({}))).toEqual({ every: null, teams: [] })
+  })
+
+  it('knows the two scopes a person can be given, and nothing else', () => {
+    expect(isGrantScope('member')).toBe(true)
+    expect(isGrantScope('all')).toBe(true)
+    expect(isGrantScope('admin')).toBe(false)
+    expect(isGrantScope(null)).toBe(false)
   })
 })
 
@@ -302,5 +368,26 @@ describe('updatedWhen', () => {
   it('gives the date otherwise, and the year only when it is not this one', () => {
     expect(updatedWhen(new Date(2026, 8, 2, 9, 0).toISOString(), now)).toBe('Sep 2 at 9:00 AM')
     expect(updatedWhen(new Date(2025, 11, 30, 9, 0).toISOString(), now)).toBe('Dec 30, 2025 at 9:00 AM')
+  })
+})
+
+describe('priorityLevel', () => {
+  it('reads a security admin with no level set as Admin', () => {
+    expect(priorityLevel('user', 'admin')).toEqual({ matrixLevel: 'admin', isAdmin: true })
+  })
+
+  it('keeps Admin Assistant on its own row of the matrix, security admin or not', () => {
+    expect(priorityLevel('admin_assistant', 'admin')).toEqual({ matrixLevel: 'admin_assistant', isAdmin: false })
+  })
+
+  // A level that says Admin on an account whose security role is not admin is
+  // drift, and drift must not hand out admin powers.
+  it('gives a level that says Admin without the security role no more than a User', () => {
+    expect(priorityLevel('admin', 'viewer')).toEqual({ matrixLevel: 'user', isAdmin: false })
+    expect(priorityLevel('admin', null)).toEqual({ matrixLevel: 'user', isAdmin: false })
+  })
+
+  it('leaves everyone else on their own level', () => {
+    expect(priorityLevel('team_leader', 'viewer')).toEqual({ matrixLevel: 'team_leader', isAdmin: false })
   })
 })

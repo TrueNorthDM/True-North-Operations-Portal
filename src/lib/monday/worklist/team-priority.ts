@@ -1,9 +1,9 @@
 // Team priority: one order for a team's open steps, set by its leader.
 //
-// Decided on 16 September 2026. Each team has one order. Its team leader sets it
-// (team_members.position 'team_leader' or 'founder'), an admin can set any
-// team's, and everyone on the team sees their own steps in it. Nobody else
-// changes priorities.
+// Decided on 16 September 2026. Each team has one order. The people who lead the
+// team set it (team position Founder, Manager or Team Leader), admins set any
+// team's, and everyone on the team sees their own steps in it, read only. Who
+// else may change it is configured on Admin → Access levels.
 //
 // The order is not a frozen list. A team has a thousand open steps (SEO had
 // 1,161 when this was written) and a leader places a handful of them; if saving
@@ -20,7 +20,16 @@
 // out from the arrangement (pinsFor): a step the leader moves is placed, unless
 // they move it back to where the default order has it.
 //
-// Pure, so the page, the editor and the tests all run the same rules.
+// Who may set a team's order is at the bottom of this file (priorityRights):
+// admins, the Team priority rows on Admin → Access levels, and people given it
+// by name there.
+//
+// Pure, so the page, the editor, the save action, the Access levels page and
+// the tests all run the same rules.
+
+import { teamPositionLeads } from '@/lib/directory/people-types'
+import { PRIORITY_ALL, PRIORITY_OWN } from '@/lib/access/surfaces'
+import type { RoleType } from '@/lib/auth/tier'
 
 export type Priority = 'high' | 'medium' | 'low'
 
@@ -294,9 +303,14 @@ export interface Membership {
   position: string | null
 }
 
-/** Leading a team is the team position, as on the org chart: team leader or founder. */
+/**
+ * Leading a team is the team position, by the portal's one rule for it
+ * (teamPositionLeads, which the org chart and tool grants use too): Founder,
+ * Manager or Team Leader. This file first had its own list and left Manager
+ * out, so Rock Kai could not set Africa's order.
+ */
 export function leads(m: Pick<Membership, 'position'>): boolean {
-  return m.position === 'team_leader' || m.position === 'founder'
+  return teamPositionLeads(m.position ?? 'collaborator')
 }
 
 /**
@@ -313,11 +327,6 @@ export function orderTeamFor(memberships: Membership[], asked?: string | null): 
   return [...memberships].sort((a, b) => a.teamName.localeCompare(b.teamName, 'en'))[0]?.teamId ?? null
 }
 
-/** Whether this person may set this team's order. */
-export function canSetOrder(teamId: string, memberships: Membership[], isAdmin: boolean): boolean {
-  return isAdmin || memberships.some(m => m.teamId === teamId && leads(m))
-}
-
 /**
  * The team the editor opens on: the one asked for if this person may set it,
  * then their own team if they lead it, then the first team they may set.
@@ -331,4 +340,118 @@ export function editorTeamFor(
   if (asked && may.has(asked)) return asked
   const own = orderTeamFor(memberships.filter(m => may.has(m.teamId)))
   return own ?? allowed[0]?.id ?? null
+}
+
+// ── Who may set a team's order ─────────────────────────────────────────────
+
+/** How far a person given team priority by name reaches. */
+export type GrantScope = 'member' | 'all'
+
+export const GRANT_SCOPES: readonly { value: GrantScope; label: string }[] = [
+  { value: 'member', label: 'Teams they are on' },
+  { value: 'all', label: 'Every team' },
+]
+
+export function isGrantScope(v: unknown): v is GrantScope {
+  return v === 'member' || v === 'all'
+}
+
+export interface PriorityRights {
+  /** Why they may set every team's order, or null when they may not. */
+  everyTeam: 'admin' | 'level' | 'name' | null
+  /** Their level lets them set the teams they lead. */
+  teamsTheyLead: boolean
+  /** They were given the teams they are on, by name. */
+  teamsTheyAreOn: boolean
+}
+
+/** Why a person may set one team's order. */
+export type OrderRight = 'admin' | 'level' | 'name' | 'leads' | 'member'
+
+/**
+ * Everything that lets a person set team priorities, in one place, so My Work,
+ * the save action and the Access levels page cannot disagree:
+ *
+ *   admin                                every team, always
+ *   level, "every team" row              every team
+ *   by name, every team                  every team
+ *   level, "teams they lead" row         each team where their position leads
+ *   by name, the teams they are on       each team they belong to, any position
+ *
+ * `can` answers the Access levels matrix for their level, so an admin passes
+ * both rows by itself.
+ */
+export function priorityRights(p: {
+  isAdmin: boolean
+  can: (surfaceKey: string) => boolean
+  grant: GrantScope | null
+}): PriorityRights {
+  return {
+    everyTeam: p.isAdmin ? 'admin' : p.can(PRIORITY_ALL) ? 'level' : p.grant === 'all' ? 'name' : null,
+    teamsTheyLead: p.can(PRIORITY_OWN),
+    teamsTheyAreOn: p.grant === 'member',
+  }
+}
+
+/** Why this person may set this team's order, or null when they may not. */
+export function orderRightFor(teamId: string, memberships: Membership[], rights: PriorityRights): OrderRight | null {
+  if (rights.everyTeam) return rights.everyTeam
+  const m = memberships.find(x => x.teamId === teamId)
+  if (!m) return null
+  if (rights.teamsTheyLead && leads(m)) return 'leads'
+  if (rights.teamsTheyAreOn) return 'member'
+  return null
+}
+
+/** Whether this person may set this team's order. */
+export function canSetOrder(teamId: string, memberships: Membership[], rights: PriorityRights): boolean {
+  return orderRightFor(teamId, memberships, rights) !== null
+}
+
+/** The teams, of those given, whose order this person may set. */
+export function settableTeams<T extends { id: string }>(teams: T[], memberships: Membership[], rights: PriorityRights): T[] {
+  return teams.filter(t => canSetOrder(t.id, memberships, rights))
+}
+
+/**
+ * The level team priority reads for a person, and whether they count as Admin.
+ *
+ * As the screens read it (getCurrentTier): a security admin whose level was
+ * never set counts as Admin. Admin powers also need the security role itself,
+ * as every admin write in the portal does, so a level that says Admin on an
+ * account that is not one reads the matrix as a User.
+ */
+export function priorityLevel(
+  roleType: RoleType,
+  securityRole: string | null | undefined,
+): { matrixLevel: RoleType; isAdmin: boolean } {
+  const securityAdmin = securityRole === 'admin'
+  let level = roleType
+  if (securityAdmin && level !== 'admin' && level !== 'admin_assistant') level = 'admin'
+  const isAdmin = level === 'admin' && securityAdmin
+  return { matrixLevel: level === 'admin' && !isAdmin ? 'user' : level, isAdmin }
+}
+
+export interface PriorityReach {
+  /** Why they reach every team, or null. */
+  every: 'admin' | 'level' | 'name' | null
+  /** Otherwise, the teams they reach and why each. */
+  teams: { id: string; name: string; why: 'leads' | 'member'; position: string | null }[]
+}
+
+/** What one person can change, for the list on Admin → Access levels. */
+export function priorityReach(
+  teams: { id: string; name: string }[],
+  memberships: Membership[],
+  rights: PriorityRights,
+): PriorityReach {
+  if (rights.everyTeam) return { every: rights.everyTeam, teams: [] }
+  return {
+    every: null,
+    teams: teams.flatMap(t => {
+      const why = orderRightFor(t.id, memberships, rights)
+      if (why !== 'leads' && why !== 'member') return []
+      return [{ id: t.id, name: t.name, why, position: memberships.find(m => m.teamId === t.id)?.position ?? null }]
+    }),
+  }
 }

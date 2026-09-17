@@ -2,11 +2,12 @@
 
 // Saving a team's priority order on My Work.
 //
-// Only the team's leader (team position 'team_leader' or 'founder') or an admin
-// may, and this action is the only way in: migration 084 gives the table no
-// write policy, so the check below is the security, not a courtesy. It runs on
-// the person really signed in, verified with the Auth server, and never on the
-// person View Stage is previewing.
+// Who may is decided by priorityRights (team-priority.ts): admins, the Team
+// priority rows on Admin → Access levels for the person's level, and people
+// given it there by name. This action is the only way in: migration 084 gives
+// the table no write policy, so the check below is the security, not a
+// courtesy. It runs on the person really signed in, verified with the Auth
+// server, and refuses outright while View Stage is previewing a level.
 //
 // No revalidatePath. Called from a server action it re-renders the page being
 // viewed, and the editor saves as the leader works: every arrow click would
@@ -16,9 +17,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { isSecurityAdmin } from '@/lib/auth/role'
-import { canSetOrder, cleanSavedOrder } from '@/lib/monday/worklist/team-priority'
-import { loadMemberships } from '@/lib/monday/worklist/team-priority-data'
+import { getViewAs } from '@/lib/auth/view-as-server'
+import { surfaceAllowed } from '@/lib/access/surfaces'
+import { canSetOrder, cleanSavedOrder, priorityLevel, priorityRights } from '@/lib/monday/worklist/team-priority'
+import { loadMemberships, loadPriorityGrant } from '@/lib/monday/worklist/team-priority-data'
 
 export interface SaveResult { ok: boolean; error?: string; savedAt?: string }
 
@@ -29,20 +31,34 @@ export async function saveTeamPriority(teamId: string, order: string[], pinned: 
   const clean = cleanSavedOrder(order, pinned)
   if (!clean) return { ok: false, error: 'The order could not be read. Reload the page and try again.' }
 
+  // A preview shows what a level would see. Saving from one would act with the
+  // admin's real session on behalf of somebody else's level, so it does not.
+  if (await getViewAs()) return { ok: false, error: "View Stage is only a preview. Close it to change a team's order." }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'You are signed out. Sign in again to save.' }
 
-  const [me, admin] = await Promise.all([
-    loadCurrentPerson(supabase, user, { real: true }),
-    isSecurityAdmin(),
-  ])
-  // Memberships from the privileged client: the answer to "does this person
-  // lead this team" should not depend on what their own session can read.
+  const me = await loadCurrentPerson(supabase, user, { real: true })
+  if (!me) return { ok: false, error: 'Your login is not linked to anyone in the Directory, so there is no team to save for.' }
+
+  // Read with the privileged client: whether this person may change the order
+  // should not depend on what their own session can read.
   const db = createAdminClient()
-  const memberships = me ? await loadMemberships(db, me.id) : []
-  if (!canSetOrder(teamId, memberships, admin)) {
-    return { ok: false, error: "Only this team's leader or an admin can change its order." }
+  const [{ data: profile }, { data: pageRows }, memberships, grant] = await Promise.all([
+    db.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+    db.from('access_level_pages').select('role_type, surface_key, allowed'),
+    loadMemberships(db, me.id),
+    loadPriorityGrant(db, me.id),
+  ])
+
+  const { matrixLevel, isAdmin } = priorityLevel(me.roleType, (profile as { role?: string } | null)?.role)
+  const configured = new Map(((pageRows ?? []) as { role_type: string; surface_key: string; allowed: boolean }[])
+    .map(r => [`${r.role_type}:${r.surface_key}`, r.allowed]))
+
+  const rights = priorityRights({ isAdmin, can: key => surfaceAllowed(matrixLevel, key, configured), grant })
+  if (!canSetOrder(teamId, memberships, rights)) {
+    return { ok: false, error: "You do not have access to change this team's order." }
   }
 
   const { data: team } = await db.from('teams').select('id').eq('id', teamId).maybeSingle()
@@ -53,7 +69,7 @@ export async function saveTeamPriority(teamId: string, order: string[], pinned: 
     team_id: teamId,
     step_order: clean.order,
     pinned: clean.pinned,
-    updated_by: me?.id ?? null,
+    updated_by: me.id,
     updated_at: savedAt,
   }, { onConflict: 'team_id' })
   if (error) return { ok: false, error: error.message }

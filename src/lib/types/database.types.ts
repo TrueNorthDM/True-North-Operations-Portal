@@ -550,6 +550,19 @@ export type Database = {
         Update: Partial<{ role_type: string; surface_key: string; allowed: boolean }>
         Relationships: []
       }
+      // Team priority on My Work (migrations 084 and 085).
+      monday_team_priority: {
+        Row: { team_id: string; step_order: string[]; pinned: string[]; updated_by: string | null; updated_at: string }
+        Insert: { team_id: string; step_order?: string[]; pinned?: string[]; updated_by?: string | null; updated_at?: string }
+        Update: Partial<{ step_order: string[]; pinned: string[]; updated_by: string | null; updated_at: string }>
+        Relationships: []
+      }
+      monday_priority_grants: {
+        Row: { person_id: string; scope: 'member' | 'all'; granted_by: string | null; granted_at: string }
+        Insert: { person_id: string; scope: 'member' | 'all'; granted_by?: string | null; granted_at?: string }
+        Update: Partial<{ scope: 'member' | 'all'; granted_by: string | null; granted_at: string }>
+        Relationships: []
+      }
       tr_clients: {
         Row: TrClientRow
         Insert: Omit<TrClientRow, 'id' | 'created_at' | 'parent_id'> & { id?: number; created_at?: string; parent_id?: number | null }

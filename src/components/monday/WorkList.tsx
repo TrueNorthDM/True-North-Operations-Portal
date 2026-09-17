@@ -23,8 +23,9 @@
  * A person's list, or a team's, follows that team's priority order when it has
  * one (team-priority.ts): the On-going block is in the team's order, the Team
  * column says each step's place in it, and a line above the list says whose
- * order it is. Team leaders and admins get a third option beside Mine and
- * Everyone, Team priority, which opens the editor; nobody else changes it.
+ * order it is. The people who may change it (team-priority.ts, priorityRights)
+ * get a third option beside Mine and Everyone, Team priority, which opens the
+ * editor.
  */
 
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, useTransition, type ReactNode, type UIEvent } from 'react'
@@ -1116,7 +1117,7 @@ export function WorkList({
                 {teamOrder.placed > 0 ? 'Edit order' : 'Set the order'}
               </a>
             ) : (
-              <span className="text-[12px] text-muted">Team leaders and admins set priorities</span>
+              <span className="text-[12px] text-muted">Only the team&apos;s leaders, admins and people given access can change it</span>
             )}
           </span>
         </div>

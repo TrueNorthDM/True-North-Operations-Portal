@@ -21,10 +21,10 @@ import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { resolvePersonFilter } from '@/lib/monday/worklist/filters'
 import {
-  canSetOrder, editorTeamFor, leads, orderTeamFor, stepKey, type Membership, type TeamOrderView,
+  canSetOrder, editorTeamFor, orderTeamFor, priorityRights, settableTeams, stepKey, type Membership, type TeamOrderView,
 } from '@/lib/monday/worklist/team-priority'
 import {
-  loadMemberships, loadOrderSummaries, loadSavedOrder, rankTeam, withTeamRanks, type OrderSummary,
+  loadMemberships, loadOrderSummaries, loadPriorityGrant, loadSavedOrder, rankTeam, withTeamRanks, type OrderSummary,
 } from '@/lib/monday/worklist/team-priority-data'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
@@ -108,16 +108,21 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
 
   const personId = resolvePersonFilter(sp, selfPersonId)
 
-  const [admin, myTeams, { data: teamRows }] = await Promise.all([
+  const [admin, access, myTeams, myGrant, { data: teamRows }] = await Promise.all([
     isSecurityAdmin(),
+    loadAccess(),
     selfPersonId ? loadMemberships(supabase, selfPersonId) : Promise.resolve([] as Membership[]),
+    selfPersonId ? loadPriorityGrant(supabase, selfPersonId) : Promise.resolve(null),
     supabase.from('teams').select('id, name').order('name'),
   ])
   const teams = (teamRows ?? []) as { id: string; name: string }[]
   const teamName = (id: string) => teams.find(t => t.id === id)?.name ?? 'team'
-  // Rendered from the person on screen, which is the previewed one under View
-  // Stage. Saving checks the person really signed in (my-work/actions.ts).
-  const settable = admin ? teams : teams.filter(t => myTeams.some(m => m.teamId === t.id && leads(m)))
+  // Who may set which team's order: the same rule the save action and Admin →
+  // Access levels use. Rendered from the level and person on screen, which are
+  // the previewed ones under View Stage; saving checks the person really signed
+  // in (my-work/actions.ts).
+  const rights = priorityRights({ isAdmin: access.isAdmin, can: access.can, grant: myGrant })
+  const settable = settableTeams(teams, myTeams, rights)
 
   if (sp.view === 'priority' && settable.length) {
     const teamId = editorTeamFor(settable, myTeams, sp.pteam)
@@ -167,7 +172,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   } else if (sp.team) {
     orderTeamId = sp.team
   }
-  const canEdit = !!orderTeamId && canSetOrder(orderTeamId, myTeams, admin)
+  const canEdit = !!orderTeamId && canSetOrder(orderTeamId, myTeams, rights)
   // A person's place in their team's order is counted against the whole team,
   // so ranking their list means reading the team's open steps too. A leader
   // will need them whatever is saved, so for them the read starts now.

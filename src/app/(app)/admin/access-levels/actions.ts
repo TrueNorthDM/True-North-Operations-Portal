@@ -13,6 +13,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { SURFACE_BY_KEY, CONFIGURABLE_ROLES } from '@/lib/access/surfaces'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { isGrantScope } from '@/lib/monday/worklist/team-priority'
 
 export interface SurfaceChange {
   roleType: string
@@ -52,4 +54,36 @@ export async function saveSurfaceChanges(changes: SurfaceChange[]) {
   // The sidebar is built in the root (app) layout, so every page's nav depends
   // on this. Revalidating the layout segment is the only correct scope.
   revalidatePath('/', 'layout')
+}
+
+// ── Team priority, given by name ────────────────────────────────────────────
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Give a person the right to set team priorities on My Work, change how far it
+ * reaches, or (scope null) take it away. Admin-only, through the admin's own
+ * session like the matrix: RLS (monday_priority_grants_admin_write, migration
+ * 085) permits is_admin(auth.uid()).
+ */
+export async function setPriorityGrant(personId: string, scope: string | null) {
+  if (!(await isSecurityAdmin())) throw new Error('Not authorized')
+  if (typeof personId !== 'string' || !UUID.test(personId)) throw new Error('Unknown person')
+  if (scope !== null && !isGrantScope(scope)) throw new Error('Unknown scope')
+
+  const supabase = await createClient()
+  if (scope === null) {
+    const { error } = await supabase.from('monday_priority_grants').delete().eq('person_id', personId)
+    if (error) throw new Error(error.message)
+  } else {
+    const { data: { user } } = await supabase.auth.getUser()
+    const me = user ? await loadCurrentPerson(supabase, user, { real: true }) : null
+    const { error } = await supabase.from('monday_priority_grants').upsert(
+      { person_id: personId, scope, granted_by: me?.id ?? null, granted_at: new Date().toISOString() },
+      { onConflict: 'person_id' },
+    )
+    if (error) throw new Error(error.message)
+  }
+
+  revalidatePath('/admin/access-levels')
 }

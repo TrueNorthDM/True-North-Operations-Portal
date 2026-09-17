@@ -23,6 +23,7 @@ import { SURFACES, SURFACE_GROUPS, CONFIGURABLE_ROLES, type ConfigurableRole } f
 import type { RoleType } from '@/lib/auth/tier'
 import { setPersonRoleType } from '@/app/(app)/admin/people/actions'
 import { saveSurfaceChanges } from '@/app/(app)/admin/access-levels/actions'
+import { TeamPriorityAccess, type PriorityAccessData } from '@/components/admin/TeamPriorityAccess'
 
 export interface AccessPerson {
   id: string
@@ -161,10 +162,13 @@ function PersonRow({ person, onChanged }: { person: AccessPerson; onChanged: () 
 export function AccessLevelsBoard({
   people,
   configured,
+  priority,
 }: {
   people: AccessPerson[]
   /** Rows from access_level_pages, keyed "roleType:surfaceKey". */
   configured: Record<string, boolean>
+  /** Teams, memberships and people given team priority by name, for its section. */
+  priority: PriorityAccessData
 }) {
   const router = useRouter()
   const [filter, setFilter] = useState<RoleType | 'all'>('all')
@@ -347,6 +351,15 @@ export function AccessLevelsBoard({
           </div>
         </div>
       </section>
+
+      {/* ── Team priority ───────────────────────────────────────────────── */}
+      <TeamPriorityAccess
+        people={people}
+        configured={configured}
+        data={priority}
+        editingMatrix={editing && changes.length > 0}
+        onChanged={onChanged}
+      />
 
       {/* ── Who has which level ─────────────────────────────────────────── */}
       <section className="space-y-4">

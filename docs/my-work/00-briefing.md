@@ -5,9 +5,14 @@ com arquivo:linha para cada afirmação, está em `01-feedback-analysis.md`.
 
 **Estado em 16/09/2026:** seções 10 e 11 implementadas e em produção (regra do passo por
 prazo, filtros, colunas, coluna Language). J2 virou **prioridade do time** e foi implementada
-no mesmo dia (migration 084): uma ordem por time, definida pelo team leader (posição
-`team_leader` ou `founder`) ou por um admin; cada pessoa vê os próprios passos nessa ordem.
-Quem tem mais de um time segue o time principal e pode trocar na linha acima da lista. Os
+no mesmo dia (migration 084): uma ordem por time; cada pessoa vê os próprios passos nessa
+ordem, só para leitura, e quem tem mais de um time segue o time principal e pode trocar na
+linha acima da lista (confirmado pelo usuário). Quem pode mudar a ordem é configurável em
+**Admin → Access levels** (migration 085, 16/09): admins sempre (todos os times); por nível,
+as linhas "Team priority" da matriz ("os times que lidera", que exige posição Founder,
+Manager ou Team Leader no time, ligada para todos os níveis; e "todos os times", ligada para
+Admin Assistant); e por nome, na lista da seção Team priority da mesma página ("os times em
+que está" ou "todos os times"). A seção mostra quem pode hoje e por quê. Os
 mockups aprovados estão em `/design-check/team-priority` e `/design-check/team-priority-entry`;
 o que foi construído, com dados de exemplo, em `/design-check/team-priority-live`. Em aberto:
 a lista de consertos no Monday está guardada em `02-monday-fixes.md`; o plano do Report para

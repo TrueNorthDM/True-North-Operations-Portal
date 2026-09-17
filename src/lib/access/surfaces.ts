@@ -23,7 +23,7 @@ import type { RoleType } from '@/lib/auth/tier'
 export type ConfigurableRole = Exclude<RoleType, 'admin'>
 export const CONFIGURABLE_ROLES: readonly ConfigurableRole[] = ['admin_assistant', 'team_leader', 'user']
 
-export type SurfaceGroup = 'Navigation' | 'People directory' | 'Clients Reports' | 'Managing'
+export type SurfaceGroup = 'Navigation' | 'People directory' | 'Team priority' | 'Clients Reports' | 'Managing'
 
 export interface Surface {
   key: string
@@ -39,6 +39,13 @@ export interface Surface {
   /** Longer explanation shown under the row when it needs one. */
   note?: string
 }
+
+/**
+ * The two Team priority rows, named here because My Work, its save action and
+ * this page all check them (lib/monday/worklist/team-priority.ts).
+ */
+export const PRIORITY_OWN = 'priority-own'
+export const PRIORITY_ALL = 'priority-all'
 
 const ON: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: true, user: true }
 const PRIV: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: false, user: false }
@@ -131,6 +138,28 @@ export const SURFACES: readonly Surface[] = [
     note: 'Everyone’s card, every team, all tabs (Emails, Teams, Rates & Costs, Access log), the sensitive fields (salaries, internal rates, home address, date of birth), and the ability to change them.',
   },
 
+  // ── Team priority ─────────────────────────────────────────────────────────
+  // Who may set a team's priority order on My Work. The second row includes the
+  // first, like the directory levels above. Admins set every team's order
+  // whatever these say, and people can also be given it by name, further down
+  // this page. Defaults chosen on 16 September 2026: leading a team is enough
+  // at any level (how it behaved when it shipped), and the Admin Assistant
+  // level sets every team's order.
+  {
+    key: PRIORITY_OWN,
+    label: 'Set the priority order of the teams they lead',
+    group: 'Team priority',
+    defaults: ON,
+    note: 'Leading a team is a team position, not a level: Founder, Manager or Team Leader on that team, set on the Directory. Without one this row gives nothing. Everyone on the team sees their own steps on My Work in the order it sets.',
+  },
+  {
+    key: PRIORITY_ALL,
+    label: 'Set the priority order of every team',
+    group: 'Team priority',
+    defaults: PRIV,
+    note: 'Any team, whether or not they are on it, including the teams they lead.',
+  },
+
   // ── Clients Reports ───────────────────────────────────────────────────────
   { key: 'report-widget', label: 'Budget widget on the Home dashboard', group: 'Clients Reports', defaults: PRIV },
   // Written as a capability someone HAS rather than a restriction they suffer,
@@ -179,7 +208,7 @@ export const SURFACES: readonly Surface[] = [
 export const SURFACE_KEYS: ReadonlySet<string> = new Set(SURFACES.map(s => s.key))
 export const SURFACE_BY_KEY: ReadonlyMap<string, Surface> = new Map(SURFACES.map(s => [s.key, s]))
 
-export const SURFACE_GROUPS: readonly SurfaceGroup[] = ['Navigation', 'People directory', 'Clients Reports', 'Managing']
+export const SURFACE_GROUPS: readonly SurfaceGroup[] = ['Navigation', 'People directory', 'Team priority', 'Clients Reports', 'Managing']
 
 /**
  * Whether a level reaches a surface, given whatever rows are configured.
