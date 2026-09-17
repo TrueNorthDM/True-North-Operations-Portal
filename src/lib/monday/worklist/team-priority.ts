@@ -316,15 +316,28 @@ export function leads(m: Pick<Membership, 'position'>): boolean {
 /**
  * The team whose order a person's own list follows.
  *
- * The one asked for, if they are on it; otherwise their primary team; otherwise,
- * with no primary set, the first of their teams by name, so the answer does not
- * change from one page load to the next. Nobody on a team follows nobody's order.
+ * The one asked for, if they are on it. Otherwise their main team, when it has
+ * an order of its own; when it has none, the first of their other teams (by
+ * name) that has one; and with no order anywhere, their main team again, whose
+ * list is then in the default order. With no main team set, the first of their
+ * teams by name stands in for it, so the answer does not change between loads.
+ *
+ * Decided on 16 September 2026. The first rule was "always the main team", and
+ * it left every order reaching only its own leader: Jeannette was the only
+ * person whose main team is SEO. Someone on several teams can still pick any of
+ * them from the line above their list.
  */
-export function orderTeamFor(memberships: Membership[], asked?: string | null): string | null {
+export function orderTeamFor(
+  memberships: Membership[],
+  asked?: string | null,
+  hasOrder: (teamId: string) => boolean = () => false,
+): string | null {
   if (asked && memberships.some(m => m.teamId === asked)) return asked
-  const primary = memberships.find(m => m.isPrimary)
-  if (primary) return primary.teamId
-  return [...memberships].sort((a, b) => a.teamName.localeCompare(b.teamName, 'en'))[0]?.teamId ?? null
+  const byName = [...memberships].sort((a, b) => a.teamName.localeCompare(b.teamName, 'en'))
+  const main = memberships.find(m => m.isPrimary) ?? byName[0]
+  if (!main) return null
+  if (hasOrder(main.teamId)) return main.teamId
+  return byName.find(m => m.teamId !== main.teamId && hasOrder(m.teamId))?.teamId ?? main.teamId
 }
 
 /**

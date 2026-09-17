@@ -6,17 +6,22 @@ com arquivo:linha para cada afirmação, está em `01-feedback-analysis.md`.
 **Estado em 16/09/2026:** seções 10 e 11 implementadas e em produção (regra do passo por
 prazo, filtros, colunas, coluna Language). J2 virou **prioridade do time** e foi implementada
 no mesmo dia (migration 084): uma ordem por time; cada pessoa vê os próprios passos nessa
-ordem, só para leitura, e quem tem mais de um time segue o time principal e pode trocar na
-linha acima da lista (confirmado pelo usuário). Quem pode mudar a ordem é configurável em
+ordem, só para leitura. Quem tem mais de um time segue a ordem do time principal quando ele
+tem uma, e senão a de outro time seu que tenha (por nome); e sempre vê a troca entre os seus
+times na linha acima da lista (decidido em 16/09, depois de ver que a primeira regra, "sempre
+o time principal", fazia cada ordem chegar só ao próprio líder). Quem pode mudar a ordem é configurável em
 **Admin → Access levels** (migration 085, 16/09): admins sempre (todos os times); por nível,
 as linhas "Team priority" da matriz ("os times que lidera", que exige posição Founder,
 Manager ou Team Leader no time, ligada para todos os níveis; e "todos os times", ligada para
 Admin Assistant); e por nome, na lista da seção Team priority da mesma página ("os times em
 que está" ou "todos os times"). A seção mostra quem pode hoje e por quê. Os
 mockups aprovados estão em `/design-check/team-priority` e `/design-check/team-priority-entry`;
-o que foi construído, com dados de exemplo, em `/design-check/team-priority-live`. Em aberto:
-a lista de consertos no Monday está guardada em `02-monday-fixes.md`; o plano do Report para
-team leaders (J5, opção c) está em `03-report-for-team-leaders-plan.md`.
+o que foi construído, com dados de exemplo, em `/design-check/team-priority-live`. Em aberto
+(lista completa no fim da seção 10): a lista de consertos no Monday está guardada em
+`02-monday-fixes.md`; o plano do Report para team leaders (J5, opção c) está em
+`03-report-for-team-leaders-plan.md`; J3 segue em investigação; e a meta do AAAF (A8) entrou
+na lista do que precisa ser resolvido. As respostas, em inglês, uma para cada, estão em
+`04-reply-to-jeannette.md` e `05-reply-to-stephanie.md`.
 
 > **Não envie nada à equipe a partir do `01-feedback-analysis.md`.** As respostas prontas
 > daquele arquivo foram escritas antes da verificação, e sete delas estão erradas. As
@@ -446,6 +451,8 @@ Números são fotografia do dia em que foram tirados. O Monday muda todo dia.
 | Análise completa, 13 itens com evidência e 51 achados | `docs/my-work/01-feedback-analysis.md` |
 | Consertos no Monday, guardados para depois | `docs/my-work/02-monday-fixes.md` |
 | Report para team leaders (J5), plano | `docs/my-work/03-report-for-team-leaders-plan.md` |
+| Resposta à Jeannette, em inglês (16/09) | `docs/my-work/04-reply-to-jeannette.md` |
+| Resposta à Stephanie, em inglês (16/09) | `docs/my-work/05-reply-to-stephanie.md` |
 | Mockups do J2 (só no ambiente local) | `/design-check/team-priority` (modelo decidido) e `/design-check/my-work-priority` (A + C) |
 | Handoff de design do módulo (fora do git) | `Design/My Work : Report/` |
 | Lista do My Work | `src/components/monday/WorkList.tsx` |
@@ -481,7 +488,23 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
 
 **Dependências.** Migration 082 (`stages` em `monday_board_steps`, `due_col` em `monday_assignments`). O código funciona sem ela, com a regra antiga. Depois dela: descoberta + sincronização completa. A primeira sincronização não grava eventos falsos no histórico (linhas remapeadas e colunas que deixaram de ser passo são ignoradas pelo change log).
 
-**Fica para depois:** J5 (team leaders verem o Report), a fase 5 (leitura resiliente do Monday), marcar "aguardando o passo anterior".
+**Fica para depois:**
+
+- J5: team leaders verem o Report (plano em `03-report-for-team-leaders-plan.md`).
+- J3: ainda em investigação (decidido em 16/09; a resposta à Jeannette diz só isso). A
+  automação que devia marcar On-Page SEO como "Not Relevant" nas páginas que não são em
+  inglês do AAAF - Publishing, e as 95 páginas em inglês marcadas "Not Relevant" (contagem de
+  15/09). Itens 1 e 2 de `02-monday-fixes.md`.
+- A8: a meta de 2 páginas por semana do AAAF e a pergunta da Stephanie sobre a Wendy e a
+  Amy. Fora do My Work, mas para resolver (decidido em 16/09). O que já se sabe, de 10/09
+  (seção 2): a meta é a de inglês; nas quatro semanas de 10/08 a 06/09 saíram 0, 0, 0 e 1;
+  a fila tinha inglês 5, português 22, espanhol 22, suaíli 22, então o gargalo é página em
+  inglês chegando, não a tradução. Para responder quem segura, é preciso saber qual coluna
+  de pessoa do AAAF - Publishing é de qual etapa. De lado: Gad Rukundo publica e não está na
+  lista de publishers; o HFA publica em francês e não tem meta de francês. Reconferir tudo
+  antes de agir.
+- A fase 5 (leitura resiliente do Monday).
+- Marcar "aguardando o passo anterior".
 
 ## 11. Exemplos do J4 (15/09)
 

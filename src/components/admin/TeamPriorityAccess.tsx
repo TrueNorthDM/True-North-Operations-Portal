@@ -163,7 +163,7 @@ export function TeamPriorityAccess({
               ['Admins', "set every team's order, always."],
               ['By level', 'the two Team priority rows in the table above. "The teams they lead" also needs a team position: Founder, Manager or Team Leader on that team, set on the Directory.'],
               ['By name', 'the people added here, whatever their level: for the teams they are on, or for every team.'],
-              ['Everyone else', "sees their own steps in their team's order and cannot change it. Someone on more than one team follows their primary team, and can switch."],
+              ['Everyone else', "sees their own steps in their team's order and cannot change it. Someone on more than one team follows their main team's order, or another of their teams' when the main one has none, and can switch between them."],
             ].map(([title, text], i) => (
               <li key={title} className="flex gap-2.5">
                 <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 mt-px rounded-full bg-tn-teal-soft text-tn-teal font-(family-name:--font-display) font-extrabold text-[11px]">{i + 1}</span>

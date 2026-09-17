@@ -337,6 +337,33 @@ describe('orderTeamFor', () => {
     expect(orderTeamFor(stephanie, 'writers')).toBe('graphics')
   })
 
+  // Kathleen: Social Media is her main team, SEO her second.
+  const kathleen = [
+    m({ teamId: 'social', teamName: 'Social Media', isPrimary: true, position: 'team_leader' }),
+    m({ teamId: 'seo', teamName: 'SEO' }),
+  ]
+
+  it('follows another of their teams that has an order when the main team has none', () => {
+    expect(orderTeamFor(kathleen, null, id => id === 'seo')).toBe('seo')
+  })
+
+  it('keeps the main team once it has an order of its own', () => {
+    expect(orderTeamFor(kathleen, null, () => true)).toBe('social')
+  })
+
+  it('stays on the main team when no team has an order', () => {
+    expect(orderTeamFor(kathleen, null, () => false)).toBe('social')
+  })
+
+  it('picks the first by name when several other teams have orders', () => {
+    const three = [...kathleen, m({ teamId: 'graphics', teamName: 'Graphics' })]
+    expect(orderTeamFor(three, null, id => id !== 'social')).toBe('graphics')
+  })
+
+  it('still follows the team asked for, order or not', () => {
+    expect(orderTeamFor(kathleen, 'social', id => id === 'seo')).toBe('social')
+  })
+
   it('picks by name when no team is primary, and nothing for nobody on a team', () => {
     expect(orderTeamFor([m({ teamId: 'w', teamName: 'Writers' }), m({ teamId: 'a', teamName: 'Africa' })])).toBe('a')
     expect(orderTeamFor([])).toBeNull()

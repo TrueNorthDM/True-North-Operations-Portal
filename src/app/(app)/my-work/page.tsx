@@ -163,67 +163,62 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
     }
   }
 
-  // Whose order the list follows: a person's team, or the team chosen.
-  let orderTeamId: string | null = null
+  // Whose order the list follows: one of a person's teams, or the team chosen.
   let orderChoices: Membership[] = []
-  if (personId) {
-    orderChoices = personId === selfPersonId ? myTeams : await loadMemberships(supabase, personId)
-    orderTeamId = orderTeamFor(orderChoices, sp.pteam)
-  } else if (sp.team) {
-    orderTeamId = sp.team
-  }
-  const canEdit = !!orderTeamId && canSetOrder(orderTeamId, myTeams, rights)
-  // A person's place in their team's order is counted against the whole team,
-  // so ranking their list means reading the team's open steps too. A leader
-  // will need them whatever is saved, so for them the read starts now.
-  const teamRead = (id: string) => loadWorklist(supabase, { teamId: id, openOnly: true })
-  const earlyTeamWork = orderTeamId && personId && canEdit ? teamRead(orderTeamId) : null
-  // Handled here so a failure is not an unhandled rejection when the read turns
-  // out not to be needed; awaited below, it still throws.
-  earlyTeamWork?.catch(() => {})
+  if (personId) orderChoices = personId === selfPersonId ? myTeams : await loadMemberships(supabase, personId)
+  const candidates = personId ? orderChoices.map(m => m.teamId) : sp.team ? [sp.team] : []
 
-  const [data, { data: peopleRows }, summaries] = await Promise.all([
-    loadWorklist(supabase, { personId, teamId: sp.team || null, includeDone: sp.done === '1' }),
+  // The list itself starts reading now; everything below only decides its order.
+  // Handled here so a failure while the order is still being worked out is not
+  // an unhandled rejection; awaited below, it still throws.
+  const dataRead = loadWorklist(supabase, { personId, teamId: sp.team || null, includeDone: sp.done === '1' })
+  dataRead.catch(() => {})
+
+  // Which of those teams have an order, in one small query. A person follows
+  // their main team's order, or another of theirs when the main one has none
+  // (orderTeamFor), so this has to be known before the team is chosen. With no
+  // team to follow, only whether the table exists is asked, and only of someone
+  // who could open the editor.
+  const summaries = candidates.length
+    ? await loadOrderSummaries(supabase, candidates)
+    : settable.length
+      ? await loadOrderSummaries(supabase, [])
+      : { available: false, byTeam: new Map<string, OrderSummary>() }
+  const hasOrder = (id: string) => (summaries.byTeam.get(id)?.placed ?? 0) > 0
+  const orderTeamId = personId ? orderTeamFor(orderChoices, sp.pteam, hasOrder) : (sp.team || null)
+  const canEdit = !!orderTeamId && canSetOrder(orderTeamId, myTeams, rights)
+
+  // Nothing to say and nothing to rank for someone on one team that has no
+  // order, which they cannot set: their list is in the default order, exactly
+  // as it was, at no extra cost. Anyone on several teams always gets the line
+  // above the list, so they can see every team they are on and switch.
+  const needed = !!orderTeamId && summaries.available && (canEdit || hasOrder(orderTeamId) || orderChoices.length > 1)
+  // A person's place in their team's order is counted against the whole team,
+  // so ranking their list means reading the team's open steps too. A team's own
+  // list already holds them.
+  const [data, { data: peopleRows }, order, teamWork] = await Promise.all([
+    dataRead,
     supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name'),
-    // With no team to follow, only whether the table exists is asked, and only
-    // of someone who could open the editor.
-    orderTeamId
-      ? loadOrderSummaries(supabase, personId ? orderChoices.map(m => m.teamId) : [orderTeamId])
-      : settable.length
-        ? loadOrderSummaries(supabase, [])
-        : Promise.resolve({ available: false, byTeam: new Map<string, OrderSummary>() }),
+    needed && orderTeamId ? loadSavedOrder(supabase, orderTeamId) : Promise.resolve(null),
+    needed && orderTeamId && personId ? loadWorklist(supabase, { teamId: orderTeamId, openOnly: true }) : Promise.resolve(null),
   ])
 
   let rows = data.rows
   let teamOrder: TeamOrderView | null = null
-  if (orderTeamId && summaries.available) {
-    const followed = summaries.byTeam.get(orderTeamId)
-    const otherHasOrder = [...summaries.byTeam.entries()].some(([id, o]) => id !== orderTeamId && o.placed > 0)
-    // Nothing to say and nothing to rank: nobody set this team's order, the
-    // reader cannot set it, and no other team of theirs has one to switch to.
-    // Their list is in the default order, exactly as it was, at no extra cost.
-    const needed = canEdit || (followed?.placed ?? 0) > 0 || (orderChoices.length > 1 && otherHasOrder)
-    if (needed) {
-      const [order, teamWork] = await Promise.all([
-        loadSavedOrder(supabase, orderTeamId),
-        personId ? (earlyTeamWork ?? teamRead(orderTeamId)) : Promise.resolve(null),
-      ])
-      if (order.available) {
-        const { ranking } = rankTeam(teamWork ? teamWork.rows : data.rows, order.saved)
-        rows = withTeamRanks(data.rows, ranking)
-        teamOrder = {
-          teamId: orderTeamId,
-          teamName: teamName(orderTeamId),
-          placed: ranking.pinned.size,
-          updatedAt: order.updatedAt,
-          updatedBy: order.updatedByName,
-          updatedBySelf: !!selfPersonId && order.updatedById === selfPersonId,
-          canEdit,
-          choices: orderChoices
-            .map(m => ({ id: m.teamId, name: m.teamName }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        }
-      }
+  if (orderTeamId && order?.available) {
+    const { ranking } = rankTeam(teamWork ? teamWork.rows : data.rows, order.saved)
+    rows = withTeamRanks(data.rows, ranking)
+    teamOrder = {
+      teamId: orderTeamId,
+      teamName: teamName(orderTeamId),
+      placed: ranking.pinned.size,
+      updatedAt: order.updatedAt,
+      updatedBy: order.updatedByName,
+      updatedBySelf: !!selfPersonId && order.updatedById === selfPersonId,
+      canEdit,
+      choices: orderChoices
+        .map(m => ({ id: m.teamId, name: m.teamName }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     }
   }
   const available = summaries.available
