@@ -386,7 +386,7 @@ aplicado em silêncio como padrão, e valer igual no My Work e no Report.
 3. Aceitar o override de rótulo no portal (fase 3), revertendo a regra de que só o Monday
    decide o que é concluído?
 4. Quem conversa com os donos dos boards sobre a limpeza no Monday?
-5. Gad Rukundo deve contar como publisher? O francês do HFA deve ter meta?
+5. Gad Rukundo deve contar como publisher? O francês do HFA deve ter meta? (Decidido em 18/09: não e não; ver seção 10.)
 6. Quais respostas mandar à Jeannette e à Stephanie, e quando: antes da fase 1, ou junto
    com ela?
 
@@ -531,9 +531,13 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
   (seção 2): a meta é a de inglês; nas quatro semanas de 10/08 a 06/09 saíram 0, 0, 0 e 1;
   a fila tinha inglês 5, português 22, espanhol 22, suaíli 22, então o gargalo é página em
   inglês chegando, não a tradução. Para responder quem segura, é preciso saber qual coluna
-  de pessoa do AAAF - Publishing é de qual etapa. De lado: Gad Rukundo publica e não está na
-  lista de publishers; o HFA publica em francês e não tem meta de francês. Reconferir tudo
-  antes de agir.
+  de pessoa do AAAF - Publishing é de qual etapa. Reconferir tudo antes de agir.
+  **Decidido em 18/09:** Gad Rukundo não entra na lista de publishers, porque não está mais
+  ativo no time. Conferido: inativo no diretório, offboarding concluído, sem time e sem login
+  no portal, últimas horas em 27/12/2024. A conta dele no Monday continua ativa (convidado,
+  última atividade em 22/01/2025). Tem um passo aberto em Web Dev & Tech Support ("Not
+  Relevant" na coluna Status, que já está no item 3 de `02-monday-fixes.md`). Francês do HFA:
+  sem meta por enquanto.
 - A fase 5 (leitura resiliente do Monday).
 - Marcar "aguardando o passo anterior".
 
