@@ -490,14 +490,24 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
 
 **Fica para depois:**
 
-- **Urgente, achado em 16/09:** a chave que esconde boards parados está **ligada** em produção
-  (`app_settings.monday_hide_stale_boards = true`) e a metade que traz o board de volta não
-  funciona. A sincronização só lê boards visíveis (`ingest.ts:443`), então a atividade de um
-  board escondido nunca é atualizada. Em 16/09: 264 boards, 43 visíveis, 221 escondidos sem
-  fixar, e nenhum desses 221 relido desde 08/09. Trabalho novo num board escondido não aparece
-  no My Work. Conserto: a sincronização conferir a atividade dos boards escondidos (uma
-  leitura leve por board) antes de a regra decidir. Desligar a chave sozinha não traz ninguém
-  de volta.
+- **Resolvido em 17 e 18/09: a chave que esconde boards parados.** Estava ligada em produção e
+  não funcionava em nenhum sentido. Nenhum board escondido podia voltar, porque a sincronização
+  só lê boards visíveis e a atividade de um board vem dos itens. Pior: a regra só rodava quando
+  uma sincronização terminava todos os boards, o que nunca acontece (cada uma lê uns 28 dos 43
+  e para), então ela não rodava desde o dia em que a chave foi ligada. Consertos: a descoberta
+  guarda o `updated_at` de cada board no Monday (migration 086, rodada em 18/09); um board
+  escondido que mudou desde a última leitura é lido de novo (`boardsToProbe`); a regra roda ao
+  fim de toda sincronização; e a fila lê primeiro os boards que o Monday diz terem mudado
+  (`readOrder`). Commits a34a486 e 270d92d, mais o ajuste da fila. Combinado com você: a
+  primeira sincronização depois disso esconde SOP's for the SEO's, SOP's Development, BM -
+  Photo Curation Audits, Swiftype Audits, Build Vibe app e SEO AI Custom Tools (114 passos
+  abertos, nenhum tocado em seis meses). Qualquer um volta com um clique em Settings → My Work
+  sources.
+- **Regra confirmada em 18/09 (já valia desde 15/09):** um status que o Monday marca como
+  concluído, em qualquer board e coluna, fecha o passo; e uma coluna de status sem nenhum
+  status concluído nunca vira passo. Conferido nas 3.287 linhas abertas: nenhuma escapa. A
+  única demora é até a próxima leitura do board depois de uma mudança no Monday, que com a fila
+  nova fica em até uma sincronização (4 horas).
 - J5: team leaders verem o Report (plano em `03-report-for-team-leaders-plan.md`).
 - J3: ainda em investigação (decidido em 16/09; a resposta à Jeannette diz só isso). A
   automação que devia marcar On-Page SEO como "Not Relevant" nas páginas que não são em

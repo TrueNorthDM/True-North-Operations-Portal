@@ -103,7 +103,26 @@ describe('boardsToProbe', () => {
 })
 
 describe('readOrder', () => {
-  const b = (id: number, included: boolean, itemsSyncedAt: string | null) => ({ id, included, itemsSyncedAt })
+  const b = (id: number, included: boolean, itemsSyncedAt: string | null, boardUpdatedAt: string | null = null) =>
+    ({ id, included, itemsSyncedAt, boardUpdatedAt })
+  /** Hours, not months: a sync reads boards a few hours apart. */
+  const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString()
+
+  // Six "Not Relevant" rows stayed open for hours after Monday marked the
+  // label completed, because their board waited its turn by age.
+  it('reads a board Monday says has changed before older boards that have not', () => {
+    const order = readOrder([
+      b(1, true, hoursAgo(8), hoursAgo(9)),
+      b(2, true, hoursAgo(4), hoursAgo(1)),
+      b(3, true, hoursAgo(6), hoursAgo(7)),
+    ], new Set())
+    expect(order.map(x => x.id)).toEqual([2, 1, 3])
+  })
+
+  it('reads the changed boards among themselves least recently read first', () => {
+    const order = readOrder([b(1, true, hoursAgo(2), hoursAgo(1)), b(2, true, hoursAgo(4), hoursAgo(1))], new Set())
+    expect(order.map(x => x.id)).toEqual([2, 1])
+  })
 
   // A firing reads about 28 of 43 shown boards. A hidden board queued after
   // all of them would never be reached, so it takes its place by its stamp.

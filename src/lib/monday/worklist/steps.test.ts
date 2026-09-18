@@ -47,6 +47,16 @@ describe('seedSteps', () => {
     ])).toEqual([['SEO 3', ['Media/Meta & Alt Tags by Create By']]])
   })
 
+  // The same rule seen from the owner: a people column whose only status with a
+  // deadline cannot be completed owns no step, so none of its rows are work.
+  it('gives no step to an owner whose status can never be completed', () => {
+    const steps = seedSteps([
+      p('people1', 'Reviewer'), s('status1', 'Review', WORK, []), d('date1', 'Review by'),
+      p('people2', 'Writer'), step('status2', 'Writing'), d('date2', 'Write by'),
+    ])
+    expect(steps.map(x => [x.peopleTitle, x.stages.length])).toEqual([['Reviewer', 0], ['Writer', 1]])
+  })
+
   // AAAF - Photo Curation Audits. "Assign" carries "No edits needed" and has no
   // deadline, so the Assigner is not a step: the case Stephanie raised.
   it('does not make a step of a status with no deadline', () => {
@@ -135,6 +145,14 @@ describe('doneLabelIndices and isStageStatus', () => {
   it('survives settings it cannot read', () => {
     expect(doneLabelIndices(null)).toEqual([])
     expect(doneLabelIndices('not json')).toEqual([])
+  })
+
+  // Decided again on 18 September 2026: a status column in which Monday marks
+  // no label as completed can never be finished, so it is never a step and
+  // nothing read from it reaches My Work.
+  it('rejects a status column with no label marked as completed', () => {
+    expect(isStageStatus(s('x', 'Review', WORK, []))).toBe(false)
+    expect(isStageStatus(s('x', 'Review', WORK, [1]))).toBe(true)
   })
 
   it('rejects attributes by name, whatever Monday says about their labels', () => {

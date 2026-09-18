@@ -20,6 +20,11 @@ aceitável.
 - É o primeiro porque afeta o site no ar.
 - Contagem de 15/09 (lida do Monday): inglês 481 páginas, 382 Done, 95 Not Relevant, 4 em
   branco.
+- **Não é sobre a lista de ninguém.** "Not Relevant" conta como concluído na coluna On-Page SEO
+  desse board, então essas páginas não aparecem no My Work (conferido em 18/09: as 609 linhas
+  da coluna estão concluídas). O problema é o conteúdo: páginas em inglês deveriam receber
+  On-Page SEO, e "Not Relevant" nelas provavelmente está errado. É para a equipe de SEO revisar
+  no Monday.
 
 ### 2. AAAF - Publishing: automação de pular On-Page SEO nas páginas que não são em inglês (J3)
 

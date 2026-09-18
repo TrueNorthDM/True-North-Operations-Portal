@@ -466,7 +466,11 @@ export async function ingestSlice(
     boardUpdatedAt: b.board_updated_at ?? null,
     itemsSyncedAt: b.items_synced_at,
   }))))
-  const boards = readOrder(all.map(b => ({ ...b, itemsSyncedAt: b.items_synced_at })), probe)
+  const boards = readOrder(all.map(b => ({
+    ...b,
+    itemsSyncedAt: b.items_synced_at,
+    boardUpdatedAt: b.board_updated_at ?? null,
+  })), probe)
 
   // Only boards that have steps: the other 65 are spreadsheets with nobody on
   // them, and walking their items would be reading for nothing.

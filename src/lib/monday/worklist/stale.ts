@@ -96,21 +96,31 @@ export function boardsToProbe(boards: BoardProbe[]): number[] {
 
 /**
  * The order the sync reads boards in: the shown ones and the hidden ones worth
- * a look (boardsToProbe) together, least recently read first, never read before
- * all of them.
+ * a look (boardsToProbe) together. Boards Monday says have changed since we
+ * last read them go first, then everything else, least recently read first,
+ * never read before all of them.
  *
- * One order and not "shown first". A firing reads about 28 of the 43 shown
- * boards before its time runs out, and the next hop that should read the rest
- * is routinely lost, so anything queued after the shown boards was never
- * reached. Probes queued last would have been the same hole with a new name.
- * A hidden board worth reading was last read long ago, so by its stamp it goes
- * to the front, and it stops being a probe the moment it is read.
+ * Changed first because a firing reads about 28 of the 43 shown boards before
+ * its time runs out, and the next hop that should read the rest is routinely
+ * lost. Read purely by age, a change made in Monday (a label newly marked as
+ * completed, say) could wait two firings, about eight hours, to reach My Work;
+ * found on 18 September 2026 with six "Not Relevant" rows still open after
+ * Monday had marked the label completed. Monday bumps a board's updated_at for
+ * item changes and for settings changes alike, and discovery refreshes it at
+ * the head of every firing, so a changed board is read in the next one.
+ *
+ * One order and not "shown first": a hidden board worth reading was queued
+ * after the shown ones once, and a firing that stops at 28 never reached it.
  */
-export function readOrder<T extends { id: number; included: boolean; itemsSyncedAt: string | null }>(
-  boards: T[],
-  probe: ReadonlySet<number>,
-): T[] {
+export function readOrder<T extends {
+  id: number
+  included: boolean
+  itemsSyncedAt: string | null
+  boardUpdatedAt?: string | null
+}>(boards: T[], probe: ReadonlySet<number>): T[] {
+  const changed = (b: T) => !!b.boardUpdatedAt && (!b.itemsSyncedAt || b.boardUpdatedAt > b.itemsSyncedAt)
   return boards
     .filter(b => b.included || probe.has(b.id))
-    .sort((a, b) => (a.itemsSyncedAt ?? '').localeCompare(b.itemsSyncedAt ?? ''))
+    .sort((a, b) => Number(changed(b)) - Number(changed(a))
+      || (a.itemsSyncedAt ?? '').localeCompare(b.itemsSyncedAt ?? ''))
 }
