@@ -35,6 +35,9 @@ import { SearchField } from '@/components/ui/SearchField'
 import { PullInfo } from '@/components/PullInfo'
 import { COMPLETED_MONTHS } from '@/lib/monday/worklist/constants'
 import { chip, PRIORITY_CHIP, DUE_BADGE, DUE_TIME, type DueState } from './tokens'
+import { StatusChip } from './StatusChip'
+import { HistorySteps, historyWhen } from './HistorySteps'
+import type { HistoryData } from '@/lib/monday/worklist/history'
 import { personSelectValue, isMine } from '@/lib/monday/worklist/filters'
 import {
   applyListFilters, sortRows, nextSort, readListParams, writeListParams, activeFilterCount,
@@ -51,15 +54,7 @@ interface Prepared { row: WorkRow; due: ReturnType<typeof readDue> | null; hay: 
 
 interface Option { value: string; label: string }
 
-export interface HistoryEvent {
-  id: string
-  event: string
-  at: string | null
-  userId: number | null
-  column: string | null
-  from: string | null
-  to: string | null
-}
+export type { HistoryEvent } from '@/lib/monday/worklist/history'
 
 // Design tokens copied from the handoff rather than approximated. The portal's
 // own variables already carry most of them (--subtle is #f4f2ec, --muted is
@@ -80,14 +75,6 @@ const HEAD_CELL = "px-3 py-[11px] min-w-0 font-(family-name:--font-display) font
 const CELL = 'px-3 py-2.5 min-w-0 overflow-hidden text-[13px] leading-[1.4] break-words'
 
 
-/**
- * A status badge in Monday's own colour, white on the label's hex, which is
- * how Monday paints it. Grey only when a step has no status column paired.
- */
-function StatusChip({ text, colour }: { text: string; colour: string | null }) {
-  if (!colour) return <span className={`${chip} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>{text}</span>
-  return <span className={`${chip} text-white`} style={{ background: colour }}>{text}</span>
-}
 
 /** Counts in the thousands, written the way the handoff writes them. */
 const n = (v: number) => v.toLocaleString('en-US')
@@ -247,29 +234,22 @@ function readDue(date: string, suspect = false): { date: string; time: string; s
 
 
 
-function when(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-  })
-}
+const when = historyWhen
 
 export function HistoryPanel({ row, onClose, state }: {
   row: WorkRow
   onClose: () => void
   /** Design check only: show one of the panel's states without waiting for it. */
-  state?: { loading?: boolean; error?: string; events?: HistoryEvent[]; names?: Record<number, string> }
+  state?: { loading?: boolean; error?: string } & Partial<HistoryData>
 }) {
-  const [live, setLive] = useState<{
-    loading: boolean; error?: string; events?: HistoryEvent[]; names?: Record<number, string>
-  }>({ loading: true })
+  const [live, setLive] = useState<{ loading: boolean; error?: string } & Partial<HistoryData>>({ loading: true })
 
   useEffect(() => {
     if (state) return
     let alive = true
     fetch(`/api/monday/item-history?board=${row.boardId}&item=${row.itemId}`)
       .then(r => r.json())
-      .then(d => { if (alive) setLive(d.error ? { loading: false, error: d.error } : { loading: false, events: d.events, names: d.names }) })
+      .then(d => { if (alive) setLive(d.error ? { loading: false, error: d.error } : { loading: false, events: d.events, names: d.names, steps: d.steps, reader: d.reader }) })
       .catch(e => { if (alive) setLive({ loading: false, error: String(e) }) })
     return () => { alive = false }
   }, [row.boardId, row.itemId, state])
@@ -350,7 +330,14 @@ export function HistoryPanel({ row, onClose, state }: {
             </p>
           )}
 
-          {s.events && s.events.length > 0 && s.events.map(e => (
+          {/* One card per step, whose it is, yours first (HistorySteps). An
+              answer without steps, from an older deploy or the design check,
+              falls back to the plain timeline below. */}
+          {s.events && s.events.length > 0 && s.steps && (
+            <HistorySteps data={{ events: s.events, names: s.names ?? {}, steps: s.steps, reader: s.reader ?? null }} steps={s.steps} />
+          )}
+
+          {s.events && s.events.length > 0 && !s.steps && s.events.map(e => (
             <div key={e.id} className="relative pl-[18px] mb-3">
               <span className="absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full bg-tn-teal" />
               <div className="text-[12.5px] leading-[1.45] text-tn-ink">
