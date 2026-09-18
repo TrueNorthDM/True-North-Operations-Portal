@@ -1111,10 +1111,11 @@ export function WorkList({
               <a
                 href={`/my-work?tab=work&view=priority&pteam=${teamOrder.teamId}`}
                 onClick={e => { e.preventDefault(); startTransition(() => router.push(`/my-work?tab=work&view=priority&pteam=${teamOrder.teamId}`)) }}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-tn-teal rounded-[8px] px-2 py-1 hover:bg-[rgba(30,125,127,.1)]"
+                className="inline-flex items-center gap-2 rounded-full px-[17px] py-2 font-(family-name:--font-display) font-extrabold text-[12.5px] bg-tn-primary border border-tn-primary shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                {teamOrder.placed > 0 || teamOrder.levels ? 'Edit order' : 'Set the order'}
+                {/* Styled as the editor's Save and close, so the way in and the way out read as one pair. */}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                <span className="text-[#ffffff]">{teamOrder.placed > 0 || teamOrder.levels ? 'Edit order' : 'Set the order'}</span>
               </a>
             ) : (
               <span className="text-[12px] text-muted">Only the team&apos;s leaders, admins and people given access can change it</span>
