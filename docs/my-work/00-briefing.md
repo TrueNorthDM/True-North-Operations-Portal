@@ -518,8 +518,9 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
   pela prioridade do board; workspaces pela melhor prioridade de board, depois mais passos
   abertos), e workspace ou board novo entra no fim do seu nível. Dentro de um board, a ordem
   da True North (prazo mais próximo primeiro). Guardado em `workspace_order` e `board_order`
-  de `monday_team_priority` (migração 087); sem a migração, o editor esconde os níveis e
-  continua como antes. Tela: `/design-check/team-priority-live?levels=1`.
+  de `monday_team_priority` (migração 087, rodada em 18/09; conferido: colunas no banco, a
+  ordem do SEO intacta com 236 passos à mão, escrita anônima recusada). Commit c636be4. Tela:
+  `/design-check/team-priority-live?levels=1`.
 - J5: team leaders verem o Report (plano em `03-report-for-team-leaders-plan.md`).
 - J3: ainda em investigação (decidido em 16/09; a resposta à Jeannette diz só isso). A
   automação que devia marcar On-Page SEO como "Not Relevant" nas páginas que não são em
