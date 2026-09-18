@@ -502,12 +502,19 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
   primeira sincronização depois disso esconde SOP's for the SEO's, SOP's Development, BM -
   Photo Curation Audits, Swiftype Audits, Build Vibe app e SEO AI Custom Tools (114 passos
   abertos, nenhum tocado em seis meses). Qualquer um volta com um clique em Settings → My Work
-  sources.
+  sources. **Verificado em 18/09:** a sincronização automática das 13:15 UTC escondeu sozinha
+  BM - Photo Curation Audits, Build Vibe app, SEO AI Custom Tools, SOP's for the SEO's e
+  Swiftype Audits. SOP's Development e Subitems of Human Resources List (on-going) foram
+  escondidos à mão no Settings no mesmo dia (ficaram fixados). Boards visíveis: 43 → 36.
 - **Regra confirmada em 18/09 (já valia desde 15/09):** um status que o Monday marca como
   concluído, em qualquer board e coluna, fecha o passo; e uma coluna de status sem nenhum
   status concluído nunca vira passo. Conferido nas 3.287 linhas abertas: nenhuma escapa. A
   única demora é até a próxima leitura do board depois de uma mudança no Monday, que com a fila
   nova fica em até uma sincronização (4 horas).
+- **Team priority em três níveis (pedido em 18/09):** ordenar por workspace, depois board,
+  depois item. Mockup com o time SEO real em `/design-check/team-priority-levels`
+  (`?level=board`, `?level=item`). Aguarda você confirmar: hierarquia rígida, os 206 passos já
+  colocados à mão no SEO continuam valendo, e o que ninguém ordenou segue a True North.
 - J5: team leaders verem o Report (plano em `03-report-for-team-leaders-plan.md`).
 - J3: ainda em investigação (decidido em 16/09; a resposta à Jeannette diz só isso). A
   automação que devia marcar On-Page SEO como "Not Relevant" nas páginas que não são em
