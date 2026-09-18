@@ -49,8 +49,10 @@ sempre.
 | Subitems of HFA - Translations | Proof Design | 15 |
 | Web Dev & Tech Support | Status | 14 |
 
-Cerca de 1.400 linhas saem das listas. Também no BM - SEO & Writing, Brief Draft SEO: 12
-linhas "Cancelled", que também não conta como concluído.
+Cerca de 1.400 linhas saem das listas. **Reconferido em 18/09: 1.422 passos abertos no My Work**
+com "Not Relevant" (ou "Canceled") numa coluna em que o Monday não marca esse status como
+concluído; a tabela continua certa. Menores, além dela: AAAF - SEO & Writing, Brief Draft SEO
+(7); Graphics - Social Media, Overlays (7); AAAF - Schema Audits, Audit (3).
 
 **Efeito colateral:** as barras de progresso desses boards no Monday passam a contar essas
 linhas como feitas. É por isso que é uma decisão sua, e não um ajuste técnico.
@@ -66,14 +68,28 @@ linhas como feitas. É por isso que é uma decisão sua, e não um ajuste técni
 
 ### 5. Itens em grupos "Completed" que continuam abertos
 
-| Board | Grupo | Linhas abertas |
-| --- | --- | --- |
-| AAAF - Social Media Planning | Completed | 160 (quase todas sem status) |
-| AAAF - Photo Curation Audits | Completed | 109 (107 Not Relevant) |
-| AAAF - Schema Audits | Completed | 36 (34 Stuck) |
-| SOP's for the SEO's | Archive | 28 |
+**Recontado em 18/09.** A tabela de 15/09 foi medida antes da regra do passo por prazo entrar,
+quando o portal ainda lia a coluna de status errada em vários boards. Com a regra, o grupo
+Completed do AAAF - Schema Audits não tem nada aberto (as 883 linhas estão concluídas; você
+conferiu no Monday e não achou nada Stuck, e estava certo), e o do AAAF - Social Media Planning
+caiu de 160 para 2. Hoje, passos que o My Work mostra em grupos com nome de trabalho terminado:
+195.
 
-Ou uma automação "ao mover para Completed, marcar Done", ou uma limpeza única.
+| Board | Grupo | Passos abertos (status) |
+| --- | --- | --- |
+| AAAF - Photo Curation Audits | Completed | 108 (107 Not Relevant, 1 Working on it) |
+| SOP's for the SEO's | Archive | 28 (sai do My Work com a regra de boards parados) |
+| Web Dev & Tech Support | Not Relevant | 14 (Not Relevant) |
+| AAAF - Schema Audits | Not Relevant - DO NOT DELETE OR MOVE THESE | 13 (10 Stuck, 3 Not Relevant) |
+| BM - General Audits | Completed | 10 (5 Hasn't Started Yet, 3 Stuck, 1 Working on it, 1 Not Relevant) |
+| BM - Social Media Planning | Completed | 6 (5 Stuck) |
+| Graphics - Social Media | Done | 4 |
+| AAAF - General Audits | Completed | 3 |
+| Outros 5 boards | Completed ou Not Relevant | 8 |
+
+Os "Not Relevant" desta tabela se resolvem com o item 3. O resto é item movido para um grupo
+de terminado sem o status acompanhar: uma automação "ao mover para Completed, marcar Done", ou
+uma limpeza única.
 
 ### 6. Arquivar o que parou
 
