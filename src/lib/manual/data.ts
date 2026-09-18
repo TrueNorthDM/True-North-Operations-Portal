@@ -131,12 +131,12 @@ export const MANUAL: ManualSection[] = [
     id: 'tsheets',
     title: 'QuickBooks Time (TSheets), Budget Usage Report',
     body: [
-      { kind: 'p', text: 'The Budget Usage Report tool at /tools/time-report replaces a manual process: the admin assistant used to export a TSheets CSV, build a pivot table in Excel, and copy hours cell-by-cell into the monthly Google Sheet. The portal does all of that automatically.' },
+      { kind: 'p', text: 'The Budget Usage Report tool at /work-tools/time-report replaces a manual process: the admin assistant used to export a TSheets CSV, build a pivot table in Excel, and copy hours cell-by-cell into the monthly Google Sheet. The portal does all of that automatically.' },
       { kind: 'subhead', text: 'The token' },
       { kind: 'p', text: 'A static API access token lives in app_settings.tsheets_api_token and is set in Settings → QuickBooks Time API. Like the Monday token, it never leaves the server, the component only receives { exists, last4 }. To generate one: TSheets → company menu → Company Settings → Add-ons → API Access.' },
       { kind: 'subhead', text: 'How it works' },
       { kind: 'steps', items: [
-        'User opens /tools/time-report (optionally with ?month=YYYY-MM; defaults to current month).',
+        'User opens /work-tools/time-report (optionally with ?month=YYYY-MM; defaults to current month).',
         'Server reads tsheets_api_token from app_settings.',
         'Server calls 3 TSheets REST v1 endpoints in parallel: GET /users, GET /jobcodes, GET /timesheets (filtered by date range).',
         'buildMatrix() sums duration (seconds → hours) per jobcode x user and pre-computes row/column totals.',

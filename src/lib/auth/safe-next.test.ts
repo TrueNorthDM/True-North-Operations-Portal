@@ -7,7 +7,7 @@ describe('safeNext', () => {
   })
 
   it('preserves query strings on a relative path', () => {
-    expect(safeNext('/tools/time-report?month=2026-07')).toBe('/tools/time-report?month=2026-07')
+    expect(safeNext('/work-tools/time-report?month=2026-07')).toBe('/work-tools/time-report?month=2026-07')
   })
 
   it('defaults to "/" for null, undefined, or empty', () => {

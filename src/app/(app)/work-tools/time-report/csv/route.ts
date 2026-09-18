@@ -1,5 +1,5 @@
 /**
- * GET /tools/time-report/csv?from=YYYY-MM&to=YYYY-MM&type=client|internal
+ * GET /work-tools/time-report/csv?from=YYYY-MM&to=YYYY-MM&type=client|internal
  *
  * `?month=` still works and means a range of one, which is what every link
  * written before the report could show more than a month meant anyway.

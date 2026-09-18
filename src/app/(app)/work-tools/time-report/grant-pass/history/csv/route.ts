@@ -1,5 +1,5 @@
 /**
- * GET /tools/time-report/grant-pass/history/csv?from=YYYY-MM&to=YYYY-MM
+ * GET /work-tools/time-report/grant-pass/history/csv?from=YYYY-MM&to=YYYY-MM
  *
  * The "month by month" table under Project Hours & Others, as a spreadsheet.
  * Tina went looking for it under Export in September 2026 and it was not there:
@@ -37,7 +37,7 @@ const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 
 export async function GET(request: Request) {
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/tools')
+  if (!access.canTool('grant-pass-report')) redirect('/work-tools')
 
   const q = new URL(request.url).searchParams
   const legacy = q.get('month') ?? undefined

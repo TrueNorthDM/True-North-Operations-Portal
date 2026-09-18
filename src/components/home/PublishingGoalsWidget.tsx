@@ -21,7 +21,7 @@
  *
  * It is only a link for people who can open the page behind it. The figures are
  * for everyone, but /dashboards/publishing is gated on its own tool grant, and a
- * card that looks clickable and bounces you to /tools is worse than a card that
+ * card that looks clickable and bounces you to /work-tools is worse than a card that
  * never offered.
  */
 

@@ -7,7 +7,7 @@ import { TranslationView } from '@/components/boards/TranslationView'
 export default async function BoardsTranslationPage() {
   // Same pair as the card that leads here, see /boards-beta/targets.
   const access = await requireSurface('tools')
-  if (!access.canTool('workload')) redirect('/tools')
+  if (!access.canTool('workload')) redirect('/work-tools')
 
   return <TranslationView />
 }

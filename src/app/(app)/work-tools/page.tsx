@@ -1,6 +1,8 @@
-// Tools & Dashboards, the unified hub. Two sections: the Boards Review
-// dashboards, and the capabilities (tools) used inside a project. The former
-// /dashboards landing redirects here; its sub-pages keep their own paths.
+// Work Tools, the unified hub (Tools & Dashboards at /tools until 18 September
+// 2026; the old addresses redirect here, next.config.ts). Two sections: the
+// dashboards a team works from, Href Link Management among them, and the
+// client reports. The former /dashboards landing redirects here; its sub-pages
+// keep their own paths.
 
 import { NavCard } from '@/components/NavCard'
 import { requireSurface } from '@/lib/access/resolve'
@@ -53,7 +55,7 @@ export default async function ToolsPage() {
   // never list different tools. Which of them appear is per team (Directory →
   // Teams → Tool access).
   const visible = TOOLS.filter(t => access.canTool(t.key))
-  const groups = (['Dashboards', 'Tools'] as const).map(group => ({
+  const groups = (['Dashboards', 'Reports'] as const).map(group => ({
     group,
     items: visible.filter(t => t.group === group),
   })).filter(g => g.items.length > 0)
@@ -61,8 +63,8 @@ export default async function ToolsPage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-extrabold text-tn-ink">Tools &amp; Dashboards</h1>
-        <p className="mt-1 text-muted">Boards Review dashboards and the capabilities you use inside a project.</p>
+        <h1 className="text-2xl font-extrabold text-tn-ink">Work Tools</h1>
+        <p className="mt-1 text-muted">The dashboards your team works from, and the client reports.</p>
       </div>
 
       {groups.map(({ group, items }) => (

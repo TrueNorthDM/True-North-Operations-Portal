@@ -1,5 +1,5 @@
 /**
- * GET /tools/time-report/history/csv?from=YYYY-MM&to=YYYY-MM
+ * GET /work-tools/time-report/history/csv?from=YYYY-MM&to=YYYY-MM
  *
  * The Full history table as a CSV, over any range rather than the calendar year
  * the screen shows. One row per month: budget, what came in from the month

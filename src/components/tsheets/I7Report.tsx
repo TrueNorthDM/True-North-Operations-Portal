@@ -122,7 +122,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
     const r = patch.range ?? range
     const team = patch.team ?? selectedTeam
     startNav(() => {
-      router.push(`/tools/time-report?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
+      router.push(`/work-tools/time-report?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
     })
   }
 

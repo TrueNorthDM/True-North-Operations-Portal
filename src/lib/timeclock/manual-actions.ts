@@ -95,8 +95,8 @@ export async function addManualEntries(inputs: ManualEntryInput[]): Promise<Resu
   const { error } = await supabase.from('tc_entries').insert(rows)
   if (error) return { ok: false, error: error.message }
 
-  revalidatePath('/tools/time-report')
-  revalidatePath('/tools/time-report/grant-pass')
+  revalidatePath('/work-tools/time-report')
+  revalidatePath('/work-tools/time-report/grant-pass')
   return { ok: true }
 }
 
@@ -107,7 +107,7 @@ export async function deleteManualEntry(id: number): Promise<Result> {
     .from('tc_entries').delete().eq('id', id).eq('kind', 'manual').is('external_id', null)
   if (error) return { ok: false, error: error.message }
 
-  revalidatePath('/tools/time-report')
-  revalidatePath('/tools/time-report/grant-pass')
+  revalidatePath('/work-tools/time-report')
+  revalidatePath('/work-tools/time-report/grant-pass')
   return { ok: true }
 }

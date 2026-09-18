@@ -12,8 +12,18 @@ const nextConfig: NextConfig = {
   // @sparticuz/chromium loads its brotli binary via a runtime path Next's file
   // tracer can't see, so force it into the PDF route's serverless function.
   outputFileTracingIncludes: {
-    '/tools/time-report/pdf': ['./node_modules/@sparticuz/chromium/**'],
-    '/tools/time-report/image': ['./node_modules/@sparticuz/chromium/**'],
+    '/work-tools/time-report/pdf': ['./node_modules/@sparticuz/chromium/**'],
+    '/work-tools/time-report/image': ['./node_modules/@sparticuz/chromium/**'],
+  },
+  // Tools & Dashboards became Work Tools on 18 September 2026, and its pages
+  // moved from /tools to /work-tools. Every old link (bookmarks, Slack, the
+  // PDFs already sent) lands on the same page at its new address, query string
+  // kept. Temporary (307) rather than permanent so no browser caches it for
+  // good in case the name moves again.
+  async redirects() {
+    return [
+      { source: '/tools/:path*', destination: '/work-tools/:path*', permanent: false },
+    ];
   },
 };
 

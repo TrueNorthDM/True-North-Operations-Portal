@@ -9,10 +9,10 @@ import { requireSurface } from '@/lib/access/resolve'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export default async function AaafPagesPage() {
-  // Href Link Management is a tool inside Tools & Dashboards, not a sidebar
+  // Href Link Management is a tool inside Work Tools, not a sidebar
   // item, so it needs the area plus its own team grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('href-links')) redirect('/tools')
+  if (!access.canTool('href-links')) redirect('/work-tools')
 
   const { site, siteLanguages, rows, done } = await getSitePageData('aaaf')
 
@@ -22,7 +22,7 @@ export default async function AaafPagesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Breadcrumb parents={['/tools', '/projects']} now="AAAF" />
+        <Breadcrumb parents={['/work-tools', '/projects']} now="AAAF" />
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-extrabold text-aaaf-primary font-(family-name:--font-aaaf-display)">

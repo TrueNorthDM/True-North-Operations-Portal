@@ -17,7 +17,7 @@ export default async function PublishingDashboardPage() {
   // tool from the team. /dashboards was guarded but this child was not, so the
   // parent's guard was bypassed by typing the URL.
   const access = await requireSurface('tools')
-  if (!access.canTool('publishing')) redirect('/tools')
+  if (!access.canTool('publishing')) redirect('/work-tools')
 
   // MainContent gives this route a full-height, edge-to-edge wrapper, so the
   // iframe fills the entire content area, no padding, border, or viewport math.

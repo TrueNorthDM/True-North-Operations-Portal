@@ -88,13 +88,13 @@ const home: Item = {
   match: p => p === '/',
 }
 
-// Tools & Dashboards, the unified hub (Boards Review dashboards + the tools
-// used inside a project). Highlights across /tools, /dashboards and /boards-beta.
+// Work Tools, the unified hub (Boards Review dashboards + the tools
+// used inside a project). Highlights across /work-tools, /dashboards and /boards-beta.
 const toolsDash: Item = {
-  href: '/tools',
-  label: NAV_LABEL['/tools'],
+  href: '/work-tools',
+  label: NAV_LABEL['/work-tools'],
   icon: DashboardIcon,
-  match: p => p === '/tools' || p.startsWith('/tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
+  match: p => p === '/work-tools' || p.startsWith('/work-tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
 }
 
 // My Work, the signed-in person's tasks across Monday.

@@ -109,7 +109,7 @@ describe('catalogue integrity', () => {
   })
 
   it('maps every guarded route prefix to a real surface', () => {
-    for (const path of ['/admin', '/settings', '/human-resources', '/directory', '/my-work', '/tools', '/dashboards', '/boards-beta', '/projects', '/aaaf', '/hfa']) {
+    for (const path of ['/admin', '/settings', '/human-resources', '/directory', '/my-work', '/work-tools', '/dashboards', '/boards-beta', '/projects', '/aaaf', '/hfa']) {
       const surface = surfaceForPath(path)
       expect(surface, path).not.toBeNull()
       expect(SURFACE_KEYS.has(surface!), `${path} -> ${surface}`).toBe(true)

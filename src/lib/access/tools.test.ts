@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest'
 import { TOOLS, TOOL_KEYS, AUDIENCE_LABEL } from './tools'
 import { surfaceForPath } from './nav'
 
-// The catalogue is the single list behind two screens: the cards on Tools &
-// Dashboards and the grant rows on the Directory's Teams tab. Its integrity is
+// The catalogue is the single list behind two screens: the cards on Work
+// Tools and the grant rows on the Directory's Teams tab. Its integrity is
 // what keeps those two from drifting, which is exactly how "My Work" ended up
 // grantable per team without ever being a card.
 
@@ -26,12 +26,12 @@ describe('tool catalogue', () => {
       expect(t.label, `${t.key}.label`).toBeTruthy()
       expect(t.description, `${t.key}.description`).toBeTruthy()
       expect(t.href.startsWith('/'), `${t.key}.href`).toBe(true)
-      expect(['Dashboards', 'Tools'], `${t.key}.group`).toContain(t.group)
+      expect(['Dashboards', 'Reports'], `${t.key}.group`).toContain(t.group)
     }
   })
 
-  it('points every tool at a route the Tools area guards', () => {
-    // A tool whose href fell outside the Tools surface would be granted per
+  it('points every tool at a route the Work Tools area guards', () => {
+    // A tool whose href fell outside the Work Tools surface would be granted per
     // team but gated by an unrelated rule.
     for (const t of TOOLS) {
       expect(surfaceForPath(t.href), `${t.key} -> ${t.href}`).toBe('tools')

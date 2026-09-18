@@ -158,7 +158,7 @@ export function PageDetail({
       {/* Header + at-a-glance status */}
       <div>
         <Breadcrumb
-          parents={['/tools', '/projects', { href: `/${siteCode}`, label: siteCode.toUpperCase() }]}
+          parents={['/work-tools', '/projects', { href: `/${siteCode}`, label: siteCode.toUpperCase() }]}
           now={pageName}
         />
         <div className="flex items-start justify-between gap-4 flex-wrap">

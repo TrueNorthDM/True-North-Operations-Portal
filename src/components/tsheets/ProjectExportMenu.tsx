@@ -45,14 +45,14 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
   function preview(type: 'internal' | 'client') {
     setOpen(false)
     setPdf({
-      url: `/tools/time-report/pdf?report=projects&month=${range.from}&type=${type}`,
+      url: `/work-tools/time-report/pdf?report=projects&month=${range.from}&type=${type}`,
       title: type === 'internal' ? 'Project hours by person' : 'Project hours and others',
       fallbackName: `project-hours-${type}.pdf`,
     })
   }
 
   const csv = (type: 'internal' | 'client') =>
-    `/tools/time-report/grant-pass/csv?from=${range.from}&to=${range.to}&type=${type}`
+    `/work-tools/time-report/grant-pass/csv?from=${range.from}&to=${range.to}&type=${type}`
 
   // The table always runs from January to the period's last month, whatever the
   // period is, so the row says which months rather than letting a range suggest
@@ -94,7 +94,7 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
                 r={{ key: 'history', name: 'Month by month', sub: `Projects · ${tableMonths}`, tint: 'bg-[rgba(1,35,88,0.07)]', ink: '#012358', hover: 'hover:border-tn-primary hover:bg-[rgba(1,35,88,0.05)]' }}
                 icon={CALENDAR('#012358')}
                 monthly={monthly}
-                csv={`/tools/time-report/grant-pass/history/csv?from=${range.from}&to=${range.to}`}
+                csv={`/work-tools/time-report/grant-pass/history/csv?from=${range.from}&to=${range.to}`}
                 onCsv={() => setOpen(false)}
               />
             </div>

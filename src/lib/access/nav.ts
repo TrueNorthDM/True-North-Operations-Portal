@@ -65,10 +65,10 @@ const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
   // surface and is checked in the page, because a prefix cannot see a query
   // parameter and the tab is ?tab=team.
   { prefix: '/report', surface: 'report' },
-  { prefix: '/tools', surface: 'tools' },
+  { prefix: '/work-tools', surface: 'tools' },
   { prefix: '/dashboards', surface: 'tools' },
   { prefix: '/boards-beta', surface: 'tools' },
-  // Href Link Management lives inside Tools & Dashboards, it has no sidebar
+  // Href Link Management lives inside Work Tools, it has no sidebar
   // item of its own, so its pages are gated by the Tools area plus the
   // 'href-links' tool grant (checked in the pages themselves).
   { prefix: '/projects', surface: 'tools' },

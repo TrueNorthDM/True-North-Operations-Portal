@@ -235,7 +235,7 @@ export default async function SettingsPage() {
             <SectionHead title="Clients & budgets" desc="The dollar budget and budget period for each client. “Extra” is an approved top-up covering part of the period. Hours are read live from QuickBooks Time and power the Clients Reports page." />
             <div className="flex items-center gap-3.5 flex-wrap">
               <Link
-                href="/tools/time-report/guide"
+                href="/work-tools/time-report/guide"
                 title="How the report works"
                 aria-label="How the report works"
                 className="shrink-0 w-11 h-11 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"

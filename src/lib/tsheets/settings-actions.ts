@@ -144,7 +144,7 @@ export async function saveMonthlyBudgets(input: {
   })
 
   revalidatePath('/settings')
-  revalidatePath('/tools/time-report')
+  revalidatePath('/work-tools/time-report')
   return { ok: true }
 }
 
@@ -158,7 +158,7 @@ export async function saveReportNote(input: { month: string; note: string }): Pr
     .from('i7_report_notes')
     .upsert({ month: `${input.month}-01`, note: input.note, updated_by: user?.id, updated_at: new Date().toISOString() }, { onConflict: 'month' })
   if (error) return { ok: false, error: error.message }
-  revalidatePath('/tools/time-report')
+  revalidatePath('/work-tools/time-report')
   return { ok: true }
 }
 
@@ -216,7 +216,7 @@ export async function saveProjectMonthHours(input: {
   })
 
   revalidatePath('/settings')
-  revalidatePath('/tools/time-report')
+  revalidatePath('/work-tools/time-report')
   return { ok: true }
 }
 

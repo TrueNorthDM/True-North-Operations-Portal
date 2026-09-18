@@ -57,9 +57,9 @@ export function DonationRecords(
           <span className="text-[11.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Year</span>
           {/* Offered from the years that exist, so it never lists an empty one. */}
           <div className="flex items-center gap-1.5">
-            <YearChip label="All" active={year === null} href="/tools/time-report/grant-pass/donations" />
+            <YearChip label="All" active={year === null} href="/work-tools/time-report/grant-pass/donations" />
             {years.map(y => (
-              <YearChip key={y} label={y} active={year === y} href={`/tools/time-report/grant-pass/donations?year=${y}`} />
+              <YearChip key={y} label={y} active={year === y} href={`/work-tools/time-report/grant-pass/donations?year=${y}`} />
             ))}
           </div>
         </div>

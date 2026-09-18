@@ -44,7 +44,7 @@ export default async function ProjectHoursPage({
 }: { searchParams: Promise<{ month?: string; from?: string; to?: string; team?: string }> }) {
   // The area comes from the level, the report from its own team tool grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/tools')
+  if (!access.canTool('grant-pass-report')) redirect('/work-tools')
 
   const months = availableMonths(new Date())
   const { month, from, to, team } = await searchParams
@@ -86,7 +86,7 @@ export default async function ProjectHoursPage({
   return (
     <div className="space-y-6">
       <div className="min-w-0">
-        <Breadcrumb parents={['/tools']} self="/tools/time-report/grant-pass" />
+        <Breadcrumb parents={['/work-tools']} self="/work-tools/time-report/grant-pass" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
           Client Report · Project Hours &amp; Others
         </h1>
@@ -122,7 +122,7 @@ export default async function ProjectHoursPage({
                 figure come from" is asked in the same breath as entering one.
                 Same tier as the dialog: the page redirects anyone else. */}
             {moneyIn && (
-              <Link href="/tools/time-report/grant-pass/donations" className={`${BTN.white} whitespace-nowrap`}>
+              <Link href="/work-tools/time-report/grant-pass/donations" className={`${BTN.white} whitespace-nowrap`}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
                 Donation records
               </Link>

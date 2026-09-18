@@ -1,5 +1,5 @@
 /**
- * GET /tools/time-report/image?month=YYYY-MM
+ * GET /work-tools/time-report/image?month=YYYY-MM
  *
  * A shareable PNG of the i7 budget at a glance, the card the team sends around
  * (like the spreadsheet screenshot, but generated). Shows budget used ($ + %),

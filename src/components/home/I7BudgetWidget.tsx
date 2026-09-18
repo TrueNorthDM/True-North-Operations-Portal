@@ -21,7 +21,7 @@ import type { I7Carryover } from '@/lib/tsheets/types'
 export function I7BudgetWidget({ month, carryover }: { month: string; carryover: I7Carryover }) {
   return (
     <Link
-      href="/tools/time-report"
+      href="/work-tools/time-report"
       className="block rounded-2xl transition-shadow hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]"
     >
       <BudgetBalanceCard c={carryover} month={month} title="i7 Budget" large />

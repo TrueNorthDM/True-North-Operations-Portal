@@ -73,6 +73,6 @@ export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: strin
   await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
 
   revalidatePath('/settings')
-  revalidatePath('/tools/time-report')
+  revalidatePath('/work-tools/time-report')
   return { ok: true }
 }

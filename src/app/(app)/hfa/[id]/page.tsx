@@ -10,7 +10,7 @@ export default async function HfaPageDetail({ params }: { params: Promise<{ id: 
   // Href Link Management, so the area plus its team grant. /hfa was guarded
   // but this detail page was not.
   const access = await requireSurface('tools')
-  if (!access.canTool('href-links')) redirect('/tools')
+  if (!access.canTool('href-links')) redirect('/work-tools')
 
   const { id } = await params
   const supabase = await createClient()

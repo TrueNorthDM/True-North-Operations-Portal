@@ -13,7 +13,7 @@ export default async function BoardsBetaPage() {
   // from the access level, the tool from the team. This landing checked only
   // the area, so it opened by URL for teams without the Workload grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('workload')) redirect('/tools')
+  if (!access.canTool('workload')) redirect('/work-tools')
 
   return <GoalsView />
 }

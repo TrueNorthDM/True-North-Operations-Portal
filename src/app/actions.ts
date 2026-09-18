@@ -387,7 +387,7 @@ export async function regenerateMondayWebhookSecret(): Promise<{ ok: boolean; se
  * client only sees { exists, last4 }.
  */
 export async function saveTsheetsApiToken(input: { value: string }) {
-  return saveAppSecret('tsheets_api_token', input.value, ['/tools/time-report'])
+  return saveAppSecret('tsheets_api_token', input.value, ['/work-tools/time-report'])
 }
 
 /**

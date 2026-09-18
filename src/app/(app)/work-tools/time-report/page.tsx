@@ -83,14 +83,14 @@ const MANUAL_BLURB =
 export default async function ClientsReportsPage({ searchParams }: Props) {
   // The area comes from the level, the report itself from the team tool grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('i7-budget')) redirect('/tools')
+  if (!access.canTool('i7-budget')) redirect('/work-tools')
   const { month, from, to, team } = await searchParams
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Breadcrumb parents={['/tools']} self="/tools/time-report" />
+          <Breadcrumb parents={['/work-tools']} self="/work-tools/time-report" />
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Client Report · i7</h1>
           <p className="mt-1.5 text-muted leading-relaxed">
             Hours, cost and budget usage for i7 Marketing.
@@ -149,7 +149,7 @@ async function I7Tab({ month, from, to, team }: { month?: string; from?: string;
     <div className="space-y-5">
       <ReportMeta
         sourceLine={sourceLine}
-        guideHref="/tools/time-report/guide"
+        guideHref="/work-tools/time-report/guide"
         syncedAt={hours.syncedAt}
         failed={hours.failed}
       />

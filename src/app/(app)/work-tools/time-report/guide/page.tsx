@@ -45,13 +45,13 @@ const PROOF = [
 export default async function ReportGuidePage() {
   // Explains the Clients Reports figures, so it follows the report itself.
   const access = await requireSurface('tools')
-  if (!access.canTool('i7-budget')) redirect('/tools')
+  if (!access.canTool('i7-budget')) redirect('/work-tools')
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div>
-        <Breadcrumb parents={['/tools', '/tools/time-report']} now="How the report works" />
+        <Breadcrumb parents={['/work-tools', '/work-tools/time-report']} now="How the report works" />
         <div className="flex items-start gap-4">
           <span className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-slate-900 text-white shrink-0">
             <InfoMark className="w-6 h-6" />
@@ -177,7 +177,7 @@ export default async function ReportGuidePage() {
       </section>
 
       <div className="pt-2">
-        <Link href="/tools/time-report" className="text-sm text-slate-600 underline underline-offset-2 hover:text-slate-900">Open the i7 Budget Usage Report →</Link>
+        <Link href="/work-tools/time-report" className="text-sm text-slate-600 underline underline-offset-2 hover:text-slate-900">Open the i7 Budget Usage Report →</Link>
       </div>
     </div>
   )

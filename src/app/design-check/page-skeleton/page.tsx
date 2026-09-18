@@ -25,7 +25,7 @@ export default function PageSkeletonDesignCheck() {
 
         <section className="rounded-2xl border border-dashed border-slate-300 p-6 space-y-6">
           <div className="min-w-0">
-            <Breadcrumb parents={['/tools']} self="/tools/time-report/grant-pass" />
+            <Breadcrumb parents={['/work-tools']} self="/work-tools/time-report/grant-pass" />
             <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
               Client Report · Project Hours &amp; Others
             </h1>

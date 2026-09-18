@@ -58,10 +58,10 @@ const TAG_COLOR = {
 } as const
 
 export default async function ProjectsPage() {
-  // Href Link Management is a tool inside Tools & Dashboards, not a sidebar
+  // Href Link Management is a tool inside Work Tools, not a sidebar
   // item, so it needs the area plus its own team grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('href-links')) redirect('/tools')
+  if (!access.canTool('href-links')) redirect('/work-tools')
 
   const { accessibleCodes, readyBySite, totalReady, statsBySite } = await getProjectsOverview()
   const visibleSites = SITES.filter(s => accessibleCodes.has(s.code))
@@ -69,10 +69,10 @@ export default async function ProjectsPage() {
   return (
     <div className="space-y-8">
       {/* Page header. The trail names where this lives rather than where the
-          reader came from: it is a tool inside Tools & Dashboards, and the two
+          reader came from: it is a tool inside Work Tools, and the two
           site pages hang off it. */}
       <div>
-        <Breadcrumb parents={['/tools']} self="/projects" />
+        <Breadcrumb parents={['/work-tools']} self="/projects" />
         <h1 className="text-2xl font-extrabold text-tn-ink">Href Link Management</h1>
         <p className="text-muted mt-1">
           Manage hreflang tag workflows for AAAF and HFA WordPress sites.

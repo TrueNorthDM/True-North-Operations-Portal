@@ -1,5 +1,5 @@
 /**
- * GET /tools/time-report/grant-pass/csv?from=YYYY-MM&to=YYYY-MM&type=client|internal
+ * GET /work-tools/time-report/grant-pass/csv?from=YYYY-MM&to=YYYY-MM&type=client|internal
  *
  * Project Hours & Others as a spreadsheet, in the two shapes the report itself
  * has:
@@ -42,7 +42,7 @@ const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 
 export async function GET(request: Request) {
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/tools')
+  if (!access.canTool('grant-pass-report')) redirect('/work-tools')
 
   const q = new URL(request.url).searchParams
   const legacy = q.get('month') ?? undefined

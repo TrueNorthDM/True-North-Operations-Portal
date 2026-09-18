@@ -1,7 +1,7 @@
 // Home: welcome banner, the i7 budget at a glance (privileged tiers),
 // publishing goals, this month's celebrations, and the company org chart.
 //
-// The three shortcut cards (My Work, My Team, Tools & Dashboards) were removed:
+// The three shortcut cards (My Work, My Team, Work Tools) were removed:
 // every one of them is a rail item two pixels away, so they spent the top of the
 // screen repeating the navigation instead of telling anybody anything.
 
@@ -26,7 +26,7 @@ export default async function HomePage() {
   const perf = perfRun('home')
   const month = currentYearMonth()
 
-  // Budget at a glance. The widget is not a card on Tools & Dashboards, so it
+  // Budget at a glance. The widget is not a card on Work Tools, so it
   // is not a team-grantable tool: it follows the access level alone. (Team
   // grants govern the Clients Reports PAGE, which is such a card.)
   //

@@ -33,7 +33,7 @@ export const LEVELS: readonly LevelDef[] = [
 export const KNOWN_GAPS: readonly { title: string; detail: string }[] = [
   {
     title: 'Tools need a team as well as a level',
-    detail: 'Allowing "Tools & Dashboards" above only opens the area. Which tools appear inside it comes from the person’s teams, on the Directory’s Teams tab. Someone in no team sees no tools, however permissive their level is. Admins are exempt.',
+    detail: 'Allowing "Work Tools" above only opens the area. Which tools appear inside it comes from the person’s teams, on the Directory’s Teams tab. Someone in no team sees no tools, however permissive their level is. Admins are exempt.',
   },
   {
     title: 'Admin cannot be restricted',

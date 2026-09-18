@@ -1,8 +1,8 @@
 /**
- * GET /tools/time-report/pdf?month=YYYY-MM&type=client|internal
+ * GET /work-tools/time-report/pdf?month=YYYY-MM&type=client|internal
  *
  * Server-side PDF of the i7 Budget Usage Report. We render the existing print
- * page (/tools/time-report/print) in headless Chromium and print it to PDF, so
+ * page (/work-tools/time-report/print) in headless Chromium and print it to PDF, so
  * we fully control orientation (client = portrait, internal = LANDSCAPE for the
  * wide per-person table), margins, and (unlike the browser's "Save as PDF")
  * there's no browser header/footer and no print dialog. This is the only way to
@@ -55,8 +55,8 @@ export async function GET(request: Request) {
   // launching a headless browser and setting margins, and none of that differs.
   const report = url.searchParams.get('report') === 'projects' ? 'projects' : 'i7'
   const printPath = report === 'projects'
-    ? '/tools/time-report/grant-pass/print'
-    : '/tools/time-report/print'
+    ? '/work-tools/time-report/grant-pass/print'
+    : '/work-tools/time-report/print'
 
   // The page we screenshot to PDF, same origin, cookies forwarded for auth.
   const target = `${url.origin}${printPath}?month=${encodeURIComponent(month)}&type=${type}&pdf=1`

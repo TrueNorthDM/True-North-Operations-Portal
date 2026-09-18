@@ -110,7 +110,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
 
   const Toolbar = (
     <div className="no-print mx-auto max-w-[1056px] mb-4 flex items-center justify-between px-2">
-      <Link href={`/tools/time-report?month=${report.startDate.slice(0, 7)}`} className="text-sm font-(family-name:--font-display) font-bold" style={{ color: BODY }}>&larr; Back to report</Link>
+      <Link href={`/work-tools/time-report?month=${report.startDate.slice(0, 7)}`} className="text-sm font-(family-name:--font-display) font-bold" style={{ color: BODY }}>&larr; Back to report</Link>
       <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-[18px] py-2.5 rounded-[10px] text-white font-(family-name:--font-display) font-extrabold text-[11.7px]" style={{ background: INK }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
         Save as PDF

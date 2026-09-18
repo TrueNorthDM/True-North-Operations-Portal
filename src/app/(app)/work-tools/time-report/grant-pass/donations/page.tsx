@@ -28,8 +28,8 @@ export default async function DonationRecordsPage(
   { searchParams }: { searchParams: Promise<{ year?: string }> },
 ) {
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/tools')
-  if (!access.isPrivileged) redirect('/tools/time-report/grant-pass')
+  if (!access.canTool('grant-pass-report')) redirect('/work-tools')
+  if (!access.isPrivileged) redirect('/work-tools/time-report/grant-pass')
 
   const { year: raw } = await searchParams
   // Four digits or nothing: a junk parameter shows everything rather than an
@@ -49,7 +49,7 @@ export default async function DonationRecordsPage(
           way out, and this is a side road you come back from. */}
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div className="min-w-0">
-          <Breadcrumb parents={['/tools', '/tools/time-report/grant-pass']} now="Donation records" />
+          <Breadcrumb parents={['/work-tools', '/work-tools/time-report/grant-pass']} now="Donation records" />
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
             Donation records
           </h1>
@@ -63,7 +63,7 @@ export default async function DonationRecordsPage(
         </div>
 
         <Link
-          href="/tools/time-report/grant-pass"
+          href="/work-tools/time-report/grant-pass"
           className={`${BTN.white} shrink-0 whitespace-nowrap`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>

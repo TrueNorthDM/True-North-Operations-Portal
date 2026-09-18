@@ -15,7 +15,7 @@ export default async function TargetsPage() {
   // Same pair as the card that leads here: the area from the access level, the
   // tool from the team. /boards-beta was guarded but this child was not.
   const access = await requireSurface('tools')
-  if (!access.canTool('workload')) redirect('/tools')
+  if (!access.canTool('workload')) redirect('/work-tools')
 
   const profile = await getCurrentProfile()
   const isAdmin = profile?.role === 'admin'

@@ -39,7 +39,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default async function ProjectHoursPrintPage({ searchParams }: Props) {
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/tools')
+  if (!access.canTool('grant-pass-report')) redirect('/work-tools')
 
   const { month, type } = await searchParams
   const selected = resolveMonth(month)

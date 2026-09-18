@@ -46,7 +46,7 @@ export function HistoryExport({ currentMonth }: { currentMonth: string }) {
       {/* Downloads on click, unlike the PDFs. A spreadsheet is opened where it
           lands, and a preview of one would be a second, worse spreadsheet. */}
       <a
-        href={valid ? `/tools/time-report/history/csv?from=${range.from}&to=${range.to}` : undefined}
+        href={valid ? `/work-tools/time-report/history/csv?from=${range.from}&to=${range.to}` : undefined}
         aria-disabled={!valid}
         className={`inline-flex items-center gap-2.5 bg-tn-primary text-white rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-transform ${valid ? 'hover:-translate-y-px' : 'opacity-50 pointer-events-none'}`}
       >

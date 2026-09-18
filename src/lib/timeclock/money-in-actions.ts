@@ -137,8 +137,8 @@ export async function saveDonation(input: {
     }, actor)
   }
 
-  revalidatePath('/tools/time-report/grant-pass')
-  revalidatePath('/tools/time-report/grant-pass/donations')
+  revalidatePath('/work-tools/time-report/grant-pass')
+  revalidatePath('/work-tools/time-report/grant-pass/donations')
   return { ok: true }
 }
 
@@ -186,6 +186,6 @@ export async function savePurchase(input: {
     if (e) return { ok: false, error: e.message }
   }
 
-  revalidatePath('/tools/time-report/grant-pass')
+  revalidatePath('/work-tools/time-report/grant-pass')
   return { ok: true }
 }

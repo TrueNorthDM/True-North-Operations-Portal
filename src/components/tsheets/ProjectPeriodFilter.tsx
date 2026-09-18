@@ -25,7 +25,7 @@ import { RangeFilter } from './RangeFilter'
 import { choiceFromRange, rangeOf, type Range, type RangeChoice } from '@/lib/tsheets/range'
 
 export function ProjectPeriodFilter(
-  { range, availableMonths, team = '', basePath = '/tools/time-report/grant-pass' }: {
+  { range, availableMonths, team = '', basePath = '/work-tools/time-report/grant-pass' }: {
     range: Range
     availableMonths: string[]
     /** The team chosen on the People tab, kept in the URL when the period changes. */

@@ -59,7 +59,7 @@ export const SURFACES: readonly Surface[] = [
   { key: 'home', label: 'Home dashboard', group: 'Navigation', locked: 'always', defaults: ON },
   {
     key: 'tools',
-    label: 'Tools & Dashboards',
+    label: 'Work Tools',
     group: 'Navigation',
     defaults: ON,
     note: 'Opens the area. Which tools appear inside it is set per team, on the Directory’s Teams tab.',
