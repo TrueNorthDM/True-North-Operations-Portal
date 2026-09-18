@@ -44,7 +44,7 @@ export interface EditorStep {
 }
 
 const FIRST_ROWS = 200
-const COLS = '72px 64px minmax(0,1fr) minmax(120px,170px) 88px 72px 104px'
+const COLS = '72px 72px minmax(0,1fr) minmax(120px,170px) 124px 112px 112px'
 const HEAD = 'px-3 py-[11px] min-w-0 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted whitespace-nowrap'
 const n = (v: number) => v.toLocaleString('en-US')
 
@@ -164,9 +164,16 @@ export function TeamPriorityEditor({
     return () => window.removeEventListener('beforeunload', warn)
   }, [])
 
-  /** Moving to another view sends a waiting change first, so nothing is lost on the way out. */
+  /**
+   * Moving to another view sends a waiting change first, so nothing is lost on
+   * the way out. If that save fails, the order stays queued and so does the
+   * leader: leaving would throw away what they just arranged.
+   */
   const go = async (href: string) => {
-    if (queued.current && !preview) await send()
+    if (queued.current && !preview) {
+      await send()
+      if (queued.current) return
+    }
     startTransition(() => router.push(href))
   }
 
@@ -277,8 +284,24 @@ export function TeamPriorityEditor({
         </span>
       )
     }
-    return <span className="text-[12.5px] text-muted">No order set yet: board priority, then deadline</span>
+    return <span className="text-[12.5px] text-muted">No order set yet: the list follows True North&apos;s order</span>
   })()
+
+  // The way out, said in words. The order saves as the leader works, but a page
+  // with no button to leave read as one with nothing saved (18 September 2026):
+  // this sends anything still waiting and goes back to the list, in this order.
+  const busy = pending || save.state === 'waiting' || save.state === 'saving'
+  const saveAndClose = (
+    <button
+      type="button"
+      onClick={() => void go(`/my-work?tab=work&pteam=${team.id}`)}
+      disabled={pending}
+      className="shrink-0 inline-flex items-center gap-2 rounded-full px-[17px] py-2 font-(family-name:--font-display) font-extrabold text-[12.5px] bg-tn-primary border border-tn-primary text-white shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px disabled:opacity-50 disabled:translate-y-0"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+      <span className="text-[#ffffff]">{busy ? 'Saving…' : 'Save and close'}</span>
+    </button>
+  )
 
   const segment = 'font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors'
   const arrow = 'w-6 h-[18px] inline-flex items-center justify-center rounded-[5px] text-[10px] text-muted hover:bg-subtle hover:text-tn-ink disabled:opacity-30 disabled:hover:bg-transparent'
@@ -310,6 +333,7 @@ export function TeamPriorityEditor({
           searchable
           className={`gap-2 px-3 py-[9px] rounded-[10px] border bg-white font-(family-name:--font-display) font-semibold text-[13px] ${person ? 'border-tn-teal text-tn-teal' : 'border-[var(--panel-border)] text-muted'}`}
         />
+        {saveAndClose}
       </div>
 
       <div className="flex items-center gap-3 flex-wrap border-t border-[var(--panel-border)] pt-3">
@@ -323,15 +347,15 @@ export function TeamPriorityEditor({
           steps placed furthest from where the default order would put them. */}
       <div className="rounded-[14px] border border-[var(--panel-border)] bg-white p-4 grid gap-5 grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)]">
         <div>
-          <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">Agreement with the default order</div>
+          <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">Agreement with True North&apos;s order</div>
           <div className="font-(family-name:--font-display) font-extrabold text-[30px] leading-none text-tn-ink mt-2">{`${score}%`}</div>
           <div className="h-1.5 rounded-full bg-subtle mt-2 overflow-hidden"><div className="h-full rounded-full bg-tn-teal" style={{ width: `${score}%` }} /></div>
           <div className="text-[12px] text-muted mt-2 leading-snug">
-            {`${n(pinned.length)} of ${n(list.length)} ${list.length === 1 ? 'step' : 'steps'} placed by hand · the rest follow board priority, then deadline`}
+            {`${n(pinned.length)} of ${n(list.length)} ${list.length === 1 ? 'step' : 'steps'} placed by hand · the rest follow True North's order`}
           </div>
           {!isDefault && (
             <button type="button" onClick={() => apply(defaultKeys, null)} className="text-[12.5px] font-semibold text-tn-teal hover:underline mt-1.5">
-              Reset to the default order
+              Reset to True North&apos;s order
             </button>
           )}
         </div>
@@ -349,6 +373,14 @@ export function TeamPriorityEditor({
         ))}
       </div>
 
+      {/* What the numbers mean, once, where they are read. "Default" said
+          nothing about whose order it was; it is True North's. */}
+      <p className="text-[12.5px] text-muted leading-relaxed m-0">
+        <strong className="font-semibold text-tn-ink">Team #</strong> is the order your team sees on My Work.{' '}
+        <strong className="font-semibold text-tn-ink">True North #</strong> is True North&apos;s order: the board&apos;s priority, set by admins, then the soonest deadline.{' '}
+        <strong className="font-semibold text-tn-ink">Change</strong> is how far you moved a step from it.
+      </p>
+
       {list.length === 0 ? (
         <div className="rounded-[14px] border border-[var(--panel-border)] bg-white px-5 py-10 text-center text-[13.5px] text-muted">
           {`Nobody on the ${team.name} team has an open step right now.`}
@@ -361,11 +393,11 @@ export function TeamPriorityEditor({
             style={{ top: stickyTop, gridTemplateColumns: COLS }}
           >
             <div className={HEAD}><span className="sr-only">Move</span></div>
-            <div className={HEAD}>Team</div>
+            <div className={HEAD}>Team #</div>
             <div className={HEAD}>Step</div>
             <div className={HEAD}>Person</div>
-            <div className={HEAD}>Priority</div>
-            <div className={HEAD}>Default</div>
+            <div className={HEAD}>Board priority</div>
+            <div className={HEAD}>True North #</div>
             <div className={HEAD}>Change</div>
           </div>
 
@@ -461,7 +493,7 @@ export function TeamPriorityEditor({
                 <div className="px-3"><span className={`${chip} ${PRIORITY_CHIP[s.priority]}`}>{s.priority}</span></div>
                 <div className="px-3 text-[13px] text-muted">{n(defaultPlace.get(key) ?? 0)}</div>
                 <div className="px-3">
-                  {isPinned ? <Delta by={by} /> : isFresh ? <span className="text-[11.5px] text-muted leading-tight block">by default</span> : <span className="text-[var(--faint)] text-[13px]">-</span>}
+                  {isPinned ? <Delta by={by} /> : isFresh ? <span className="text-[11.5px] text-muted leading-tight block">follows True North</span> : <span className="text-[var(--faint)] text-[13px]">-</span>}
                 </div>
               </div>
             )
@@ -479,9 +511,12 @@ export function TeamPriorityEditor({
         </div>
       )}
 
-      <p className="text-[12px] text-muted leading-[1.65] m-0">
-        {`A step you move keeps the place you gave it, and moves up as the work above it is finished. Every other step follows board priority, then deadline, so it keeps up with Monday. A step marked new arrived after the order was last saved, and sits where the default order puts it. Finished steps leave the list on their own. Everyone on the ${team.name} team sees their own steps in this order on My Work.`}
-      </p>
+      <div className="flex items-start gap-5 flex-wrap">
+        <p className="flex-1 min-w-[280px] text-[12px] text-muted leading-[1.65] m-0">
+          {`A step you move keeps the place you gave it, and moves up as the work above it is finished. Every other step follows True North's order (board priority, then deadline), so it keeps up with Monday. A step marked new arrived after the order was last saved, and sits where True North's order puts it. Finished steps leave the list on their own. Everyone on the ${team.name} team sees their own steps in this order on My Work.`}
+        </p>
+        {saveAndClose}
+      </div>
     </div>
   )
 }

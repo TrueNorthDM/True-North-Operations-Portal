@@ -1088,7 +1088,7 @@ export function WorkList({
             ) : (
               <>
                 <span className="font-semibold">{`The ${teamOrder.teamName} team has no priority order yet`}</span>
-                <span className="text-muted">, so the list follows board priority, then deadline</span>
+                <span className="text-muted">, so the list follows True North&apos;s order: board priority, then deadline</span>
               </>
             )}
           </span>
