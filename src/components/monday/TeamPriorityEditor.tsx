@@ -26,6 +26,8 @@ import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { chip, PRIORITY_CHIP } from './tokens'
+import { BandHeader, BandMap, NextBandPill, OrderMark, type BandSummary } from './OrderBands'
+import { bandRange, bandReason, bandsOf, placedAbove } from '@/lib/monday/worklist/order-bands'
 import {
   teamRanking, pinsFor, moveTo, agreement, displacement, updatedWhen, levelOrder, workspaceRanking, boardRanking,
   trueNorthWorkspaces, hasLevels, workspaceOf, type Levels, type SavedOrder,
@@ -68,6 +70,18 @@ const n = (v: number) => v.toLocaleString('en-US')
 const noSubscribe = () => () => {}
 function useIsClient() {
   return useSyncExternalStore(noSubscribe, () => true, () => false)
+}
+
+/**
+ * How far a step nobody placed sits from True North's place: pushed down by
+ * steps placed above it, or lifted by steps moved below it. Grey text, not a
+ * chip, so it never reads as a move somebody made.
+ */
+function Drift({ from, to, levels }: { from: number; to: number; levels: boolean }) {
+  const d = to - from
+  if (!d || !from || !to) return <span className="text-[var(--faint)] text-[13px]">-</span>
+  const text = levels ? `${n(Math.abs(d))} ${d > 0 ? 'lower' : 'higher'}` : d > 0 ? `pushed down ${n(d)}` : `moved up ${n(-d)}`
+  return <span className="text-[11.5px] text-muted leading-tight block">{text}</span>
 }
 
 function Delta({ by }: { by: number }) {
@@ -360,6 +374,32 @@ export function TeamPriorityEditor({
 
   const place = useMemo(() => new Map(list.map((k, i) => [k, i + 1])), [list])
   const shown = all ? visible : visible.slice(0, FIRST_ROWS)
+
+  // Which order each step follows, in bands where that changes (order-bands.ts):
+  // drawn once anything is placed by hand, since before that every step is
+  // True North's and a single band would say nothing.
+  const showOrigin = pinned.length > 0
+  const shownIndex = useMemo(() => new Map(shown.map((k, i) => [k, i])), [shown])
+  const above = useMemo(() => placedAbove({ keys: list, pinned: pinnedSet }), [list, pinnedSet])
+  const itemBands = useMemo(() => bandsOf(visible, k => pinnedSet.has(k)), [visible, pinnedSet])
+  const bandSummaries: BandSummary[] = useMemo(() => itemBands.map(b => ({
+    placed: b.placed,
+    count: b.items.length,
+    range: bandRange(place.get(b.items[0]) ?? 0, place.get(b.items[b.items.length - 1]) ?? 0),
+  })), [itemBands, place])
+  const [closedBands, setClosedBands] = useState<Set<number>>(new Set())
+  const bandEls = useRef<(HTMLElement | null)[]>([])
+  const toggleBand = (i: number) => setClosedBands(prev => {
+    const next = new Set(prev)
+    if (next.has(i)) next.delete(i)
+    else next.add(i)
+    return next
+  })
+  const jumpToBand = (i: number) => {
+    setAll(true)
+    setClosedBands(prev => { const next = new Set(prev); next.delete(i); return next })
+    requestAnimationFrame(() => bandEls.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
   const today = todayIso()
 
   const status = (() => {
@@ -408,6 +448,102 @@ export function TeamPriorityEditor({
 
   const segment = 'font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors'
   const arrow = 'w-6 h-[18px] inline-flex items-center justify-center rounded-[5px] text-[10px] text-muted hover:bg-subtle hover:text-tn-ink disabled:opacity-30 disabled:hover:bg-transparent'
+
+  /** One step's row: the grip, the arrows, its place, what it is, and how far it sits from True North's place. */
+  const stepRow = (key: string, i: number) => {
+    const s = byKey.get(key)!
+    const by = moves.get(key) ?? 0
+    const isPinned = pinnedSet.has(key)
+    const isFresh = fresh.has(key) && !isPinned
+    const mark = isPinned
+      ? by > 0 ? 'border-l-tn-teal' : by < 0 ? 'border-l-[#E08A1E]' : 'border-l-[var(--chip-neutral-fg)]'
+      : isFresh ? 'border-l-tn-primary' : 'border-l-transparent'
+    const drop = dropAt?.key === key ? (dropAt.after ? 'shadow-[inset_0_-2px_0_#1E7D7F]' : 'shadow-[inset_0_2px_0_#1E7D7F]') : ''
+    const late = s.dueDate && !s.dueSuspect && s.dueDate < today
+    return (
+      <div
+        key={key}
+        data-step-row
+        onDragOver={e => onDragOver(e, key)}
+        onDrop={e => onDrop(e, key)}
+        className={`grid items-center border-b border-[var(--row-rule)] last:border-b-0 last:rounded-b-[14px] border-l-[3px] ${mark} ${drop} ${dragKey === key ? 'opacity-40' : ''} hover:bg-[var(--row-hover)] transition-colors`}
+        style={{ gridTemplateColumns: COLS }}
+      >
+        <div className="pl-2 pr-1 py-1.5 flex items-center gap-1">
+          <span
+            draggable
+            onDragStart={e => onDragStart(e, key)}
+            onDragEnd={endDrag}
+            title="Drag to move"
+            className="px-1 py-1.5 cursor-grab active:cursor-grabbing text-[var(--faint)] hover:text-tn-ink"
+          >
+            <GripIcon />
+          </span>
+          <span className="inline-flex flex-col">
+            <button type="button" onClick={() => nudge(key, -1)} disabled={i === 0} aria-label={`Move ${s.itemName} up`} className={arrow}>▲</button>
+            <button type="button" onClick={() => nudge(key, 1)} disabled={i === visible.length - 1} aria-label={`Move ${s.itemName} down`} className={arrow}>▼</button>
+          </span>
+        </div>
+
+        <div className="px-3 min-w-0 flex items-center gap-2">
+          {showOrigin && <OrderMark placed={isPinned} size={20} title={isPinned ? 'Placed by hand' : levelsOn ? "Follows the team's workspace and board order" : "Follows True North's order"} />}
+          {typing?.key === key ? (
+            <input
+              autoFocus
+              type="number"
+              min={1}
+              max={list.length}
+              value={typing.value}
+              onChange={e => setTyping({ key, value: e.target.value })}
+              onKeyDown={e => {
+                if (e.key === 'Enter') typePlace()
+                if (e.key === 'Escape') setTyping(null)
+              }}
+              onBlur={typePlace}
+              aria-label={`New place for ${s.itemName}`}
+              className="w-full rounded-[7px] border border-tn-teal px-1.5 py-1 text-[13px] font-bold text-tn-ink outline-none"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setTyping({ key, value: String(place.get(key) ?? '') })}
+              title="Type a place to move it there"
+              className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink rounded-[6px] px-1 -mx-1 hover:bg-subtle hover:text-tn-teal"
+            >
+              {n(place.get(key) ?? 0)}
+            </button>
+          )}
+        </div>
+
+        <div className="px-3 py-2.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            {s.url ? (
+              <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-semibold text-tn-ink truncate hover:text-tn-teal hover:underline" title={s.itemName}>{s.itemName}</a>
+            ) : (
+              <span className="text-[13px] font-semibold text-tn-ink truncate" title={s.itemName}>{s.itemName}</span>
+            )}
+            {isFresh && <span className={`${chip} bg-[rgba(1,35,88,.08)] text-tn-ink shrink-0`}>new</span>}
+          </div>
+          <div className="text-[11.5px] text-muted truncate">
+            {[levelsOn ? workspaceOf(s) : null, s.language, s.parentItemName, s.boardName, s.stepName].filter(Boolean).join(' · ')}
+            {s.dueDate && (
+              <>
+                {' · '}
+                <span className={late ? 'text-[#c2410c] font-semibold' : ''}>{`due ${shortDate(s.dueDate)}${late ? ', late' : ''}`}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="px-3 text-[13px] text-foreground truncate">{s.who}</div>
+        <div className="px-3"><span className={`${chip} ${PRIORITY_CHIP[s.priority]}`}>{s.priority}</span></div>
+        <div className={`px-3 text-[13px] ${showOrigin ? 'font-bold text-tn-teal' : 'text-muted'}`}>{n(defaultPlace.get(key) ?? 0)}</div>
+        <div className="px-3">
+          {isPinned ? <Delta by={by} /> : <Drift from={defaultPlace.get(key) ?? 0} to={place.get(key) ?? 0} levels={levelsOn} />}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
@@ -623,6 +759,17 @@ export function TeamPriorityEditor({
         </div>
       ) : (
         <div className="rounded-[14px] border border-[var(--panel-border)] bg-white">
+          {showOrigin && (
+            <BandMap
+              bands={bandSummaries}
+              title={narrowed ? 'The steps shown' : "The team's order"}
+              placedLabel="placed by hand"
+              followLabel={levelsOn ? "follow your workspace and board order" : 'follow True North'}
+              onJump={jumpToBand}
+              onCollapseAll={() => setClosedBands(new Set(bandSummaries.map((_, i) => i)))}
+              onExpandAll={() => setClosedBands(new Set())}
+            />
+          )}
           {/* Pinned under the portal's top bar, like the column heading on My Work. */}
           <div
             className="grid sticky z-10 bg-subtle border-b border-[var(--panel-border)] border-l-[3px] border-l-transparent rounded-t-[14px]"
@@ -641,99 +788,26 @@ export function TeamPriorityEditor({
             <div className="px-5 py-8 text-center text-[13.5px] text-muted">No step matches.</div>
           )}
 
-          {shown.map((key, i) => {
-            const s = byKey.get(key)!
-            const by = moves.get(key) ?? 0
-            const isPinned = pinnedSet.has(key)
-            const isFresh = fresh.has(key) && !isPinned
-            const mark = isPinned
-              ? by > 0 ? 'border-l-tn-teal' : by < 0 ? 'border-l-[#E08A1E]' : 'border-l-[var(--chip-neutral-fg)]'
-              : isFresh ? 'border-l-tn-primary' : 'border-l-transparent'
-            const drop = dropAt?.key === key ? (dropAt.after ? 'shadow-[inset_0_-2px_0_#1E7D7F]' : 'shadow-[inset_0_2px_0_#1E7D7F]') : ''
-            const late = s.dueDate && !s.dueSuspect && s.dueDate < today
+          {showOrigin ? itemBands.map((b, bi) => {
+            const first = b.items[0]
+            const reason = !b.placed && !levelsOn
+              ? bandReason({ team: place.get(first) ?? 0, tn: defaultPlace.get(first) ?? 0, placedAbove: above.get(first) ?? 0 })
+              : null
+            const isOpen = !closedBands.has(bi)
             return (
-              <div
-                key={key}
-                data-step-row
-                onDragOver={e => onDragOver(e, key)}
-                onDrop={e => onDrop(e, key)}
-                className={`grid items-center border-b border-[var(--row-rule)] last:border-b-0 last:rounded-b-[14px] border-l-[3px] ${mark} ${drop} ${dragKey === key ? 'opacity-40' : ''} hover:bg-[var(--row-hover)] transition-colors`}
-                style={{ gridTemplateColumns: COLS }}
-              >
-                <div className="pl-2 pr-1 py-1.5 flex items-center gap-1">
-                  <span
-                    draggable
-                    onDragStart={e => onDragStart(e, key)}
-                    onDragEnd={endDrag}
-                    title="Drag to move"
-                    className="px-1 py-1.5 cursor-grab active:cursor-grabbing text-[var(--faint)] hover:text-tn-ink"
-                  >
-                    <GripIcon />
-                  </span>
-                  <span className="inline-flex flex-col">
-                    <button type="button" onClick={() => nudge(key, -1)} disabled={i === 0} aria-label={`Move ${s.itemName} up`} className={arrow}>▲</button>
-                    <button type="button" onClick={() => nudge(key, 1)} disabled={i === visible.length - 1} aria-label={`Move ${s.itemName} down`} className={arrow}>▼</button>
-                  </span>
-                </div>
-
-                <div className="px-3 min-w-0">
-                  {typing?.key === key ? (
-                    <input
-                      autoFocus
-                      type="number"
-                      min={1}
-                      max={list.length}
-                      value={typing.value}
-                      onChange={e => setTyping({ key, value: e.target.value })}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') typePlace()
-                        if (e.key === 'Escape') setTyping(null)
-                      }}
-                      onBlur={typePlace}
-                      aria-label={`New place for ${s.itemName}`}
-                      className="w-full rounded-[7px] border border-tn-teal px-1.5 py-1 text-[13px] font-bold text-tn-ink outline-none"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setTyping({ key, value: String(place.get(key) ?? '') })}
-                      title="Type a place to move it there"
-                      className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink rounded-[6px] px-1 -mx-1 hover:bg-subtle hover:text-tn-teal"
-                    >
-                      {n(place.get(key) ?? 0)}
-                    </button>
-                  )}
-                </div>
-
-                <div className="px-3 py-2.5 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {s.url ? (
-                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-semibold text-tn-ink truncate hover:text-tn-teal hover:underline" title={s.itemName}>{s.itemName}</a>
-                    ) : (
-                      <span className="text-[13px] font-semibold text-tn-ink truncate" title={s.itemName}>{s.itemName}</span>
-                    )}
-                    {isFresh && <span className={`${chip} bg-[rgba(1,35,88,.08)] text-tn-ink shrink-0`}>new</span>}
-                  </div>
-                  <div className="text-[11.5px] text-muted truncate">
-                    {[levelsOn ? workspaceOf(s) : null, s.language, s.parentItemName, s.boardName, s.stepName].filter(Boolean).join(' · ')}
-                    {s.dueDate && (
-                      <>
-                        {' · '}
-                        <span className={late ? 'text-[#c2410c] font-semibold' : ''}>{`due ${shortDate(s.dueDate)}${late ? ', late' : ''}`}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="px-3 text-[13px] text-foreground truncate">{s.who}</div>
-                <div className="px-3"><span className={`${chip} ${PRIORITY_CHIP[s.priority]}`}>{s.priority}</span></div>
-                <div className="px-3 text-[13px] text-muted">{n(defaultPlace.get(key) ?? 0)}</div>
-                <div className="px-3">
-                  {isPinned ? <Delta by={by} /> : isFresh ? <span className="text-[11.5px] text-muted leading-tight block">{levelsOn ? 'follows your order' : 'follows True North'}</span> : <span className="text-[var(--faint)] text-[13px]">-</span>}
-                </div>
+              <div key={bi} ref={el => { bandEls.current[bi] = el }} style={{ scrollMarginTop: stickyTop + 44 }}>
+                <BandHeader
+                  index={bi}
+                  band={bandSummaries[bi]}
+                  label={b.placed ? 'Placed by hand' : levelsOn ? "Your workspace and board order" : "True North's order"}
+                  reason={reason}
+                  open={isOpen}
+                  onToggle={() => toggleBand(bi)}
+                />
+                {isOpen && b.items.filter(k => shownIndex.has(k)).map(k => stepRow(k, shownIndex.get(k)!))}
               </div>
             )
-          })}
+          }) : shown.map((key, i) => stepRow(key, i))}
 
           {!all && visible.length > FIRST_ROWS && (
             <button
@@ -744,6 +818,7 @@ export function TeamPriorityEditor({
               {`Show the other ${n(visible.length - FIRST_ROWS)}`}
             </button>
           )}
+          {showOrigin && bandSummaries.length > 1 && <NextBandPill sections={bandEls} bands={bandSummaries} closed={closedBands} onJump={jumpToBand} />}
         </div>
       )}
       </>}

@@ -96,12 +96,12 @@ export default async function TeamPriorityLive(
   const { screen = 'editor', levels } = await searchParams
   const saved = savedOrder(levels === '1')
   const savedAt = hoursAgo(2)
-  const { open, ranking } = rankTeam(OPEN, saved)
+  const { open, ranking, trueNorth } = rankTeam(OPEN, saved)
 
   const listFor = (who: string | null): Worklist => {
     const done = row({ itemName: 'Content audit: flooring glossary', who: who ?? 'Jeannette Owens', statusText: 'Done', statusColor: '#00C875', statusDone: true, dueDate: day(-30) })
     const mine = OPEN.filter(r => !who || r.who === who)
-    const rows = withTeamRanks([...mine, done], ranking)
+    const rows = withTeamRanks([...mine, done], ranking, trueNorth)
     return { rows, open: mine.length, total: rows.length, unlinked: 0, unlinkedAssignments: 0, truncated: false, matching: rows.length, oldestSyncAt: hoursAgo(2) }
   }
   const order = (o: Partial<TeamOrderView>): TeamOrderView => ({

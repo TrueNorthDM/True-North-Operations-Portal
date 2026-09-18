@@ -95,6 +95,12 @@ export interface WorkRow {
    * everywhere else.
    */
   teamRank?: number | null
+  /** Its place in True North's order for the same team, set alongside teamRank. */
+  tnRank?: number | null
+  /** A team leader placed it by hand; otherwise it follows True North's order (order-bands.ts). */
+  placedByHand?: boolean
+  /** Steps placed by hand before it in the team's order, which is why it sits lower than True North's place. */
+  placedAbove?: number | null
 }
 
 // Workspace and board are columns on the row now, not levels of a tree. The

@@ -36,6 +36,8 @@ import { PullInfo } from '@/components/PullInfo'
 import { COMPLETED_MONTHS } from '@/lib/monday/worklist/constants'
 import { chip, PRIORITY_CHIP, DUE_BADGE, DUE_TIME, type DueState } from './tokens'
 import { StatusChip } from './StatusChip'
+import { BandHeader, BandMap, NextBandPill, OrderMark, type BandSummary } from './OrderBands'
+import { bandRange, bandReason, bandsOf } from '@/lib/monday/worklist/order-bands'
 import { HistorySteps, historyWhen } from './HistorySteps'
 import type { HistoryData } from '@/lib/monday/worklist/history'
 import { personSelectValue, isMine } from '@/lib/monday/worklist/filters'
@@ -418,11 +420,13 @@ function HeadCell({ col, sort, onSort }: { col: ColumnDef; sort: Sort | null; on
 }
 
 /** One row's cells, only for the columns being shown. */
-function RowCells({ r, d, columns, onPick }: {
+function RowCells({ r, d, columns, onPick, marks = false }: {
   r: WorkRow
   d: Prepared['due']
   columns: ColumnDef[]
   onPick: (r: WorkRow) => void
+  /** The list follows an order a leader set: mark each row and give True North's place. */
+  marks?: boolean
 }) {
   const faint = <span className="text-[var(--faint)]">-</span>
   return (
@@ -443,6 +447,19 @@ function RowCells({ r, d, columns, onPick }: {
             )
           case 'team':
             // The place in the whole team's list, so a 6 is sixth for the team.
+            // With an order a leader set, the mark says whether it was placed by
+            // hand or follows True North, and True North's place sits under it.
+            if (marks && r.teamRank != null) {
+              return (
+                <div key={c.key} className="px-3 py-2 min-w-0 overflow-hidden flex items-center gap-2">
+                  <OrderMark placed={!!r.placedByHand} />
+                  <span className="flex flex-col leading-none min-w-0">
+                    <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{n(r.teamRank)}</span>
+                    {r.tnRank != null && <span className="text-[10.5px] font-bold text-tn-teal mt-1 whitespace-nowrap" title="True North's place for this step">{`TN #${n(r.tnRank)}`}</span>}
+                  </span>
+                </div>
+              )
+            }
             return (
               <div key={c.key} className="px-3 py-2.5 min-w-0 overflow-hidden font-(family-name:--font-display) font-extrabold text-[15px] leading-[1.25] text-tn-ink">
                 {r.teamRank != null ? n(r.teamRank) : faint}
@@ -574,8 +591,20 @@ function ColumnsMenu({ visible, onChange, offered }: {
   )
 }
 
+/** How the On-going block draws the bands of a team order (order-bands.ts). */
+interface BandsConfig {
+  /** Who set the order: "Placed by hand by Jeannette Owens". */
+  leader: string
+  /** The team orders workspaces and boards: rows that were not placed follow that, not True North alone. */
+  levels: boolean
+  /** "Your list" on someone's own work, "This list" otherwise. */
+  title: string
+  /** Room the sticky column heading takes, so a jump lands below it. */
+  offset: number
+}
+
 function Block({
-  title, note, rows, open, onToggle, onPick, columns, template, tone = 'default',
+  title, note, rows, open, onToggle, onPick, columns, template, tone = 'default', marks = false, bands = null,
 }: {
   title: string
   note?: string
@@ -586,9 +615,75 @@ function Block({
   columns: ColumnDef[]
   template: string
   tone?: 'default' | 'quiet'
+  /** Pin or compass on every row, with True North's place. */
+  marks?: boolean
+  /** Cut the rows into bands where the order changes kind. Only in the team's own order. */
+  bands?: BandsConfig | null
 }) {
   const [all, setAll] = useState(false)
+  const [closed, setClosed] = useState<Set<number>>(new Set())
+  const sections = useRef<(HTMLElement | null)[]>([])
+  const grouped = useMemo(() => (bands ? bandsOf(rows, p => !!p.row.placedByHand) : null), [rows, bands])
+  const summaries: BandSummary[] = useMemo(() => (grouped ?? []).map(g => ({
+    placed: g.placed,
+    count: g.items.length,
+    range: bandRange(g.items[0].row.teamRank ?? 0, g.items[g.items.length - 1].row.teamRank ?? 0),
+  })), [grouped])
+
   const shown = all ? rows : rows.slice(0, FIRST_ROWS)
+  const row = ({ row: r, due: d }: Prepared) => (
+    <div
+      key={r.id}
+      className="grid border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)] transition-colors"
+      style={{ gridTemplateColumns: template }}
+    >
+      <RowCells r={r} d={d} columns={columns} onPick={onPick} marks={marks} />
+    </div>
+  )
+  const toggle = (i: number) => setClosed(prev => {
+    const next = new Set(prev)
+    if (next.has(i)) next.delete(i)
+    else next.add(i)
+    return next
+  })
+  const jump = (i: number) => {
+    setAll(true)
+    setClosed(prev => { const next = new Set(prev); next.delete(i); return next })
+    requestAnimationFrame(() => sections.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
+
+  // Bands, and how many rows the first screen draws across them: FIRST_ROWS in
+  // all, and a band past that point waits for "Show the other".
+  // `waiting` is what "Show the other" still holds: rows past the first screen,
+  // not the rows of a band someone collapsed.
+  let waiting = 0
+  const banded = (() => {
+    if (!grouped || !bands) return null
+    let left = all ? Number.POSITIVE_INFINITY : FIRST_ROWS
+    const out: ReactNode[] = []
+    grouped.forEach((g, i) => {
+      if (left <= 0) { waiting += g.items.length; return }
+      const first = g.items[0].row
+      const label = g.placed
+        ? `Placed by hand by ${bands.leader}`
+        : bands.levels ? "Following the team's workspace and board order" : "Following True North's order"
+      const reason = !g.placed && !bands.levels && first.teamRank != null && first.tnRank != null && first.placedAbove != null
+        ? bandReason({ team: first.teamRank, tn: first.tnRank, placedAbove: first.placedAbove })
+        : null
+      const isOpen = !closed.has(i)
+      const take = isOpen ? g.items.slice(0, left) : []
+      left -= take.length
+      if (isOpen) waiting += g.items.length - take.length
+      out.push(
+        <div key={i} ref={el => { sections.current[i] = el }} style={{ scrollMarginTop: bands.offset }}>
+          <BandHeader index={i} band={summaries[i]} label={label} reason={reason} open={isOpen} onToggle={() => toggle(i)} />
+          {take.map(row)}
+        </div>,
+      )
+    })
+    return out
+  })()
+
   return (
     <section className={`rounded-[14px] border ${tone === 'quiet' ? 'border-[var(--warn-border)]' : 'border-[var(--panel-border)]'} bg-white overflow-hidden`}>
       <button
@@ -606,19 +701,36 @@ function Block({
         <div className="px-5 py-8 text-center text-[13.5px] text-muted border-t border-[var(--row-rule)]">Nothing here.</div>
       )}
 
-      {open && rows.length > 0 && (
+      {open && rows.length > 0 && banded && bands && (
+        <div className="border-t border-[var(--row-rule)]">
+          {/* The map first: every band, in order, to scale, before any scrolling. */}
+          <BandMap
+            bands={summaries}
+            title={bands.title}
+            placedLabel={`placed by ${bands.leader === 'you' ? 'you' : bands.leader.split(' ')[0]}`}
+            followLabel={bands.levels ? "follow the team's order" : 'follow True North'}
+            onJump={jump}
+            onCollapseAll={() => setClosed(new Set(summaries.map((_, i) => i)))}
+            onExpandAll={() => setClosed(new Set())}
+          />
+          {banded}
+          {!all && waiting > 0 && (
+            <button
+              onClick={() => setAll(true)}
+              className="w-full px-5 py-[13px] text-[13.5px] font-semibold text-tn-teal hover:bg-subtle transition-colors border-t border-[var(--row-rule)]"
+            >
+              {`Show the other ${n(waiting)}`}
+            </button>
+          )}
+          {summaries.length > 1 && <NextBandPill sections={sections} bands={summaries} closed={closed} onJump={jump} />}
+        </div>
+      )}
+
+      {open && rows.length > 0 && !banded && (
         <div className="border-t border-[var(--row-rule)]">
           {/* A grid, not a table, and no heading of its own: the one heading
               above every block uses the same template, so the columns line up. */}
-          {shown.map(({ row: r, due: d }) => (
-            <div
-              key={r.id}
-              className="grid border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)] transition-colors"
-              style={{ gridTemplateColumns: template }}
-            >
-              <RowCells r={r} d={d} columns={columns} onPick={onPick} />
-            </div>
-          ))}
+          {shown.map(row)}
 
           {!all && rows.length > FIRST_ROWS && (
             <button
@@ -890,6 +1002,11 @@ export function WorkList({
   // The team's order when the list follows one; otherwise the default order
   // (board priority, then deadline), which is also what fills in every place a
   // team leader has not set, so the two can never disagree.
+  // An order a leader set: each row says whether it was placed by hand or
+  // follows True North, and in the team's own order the block is cut into
+  // bands where that changes (order-bands.ts). Sorted by another column, the
+  // bands would mean nothing, so only the marks stay.
+  const ordered = !!teamOrder && (teamOrder.placed > 0 || teamOrder.levels)
   const ongoing = sort ? sortRows(openRows, sort) : openRows.sort((a, b) =>
     (a.row.teamRank ?? Number.POSITIVE_INFINITY) - (b.row.teamRank ?? Number.POSITIVE_INFINITY)
     || compareDefault(a.row, b.row))
@@ -1186,6 +1303,13 @@ export function WorkList({
               onPick={setOpenRow}
               columns={grid.columns}
               template={grid.template}
+              marks={ordered}
+              bands={ordered && !sort ? {
+                leader: teamOrder!.updatedBySelf ? 'you' : teamOrder!.updatedBy ?? 'a team leader',
+                levels: teamOrder!.levels,
+                title: mine ? 'Your list' : 'This list',
+                offset: stickyTop + 52,
+              } : null}
             />
 
             <Block

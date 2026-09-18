@@ -521,6 +521,15 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
   de `monday_team_priority` (migração 087, rodada em 18/09; conferido: colunas no banco, a
   ordem do SEO intacta com 236 passos à mão, escrita anônima recusada). Commit c636be4. Tela:
   `/design-check/team-priority-live?levels=1`.
+- **Ordem do time ou da True North, visível (pedido e escolhido em 18/09, construído):** em
+  My Work e no editor, cada linha tem um alfinete (colocado à mão) ou uma bússola (segue a
+  True North) e o número da True North embaixo do número do time. A lista é cortada em faixas
+  onde a ordem muda de um tipo para o outro, uma faixa por trecho, na ordem da lista (a da
+  Jeannette tem 5: 126 à mão, 69 True North, 4, 32, 5). No topo da tabela, um mapa com as
+  faixas em escala, cada uma clicável; cada faixa recolhe e expande; e um aviso fixo no rodapé
+  da tela diz qual é a próxima faixa enquanto a atual ocupa a tela. Ordenada por outra coluna,
+  a lista perde as faixas e mantém as marcas. Regras em `order-bands.ts`, mockups em
+  `/design-check/order-clarity` e `/design-check/order-bands`.
 - J5: team leaders verem o Report. **Em 18/09:** o vazamento foi fechado ("My team" de um team
   leader agora são os times que ele lidera, nunca a empresa inteira) e as abas People e Workload
   ganharam uma linha cada no Access levels (grupo My Work Report). Você decidiu controlar por lá;

@@ -4,11 +4,12 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
-  baseOrder, cleanLevels, hasLevels, isGrantScope, stepKey, teamRanking,
+  baseOrder, cleanLevels, defaultOrder, hasLevels, isGrantScope, stepKey, teamRanking,
   type GrantScope, type Levels, type Membership, type Ranking, type SavedOrder,
 } from './team-priority'
 import type { WorkRow } from './data'
 import { missingColumn } from './missing-column'
+import { placedAbove } from './order-bands'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -159,15 +160,29 @@ export async function loadSavedOrder(supabase: Client, teamId: string): Promise<
  *
  * `rows` may hold finished work as well; only open steps have a place.
  */
-export function rankTeam(rows: WorkRow[], saved: SavedOrder | null): { open: WorkRow[]; ranking: Ranking } {
-  const open = baseOrder(rows.filter(r => r.statusDone !== true && r.assigneeKnown), saved?.levels ?? null)
-  return { open, ranking: teamRanking(open.map(stepKey), saved) }
+export function rankTeam(rows: WorkRow[], saved: SavedOrder | null): { open: WorkRow[]; ranking: Ranking; trueNorth: string[] } {
+  const eligible = rows.filter(r => r.statusDone !== true && r.assigneeKnown)
+  const open = baseOrder(eligible, saved?.levels ?? null)
+  // True North's own order for the same steps, whatever levels the team set:
+  // the place every row is compared with on My Work and in the editor.
+  return { open, ranking: teamRanking(open.map(stepKey), saved), trueNorth: defaultOrder(eligible).map(stepKey) }
 }
 
-/** Every open row given its place in the team's order; finished rows are left without one. */
-export function withTeamRanks(rows: WorkRow[], ranking: Ranking): WorkRow[] {
+/**
+ * Every open row given its place in the team's order, and what the bands on
+ * My Work read (order-bands.ts): its place in True North's order, whether it
+ * was placed by hand, and how many steps placed by hand come before it.
+ * Finished rows are left without any of it.
+ */
+export function withTeamRanks(rows: WorkRow[], ranking: Ranking, trueNorth: string[] = []): WorkRow[] {
   const place = new Map(ranking.keys.map((k, i) => [k, i + 1]))
-  return rows.map(r => (r.statusDone === true ? r : { ...r, teamRank: place.get(stepKey(r)) ?? null }))
+  const tn = new Map(trueNorth.map((k, i) => [k, i + 1]))
+  const above = placedAbove(ranking)
+  return rows.map(r => {
+    if (r.statusDone === true) return r
+    const k = stepKey(r)
+    return { ...r, teamRank: place.get(k) ?? null, tnRank: tn.get(k) ?? null, placedByHand: ranking.pinned.has(k), placedAbove: above.get(k) ?? null }
+  })
 }
 
 // ── People given team priority by name (migration 085) ─────────────────────

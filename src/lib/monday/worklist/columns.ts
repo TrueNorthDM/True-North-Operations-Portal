@@ -37,13 +37,15 @@ export const COLUMNS: ColumnDef[] = [
   { key: 'monday', label: 'Open in Monday', required: true, track: '44px', min: 44 },
   { key: 'history', label: 'History', required: true, track: '44px', min: 44 },
   // The step's place in its team's priority order. Only drawn while the list
-  // follows a team's order (a person, or a team, is chosen); "1,161" fits.
-  { key: 'team', label: 'Team', required: false, track: '64px', min: 64, sort: 'team' },
+  // follows a team's order (a person, or a team, is chosen). 96px since 18
+  // September 2026: the mark (pin or compass) and True North's place under the
+  // number, with "1,161" still fitting.
+  { key: 'team', label: 'Team', required: false, track: '96px', min: 96, sort: 'team' },
   // Minimums chosen so every column fits a 1440px laptop (about 1,328px of page
   // beside the sidebar) without scrolling sideways; above that, Item takes the
   // largest share of the extra width. Team took its 64px from Item, Parent item,
-  // Board, Assignee and Step.
-  { key: 'item', label: 'Item', required: true, track: 'minmax(166px,3fr)', min: 166, sort: 'item' },
+  // Board, Assignee and Step, and its mark's 32px from Item's minimum.
+  { key: 'item', label: 'Item', required: true, track: 'minmax(134px,3fr)', min: 134, sort: 'item' },
   // Beside Item because it is what tells same-named items apart: one page per
   // language on the publishing and translation boards. "Portuguese" is the
   // longest value in use.

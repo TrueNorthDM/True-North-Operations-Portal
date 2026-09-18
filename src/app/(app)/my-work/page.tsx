@@ -211,8 +211,8 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   let rows = data.rows
   let teamOrder: TeamOrderView | null = null
   if (orderTeamId && order?.available) {
-    const { ranking } = rankTeam(teamWork ? teamWork.rows : data.rows, order.saved)
-    rows = withTeamRanks(data.rows, ranking)
+    const { ranking, trueNorth } = rankTeam(teamWork ? teamWork.rows : data.rows, order.saved)
+    rows = withTeamRanks(data.rows, ranking, trueNorth)
     teamOrder = {
       teamId: orderTeamId,
       teamName: teamName(orderTeamId),
