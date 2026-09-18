@@ -21,7 +21,7 @@ import { loadWorklist } from '@/lib/monday/worklist/data'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { resolvePersonFilter } from '@/lib/monday/worklist/filters'
 import {
-  canSetOrder, editorTeamFor, orderTeamFor, priorityRights, settableTeams, stepKey, type Membership, type TeamOrderView,
+  canSetOrder, editorTeamFor, hasLevels, orderTeamFor, priorityRights, settableTeams, stepKey, type Membership, type TeamOrderView,
 } from '@/lib/monday/worklist/team-priority'
 import {
   loadMemberships, loadOrderSummaries, loadPriorityGrant, loadSavedOrder, rankTeam, withTeamRanks, type OrderSummary,
@@ -146,6 +146,8 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
               language: r.language,
               parentItemName: r.parentItemName,
               boardName: r.boardName,
+              boardId: r.boardId,
+              workspaceName: r.workspaceName,
               stepName: r.stepName,
               who: r.who,
               priority: r.priority,
@@ -157,6 +159,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
             savedAt={order.updatedAt}
             savedBy={order.updatedByName}
             savedBySelf={!!selfPersonId && order.updatedById === selfPersonId}
+            levelsAvailable={order.levelsAvailable}
           />
         )
       }
@@ -184,7 +187,9 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
     : settable.length
       ? await loadOrderSummaries(supabase, [])
       : { available: false, byTeam: new Map<string, OrderSummary>() }
-  const hasOrder = (id: string) => (summaries.byTeam.get(id)?.placed ?? 0) > 0
+  // Placed steps, or a workspace or board order: anything that makes the list
+  // differ from True North's.
+  const hasOrder = (id: string) => summaries.byTeam.get(id)?.ordered ?? false
   const orderTeamId = personId ? orderTeamFor(orderChoices, sp.pteam, hasOrder) : (sp.team || null)
   const canEdit = !!orderTeamId && canSetOrder(orderTeamId, myTeams, rights)
 
@@ -212,6 +217,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
       teamId: orderTeamId,
       teamName: teamName(orderTeamId),
       placed: ranking.pinned.size,
+      levels: hasLevels(order.saved?.levels),
       updatedAt: order.updatedAt,
       updatedBy: order.updatedByName,
       updatedBySelf: !!selfPersonId && order.updatedById === selfPersonId,

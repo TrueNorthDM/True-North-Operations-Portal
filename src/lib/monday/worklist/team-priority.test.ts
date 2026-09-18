@@ -3,6 +3,7 @@ import {
   stepKey, isStepKey, compareDefault, defaultOrder, teamRanking, pinsFor, moveTo, agreement, displacement,
   cleanSavedOrder, leads, orderTeamFor, canSetOrder, editorTeamFor, updatedWhen, MAX_STEPS,
   priorityRights, orderRightFor, settableTeams, isGrantScope, priorityLevel, priorityReach,
+  hasLevels, trueNorthWorkspaces, workspaceRanking, boardRanking, levelOrder, baseOrder, cleanLevels,
   type OrderableStep, type Membership, type GrantScope,
 } from './team-priority'
 
@@ -416,5 +417,94 @@ describe('priorityLevel', () => {
 
   it('leaves everyone else on their own level', () => {
     expect(priorityLevel('team_leader', 'viewer')).toEqual({ matrixLevel: 'team_leader', isAdmin: false })
+  })
+})
+
+describe('three levels: workspace, board, item', () => {
+  // Built on the SEO team's shape: two workspaces of high boards, one of medium.
+  let n = 1000
+  const st = (ws: string, boardId: number, boardName: string, priority: 'high' | 'medium' | 'low', dueDate: string) => ({
+    itemId: n++, peopleCol: 'person', mondayUserId: 7, dueDate, dueSuspect: false, itemName: `item ${n}`,
+    priority, boardId, boardName, workspaceName: ws,
+  })
+  const I7 = 'i7 Projects', AAAF = 'Ask An Adventist Friend', GSM = 'Graphics & Social Media'
+  const steps = [
+    st(GSM, 30, 'WM - Social Media Planning', 'medium', '2026-01-01'),
+    st(AAAF, 20, 'AAAF - Publishing', 'high', '2026-09-01'),
+    st(I7, 10, 'WM - Schema Audits', 'high', '2026-09-10'),
+    st(I7, 11, 'BM - General Audits', 'high', '2026-08-01'),
+    st(I7, 11, 'BM - General Audits', 'high', '2026-10-01'),
+    st(AAAF, 21, 'AAAF - Schema Audits', 'high', '2026-07-01'),
+    st(GSM, 30, 'WM - Social Media Planning', 'medium', '2026-02-01'),
+  ]
+  const keysOf = (xs: typeof steps) => xs.map(x => x.itemId)
+
+  // Decision 3: what nobody ordered follows True North, exactly as before.
+  it('is True North\'s order when no level is set', () => {
+    expect(hasLevels({ workspaces: [], boards: [] })).toBe(false)
+    expect(keysOf(baseOrder(steps, null))).toEqual(keysOf(defaultOrder(steps)))
+    expect(keysOf(baseOrder(steps, { workspaces: [], boards: [] }))).toEqual(keysOf(defaultOrder(steps)))
+  })
+
+  it('orders unplaced workspaces by best board priority, then the most open steps', () => {
+    // i7 and AAAF are both high; i7 has more open steps. Graphics is medium.
+    expect(trueNorthWorkspaces(steps)).toEqual([I7, AAAF, GSM])
+  })
+
+  // Decision 1: the hierarchy is rigid. Graphics' January deadline, the most
+  // late thing on the list, still comes after every other workspace.
+  it('puts everything in the first workspace before anything in the second, late work included', () => {
+    const order = baseOrder(steps, { workspaces: [AAAF, I7, GSM], boards: [] })
+    expect(order.map(x => x.workspaceName)).toEqual([AAAF, AAAF, I7, I7, I7, GSM, GSM])
+  })
+
+  it('orders boards inside their workspace, and items inside a board by deadline', () => {
+    const order = baseOrder(steps, { workspaces: [I7], boards: [10, 11] })
+    expect(order.slice(0, 3).map(x => [x.boardId, x.dueDate])).toEqual([
+      [10, '2026-09-10'], [11, '2026-08-01'], [11, '2026-10-01'],
+    ])
+  })
+
+  // Decision 3 again: a workspace or board the leader never placed joins the
+  // end of its level, in True North's order.
+  it('puts a workspace nobody placed at the end, in True North\'s order', () => {
+    expect(workspaceRanking(steps, { workspaces: [GSM], boards: [] })).toEqual([GSM, I7, AAAF])
+    const withNew = [...steps, st('New Workspace', 40, 'New board', 'high', '2026-09-20')]
+    expect(workspaceRanking(withNew, { workspaces: [GSM, AAAF, I7], boards: [] })).toEqual([GSM, AAAF, I7, 'New Workspace'])
+  })
+
+  it('puts a board nobody placed at the end of its own workspace', () => {
+    const withNew = [...steps, st(I7, 12, 'BM - Publishing', 'high', '2026-09-20')]
+    expect(boardRanking(withNew, { workspaces: [I7, AAAF, GSM], boards: [11, 10] }).slice(0, 3)).toEqual([11, 10, 12])
+  })
+
+  it('forgets a workspace with nothing open in it', () => {
+    expect(workspaceRanking(steps, { workspaces: ['Gone', AAAF], boards: [] })).toEqual([AAAF, I7, GSM])
+  })
+
+  // Decision 2: what was placed by hand keeps its place above the new rules.
+  it('keeps a step placed by hand above the workspace order', () => {
+    const levels = { workspaces: [I7, AAAF, GSM], boards: [] }
+    const base = keysOf(baseOrder(steps, levels)).map(String)
+    const graphics = String(steps[0].itemId)
+    const arranged = moveTo(base, graphics, 0)
+    const pinned = pinsFor(arranged, base, { moved: graphics })
+    expect(pinned).toEqual([graphics])
+    expect(teamRanking(base, { order: arranged, pinned }).keys[0]).toBe(graphics)
+  })
+
+  it('reads levels from the browser only as two clean lists', () => {
+    expect(cleanLevels({ workspaces: ['A', 'A', 'B'], boards: [3, 3, 4] })).toEqual({ workspaces: ['A', 'B'], boards: [3, 4] })
+    expect(cleanLevels({ workspaces: [], boards: [] })).toEqual({ workspaces: [], boards: [] })
+    expect(cleanLevels({ workspaces: [''], boards: [] })).toBeNull()
+    expect(cleanLevels({ workspaces: [], boards: [-1] })).toBeNull()
+    expect(cleanLevels({ workspaces: 'A', boards: [] })).toBeNull()
+    expect(cleanLevels(null)).toBeNull()
+  })
+
+  it('keeps a board\'s items in the order they came in, when that is True North\'s', () => {
+    const tn = defaultOrder(steps)
+    const within = levelOrder(tn, { workspaces: [], boards: [11] }).filter(x => x.boardId === 11)
+    expect(within.map(x => x.dueDate)).toEqual(['2026-08-01', '2026-10-01'])
   })
 })

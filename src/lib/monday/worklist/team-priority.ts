@@ -87,6 +87,8 @@ export interface SavedOrder {
   order: string[]
   /** The steps in it that were placed by hand. */
   pinned: string[]
+  /** The team's order for whole workspaces and boards (migration 087), if it has one. */
+  levels?: Levels | null
 }
 
 export interface Ranking {
@@ -282,8 +284,10 @@ export function updatedWhen(iso: string, now = new Date()): string {
 export interface TeamOrderView {
   teamId: string
   teamName: string
-  /** Steps placed by hand and still open. None means the list is in the default order. */
+  /** Steps placed by hand and still open. */
   placed: number
+  /** The team has a workspace or board order. With neither, and nothing placed, the list is True North's. */
+  levels: boolean
   updatedAt: string | null
   updatedBy: string | null
   updatedBySelf: boolean
@@ -291,6 +295,138 @@ export interface TeamOrderView {
   canEdit: boolean
   /** Every team the list could follow, when the person shown is on more than one. */
   choices: { id: string; name: string }[]
+}
+
+// ── Three levels: workspace, board, item ───────────────────────────────────
+//
+// Asked for on 18 September 2026 and confirmed the same day: a leader orders
+// whole workspaces, then the boards inside each, then single items.
+//
+//   1. Workspaces in the leader's order: everything in the first comes before
+//      anything in the second, late work included.
+//   2. Inside each, boards in the leader's order.
+//   3. Inside each board, True North's order: the soonest deadline first.
+//   4. A step placed by hand at the Item level keeps its place above all of it,
+//      even other workspaces (teamRanking, as before).
+//
+// What nobody ordered follows True North: with no workspace or board order at
+// all, the list is True North's order exactly as before; once there is one, a
+// workspace or board nobody placed joins the end of its level in True North's
+// order (workspaces by their best board priority, then the most open steps;
+// boards by priority, then the most open steps). The orders are rules, not
+// snapshots: a step that lands on a board next week takes that board's place.
+
+/** A team's own order for whole workspaces and whole boards. Empty lists mean "not set". */
+export interface Levels {
+  /** Workspace names, first to last. Boards with no workspace are under NO_WORKSPACE. */
+  workspaces: string[]
+  /** Board ids, first to last, each read inside its own workspace. */
+  boards: number[]
+}
+
+export const NO_WORKSPACE = 'No workspace'
+
+/** What the levels read from a step. */
+export interface LevelFields {
+  boardId: number
+  boardName: string
+  workspaceName: string | null
+  priority: Priority
+}
+
+export const workspaceOf = (s: { workspaceName: string | null }): string => s.workspaceName ?? NO_WORKSPACE
+
+/** Whether a team has set anything above the Item level. */
+export function hasLevels(l: Levels | null | undefined): l is Levels {
+  return !!l && (l.workspaces.length > 0 || l.boards.length > 0)
+}
+
+/** True North's order for workspaces: best board priority, then the most open steps, then the name. */
+export function trueNorthWorkspaces(steps: LevelFields[]): string[] {
+  const best = new Map<string, number>()
+  const count = new Map<string, number>()
+  for (const s of steps) {
+    const w = workspaceOf(s)
+    best.set(w, Math.min(best.get(w) ?? 9, RANK[s.priority] ?? 1))
+    count.set(w, (count.get(w) ?? 0) + 1)
+  }
+  return [...best.keys()].sort((a, b) =>
+    best.get(a)! - best.get(b)! || count.get(b)! - count.get(a)! || a.localeCompare(b, 'en'))
+}
+
+/** True North's order for the boards of each workspace: priority, then the most open steps, then the name. */
+function trueNorthBoardsByWorkspace(steps: LevelFields[]): Map<string, number[]> {
+  const info = new Map<number, { ws: string; rank: number; count: number; name: string }>()
+  for (const s of steps) {
+    const cur = info.get(s.boardId)
+    if (cur) cur.count++
+    else info.set(s.boardId, { ws: workspaceOf(s), rank: RANK[s.priority] ?? 1, count: 1, name: s.boardName })
+  }
+  const byWs = new Map<string, number[]>()
+  for (const [id, b] of info) byWs.set(b.ws, [...(byWs.get(b.ws) ?? []), id])
+  for (const [ws, ids] of byWs) {
+    byWs.set(ws, ids.sort((a, b) => {
+      const x = info.get(a)!, y = info.get(b)!
+      return x.rank - y.rank || y.count - x.count || x.name.localeCompare(y.name, 'en')
+    }))
+  }
+  return byWs
+}
+
+/** The team's workspaces, first to last: the leader's order, then the rest in True North's. */
+export function workspaceRanking(steps: LevelFields[], levels: Levels | null): string[] {
+  const tn = trueNorthWorkspaces(steps)
+  const present = new Set(tn)
+  const mine = (levels?.workspaces ?? []).filter((w, i, all) => present.has(w) && all.indexOf(w) === i)
+  return [...mine, ...tn.filter(w => !mine.includes(w))]
+}
+
+/**
+ * The team's boards, first to last, grouped under their workspace in
+ * workspaceRanking's order: inside each workspace, the leader's order, then the
+ * rest in True North's.
+ */
+export function boardRanking(steps: LevelFields[], levels: Levels | null): number[] {
+  const tn = trueNorthBoardsByWorkspace(steps)
+  const rank = new Map((levels?.boards ?? []).map((b, i) => [b, i]))
+  return workspaceRanking(steps, levels).flatMap(ws => {
+    const boards = tn.get(ws) ?? []
+    const mine = boards.filter(b => rank.has(b)).sort((a, b) => rank.get(a)! - rank.get(b)!)
+    return [...mine, ...boards.filter(b => !rank.has(b))]
+  })
+}
+
+/**
+ * Steps already in True North's order, put in the team's order before anything
+ * is placed by hand: by board, in boardRanking's order, and inside a board as
+ * True North has them. With no levels set, True North's order unchanged.
+ */
+export function levelOrder<T extends LevelFields>(stepsInTrueNorthOrder: T[], levels: Levels | null): T[] {
+  if (!hasLevels(levels)) return stepsInTrueNorthOrder
+  const place = new Map(boardRanking(stepsInTrueNorthOrder, levels).map((b, i) => [b, i]))
+  return stepsInTrueNorthOrder
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => (place.get(a.s.boardId) ?? 0) - (place.get(b.s.boardId) ?? 0) || a.i - b.i)
+    .map(x => x.s)
+}
+
+/** The team's order over its open steps, before hand placing: True North's, then the levels. */
+export function baseOrder<T extends OrderableStep & LevelFields>(steps: T[], levels: Levels | null): T[] {
+  return levelOrder(defaultOrder(steps), levels)
+}
+
+/**
+ * Levels as the server action receives them, checked: two lists, of workspace
+ * names and of board ids, duplicates dropped. Anything else is refused.
+ */
+export function cleanLevels(v: unknown): Levels | null {
+  if (!v || typeof v !== 'object') return null
+  const { workspaces, boards } = v as { workspaces?: unknown; boards?: unknown }
+  if (!Array.isArray(workspaces) || !Array.isArray(boards)) return null
+  if (workspaces.length > 500 || boards.length > 5000) return null
+  if (!workspaces.every(w => typeof w === 'string' && w.length > 0 && w.length <= 200)) return null
+  if (!boards.every(b => typeof b === 'number' && Number.isSafeInteger(b) && b > 0)) return null
+  return { workspaces: [...new Set(workspaces as string[])], boards: [...new Set(boards as number[])] }
 }
 
 // ── Who leads, and whose order a list follows ──────────────────────────────

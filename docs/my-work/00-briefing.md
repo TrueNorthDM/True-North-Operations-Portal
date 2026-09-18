@@ -511,10 +511,15 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
   status concluído nunca vira passo. Conferido nas 3.287 linhas abertas: nenhuma escapa. A
   única demora é até a próxima leitura do board depois de uma mudança no Monday, que com a fila
   nova fica em até uma sincronização (4 horas).
-- **Team priority em três níveis (pedido em 18/09):** ordenar por workspace, depois board,
-  depois item. Mockup com o time SEO real em `/design-check/team-priority-levels`
-  (`?level=board`, `?level=item`). Aguarda você confirmar: hierarquia rígida, os 206 passos já
-  colocados à mão no SEO continuam valendo, e o que ninguém ordenou segue a True North.
+- **Team priority em três níveis (pedido e confirmado em 18/09, construído):** no editor,
+  "Order by: Workspace · Board · Item". Decisões confirmadas: (1) hierarquia rígida, tudo do
+  workspace #1 antes do #2, mesmo atrasado; (2) passos colocados à mão (os 206 do SEO)
+  continuam valendo, acima dos níveis; (3) o que ninguém ordenou segue a True North (boards
+  pela prioridade do board; workspaces pela melhor prioridade de board, depois mais passos
+  abertos), e workspace ou board novo entra no fim do seu nível. Dentro de um board, a ordem
+  da True North (prazo mais próximo primeiro). Guardado em `workspace_order` e `board_order`
+  de `monday_team_priority` (migração 087); sem a migração, o editor esconde os níveis e
+  continua como antes. Tela: `/design-check/team-priority-live?levels=1`.
 - J5: team leaders verem o Report (plano em `03-report-for-team-leaders-plan.md`).
 - J3: ainda em investigação (decidido em 16/09; a resposta à Jeannette diz só isso). A
   automação que devia marcar On-Page SEO como "Not Relevant" nas páginas que não são em

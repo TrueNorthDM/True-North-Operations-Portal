@@ -19,17 +19,27 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { surfaceAllowed } from '@/lib/access/surfaces'
-import { canSetOrder, cleanSavedOrder, priorityLevel, priorityRights } from '@/lib/monday/worklist/team-priority'
+import { canSetOrder, cleanLevels, cleanSavedOrder, priorityLevel, priorityRights } from '@/lib/monday/worklist/team-priority'
 import { loadMemberships, loadPriorityGrant } from '@/lib/monday/worklist/team-priority-data'
+import { missingColumn } from '@/lib/monday/worklist/missing-column'
 
 export interface SaveResult { ok: boolean; error?: string; savedAt?: string }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export async function saveTeamPriority(teamId: string, order: string[], pinned: string[]): Promise<SaveResult> {
+/**
+ * `levels` is the team's workspace and board order (migration 087). Left out,
+ * the stored one is kept as it is, which is what an editor that cannot order
+ * levels yet sends.
+ */
+export async function saveTeamPriority(
+  teamId: string, order: string[], pinned: string[], levels?: unknown,
+): Promise<SaveResult> {
   if (typeof teamId !== 'string' || !UUID.test(teamId)) return { ok: false, error: 'That team does not exist.' }
   const clean = cleanSavedOrder(order, pinned)
   if (!clean) return { ok: false, error: 'The order could not be read. Reload the page and try again.' }
+  const cleanLv = levels === undefined ? undefined : cleanLevels(levels)
+  if (cleanLv === null) return { ok: false, error: 'The workspace and board order could not be read. Reload the page and try again.' }
 
   // A preview shows what a level would see. Saving from one would act with the
   // admin's real session on behalf of somebody else's level, so it does not.
@@ -69,9 +79,13 @@ export async function saveTeamPriority(teamId: string, order: string[], pinned: 
     team_id: teamId,
     step_order: clean.order,
     pinned: clean.pinned,
+    ...(cleanLv ? { workspace_order: cleanLv.workspaces, board_order: cleanLv.boards } : {}),
     updated_by: me.id,
     updated_at: savedAt,
   }, { onConflict: 'team_id' })
+  if (missingColumn(error, 'workspace_order') || missingColumn(error, 'board_order')) {
+    return { ok: false, error: 'Ordering by workspace and board needs migration 087 in the database. Nothing was saved.' }
+  }
   if (error) return { ok: false, error: error.message }
   return { ok: true, savedAt }
 }

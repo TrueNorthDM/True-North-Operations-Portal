@@ -1073,11 +1073,11 @@ export function WorkList({
           when, and for the people who can change it, the way in. A member of a
           team nobody has ordered sees nothing here, because their list is in
           the order it always was. */}
-      {teamOrder && (teamOrder.placed > 0 || teamOrder.canEdit || teamOrder.choices.length > 1) && (
+      {teamOrder && (teamOrder.placed > 0 || teamOrder.levels || teamOrder.canEdit || teamOrder.choices.length > 1) && (
         <div className="flex items-center gap-x-3 gap-y-2 flex-wrap rounded-[12px] border border-[rgba(30,125,127,.28)] bg-[rgba(30,125,127,.06)] px-4 py-2.5 min-h-[46px]">
           <OrderIcon />
           <span className="text-[13px] text-tn-ink">
-            {teamOrder.placed > 0 ? (
+            {teamOrder.placed > 0 || teamOrder.levels ? (
               <>
                 <span className="font-semibold">{`Ordered by the ${teamOrder.teamName} team's priority`}</span>
                 <span className="text-muted">
@@ -1114,7 +1114,7 @@ export function WorkList({
                 className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-tn-teal rounded-[8px] px-2 py-1 hover:bg-[rgba(30,125,127,.1)]"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                {teamOrder.placed > 0 ? 'Edit order' : 'Set the order'}
+                {teamOrder.placed > 0 || teamOrder.levels ? 'Edit order' : 'Set the order'}
               </a>
             ) : (
               <span className="text-[12px] text-muted">Only the team&apos;s leaders, admins and people given access can change it</span>

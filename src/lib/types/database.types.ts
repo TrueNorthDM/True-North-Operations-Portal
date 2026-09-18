@@ -552,9 +552,9 @@ export type Database = {
       }
       // Team priority on My Work (migrations 084 and 085).
       monday_team_priority: {
-        Row: { team_id: string; step_order: string[]; pinned: string[]; updated_by: string | null; updated_at: string }
-        Insert: { team_id: string; step_order?: string[]; pinned?: string[]; updated_by?: string | null; updated_at?: string }
-        Update: Partial<{ step_order: string[]; pinned: string[]; updated_by: string | null; updated_at: string }>
+        Row: { team_id: string; step_order: string[]; pinned: string[]; workspace_order: string[]; board_order: number[]; updated_by: string | null; updated_at: string }
+        Insert: { team_id: string; step_order?: string[]; pinned?: string[]; workspace_order?: string[]; board_order?: number[]; updated_by?: string | null; updated_at?: string }
+        Update: Partial<{ step_order: string[]; pinned: string[]; workspace_order: string[]; board_order: number[]; updated_by: string | null; updated_at: string }>
         Relationships: []
       }
       monday_priority_grants: {

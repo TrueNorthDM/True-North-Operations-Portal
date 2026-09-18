@@ -15,6 +15,10 @@
  * narrowed to one person. Moving a step in a narrowed list moves it past the
  * step shown above or below it, and its place is always its place in the whole
  * team's list.
+ *
+ * Three levels since 18 September 2026 (team-priority.ts): whole workspaces,
+ * then the boards inside each, then single items. The first two are rules the
+ * list is rebuilt from; items placed by hand keep their places above them.
  */
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type DragEvent } from 'react'
@@ -23,7 +27,8 @@ import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { chip, PRIORITY_CHIP } from './tokens'
 import {
-  teamRanking, pinsFor, moveTo, agreement, displacement, updatedWhen, type SavedOrder,
+  teamRanking, pinsFor, moveTo, agreement, displacement, updatedWhen, levelOrder, workspaceRanking, boardRanking,
+  trueNorthWorkspaces, hasLevels, workspaceOf, type Levels, type SavedOrder,
 } from '@/lib/monday/worklist/team-priority'
 import { todayIso } from '@/lib/monday/worklist/list-view'
 import { saveTeamPriority, type SaveResult } from '@/app/(app)/my-work/actions'
@@ -35,6 +40,8 @@ export interface EditorStep {
   language: string | null
   parentItemName: string | null
   boardName: string
+  boardId: number
+  workspaceName: string | null
   stepName: string
   who: string
   priority: 'high' | 'medium' | 'low'
@@ -46,6 +53,8 @@ export interface EditorStep {
 const FIRST_ROWS = 200
 const COLS = '72px 72px minmax(0,1fr) minmax(120px,170px) 124px 112px 112px'
 const HEAD = 'px-3 py-[11px] min-w-0 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted whitespace-nowrap'
+/** The Workspace and Board levels share one set of columns. */
+const LEVEL_COLS = '52px 72px minmax(0,1fr) 110px 110px 90px 120px'
 const n = (v: number) => v.toLocaleString('en-US')
 
 // True in the browser, false while rendering on the server, without an effect.
@@ -77,9 +86,26 @@ function shortDate(iso: string): string {
 }
 
 type SaveState = { state: 'idle' | 'waiting' | 'saving' | 'saved' | 'error'; error?: string }
+type Level = 'workspace' | 'board' | 'item'
+
+/** How far a workspace or board sits from True North's place for it. Nothing when it has not moved. */
+function LevelDelta({ by }: { by: number }) {
+  if (!by) return <span className="text-[var(--faint)] text-[13px]">-</span>
+  return by > 0
+    ? <span className={`${chip} bg-[rgba(30,125,127,.12)] text-tn-teal`}>{`up ${by}`}</span>
+    : <span className={`${chip} bg-[rgba(224,138,30,.16)] text-[#b06d0a]`}>{`down ${-by}`}</span>
+}
+
+function swap<T>(list: T[], i: number, dir: -1 | 1): T[] {
+  const j = i + dir
+  if (j < 0 || j >= list.length) return list
+  const next = [...list]
+  ;[next[i], next[j]] = [next[j], next[i]]
+  return next
+}
 
 export function TeamPriorityEditor({
-  team, teams, steps, saved, savedAt, savedBy, savedBySelf, preview = false, stickyTop = 65,
+  team, teams, steps, saved, savedAt, savedBy, savedBySelf, preview = false, stickyTop = 65, levelsAvailable = false,
 }: {
   team: { id: string; name: string }
   /** Every team this person may set. */
@@ -93,15 +119,26 @@ export function TeamPriorityEditor({
   /** Design check only: nothing is saved. */
   preview?: boolean
   stickyTop?: number
+  /** Migration 087 is in: whole workspaces and boards can be ordered. */
+  levelsAvailable?: boolean
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const isClient = useIsClient()
 
+  // True North's order: the steps as they arrive. The team's own base order is
+  // that, rebuilt by its workspace and board order when it has one.
   const defaultKeys = useMemo(() => steps.map(s => s.key), [steps])
   const byKey = useMemo(() => new Map(steps.map(s => [s.key, s])), [steps])
   const defaultPlace = useMemo(() => new Map(defaultKeys.map((k, i) => [k, i + 1])), [defaultKeys])
-  const [initial] = useState(() => teamRanking(defaultKeys, saved))
+  const [initial] = useState(() => teamRanking(levelOrder(steps, saved?.levels ?? null).map(s => s.key), saved))
+
+  const [wsSet, setWsSet] = useState<string[]>(() => saved?.levels?.workspaces ?? [])
+  const [boardSet, setBoardSet] = useState<number[]>(() => saved?.levels?.boards ?? [])
+  const levels = useMemo<Levels>(() => ({ workspaces: wsSet, boards: boardSet }), [wsSet, boardSet])
+  const levelsOn = hasLevels(levels)
+  const baseKeys = useMemo(() => levelOrder(steps, levels).map(s => s.key), [steps, levels])
+  const [level, setLevel] = useState<Level>('item')
 
   const [list, setList] = useState<string[]>(initial.keys)
   const [pinned, setPinned] = useState<string[]>(() => [...initial.pinned])
@@ -124,7 +161,7 @@ export function TeamPriorityEditor({
   const inFlight = useRef(false)
 
   const send = async () => {
-    const body = queued.current
+    const body = queued.current as (SavedOrder & { levels?: Levels | null }) | null
     if (!body) return
     queued.current = null
     if (timer.current) { clearTimeout(timer.current); timer.current = null }
@@ -133,7 +170,7 @@ export function TeamPriorityEditor({
     setSave({ state: 'saving' })
     let res: SaveResult
     try {
-      res = await saveTeamPriority(team.id, body.order, body.pinned)
+      res = await saveTeamPriority(team.id, body.order, body.pinned, levelsAvailable ? body.levels ?? undefined : undefined)
     } catch {
       res = { ok: false, error: 'The connection dropped before it saved.' }
     }
@@ -149,9 +186,9 @@ export function TeamPriorityEditor({
     }
   }
 
-  const queue = (order: string[], pins: string[]) => {
+  const queue = (order: string[], pins: string[], lv: Levels = levels) => {
     if (preview) { setSave({ state: 'saved' }); setFresh(new Set()); return }
-    queued.current = { order, pinned: pins }
+    queued.current = { order, pinned: pins, levels: lv }
     setSave({ state: 'waiting' })
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => { void send() }, 700)
@@ -180,10 +217,36 @@ export function TeamPriorityEditor({
   // ── Moving ────────────────────────────────────────────────────────────────
   const apply = (next: string[], moved: string | null) => {
     if (next === list) return
-    const pins = moved === null ? [] : pinsFor(next, defaultKeys, { keep: pinned, moved })
+    // Placed by hand means placed against the team's own base order: a step
+    // where its workspace and board would put it anyway is not pinned.
+    const pins = moved === null ? [] : pinsFor(next, baseKeys, { keep: pinned, moved })
     setList(next)
     setPinned(pins)
     queue(next, pins)
+  }
+
+  /**
+   * A new workspace or board order. The list is rebuilt from it, and every step
+   * placed by hand keeps the place it had: decided on 18 September 2026, what
+   * was placed by hand stays above the levels.
+   */
+  const changeLevels = (nextWs: string[], nextBoards: number[]) => {
+    const nextLevels = { workspaces: nextWs, boards: nextBoards }
+    const nextBase = levelOrder(steps, nextLevels).map(s => s.key)
+    const next = teamRanking(nextBase, { order: list, pinned }).keys
+    setWsSet(nextWs)
+    setBoardSet(nextBoards)
+    setList(next)
+    queue(next, pinned, nextLevels)
+  }
+
+  /** Everything back to True North's order: no levels, nothing placed by hand. */
+  const resetAll = () => {
+    setWsSet([])
+    setBoardSet([])
+    setList(defaultKeys)
+    setPinned([])
+    queue(defaultKeys, [], { workspaces: [], boards: [] })
   }
 
   const needle = q.trim().toLowerCase()
@@ -247,7 +310,40 @@ export function TeamPriorityEditor({
   const placedMoves = pinned.map(k => ({ key: k, by: moves.get(k) ?? 0 }))
   const up = placedMoves.filter(d => d.by > 0).sort((a, b) => b.by - a.by).slice(0, 3)
   const down = placedMoves.filter(d => d.by < 0).sort((a, b) => a.by - b.by).slice(0, 3)
-  const isDefault = pinned.length === 0 && list.every((k, i) => k === defaultKeys[i])
+  const isDefault = pinned.length === 0 && !levelsOn && list.every((k, i) => k === defaultKeys[i])
+
+  // ── The levels ──────────────────────────────────────────────────────────
+  const today0 = todayIso()
+  const wsRank = useMemo(() => workspaceRanking(steps, levels), [steps, levels])
+  const tnWs = useMemo(() => trueNorthWorkspaces(steps), [steps])
+  const boardRank = useMemo(() => boardRanking(steps, levels), [steps, levels])
+  const tnBoardRank = useMemo(() => boardRanking(steps, null), [steps])
+  const boardInfo = useMemo(() => {
+    const m = new Map<number, { name: string; ws: string; priority: EditorStep['priority']; open: number; late: number }>()
+    for (const st of steps) {
+      const b = m.get(st.boardId) ?? { name: st.boardName, ws: workspaceOf(st), priority: st.priority, open: 0, late: 0 }
+      b.open++
+      if (st.dueDate && !st.dueSuspect && st.dueDate < today0) b.late++
+      m.set(st.boardId, b)
+    }
+    return m
+  }, [steps, today0])
+  const boardsIn = (ws: string, order: number[]) => order.filter(b => boardInfo.get(b)?.ws === ws)
+  const wsTotals = (ws: string) => {
+    const bs = boardsIn(ws, boardRank).map(b => boardInfo.get(b)!)
+    return { boards: bs.length, open: bs.reduce((t, b) => t + b.open, 0), late: bs.reduce((t, b) => t + b.late, 0) }
+  }
+  const moveWorkspace = (i: number, dir: -1 | 1) => {
+    const next = swap(wsRank, i, dir)
+    if (next !== wsRank) changeLevels(next, boardSet)
+  }
+  const moveBoard = (ws: string, i: number, dir: -1 | 1) => {
+    const group = boardsIn(ws, boardRank)
+    const moved = swap(group, i, dir)
+    if (moved === group) return
+    let k = 0
+    changeLevels(wsSet, boardRank.map(b => (boardInfo.get(b)?.ws === ws ? moved[k++] : b)))
+  }
 
   const people = useMemo(() => {
     const counts = new Map<string, number>()
@@ -277,7 +373,7 @@ export function TeamPriorityEditor({
         </span>
       )
     }
-    if (initial.pinned.size > 0 && savedAt) {
+    if ((initial.pinned.size > 0 || hasLevels(saved?.levels)) && savedAt) {
       return (
         <span className="text-[12.5px] text-muted">
           {`Set by ${savedBySelf ? 'you' : savedBy ?? 'a team leader'}${isClient ? ` · updated ${updatedWhen(savedAt)}` : ''}`}
@@ -309,7 +405,9 @@ export function TeamPriorityEditor({
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
       <div className="flex items-center gap-2.5 flex-wrap">
-        <SearchField value={q} onChange={setQ} placeholder="Search the team's steps…" className="flex-1 min-w-[220px]" />
+        {level === 'item'
+          ? <SearchField value={q} onChange={setQ} placeholder="Search the team's steps…" className="flex-1 min-w-[220px]" />
+          : <div className="flex-1" />}
 
         <div className="flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]">
           <button type="button" onClick={() => void go(`/my-work?tab=work&pteam=${team.id}`)} className={`${segment} text-muted hover:text-tn-ink`}>Mine</button>
@@ -325,14 +423,14 @@ export function TeamPriorityEditor({
           searchable={teams.length > 8}
           className="gap-2 px-3 py-[9px] rounded-[10px] border border-tn-teal bg-white font-(family-name:--font-display) font-semibold text-[13px] text-tn-teal"
         />
-        <Select
+        {level === 'item' && <Select
           value={person}
           onChange={setPerson}
           options={[{ value: '', label: 'Anyone on the team' }, ...people]}
           ariaLabel="Person"
           searchable
           className={`gap-2 px-3 py-[9px] rounded-[10px] border bg-white font-(family-name:--font-display) font-semibold text-[13px] ${person ? 'border-tn-teal text-tn-teal' : 'border-[var(--panel-border)] text-muted'}`}
-        />
+        />}
         {saveAndClose}
       </div>
 
@@ -343,6 +441,46 @@ export function TeamPriorityEditor({
         </span>
       </div>
 
+      {levelsAvailable && (
+        <div className="rounded-[14px] border border-[var(--panel-border)] bg-white p-4 flex items-center gap-4 flex-wrap">
+          <div>
+            <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">Order by</div>
+            <div className="mt-1.5 inline-flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]">
+              {([['workspace', 'Workspace', wsRank.length], ['board', 'Board', boardRank.length], ['item', 'Item', list.length]] as const).map(([k, label, count]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setLevel(k)}
+                  aria-pressed={level === k}
+                  className={`${segment} ${level === k ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]' : 'text-muted hover:text-tn-ink'}`}
+                >
+                  {label} <span className="text-[11px] font-bold text-muted ml-0.5">{n(count)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="flex-1 min-w-[300px] text-[12.5px] text-muted leading-relaxed m-0">
+            {level === 'workspace' && (wsSet.length
+              ? 'Whole workspaces, in your order: everything in the first comes before anything in the second. Every board and item inside moves with its workspace.'
+              : "Not set yet: workspaces follow True North's order. Moving one here starts your team's own order.")}
+            {level === 'board' && (boardSet.length
+              ? 'Boards in your order, inside their workspace. Every item on a board moves with it; inside a board, the soonest deadline comes first.'
+              : "Not set yet: boards follow True North's order inside each workspace. Moving one here starts your team's own order.")}
+            {level === 'item' && 'Single steps. A step you move here keeps its place above everything, even other workspaces.'}
+          </p>
+          {level === 'workspace' && wsSet.length > 0 && (
+            <button type="button" onClick={() => changeLevels([], boardSet)} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
+              Reset workspaces to True North&apos;s order
+            </button>
+          )}
+          {level === 'board' && boardSet.length > 0 && (
+            <button type="button" onClick={() => changeLevels(wsSet, [])} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
+              Reset boards to True North&apos;s order
+            </button>
+          )}
+        </div>
+      )}
+
       {/* The agreement card: the team's order against the default one, and the
           steps placed furthest from where the default order would put them. */}
       <div className="rounded-[14px] border border-[var(--panel-border)] bg-white p-4 grid gap-5 grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)]">
@@ -351,10 +489,10 @@ export function TeamPriorityEditor({
           <div className="font-(family-name:--font-display) font-extrabold text-[30px] leading-none text-tn-ink mt-2">{`${score}%`}</div>
           <div className="h-1.5 rounded-full bg-subtle mt-2 overflow-hidden"><div className="h-full rounded-full bg-tn-teal" style={{ width: `${score}%` }} /></div>
           <div className="text-[12px] text-muted mt-2 leading-snug">
-            {`${n(pinned.length)} of ${n(list.length)} ${list.length === 1 ? 'step' : 'steps'} placed by hand · the rest follow True North's order`}
+            {`${n(pinned.length)} of ${n(list.length)} ${list.length === 1 ? 'step' : 'steps'} placed by hand · the rest follow ${levelsOn ? "your workspace and board order, then True North's" : "True North's order"}`}
           </div>
           {!isDefault && (
-            <button type="button" onClick={() => apply(defaultKeys, null)} className="text-[12.5px] font-semibold text-tn-teal hover:underline mt-1.5">
+            <button type="button" onClick={resetAll} className="text-[12.5px] font-semibold text-tn-teal hover:underline mt-1.5">
               Reset to True North&apos;s order
             </button>
           )}
@@ -373,6 +511,85 @@ export function TeamPriorityEditor({
         ))}
       </div>
 
+      {level === 'workspace' && (
+        <div className="rounded-[14px] border border-[var(--panel-border)] bg-white">
+          <div className="grid bg-subtle border-b border-[var(--panel-border)] rounded-t-[14px]" style={{ gridTemplateColumns: LEVEL_COLS }}>
+            <div className={HEAD}><span className="sr-only">Move</span></div>
+            <div className={HEAD}>Team #</div>
+            <div className={HEAD}>Workspace</div>
+            <div className={HEAD}>Boards</div>
+            <div className={HEAD}>Open steps</div>
+            <div className={HEAD}>Late</div>
+            <div className={HEAD}>vs True North</div>
+          </div>
+          {wsRank.map((ws, i) => {
+            const t = wsTotals(ws)
+            return (
+              <div key={ws} className="grid items-center border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)]" style={{ gridTemplateColumns: LEVEL_COLS }}>
+                <div className="pl-3 py-1.5">
+                  <span className="inline-flex flex-col">
+                    <button type="button" onClick={() => moveWorkspace(i, -1)} disabled={i === 0} aria-label={`Move ${ws} up`} className={arrow}>▲</button>
+                    <button type="button" onClick={() => moveWorkspace(i, 1)} disabled={i === wsRank.length - 1} aria-label={`Move ${ws} down`} className={arrow}>▼</button>
+                  </span>
+                </div>
+                <div className="px-3 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{i + 1}</div>
+                <div className="px-3 py-3 text-[13.5px] font-semibold text-tn-ink">{ws}</div>
+                <div className="px-3 text-[13px] text-muted">{t.boards}</div>
+                <div className="px-3 text-[13px] text-foreground">{n(t.open)}</div>
+                <div className="px-3 text-[13px] font-semibold text-[#c2410c]">{t.late ? n(t.late) : <span className="text-[var(--faint)] font-normal">0</span>}</div>
+                <div className="px-3"><LevelDelta by={tnWs.indexOf(ws) - i} /></div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {level === 'board' && (
+        <div className="space-y-3">
+          <div className="grid" style={{ gridTemplateColumns: LEVEL_COLS }}>
+            <div className={HEAD}><span className="sr-only">Move</span></div>
+            <div className={HEAD}>Team #</div>
+            <div className={HEAD}>Board</div>
+            <div className={HEAD}>Priority</div>
+            <div className={HEAD}>Open steps</div>
+            <div className={HEAD}>Late</div>
+            <div className={HEAD}>vs True North</div>
+          </div>
+          {wsRank.map((ws, wi) => {
+            const group = boardsIn(ws, boardRank)
+            const tnGroup = boardsIn(ws, tnBoardRank)
+            return (
+              <div key={ws} className="rounded-[14px] border border-[var(--panel-border)] bg-white">
+                <div className="flex items-center gap-2.5 px-4 py-2.5 bg-subtle border-b border-[var(--panel-border)] rounded-t-[14px]">
+                  <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">{`${wi + 1}. ${ws}`}</span>
+                  <span className="text-[12px] text-muted">{`${n(wsTotals(ws).open)} open ${wsTotals(ws).open === 1 ? 'step' : 'steps'}`}</span>
+                </div>
+                {group.map((b, i) => {
+                  const info = boardInfo.get(b)!
+                  return (
+                    <div key={b} className="grid items-center border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)]" style={{ gridTemplateColumns: LEVEL_COLS }}>
+                      <div className="pl-3 py-1.5">
+                        <span className="inline-flex flex-col">
+                          <button type="button" onClick={() => moveBoard(ws, i, -1)} disabled={i === 0} aria-label={`Move ${info.name} up`} className={arrow}>▲</button>
+                          <button type="button" onClick={() => moveBoard(ws, i, 1)} disabled={i === group.length - 1} aria-label={`Move ${info.name} down`} className={arrow}>▼</button>
+                        </span>
+                      </div>
+                      <div className="px-3 font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{`${wi + 1}.${i + 1}`}</div>
+                      <div className="px-3 py-2.5 text-[13px] font-semibold text-tn-ink">{info.name}</div>
+                      <div className="px-3"><span className={`${chip} ${PRIORITY_CHIP[info.priority]}`}>{info.priority}</span></div>
+                      <div className="px-3 text-[13px] text-foreground">{n(info.open)}</div>
+                      <div className="px-3 text-[13px] font-semibold text-[#c2410c]">{info.late ? n(info.late) : <span className="text-[var(--faint)] font-normal">0</span>}</div>
+                      <div className="px-3"><LevelDelta by={tnGroup.indexOf(b) - i} /></div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {level === 'item' && <>
       {/* What the numbers mean, once, where they are read. "Default" said
           nothing about whose order it was; it is True North's. */}
       <p className="text-[12.5px] text-muted leading-relaxed m-0">
@@ -479,7 +696,7 @@ export function TeamPriorityEditor({
                     {isFresh && <span className={`${chip} bg-[rgba(1,35,88,.08)] text-tn-ink shrink-0`}>new</span>}
                   </div>
                   <div className="text-[11.5px] text-muted truncate">
-                    {[s.language, s.parentItemName, s.boardName, s.stepName].filter(Boolean).join(' · ')}
+                    {[levelsOn ? workspaceOf(s) : null, s.language, s.parentItemName, s.boardName, s.stepName].filter(Boolean).join(' · ')}
                     {s.dueDate && (
                       <>
                         {' · '}
@@ -493,7 +710,7 @@ export function TeamPriorityEditor({
                 <div className="px-3"><span className={`${chip} ${PRIORITY_CHIP[s.priority]}`}>{s.priority}</span></div>
                 <div className="px-3 text-[13px] text-muted">{n(defaultPlace.get(key) ?? 0)}</div>
                 <div className="px-3">
-                  {isPinned ? <Delta by={by} /> : isFresh ? <span className="text-[11.5px] text-muted leading-tight block">follows True North</span> : <span className="text-[var(--faint)] text-[13px]">-</span>}
+                  {isPinned ? <Delta by={by} /> : isFresh ? <span className="text-[11.5px] text-muted leading-tight block">{levelsOn ? 'follows your order' : 'follows True North'}</span> : <span className="text-[var(--faint)] text-[13px]">-</span>}
                 </div>
               </div>
             )
@@ -510,10 +727,11 @@ export function TeamPriorityEditor({
           )}
         </div>
       )}
+      </>}
 
       <div className="flex items-start gap-5 flex-wrap">
         <p className="flex-1 min-w-[280px] text-[12px] text-muted leading-[1.65] m-0">
-          {`A step you move keeps the place you gave it, and moves up as the work above it is finished. Every other step follows True North's order (board priority, then deadline), so it keeps up with Monday. A step marked new arrived after the order was last saved, and sits where True North's order puts it. Finished steps leave the list on their own. Everyone on the ${team.name} team sees their own steps in this order on My Work.`}
+          {`A step you move keeps the place you gave it, and moves up as the work above it is finished. Every other step follows ${levelsOn ? "your workspace and board order, and inside a board True North's order (the soonest deadline first)" : "True North's order (board priority, then deadline)"}, so it keeps up with Monday. A step marked new arrived after the order was last saved, and sits where that order puts it. Finished steps leave the list on their own. Everyone on the ${team.name} team sees their own steps in this order on My Work.`}
         </p>
         {saveAndClose}
       </div>
