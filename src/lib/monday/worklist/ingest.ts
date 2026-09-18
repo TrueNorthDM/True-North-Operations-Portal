@@ -24,7 +24,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { gql } from './discover'
 import { missingColumn } from './missing-column'
-import { boardsToProbe } from './stale'
+import { boardsToProbe, readOrder } from './stale'
 import { diffAssignments, keyOf, type AssignmentSnapshot } from './changes'
 import { currentStage, pickLanguageColumn, readStages, type StepStage } from './steps'
 
@@ -428,9 +428,11 @@ export interface SliceResult {
  * same shape the TSheets import ended up with, for the same reason: a function
  * that gets killed at 300 seconds cannot be the unit of work.
  *
- * Shown boards, and then the hidden ones Monday says have changed since we last
- * read them (boardsToProbe). Reading those is what lets the stale rule bring a
- * board back: its activity is its items, and nobody was reading them.
+ * Shown boards, and the hidden ones Monday says have changed since we last read
+ * them (boardsToProbe), in one order (readOrder). Reading those is what lets the
+ * stale rule bring a board back: its activity is its items, and nobody was
+ * reading them. A hidden board that fails to read is skipped and tried again
+ * next time, so a board nobody can see cannot stop the ones everybody can.
  */
 export async function ingestSlice(
   supabase: Client,
@@ -464,9 +466,7 @@ export async function ingestSlice(
     boardUpdatedAt: b.board_updated_at ?? null,
     itemsSyncedAt: b.items_synced_at,
   }))))
-  // Shown first: a hidden board is being read to find out whether it belongs
-  // back on the page, which can wait behind the work already on it.
-  const boards = [...all.filter(b => b.included), ...all.filter(b => probe.has(b.id))]
+  const boards = readOrder(all.map(b => ({ ...b, itemsSyncedAt: b.items_synced_at })), probe)
 
   // Only boards that have steps: the other 65 are spreadsheets with nobody on
   // them, and walking their items would be reading for nothing.
@@ -478,7 +478,15 @@ export async function ingestSlice(
   const done: BoardIngestResult[] = []
   for (const b of queue) {
     if (Date.now() - started > budgetMs) break
-    done.push(await ingestBoard(supabase, token, b))
+    if (b.included) {
+      done.push(await ingestBoard(supabase, token, b))
+      continue
+    }
+    try {
+      done.push(await ingestBoard(supabase, token, b))
+    } catch (e) {
+      console.error(`reading hidden board ${b.id} to see if it is back:`, e instanceof Error ? e.message : e)
+    }
   }
 
   return { done, remaining: queue.length - done.length, spentMs: Date.now() - started }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boardsToProbe, isStale, STALE_MONTHS, staleCutoff, staleSweep, type BoardProbe, type BoardStaleness } from './stale'
+import { boardsToProbe, isStale, readOrder, STALE_MONTHS, staleCutoff, staleSweep, type BoardProbe, type BoardStaleness } from './stale'
 
 const NOW = new Date('2026-08-26T12:00:00Z')
 const ago = (months: number) => {
@@ -99,5 +99,24 @@ describe('boardsToProbe', () => {
   // exactly what it read before.
   it('reads nothing when Monday has not told us a date yet', () => {
     expect(boardsToProbe([hidden({ boardUpdatedAt: null })])).toEqual([])
+  })
+})
+
+describe('readOrder', () => {
+  const b = (id: number, included: boolean, itemsSyncedAt: string | null) => ({ id, included, itemsSyncedAt })
+
+  // A firing reads about 28 of 43 shown boards. A hidden board queued after
+  // all of them would never be reached, so it takes its place by its stamp.
+  it('puts a hidden board worth reading ahead of shown boards read more recently', () => {
+    const order = readOrder([b(1, true, ago(0)), b(2, true, ago(0)), b(3, false, ago(14))], new Set([3]))
+    expect(order.map(x => x.id)).toEqual([3, 1, 2])
+  })
+
+  it('reads a board never read before anything else', () => {
+    expect(readOrder([b(1, true, ago(1)), b(2, false, null)], new Set([2])).map(x => x.id)).toEqual([2, 1])
+  })
+
+  it('leaves out hidden boards that are not worth reading', () => {
+    expect(readOrder([b(1, true, ago(1)), b(2, false, ago(20))], new Set()).map(x => x.id)).toEqual([1])
   })
 })

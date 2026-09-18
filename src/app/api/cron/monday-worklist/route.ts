@@ -94,17 +94,21 @@ export async function GET(request: Request) {
       })
     }
 
-    // Run the stale rule at the END of the chain, once, not per hop: it reads
-    // last_activity_at, and that stamp is only complete after the last board
-    // has been read. Running it earlier would judge boards on last pass's
-    // numbers and flip them back on the next firing.
+    // The stale rule runs after every hop. It used to wait for the end of the
+    // chain, and the end never came: a firing reads about 28 of the 43 shown
+    // boards before its time is up, the next hop is a request fired as this
+    // one returns and is routinely lost, and the queue holds every shown board,
+    // so remaining was never zero. On 18 September 2026 the rule had not run
+    // since the day it was switched on, in either direction.
+    //
+    // Judging after a hop cannot flip a board back and forth: each board is
+    // judged on its own last read, a few hours old at most, against a window
+    // of six months.
     let stale: { hidden: number; shown: number } | undefined
-    if (r.remaining === 0) {
-      const { data: settings } = await supabase
-        .from('app_settings').select('monday_hide_stale_boards').eq('singleton_id', 1).maybeSingle()
-      if ((settings as { monday_hide_stale_boards?: boolean } | null)?.monday_hide_stale_boards) {
-        stale = await applyStaleRule(supabase)
-      }
+    const { data: settings } = await supabase
+      .from('app_settings').select('monday_hide_stale_boards').eq('singleton_id', 1).maybeSingle()
+    if ((settings as { monday_hide_stale_boards?: boolean } | null)?.monday_hide_stale_boards) {
+      stale = await applyStaleRule(supabase)
     }
 
     return NextResponse.json({

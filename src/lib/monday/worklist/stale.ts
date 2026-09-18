@@ -93,3 +93,24 @@ export function boardsToProbe(boards: BoardProbe[]): number[] {
     .filter(b => !b.itemsSyncedAt || b.boardUpdatedAt! > b.itemsSyncedAt)
     .map(b => b.id)
 }
+
+/**
+ * The order the sync reads boards in: the shown ones and the hidden ones worth
+ * a look (boardsToProbe) together, least recently read first, never read before
+ * all of them.
+ *
+ * One order and not "shown first". A firing reads about 28 of the 43 shown
+ * boards before its time runs out, and the next hop that should read the rest
+ * is routinely lost, so anything queued after the shown boards was never
+ * reached. Probes queued last would have been the same hole with a new name.
+ * A hidden board worth reading was last read long ago, so by its stamp it goes
+ * to the front, and it stops being a probe the moment it is read.
+ */
+export function readOrder<T extends { id: number; included: boolean; itemsSyncedAt: string | null }>(
+  boards: T[],
+  probe: ReadonlySet<number>,
+): T[] {
+  return boards
+    .filter(b => b.included || probe.has(b.id))
+    .sort((a, b) => (a.itemsSyncedAt ?? '').localeCompare(b.itemsSyncedAt ?? ''))
+}
