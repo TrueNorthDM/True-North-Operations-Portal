@@ -6,7 +6,7 @@
 // true of three different moments.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { loadWorklist } from '@/lib/monday/worklist/data'
+import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { initialsOf } from '@/lib/directory/people-types'
 import { colourOf } from '@/lib/directory/team-colour'
 import type { PersonRow } from '@/components/report/ReportPeople'
@@ -27,7 +27,7 @@ type DirectoryPerson = {
 
 /** Everyone in scope, with the team they are primarily on. */
 async function peopleInScope(
-  supabase: Client, f: { personId?: string | null; teamId?: string | null },
+  supabase: Client, f: PeopleFilter,
 ): Promise<DirectoryPerson[]> {
   const people = await activePeople(supabase, f)
   if (!people.length) return []
@@ -59,7 +59,7 @@ async function hoursByPerson(
 
 export async function loadReportPeople(
   supabase: Client,
-  f: { personId?: string | null; teamId?: string | null; period?: Period },
+  f: PeopleFilter & { period?: Period },
 ): Promise<PersonRow[]> {
   const period = f.period ?? 90
   const since = new Date(Date.now() - period * 86_400_000)
@@ -68,7 +68,7 @@ export async function loadReportPeople(
   const [people, accounts, snapshot, colours] = await Promise.all([
     peopleInScope(supabase, f),
     accountsInScope(supabase, f),
-    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, includeDone: false }),
+    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, teamIds: f.teamIds, includeDone: false }),
     teamColours(supabase),
   ])
   if (!people.length) return []

@@ -8,10 +8,10 @@
 // Puppeteer photographs.
 
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
-import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
-import { resolveTab } from '@/components/report/ReportTabs'
-import { resolvePeriod, resolveScope, SCOPE_LABEL } from '@/lib/report/scope'
+import { SCOPE_LABEL } from '@/lib/report/scope'
+import { resolveReportView } from '@/lib/report/view'
+import type { PeopleFilter } from '@/lib/monday/worklist/data'
 import { loadReportOverview, readRecording } from '@/lib/report/data'
 import { loadReportPeople } from '@/lib/report/people'
 import { loadWaits } from '@/lib/report/waits'
@@ -30,22 +30,17 @@ export const dynamic = 'force-dynamic'
 
 export default async function ReportPrintPage(
   { searchParams }: {
-    searchParams: Promise<{ tab?: string; scope?: string; period?: string; team?: string }>
+    searchParams: Promise<{ tab?: string; scope?: string; period?: string; team?: string; person?: string }>
   },
 ) {
   await requireSurface('report')
 
   const access = await loadAccess()
-  const level = directoryLevel(access.can)
   const sp = await searchParams
-
-  const tab = resolveTab(sp.tab, level)
-  const scope = resolveScope(sp.scope, level)
-  const period = resolvePeriod(sp.period)
-
   const supabase = await createClient()
   const me = await getCurrentPerson()
-  const filters = scope === 'me' ? { personId: me?.id ?? null } : { teamId: sp.team || null }
+  // Resolved exactly as the screen resolves it (lib/report/view.ts).
+  const { level, tab, scope, period, filter: filters } = await resolveReportView(supabase, access.can, me?.id ?? null, sp)
 
   const printed = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -83,7 +78,7 @@ async function Body({
   level: number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
-  filters: { personId?: string | null; teamId?: string | null }
+  filters: PeopleFilter
   period: 30 | 90
 }) {
   if (tab === 'people') {

@@ -14,11 +14,10 @@
  */
 
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
-import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { resolveTab } from '@/components/report/ReportTabs'
-import { resolvePeriod, resolveScope, SCOPE_LABEL } from '@/lib/report/scope'
+import { SCOPE_LABEL } from '@/lib/report/scope'
+import { resolveReportView } from '@/lib/report/view'
 import { loadReportOverview } from '@/lib/report/data'
 import { loadReportPeople } from '@/lib/report/people'
 import { loadWaits } from '@/lib/report/waits'
@@ -40,18 +39,14 @@ export async function GET(request: Request) {
     })
   }
 
-  const level = directoryLevel(access.can)
   const url = new URL(request.url)
-  const tab = resolveTab(url.searchParams.get('tab') ?? undefined, level)
-  const scope = resolveScope(url.searchParams.get('scope') ?? undefined, level)
-  const period = resolvePeriod(url.searchParams.get('period') ?? undefined)
-  const team = url.searchParams.get('team') || null
-
   const supabase = await createClient()
   const { data: auth } = await supabase.auth.getUser()
   const me = await loadCurrentPerson(supabase, auth?.user ?? null)
 
-  const filters = scope === 'me' ? { personId: me?.id ?? null } : { teamId: team }
+  const { tab, scope, period, filter: filters } = await resolveReportView(
+    supabase, access.can, me?.id ?? null, Object.fromEntries(url.searchParams),
+  )
 
   let lines: string[]
   if (tab === 'people') {

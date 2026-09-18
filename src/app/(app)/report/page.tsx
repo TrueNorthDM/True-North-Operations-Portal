@@ -4,15 +4,14 @@
 // them in the switch because it is about both: My Work is one person's list
 // now, My Team is who they are, and this is what actually happened.
 //
-// Reachable by anyone who can reach My Work. What differs by level is scope,
-// not entry: level 1 sees themselves, level 2 their team, level 3 everybody
-// plus the Workload tab.
+// Who reaches it, and which of its tabs, is set on Admin, Access levels. What
+// differs by directory level is whose work: level 1 sees themselves, level 2
+// the teams they lead, level 3 everybody (lib/report/view.ts).
 
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
-import { directoryLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
 import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
-import { ReportTabs, resolveTab, type ReportTabKey } from '@/components/report/ReportTabs'
+import { ReportTabs, type ReportTabKey } from '@/components/report/ReportTabs'
 import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
 import { ChangeLogNotice } from '@/components/report/ReportNotices'
 import { ReportOverview } from '@/components/report/ReportOverview'
@@ -28,7 +27,9 @@ import { WorkloadFilters } from '@/components/report/WorkloadFilters'
 import { loadWorkload } from '@/lib/report/workload-data'
 import { activePeople, primaryTeams } from '@/lib/report/directory'
 import { ReportControls } from '@/components/report/ReportControls'
-import { resolvePeriod, resolveScope, type ReportState } from '@/lib/report/scope'
+import type { ReportState } from '@/lib/report/scope'
+import { resolveReportView } from '@/lib/report/view'
+import type { PeopleFilter } from '@/lib/monday/worklist/data'
 import { loadReportOverview, readRecording, type Recording } from '@/lib/report/data'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson } from '@/lib/auth/session'
@@ -41,34 +42,23 @@ const READY: readonly ReportTabKey[] = ['overview', 'people', 'workload', 'waits
 
 export default async function ReportPage(
   { searchParams }: {
-    searchParams: Promise<{ tab?: string; scope?: string; period?: string; team?: string }>
+    searchParams: Promise<{ tab?: string; scope?: string; period?: string; team?: string; person?: string }>
   },
 ) {
   await requireSurface('report')
 
   const sp = await searchParams
   const access = await loadAccess()
-  const level = directoryLevel(access.can)
-
-  // Clamped against the level, never taken as given: the query string is
-  // typed by people, and a level 1 person editing ?scope=everyone lands on
-  // their own work rather than on an error or on everyone.
-  const scope = resolveScope(sp.scope, level)
-  const period = resolvePeriod(sp.period)
-  // Screen 6.6: a tab this level may not see resolves to Overview rather than
-  // throwing, so an admin's shared link degrades quietly.
-  const tab = resolveTab(sp.tab, level)
-  const state: ReportState = { tab, scope, period, team: sp.team }
-
   const supabase = await createClient()
   const me = await getCurrentPerson()
 
-  // Me means this person; My team means the team filter if one is set and
-  // otherwise everyone they may see. resolveScope has already refused any
-  // scope this level is not entitled to.
-  const filters = scope === 'me'
-    ? { personId: me?.id ?? null }
-    : { teamId: sp.team || null }
+  // Clamped, never taken as given: the query string is typed by people. A
+  // level 1 person editing ?scope=everyone lands on their own work, a team
+  // leader naming a team they do not lead lands on their own teams, and a tab
+  // they may not see resolves to Overview (screen 6.6) rather than throwing.
+  const view = await resolveReportView(supabase, access.can, me?.id ?? null, sp)
+  const { level, tab, scope, period, filter: filters } = view
+  const state: ReportState = { tab, scope, period, team: view.team ?? undefined, person: view.person ?? undefined }
   // Only the recording state is needed by every tab: the notice above the
   // content and the note beside the controls. The Overview's own load reads
   // the whole worklist and a year of events, so it waits until it is the tab
@@ -92,17 +82,17 @@ export default async function ReportPage(
       </div>
 
       <ReportNav>
-        <ReportTabs active={tab} level={level} ready={READY} state={state} />
+        <ReportTabs active={tab} rights={view.rights} ready={READY} state={state} />
         <ReportControls
           state={state}
-          level={level}
+          scopes={view.scopes}
           note={methodNote(recording)}
           canExport={access.can('report-export')}
         />
         <DimWhilePending>
           <div className="space-y-4">
             <ChangeLogNotice recording={recording} />
-            <Tab tab={tab} supabase={supabase} filters={filters} period={period} recording={recording} level={level} />
+            <Tab tab={tab} supabase={supabase} filters={filters} period={period} recording={recording} level={level} teamChoices={view.teamChoices} />
           </div>
         </DimWhilePending>
       </ReportNav>
@@ -118,13 +108,15 @@ export default async function ReportPage(
  * so there is no case to fall through.
  */
 async function Tab({
-  tab, supabase, filters, period, recording, level,
+  tab, supabase, filters, period, recording, level, teamChoices,
 }: {
   tab: ReportTabKey
   level: number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
-  filters: { personId?: string | null; teamId?: string | null }
+  filters: PeopleFilter
+  /** Teams the Workload filters may offer; null is every team. */
+  teamChoices: readonly string[] | null
   period: 30 | 90
   recording: Recording
 }) {
@@ -139,11 +131,15 @@ async function Tab({
   }
 
   if (tab === 'workload') {
+    // The filters offer only what this person may read: every team at level
+    // 3, the teams they lead at level 2. A name in a dropdown is still a name.
     const [{ people, effort, estimateReady }, teams, everyone] = await Promise.all([
       loadWorkload(supabase, { ...filters, period }),
       supabase.from('teams').select('id, name').order('name'),
-      activePeople(supabase, {}),
+      teamChoices === null ? activePeople(supabase, {}) : activePeople(supabase, { teamIds: teamChoices }),
     ])
+    const offered = ((teams.data ?? []) as { id: string; name: string }[])
+      .filter(t => teamChoices === null || teamChoices.includes(t.id))
     const teamOf = await primaryTeams(supabase, everyone.map(p => p.id))
     const teamIds = new Map(
       ((teams.data ?? []) as { id: string; name: string }[]).map(t => [t.name, t.id]),
@@ -151,15 +147,15 @@ async function Tab({
 
     return (
       <div className="space-y-4">
-        <WorkloadFilters
-          teams={(teams.data ?? []) as { id: string; name: string }[]}
+        {teamChoices?.length === 0 ? null : <WorkloadFilters
+          teams={offered}
           people={everyone.map(p => ({
             id: p.id,
             name: p.full_name,
             teamIds: [teamIds.get(teamOf.get(p.id) ?? '')].filter((x): x is string => Boolean(x)),
           }))}
           note={`${people.length} ${people.length === 1 ? 'person' : 'people'} in scope`}
-        />
+        />}
         {people.length === 0 ? <NobodyInSelection /> : <ReportWorkload people={people} />}
         {/* The audit is permanent on this tab, and its absence is itself the
             state worth showing: with nothing delivered yet there is no hours

@@ -15,7 +15,7 @@
 //                the estimate the audit exists to expose
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { loadWorklist } from '@/lib/monday/worklist/data'
+import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { initialsOf } from '@/lib/directory/people-types'
 import { colourOf } from '@/lib/directory/team-colour'
 import type { EffortBasis } from '@/components/report/WorkloadHoldings'
@@ -42,7 +42,7 @@ function weekIndex(iso: string, now: number, weeks: number): number | null {
 
 export async function loadWorkload(
   supabase: Client,
-  f: { personId?: string | null; teamId?: string | null; period?: Period },
+  f: PeopleFilter & { period?: Period },
 ): Promise<{ people: WorkloadRow[]; effort: EffortBasis[]; estimateReady: boolean }> {
   const period = f.period ?? 90
   const now = Date.now()
@@ -50,7 +50,7 @@ export async function loadWorkload(
   const [accounts, snapshot] = await Promise.all([
     accountsInScope(supabase, f),
     // Open steps only: Load is about what is still ahead of them.
-    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, includeDone: false }),
+    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, teamIds: f.teamIds, includeDone: false }),
   ])
 
   const people = await activePeople(supabase, f)

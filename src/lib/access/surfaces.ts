@@ -23,7 +23,7 @@ import type { RoleType } from '@/lib/auth/tier'
 export type ConfigurableRole = Exclude<RoleType, 'admin'>
 export const CONFIGURABLE_ROLES: readonly ConfigurableRole[] = ['admin_assistant', 'team_leader', 'user']
 
-export type SurfaceGroup = 'Navigation' | 'People directory' | 'Team priority' | 'Clients Reports' | 'Managing'
+export type SurfaceGroup = 'Navigation' | 'People directory' | 'My Work Report' | 'Team priority' | 'Clients Reports' | 'Managing'
 
 export interface Surface {
   key: string
@@ -46,6 +46,10 @@ export interface Surface {
  */
 export const PRIORITY_OWN = 'priority-own'
 export const PRIORITY_ALL = 'priority-all'
+
+/** The two Report tabs that name other people, checked by the Report's pages and exports. */
+export const REPORT_PEOPLE = 'report-people'
+export const REPORT_WORKLOAD = 'report-workload'
 
 const ON: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: true, user: true }
 const PRIV: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: false, user: false }
@@ -76,7 +80,7 @@ export const SURFACES: readonly Surface[] = [
     label: 'Report',
     group: 'Navigation',
     defaults: ON,
-    note: 'Delivery, held time and lateness. What each level sees inside it still follows the directory level: level 1 sees only themselves, level 3 sees everyone and the Workload tab.',
+    note: 'Delivery, held time and lateness. Whose work it covers follows the People directory level below: level 1 sees only their own; level 2 their own and the teams they lead (Founder, Manager or Team Leader on that team); level 3 everyone. Which tabs they get is set under My Work Report.',
   },
   {
     key: 'my-team',
@@ -136,6 +140,28 @@ export const SURFACES: readonly Surface[] = [
     group: 'People directory',
     defaults: PRIV,
     note: 'Everyone’s card, every team, all tabs (Emails, Teams, Rates & Costs, Access log), the sensitive fields (salaries, internal rates, home address, date of birth), and the ability to change them.',
+  },
+
+  // ── My Work Report ────────────────────────────────────────────────────────
+  // The two tabs that are nothing but other people's figures, each a switch of
+  // its own since 18 September 2026. They were tied to the directory level
+  // (People from level 2, Workload at level 3), which meant a team leader could
+  // not be given the Workload tab without being given the whole directory.
+  // Defaults are what those levels gave before, so nothing changed on the day.
+  // Whose rows the tab holds still follows the scope in the Report row above.
+  {
+    key: REPORT_PEOPLE,
+    label: 'The People tab: how long each person held each step',
+    group: 'My Work Report',
+    defaults: { admin_assistant: true, team_leader: true, user: false },
+    note: 'Person by person: steps delivered, how long each one sat with them, and how many came in late. For whose work the Report covers, as set in the Report row: at level 1 only their own row.',
+  },
+  {
+    key: REPORT_WORKLOAD,
+    label: 'The Workload tab: each person\'s open work and load',
+    group: 'My Work Report',
+    defaults: PRIV,
+    note: 'Open steps, backlog and estimated hours for each person, with team and person filters. A team leader sees the teams they lead and nobody else, including in the filters.',
   },
 
   // ── Team priority ─────────────────────────────────────────────────────────
@@ -208,7 +234,7 @@ export const SURFACES: readonly Surface[] = [
 export const SURFACE_KEYS: ReadonlySet<string> = new Set(SURFACES.map(s => s.key))
 export const SURFACE_BY_KEY: ReadonlyMap<string, Surface> = new Map(SURFACES.map(s => [s.key, s]))
 
-export const SURFACE_GROUPS: readonly SurfaceGroup[] = ['Navigation', 'People directory', 'Team priority', 'Clients Reports', 'Managing']
+export const SURFACE_GROUPS: readonly SurfaceGroup[] = ['Navigation', 'People directory', 'My Work Report', 'Team priority', 'Clients Reports', 'Managing']
 
 /**
  * Whether a level reaches a surface, given whatever rows are configured.

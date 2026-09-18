@@ -5,7 +5,7 @@
 // may be about the wrong thing entirely.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { loadWorklist } from '@/lib/monday/worklist/data'
+import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
 import type { BoardWait, StepWait, StuckItem } from '@/components/report/ReportWaits'
 import { accountsInScope, loadOpenSince, loadSpans } from './data'
 import { median } from './spans'
@@ -22,7 +22,7 @@ const MIN_SPANS_PER_STEP = 3
 
 export async function loadWaits(
   supabase: Client,
-  f: { personId?: string | null; teamId?: string | null; period?: Period },
+  f: PeopleFilter & { period?: Period },
 ): Promise<{ steps: StepWait[]; boards: BoardWait[]; stuck: StuckItem[] }> {
   const period = f.period ?? 90
   const since = new Date(Date.now() - period * 86_400_000)
@@ -31,7 +31,7 @@ export async function loadWaits(
   const [spans, openSince, snapshot] = await Promise.all([
     loadSpans(supabase, accounts, since),
     loadOpenSince(supabase, accounts),
-    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, includeDone: false }),
+    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, teamIds: f.teamIds, includeDone: false }),
   ])
 
   // The log stores a board and a people column; the step's name lives on

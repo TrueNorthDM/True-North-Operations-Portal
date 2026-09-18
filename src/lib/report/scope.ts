@@ -9,6 +9,8 @@
 // have now been got wrong three times in this codebase, each time by a second
 // reader of a rule that was only written down once.
 
+import type { PeopleFilter } from '@/lib/monday/worklist/data'
+
 export type Scope = 'me' | 'team' | 'everyone'
 
 export const SCOPE_LABEL: Record<Scope, string> = {
@@ -23,16 +25,19 @@ export const SCOPE_LABEL: Record<Scope, string> = {
  * Level 1 gets one option, and gets it as a control with a single segment
  * rather than as a disabled button: permission shows up as a shorter control,
  * never as something greyed out that hints at a page they are missing.
+ *
+ * At level 2 My team is the teams the person leads, so someone at level 2 who
+ * leads no team has no My team to offer, and gets Me alone.
  */
-export function scopesFor(level: number): Scope[] {
+export function scopesFor(level: number, leadsATeam = true): Scope[] {
   if (level >= 3) return ['me', 'team', 'everyone']
-  if (level === 2) return ['me', 'team']
+  if (level === 2 && leadsATeam) return ['me', 'team']
   return ['me']
 }
 
 /** My team by default, because the page is a lead's page. Level 1 has no such default. */
-export function resolveScope(asked: string | undefined, level: number): Scope {
-  const allowed = scopesFor(level)
+export function resolveScope(asked: string | undefined, level: number, leadsATeam = true): Scope {
+  const allowed = scopesFor(level, leadsATeam)
   if (asked && (allowed as string[]).includes(asked)) return asked as Scope
   return allowed.includes('team') ? 'team' : 'me'
 }
@@ -48,6 +53,50 @@ export function resolveScope(asked: string | undefined, level: number): Scope {
  */
 export function effectiveScope(scope: Scope, team?: string, person?: string): Scope {
   return team || person ? 'everyone' : scope
+}
+
+/**
+ * Whose work the Report reads, from the scope and the filters in the URL.
+ *
+ * Level 3: Me is themselves; a person or a team picked in the filters is that
+ * person or team; otherwise everyone.
+ *
+ * Level 2, My team: the teams they lead, taken together. A team picked in the
+ * filters counts only if they lead it, and a person only if they are on one of
+ * those teams; anything else in the URL is dropped rather than obeyed. Before
+ * 18 September 2026 My team with no team picked read the whole company, which
+ * is why the Report stayed off for team leaders.
+ *
+ * Level 1, and Me at any level: themselves.
+ *
+ * `team` and `person` come back as the filters actually applied, so the
+ * controls show what the page obeyed, not what was typed.
+ */
+export function reportFilter(o: {
+  scope: Scope
+  level: number
+  meId: string | null
+  team?: string | null
+  person?: string | null
+  /** The teams this person leads. */
+  led: readonly string[]
+  /** Everyone on those teams. */
+  ledMembers: ReadonlySet<string>
+}): { filter: PeopleFilter; team: string | null; person: string | null } {
+  const me = { filter: { personId: o.meId }, team: null, person: null }
+  if (o.scope === 'me' || o.level < 2) return me
+
+  if (o.level >= 3) {
+    if (o.person) return { filter: { personId: o.person }, team: o.team ?? null, person: o.person }
+    if (o.team) return { filter: { teamId: o.team }, team: o.team, person: null }
+    return { filter: {}, team: null, person: null }
+  }
+
+  if (!o.led.length) return me
+  const team = o.team && o.led.includes(o.team) ? o.team : null
+  const person = o.person && o.ledMembers.has(o.person) ? o.person : null
+  if (person) return { filter: { personId: person }, team, person }
+  return { filter: { teamIds: team ? [team] : [...o.led] }, team, person: null }
 }
 
 export const PERIODS = [30, 90] as const

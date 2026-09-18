@@ -21,9 +21,9 @@ import type { PersonHoldings } from '@/lib/report/holdings'
 import { WorkloadFilters } from '@/components/report/WorkloadFilters'
 import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
 import { ChangeLogNotice, NothingInWindow, StaleSnapshot } from '@/components/report/ReportNotices'
-import { resolvePeriod, resolveScope } from '@/lib/report/scope'
+import { resolvePeriod, resolveScope, scopesFor } from '@/lib/report/scope'
 import type { WorkloadRow } from '@/lib/report/workload'
-import { ReportTabs } from '@/components/report/ReportTabs'
+import { ReportTabs, rightsForLevel } from '@/components/report/ReportTabs'
 import { WorkViewSwitch } from '@/components/monday/WorkViewSwitch'
 import { AGE_BUCKETS, type Overview } from '@/lib/report/overview'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -241,10 +241,10 @@ export default async function ReportPreview(
         </div>
 
         <ReportNav>
-        <ReportTabs active={tab === 'states' ? 'overview' : tab} level={level} state={state} base="/design-check/report" />
+        <ReportTabs active={tab === 'states' ? 'overview' : tab} rights={rightsForLevel(level)} state={state} base="/design-check/report" />
         <ReportControls
           state={state}
-          level={level}
+          scopes={scopesFor(level)}
           canExport
           base="/design-check/report"
           note="7 people · change log since Feb 12, 2026"

@@ -13,9 +13,10 @@
 import puppeteer, { type Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
-import { directoryLevel } from '@/lib/access/surfaces'
-import { resolveTab } from '@/components/report/ReportTabs'
-import { resolvePeriod, resolveScope, SCOPE_LABEL } from '@/lib/report/scope'
+import { SCOPE_LABEL } from '@/lib/report/scope'
+import { resolveReportView } from '@/lib/report/view'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentPerson } from '@/lib/auth/session'
 import { exportName } from '@/lib/report/csv'
 
 export const runtime = 'nodejs'
@@ -46,12 +47,11 @@ export async function GET(request: Request) {
     })
   }
 
-  const level = directoryLevel(access.can)
   const url = new URL(request.url)
-  const tab = resolveTab(url.searchParams.get('tab') ?? undefined, level)
-  const scope = resolveScope(url.searchParams.get('scope') ?? undefined, level)
-  const period = resolvePeriod(url.searchParams.get('period') ?? undefined)
-  const team = url.searchParams.get('team') ?? ''
+  const me = await getCurrentPerson()
+  const { tab, scope, period, team, person } = await resolveReportView(
+    await createClient(), access.can, me?.id ?? null, Object.fromEntries(url.searchParams),
+  )
 
   // The menu offers both. Workload and People are wide tables and default to
   // landscape when nothing was chosen, because a portrait page cuts them.
@@ -60,6 +60,7 @@ export async function GET(request: Request) {
 
   const query = new URLSearchParams({ tab, scope, period: String(period), pdf: '1' })
   if (team) query.set('team', team)
+  if (person) query.set('person', person)
   const target = `${url.origin}/report/print?${query}`
   const cookie = request.headers.get('cookie') ?? ''
 

@@ -521,7 +521,10 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
   de `monday_team_priority` (migração 087, rodada em 18/09; conferido: colunas no banco, a
   ordem do SEO intacta com 236 passos à mão, escrita anônima recusada). Commit c636be4. Tela:
   `/design-check/team-priority-live?levels=1`.
-- J5: team leaders verem o Report (plano em `03-report-for-team-leaders-plan.md`).
+- J5: team leaders verem o Report. **Em 18/09:** o vazamento foi fechado ("My team" de um team
+  leader agora são os times que ele lidera, nunca a empresa inteira) e as abas People e Workload
+  ganharam uma linha cada no Access levels (grupo My Work Report). Você decidiu controlar por lá;
+  não é mais pergunta pendente. Detalhes e o que falta em `03-report-for-team-leaders-plan.md`.
 - J3: ainda em investigação (decidido em 16/09; a resposta à Jeannette diz só isso). A
   automação que devia marcar On-Page SEO como "Not Relevant" nas páginas que não são em
   inglês do AAAF - Publishing, e as 95 páginas em inglês marcadas "Not Relevant" (contagem de

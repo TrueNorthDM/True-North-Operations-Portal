@@ -14,7 +14,7 @@
 import { ExportMenu } from '@/components/report/ExportMenu'
 import { useReportNav } from '@/components/report/ReportFrame'
 import {
-  PERIODS, PERIOD_LABEL, SCOPE_LABEL, reportHref, scopesFor, type ReportState,
+  PERIODS, PERIOD_LABEL, SCOPE_LABEL, reportHref, type ReportState, type Scope,
 } from '@/lib/report/scope'
 
 const SEGMENT_BOX = 'flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]'
@@ -23,16 +23,16 @@ const SEGMENT_ON = 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]'
 const SEGMENT_OFF = 'text-muted hover:text-tn-ink'
 
 export function ReportControls({
-  state, level, note, base = '/report', canExport = false,
+  state, scopes, note, base = '/report', canExport = false,
 }: {
   state: ReportState
-  level: number
+  /** The scopes this person may ask for (scopesFor), resolved on the server. */
+  scopes: Scope[]
   /** The real person count and change-log start date, never a constant. */
   note: string
   base?: string
   canExport?: boolean
 }) {
-  const scopes = scopesFor(level)
   // Buttons rather than links: the dim on screen 6.3 needs the pending state
   // of the navigation, and only a transition we start ourselves reports it.
   const { go } = useReportNav()

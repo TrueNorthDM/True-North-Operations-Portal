@@ -102,11 +102,20 @@ export interface WorkRow {
 // "what is on my plate", which is the question this page is named after, and
 // it is the shape that can be sorted and read across boards at once.
 
-export interface WorklistFilters {
+/** Whose work: one person, one team, or several teams together. Nothing set: everyone. */
+export interface PeopleFilter {
   /** Directory person, resolved to their Monday accounts. */
   personId?: string | null
   /** Portal team, resolved to its members' Monday accounts. */
   teamId?: string | null
+  /**
+   * Several teams at once: the Report's "My team" for someone who leads more
+   * than one. An empty list means nobody, not everyone.
+   */
+  teamIds?: readonly string[] | null
+}
+
+export interface WorklistFilters extends PeopleFilter {
   includeDone?: boolean
   /**
    * Open steps only, with no finished work at all. What a team's priority order
@@ -165,6 +174,21 @@ async function mondaySlug(supabase: Client): Promise<string | null> {
   }
 }
 
+/**
+ * The directory people a filter names. null is no filter at all (everyone); an
+ * empty list is nobody, a team with no members, and the two stay apart.
+ * One reading for the work list and every Report tab, so a team means the same
+ * people on each of them.
+ */
+export async function peopleInFilter(supabase: Client, f: PeopleFilter): Promise<string[] | null> {
+  if (f.personId) return [f.personId]
+  const teams = f.teamIds ?? (f.teamId ? [f.teamId] : null)
+  if (teams === null) return null
+  if (!teams.length) return []
+  const { data } = await supabase.from('team_members').select('person_id').in('team_id', [...teams])
+  return [...new Set(((data ?? []) as { person_id: string }[]).map(m => m.person_id))]
+}
+
 /** Monday accounts belonging to a set of directory people. */
 async function accountsFor(supabase: Client, personIds: string[]): Promise<number[]> {
   if (!personIds.length) return []
@@ -176,14 +200,8 @@ async function accountsFor(supabase: Client, personIds: string[]): Promise<numbe
 export async function loadWorklist(supabase: Client, f: WorklistFilters): Promise<Worklist> {
   // Who are we asking about. An empty array here means "nobody", which is not
   // the same as no filter, so the two cases stay apart.
-  let onlyAccounts: number[] | null = null
-  if (f.personId) {
-    onlyAccounts = await accountsFor(supabase, [f.personId])
-  } else if (f.teamId) {
-    const { data: members } = await supabase
-      .from('team_members').select('person_id').eq('team_id', f.teamId)
-    onlyAccounts = await accountsFor(supabase, ((members ?? []) as { person_id: string }[]).map(m => m.person_id))
-  }
+  const people = await peopleInFilter(supabase, f)
+  const onlyAccounts: number[] | null = people === null ? null : await accountsFor(supabase, people)
 
   const [{ data: boardRows }, firstSteps, { data: linkRows }, { data: userRows }, { data: peopleRows }] =
     await Promise.all([

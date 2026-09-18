@@ -1,6 +1,15 @@
 # Report para team leaders: plano (J5, opção c)
 
-Planejado em 16/09/2026, para fazer depois. Nada implementado.
+Planejado em 16/09/2026. **Passos 1, 2 e 3 feitos em 18/09/2026.** O passo 3 virou controle
+seu: Admin → Access levels, grupo **My Work Report**, uma linha para a aba People e outra para
+a aba Workload, por nível (você pediu para decidir lá em vez de responder aqui). Padrões iguais
+ao que os níveis davam antes: People para Admin Assistant e Team Leader, Workload só para Admin
+Assistant. Conferido com os dados de produção: a Jeannette passa a ler só o SEO (5 pessoas, em
+vez das 31 da empresa), a Stephanie só o Graphics (o time que ela lidera), e um time que a
+pessoa não lidera, digitado na URL, é ignorado. A regra fica em `src/lib/report/view.ts`, usada
+pela página, pela página de impressão, pelo PDF e pelo CSV. Faltam os passos 4 (ligar os 10
+boards aos projetos do timeclock), 5 (ligar o Report para team leaders no Access levels) e 6
+(avisar), que são seus.
 
 **Objetivo.** A Jeannette pediu um jeito de equilibrar a carga do time. Isso é o Report, e a
 aba Workload dele. A opção escolhida foi (c): consertar primeiro, abrir depois, para que um

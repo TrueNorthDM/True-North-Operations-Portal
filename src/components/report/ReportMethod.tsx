@@ -48,10 +48,12 @@ export function ReportMethod(
   )
 }
 
+// Whose work each level reads. Which tabs it gets (People, Workload) is set per
+// level on Admin, Access levels, so it is stated there rather than here.
 const LEVELS: { level: number; who: string; sees: string }[] = [
-  { level: 1, who: 'Everyone signed in', sees: 'Their own work. Overview, Where it waits and Method, and no other name anywhere on the page.' },
-  { level: 2, who: 'Team leaders', sees: 'Themselves and their team, plus the People tab. Workload is not shown.' },
-  { level: 3, who: 'Directory admins', sees: 'Everyone, including the Monday accounts nobody is linked to, plus the Workload tab.' },
+  { level: 1, who: 'Everyone signed in', sees: 'Their own work, and no other name anywhere on the page.' },
+  { level: 2, who: 'Team leaders', sees: 'Themselves and the teams they lead (as Founder, Manager or Team Leader), nobody else.' },
+  { level: 3, who: 'Directory admins', sees: 'Everyone, including the Monday accounts nobody is linked to.' },
 ]
 
 /**

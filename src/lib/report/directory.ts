@@ -6,6 +6,7 @@
 // reports as a bug and everybody quietly distrusts.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { peopleInFilter, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { teamColoursFrom, type TeamColours } from '@/lib/directory/team-colour'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -14,15 +15,10 @@ type Client = SupabaseClient<any, any, any>
 export type ActivePerson = { id: string; full_name: string; weekly_hours: number | null }
 
 export async function activePeople(
-  supabase: Client, f: { personId?: string | null; teamId?: string | null },
+  supabase: Client, f: PeopleFilter,
 ): Promise<ActivePerson[]> {
-  let ids: string[] | null = null
-  if (f.personId) ids = [f.personId]
-  else if (f.teamId) {
-    const { data } = await supabase.from('team_members').select('person_id').eq('team_id', f.teamId)
-    ids = ((data ?? []) as { person_id: string }[]).map(m => m.person_id)
-    if (!ids.length) return []
-  }
+  const ids = await peopleInFilter(supabase, f)
+  if (ids && !ids.length) return []
 
   let q = supabase.from('people').select('id, full_name, weekly_hours').eq('status', 'active')
   if (ids) q = q.in('id', ids)

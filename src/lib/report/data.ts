@@ -14,7 +14,7 @@
 // a different and much worse claim than "we were not watching yet".
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { loadWorklist } from '@/lib/monday/worklist/data'
+import { loadWorklist, peopleInFilter, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { AGE_BUCKETS, type Overview } from './overview'
 import { weekColumns, type Period } from './scope'
 import {
@@ -78,16 +78,9 @@ function isLate(due: string | null, suspect: boolean, today: string): boolean {
 
 /** Monday accounts belonging to the people this scope covers. */
 export async function accountsInScope(
-  supabase: Client, f: { personId?: string | null; teamId?: string | null },
+  supabase: Client, f: PeopleFilter,
 ): Promise<number[] | null> {
-  let personIds: string[] | null = null
-
-  if (f.personId) personIds = [f.personId]
-  else if (f.teamId) {
-    const { data } = await supabase.from('team_members').select('person_id').eq('team_id', f.teamId)
-    personIds = ((data ?? []) as { person_id: string }[]).map(m => m.person_id)
-  }
-
+  const personIds = await peopleInFilter(supabase, f)
   if (personIds === null) return null
   if (!personIds.length) return []
 
@@ -174,7 +167,7 @@ export async function loadSpans(
 
 export async function loadReportOverview(
   supabase: Client,
-  f: { personId?: string | null; teamId?: string | null; period?: Period },
+  f: PeopleFilter & { period?: Period },
 ): Promise<ReportData> {
   const period = f.period ?? 90
   const now = new Date()
@@ -183,7 +176,7 @@ export async function loadReportOverview(
   const accounts = await accountsInScope(supabase, f)
 
   const [snapshot, recording, spans] = await Promise.all([
-    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, includeDone: false }),
+    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, teamIds: f.teamIds, includeDone: false }),
     readRecording(supabase),
     loadSpans(supabase, accounts, since),
   ])
