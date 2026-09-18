@@ -53,6 +53,13 @@ export interface EditorStep {
 const FIRST_ROWS = 200
 const COLS = '72px 72px minmax(0,1fr) minmax(120px,170px) 124px 112px 112px'
 const HEAD = 'px-3 py-[11px] min-w-0 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted whitespace-nowrap'
+/** A symbol for each level of Order by: a grid of workspaces, a board's columns, a list of items. */
+const LEVEL_ICON: Record<Level, React.ReactNode> = {
+  workspace: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
+  board: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M15 4v16" /></>,
+  item: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></>,
+}
+
 /** The Workspace and Board levels share one set of columns. */
 const LEVEL_COLS = '52px 72px minmax(0,1fr) 110px 110px 90px 120px'
 const n = (v: number) => v.toLocaleString('en-US')
@@ -434,52 +441,64 @@ export function TeamPriorityEditor({
         {saveAndClose}
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap border-t border-[var(--panel-border)] pt-3">
-        {status}
-        <span className="text-[13px] text-muted ml-auto">
-          {narrowed ? `${n(visible.length)} of ${n(list.length)} open steps shown` : `${n(list.length)} open steps on the ${team.name} team`}
-        </span>
-      </div>
-
-      {levelsAvailable && (
-        <div className="rounded-[14px] border border-[var(--panel-border)] bg-white p-4 flex items-center gap-4 flex-wrap">
-          <div>
-            <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted">Order by</div>
-            <div className="mt-1.5 inline-flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]">
-              {([['workspace', 'Workspace', wsRank.length], ['board', 'Board', boardRank.length], ['item', 'Item', list.length]] as const).map(([k, label, count]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setLevel(k)}
-                  aria-pressed={level === k}
-                  className={`${segment} ${level === k ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]' : 'text-muted hover:text-tn-ink'}`}
-                >
-                  {label} <span className="text-[11px] font-bold text-muted ml-0.5">{n(count)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="flex-1 min-w-[300px] text-[12.5px] text-muted leading-relaxed m-0">
-            {level === 'workspace' && (wsSet.length
-              ? 'Whole workspaces, in your order: everything in the first comes before anything in the second. Every board and item inside moves with its workspace.'
-              : "Not set yet: workspaces follow True North's order. Moving one here starts your team's own order.")}
-            {level === 'board' && (boardSet.length
-              ? 'Boards in your order, inside their workspace. Every item on a board moves with it; inside a board, the soonest deadline comes first.'
-              : "Not set yet: boards follow True North's order inside each workspace. Moving one here starts your team's own order.")}
-            {level === 'item' && 'Single steps. A step you move here keeps its place above everything, even other workspaces.'}
-          </p>
-          {level === 'workspace' && wsSet.length > 0 && (
-            <button type="button" onClick={() => changeLevels([], boardSet)} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
-              Reset workspaces to True North&apos;s order
-            </button>
-          )}
-          {level === 'board' && boardSet.length > 0 && (
-            <button type="button" onClick={() => changeLevels(wsSet, [])} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
-              Reset boards to True North&apos;s order
-            </button>
-          )}
+      {/* Who set the order on the left; Order by on the right, under Save and
+          close, since 18 September 2026. It was a small grey control in a card
+          of its own and read as a filter, when it decides what the whole page
+          below is ordering. Styled as the same kind of button as Save and
+          close: the two controls a leader uses most, in one column. */}
+      <div className="flex items-start gap-4 flex-wrap border-t border-[var(--panel-border)] pt-3">
+        <div className={`flex flex-col gap-1 ${levelsAvailable ? 'pt-1.5' : 'flex-row items-center gap-3 flex-1'}`}>
+          {status}
+          <span className={`text-[13px] text-muted ${levelsAvailable ? '' : 'ml-auto'}`}>
+            {narrowed ? `${n(visible.length)} of ${n(list.length)} open steps shown` : `${n(list.length)} open steps on the ${team.name} team`}
+          </span>
         </div>
-      )}
+
+        {levelsAvailable && (
+          <div className="ml-auto flex flex-col items-end gap-2 max-w-full">
+            <div className="flex items-center justify-end gap-x-3 gap-y-1.5 flex-wrap max-w-full">
+              <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Order by</span>
+              <div role="group" aria-label="Order by" className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full border border-[var(--panel-border)] bg-white p-1 shadow-[0_6px_16px_-10px_rgba(1,35,88,.35)]">
+                {([['workspace', 'Workspace', wsRank.length], ['board', 'Board', boardRank.length], ['item', 'Item', list.length]] as const).map(([k, label, count]) => {
+                  const on = level === k
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setLevel(k)}
+                      aria-pressed={on}
+                      className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-4 py-2 font-(family-name:--font-display) font-extrabold text-[12.5px] sm:text-[13px] transition-colors ${on ? 'bg-tn-primary shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)]' : 'text-tn-ink hover:bg-subtle'}`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={on ? '#F2C40A' : 'currentColor'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="hidden sm:block">{LEVEL_ICON[k]}</svg>
+                      <span className={on ? 'text-[#ffffff]' : ''}>{label}</span>
+                      <span className={`text-[11px] font-bold rounded-full px-1.5 py-px ${on ? 'bg-[rgba(242,196,10,.18)] text-[#F2C40A]' : 'bg-subtle text-muted'}`}>{n(count)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <p className="text-[12.5px] text-muted leading-relaxed m-0 max-w-[560px] text-right">
+              {level === 'workspace' && (wsSet.length
+                ? 'Whole workspaces, in your order: everything in the first comes before anything in the second. Every board and item inside moves with its workspace.'
+                : "Not set yet: workspaces follow True North's order. Moving one here starts your team's own order.")}
+              {level === 'board' && (boardSet.length
+                ? 'Boards in your order, inside their workspace. Every item on a board moves with it; inside a board, the soonest deadline comes first.'
+                : "Not set yet: boards follow True North's order inside each workspace. Moving one here starts your team's own order.")}
+              {level === 'item' && 'Single steps. A step you move here keeps its place above everything, even other workspaces.'}
+            </p>
+            {level === 'workspace' && wsSet.length > 0 && (
+              <button type="button" onClick={() => changeLevels([], boardSet)} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
+                Reset workspaces to True North&apos;s order
+              </button>
+            )}
+            {level === 'board' && boardSet.length > 0 && (
+              <button type="button" onClick={() => changeLevels(wsSet, [])} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
+                Reset boards to True North&apos;s order
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* The agreement card: the team's order against the default one, and the
           steps placed furthest from where the default order would put them. */}
