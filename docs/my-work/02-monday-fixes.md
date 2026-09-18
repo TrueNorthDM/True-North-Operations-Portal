@@ -6,6 +6,10 @@ tira linhas das listas das pessoas na sincronização seguinte (seis por dia).
 
 **Números de 15 e 16/09/2026.** Mudam com o Monday todo dia: reconte antes de começar.
 
+**Estado em 18/09, depois das mudanças que você fez no Monday** e de uma leitura completa (12:38
+UTC). Passos abertos no My Work: 3.229 → 3.118. As suas mudanças fecharam os 107 "Not Relevant"
+do AAAF - Photo Curation Audits (item 3). Os itens 3 e 5 abaixo mostram o que ainda está aberto.
+
 **Decisões que ficaram em aberto:** quem faz cada item, e se o efeito colateral do item 3 é
 aceitável.
 
@@ -40,19 +44,23 @@ A mesma mudança que você fez no BM - Photo Curation Audits em 15/09. Nestas co
 Relevant" existe mas não está marcado como concluído, então a linha fica aberta para
 sempre.
 
-| Board | Coluna | Linhas abertas |
-| --- | --- | --- |
-| Subitems of AAAF - Translations | Proof Design | 538 |
-| Subitems of Graphics - Social Media | Overlays | 432 |
-| AAAF - SEO & Writing | ReWrite 2 | 291 |
-| AAAF - Photo Curation Audits | Writing (mais Approval e Implementation) | 104 |
-| Subitems of HFA - Translations | Proof Design | 15 |
-| Web Dev & Tech Support | Status | 14 |
+| Board | Coluna | Linhas abertas (15/09) | Em 18/09, depois da leitura |
+| --- | --- | --- | --- |
+| Subitems of AAAF - Translations | Proof Design | 538 | 538 |
+| Subitems of Graphics - Social Media | Overlays | 432 | 431 |
+| AAAF - SEO & Writing | ReWrite 2 | 291 | 291 |
+| AAAF - Photo Curation Audits | Writing (mais Approval e Implementation) | 104 | **0, feito** |
+| Subitems of HFA - Translations | Proof Design | 15 | 13 |
+| Web Dev & Tech Support | Status | 14 | 14 |
+
+Nos boards "Subitems of ...", a configuração é a da coluna de subitem, mudada a partir do board
+pai (por exemplo, Proof Design nos subitens do AAAF - Translations).
 
 Cerca de 1.400 linhas saem das listas. **Reconferido em 18/09: 1.422 passos abertos no My Work**
 com "Not Relevant" (ou "Canceled") numa coluna em que o Monday não marca esse status como
 concluído; a tabela continua certa. Menores, além dela: AAAF - SEO & Writing, Brief Draft SEO
-(7); Graphics - Social Media, Overlays (7); AAAF - Schema Audits, Audit (3).
+(7); Graphics - Social Media, Overlays (7); AAAF - Schema Audits, Audit (3). **Depois das suas
+mudanças de 18/09: 1.315.**
 
 **Efeito colateral:** as barras de progresso desses boards no Monday passam a contar essas
 linhas como feitas. É por isso que é uma decisão sua, e não um ajuste técnico.
@@ -73,7 +81,8 @@ quando o portal ainda lia a coluna de status errada em vários boards. Com a reg
 Completed do AAAF - Schema Audits não tem nada aberto (as 883 linhas estão concluídas; você
 conferiu no Monday e não achou nada Stuck, e estava certo), e o do AAAF - Social Media Planning
 caiu de 160 para 2. Hoje, passos que o My Work mostra em grupos com nome de trabalho terminado:
-195.
+195. **Depois das suas mudanças e da leitura de 18/09: 88** (o Completed do AAAF - Photo Curation
+Audits caiu de 108 para 1).
 
 | Board | Grupo | Passos abertos (status) |
 | --- | --- | --- |
