@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
 import { UserMenu } from '@/components/UserMenu'
+import { NotificationBell } from '@/components/NotificationBell'
 import { AccessPing } from '@/components/AccessPing'
 import { ViewAsKeeper } from '@/components/ViewAsKeeper'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
@@ -34,8 +35,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {user && <AccessPing />}
       {/* Keeps a View Stage preview impersonating across navigation. */}
       <ViewAsKeeper />
-      {/* Top bar, brand on the left; theme toggle + avatar on the right
-          (avatar is always the rightmost element). */}
+      {/* Top bar, brand on the left; the notification bell on the right. The
+          avatar lives at the foot of the rail since 21 September 2026, and
+          only comes up here on a phone, where the rail is hidden. */}
       <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">
         {/* True North lockup. On dark the navy wordmark sits on a white chip so
             it stays legible; on the white light bar the chip is invisible. */}
@@ -56,15 +58,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
 
         <div className="flex items-center gap-2">
+          <NotificationBell />
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
-          <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} />
+          <div className="md:hidden">
+            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} />
+          </div>
         </div>
       </header>
 
       {/* Sidebar + main */}
       <div className="flex flex-1">
-        <Sidebar allowed={allowedNav} hrefs={navHrefs} />
+        <Sidebar
+          allowed={allowedNav}
+          hrefs={navHrefs}
+          user={{ email: me?.email ?? user?.email ?? null, name: me?.full_name ?? null, avatarUrl: me?.avatar_url ?? null }}
+        />
         <MainContent>{children}</MainContent>
       </div>
     </>

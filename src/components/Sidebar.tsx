@@ -5,13 +5,19 @@
  *
  * Client Component because it uses usePathname() to highlight the active item.
  * Hidden on mobile (md:flex), the top bar remains usable on its own there.
- * The signed-in block moved to the top-bar avatar (UserMenu).
+ *
+ * Since 21 September 2026 the rail is in groups, top to bottom: the person's
+ * own work (Home, My Work, My Hours), the company (Work Tools, People, Human
+ * Resources), the machinery (Admin, Clocky); and at the foot, Settings with the
+ * person's avatar under it (UserMenu), where the account and Sign out live. On
+ * a phone the rail is hidden, so the avatar stays in the top bar there.
  */
 
 import { useEffect, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { NAV_LABEL } from '@/lib/nav/labels'
+import { UserMenu } from '@/components/UserMenu'
 
 const iconClass = 'w-6 h-6 shrink-0'
 
@@ -177,18 +183,26 @@ const settingsNav: Item = {
   match: p => p === '/settings' || p.startsWith('/settings/'),
 }
 
-// Rail order, one single group. Keys match access/surfaces.ts; the layout
-// passes only the ones this person may reach.
-const NAV: readonly { key: string; item: Item }[] = [
-  { key: 'home', item: home },
-  { key: 'tools', item: toolsDash },
-  { key: 'my-work', item: myWorkNav },
-  { key: 'my-hours', item: myHoursNav },
-  { key: 'directory', item: directoryNav },
-  { key: 'human-resources', item: hrNav },
-  { key: 'admin', item: adminNav },
-  { key: 'clocky-hours', item: clockyHoursNav },
-  { key: 'settings', item: settingsNav },
+// Rail order, in groups with a thin rule between them: the person's own work,
+// then the company, then the machinery that runs the portal. Settings is not
+// here: it sits at the foot of the rail, over the avatar. Keys match
+// access/surfaces.ts; the layout passes only the ones this person may reach,
+// and a group with nothing left in it draws no rule.
+const NAV: readonly (readonly { key: string; item: Item }[])[] = [
+  [
+    { key: 'home', item: home },
+    { key: 'my-work', item: myWorkNav },
+    { key: 'my-hours', item: myHoursNav },
+  ],
+  [
+    { key: 'tools', item: toolsDash },
+    { key: 'directory', item: directoryNav },
+    { key: 'human-resources', item: hrNav },
+  ],
+  [
+    { key: 'admin', item: adminNav },
+    { key: 'clocky-hours', item: clockyHoursNav },
+  ],
 ]
 
 function NavLink({ item, active }: { item: Item; active: boolean }) {
@@ -240,15 +254,25 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
  * item and blocking its route now come from the same configuration.
  */
 export function Sidebar(
-  { allowed, hrefs }: { allowed: readonly string[]; hrefs?: Record<string, string> },
+  { allowed, hrefs, user, menuOpen = false }: {
+    allowed: readonly string[]
+    hrefs?: Record<string, string>
+    /** Design check only: the account menu open. */
+    menuOpen?: boolean
+    /** The person signed in (or previewed), for the avatar at the foot of the rail. */
+    user: { email: string | null; name: string | null; avatarUrl: string | null }
+  },
 ) {
   const pathname = usePathname()
   const router = useRouter()
   const on = new Set(allowed)
-  const items = NAV
-    .filter(n => on.has(n.key))
-    // A module's destination depends on which of its views this person has.
-    .map(n => (hrefs?.[n.key] ? { ...n, item: { ...n.item, href: hrefs[n.key] } } : n))
+  // A module's destination depends on which of its views this person has.
+  const resolve = (n: { key: string; item: Item }) => (hrefs?.[n.key] ? { ...n, item: { ...n.item, href: hrefs[n.key] } } : n)
+  const groups = NAV
+    .map(g => g.filter(n => on.has(n.key)).map(resolve))
+    .filter(g => g.length > 0)
+  const settings = on.has('settings') ? resolve({ key: 'settings', item: settingsNav }) : null
+  const items = [...groups.flat(), ...(settings ? [settings] : [])]
 
   // Prefetch every destination on the rail. A <Link> does this by itself; these
   // are buttons, so until September 2026 the portal's main navigation never
@@ -272,9 +296,19 @@ export function Sidebar(
     // Icon-only rail. No overflow clipping, so the hover tooltips can extend
     // past the rail to the right (the few items always fit vertically).
     <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] z-30">
-      <nav className="py-3 space-y-1.5">
-        {items.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
+      <nav className="py-3">
+        {groups.map((g, i) => (
+          <div key={i} className="space-y-1.5">
+            {i > 0 && <div aria-hidden="true" className="mx-auto my-2.5 h-px w-7 bg-slate-200" />}
+            {g.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
+          </div>
+        ))}
       </nav>
+      {/* The foot of the rail: Settings, then the person. */}
+      <div className="mt-auto pb-4 flex flex-col items-center gap-2.5">
+        {settings && <NavLink item={settings.item} active={settings.item.match(pathname)} />}
+        <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} />
+      </div>
     </aside>
   )
 }

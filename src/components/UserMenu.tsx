@@ -1,10 +1,12 @@
 'use client'
 
 /**
- * UserMenu: the avatar at the far right of the top bar (always the first
- * thing right-to-left). Initials circle in the portal navy; clicking opens a
- * small menu with the signed-in email and Sign out. Replaces the old
- * "Signed in" block that lived at the bottom of the sidebar.
+ * UserMenu: the person's avatar. Initials circle in the portal navy; clicking
+ * opens a small menu with the signed-in email, My profile, My Team and Sign out.
+ *
+ * Two places since 21 September 2026: at the foot of the rail on a desktop
+ * (`placement="rail"`, the menu opening to the right and upward), and at the
+ * right of the top bar on a phone, where the rail is hidden.
  */
 
 import Link from 'next/link'
@@ -12,10 +14,18 @@ import { useEffect, useRef, useState } from 'react'
 import { signOut } from '@/app/auth/actions'
 import { Avatar } from '@/components/Avatar'
 
-export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string | null; userName?: string | null; avatarUrl?: string | null }) {
+export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false }: {
+  userEmail: string | null
+  userName?: string | null
+  avatarUrl?: string | null
+  /** The top bar (menu drops below, right-aligned) or the foot of the rail (menu opens to the right, upward). */
+  placement?: 'bar' | 'rail'
+  /** Design check only: show the menu without a click. */
+  startOpen?: boolean
+}) {
   // Name for the avatar initials, the person's name, else the email local part.
   const initialsName = userName ?? (userEmail ? userEmail.split('@')[0].replace(/[._-]+/g, ' ') : null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(startOpen)
   const ref = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -69,7 +79,7 @@ export function UserMenu({ userEmail, userName, avatarUrl }: { userEmail: string
         <div
           ref={menuRef}
           role="menu"
-          className="absolute right-0 mt-2 w-60 z-30 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden"
+          className={`absolute w-60 z-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden ${placement === 'rail' ? 'left-full bottom-0 ml-3' : 'right-0 mt-2'}`}
         >
           <div className="px-4 py-3 border-b border-slate-100">
             <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Signed in</div>
