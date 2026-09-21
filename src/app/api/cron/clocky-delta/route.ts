@@ -1,5 +1,5 @@
 /**
- * GET /api/cron/clocky-delta, keeping Clocky Hours current on its own.
+ * GET /api/cron/clocky-delta, keeping Clocky current on its own.
  *
  * While QuickBooks Time is still the system of record, our copy has to keep up
  * with it: new entries, edits, retroactive approvals, and deletions. The delta

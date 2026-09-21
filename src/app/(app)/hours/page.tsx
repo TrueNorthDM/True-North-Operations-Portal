@@ -1,4 +1,4 @@
-// My Hours, a person's own clock. The module around it is Clocky Hours.
+// My Hours, a person's own clock. The module around it is Clocky.
 //
 // Phase 2: people can track time here, in parallel with QuickBooks Time, which
 // is still the system of record. Nothing on this page writes anywhere else.

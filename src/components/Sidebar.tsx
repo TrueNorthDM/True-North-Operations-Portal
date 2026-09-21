@@ -126,7 +126,7 @@ const myHoursNav: Item = {
   match: p => p === '/hours' || p.startsWith('/hours/'),
 }
 
-// Clocky Hours, the module behind it: rules, migration, and later approvals. A
+// Clocky, the module behind it: rules, migration, and later approvals. A
 // dial rather than a clock face, so the two are not mistaken for each other at
 // a glance in a rail of monochrome icons.
 const ClockyIcon = (

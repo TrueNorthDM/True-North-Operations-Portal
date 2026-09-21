@@ -21,7 +21,7 @@ export const NAV_LABEL = {
   '/work-tools': 'Work Tools',
   '/my-work': 'My Work',
   '/hours': 'My Hours',
-  '/clocky-hours': 'Clocky Hours',
+  '/clocky-hours': 'Clocky',
   '/directory': 'People, Teams and Permissions',
   '/human-resources': 'Human Resources',
   '/admin': 'Admin',

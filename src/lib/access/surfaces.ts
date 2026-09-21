@@ -108,12 +108,12 @@ export const SURFACES: readonly Surface[] = [
   // locked to admin rather than left configurable.
   { key: 'settings', label: 'Settings', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
   { key: 'admin', label: 'Admin', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-  // Clocky Hours is the time module: the rules, the migration from QuickBooks
+  // Clocky is the time module: the rules, the migration from QuickBooks
   // Time, and later the approvals and payroll. My Hours above is the
   // person-facing half of it. Admin only while it is being built, and locked
   // rather than configurable so nobody can hand out the migration controls by
   // ticking a box.
-  { key: 'clocky-hours', label: 'Clocky Hours (the time module)', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
+  { key: 'clocky-hours', label: 'Clocky (the time module)', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
 
   // ── People directory ──────────────────────────────────────────────────────
   // Three cumulative levels rather than independent switches, because that is

@@ -1,4 +1,4 @@
-// Clocky Hours, the time module: phases 0 and 1.
+// Clocky, the time module: phases 0 and 1.
 //
 // The person-facing half is /hours (My Hours). This is the other half: the
 // rules, the migration from QuickBooks Time, and later the approvals and the
@@ -20,7 +20,7 @@ import { RulesForm, type Rules } from './RulesForm'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Clocky Hours' }
+export const metadata = { title: 'Clocky' }
 
 type Settings = Rules
 
@@ -67,7 +67,7 @@ export default async function ClockyHoursPage() {
   if (settingsRes.error) {
     return (
       <div className="space-y-4">
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clocky Hours</h1>
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clocky</h1>
         <div className="rounded-[12px] border border-amber-300/60 bg-amber-50 p-5 text-sm text-[#8a6d1a] space-y-1">
           <p className="font-semibold m-0">Migration 057 has not been applied yet.</p>
           <p className="m-0">Run <code className="font-mono">supabase/migrations/057_time_clock_schema.sql</code> in the SQL editor, then reload this page.</p>
@@ -95,7 +95,7 @@ export default async function ClockyHoursPage() {
     <div className="space-y-8">
       <div>
         <Breadcrumb self="/clocky-hours" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clocky Hours</h1>
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Clocky</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           The time module behind My Hours, under construction. QuickBooks Time is still the system
           of record, and nothing here writes back to it or to payroll.

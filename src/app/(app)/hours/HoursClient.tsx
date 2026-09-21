@@ -1,7 +1,7 @@
 'use client'
 
 // My Hours: the clock, the week, and the form for filling in what the clock
-// missed. The module around it is Clocky Hours.
+// missed. The module around it is Clocky.
 //
 // One client component rather than three, because the three share one piece of
 // state: the draft. Clocking in and adding an entry by hand ask exactly the

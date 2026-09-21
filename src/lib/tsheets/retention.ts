@@ -6,7 +6,7 @@
 // thing only: which months the picker offers.
 //
 // WHY IT STILL STOPS AT JANUARY 2026, decided in August 2026 after checking
-// rather than assuming. Clocky Hours holds i7 hours back to 2022, 25,543 of
+// rather than assuming. Clocky holds i7 hours back to 2022, 25,543 of
 // them. But i7_monthly_budget holds twelve rows, all 2026, and every one of the
 // forty rate assignments starts on 2026-01-01 or later. So an earlier month
 // would render real hours beside a budget of zero, a cost of zero and a
