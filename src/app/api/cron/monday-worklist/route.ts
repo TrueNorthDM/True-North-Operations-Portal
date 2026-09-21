@@ -82,6 +82,25 @@ export async function GET(request: Request) {
   return NextResponse.json({ accepted: true, hop, since }, { status: 202 })
 }
 
+/**
+ * Where the next hop is sent: the production domain, not the address this
+ * request arrived on. Vercel's cron calls the deployment's own URL, and that
+ * URL sits behind Vercel's login (deployment protection): a request to it is
+ * redirected to vercel.com/sso, fetch followed the redirect to a page that
+ * answers 200, and every hop after the first was lost while the log said the
+ * chain had gone on. Found on 21 September 2026. Locally, and anywhere the
+ * variable is missing, the request's own origin is used.
+ */
+function nextHopUrl(url: URL): URL {
+  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  const next = new URL(url.toString())
+  if (prod) {
+    next.protocol = 'https:'
+    next.host = prod
+  }
+  return next
+}
+
 async function runHop(url: URL, hop: number, since: string, secret: string | undefined): Promise<Record<string, unknown>> {
   const token = await getMondayToken()
   if (!token) return { skipped: 'No Monday token configured.' }
@@ -108,17 +127,21 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
 
     let chained: string | boolean = false
     if (r.remaining > 0) {
-      const next = new URL(url.toString())
+      const next = nextHopUrl(url)
       next.searchParams.set('hop', String(hop + 1))
       next.searchParams.set('since', since)
       try {
         // Awaited: the next hop answers 202 before doing its work, so this
-        // costs a second or two and guarantees the request left.
+        // costs a second or two and guarantees the request left. Redirects
+        // are not followed and only our own "accepted" counts: a login page
+        // answering 200 is how this failed unnoticed.
         const res = await fetch(next.toString(), {
           headers: secret ? { authorization: `Bearer ${secret}` } : undefined,
+          redirect: 'manual',
           signal: AbortSignal.timeout(HANDOFF_MS),
         })
-        chained = res.ok ? true : `next hop answered ${res.status}`
+        const body = res.status === 202 ? await res.json().catch(() => null) as { accepted?: boolean } | null : null
+        chained = body?.accepted ? true : `next hop not accepted: ${res.status} ${res.headers.get('location') ?? ''}`.trim()
       } catch (e) {
         // A lost hop costs freshness until the next scheduled firing: the
         // queue is ordered by how stale a board is, so what was missed is
