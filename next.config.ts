@@ -22,6 +22,9 @@ const nextConfig: NextConfig = {
   // good in case the name moves again.
   async redirects() {
     return [
+      // The hub itself first: through the rule below it would land on
+      // /work-tools/ and take a second hop to drop the slash.
+      { source: '/tools', destination: '/work-tools', permanent: false },
       { source: '/tools/:path*', destination: '/work-tools/:path*', permanent: false },
     ];
   },
