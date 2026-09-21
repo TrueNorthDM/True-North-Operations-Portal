@@ -438,6 +438,12 @@ export async function ingestSlice(
   supabase: Client,
   token: string,
   budgetMs: number,
+  /**
+   * The start of the scheduled run this slice belongs to. Boards already read
+   * since then are left out, so a run reads each board once and stops, instead
+   * of going round again until its hop limit (21 September 2026).
+   */
+  notReadSince?: string,
 ): Promise<SliceResult> {
   const started = Date.now()
 
@@ -477,7 +483,10 @@ export async function ingestSlice(
   const { data: stepBoards } = await supabase
     .from('monday_board_steps').select('board_id').neq('source', 'off')
   const hasSteps = new Set(((stepBoards ?? []) as { board_id: number }[]).map(s => s.board_id))
-  const queue = boards.filter(b => hasSteps.has(b.id))
+  const cutoff = notReadSince ? Date.parse(notReadSince) : Number.NaN
+  const readThisRun = (b: { items_synced_at: string | null }) =>
+    Number.isFinite(cutoff) && !!b.items_synced_at && Date.parse(b.items_synced_at) >= cutoff
+  const queue = boards.filter(b => hasSteps.has(b.id) && !readThisRun(b))
 
   const done: BoardIngestResult[] = []
   for (const b of queue) {

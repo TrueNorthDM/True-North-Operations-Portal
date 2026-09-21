@@ -8,7 +8,7 @@
  * WHY IT CHAINS. 197 boards do not fit in one invocation: Vercel stops a
  * function at 300 seconds. One firing therefore has to become several. Each
  * pass takes as many boards as fit in its budget, oldest first, and if any are
- * left it calls itself again and returns without waiting.
+ * left it hands on to the next pass (see GET below for how).
  *
  * That is what makes the schedule mean what it says. A single non-chaining
  * slice every four hours would leave the oldest boards a day behind while the
@@ -19,14 +19,15 @@
  * The chain is bounded two ways. LINKS caps how many hops one firing may make,
  * so a bug cannot turn into a loop that bills by the second. And every hop
  * makes progress by construction: a board is stamped with items_synced_at as
- * it finishes, so the queue can only shrink.
+ * it finishes, and a hop reads only boards not read since the firing began,
+ * so the queue can only shrink, and empties.
  *
  * Discovery runs once at the head of a chain, not on every hop: new boards and
  * renamed columns should be picked up, but eighteen seconds of it per hop is
  * eighteen seconds not spent reading work.
  */
 
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
@@ -44,6 +45,23 @@ const BUDGET_MS = 210_000
 /** Hops one firing may make. Eight covers a full pass with room to spare. */
 const LINKS = 8
 
+/** How long a hop waits for the next one to say it has started. */
+const HANDOFF_MS = 20_000
+
+/**
+ * How a hop hands on, since 21 September 2026. It used to fire the next
+ * request without waiting and return; Vercel freezes a function the moment it
+ * returns, so that request was mostly never sent, and each firing read about
+ * 21 of the 36 shown boards. A board was refreshed every eight hours while the
+ * page promised four, and "last refreshed" said seven hours.
+ *
+ * Now every hop answers 202 at once and does its work in after(), which runs
+ * on for the route's maxDuration. The hop before it therefore gets its answer
+ * in a second or two, and awaits it, so the next hop is actually on its way
+ * before this one ends. `since` is the start of the firing: each hop reads only
+ * boards not read since then, so the chain stops when every board has been
+ * read once, not when it reaches LINKS.
+ */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET
   if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
@@ -55,9 +73,18 @@ export async function GET(request: Request) {
   if (hop >= LINKS) {
     return NextResponse.json({ stopped: `Chain hit its limit of ${LINKS} hops.` })
   }
+  const since = url.searchParams.get('since') ?? new Date().toISOString()
 
+  after(async () => {
+    const result = await runHop(url, hop, since, secret)
+    console.log(`[monday-worklist] hop ${hop}`, JSON.stringify(result))
+  })
+  return NextResponse.json({ accepted: true, hop, since }, { status: 202 })
+}
+
+async function runHop(url: URL, hop: number, since: string, secret: string | undefined): Promise<Record<string, unknown>> {
   const token = await getMondayToken()
-  if (!token) return NextResponse.json({ skipped: 'No Monday token configured.' })
+  if (!token) return { skipped: 'No Monday token configured.' }
 
   const supabase = createAdminClient()
   const started = Date.now()
@@ -77,33 +104,33 @@ export async function GET(request: Request) {
       }
     }
 
-    const r = await ingestSlice(supabase, token, BUDGET_MS - (Date.now() - started))
+    const r = await ingestSlice(supabase, token, BUDGET_MS - (Date.now() - started), since)
 
+    let chained: string | boolean = false
     if (r.remaining > 0) {
-      // Fire and forget: the next hop is a separate invocation with its own
-      // 300 seconds. Awaiting it here would just spend this one's budget
-      // waiting, and both would die together.
-      const next = new URL(request.url)
+      const next = new URL(url.toString())
       next.searchParams.set('hop', String(hop + 1))
-      void fetch(next.toString(), {
-        headers: secret ? { authorization: `Bearer ${secret}` } : undefined,
-      }).catch(() => {
-        // A dropped hop costs freshness until the next scheduled firing, which
-        // is a delay rather than a hole: the queue is ordered by how stale a
-        // board is, so whatever was missed is first in line next time.
-      })
+      next.searchParams.set('since', since)
+      try {
+        // Awaited: the next hop answers 202 before doing its work, so this
+        // costs a second or two and guarantees the request left.
+        const res = await fetch(next.toString(), {
+          headers: secret ? { authorization: `Bearer ${secret}` } : undefined,
+          signal: AbortSignal.timeout(HANDOFF_MS),
+        })
+        chained = res.ok ? true : `next hop answered ${res.status}`
+      } catch (e) {
+        // A lost hop costs freshness until the next scheduled firing: the
+        // queue is ordered by how stale a board is, so what was missed is
+        // first in line next time.
+        chained = `next hop not reached: ${(e as Error).message}`
+      }
     }
 
     // The stale rule runs after every hop. It used to wait for the end of the
-    // chain, and the end never came: a firing reads about 28 of the 43 shown
-    // boards before its time is up, the next hop is a request fired as this
-    // one returns and is routinely lost, and the queue holds every shown board,
-    // so remaining was never zero. On 18 September 2026 the rule had not run
-    // since the day it was switched on, in either direction.
-    //
-    // Judging after a hop cannot flip a board back and forth: each board is
-    // judged on its own last read, a few hours old at most, against a window
-    // of six months.
+    // chain, and the end never came; judging after a hop cannot flip a board
+    // back and forth, since each board is judged on its own last read against
+    // a window of six months.
     let stale: { hidden: number; shown: number } | undefined
     const { data: settings } = await supabase
       .from('app_settings').select('monday_hide_stale_boards').eq('singleton_id', 1).maybeSingle()
@@ -111,8 +138,9 @@ export async function GET(request: Request) {
       stale = await applyStaleRule(supabase)
     }
 
-    return NextResponse.json({
+    return {
       hop,
+      since,
       discovered,
       ...(stale ? { staleHidden: stale.hidden, staleShown: stale.shown } : {}),
       boards: r.done.length,
@@ -120,14 +148,11 @@ export async function GET(request: Request) {
       assignments: r.done.reduce((s, b) => s + b.assignments, 0),
       remaining: r.remaining,
       seconds: Math.round(r.spentMs / 1000),
-      chained: r.remaining > 0,
-    })
+      chained,
+    }
   } catch (e) {
     // Whatever finished is already saved, board by board. The next firing
     // resumes from the oldest, which is exactly where this stopped.
-    return NextResponse.json(
-      { hop, error: (e as Error).message, seconds: Math.round((Date.now() - started) / 1000) },
-      { status: 500 },
-    )
+    return { hop, error: (e as Error).message, seconds: Math.round((Date.now() - started) / 1000) }
   }
 }
