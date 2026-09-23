@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { Fragment, useEffect } from 'react'
 import type { I7Report, I7Carryover, I7TrendPoint } from '@/lib/tsheets/types'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
+import { ROUTES } from '@/lib/nav/routes'
 
 const INK = '#012358', TEAL = '#1E7D7F', BLUE = '#2A6FDB', GOLD = '#F2C40A', PURPLE = '#6D5AE6', AMBER = '#E8912A', MMEC = '#B8790A', GREEN = '#1E9E6A', MUTED = '#8593a4', BODY = '#435066', BORDER = '#e4e7ec', WARM = '#f4f2ec', RED = '#C2410C', TRACK = '#eef0f3'
 const COST_COLORS = [TEAL, BLUE, GOLD, PURPLE, AMBER]
@@ -110,7 +111,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
 
   const Toolbar = (
     <div className="no-print mx-auto max-w-[1056px] mb-4 flex items-center justify-between px-2">
-      <Link href={`/work-tools/time-report?month=${report.startDate.slice(0, 7)}`} className="text-sm font-(family-name:--font-display) font-bold" style={{ color: BODY }}>&larr; Back to report</Link>
+      <Link href={`${ROUTES.i7}?month=${report.startDate.slice(0, 7)}`} className="text-sm font-(family-name:--font-display) font-bold" style={{ color: BODY }}>&larr; Back to report</Link>
       <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-[18px] py-2.5 rounded-[10px] text-white font-(family-name:--font-display) font-extrabold text-[11.7px]" style={{ background: INK }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
         Save as PDF

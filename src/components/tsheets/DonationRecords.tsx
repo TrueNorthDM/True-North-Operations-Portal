@@ -18,6 +18,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDonation } from '@/lib/timeclock/money-in-actions'
 import type { DonationEntry, DonationLogEntry } from '@/lib/timeclock/donations-ledger'
+import { ROUTES } from '@/lib/nav/routes'
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const monthLabel = (ym: string) => `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
@@ -57,9 +58,9 @@ export function DonationRecords(
           <span className="text-[11.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">Year</span>
           {/* Offered from the years that exist, so it never lists an empty one. */}
           <div className="flex items-center gap-1.5">
-            <YearChip label="All" active={year === null} href="/work-tools/time-report/grant-pass/donations" />
+            <YearChip label="All" active={year === null} href={`${ROUTES.projectHours}/donations`} />
             {years.map(y => (
-              <YearChip key={y} label={y} active={year === y} href={`/work-tools/time-report/grant-pass/donations?year=${y}`} />
+              <YearChip key={y} label={y} active={year === y} href={`${ROUTES.projectHours}/donations?year=${y}`} />
             ))}
           </div>
         </div>

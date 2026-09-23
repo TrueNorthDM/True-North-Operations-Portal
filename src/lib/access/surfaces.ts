@@ -59,10 +59,10 @@ export const SURFACES: readonly Surface[] = [
   { key: 'home', label: 'Home dashboard', group: 'Navigation', locked: 'always', defaults: ON },
   {
     key: 'tools',
-    label: 'Work Tools',
+    label: 'Tools',
     group: 'Navigation',
     defaults: ON,
-    note: 'Opens the area. Which tools appear inside it is set per team, on the Directory’s Teams tab.',
+    note: 'Opens the Tools panel on the rail (SEO Tools and Operations). Which tools appear inside it is set per team, on the Directory’s Teams tab.',
   },
   // Three grants, not one. They were a single row while they were one page
   // with two tabs; Report made them three views of different things, with
@@ -104,6 +104,22 @@ export const SURFACES: readonly Surface[] = [
     note: 'Switching this off does not remove the personal team view from the avatar menu: seeing your own team is personal, and stays available whatever this row says. The My Team row above is the one that governs the tab inside My Work. The People directory levels below still decide how much of a teammate’s card opens.',
   },
   { key: 'human-resources', label: 'Human Resources', group: 'Navigation', defaults: PRIV },
+  // Two rail items added on 22 September 2026 with the navigation redesign.
+  // Neither is built yet: both open a Coming soon page, for everyone by default.
+  {
+    key: 'chat',
+    label: 'Chat',
+    group: 'Navigation',
+    defaults: ON,
+    note: 'Internal chat for the company. Not built yet: the page says Coming soon.',
+  },
+  {
+    key: 'emails',
+    label: 'Emails',
+    group: 'Navigation',
+    defaults: ON,
+    note: 'The mailboxes a person holds, inside the portal. Not built yet: the page says Coming soon.',
+  },
   // Settings holds the budgets, the hourly rates and the API tokens, so it is
   // locked to admin rather than left configurable.
   { key: 'settings', label: 'Settings', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },

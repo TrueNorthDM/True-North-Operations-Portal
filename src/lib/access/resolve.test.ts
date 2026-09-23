@@ -257,7 +257,7 @@ describe('loadAccess: audience', () => {
 
 describe('loadAccess: a grant for a key the catalogue dropped', () => {
   it('grants nothing', async () => {
-    // Removing a tool from Work Tools has to close its route too, not
+    // Removing a tool from the catalogue has to close its route too, not
     // just hide its card. The stale row stays in the table harmlessly.
     setup({
       role: 'user',

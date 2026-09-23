@@ -20,13 +20,14 @@
  * card itself.
  *
  * It is only a link for people who can open the page behind it. The figures are
- * for everyone, but /dashboards/publishing is gated on its own tool grant, and a
- * card that looks clickable and bounces you to /work-tools is worse than a card that
+ * for everyone, but /ops/publishing is gated on its own tool grant, and a
+ * card that looks clickable and bounces you away is worse than a card that
  * never offered.
  */
 
 import Link from 'next/link'
 import type { PublishingBoardWeeks } from '@/lib/boards/publishing-weeks'
+import { ROUTES } from '@/lib/nav/routes'
 
 const GREEN = '#1E9E6A'
 const AMBER = '#b06d0a'
@@ -153,7 +154,7 @@ export function PublishingGoalsWidget(
   return linked
     ? (
       <Link
-        href="/dashboards/publishing"
+        href={ROUTES.publishing}
         className={`${shell} transition-all hover:border-tn-teal hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]`}
       >
         {inner}

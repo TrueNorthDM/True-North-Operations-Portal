@@ -190,7 +190,7 @@ function HistoryIcon() {
   )
 }
 
-/** The same eye the Href Link Management list uses for "open this". */
+/** The same eye the Href Links list uses for "open this". */
 function EyeIcon() {
   return (
     <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">

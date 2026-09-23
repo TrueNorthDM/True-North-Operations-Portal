@@ -1,23 +1,41 @@
-// Design check: the rail in groups, Settings and the avatar at its foot, and
-// the notification bell in the top bar (21 September 2026). The real
-// components, as an admin would see them; ?level=user shows what an ordinary
-// level gets, ?open=menu the account menu, ?open=bell the notifications.
-// Development only.
+// Design check: the portal's shell after the navigation redesign of 22
+// September 2026 (Design/Redesign Handoff): the navy rail with its panels, the
+// avatar and its menu, and the top bar's search and two notification drawers.
+// The real components, fed the real rail model for a level.
+//
+//   ?level=user | lead | admin   (admin by default)
+//   ?hub=my-work | my-hours | tools | people | admin | clocky   a panel open
+//   ?open=menu | bell | inbox | launcher                        one of those open
+//   ?page=soon                                                  a Coming soon page in the content
+//
+// A team leader and a user are given three tool grants (Publishing Goals, Href
+// Links and the i7 report), which is what a typical team has. Development only.
 
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { Sidebar } from '@/components/Sidebar'
 import { NotificationBell } from '@/components/NotificationBell'
+import { NotificationButton } from '@/components/NotificationButton'
+import { Launcher } from '@/components/Launcher'
+import { ComingSoon } from '@/components/ComingSoon'
+import { buildRail } from '@/lib/access/nav'
+import { directoryLevel, surfaceAllowed } from '@/lib/access/surfaces'
+import type { RoleType } from '@/lib/auth/tier'
 
 export const dynamic = 'force-dynamic'
 
-const ADMIN = ['home', 'tools', 'my-work', 'my-hours', 'directory', 'human-resources', 'admin', 'clocky-hours', 'settings']
-const USER = ['home', 'tools', 'my-work', 'my-hours', 'directory']
+const ROLE: Record<string, RoleType> = { user: 'user', lead: 'team_leader', admin: 'admin' }
+const GRANTS = new Set(['publishing', 'href-links', 'i7-budget'])
 
-export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string }> }) {
+export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string; hub?: string; page?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
-  const { level, open } = await searchParams
-  const allowed = level === 'user' ? USER : ADMIN
+  const { level = 'admin', open, hub, page } = await searchParams
+  const role = ROLE[level] ?? 'admin'
+  const can = (k: string) => surfaceAllowed(role, k, new Map())
+  const canTool = (k: string) => role === 'admin' || GRANTS.has(k)
+  const rail = buildRail({ can, canTool, level: directoryLevel(can) })
+  const canSettings = can('settings')
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* The development badge sits where the avatar is; this page is for looking at the avatar. */}
@@ -27,17 +45,29 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
           <Image src="/logos/true-north.png" alt="True North Digital Marketing" width={1352} height={705} priority className="h-9 w-auto" />
           <span className="text-sm font-semibold text-slate-500 pb-0.5">Operations Portal</span>
         </span>
-        <div className="flex items-center gap-2"><NotificationBell startOpen={open === 'bell'} /></div>
+        <div className="flex items-center gap-2">
+          <Launcher rail={rail} canSettings={canSettings} canPeople={can('directory')} startOpen={open === 'launcher'} />
+          <NotificationButton kind="inbox" startOpen={open === 'inbox'} />
+          <NotificationBell startOpen={open === 'bell'} />
+        </div>
       </header>
       <div className="flex flex-1">
         <Sidebar
-          allowed={allowed}
+          rail={rail}
+          canSettings={canSettings}
           menuOpen={open === 'menu'}
-          user={{ email: 'arnaldo@leveluponline.org', name: 'Arnaldo Oliveira', avatarUrl: 'https://xoahdamwwgogfhyawogs.supabase.co/storage/v1/object/public/avatars/d95bae40-e85b-49ff-a203-e8da8a92a129.jpg?v=1784323484508' }}
+          startHub={hub ?? null}
+          user={{ email: 'arnaldo@leveluponline.org', name: 'Arnaldo Oliveira', avatarUrl: null }}
         />
         <main className="flex-1 p-8">
+          {page === 'soon' ? (
+            <ComingSoon icon="schema-app" title="Schema App" description="Write and publish schema markup for the sites' pages." canSuggest={role === 'admin'} />
+          ) : <>
           <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.14em] text-tn-teal m-0">Design check · as built</p>
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[24px] text-tn-ink m-0">{level === 'user' ? 'The rail, as an ordinary level' : 'The rail, as an admin'}</h1>
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[24px] text-tn-ink m-0">
+            {role === 'admin' ? 'The shell, as an admin' : role === 'team_leader' ? 'The shell, as a team leader' : 'The shell, as a user'}
+          </h1>
+          </>}
         </main>
       </div>
     </div>

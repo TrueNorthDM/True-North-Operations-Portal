@@ -22,6 +22,7 @@ import { useState, type ReactNode } from 'react'
 import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 import type { Range } from '@/lib/tsheets/range'
 import { BTN_ICON } from '@/lib/ui/buttons'
+import { ROUTES } from '@/lib/nav/routes'
 
 const CSV_ICON = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
@@ -45,14 +46,14 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
   function preview(type: 'internal' | 'client') {
     setOpen(false)
     setPdf({
-      url: `/work-tools/time-report/pdf?report=projects&month=${range.from}&type=${type}`,
+      url: `${ROUTES.i7}/pdf?report=projects&month=${range.from}&type=${type}`,
       title: type === 'internal' ? 'Project hours by person' : 'Project hours and others',
       fallbackName: `project-hours-${type}.pdf`,
     })
   }
 
   const csv = (type: 'internal' | 'client') =>
-    `/work-tools/time-report/grant-pass/csv?from=${range.from}&to=${range.to}&type=${type}`
+    `${ROUTES.projectHours}/csv?from=${range.from}&to=${range.to}&type=${type}`
 
   // The table always runs from January to the period's last month, whatever the
   // period is, so the row says which months rather than letting a range suggest
@@ -94,7 +95,7 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
                 r={{ key: 'history', name: 'Month by month', sub: `Projects · ${tableMonths}`, tint: 'bg-[rgba(1,35,88,0.07)]', ink: '#012358', hover: 'hover:border-tn-primary hover:bg-[rgba(1,35,88,0.05)]' }}
                 icon={CALENDAR('#012358')}
                 monthly={monthly}
-                csv={`/work-tools/time-report/grant-pass/history/csv?from=${range.from}&to=${range.to}`}
+                csv={`${ROUTES.projectHours}/history/csv?from=${range.from}&to=${range.to}`}
                 onCsv={() => setOpen(false)}
               />
             </div>

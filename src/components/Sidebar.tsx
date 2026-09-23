@@ -1,287 +1,116 @@
 'use client'
 
 /**
- * Sidebar: left-rail navigation.
+ * Sidebar: the navy rail, and the panel a hub opens beside it.
  *
- * Client Component because it uses usePathname() to highlight the active item.
- * Hidden on mobile (md:flex), the top bar remains usable on its own there.
+ * The navigation redesign of 22 September 2026 (Design/Redesign Handoff,
+ * "Direction B"): a solid navy band, icon only, with a gold active state. Four
+ * places are hubs (My Work, My Hours, Tools, People, and for admins Admin and
+ * Clocky): clicking one opens a white panel of its pages beside the rail, and
+ * the hub stays lit while any of its pages is open. Plain places (Home, Chat,
+ * Emails) go straight there. The avatar sits at the foot, and holds Settings.
  *
- * Since 21 September 2026 the rail is in groups, top to bottom: the person's
- * own work (Home, My Work, My Hours), the company (Work Tools, People, Human
- * Resources), the machinery (Admin, Clocky); and at the foot, Settings with the
- * person's avatar under it (UserMenu), where the account and Sign out live. On
- * a phone the rail is hidden, so the avatar stays in the top bar there.
+ * What the rail offers is resolved on the server for the person signed in
+ * (lib/access/nav.ts, buildRail) and handed over as plain data, so hiding an
+ * item and blocking its route come from the same configuration. No counts or
+ * dots here: the two notification buttons in the top bar are the only place a
+ * number appears.
+ *
+ * Client Component for the pathname and the open panel. Hidden on a phone
+ * (md:flex); the top bar stays usable on its own there.
  */
 
-import { useEffect, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { NAV_LABEL } from '@/lib/nav/labels'
 import { UserMenu } from '@/components/UserMenu'
+import { NavIcon } from '@/components/NavIcon'
+import { onPath, pathOf, type NavItem, type ResolvedEntry } from '@/lib/access/nav'
 
-const iconClass = 'w-6 h-6 shrink-0'
+type Hub = Extract<ResolvedEntry, { kind: 'hub' }>
 
-// Home: house outline.
-const HomeIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M3 10.5 12 3l9 7.5" />
-    <path d="M5 9.5V21h14V9.5" />
-  </svg>
-)
+/** A panel row is lit only for a plain address: a tab (?tab=) or a section (#) shares its page with another row. */
+const rowActive = (pathname: string, href: string) => !/[?#]/.test(href) && onPath(pathname, href)
 
-// Grid icon, used for the Projects overview.
-const DashboardIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="7" height="9" rx="1" />
-    <rect x="14" y="3" width="7" height="5" rx="1" />
-    <rect x="14" y="12" width="7" height="9" rx="1" />
-    <rect x="3" y="16" width="7" height="5" rx="1" />
-  </svg>
-)
+const RAIL_BUTTON = 'group relative flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C40A]/60'
+const railTone = (on: boolean) => (on ? 'bg-white/[.14] text-[#F2C40A]' : 'bg-transparent text-white/[.62] hover:bg-white/10')
 
-// My Work, briefcase outline (everything assigned to you across Monday).
-const WorkIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <rect x="2" y="7" width="20" height="14" rx="2" />
-    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-  </svg>
-)
-
-// Directory: two people (the org directory / people & teams).
-const DirectoryIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-)
-
-// Admin: shield with check (access control: people, teams, permissions).
-const AdminIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-    <path d="m9 12 2 2 4-4" />
-  </svg>
-)
-
-// Human Resources, an award medal (anniversary badges live here).
-const HrIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <circle cx="12" cy="8" r="6" />
-    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-  </svg>
-)
-
-// Settings: gear icon
-const SettingsIcon = (
-  <svg className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-)
-
-interface Item {
-  href: string
-  label: string
-  icon: React.ReactNode
-  match: (path: string) => boolean
-}
-
-const home: Item = {
-  href: '/',
-  label: NAV_LABEL['/'],
-  icon: HomeIcon,
-  match: p => p === '/',
-}
-
-// Work Tools, the unified hub (Boards Review dashboards + the tools
-// used inside a project). Highlights across /work-tools, /dashboards and /boards-beta.
-const toolsDash: Item = {
-  href: '/work-tools',
-  label: NAV_LABEL['/work-tools'],
-  icon: DashboardIcon,
-  match: p => p === '/work-tools' || p.startsWith('/work-tools/') || p === '/dashboards' || p.startsWith('/dashboards/') || p.startsWith('/boards-beta'),
-}
-
-// My Work, the signed-in person's tasks across Monday.
-//
-// One rail item for a module of three separately granted views. The layout
-// resolves where it points, because a person with Report but not My Work has
-// to land on the Report rather than on a redirect to login.
-const myWorkNav: Item = {
-  href: '/my-work',
-  label: NAV_LABEL['/my-work'],
-  icon: WorkIcon,
-  match: p => p === '/my-work' || p === '/report',
-}
-
-
-// My Hours: the person's own clock.
-const ClockIcon = (
-  <svg className="w-[21px] h-[21px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 12V7" />
-    <path d="M12 12h4" />
-  </svg>
-)
-
-const myHoursNav: Item = {
-  href: '/hours',
-  label: NAV_LABEL['/hours'],
-  icon: ClockIcon,
-  match: p => p === '/hours' || p.startsWith('/hours/'),
-}
-
-// Clocky, the module behind it: rules, migration, and later approvals. A
-// dial rather than a clock face, so the two are not mistaken for each other at
-// a glance in a rail of monochrome icons.
-const ClockyIcon = (
-  <svg className="w-[21px] h-[21px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5l3 2" />
-    <path d="M3.5 9.5h2M18.5 9.5h2" />
-  </svg>
-)
-
-const clockyHoursNav: Item = {
-  href: '/clocky-hours',
-  label: NAV_LABEL['/clocky-hours'],
-  icon: ClockyIcon,
-  match: p => p === '/clocky-hours' || p.startsWith('/clocky-hours/'),
-}
-
-// Directory: the People & Teams directory (its own top-level page). Admin-only,
-// like Admin; the /directory route also guards server-side.
-const directoryNav: Item = {
-  href: '/directory',
-  label: NAV_LABEL['/directory'],
-  icon: DirectoryIcon,
-  match: p => p === '/directory' || p.startsWith('/directory/'),
-}
-
-// Admin: people, teams, and access control. Only shown to portal admins; the
-// /admin route also guards server-side, so hiding the link is convenience only.
-const adminNav: Item = {
-  href: '/admin',
-  label: NAV_LABEL['/admin'],
-  icon: AdminIcon,
-  match: p => p === '/admin' || p.startsWith('/admin/'),
-}
-
-// Human Resources, anniversary badges (for now). Privileged only.
-const hrNav: Item = {
-  href: '/human-resources',
-  label: NAV_LABEL['/human-resources'],
-  icon: HrIcon,
-  match: p => p === '/human-resources' || p.startsWith('/human-resources/'),
-}
-
-const settingsNav: Item = {
-  href: '/settings',
-  label: NAV_LABEL['/settings'],
-  icon: SettingsIcon,
-  match: p => p === '/settings' || p.startsWith('/settings/'),
-}
-
-// Rail order, in groups with a thin rule between them: the person's own work,
-// then the company, then the machinery that runs the portal. Settings is not
-// here: it sits at the foot of the rail, over the avatar. Keys match
-// access/surfaces.ts; the layout passes only the ones this person may reach,
-// and a group with nothing left in it draws no rule.
-const NAV: readonly (readonly { key: string; item: Item }[])[] = [
-  [
-    { key: 'home', item: home },
-    { key: 'my-work', item: myWorkNav },
-    { key: 'my-hours', item: myHoursNav },
-  ],
-  [
-    { key: 'tools', item: toolsDash },
-    { key: 'directory', item: directoryNav },
-    { key: 'human-resources', item: hrNav },
-  ],
-  [
-    { key: 'admin', item: adminNav },
-    { key: 'clocky-hours', item: clockyHoursNav },
-  ],
-]
-
-function NavLink({ item, active }: { item: Item; active: boolean }) {
-  const router = useRouter()
-  // The click is acknowledged on this item at once, before the server has said
-  // anything. next/link's useLinkStatus does this for links, and this rail is
-  // buttons, so a transition stands in for it: pending from the click until the
-  // new page, or its loading skeleton, is on screen.
-  const [pending, start] = useTransition()
+function Tooltip({ label }: { label: string }) {
   return (
-    // A button (not an <a href>) so the browser never surfaces the destination
-    // URL on hover, the friendly name tooltip below is all we want to show.
-    // router.push keeps SPA navigation. (Trade-off: no cmd/middle-click new tab.)
-    <button
-      type="button"
-      onClick={() => start(() => router.push(withViewAs(item.href)))}
-      aria-label={item.label}
-      aria-busy={pending || undefined}
-      aria-current={active ? 'page' : undefined}
-      className={`group relative mx-auto flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${
-        active
-          ? 'bg-tn-teal/10 text-tn-teal'
-          : 'bg-transparent text-slate-400 hover:bg-slate-100 hover:text-tn-primary'
-      }`}
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 z-50 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
     >
-      {item.icon}
-      {/* Always rendered and faded in, so marking the click never shifts the rail. */}
-      <span
-        aria-hidden="true"
-        className={`pointer-events-none absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-tn-teal transition-opacity ${
-          pending ? 'opacity-100 motion-safe:animate-pulse' : 'opacity-0'
-        }`}
-      />
-      {/* Name tooltip, appears to the right on hover/focus. bg-slate-800 +
-          text-white auto-invert in dark mode via the palette remap. */}
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 z-50 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
-      >
-        {item.label}
-      </span>
-    </button>
+      {label}
+    </span>
   )
 }
 
-/**
- * `allowed` is the set of surface keys this person may reach, resolved in the
- * layout from Admin → Access levels. The rail renders only those, so hiding an
- * item and blocking its route now come from the same configuration.
- */
-export function Sidebar(
-  { allowed, hrefs, user, menuOpen = false }: {
-    allowed: readonly string[]
-    hrefs?: Record<string, string>
-    /** Design check only: the account menu open. */
-    menuOpen?: boolean
-    /** The person signed in (or previewed), for the avatar at the foot of the rail. */
-    user: { email: string | null; name: string | null; avatarUrl: string | null }
-  },
-) {
+/** The click is acknowledged at once, before the server answers: a thin gold bar under the icon. */
+function PendingBar({ pending }: { pending: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none absolute bottom-1 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full bg-[#F2C40A] transition-opacity ${pending ? 'opacity-100 motion-safe:animate-pulse' : 'opacity-0'}`}
+    />
+  )
+}
+
+export function Sidebar({
+  rail, user, canSettings = false, menuOpen = false, startHub = null,
+}: {
+  rail: ResolvedEntry[]
+  /** The person signed in (or previewed), for the avatar at the foot of the rail. */
+  user: { email: string | null; name: string | null; avatarUrl: string | null }
+  /** Settings is a row of the avatar menu, for whoever may reach it. */
+  canSettings?: boolean
+  /** Design check only: the account menu open. */
+  menuOpen?: boolean
+  /** Design check only: a hub's panel open. */
+  startHub?: string | null
+}) {
   const pathname = usePathname()
   const router = useRouter()
-  const on = new Set(allowed)
-  // A module's destination depends on which of its views this person has.
-  const resolve = (n: { key: string; item: Item }) => (hrefs?.[n.key] ? { ...n, item: { ...n.item, href: hrefs[n.key] } } : n)
-  const groups = NAV
-    .map(g => g.filter(n => on.has(n.key)).map(resolve))
-    .filter(g => g.length > 0)
-  const settings = on.has('settings') ? resolve({ key: 'settings', item: settingsNav }) : null
-  const items = [...groups.flat(), ...(settings ? [settings] : [])]
+  const [pending, start] = useTransition()
+  // The panel belongs to the page it was opened on, so moving to another page
+  // closes it without an effect having to notice.
+  const [open, setOpen] = useState<{ key: string; path: string } | null>(startHub ? { key: startHub, path: pathname } : null)
+  const [pendingKey, setPendingKey] = useState<string | null>(null)
+  const aside = useRef<HTMLElement>(null)
+  const openKey = open && open.path === pathname ? open.key : null
+  const hub = rail.find((e): e is Hub => e.kind === 'hub' && e.key === openKey) ?? null
 
-  // Prefetch every destination on the rail. A <Link> does this by itself; these
-  // are buttons, so until September 2026 the portal's main navigation never
-  // prefetched anything and every click waited on a cold request. Each prefetch
-  // fetches the destination's loading skeleton, which is what lets the click show
-  // it at once. Deferred until the browser is idle so it never competes with the
-  // page that is still loading. Keyed on the destinations as a string, because the
-  // array is rebuilt on every render.
-  const destinations = items.map(n => n.item.href).join('|')
+  const go = (key: string, href: string) => {
+    setPendingKey(key)
+    setOpen(null)
+    start(() => router.push(withViewAs(href)))
+  }
+
+  // Outside click and Escape close the panel.
+  useEffect(() => {
+    if (!openKey) return
+    const onDown = (e: MouseEvent) => {
+      if (aside.current && !aside.current.contains(e.target as Node)) setOpen(null)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [openKey])
+
+  // Prefetch every destination, panels included. These are buttons, not
+  // <Link>s, so nothing prefetches on its own; deferred until the browser is
+  // idle so it never competes with the page still loading. Keyed on the
+  // destinations as a string, because the rail is rebuilt on every render.
+  const destinations = rail
+    .flatMap(e => (e.kind === 'page' ? [e.item.href] : e.kind === 'hub' ? e.groups.flatMap(g => g.items.map(i => i.href)) : []))
+    .map(pathOf)
+    .filter((h, i, all) => all.indexOf(h) === i)
+    .join('|')
   useEffect(() => {
     const run = () => { for (const href of destinations.split('|')) router.prefetch(withViewAs(href)) }
     if (typeof window.requestIdleCallback === 'function') {
@@ -292,23 +121,114 @@ export function Sidebar(
     return () => window.clearTimeout(id)
   }, [router, destinations])
 
+  const pageButton = (item: NavItem) => {
+    const on = onPath(pathname, pathOf(item.href))
+    return (
+      <button
+        key={item.key}
+        type="button"
+        onClick={() => go(item.key, item.href)}
+        aria-label={item.label}
+        aria-current={on ? 'page' : undefined}
+        aria-busy={(pending && pendingKey === item.key) || undefined}
+        className={`${RAIL_BUTTON} ${railTone(on)}`}
+      >
+        <NavIcon name={item.icon} />
+        <PendingBar pending={pending && pendingKey === item.key} />
+        <Tooltip label={item.label} />
+      </button>
+    )
+  }
+
+  const hubButton = (h: Hub) => {
+    const isOpen = openKey === h.key
+    const on = isOpen || h.matches.some(m => onPath(pathname, m))
+    return (
+      <button
+        key={h.key}
+        type="button"
+        onClick={() => {
+          if (h.direct) { go(h.key, h.direct); return }
+          setOpen(isOpen ? null : { key: h.key, path: pathname })
+        }}
+        aria-label={h.label}
+        aria-haspopup={h.direct ? undefined : 'menu'}
+        aria-expanded={h.direct ? undefined : isOpen}
+        aria-busy={(pending && pendingKey === h.key) || undefined}
+        className={`${RAIL_BUTTON} ${railTone(on)}`}
+      >
+        <NavIcon name={h.icon} />
+        {/* A hub opens a panel: a small corner triangle says so. */}
+        {!h.direct && (
+          <span aria-hidden="true" className="absolute right-1 bottom-1 w-0 h-0 border-l-[5px] border-l-transparent border-b-[5px] border-b-current opacity-45" />
+        )}
+        <PendingBar pending={pending && pendingKey === h.key} />
+        {!isOpen && <Tooltip label={h.label} />}
+      </button>
+    )
+  }
+
   return (
-    // Icon-only rail. No overflow clipping, so the hover tooltips can extend
-    // past the rail to the right (the few items always fit vertically).
-    <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-slate-200 bg-white sticky top-[65px] h-[calc(100vh-65px)] z-30">
-      <nav className="py-3">
-        {groups.map((g, i) => (
-          <div key={i} className="space-y-1.5">
-            {i > 0 && <div aria-hidden="true" className="mx-auto my-2.5 h-px w-7 bg-slate-200" />}
-            {g.map(n => <NavLink key={n.key} item={n.item} active={n.item.match(pathname)} />)}
-          </div>
-        ))}
-      </nav>
-      {/* The foot of the rail: Settings, then the person. */}
-      <div className="mt-auto pb-4 flex flex-col items-center gap-2.5">
-        {settings && <NavLink item={settings.item} active={settings.item.match(pathname)} />}
-        <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} />
+    <aside ref={aside} className="hidden md:flex shrink-0 sticky top-[65px] h-[calc(100vh-65px)] z-30">
+      <div className="w-16 flex flex-col items-center bg-[#012358] py-2.5">
+        <nav aria-label="Main" className="flex flex-col items-center gap-0.5">
+          {rail.map((e, i) =>
+            e.kind === 'rule'
+              ? <div key={`rule-${i}`} aria-hidden="true" className="shrink-0 w-7 h-px bg-white/[.16] my-[7px]" />
+              : e.kind === 'page' ? pageButton(e.item) : hubButton(e),
+          )}
+        </nav>
+        <div className="mt-auto pb-1.5 flex justify-center">
+          <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} canSettings={canSettings} />
+        </div>
       </div>
+
+      {hub && (
+        <div
+          role="menu"
+          aria-label={hub.label}
+          className="w-[244px] shrink-0 bg-white border-r border-[var(--panel-border)] px-2.5 py-4 flex flex-col gap-1.5 overflow-y-auto shadow-[10px_0_24px_rgba(1,35,88,.10)]"
+        >
+          <div className="flex items-center justify-between px-2 pb-1.5">
+            {hub.landing ? (
+              <Link
+                href={withViewAs(hub.landing)}
+                onClick={() => setOpen(null)}
+                className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink hover:text-tn-teal transition-colors"
+                title={`Open ${hub.label}`}
+              >
+                {hub.label}
+              </Link>
+            ) : (
+              <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{hub.label}</span>
+            )}
+            <button type="button" onClick={() => setOpen(null)} aria-label="Close" className="text-muted hover:text-tn-ink text-[18px] leading-none px-1">×</button>
+          </div>
+          <p className="text-[12px] text-muted leading-normal px-2 pb-2.5 m-0">{hub.hint}</p>
+          {hub.groups.map((g, gi) => (
+            <div key={gi} className="flex flex-col gap-0.5 pb-2">
+              {g.label && <div className="px-2 pt-1.5 pb-1 text-[10.5px] font-bold tracking-[.09em] uppercase text-muted">{g.label}</div>}
+              {g.items.map(item => {
+                const on = rowActive(pathname, item.href)
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => go(item.key, item.href)}
+                    aria-current={on ? 'page' : undefined}
+                    className={`flex items-center gap-2.5 rounded-lg p-2 text-left text-[13.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${on ? 'bg-tn-teal/10 text-tn-teal' : 'text-foreground hover:bg-subtle'}`}
+                  >
+                    <NavIcon name={item.icon} size={17} className="shrink-0" />
+                    <span className="flex-1 min-w-0 leading-snug">{item.label}</span>
+                    {item.soon && <span className="shrink-0 rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">SOON</span>}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
     </aside>
   )
 }

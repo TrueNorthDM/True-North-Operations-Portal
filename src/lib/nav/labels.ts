@@ -2,7 +2,7 @@
  * What each place in the portal is called, in one table.
  *
  * Every page used to spell its own trail out by hand, and they drifted the way
- * hand-copied things do: the rail said "Tools & Dashboards" (now Work Tools) while two reports
+ * hand-copied things do: the rail said "Tools & Dashboards" while two reports
  * under it said "Tools", and the home page was "Home" on four pages and
  * "Dashboard" on twelve. Nobody typed the wrong name on purpose. They copied
  * the trail from whichever page they happened to have open.
@@ -18,22 +18,26 @@
 
 export const NAV_LABEL = {
   '/': 'Home',
-  '/work-tools': 'Work Tools',
   '/my-work': 'My Work',
   '/hours': 'My Hours',
   '/clocky-hours': 'Clocky',
-  '/directory': 'People, Teams and Permissions',
+  '/directory': 'Directory',
+  '/organization': 'Organization',
   '/human-resources': 'Human Resources',
   '/admin': 'Admin',
   '/settings': 'Settings',
-  /** Not on the rail: reached from Work Tools, and the parent of AAAF and HFA. */
-  '/projects': 'Href Link Management',
-  /** The i7 report, which is the parent of its own guide. */
-  '/work-tools/time-report': 'Client Report · i7',
-  /** Sits under the i7 report's path but is its own report, and the parent of
-   *  the donation records. The trail says so rather than implying it is a page
-   *  of the i7 one. */
-  '/work-tools/time-report/grant-pass': 'Client Report · Project Hours & Others',
+  '/chat': 'Chat',
+  '/emails': 'Emails',
+  // The Tools panel's pages (22 September 2026). Tools has no landing page of
+  // its own, so a trail passes through these and not through a "Tools" crumb.
+  '/ops/publishing': 'Publishing Goals',
+  '/ops/boards': 'Boards',
+  '/ops/client-reports': 'Client Reports',
+  '/ops/client-reports/i7': 'Client Report · i7',
+  /** The parent of the donation records, and its own report beside the i7 one. */
+  '/ops/client-reports/project-hours': 'Client Report · Project Hours & Others',
+  /** The parent of AAAF and HFA. */
+  '/seo/href-links': 'Href Links',
 } as const
 
 export type NavHref = keyof typeof NAV_LABEL

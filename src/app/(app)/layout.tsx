@@ -8,11 +8,14 @@ import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
 import { UserMenu } from '@/components/UserMenu'
 import { NotificationBell } from '@/components/NotificationBell'
+import { NotificationButton } from '@/components/NotificationButton'
+import { Launcher } from '@/components/Launcher'
 import { AccessPing } from '@/components/AccessPing'
 import { ViewAsKeeper } from '@/components/ViewAsKeeper'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadAccess } from '@/lib/access/resolve'
-import { NAV_SURFACES, navHref, navVisible } from '@/lib/access/nav'
+import { buildRail } from '@/lib/access/nav'
+import { directoryLevel } from '@/lib/access/surfaces'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Nav visibility comes from the configured per-level surfaces (Admin →
@@ -23,21 +26,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // the page underneath, so this layout no longer asks Supabase who is signed in
   // a second time or loads the person a third.
   const [user, access, me] = await Promise.all([getSessionUser(), loadAccess(), getCurrentPerson()])
-  const allowedNav = NAV_SURFACES.filter(k => navVisible(k, access.can))
-  // A module rail opens whichever of its views this person may reach, so its
-  // destination is resolved here rather than hardcoded on the item.
-  const navHrefs = Object.fromEntries(
-    allowedNav.map(k => [k, navHref(k, access.can)]).filter(([, h]) => h),
-  ) as Record<string, string>
+  // The rail, its panels and the launcher all come from one resolved model
+  // (lib/access/nav.ts), built here for this person: what each of them offers
+  // is exactly what the page guards let through.
+  const rail = buildRail({ can: access.can, canTool: access.canTool, level: directoryLevel(access.can) })
+  const canSettings = access.can('settings')
 
   return (
     <>
       {user && <AccessPing />}
       {/* Keeps a View Stage preview impersonating across navigation. */}
       <ViewAsKeeper />
-      {/* Top bar, brand on the left; the notification bell on the right. The
-          avatar lives at the foot of the rail since 21 September 2026, and
-          only comes up here on a phone, where the rail is hidden. */}
+      {/* Top bar, brand on the left. On the right, since the navigation
+          redesign of 22 September 2026: search (the Cmd+K launcher), Messages
+          (Chat and Email) and Notifications (Tools and System). The avatar
+          lives at the foot of the rail, and only comes up here on a phone,
+          where the rail is hidden. */}
       <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">
         {/* True North lockup. On dark the navy wordmark sits on a white chip so
             it stays legible; on the white light bar the chip is invisible. */}
@@ -58,11 +62,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
 
         <div className="flex items-center gap-2">
+          <Launcher rail={rail} canSettings={canSettings} canPeople={access.can('directory')} />
+          <NotificationButton kind="inbox" />
           <NotificationBell />
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
           <div className="md:hidden">
-            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} />
+            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} canSettings={canSettings} />
           </div>
         </div>
       </header>
@@ -70,8 +76,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Sidebar + main */}
       <div className="flex flex-1">
         <Sidebar
-          allowed={allowedNav}
-          hrefs={navHrefs}
+          rail={rail}
+          canSettings={canSettings}
           user={{ email: me?.email ?? user?.email ?? null, name: me?.full_name ?? null, avatarUrl: me?.avatar_url ?? null }}
         />
         <MainContent>{children}</MainContent>

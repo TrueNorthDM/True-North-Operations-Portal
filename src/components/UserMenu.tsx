@@ -7,6 +7,11 @@
  * Two places since 21 September 2026: at the foot of the rail on a desktop
  * (`placement="rail"`, the menu opening to the right and upward), and at the
  * right of the top bar on a phone, where the rail is hidden.
+ *
+ * Since 22 September 2026 (the navigation redesign) Settings is a row here,
+ * between My Team and Sign out, for whoever may reach it; it left the rail. On
+ * the navy rail the avatar is a gold circle with a faint white ring, the ring
+ * going solid while the menu is open.
  */
 
 import Link from 'next/link'
@@ -14,7 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import { signOut } from '@/app/auth/actions'
 import { Avatar } from '@/components/Avatar'
 
-export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false }: {
+export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false, canSettings = false }: {
   userEmail: string | null
   userName?: string | null
   avatarUrl?: string | null
@@ -22,6 +27,8 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
   placement?: 'bar' | 'rail'
   /** Design check only: show the menu without a click. */
   startOpen?: boolean
+  /** May reach Settings: its row appears in the menu. */
+  canSettings?: boolean
 }) {
   // Name for the avatar initials, the person's name, else the email local part.
   const initialsName = userName ?? (userEmail ? userEmail.split('@')[0].replace(/[._-]+/g, ' ') : null)
@@ -70,9 +77,13 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
         aria-expanded={open}
         aria-label="Account menu"
         title={userName ?? userEmail ?? 'Account'}
-        className="inline-flex items-center justify-center rounded-full hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-tn-primary/40"
+        className={placement === 'rail'
+          ? `inline-flex items-center justify-center rounded-full ring-2 transition-shadow focus:outline-none focus-visible:ring-white ${open ? 'ring-white' : 'ring-white/25 hover:ring-white/60'}`
+          : 'inline-flex items-center justify-center rounded-full hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-tn-primary/40'}
       >
-        <Avatar name={initialsName} avatarUrl={avatarUrl} size={36} color="#012358" />
+        {placement === 'rail'
+          ? <Avatar name={initialsName} avatarUrl={avatarUrl} size={36} color="#F2C40A" ink="#012358" />
+          : <Avatar name={initialsName} avatarUrl={avatarUrl} size={36} color="#012358" />}
       </button>
 
       {open && (
@@ -106,6 +117,17 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
             My Team
           </Link>
+          {canSettings && (
+            <Link
+              href="/settings"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100 focus:outline-none focus-visible:bg-slate-50 focus-visible:text-tn-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              Settings
+            </Link>
+          )}
           <form action={signOut}>
             <button
               type="submit"

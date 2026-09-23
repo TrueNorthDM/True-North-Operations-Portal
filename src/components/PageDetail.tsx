@@ -19,6 +19,7 @@ import { DeletePageButton } from '@/components/DeletePageButton'
 import { NotRelevantButton } from '@/components/NotRelevantButton'
 import { savePageUrls, toggleConfirmation } from '@/app/actions'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { ROUTES, hrefLinksSite } from '@/lib/nav/routes'
 
 interface ConfirmationState {
   language_code: string
@@ -158,7 +159,7 @@ export function PageDetail({
       {/* Header + at-a-glance status */}
       <div>
         <Breadcrumb
-          parents={['/work-tools', '/projects', { href: `/${siteCode}`, label: siteCode.toUpperCase() }]}
+          parents={[ROUTES.hrefLinks, { href: hrefLinksSite(siteCode), label: siteCode.toUpperCase() }]}
           now={pageName}
         />
         <div className="flex items-start justify-between gap-4 flex-wrap">

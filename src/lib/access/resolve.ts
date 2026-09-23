@@ -83,7 +83,7 @@ export const loadAccess = cache(async function loadAccess(): Promise<Access> {
 
       for (const g of grants ?? []) {
         // A grant for a key no longer in the catalogue grants nothing: removing
-        // a tool from Work Tools has to close its route too, not just
+        // a tool from the catalogue has to close its route too, not just
         // hide its card. The stale rows stay in the table harmlessly.
         if (!TOOL_KEYS.has(g.tool_key)) continue
         if (g.audience === 'lead' && !leadsTeam.get(g.team_id)) continue

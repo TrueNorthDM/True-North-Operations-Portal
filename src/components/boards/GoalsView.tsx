@@ -7,7 +7,7 @@
  * ported pure logic, and recomputes pace-vs-target whenever the period/board
  * filter changes (no refetch, the snapshot already spans 180 days).
  *
- * Phase B2: this is the staging view at /boards-beta. The legacy boards.html
+ * Phase B2: this is the staging view at /ops/boards. The legacy boards.html
  * stays the live Boards Review until cutover (B6).
  */
 

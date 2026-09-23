@@ -2,7 +2,7 @@
  * Non-secret facts about the TSheets connection, for screens regular users can
  * reach.
  *
- * WHY THIS EXISTS. /work-tools/time-report and /directory both used the *user's*
+ * WHY THIS EXISTS. /ops/client-reports/i7 and /directory both used the *user's*
  * Supabase client to read app_settings, which meant app_settings had to stay
  * readable by every authenticated user, which meant every signed-in person
  * could pull the Monday and TSheets API tokens straight from the REST API.

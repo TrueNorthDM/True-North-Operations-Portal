@@ -3,11 +3,12 @@
 /** Tab nav between the two Boards Review views (beta). */
 
 import { usePathname } from 'next/navigation'
+import { ROUTES } from '@/lib/nav/routes'
 
 const TABS = [
-  { href: '/boards-beta', label: 'Goals' },
-  { href: '/boards-beta/translation', label: 'Translation' },
-  { href: '/boards-beta/targets', label: 'Targets' },
+  { href: ROUTES.boards, label: 'Goals' },
+  { href: ROUTES.boardsTranslation, label: 'Translation' },
+  { href: ROUTES.boardsTargets, label: 'Targets' },
 ]
 
 export function BoardsTabs() {

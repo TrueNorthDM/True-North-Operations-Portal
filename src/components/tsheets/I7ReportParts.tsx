@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation'
 import { saveReportNote } from '@/lib/tsheets/settings-actions'
 import type { Range } from '@/lib/tsheets/range'
 import { BTN_ICON } from '@/lib/ui/buttons'
+import { ROUTES } from '@/lib/nav/routes'
 
 // Small spinner for the "generating…" state.
 function Spinner() {
@@ -27,7 +28,7 @@ function Spinner() {
 }
 
 // "Export image", a shareable PNG of the budget-at-a-glance (used $ + %, amount
-// left, month total) generated server-side (/work-tools/time-report/image). The card
+// left, month total) generated server-side (/ops/client-reports/i7/image). The card
 // the team passes around, straight from the app.
 export function ExportImageButton({ month, monthly = true }: { month: string; monthly?: boolean }) {
   const [busy, setBusy] = useState(false)
@@ -36,7 +37,7 @@ export function ExportImageButton({ month, monthly = true }: { month: string; mo
   async function download() {
     setBusy(true); setError(null)
     try {
-      const res = await fetch(`/work-tools/time-report/image?month=${month}`)
+      const res = await fetch(`${ROUTES.i7}/image?month=${month}`)
       if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`)
       const blob = await res.blob()
       const cd = res.headers.get('Content-Disposition') ?? ''
@@ -71,7 +72,7 @@ export function ExportImageButton({ month, monthly = true }: { month: string; mo
 
 // Export dropdown → the two report versions as server-generated PDFs (client =
 // portrait, internal = landscape), plus a browser-print fallback. The PDFs come
-// from /work-tools/time-report/pdf (headless Chromium) so orientation is guaranteed.
+// from /ops/client-reports/i7/pdf (headless Chromium) so orientation is guaranteed.
 export function ExportMenu({ range, monthly }: { range: Range; monthly: boolean }) {
   const [open, setOpen] = useState(false)
   const [pdf, setPdf] = useState<PdfRequest | null>(null)
@@ -82,7 +83,7 @@ export function ExportMenu({ range, monthly }: { range: Range; monthly: boolean 
   function preview(type: 'internal' | 'client') {
     setOpen(false)
     setPdf({
-      url: `/work-tools/time-report/pdf?month=${range.from}&type=${type}`,
+      url: `${ROUTES.i7}/pdf?month=${range.from}&type=${type}`,
       title: type === 'internal' ? 'Internal report, per person' : 'Client report, summary',
       fallbackName: `i7-${type}-report.pdf`,
     })
@@ -123,7 +124,7 @@ export function ExportMenu({ range, monthly }: { range: Range; monthly: boolean 
               >
                 {<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="14 3 14 9 20 9" /><path d="M12 18v-6M9.5 15.5 12 18l2.5-2.5" /></svg>}
               </button>
-              <a href={`/work-tools/time-report/csv?from=${range.from}&to=${range.to}&type=internal`} onClick={() => setOpen(false)} aria-label="Download internal report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all">
+              <a href={`${ROUTES.i7}/csv?from=${range.from}&to=${range.to}&type=internal`} onClick={() => setOpen(false)} aria-label="Download internal report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-tn-teal hover:bg-tn-teal-soft transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
               </a>
 
@@ -145,7 +146,7 @@ export function ExportMenu({ range, monthly }: { range: Range; monthly: boolean 
               >
                 {<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="14 3 14 9 20 9" /><path d="M12 18v-6M9.5 15.5 12 18l2.5-2.5" /></svg>}
               </button>
-              <a href={`/work-tools/time-report/csv?from=${range.from}&to=${range.to}&type=client`} onClick={() => setOpen(false)} aria-label="Download client report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all">
+              <a href={`${ROUTES.i7}/csv?from=${range.from}&to=${range.to}&type=client`} onClick={() => setOpen(false)} aria-label="Download client report as CSV" className="h-[42px] inline-flex items-center justify-center rounded-[9px] border border-slate-200 hover:border-[#B8790A] hover:bg-[#fdf6dc] transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B8790A" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
               </a>
             </div>

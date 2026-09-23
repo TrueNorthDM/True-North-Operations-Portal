@@ -6,6 +6,7 @@
 
 import { PageSkeleton } from '@/components/ui/PageSkeleton'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { ROUTES } from '@/lib/nav/routes'
 
 export default function PageSkeletonDesignCheck() {
   return (
@@ -25,7 +26,7 @@ export default function PageSkeletonDesignCheck() {
 
         <section className="rounded-2xl border border-dashed border-slate-300 p-6 space-y-6">
           <div className="min-w-0">
-            <Breadcrumb parents={['/work-tools']} self="/work-tools/time-report/grant-pass" />
+            <Breadcrumb parents={[ROUTES.clientReports]} self={ROUTES.projectHours} />
             <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">
               Client Report · Project Hours &amp; Others
             </h1>

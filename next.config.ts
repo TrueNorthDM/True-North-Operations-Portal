@@ -12,20 +12,44 @@ const nextConfig: NextConfig = {
   // @sparticuz/chromium loads its brotli binary via a runtime path Next's file
   // tracer can't see, so force it into the PDF route's serverless function.
   outputFileTracingIncludes: {
-    '/work-tools/time-report/pdf': ['./node_modules/@sparticuz/chromium/**'],
-    '/work-tools/time-report/image': ['./node_modules/@sparticuz/chromium/**'],
+    '/ops/client-reports/i7/pdf': ['./node_modules/@sparticuz/chromium/**'],
+    '/ops/client-reports/i7/image': ['./node_modules/@sparticuz/chromium/**'],
   },
-  // Tools & Dashboards became Work Tools on 18 September 2026, and its pages
-  // moved from /tools to /work-tools. Every old link (bookmarks, Slack, the
-  // PDFs already sent) lands on the same page at its new address, query string
-  // kept. Temporary (307) rather than permanent so no browser caches it for
-  // good in case the name moves again.
+  // Old addresses keep working. Every rule lands in one hop, the query string
+  // kept, and all are temporary (307) so no browser caches them for good in
+  // case a name moves again. Order matters: first match wins, and grant-pass
+  // sits under time-report, so its rules come first.
+  //
+  //   18 September 2026: Tools & Dashboards became Work Tools, /tools moved to
+  //     /work-tools.
+  //   22 September 2026: the navigation redesign (Design/Redesign Handoff).
+  //     Work Tools was dissolved into the Tools panel of the rail: the client
+  //     reports, Publishing Goals and Boards moved under /ops, Href Links
+  //     under /seo. PDFs already sent link to /work-tools/time-report and
+  //     /tools/time-report; both are covered.
   async redirects() {
+    const r = (source: string, destination: string) => ({ source, destination, permanent: false })
     return [
-      // The hub itself first: through the rule below it would land on
-      // /work-tools/ and take a second hop to drop the slash.
-      { source: '/tools', destination: '/work-tools', permanent: false },
-      { source: '/tools/:path*', destination: '/work-tools/:path*', permanent: false },
+      r('/tools/time-report/grant-pass', '/ops/client-reports/project-hours'),
+      r('/tools/time-report/grant-pass/:path*', '/ops/client-reports/project-hours/:path*'),
+      r('/work-tools/time-report/grant-pass', '/ops/client-reports/project-hours'),
+      r('/work-tools/time-report/grant-pass/:path*', '/ops/client-reports/project-hours/:path*'),
+      r('/tools/time-report', '/ops/client-reports/i7'),
+      r('/tools/time-report/:path*', '/ops/client-reports/i7/:path*'),
+      r('/work-tools/time-report', '/ops/client-reports/i7'),
+      r('/work-tools/time-report/:path*', '/ops/client-reports/i7/:path*'),
+      r('/tools', '/'),
+      r('/tools/:path*', '/'),
+      r('/work-tools', '/'),
+      r('/dashboards', '/ops/publishing'),
+      r('/dashboards/publishing', '/ops/publishing'),
+      r('/boards-beta', '/ops/boards'),
+      r('/boards-beta/:path*', '/ops/boards/:path*'),
+      r('/projects', '/seo/href-links'),
+      r('/aaaf', '/seo/href-links/aaaf'),
+      r('/aaaf/:path*', '/seo/href-links/aaaf/:path*'),
+      r('/hfa', '/seo/href-links/hfa'),
+      r('/hfa/:path*', '/seo/href-links/hfa/:path*'),
     ];
   },
 };

@@ -11,11 +11,12 @@
  */
 
 import { usePathname } from 'next/navigation'
+import { ROUTES } from '@/lib/nav/routes'
 
 // Routes that opt out of the centered box and fill the whole content area
 // (e.g. a legacy dashboard wrapped in an iframe). Add routes here rather than
 // hard-coding a single path in the component body.
-const FULL_BLEED_ROUTES = new Set<string>(['/dashboards/publishing'])
+const FULL_BLEED_ROUTES = new Set<string>([ROUTES.publishing])
 
 export function MainContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

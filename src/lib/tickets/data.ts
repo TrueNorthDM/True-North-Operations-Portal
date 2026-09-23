@@ -193,7 +193,7 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-009',
     type: 'task',
-    title: 'Verify /boards-beta visually (B1–B5)',
+    title: 'Verify /ops/boards visually (B1–B5)',
     description: 'The React rewrite of Boards Review (Goals, Translation, Targets) passed tsc/eslint but was never run. Verify on the live deploy before any cutover.',
     status: 'done',
     priority: 'medium',
@@ -217,7 +217,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-025',
     type: 'feature',
     title: 'Move the publishing-targets editor to Settings',
-    description: 'The original target modal lived inside boards.html and wrote to the old COE Supabase, orphaned after the merge (the dashboard reads /api/targets from the PORTAL DB). The connected React editor (TargetsEditor, writes portal publishing_targets) was hidden under the /boards-beta beta tab. Re-homed it in Settings, targets are configuration; the dashboard only shows progress against them. Admin edits, viewer read-only.',
+    description: 'The original target modal lived inside boards.html and wrote to the old COE Supabase, orphaned after the merge (the dashboard reads /api/targets from the PORTAL DB). The connected React editor (TargetsEditor, writes portal publishing_targets) was hidden under the /ops/boards beta tab. Re-homed it in Settings, targets are configuration; the dashboard only shows progress against them. Admin edits, viewer read-only.',
     status: 'done',
     priority: 'medium',
     area: 'Dashboards',
@@ -227,13 +227,13 @@ export const TICKETS: Ticket[] = [
   {
     code: 'TN-010',
     type: 'task',
-    title: 'B6 cutover: retire boards.html, /boards-beta becomes Boards Review',
+    title: 'B6 cutover: retire boards.html, /ops/boards becomes Boards Review',
     description: 'Remove the legacy static dashboard and promote the React version. Destructive, only after the Boards Review direction is settled.',
     status: 'blocked',
     priority: 'low',
     area: 'Dashboards',
     createdAt: '2026-06-09',
-    notes: 'On hold: /boards-beta renders, but its purpose is being rethought (TN-019). Don’t cut over until that’s decided.',
+    notes: 'On hold: /ops/boards renders, but its purpose is being rethought (TN-019). Don’t cut over until that’s decided.',
   },
 
   {

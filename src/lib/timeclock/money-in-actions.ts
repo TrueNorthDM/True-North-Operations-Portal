@@ -25,6 +25,7 @@ import { createClient } from '@/lib/supabase/server'
 import { TRACKED_PROJECTS } from './projects'
 import { parseMoney } from './money-in-data'
 import { currentActor, logDonationChange } from './donations-log'
+import { ROUTES } from '@/lib/nav/routes'
 
 export interface MoneyResult {
   ok: boolean
@@ -137,8 +138,8 @@ export async function saveDonation(input: {
     }, actor)
   }
 
-  revalidatePath('/work-tools/time-report/grant-pass')
-  revalidatePath('/work-tools/time-report/grant-pass/donations')
+  revalidatePath(ROUTES.projectHours)
+  revalidatePath(`${ROUTES.projectHours}/donations`)
   return { ok: true }
 }
 
@@ -186,6 +187,6 @@ export async function savePurchase(input: {
     if (e) return { ok: false, error: e.message }
   }
 
-  revalidatePath('/work-tools/time-report/grant-pass')
+  revalidatePath(ROUTES.projectHours)
   return { ok: true }
 }

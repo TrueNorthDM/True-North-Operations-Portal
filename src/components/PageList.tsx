@@ -13,6 +13,7 @@ import { SearchField } from '@/components/ui/SearchField'
 import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Tooltip, Popover, PopoverItem, SortHeader } from './PageListParts'
+import { hrefLinksPage } from '@/lib/nav/routes'
 
 // Language chips use flag colours (matches the handoff): filled when the system
 // holds the URL for that language, a muted track when not. Literal hex, so they
@@ -597,7 +598,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                     <td className="px-3 py-4 text-right">
                       <Tooltip label="View page">
                         <Link
-                          href={`/${siteCode}/${r.id}`}
+                          href={hrefLinksPage(siteCode, r.id)}
                           aria-label={`View ${r.name}`}
                           className={`${a.text} inline-flex items-center justify-center p-1.5 rounded transition-colors hover:bg-slate-100`}
                         >

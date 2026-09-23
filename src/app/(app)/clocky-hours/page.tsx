@@ -104,7 +104,7 @@ export default async function ClockyHoursPage() {
 
       {/* Phase 0: the rules, as imported. Read only until the clock exists. */}
       <section className="space-y-3">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Rules in force</h2>
+        <h2 id="rules" className="scroll-mt-24 font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Rules in force</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className={card}>
             <div className={label}>Timezone</div>
@@ -137,7 +137,7 @@ export default async function ClockyHoursPage() {
 
       {/* Phase 1: the migration. */}
       <section className="space-y-3">
-        <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Migration</h2>
+        <h2 id="import" className="scroll-mt-24 font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Migration</h2>
         <div className="flex items-center gap-6 flex-wrap text-sm">
           <span><span className="text-muted">Entries here:</span> <strong className="tabular-nums">{(entriesRes.count ?? 0).toLocaleString()}</strong>{sourceTotal > 0 && <> of <span className="tabular-nums">{sourceTotal.toLocaleString()}</span> in QuickBooks Time</>}</span>
           <span><span className="text-muted">Job codes:</span> <strong className="tabular-nums">{(jobcodesRes.count ?? 0).toLocaleString()}</strong></span>

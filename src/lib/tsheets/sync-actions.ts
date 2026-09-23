@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { syncClientsCore, syncPeopleCore } from '@/lib/tsheets/sync'
 import { requireAdmin } from '@/lib/tsheets/require-admin'
+import { ROUTES } from '@/lib/nav/routes'
 
 // ─── Manually link a TSheets-only import to an existing directory person ─────
 
@@ -73,6 +74,6 @@ export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: strin
   await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
 
   revalidatePath('/settings')
-  revalidatePath('/work-tools/time-report')
+  revalidatePath(ROUTES.i7)
   return { ok: true }
 }

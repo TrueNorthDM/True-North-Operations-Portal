@@ -7,7 +7,7 @@
  * ported evalPipeline engine, and renders a filterable table: current stage,
  * who has the ball, per-language progress, and time-in-stage.
  *
- * Phase B3 staging view at /boards-beta/translation.
+ * Phase B3 staging view at /ops/boards/translation.
  */
 
 import { useEffect, useMemo, useState } from 'react'

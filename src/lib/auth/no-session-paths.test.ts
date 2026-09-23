@@ -25,7 +25,7 @@ describe('skipsSession', () => {
   })
 
   it('never skips pages or the sign-in flow', () => {
-    for (const p of ['/', '/login', '/auth/callback', '/work-tools', '/admin', '/my-work', '/api/monday', '/api/snapshot']) {
+    for (const p of ['/', '/login', '/auth/callback', '/ops/publishing', '/admin', '/my-work', '/api/monday', '/api/snapshot']) {
       expect(skipsSession(p)).toBe(false)
     }
   })

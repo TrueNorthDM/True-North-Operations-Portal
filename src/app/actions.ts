@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateWebhookSecret } from '@/lib/monday/webhook-secret'
 import { revalidatePath } from 'next/cache'
 import type { LanguageCode } from '@/lib/types/database.types'
+import { ROUTES, hrefLinksSite, hrefLinksPage } from '@/lib/nav/routes'
 
 type SiteCode = 'aaaf' | 'hfa'
 
@@ -68,7 +69,7 @@ export async function deletePage(input: {
     processed_at: new Date().toISOString(),
   })
 
-  revalidatePath(`/${input.siteCode}`)
+  revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true }
 }
 
@@ -155,7 +156,7 @@ export async function updateSiteLanguages(input: {
 
   revalidatePath('/settings')
   revalidatePath('/')
-  revalidatePath(`/${input.siteCode}`)
+  revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true, flaggedPagesCount }
 }
 
@@ -206,7 +207,7 @@ export async function setLanguagePaused(input: {
 
   revalidatePath('/settings')
   revalidatePath('/')
-  revalidatePath(`/${input.siteCode}`)
+  revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true }
 }
 
@@ -235,8 +236,8 @@ export async function setPageNotRelevant(input: {
     .update({ not_relevant: input.value })
     .eq('id', input.pageId)
   if (error) return { ok: false, error: error.message }
-  revalidatePath(`/${input.siteCode}/${input.pageId}`)
-  revalidatePath(`/${input.siteCode}`)
+  revalidatePath(hrefLinksPage(input.siteCode, input.pageId))
+  revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true }
 }
 
@@ -309,7 +310,7 @@ export async function saveSiteWpUrls(input: {
   if (error) return { ok: false, error: error.message }
 
   revalidatePath('/settings')
-  revalidatePath(`/${input.siteCode}`)
+  revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true }
 }
 
@@ -387,7 +388,7 @@ export async function regenerateMondayWebhookSecret(): Promise<{ ok: boolean; se
  * client only sees { exists, last4 }.
  */
 export async function saveTsheetsApiToken(input: { value: string }) {
-  return saveAppSecret('tsheets_api_token', input.value, ['/work-tools/time-report'])
+  return saveAppSecret('tsheets_api_token', input.value, [ROUTES.i7])
 }
 
 /**
@@ -436,8 +437,8 @@ export async function savePageUrls(input: {
   // Re-saving URLs counts as "addressing" a pending update flag
   await clearStaleFlag(supabase, input.pageId)
 
-  revalidatePath(`/${input.siteCode}/${input.pageId}`)
-  revalidatePath(`/${input.siteCode}`)
+  revalidatePath(hrefLinksPage(input.siteCode, input.pageId))
+  revalidatePath(hrefLinksSite(input.siteCode))
   revalidatePath('/')
   return { ok: true }
 }
@@ -529,7 +530,7 @@ export async function toggleConfirmation(input: {
     }
   }
 
-  revalidatePath(`/${input.siteCode}/${input.pageId}`)
-  revalidatePath(`/${input.siteCode}`)
+  revalidatePath(hrefLinksPage(input.siteCode, input.pageId))
+  revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true }
 }

@@ -18,6 +18,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { deletePage } from '@/app/actions'
+import { hrefLinksSite } from '@/lib/nav/routes'
 
 interface Props {
   pageId: string
@@ -39,7 +40,7 @@ export function DeletePageButton({ pageId, pageName, siteCode }: Props) {
         setError(res.error ?? 'Could not delete page.')
         return
       }
-      router.push(`/${siteCode}`)
+      router.push(hrefLinksSite(siteCode))
     })
   }
 

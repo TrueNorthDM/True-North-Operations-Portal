@@ -45,11 +45,14 @@ const TOC = [
 
 const RAIL = [
   { icon: 'home', name: 'Home', desc: 'Your landing page, My Team and My Work at a glance.', admin: false },
-  { icon: 'dash', name: 'Dashboards', desc: 'Board review dashboards, including Publishing Goals.', admin: false },
-  { icon: 'proj', name: 'Projects', desc: 'The hreflang workflow for the AAAF and HFA sites.', admin: false },
-  { icon: 'tools', name: 'Tools', desc: 'Utilities the team runs day to day.', admin: false },
-  { icon: 'admin', name: 'Admin', desc: 'Tickets, Tests, Directory and this manual.', admin: true },
-  { icon: 'settings', name: 'Settings', desc: 'Sites, targets, clients, rates and API tokens.', admin: true },
+  { icon: 'work', name: 'My Work', desc: 'A panel of three views: My Work, Report and My Team. With only one granted, it goes straight there.', admin: false },
+  { icon: 'test', name: 'My Hours', desc: 'A panel: your own hours, and Reports and Approvals (coming soon).', admin: false },
+  { icon: 'book', name: 'Chat · Emails', desc: 'Two places coming soon: the company chat, and the mailboxes you hold.', admin: false },
+  { icon: 'tools', name: 'Tools', desc: 'A panel in two groups. SEO Tools: Href Links, and seven tools coming soon. Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team.', admin: false },
+  { icon: 'dir', name: 'People', desc: 'A panel: the Directory, the Organization chart, and Human Resources from level 2.', admin: false },
+  { icon: 'admin', name: 'Admin', desc: 'A panel: Access levels, View Stage, Monday accounts, Automations, Tickets, Tests and this manual. Its title opens the Admin page.', admin: true },
+  { icon: 'test', name: 'Clocky', desc: 'A panel: everyone’s hours, its rules and the import from QuickBooks Time, plus Reports and Approvals (coming soon).', admin: true },
+  { icon: 'settings', name: 'Settings', desc: 'In the avatar menu at the foot of the rail, not on the rail: sites, targets, clients, rates and API tokens.', admin: true },
 ]
 
 const SRC: Record<string, { color: string; bg: string }> = {
@@ -62,22 +65,22 @@ const SRC: Record<string, { color: string; bg: string }> = {
 const PAGES = [
   { icon: 'home', name: 'Home', desc: 'The landing screen. Surfaces your team at a glance and everything assigned to you, with quick jumps to the rest of the portal.', src: 'Monday', srcKey: 'monday' as const },
   { icon: 'work', name: 'My Work', desc: 'Everything assigned to you across Monday in one list, in your team\'s priority order. Team leaders and admins set that order, by whole workspace, by board, or step by step; Admin, Access levels says who else can.', src: 'Monday', srcKey: 'monday' as const },
-  { icon: 'dash', name: 'Dashboards', desc: 'Board review dashboards. Publishing Goals tracks publishing pace versus target for AAAF and HFA over a chosen timeframe.', src: 'Monday', srcKey: 'monday' as const, sub: ['Publishing Goals', 'Workload'] },
-  { icon: 'proj', name: 'Projects', desc: 'Manages the hreflang tag workflow for the AAAF and HFA WordPress sites, the one place the portal writes back to Monday.', src: 'Monday + WordPress', srcKey: 'mixed' as const },
-  { icon: 'tools', name: 'Tools', desc: 'Utilities the team runs day to day, each launched from one list.', src: 'Varies', srcKey: 'none' as const },
+  { icon: 'dash', name: 'Publishing Goals · Boards', desc: 'Operations tools. Publishing Goals tracks publishing pace versus target for AAAF and HFA over a chosen timeframe; Boards is the Monday boards review.', src: 'Monday', srcKey: 'monday' as const, sub: ['Publishing Goals', 'Boards'] },
+  { icon: 'proj', name: 'Href Links', desc: 'An SEO tool: manages the hreflang tag workflow for the AAAF and HFA WordPress sites, the one place the portal writes back to Monday.', src: 'Monday + WordPress', srcKey: 'mixed' as const },
+  { icon: 'tools', name: 'Client Reports', desc: 'Hours, cost and budget per client: the i7 report, and Project Hours & Others. One tab per client, each its own team grant.', src: 'QuickBooks Time', srcKey: 'config' as const },
   { icon: 'ticket', name: 'Tickets', desc: 'The dev work tracker, everything that needs resolving, so nothing gets lost.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'test', name: 'Tests', desc: 'A pre-launch checklist to verify the whole system end to end, walk each area, tick off what works, flag what doesn’t.', src: 'Portal', srcKey: 'portal' as const },
-  { icon: 'dir', name: 'People, Teams and Permissions', desc: 'People, teams and access in one place. Add or edit people, manage team membership, and grant each team access to projects.', src: 'Portal', srcKey: 'portal' as const },
+  { icon: 'dir', name: 'Directory', desc: 'People, teams and access in one place. Add or edit people, manage team membership, and grant each team access to projects and tools.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'book', name: 'System manual', desc: 'This page, how the portal works, who can see what, and how the data flows in.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'settings', name: 'Settings', desc: 'Sites & languages, publishing targets, clients & budgets, people & rates, and API tokens. This is where connections are configured.', src: 'Config', srcKey: 'config' as const },
 ]
 
 const FLOWS = [
-  { surface: 'Dashboards', reads: 'AAAF & HFA Publishing boards, pace, targets and totals.', both: false },
+  { surface: 'Publishing Goals', reads: 'AAAF & HFA Publishing boards, pace, targets and totals.', both: false },
   { surface: 'My Work', reads: 'Every item assigned to the signed-in person across boards.', both: false },
   { surface: 'Home · My Team', reads: 'Team membership and each person’s open work.', both: false },
-  { surface: 'Projects', reads: 'Page & language items for the hreflang workflow.', both: true },
-  { surface: 'People, Teams and Permissions', reads: 'People and assignments, cross-checked against portal grants.', both: false },
+  { surface: 'Href Links', reads: 'Page & language items for the hreflang workflow.', both: true },
+  { surface: 'Directory', reads: 'People and assignments, cross-checked against portal grants.', both: false },
 ]
 
 const Eyebrow = ({ children }: { children: React.ReactNode }) => (
@@ -161,7 +164,7 @@ export function SystemManual() {
           <section id="navigation" className="scroll-mt-6">
             <Eyebrow>Getting around</Eyebrow>
             <Heading>The left rail</Heading>
-            <Lede>Every screen shares the same slim icon rail on the left. The top group is day-to-day work; the bottom group (above the divider) is admin &amp; setup, shown only to admins.</Lede>
+            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. An icon with a small corner triangle opens a panel of its pages beside the rail. Your avatar sits at the foot and holds My profile, My Team, Settings and Sign out. The top bar carries search (Cmd+K) and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts only ever appear on those two, never on the rail.</Lede>
             <div className={`${card} overflow-hidden`}>
               {RAIL.map((r, i) => (
                 <div key={r.name} className={`flex items-center gap-3.5 px-[18px] py-3.5 ${i > 0 ? 'border-t border-slate-100' : ''} ${r.admin ? 'bg-subtle' : ''}`}>
@@ -268,7 +271,7 @@ export function SystemManual() {
               <div className="hidden md:flex flex-col items-center text-muted"><Arrow /></div>
               <div className="rounded-xl border-[1.5px] border-slate-200 bg-subtle p-4">
                 <div className="flex items-center gap-2 mb-2.5"><span className="w-[9px] h-[9px] rounded-full bg-tn-teal" /><span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Portal surfaces</span></div>
-                <div className="flex flex-col gap-1.5 text-xs text-foreground leading-snug"><span>Dashboards &amp; Publishing Goals</span><span>My Work</span><span>Projects &amp; Home · My Team</span></div>
+                <div className="flex flex-col gap-1.5 text-xs text-foreground leading-snug"><span>Publishing Goals &amp; Boards</span><span>My Work</span><span>Href Links &amp; Home · My Team</span></div>
               </div>
             </div>
 
@@ -287,7 +290,7 @@ export function SystemManual() {
             </div>
             <div className={`flex gap-3 mt-4 ${card} bg-subtle px-4 py-3.5 items-start`}>
               <svg className="shrink-0 mt-0.5 text-tn-teal" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-              <div className="text-[13px] leading-relaxed text-foreground"><strong className="font-extrabold text-tn-ink">Write-backs are deliberate.</strong> The one place the portal writes to Monday is the hreflang workflow in Projects, when a language goes live, marking it Done ticks the matching item back on the Monday board. Everything else is read-only.</div>
+              <div className="text-[13px] leading-relaxed text-foreground"><strong className="font-extrabold text-tn-ink">Write-backs are deliberate.</strong> The one place the portal writes to Monday is the hreflang workflow in Href Links, when a language goes live, marking it Done ticks the matching item back on the Monday board. Everything else is read-only.</div>
             </div>
           </section>
 
@@ -299,7 +302,7 @@ export function SystemManual() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {[
                 { name: 'Monday.com', color: '#7c3aed', bg: '#7c3aed1a', d: 'System of record for publishing, projects and assignments. Connected by API token.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 4v16M16 4v16" /></svg> },
-                { name: 'WordPress', color: '#2563eb', bg: '#2563eb1a', d: 'The AAAF and HFA sites where hreflang tags are published. Edited by hand from Projects.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg> },
+                { name: 'WordPress', color: '#2563eb', bg: '#2563eb1a', d: 'The AAAF and HFA sites where hreflang tags are published. Edited by hand from Href Links.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg> },
                 { name: 'QuickBooks Time', color: '#059f6b', bg: '#059f6b1a', d: 'Hours and cost behind the i7 Budget Usage Report. Every figure traces back to a timesheet.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg> },
               ].map(s => (
                 <div key={s.name} className={`${card} p-[18px]`}>

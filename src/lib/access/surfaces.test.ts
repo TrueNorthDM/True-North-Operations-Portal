@@ -4,7 +4,7 @@ import {
   SURFACES, SURFACE_KEYS, CONFIGURABLE_ROLES, SURFACE_GROUPS, PRIORITY_OWN, PRIORITY_ALL,
   surfaceAllowed, directoryLevel,
 } from './surfaces'
-import { NAV_SURFACES, navHref, navVisible, surfaceForPath } from './nav'
+import { buildRail, RAIL, surfaceForPath, type ResolvedEntry } from './nav'
 
 // The rules the whole portal gates on. These are pure, so they are cheap to
 // pin down, and every case below is one that actually went wrong at some point:
@@ -101,15 +101,21 @@ describe('catalogue integrity', () => {
     }
   })
 
-  it('backs every sidebar item with a real surface', () => {
+  it('backs every rail item and panel row with a real surface', () => {
     // A typo here would silently drop an icon from the rail for everyone.
-    for (const key of NAV_SURFACES) {
-      expect(SURFACE_KEYS.has(key), key).toBe(true)
+    for (const e of RAIL) {
+      if (e.kind === 'rule') continue
+      if (e.surface) expect(SURFACE_KEYS.has(e.surface), e.key).toBe(true)
+      if (e.kind === 'hub') {
+        for (const i of e.groups.flatMap(g => g.items)) {
+          if (i.surface) expect(SURFACE_KEYS.has(i.surface), `${e.key} > ${i.key}`).toBe(true)
+        }
+      }
     }
   })
 
   it('maps every guarded route prefix to a real surface', () => {
-    for (const path of ['/admin', '/settings', '/human-resources', '/directory', '/my-work', '/work-tools', '/dashboards', '/boards-beta', '/projects', '/aaaf', '/hfa']) {
+    for (const path of ['/admin', '/settings', '/human-resources', '/directory', '/my-work', '/ops/publishing', '/ops/boards', '/ops/client-reports/i7', '/seo/href-links', '/seo/href-links/aaaf', '/chat', '/emails', '/organization']) {
       const surface = surfaceForPath(path)
       expect(surface, path).not.toBeNull()
       expect(SURFACE_KEYS.has(surface!), `${path} -> ${surface}`).toBe(true)
@@ -141,31 +147,31 @@ describe('My Work, Report and My Team as three grants', () => {
     expect(of('my-team')).toEqual(of('my-work'))
   })
 
-  // One module, one icon. Three rails for three tabs of one header would be
-  // three ways to open the same page.
+  // One module, one icon: a hub whose panel holds the three views.
+  const myWork = (can: (k: string) => boolean) =>
+    buildRail({ can: k => k === 'home' || can(k), canTool: () => false, level: 1 })
+      .find((e): e is Extract<ResolvedEntry, { kind: 'hub' }> => e.kind === 'hub' && e.key === 'my-work')
+
   it('shows one rail item, not three', () => {
-    expect(NAV_SURFACES).toContain('my-work')
-    expect(NAV_SURFACES).not.toContain('report')
-    expect(NAV_SURFACES).not.toContain('my-team')
+    const rail = buildRail({ can: () => true, canTool: () => true, level: 3 })
+    const keys = rail.map(e => (e.kind === 'page' ? e.item.key : e.kind === 'hub' ? e.key : '|'))
+    expect(keys).toContain('my-work')
+    expect(keys).not.toContain('report')
+    expect(keys).not.toContain('my-team')
   })
 
-  it('shows the rail when any one of the three is granted', () => {
-    expect(navVisible('my-work', k => k === 'report')).toBe(true)
-    expect(navVisible('my-work', k => k === 'my-team')).toBe(true)
-    expect(navVisible('my-work', () => false)).toBe(false)
+  it('shows the hub when any one of the three is granted', () => {
+    expect(myWork(k => k === 'report')).toBeTruthy()
+    expect(myWork(k => k === 'my-team')).toBeTruthy()
+    expect(myWork(() => false)).toBeUndefined()
   })
 
-  // A rail pointing at a view they cannot open is a link to the login page.
-  it('opens the first view the person is actually allowed', () => {
-    expect(navHref('my-work', () => true)).toBe('/my-work')
-    expect(navHref('my-work', k => k !== 'my-work')).toBe('/report')
-    expect(navHref('my-work', k => k === 'my-team')).toBe('/my-work?tab=team')
-    expect(navHref('my-work', () => false)).toBeNull()
-  })
-
-  it('leaves plain rail items alone', () => {
-    expect(navVisible('settings', k => k === 'settings')).toBe(true)
-    expect(navHref('settings', () => true)).toBeNull()
+  // With a single view there is nothing to choose: the hub goes straight there,
+  // and never to a view they cannot open, which would be a link to the login page.
+  it('goes straight to the one view the person is allowed, and opens the panel otherwise', () => {
+    expect(myWork(() => true)?.direct).toBeUndefined()
+    expect(myWork(k => k === 'report')?.direct).toBe('/report')
+    expect(myWork(k => k === 'my-team')?.direct).toBe('/my-work?tab=team')
   })
 
   it('guards /report with report and /my-work with my-work', () => {

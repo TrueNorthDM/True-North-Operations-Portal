@@ -26,12 +26,26 @@ describe('tool catalogue', () => {
       expect(t.label, `${t.key}.label`).toBeTruthy()
       expect(t.description, `${t.key}.description`).toBeTruthy()
       expect(t.href.startsWith('/'), `${t.key}.href`).toBe(true)
-      expect(['Dashboards', 'Reports'], `${t.key}.group`).toContain(t.group)
+      expect(['SEO Tools', 'Operations'], `${t.key}.group`).toContain(t.group)
+      expect(t.icon, `${t.key}.icon`).toBeTruthy()
     }
   })
 
-  it('points every tool at a route the Work Tools area guards', () => {
-    // A tool whose href fell outside the Work Tools surface would be granted per
+  // The seven SEO tools of the navigation redesign (22 September 2026) ship as
+  // Coming soon pages with their keys fixed from today, so a grant given now
+  // still holds when the tool is built.
+  it('lists the seven SEO tools as coming soon, under stable keys', () => {
+    const soon = TOOLS.filter(t => t.soon).map(t => t.key)
+    expect(soon).toEqual(['schema-app', 'schema-scraper', 'knowledge-graph', 'page-auditor', 'image-optimization', 'analytics', 'impact-globe'])
+  })
+
+  // Keys are what team grants are stored under: none may change.
+  it('keeps every key that grants already point at', () => {
+    for (const k of ['publishing', 'href-links', 'workload', 'i7-budget', 'grant-pass-report']) expect(TOOL_KEYS.has(k), k).toBe(true)
+  })
+
+  it('points every tool at a route the Tools area guards', () => {
+    // A tool whose href fell outside the Tools surface would be granted per
     // team but gated by an unrelated rule.
     for (const t of TOOLS) {
       expect(surfaceForPath(t.href), `${t.key} -> ${t.href}`).toBe('tools')

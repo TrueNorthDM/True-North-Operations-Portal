@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { fetchItem, setStatusLabel } from './client'
 import { siblingItemsToApply } from './apply-links'
+import { hrefLinksSite, hrefLinksPage } from '@/lib/nav/routes'
 
 interface SiteQueryRow {
   id: string
@@ -165,8 +166,8 @@ export async function runLinkHandler(
   const allReady = site.languages.every(l => haveLangs.has(l))
   if (!allReady) {
     const missing = site.languages.filter(l => !haveLangs.has(l)).join(',')
-    revalidatePath(`/${site.code}`)
-    revalidatePath(`/${site.code}/${page.id}`)
+    revalidatePath(hrefLinksSite(site.code))
+    revalidatePath(hrefLinksPage(site.code, page.id))
     return `ok:saved ${langCode} (waiting on: ${missing})`
   }
 
@@ -196,8 +197,8 @@ export async function runLinkHandler(
 
   // Bust the Server Component cache for the project list + the page detail
   // so the UI shows the new URL/lang without a manual refresh.
-  revalidatePath(`/${site.code}`)
-  revalidatePath(`/${site.code}/${page.id}`)
+  revalidatePath(hrefLinksSite(site.code))
+  revalidatePath(hrefLinksPage(site.code, page.id))
 
   if (failures.length > 0) {
     return `partial:applied to ${siblingIds.length - failures.length}/${siblingIds.length}; failed: ${failures.join(' ')}`
@@ -278,8 +279,8 @@ export async function doneHandler(
     if (updErr) return `error:update page (${updErr.message})`
   }
 
-  revalidatePath(`/${site.code}`)
-  revalidatePath(`/${site.code}/${page.id}`)
+  revalidatePath(hrefLinksSite(site.code))
+  revalidatePath(hrefLinksPage(site.code, page.id))
 
   const stamped = allLive && !page.confirmed_done_at ? ' [stamped All Live]' : ''
   return `ok:confirmed ${langCode} (all-live=${allLive})${stamped}`

@@ -17,11 +17,12 @@
 import Link from 'next/link'
 import { BudgetBalanceCard } from '@/components/tsheets/I7CarryoverPanel'
 import type { I7Carryover } from '@/lib/tsheets/types'
+import { ROUTES } from '@/lib/nav/routes'
 
 export function I7BudgetWidget({ month, carryover }: { month: string; carryover: I7Carryover }) {
   return (
     <Link
-      href="/work-tools/time-report"
+      href={ROUTES.i7}
       className="block rounded-2xl transition-shadow hover:shadow-[0_10px_28px_-14px_rgba(1,35,88,.45)]"
     >
       <BudgetBalanceCard c={carryover} month={month} title="i7 Budget" large />

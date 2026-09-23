@@ -19,6 +19,7 @@ import { CarryoverPanel } from './I7CarryoverPanel'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
 import { choiceFromRange, isSingleMonth, rangeOf, spanWording, type Range, type RangeChoice } from '@/lib/tsheets/range'
+import { ROUTES } from '@/lib/nav/routes'
 
 interface Props {
   data: I7Report
@@ -122,7 +123,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
     const r = patch.range ?? range
     const team = patch.team ?? selectedTeam
     startNav(() => {
-      router.push(`/work-tools/time-report?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
+      router.push(`${ROUTES.i7}?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
     })
   }
 
@@ -274,7 +275,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
             <div className="mt-1 leading-relaxed">
               {unratedPeople.join(', ')}. Their hours are in the totals below and their cost is counted as $0,
               so the budget shows less used than it really is. Set a rate in{' '}
-              <a href="/directory#rates" className="underline font-semibold">People, Teams and Permissions → Rates &amp; Costs</a>.
+              <a href="/directory#rates" className="underline font-semibold">Directory → Rates &amp; Costs</a>.
             </div>
           </div>
         )}

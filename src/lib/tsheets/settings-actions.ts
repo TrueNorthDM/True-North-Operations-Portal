@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { requireAdmin } from '@/lib/tsheets/require-admin'
 import { loadPersonCompensation } from '@/lib/hr/compensation'
+import { ROUTES } from '@/lib/nav/routes'
 
 // TSheets sync actions live in ./sync-actions.ts (audit M5-2).
 
@@ -144,7 +145,7 @@ export async function saveMonthlyBudgets(input: {
   })
 
   revalidatePath('/settings')
-  revalidatePath('/work-tools/time-report')
+  revalidatePath(ROUTES.i7)
   return { ok: true }
 }
 
@@ -158,7 +159,7 @@ export async function saveReportNote(input: { month: string; note: string }): Pr
     .from('i7_report_notes')
     .upsert({ month: `${input.month}-01`, note: input.note, updated_by: user?.id, updated_at: new Date().toISOString() }, { onConflict: 'month' })
   if (error) return { ok: false, error: error.message }
-  revalidatePath('/work-tools/time-report')
+  revalidatePath(ROUTES.i7)
   return { ok: true }
 }
 
@@ -216,7 +217,7 @@ export async function saveProjectMonthHours(input: {
   })
 
   revalidatePath('/settings')
-  revalidatePath('/work-tools/time-report')
+  revalidatePath(ROUTES.i7)
   return { ok: true }
 }
 

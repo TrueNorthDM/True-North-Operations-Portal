@@ -23,9 +23,10 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { RangeFilter } from './RangeFilter'
 import { choiceFromRange, rangeOf, type Range, type RangeChoice } from '@/lib/tsheets/range'
+import { ROUTES } from '@/lib/nav/routes'
 
 export function ProjectPeriodFilter(
-  { range, availableMonths, team = '', basePath = '/work-tools/time-report/grant-pass' }: {
+  { range, availableMonths, team = '', basePath = ROUTES.projectHours }: {
     range: Range
     availableMonths: string[]
     /** The team chosen on the People tab, kept in the URL when the period changes. */
