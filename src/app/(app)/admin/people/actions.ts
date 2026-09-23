@@ -11,6 +11,8 @@ import { createClient } from '@/lib/supabase/server'
 import { loadOwnContact } from '@/lib/hr/contact'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import { notifyLevelChange } from '@/lib/notifications/run'
 import type { PersonRow } from '@/lib/types/database.types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
@@ -19,6 +21,16 @@ type PersonCols = Partial<Omit<PersonRow, 'id' | 'created_at' | 'updated_at'>>
 
 async function requireAdmin() {
   if (!(await isSecurityAdmin())) throw new Error('Not authorized')
+}
+
+/**
+ * Tells admins and the person that a level changed (notification S4), after
+ * the answer is sent: a save must not wait on, or fail because of, it.
+ */
+function levelChanged(personId: string, name: string, from: string | null | undefined, to: string, actorProfileId: string | null) {
+  const was = from || 'user'
+  if (was === to) return
+  after(() => notifyLevelChange({ personId, name, from: was, to, actorProfileId }))
 }
 
 function revalidate() {
@@ -66,7 +78,7 @@ export async function setPersonRoleType(id: string, roleType: string): Promise<R
 
   const { data: person } = await supabase
     .from('people')
-    .select('id, profile_id, email_true_north, email_goodnews, email_coe')
+    .select('id, full_name, role_type, profile_id, email_true_north, email_goodnews, email_coe')
     .eq('id', id)
     .maybeSingle()
   if (!person) throw new Error('Person not found')
@@ -111,6 +123,7 @@ export async function setPersonRoleType(id: string, roleType: string): Promise<R
     if (roleError) throw new Error(`Level saved, but the security role could not be updated: ${roleError.message}`)
   }
 
+  levelChanged(id, person.full_name, person.role_type, roleType, user?.id ?? null)
   revalidate()
   return { applied: profileId ? 'live' : 'pending' }
 }
@@ -291,9 +304,12 @@ export async function updatePerson(id: string, input: PersonInput) {
   if (input.profile_id !== undefined) patch.profile_id = input.profile_id || null
   if (input.tsheets === false) patch.tsheets_user_id = null
 
+  const { data: before } = await supabase.from('people').select('role_type').eq('id', id).maybeSingle()
   const { error } = await supabase.from('people').update(patch).eq('id', id)
   if (error) throw new Error(mapError(error.message))
   if (input.teams !== undefined) await setPersonTeams(supabase, id, input.teams)
+  const { data: { user } } = await supabase.auth.getUser()
+  levelChanged(id, name, (before as { role_type?: string | null } | null)?.role_type, patch.role_type ?? 'user', user?.id ?? null)
   revalidate()
 }
 

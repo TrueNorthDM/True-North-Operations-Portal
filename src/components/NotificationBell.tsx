@@ -8,10 +8,13 @@
  */
 
 import { NotificationButton } from '@/components/NotificationButton'
+import type { NotificationItem } from '@/components/NotificationDrawer'
 
-export function NotificationBell({ startOpen = false }: {
+export function NotificationBell({ items, startOpen = false }: {
+  /** The person's landed notifications, per tab (tools, system). */
+  items?: Record<string, NotificationItem[]>
   /** Design check only: show the drawer without a click. */
   startOpen?: boolean
 } = {}) {
-  return <NotificationButton kind="bell" startOpen={startOpen} />
+  return <NotificationButton kind="bell" items={items} startOpen={startOpen} />
 }

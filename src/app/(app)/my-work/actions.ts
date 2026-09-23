@@ -14,6 +14,7 @@
 // reload a thousand steps to show a list the browser already has. My Work is
 // rendered per request, so the next visit to any list reads the new order.
 
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -22,6 +23,7 @@ import { surfaceAllowed } from '@/lib/access/surfaces'
 import { canSetOrder, cleanLevels, cleanSavedOrder, priorityLevel, priorityRights } from '@/lib/monday/worklist/team-priority'
 import { loadMemberships, loadPriorityGrant } from '@/lib/monday/worklist/team-priority-data'
 import { missingColumn } from '@/lib/monday/worklist/missing-column'
+import { notifyTeamOrder } from '@/lib/notifications/run'
 
 export interface SaveResult { ok: boolean; error?: string; savedAt?: string }
 
@@ -87,5 +89,8 @@ export async function saveTeamPriority(
     return { ok: false, error: 'Ordering by workspace and board needs migration 087 in the database. Nothing was saved.' }
   }
   if (error) return { ok: false, error: error.message }
+  // The team hears about it (notification T4), after the answer is sent: a
+  // save must not wait on, or fail because of, a notification.
+  after(() => notifyTeamOrder(teamId, me.id))
   return { ok: true, savedAt }
 }

@@ -16,6 +16,7 @@ import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadAccess } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
 import { directoryLevel } from '@/lib/access/surfaces'
+import { loadInbox } from '@/lib/notifications/inbox'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Nav visibility comes from the configured per-level surfaces (Admin →
@@ -31,6 +32,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // is exactly what the page guards let through.
   const rail = buildRail({ can: access.can, canTool: access.canTool, level: directoryLevel(access.can) })
   const canSettings = access.can('settings')
+  // The bell's notifications, for the person this page renders as. One
+  // indexed read; empty while migration 088 has not been run.
+  const inbox = me ? await loadInbox(me.id) : {}
 
   return (
     <>
@@ -64,7 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="flex items-center gap-2">
           <Launcher rail={rail} canSettings={canSettings} canPeople={access.can('directory')} />
           <NotificationButton kind="inbox" />
-          <NotificationBell />
+          <NotificationBell items={inbox} />
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
           <div className="md:hidden">

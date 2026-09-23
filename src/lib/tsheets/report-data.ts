@@ -4,6 +4,7 @@
 // the per-project budget-hours guide, the carryover balance, and the Jan→month
 // trend series. No live TSheets calls.
 
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere, loadI7UniverseHere } from '@/lib/timeclock/report-source'
@@ -90,8 +91,9 @@ async function loadNames(): Promise<Record<string, string>> {
   return out
 }
 
-export async function loadI7Assignments(): Promise<Assignment[]> {
-  const supabase = await createClient()
+// `db`: the cron passes the privileged client, having no signed-in user.
+export async function loadI7Assignments(db?: SupabaseClient): Promise<Assignment[]> {
+  const supabase = db ?? await createClient()
   const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
   if (!i7) return []
   // hourly_rate is no longer readable by the `authenticated` role (migration
@@ -111,8 +113,8 @@ export interface BudgetInputs {
 }
 
 // The month's total $ budget (budget + extra) per month, the source of truth.
-async function loadBudgetInputs(): Promise<BudgetInputs> {
-  const supabase = await createClient()
+async function loadBudgetInputs(db?: SupabaseClient): Promise<BudgetInputs> {
+  const supabase = db ?? await createClient()
   const { data } = await supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount')
   const flat: Record<string, number> = {}
   for (const b of data ?? []) flat[String(b.month).slice(0, 7)] = Number(b.budget_amount) + Number(b.extra_amount)
@@ -306,12 +308,16 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
  * things the balance is made of, the entries, the rates and the budgets, and
  * computes it with the same function the report uses.
  */
-export async function loadI7Carryover(month: string): Promise<I7Carryover> {
+/**
+ * `db` for callers with no signed-in user (the notifications' cron). The
+ * entries are read privileged either way; see loadCachedEntries.
+ */
+export async function loadI7Carryover(month: string, db?: SupabaseClient): Promise<I7Carryover> {
   const { endDate } = monthBounds(month)
   const [entries, assignments, budgetInputs] = await Promise.all([
     loadCachedEntries(`${DATA_START}-01`, endDate),
-    loadI7Assignments(),
-    loadBudgetInputs(),
+    loadI7Assignments(db),
+    loadBudgetInputs(db),
   ])
   return computeI7Carryover({
     entries, assignments, monthlyBudgets: { ...budgetInputs.flat }, from: month, to: month, now: new Date(),

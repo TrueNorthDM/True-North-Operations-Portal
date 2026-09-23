@@ -21,9 +21,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentTier } from '@/lib/auth/role'
 import { getCurrentPerson } from '@/lib/auth/session'
-import { teamPositionLeads } from '@/lib/directory/people-types'
 import { surfaceAllowed } from '@/lib/access/surfaces'
-import { TOOL_KEYS } from '@/lib/access/tools'
+import { grantedTools, type Membership } from '@/lib/access/tool-grants'
 import type { RoleType } from '@/lib/auth/tier'
 
 export interface Access {
@@ -73,22 +72,14 @@ export const loadAccess = cache(async function loadAccess(): Promise<Access> {
 
     const teamIds = (memberships ?? []).map(m => m.team_id)
     if (teamIds.length) {
-      const leadsTeam = new Map(
-        (memberships ?? []).map(m => [m.team_id, teamPositionLeads((m as { position?: string }).position ?? 'collaborator')]),
-      )
       const { data: grants } = await supabase
         .from('team_tool_grants')
         .select('team_id, tool_key, audience')
         .in('team_id', teamIds)
-
-      for (const g of grants ?? []) {
-        // A grant for a key no longer in the catalogue grants nothing: removing
-        // a tool from the catalogue has to close its route too, not just
-        // hide its card. The stale rows stay in the table harmlessly.
-        if (!TOOL_KEYS.has(g.tool_key)) continue
-        if (g.audience === 'lead' && !leadsTeam.get(g.team_id)) continue
-        toolKeys.add(g.tool_key)
-      }
+      // A grant for a key no longer in the catalogue grants nothing: removing
+      // a tool from the catalogue has to close its route too, not just hide
+      // its card. The stale rows stay in the table harmlessly.
+      toolKeys = grantedTools((memberships ?? []) as Membership[], grants ?? [])
     }
   }
 

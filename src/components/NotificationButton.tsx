@@ -8,9 +8,10 @@
  * Grown out of the NotificationBell placeholder of 21 September 2026, keeping
  * its button, its outside-click and Escape handling and its dialog wiring. The
  * badge is the unread count of both tabs together and is drawn only when
- * there is something unread: nothing feeds the drawers yet, so today it never
- * shows, and a count with nothing behind it would teach people to ignore it
- * before it means anything. The chosen tab is remembered per drawer.
+ * there is something unread. The bell is fed by the layout since 22 September
+ * 2026; Messages has no source yet, so it never shows a count. What was read
+ * since the page loaded is kept here, so the count drops the moment something
+ * is opened. The chosen tab is remembered per drawer.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -30,7 +31,7 @@ const BADGE: Record<DrawerKind, string> = {
 
 export function NotificationButton({ kind, items = {}, startOpen = false }: {
   kind: DrawerKind
-  /** Rows per tab key. Empty until a source exists. */
+  /** Rows per tab key, from the layout. */
   items?: Record<string, NotificationItem[]>
   /** Design check only: show the drawer without a click. */
   startOpen?: boolean
@@ -38,9 +39,10 @@ export function NotificationButton({ kind, items = {}, startOpen = false }: {
   const d = DRAWERS[kind]
   const [open, setOpen] = useState(startOpen)
   const [tab, setTab] = useState<string>(d.tabs[0].key)
+  const [read, setRead] = useState<ReadonlySet<string>>(new Set())
   const ref = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const unread = d.tabs.reduce((n, t) => n + (items[t.key] ?? []).filter(i => i.unread).length, 0)
+  const unread = d.tabs.reduce((n, t) => n + (items[t.key] ?? []).filter(i => i.unread && !read.has(i.id)).length, 0)
 
   useEffect(() => {
     if (!open) return
@@ -92,7 +94,13 @@ export function NotificationButton({ kind, items = {}, startOpen = false }: {
           </span>
         )}
       </button>
-      {open && <NotificationDrawer kind={kind} tab={tab} onTab={pickTab} items={items} onClose={() => setOpen(false)} />}
+      {open && (
+        <NotificationDrawer
+          kind={kind} tab={tab} onTab={pickTab} items={items}
+          read={read} onRead={ids => setRead(prev => new Set([...prev, ...ids]))}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   )
 }

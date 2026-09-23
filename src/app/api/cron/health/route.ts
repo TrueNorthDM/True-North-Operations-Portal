@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runHealthChecks } from '@/lib/health/checks'
+import { notifyHealth } from '@/lib/notifications/run'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -28,6 +29,8 @@ export async function GET(request: Request) {
   const supabase = createAdminClient()
   const results = await runHealthChecks(supabase)
   const allOk = results.every(r => r.ok)
+  // Admins hear about a service that stopped answering (notification S1).
+  const notified = allOk ? null : await notifyHealth(supabase, results)
 
-  return NextResponse.json({ ok: allOk, checkedAt: new Date().toISOString(), results })
+  return NextResponse.json({ ok: allOk, checkedAt: new Date().toISOString(), results, notified })
 }

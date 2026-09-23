@@ -120,7 +120,12 @@ export function weekLabel(start: Date, end: Date): string {
   return `${from}-${to}`
 }
 
-export async function loadPublishingWeeks(now = new Date()): Promise<PublishingBoardWeeks[]> {
+/**
+ * `ranges` counts other weeks than the last four complete ones. The
+ * notifications pass the week still running, to ask whether a client is behind
+ * for the days that have gone; the widget never does.
+ */
+export async function loadPublishingWeeks(now = new Date(), ranges?: { start: Date; end: Date }[]): Promise<PublishingBoardWeeks[]> {
   const boardIds = Object.keys(BOARDS).filter(id => BOARDS[id].publishingMode)
   if (boardIds.length === 0) return []
 
@@ -135,7 +140,7 @@ export async function loadPublishingWeeks(now = new Date()): Promise<PublishingB
     ;(targets[t.board_id] ??= {})[t.language] = Number(t.target_value)
   }
 
-  const weeks = lastFourWeeks(now)
+  const weeks = ranges ?? lastFourWeeks(now)
 
   // One flat list, the shape the dashboard's aggregator takes. It does its own
   // per-board filtering, so there is nothing to keep separated here.

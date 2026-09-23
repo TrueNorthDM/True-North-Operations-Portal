@@ -1,0 +1,385 @@
+/**
+ * What each notification looks for. A generator returns drafts, "this person
+ * should hear about this", and nothing else: whether they do, and when, is
+ * deliver.ts's decision, from the admin's rule and the person's choice.
+ *
+ * Every draft has a dedupe key chosen so that looking again finds the same
+ * thing under the same key. The runs happen six times a day and repeat
+ * themselves freely; the table's unique key is what makes it one notification.
+ *
+ * Work is read through My Work's own loader (loadWorklist), so "open", "late"
+ * and "due" mean here exactly what they mean on the page the notification
+ * links to: switched-off boards, hidden accounts, columns that are not steps
+ * and implausible dates are left out by the same code.
+ */
+
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { loadWorklist, type WorkRow } from '@/lib/monday/worklist/data'
+import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
+import { loadI7Carryover } from '@/lib/tsheets/report-data'
+import { HEALTH_LABEL, type HealthResult } from '@/lib/health/checks'
+import { ROLE_TYPE_LABEL } from '@/lib/directory/people-types'
+import { ROUTES } from '@/lib/nav/routes'
+import { TYPE_BY_KEY } from './catalogue'
+import { addDays, weekOf, zoneDate } from './schedule'
+import { readState, writeState } from './store'
+import type { Audience, Recipient } from './audience'
+import type { Draft } from './deliver'
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Client = SupabaseClient<any, any, any>
+
+export interface Ctx {
+  db: Client
+  aud: Audience
+  now: Date
+  /** Today in New York, YYYY-MM-DD. */
+  today: string
+}
+
+export const makeCtx = (db: Client, aud: Audience, now = new Date()): Ctx => ({ db, aud, now, today: zoneDate(now) })
+
+/**
+ * A person-shaped list: "A, B and 3 more". Names that repeat (two steps on
+ * items with the same name) are shown once, but "more" counts every entry, so
+ * the number agrees with the count in the title. Pass a set when the entries
+ * themselves should be counted once (board names).
+ */
+export function listOf(names: readonly string[], max = 2): string {
+  const shown = [...new Set(names)].slice(0, max)
+  const more = names.length - shown.length
+  if (more > 0) return `${shown.join(', ')} and ${more} more`
+  return shown.length === 2 ? `${shown[0]} and ${shown[1]}` : shown.join(', ')
+}
+
+/** Ends a sentence without doubling what a title already ends with ("Important?."). */
+const sentence = (s: string) => (/[.?!]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MONTH = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const shortDate = (iso: string) => `${MON[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`
+
+/** "Review: Salvation page (AAAF Pages)" */
+const stepLabel = (r: WorkRow) => `${r.stepName}: ${r.parentItemName ?? r.itemName}`
+
+/** Only to people the type can reach at all (the catalogue's audience). */
+function draftFor(ctx: Ctx, type: string, r: Recipient | undefined, d: Omit<Draft, 'personId' | 'type'>): Draft[] {
+  const t = TYPE_BY_KEY.get(type)
+  if (!t || !r || !ctx.aud.reached(t, r)) return []
+  return [{ personId: r.personId, type, ...d }]
+}
+
+// ── My Work: new, due tomorrow, late, and a team's late pile ──────────────────
+
+async function accountOwners(db: Client): Promise<Map<number, string>> {
+  const { data } = await db.from('monday_user_links').select('monday_user_id, person_id')
+  return new Map(((data ?? []) as { monday_user_id: number; person_id: string }[]).map(l => [l.monday_user_id, l.person_id]))
+}
+
+/**
+ * The "assigned" events of this sync that are real hand-offs.
+ *
+ * A board read for the first time has no "before", so every step on it comes
+ * out as newly assigned: hundreds of notifications about work people have had
+ * for months. A board with no history before this sync is therefore skipped;
+ * from its second read on, its events are the real thing.
+ */
+async function newAssignments(db: Client, since: string): Promise<Set<string>> {
+  const { data } = await db.from('monday_assignment_events')
+    .select('board_id, item_id, people_col, monday_user_id')
+    .eq('event', 'assigned').gte('detected_at', since).limit(20000)
+  const events = (data ?? []) as { board_id: number; item_id: number; people_col: string; monday_user_id: number }[]
+  const boards = [...new Set(events.map(e => e.board_id))]
+  const known = new Set<number>()
+  await Promise.all(boards.map(async b => {
+    const { data: older } = await db.from('monday_assignment_events').select('id').eq('board_id', b).lt('detected_at', since).limit(1)
+    if (older?.length) known.add(b)
+  }))
+  return new Set(events.filter(e => known.has(e.board_id)).map(e => `${e.item_id}:${e.people_col}:${e.monday_user_id}`))
+}
+
+/**
+ * T1, T2, T3 and T8 from one read of everyone's open work.
+ *
+ * Grouped per person: five steps assigned in one sync are one notification
+ * that says five, not five notifications. Due and late are grouped per day for
+ * the same reason.
+ */
+export async function workDrafts(ctx: Ctx, opts: { since: string | null }): Promise<Draft[]> {
+  const { db, aud, today } = ctx
+  const everyone = new Set<string>(aud.people.map(r => r.personId))
+  for (const ids of aud.teamMembers.values()) for (const id of ids) everyone.add(id)
+  const [list, owners, fresh] = await Promise.all([
+    loadWorklist(db, { personIds: [...everyone], openOnly: true }),
+    accountOwners(db),
+    opts.since ? newAssignments(db, opts.since) : Promise.resolve(new Set<string>()),
+  ])
+
+  const byPerson = new Map<string, WorkRow[]>()
+  for (const r of list.rows) {
+    if (r.statusDone === true) continue
+    const pid = owners.get(r.mondayUserId)
+    if (!pid) continue
+    ;(byPerson.get(pid) ?? byPerson.set(pid, []).get(pid)!).push(r)
+  }
+
+  const out: Draft[] = []
+  const tomorrow = addDays(today, 1)
+  const dated = (r: WorkRow) => (r.dueDate && !r.dueSuspect ? r.dueDate : null)
+
+  for (const [pid, rows] of byPerson) {
+    const me = aud.byId.get(pid)
+
+    // T1: assigned in this sync.
+    const assigned = rows.filter(r => fresh.has(`${r.itemId}:${r.peopleCol}:${r.mondayUserId}`))
+    if (assigned.length && opts.since) {
+      out.push(...draftFor(ctx, 'step-assigned', me, {
+        title: assigned.length === 1 ? 'A new step was assigned to you' : `${assigned.length} new steps were assigned to you`,
+        body: assigned.length === 1
+          ? `${stepLabel(assigned[0])} (${assigned[0].boardName})`
+          : `${listOf(assigned.map(stepLabel), 1)}, in ${listOf([...new Set(assigned.map(r => r.boardName))])}`,
+        href: '/my-work',
+        dedupeKey: `sync:${opts.since}`,
+      }))
+    }
+
+    // T2: due tomorrow, told the day before. Tomorrow and the day after are
+    // both looked at, so the evening run can fill the next morning's summary.
+    for (const due of [tomorrow, addDays(today, 2)]) {
+      const soon = rows.filter(r => dated(r) === due)
+      if (!soon.length) continue
+      out.push(...draftFor(ctx, 'step-due-tomorrow', me, {
+        title: soon.length === 1 ? 'A step of yours is due tomorrow' : `${soon.length} steps of yours are due tomorrow`,
+        body: `${sentence(listOf(soon.map(stepLabel), 2))} Due ${shortDate(due)}.`,
+        href: '/my-work',
+        dedupeKey: due,
+        deliverDay: addDays(due, -1),
+      }))
+    }
+
+    // T3: became late. Yesterday's deadlines, and the day before in case a
+    // run was missed; older ones are not news, and on the first run they
+    // would have been a flood.
+    for (const due of [addDays(today, -1), addDays(today, -2)]) {
+      const late = rows.filter(r => dated(r) === due)
+      if (!late.length) continue
+      out.push(...draftFor(ctx, 'step-late', me, {
+        title: late.length === 1 ? 'A step of yours became late' : `${late.length} steps of yours became late`,
+        body: `${sentence(listOf(late.map(stepLabel), 2))} Due ${shortDate(due)}.`,
+        href: '/my-work',
+        dedupeKey: due,
+      }))
+    }
+  }
+
+  // T8: people on a team you lead with five or more late steps. One
+  // notification per team per week, naming them, most late first: the first
+  // dry run (22 September 2026) found fourteen people over the line on the
+  // first day, some with over a hundred, and one notification each would have
+  // been the noise that teaches leaders to stop reading.
+  const PILE = 5
+  const week = weekOf(today)
+  for (const [teamId, memberIds] of aud.teamMembers) {
+    const leaders = aud.leadersOf(teamId)
+    if (!leaders.length) continue
+    const piles = memberIds
+      .map(mid => ({
+        mid,
+        late: (byPerson.get(mid) ?? []).filter(r => { const d = dated(r); return !!d && d < today }),
+      }))
+      .filter(p => p.late.length >= PILE)
+      .sort((a, b) => b.late.length - a.late.length)
+    const team = aud.teamName.get(teamId) ?? 'your team'
+    for (const l of leaders) {
+      const others = piles.filter(p => p.mid !== l.personId)
+      if (!others.length) continue
+      const nameOf = (p: typeof others[number]) => aud.byId.get(p.mid)?.name ?? p.late[0].who
+      out.push(...draftFor(ctx, 'team-late-pile', l, {
+        title: others.length === 1 ? `Late steps piling up on ${team}` : `${others.length} people on ${team} have ${PILE}+ late steps`,
+        body: others.length === 1
+          ? `${nameOf(others[0])} has ${others[0].late.length} late steps.`
+          : `${listOf(others.map(p => `${nameOf(p)} (${p.late.length})`), 3)}.`,
+        href: '/my-work?tab=team',
+        dedupeKey: `${teamId}:${week}`,
+      }))
+    }
+  }
+  return out
+}
+
+// ── T4: a team's priority order changed ─────────────────────────────────────
+
+export function teamOrderDrafts(ctx: Ctx, teamId: string, actorId: string): Draft[] {
+  const actor = ctx.aud.byId.get(actorId)?.name ?? 'A team leader'
+  const team = ctx.aud.teamName.get(teamId) ?? 'your team'
+  return ctx.aud.membersOf(teamId)
+    .filter(r => r.personId !== actorId)
+    .flatMap(r => draftFor(ctx, 'team-order-changed', r, {
+      title: "Your team's priority order changed",
+      body: `${actor} saved a new order for ${team}.`,
+      href: '/my-work',
+      // Once a day per team: a leader saving five times in an afternoon is
+      // one change to the people who follow the order.
+      dedupeKey: `${teamId}:${ctx.today}`,
+    }))
+}
+
+// ── T6: Publishing Goals behind pace ────────────────────────────────────────
+
+/**
+ * The week still running, judged on the weekdays already gone: on Thursday a
+ * client with a target of 10 should have 6. Monday has nothing gone yet, and
+ * the weekend counts the whole week.
+ */
+export function expectedSoFar(target: number, today: string): number {
+  const [y, m, d] = today.split('-').map(Number)
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+  const gone = dow === 0 || dow === 6 ? 5 : dow - 1
+  return Math.floor((target * gone) / 5)
+}
+
+export async function publishingDrafts(ctx: Ctx): Promise<Draft[]> {
+  const start = weekOf(ctx.today)
+  const [y, m, d] = start.split('-').map(Number)
+  const boards = await loadPublishingWeeks(ctx.now, [{ start: new Date(Date.UTC(y, m - 1, d)), end: ctx.now }])
+  const readers = ctx.aud.withTool('publishing')
+  const out: Draft[] = []
+  for (const b of boards) {
+    const w = b.weeks[0]
+    const expected = expectedSoFar(b.perWeek, ctx.today)
+    if (!w || b.perWeek <= 0 || expected <= 0 || w.done >= expected) continue
+    for (const r of readers) {
+      out.push(...draftFor(ctx, 'publishing-behind', r, {
+        title: 'Publishing Goals behind pace',
+        body: `${b.name}: ${w.done} of ${b.perWeek} published this week, ${expected} expected by now.`,
+        href: ROUTES.publishing,
+        dedupeKey: `${b.boardId}:${start}`,
+      }))
+    }
+  }
+  return out
+}
+
+// ── T7: i7 budget crossed 75% or 90% ────────────────────────────────────────
+
+/** The highest threshold crossed, or null. A percentage, not dollars: who gets it may not see amounts. */
+export function crossed(used: number, budget: number): 75 | 90 | null {
+  if (budget <= 0) return null
+  const pct = used / budget
+  return pct >= 0.9 ? 90 : pct >= 0.75 ? 75 : null
+}
+
+export async function i7Drafts(ctx: Ctx): Promise<Draft[]> {
+  const month = ctx.today.slice(0, 7)
+  const c = await loadI7Carryover(month, ctx.db)
+  const level = crossed(c.monthUsed, c.monthBudget)
+  if (!level) return []
+  const pct = Math.floor((c.monthUsed / c.monthBudget) * 100)
+  return ctx.aud.withTool('i7-budget').flatMap(r => draftFor(ctx, 'i7-budget', r, {
+    title: `i7 budget crossed ${level}%`,
+    body: `i7 has used ${pct}% of ${MONTH[Number(month.slice(5)) - 1]}'s budget.`,
+    href: ROUTES.i7,
+    dedupeKey: `${month}:${level}`,
+  }))
+}
+
+// ── System ──────────────────────────────────────────────────────────────────
+
+/** S1: an integration stopped answering. Once a day per service while it stays down. */
+export function integrationDrafts(ctx: Ctx, results: readonly HealthResult[]): Draft[] {
+  return results.filter(r => r.status === 'down').flatMap(res => ctx.aud.admins().flatMap(a => draftFor(ctx, 'integration-failed', a, {
+    title: `${HEALTH_LABEL[res.service] ?? res.service} is not answering`,
+    body: res.detail,
+    href: '/admin/automations',
+    dedupeKey: `${res.service}:${ctx.today}`,
+  })))
+}
+
+/** S2: the Monday sync stopped before reading every board. */
+export function syncDrafts(ctx: Ctx, info: { since: string; remaining: number | null; reason: string }): Draft[] {
+  const started = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }).format(new Date(info.since))
+  const left = info.remaining == null ? 'before reading every board' : `with ${info.remaining} board${info.remaining === 1 ? '' : 's'} left`
+  return ctx.aud.admins().flatMap(a => draftFor(ctx, 'sync-incomplete', a, {
+    title: "A sync didn't finish",
+    body: `The Monday sync that started at ${started} stopped ${left}: ${info.reason}`,
+    href: '/settings/monday',
+    dedupeKey: info.since,
+  }))
+}
+
+/**
+ * S3: someone signed in for the first time. From the access log: a login
+ * whose earliest visit falls in the last three days. Three days, not one, so a
+ * missed run does not lose anybody; the dedupe key is the account.
+ */
+export async function firstLoginDrafts(ctx: Ctx): Promise<Draft[]> {
+  const from = new Date(ctx.now.getTime() - 3 * 86_400_000).toISOString()
+  const { data } = await ctx.db.from('access_log').select('profile_id, person_id, name, email, accessed_at').gte('accessed_at', from)
+  const recent = (data ?? []) as { profile_id: string; person_id: string | null; name: string | null; email: string | null }[]
+  const ids = [...new Set(recent.map(r => r.profile_id))]
+  if (!ids.length) return []
+  const { data: olderRows } = await ctx.db.from('access_log').select('profile_id').in('profile_id', ids).lt('accessed_at', from)
+  const older = new Set(((olderRows ?? []) as { profile_id: string }[]).map(r => r.profile_id))
+  const out: Draft[] = []
+  for (const id of ids) {
+    if (older.has(id)) continue
+    const row = recent.find(r => r.profile_id === id)!
+    const person = ctx.aud.byProfile.get(id)
+    const who = person?.name ?? row.name ?? row.email ?? 'Someone'
+    const level = person ? ROLE_TYPE_LABEL[person.roleType] ?? person.roleType : 'no Directory person yet'
+    for (const a of ctx.aud.admins()) {
+      if (a.profileId === id) continue
+      out.push(...draftFor(ctx, 'first-login', a, {
+        title: 'Someone signed in for the first time',
+        body: `${who} signed in for the first time, as ${level}.`,
+        href: '/directory',
+        dedupeKey: id,
+      }))
+    }
+  }
+  return out
+}
+
+/** S4: an access level changed. Admins are told (not the one who did it), and so is the person. */
+export function levelDrafts(ctx: Ctx, change: { personId: string; name: string; from: string; to: string; actorProfileId: string | null }): Draft[] {
+  const label = (k: string) => ROLE_TYPE_LABEL[k] ?? k
+  const key = `${change.personId}:${change.to}:${ctx.now.getTime()}`
+  const out: Draft[] = []
+  for (const a of ctx.aud.admins()) {
+    if (a.profileId === change.actorProfileId || a.personId === change.personId) continue
+    out.push(...draftFor(ctx, 'level-changed', a, {
+      title: 'An access level was changed',
+      body: `${change.name} is now ${label(change.to)} (was ${label(change.from)}).`,
+      href: '/admin/access-levels',
+      dedupeKey: key,
+    }))
+  }
+  out.push(...draftFor(ctx, 'level-changed', ctx.aud.byId.get(change.personId), {
+    title: 'Your access level changed',
+    body: `You are now ${label(change.to)} in the portal (was ${label(change.from)}).`,
+    href: '/',
+    dedupeKey: key,
+  }))
+  return out
+}
+
+/**
+ * S5: a Monday account nobody in the Directory is. Told once per account.
+ *
+ * The first run only takes note: the accounts already waiting are not news,
+ * and telling admins about all of them at once would bury the next real one.
+ */
+export async function unlinkedDrafts(ctx: Ctx, unlinked: readonly { id: number; name: string; email: string | null }[]): Promise<Draft[]> {
+  const KEY = 'monday-unlinked-seen'
+  const seen = await readState<number[]>(ctx.db, KEY)
+  const ids = unlinked.map(u => u.id)
+  await writeState(ctx.db, KEY, [...new Set([...(seen ?? []), ...ids])])
+  if (seen === null) return []
+  const known = new Set(seen)
+  return unlinked.filter(u => !known.has(u.id)).flatMap(u => ctx.aud.admins().flatMap(a => draftFor(ctx, 'monday-account-unlinked', a, {
+    title: 'A new Monday account with no person',
+    body: `${u.name}${u.email ? ` (${u.email})` : ''} has no person in the Directory, so its work shows under Unknown user.`,
+    href: '/admin/monday-links',
+    dedupeKey: String(u.id),
+  })))
+}

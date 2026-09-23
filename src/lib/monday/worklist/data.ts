@@ -119,6 +119,8 @@ export interface PeopleFilter {
    * than one. An empty list means nobody, not everyone.
    */
   teamIds?: readonly string[] | null
+  /** Several people at once: the notifications' scan of everyone's open work. */
+  personIds?: readonly string[] | null
 }
 
 export interface WorklistFilters extends PeopleFilter {
@@ -188,6 +190,7 @@ async function mondaySlug(supabase: Client): Promise<string | null> {
  */
 export async function peopleInFilter(supabase: Client, f: PeopleFilter): Promise<string[] | null> {
   if (f.personId) return [f.personId]
+  if (f.personIds) return [...new Set(f.personIds)]
   const teams = f.teamIds ?? (f.teamId ? [f.teamId] : null)
   if (teams === null) return null
   if (!teams.length) return []
@@ -198,9 +201,14 @@ export async function peopleInFilter(supabase: Client, f: PeopleFilter): Promise
 /** Monday accounts belonging to a set of directory people. */
 async function accountsFor(supabase: Client, personIds: string[]): Promise<number[]> {
   if (!personIds.length) return []
-  const { data } = await supabase
-    .from('monday_user_links').select('monday_user_id').in('person_id', personIds)
-  return ((data ?? []) as { monday_user_id: number }[]).map(r => r.monday_user_id)
+  // In slices: a list of everyone is longer than a query string should be.
+  const out: number[] = []
+  for (let i = 0; i < personIds.length; i += 200) {
+    const { data } = await supabase
+      .from('monday_user_links').select('monday_user_id').in('person_id', personIds.slice(i, i + 200))
+    out.push(...((data ?? []) as { monday_user_id: number }[]).map(r => r.monday_user_id))
+  }
+  return out
 }
 
 export async function loadWorklist(supabase: Client, f: WorklistFilters): Promise<Worklist> {

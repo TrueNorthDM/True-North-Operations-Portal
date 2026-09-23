@@ -8,10 +8,12 @@ import { revalidatePath } from 'next/cache'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runHealthChecks } from '@/lib/health/checks'
+import { notifyHealth } from '@/lib/notifications/run'
 
 export async function runChecksNow(): Promise<void> {
   if (!(await isSecurityAdmin())) return
   const admin = createAdminClient()
-  await runHealthChecks(admin)
+  const results = await runHealthChecks(admin)
+  if (results.some(r => !r.ok)) await notifyHealth(admin, results)
   revalidatePath('/admin/automations')
 }

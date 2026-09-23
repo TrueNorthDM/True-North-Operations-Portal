@@ -9,10 +9,12 @@
  * The bell is the portal talking to you (Tools, System); the message icon is a
  * person talking to you (Chat, Email). They never mix.
  *
- * Nothing feeds either yet: the rules for what notifies whom are still to be
- * decided, and Chat and Email do not exist. Every tab therefore opens on its
- * empty state, which says what will land there, and the top-bar buttons show
- * no count. When a source exists it hands its rows in as `items`.
+ * The bell is fed since 22 September 2026 (src/lib/notifications): the layout
+ * reads the person's landed notifications and hands them in as `items`. Chat
+ * and Email do not exist yet, so the Messages drawer opens on its empty
+ * states. Opening a notification marks it read, and so does "Mark all read",
+ * on the server as well as here; which ones are read lives in the button, so
+ * its count drops at once.
  */
 
 import Link from 'next/link'
@@ -21,6 +23,7 @@ import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
 import { BTN } from '@/lib/ui/buttons'
+import { markNotificationsRead, markTabRead } from '@/app/(app)/notifications/actions'
 
 export type DrawerKind = 'bell' | 'inbox'
 
@@ -36,6 +39,8 @@ export interface NotificationItem {
   icon: NavIconKey
   href: string
   unread: boolean
+  /** Arrived with the daily summary rather than as it happened. */
+  summary?: boolean
 }
 
 interface Tab { key: string; label: string; emptyTitle: string; empty: string }
@@ -59,17 +64,19 @@ export const DRAWERS: Record<DrawerKind, { title: string; icon: NavIconKey; tabs
   },
 }
 
-export function NotificationDrawer({ kind, tab, onTab, items, onClose }: {
+export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onClose }: {
   kind: DrawerKind
   tab: string
   onTab: (key: string) => void
   items: Record<string, NotificationItem[]>
+  /** Read since the page loaded, kept by the button so its count follows. */
+  read: ReadonlySet<string>
+  onRead: (ids: string[]) => void
   onClose: () => void
 }) {
   const router = useRouter()
   const d = DRAWERS[kind]
   const [onlyUnread, setOnlyUnread] = useState(false)
-  const [read, setRead] = useState<Set<string>>(new Set())
   const isUnread = (i: NotificationItem) => i.unread && !read.has(i.id)
   const rows = (items[tab] ?? []).filter(i => !onlyUnread || isUnread(i))
   const current = d.tabs.find(t => t.key === tab) ?? d.tabs[0]
@@ -114,7 +121,12 @@ export function NotificationDrawer({ kind, tab, onTab, items, onClose }: {
           </div>
           <button
             type="button"
-            onClick={() => setRead(prev => new Set([...prev, ...(items[current.key] ?? []).map(i => i.id)]))}
+            onClick={() => {
+              const ids = (items[current.key] ?? []).filter(isUnread).map(i => i.id)
+              if (!ids.length) return
+              onRead(ids)
+              void markTabRead(current.key)
+            }}
             className="text-[12.5px] font-semibold text-tn-teal hover:text-tn-ink"
           >
             Mark all read
@@ -134,20 +146,28 @@ export function NotificationDrawer({ kind, tab, onTab, items, onClose }: {
               <button
                 key={i.id}
                 type="button"
-                onClick={() => { setRead(prev => new Set(prev).add(i.id)); onClose(); router.push(i.href) }}
+                onClick={() => {
+                  if (unread) { onRead([i.id]); void markNotificationsRead([i.id]) }
+                  onClose()
+                  router.push(i.href)
+                }}
                 className={`w-full flex gap-3 px-5 py-3.5 border-b border-[var(--row-rule)] text-left transition-colors hover:bg-subtle ${unread ? 'bg-[#f8fbfb]' : 'bg-white'}`}
               >
                 <span className={`w-[34px] h-[34px] rounded-[10px] shrink-0 inline-flex items-center justify-center ${unread ? 'bg-[rgba(30,125,127,.12)] text-tn-teal' : 'bg-subtle text-muted'}`}><NavIcon name={i.icon} size={17} /></span>
                 <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
                   <span className="flex justify-between items-baseline gap-2">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      {unread && <span className="w-[7px] h-[7px] rounded-full bg-tn-teal shrink-0" />}
-                      <span className="text-[13.5px] font-bold text-tn-ink truncate">{i.who}</span>
+                    <span className="flex items-baseline gap-1.5 min-w-0">
+                      {unread && <span className="w-[7px] h-[7px] rounded-full bg-tn-teal shrink-0 -translate-y-px" />}
+                      {/* Wraps rather than truncates: a notification's title is its message. */}
+                      <span className="text-[13.5px] font-bold text-tn-ink leading-snug">{i.who}</span>
                     </span>
                     <span className="text-[11.5px] text-muted whitespace-nowrap">{i.when}</span>
                   </span>
                   <span className="text-[12.5px] text-foreground leading-normal">{i.what}</span>
-                  <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted mt-0.5">{i.src}</span>
+                  <span className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">{i.src}</span>
+                    {i.summary && <span className="rounded bg-subtle px-[5px] py-px text-[9.5px] font-bold tracking-[.05em] uppercase text-muted">Daily summary</span>}
+                  </span>
                 </span>
               </button>
             )

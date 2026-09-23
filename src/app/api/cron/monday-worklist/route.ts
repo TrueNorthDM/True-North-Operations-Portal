@@ -33,6 +33,7 @@ import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
 import { ingestSlice } from '@/lib/monday/worklist/ingest'
 import { applyStaleRule } from '@/app/(app)/settings/monday/actions'
+import { notifyAfterSync, notifyUnlinked } from '@/lib/notifications/run'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -47,6 +48,14 @@ const LINKS = 8
 
 /** How long a hop waits for the next one to say it has started. */
 const HANDOFF_MS = 20_000
+
+/**
+ * Past this, the last hop does not start the notifications: they would race
+ * the platform's 300-second stop. What they would have found is found by the
+ * next firing (the dedupe keys make that safe), except the "assigned" events
+ * of this one sync, which is the smaller loss than a hop killed mid-write.
+ */
+const NOTIFY_BEFORE_MS = 250_000
 
 /**
  * How a hop hands on, since 21 September 2026. It used to fire the next
@@ -70,10 +79,14 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const hop = Number(url.searchParams.get('hop') ?? '0')
+  const since = url.searchParams.get('since') ?? new Date().toISOString()
   if (hop >= LINKS) {
+    after(async () => {
+      const n = await notifyAfterSync({ since, incomplete: { remaining: null, reason: `the chain hit its limit of ${LINKS} hops.` } })
+      console.log('[monday-worklist] notifications', JSON.stringify(summary(n)))
+    })
     return NextResponse.json({ stopped: `Chain hit its limit of ${LINKS} hops.` })
   }
-  const since = url.searchParams.get('since') ?? new Date().toISOString()
 
   after(async () => {
     const result = await runHop(url, hop, since, secret)
@@ -113,6 +126,8 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
     // Head of the chain: refresh the map before reading the work.
     if (hop === 0) {
       const users = await syncMondayUsers(supabase, token)
+      // A Monday account nobody in the Directory is (notification S5).
+      await notifyUnlinked(supabase, users.unlinked)
       const boards = await syncMondayBoards(supabase, token)
       discovered = {
         accounts: users.users,
@@ -161,6 +176,22 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
       stale = await applyStaleRule(supabase)
     }
 
+    // The end of the chain, whole or broken: what this sync found becomes
+    // notifications. A chain that could not hand on is a sync that did not
+    // finish, and admins hear about it (S2).
+    let notifications: unknown = null
+    if (r.remaining === 0 || chained !== true) {
+      if (Date.now() - started < NOTIFY_BEFORE_MS) {
+        const n = await notifyAfterSync({
+          since,
+          incomplete: r.remaining > 0 ? { remaining: r.remaining, reason: String(chained) } : undefined,
+        })
+        notifications = summary(n)
+      } else {
+        notifications = 'skipped: too close to the time limit'
+      }
+    }
+
     return {
       hop,
       since,
@@ -172,10 +203,21 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
       remaining: r.remaining,
       seconds: Math.round(r.spentMs / 1000),
       chained,
+      notifications,
     }
   } catch (e) {
     // Whatever finished is already saved, board by board. The next firing
-    // resumes from the oldest, which is exactly where this stopped.
-    return { hop, error: (e as Error).message, seconds: Math.round((Date.now() - started) / 1000) }
+    // resumes from the oldest, which is exactly where this stopped. The chain
+    // ends here, so it is told as a sync that did not finish.
+    const message = (e as Error).message
+    const n = Date.now() - started < NOTIFY_BEFORE_MS
+      ? summary(await notifyAfterSync({ since, incomplete: { remaining: null, reason: message } }))
+      : 'skipped: too close to the time limit'
+    return { hop, error: message, seconds: Math.round((Date.now() - started) / 1000), notifications: n }
   }
+}
+
+/** What the log keeps of a notifications run: counts, not the rows. */
+function summary(n: Awaited<ReturnType<typeof notifyAfterSync>>) {
+  return { rows: n.rows ?? 0, byType: n.byType ?? {}, cleaned: n.cleaned ?? 0, skipped: n.skipped, failed: n.failed, error: n.error }
 }
