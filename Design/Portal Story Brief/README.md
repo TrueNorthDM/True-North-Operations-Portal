@@ -25,7 +25,7 @@ The migration status that is live today does not go away. It becomes chapter 4, 
 ### Chapter 1: How and why the portal started
 
 - **28 May 2026.** It began as **Href Links**, an hreflang tag tracker for the AskAnAdventistFriend (AAAF) and Hope for Africa (HFA) WordPress sites. It replaced two Google Sheets workflows, and from day one it talked to Monday: when a page was marked in Monday, the portal knew.
-- **8 June 2026.** It was renamed the **True North Operations Portal** and absorbed the **Boards Review** dashboard (the former COE Dashboard: the translation pipeline and weekly publishing goals).
+- **8 June 2026.** It was renamed the **True North Operations Portal** and absorbed the **Boards Review** dashboard (the former COE Dashboard: the translation pipeline and weekly publishing goals), which is today's **Publishing Goals**.
 - **9 June 2026.** It gained the **People and Teams directory** with access by team, an admin area with **Tickets** and **Tests**, and its shape: Dashboards, Projects, Tools, Admin.
 - **Why.** The work lived in scattered spreadsheets, separate dashboards and manual exports, each with its own login and its own version of the numbers. The portal puts them in one place, on live data, with one sign-in.
 
@@ -45,7 +45,7 @@ In the order they arrived. Each one names the manual work it replaced.
 | When | What | How it helps |
 |---|---|---|
 | May 2026 | **Href Links** | Hreflang tags per page for AAAF and HFA, kept in step with Monday. Replaced two spreadsheets. |
-| June 2026 | **Publishing Goals** and **Boards** | Weekly publishing pace against target, per client, and the Monday boards review (goals, translation, targets) in one view. |
+| June 2026 | **Publishing Goals** | Weekly publishing pace against target, per client, read from the Monday boards. The targets are set in Settings. |
 | June 2026 | **Home** and search | A personal home with widgets and favourites, and Cmd+K to jump anywhere. |
 | June to July 2026 | **Directory** and **Organization** | People, teams and the org chart. On 17 July it became the HR source of truth. |
 | July 2026 | **i7 Budget Usage Report** | Hours, cost and budget usage for the client i7 Marketing, straight from QuickBooks Time, with PDF, CSV and image exports. Replaced exports and pivot tables done by hand every month. |
