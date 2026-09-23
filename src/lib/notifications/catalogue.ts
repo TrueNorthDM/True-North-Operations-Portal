@@ -82,6 +82,12 @@ export const BLOCKS: readonly { key: BlockKey; title: string; drawer: string; de
   { key: 'email', title: 'Email', drawer: 'Messages', description: 'The mailboxes you hold.', available: false, blockedBy: 'Arrives with Emails, which is not built yet.' },
 ]
 
+/**
+ * How many late steps make a pile (team-late-pile). 5 at first; raised to 10
+ * on 23 September 2026, after the first dry run found most people well over 5.
+ */
+export const LATE_PILE = 10
+
 export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   // ── Tools ────────────────────────────────────────────────────────────────
   {
@@ -130,7 +136,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'team-late-pile', src: 'My Team', block: 'tools', icon: 'my-team', defaultTiming: 'daily', available: true,
     title: 'Late steps piling up on your team',
-    description: 'People on a team you lead with 5 or more late steps. Once a week, one notification per team.',
+    description: `People on a team you lead with ${LATE_PILE} or more late steps. Once a week, one notification per team.`,
     who: 'Team leaders', audience: { kind: 'leaders' },
   },
 

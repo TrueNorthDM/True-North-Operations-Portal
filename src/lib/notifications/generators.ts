@@ -20,7 +20,7 @@ import { loadI7Carryover } from '@/lib/tsheets/report-data'
 import { HEALTH_LABEL, type HealthResult } from '@/lib/health/checks'
 import { ROLE_TYPE_LABEL } from '@/lib/directory/people-types'
 import { ROUTES } from '@/lib/nav/routes'
-import { TYPE_BY_KEY } from './catalogue'
+import { LATE_PILE, TYPE_BY_KEY } from './catalogue'
 import { addDays, weekOf, zoneDate } from './schedule'
 import { readState, writeState } from './store'
 import type { Audience, Recipient } from './audience'
@@ -172,12 +172,12 @@ export async function workDrafts(ctx: Ctx, opts: { since: string | null }): Prom
     }
   }
 
-  // T8: people on a team you lead with five or more late steps. One
+  // T8: people on a team you lead with LATE_PILE or more late steps. One
   // notification per team per week, naming them, most late first: the first
   // dry run (22 September 2026) found fourteen people over the line on the
   // first day, some with over a hundred, and one notification each would have
   // been the noise that teaches leaders to stop reading.
-  const PILE = 5
+  const PILE = LATE_PILE
   const week = weekOf(today)
   for (const [teamId, memberIds] of aud.teamMembers) {
     const leaders = aud.leadersOf(teamId)
