@@ -34,6 +34,14 @@ export interface PanelItem {
   soon?: boolean
 }
 
+/**
+ * A module that is not finished, drawn faded on the rail (asked for on 22
+ * September 2026): `soon` is not built at all (Chat, Emails), `building` works
+ * but is not yet the real thing (My Hours and Clocky, while QuickBooks Time is
+ * still the record of hours).
+ */
+export type Readiness = 'soon' | 'building'
+
 export type RailEntry =
   | { kind: 'page'; key: string; href: NavHref; icon: NavIconKey; surface?: string; minLevel?: Level; soon?: boolean }
   | {
@@ -51,6 +59,7 @@ export type RailEntry =
       skipWhenSingle?: boolean
       /** Pages outside its rows that still belong to it, for the highlight. */
       alsoMatches?: readonly string[]
+      readiness?: Readiness
       groups: readonly { label: string | null; items: readonly PanelItem[] }[]
     }
   | { kind: 'rule' }
@@ -96,6 +105,7 @@ export const RAIL: readonly RailEntry[] = [
     icon: 'my-hours',
     hint: 'Your own time: what you logged, what it adds up to, and what was approved.',
     surface: 'my-hours',
+    readiness: 'building',
     groups: [{
       label: null,
       items: [
@@ -178,6 +188,7 @@ export const RAIL: readonly RailEntry[] = [
     icon: 'clocky',
     hint: "The time module: everyone's hours, and the rules behind them.",
     surface: 'clocky-hours',
+    readiness: 'building',
     groups: [
       {
         label: null,
@@ -212,7 +223,7 @@ export interface NavItem {
 }
 
 export type ResolvedEntry =
-  | { kind: 'page'; item: NavItem }
+  | { kind: 'page'; item: NavItem; readiness?: Readiness }
   | {
       kind: 'hub'
       key: string
@@ -224,6 +235,7 @@ export type ResolvedEntry =
       direct?: string
       /** Path prefixes that light the hub up. */
       matches: string[]
+      readiness?: Readiness
       groups: { label: string | null; items: NavItem[] }[]
     }
   | { kind: 'rule' }
@@ -262,7 +274,7 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
     if ((e.minLevel ?? 1) > ctx.level) continue
     if (e.kind === 'page') {
       if (e.surface && !ctx.can(e.surface)) continue
-      out.push({ kind: 'page', item: toItem({ key: e.key, label: NAV_LABEL[e.href], href: e.href, icon: e.icon, soon: e.soon }) })
+      out.push({ kind: 'page', item: toItem({ key: e.key, label: NAV_LABEL[e.href], href: e.href, icon: e.icon, soon: e.soon }), ...(e.soon ? { readiness: 'soon' as const } : {}) })
       continue
     }
     if (e.surface && !ctx.can(e.surface)) continue
@@ -280,6 +292,7 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
       hint: e.hint,
       ...(e.landing ? { landing: e.landing } : {}),
       ...(e.skipWhenSingle && rows.length === 1 ? { direct: rows[0].href } : {}),
+      ...(e.readiness ? { readiness: e.readiness } : {}),
       matches,
       groups,
     })

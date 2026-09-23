@@ -164,7 +164,7 @@ export function SystemManual() {
           <section id="navigation" className="scroll-mt-6">
             <Eyebrow>Getting around</Eyebrow>
             <Heading>The left rail</Heading>
-            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. An icon with a small corner triangle opens a panel of its pages beside the rail. Your avatar sits at the foot and holds My profile, My Team, Settings and Sign out. The top bar carries search (Cmd+K) and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts only ever appear on those two, never on the rail.</Lede>
+            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon; My Hours and Clocky are in progress). Your avatar sits at the foot and holds My profile, My Team, Settings and Sign out. The top bar carries search (Cmd+K) and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts only ever appear on those two, never on the rail.</Lede>
             <div className={`${card} overflow-hidden`}>
               {RAIL.map((r, i) => (
                 <div key={r.name} className={`flex items-center gap-3.5 px-[18px] py-3.5 ${i > 0 ? 'border-t border-slate-100' : ''} ${r.admin ? 'bg-subtle' : ''}`}>

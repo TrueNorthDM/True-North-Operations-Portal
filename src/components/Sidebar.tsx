@@ -34,7 +34,15 @@ type Hub = Extract<ResolvedEntry, { kind: 'hub' }>
 const rowActive = (pathname: string, href: string) => !/[?#]/.test(href) && onPath(pathname, href)
 
 const RAIL_BUTTON = 'group relative flex w-11 h-11 items-center justify-center rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C40A]/60'
-const railTone = (on: boolean) => (on ? 'bg-white/[.14] text-[#F2C40A]' : 'bg-transparent text-white/[.62] hover:bg-white/10')
+/**
+ * A module that is not finished is drawn faded (22 September 2026), and comes
+ * up to full strength while it is the page open, so it never looks off when
+ * someone is actually using it.
+ */
+const railTone = (on: boolean, faded = false) => (on
+  ? 'bg-white/[.14] text-[#F2C40A]'
+  : faded ? 'bg-transparent text-white/[.28] hover:bg-white/10 hover:text-white/50' : 'bg-transparent text-white/[.62] hover:bg-white/10')
+const READINESS_NOTE = { soon: 'Coming soon', building: 'In progress' } as const
 
 function Tooltip({ label }: { label: string }) {
   return (
@@ -121,7 +129,7 @@ export function Sidebar({
     return () => window.clearTimeout(id)
   }, [router, destinations])
 
-  const pageButton = (item: NavItem) => {
+  const pageButton = (item: NavItem, readiness?: 'soon' | 'building') => {
     const on = onPath(pathname, pathOf(item.href))
     return (
       <button
@@ -131,11 +139,11 @@ export function Sidebar({
         aria-label={item.label}
         aria-current={on ? 'page' : undefined}
         aria-busy={(pending && pendingKey === item.key) || undefined}
-        className={`${RAIL_BUTTON} ${railTone(on)}`}
+        className={`${RAIL_BUTTON} ${railTone(on, !!readiness)}`}
       >
         <NavIcon name={item.icon} />
         <PendingBar pending={pending && pendingKey === item.key} />
-        <Tooltip label={item.label} />
+        <Tooltip label={readiness ? `${item.label} · ${READINESS_NOTE[readiness]}` : item.label} />
       </button>
     )
   }
@@ -155,15 +163,11 @@ export function Sidebar({
         aria-haspopup={h.direct ? undefined : 'menu'}
         aria-expanded={h.direct ? undefined : isOpen}
         aria-busy={(pending && pendingKey === h.key) || undefined}
-        className={`${RAIL_BUTTON} ${railTone(on)}`}
+        className={`${RAIL_BUTTON} ${railTone(on, !!h.readiness)}`}
       >
         <NavIcon name={h.icon} />
-        {/* A hub opens a panel: a small corner triangle says so. */}
-        {!h.direct && (
-          <span aria-hidden="true" className="absolute right-1 bottom-1 w-0 h-0 border-l-[5px] border-l-transparent border-b-[5px] border-b-current opacity-45" />
-        )}
         <PendingBar pending={pending && pendingKey === h.key} />
-        {!isOpen && <Tooltip label={h.label} />}
+        {!isOpen && <Tooltip label={h.readiness ? `${h.label} · ${READINESS_NOTE[h.readiness]}` : h.label} />}
       </button>
     )
   }
@@ -175,7 +179,7 @@ export function Sidebar({
           {rail.map((e, i) =>
             e.kind === 'rule'
               ? <div key={`rule-${i}`} aria-hidden="true" className="shrink-0 w-7 h-px bg-white/[.16] my-[7px]" />
-              : e.kind === 'page' ? pageButton(e.item) : hubButton(e),
+              : e.kind === 'page' ? pageButton(e.item, e.readiness) : hubButton(e),
           )}
         </nav>
         <div className="mt-auto pb-1.5 flex justify-center">
