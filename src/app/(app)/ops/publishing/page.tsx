@@ -5,7 +5,7 @@
  * boards.html is a static file served from /public, OUTSIDE the React tree, so
  * on its own it has no app chrome and no way back home. Framing it inside this
  * (app) route is the lightest way to give it both menus without rewriting it
- * (the native React rewrite lives at /ops/boards). Same-origin → the session
+ * (a native rewrite, Boards, was tried and removed in September 2026). Same-origin → the session
  * cookie flows, so the auth-gated page loads inside the frame.
  */
 

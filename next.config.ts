@@ -43,8 +43,11 @@ const nextConfig: NextConfig = {
       r('/work-tools', '/'),
       r('/dashboards', '/ops/publishing'),
       r('/dashboards/publishing', '/ops/publishing'),
-      r('/boards-beta', '/ops/boards'),
-      r('/boards-beta/:path*', '/ops/boards/:path*'),
+      // Boards was removed on 23 September 2026; its addresses land on Publishing Goals.
+      r('/boards-beta', '/ops/publishing'),
+      r('/boards-beta/:path*', '/ops/publishing'),
+      r('/ops/boards', '/ops/publishing'),
+      r('/ops/boards/:path*', '/ops/publishing'),
       r('/projects', '/seo/href-links'),
       r('/aaaf', '/seo/href-links/aaaf'),
       r('/aaaf/:path*', '/seo/href-links/aaaf/:path*'),

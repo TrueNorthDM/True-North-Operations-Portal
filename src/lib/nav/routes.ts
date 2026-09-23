@@ -15,9 +15,6 @@
 export const ROUTES = {
   home: '/',
   publishing: '/ops/publishing',
-  boards: '/ops/boards',
-  boardsTranslation: '/ops/boards/translation',
-  boardsTargets: '/ops/boards/targets',
   clientReports: '/ops/client-reports',
   i7: '/ops/client-reports/i7',
   projectHours: '/ops/client-reports/project-hours',

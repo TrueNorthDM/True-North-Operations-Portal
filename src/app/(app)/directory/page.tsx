@@ -18,7 +18,7 @@ import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
 import { directoryLevel } from '@/lib/access/surfaces'
-import { TOOLS } from '@/lib/access/tools'
+import { TOOLS, TOOL_KEYS } from '@/lib/access/tools'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 
@@ -340,6 +340,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // Tool grants per team (037). Absence of a row = unrestricted (Part 4 enforces).
   const toolsByTeam = new Map<string, { toolKey: string; audience: ToolAudience }[]>()
   for (const r of ttRes.data ?? []) {
+    // A grant for a tool that left the catalogue (Boards, September 2026)
+    // grants nothing, so it is not listed either.
+    if (!TOOL_KEYS.has(r.tool_key)) continue
     const arr = toolsByTeam.get(r.team_id) ?? []
     arr.push({ toolKey: r.tool_key, audience: r.audience === 'lead' ? 'lead' : 'all' })
     toolsByTeam.set(r.team_id, arr)

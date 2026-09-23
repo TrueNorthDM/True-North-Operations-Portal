@@ -1,7 +1,9 @@
 'use server'
 
 /**
- * Server Actions for the publishing-targets editor (Boards Review · Targets).
+ * Server Actions for the publishing-targets editor, in Settings → Publishing
+ * targets. It lived under the Boards page until Boards was removed on
+ * 23 September 2026.
  *
  * All writes are admin-gated twice: here (friendly error) and by RLS on
  * publishing_targets (is_admin(auth.uid())). Each write stamps updated_by with
@@ -11,6 +13,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ROUTES } from '@/lib/nav/routes'
+
+/** Where targets are edited, and where they are read. */
+const refresh = () => { revalidatePath('/settings'); revalidatePath(ROUTES.publishing) }
 
 type Result = { ok: boolean; error?: string }
 
@@ -37,7 +42,7 @@ export async function saveTargetValue(input: { id: string; targetValue: number }
     .update({ target_value: Math.round(input.targetValue), updated_by: auth.email })
     .eq('id', input.id)
   if (error) return { ok: false, error: error.message }
-  revalidatePath(ROUTES.boardsTargets)
+  refresh()
   return { ok: true }
 }
 
@@ -68,7 +73,7 @@ export async function addTarget(input: {
     if (error.code === '23505') return { ok: false, error: `A weekly target for ${language} already exists on this board.` }
     return { ok: false, error: error.message }
   }
-  revalidatePath(ROUTES.boardsTargets)
+  refresh()
   return { ok: true }
 }
 
@@ -78,6 +83,6 @@ export async function deleteTarget(input: { id: string }): Promise<Result> {
   const supabase = await createClient()
   const { error } = await supabase.from('publishing_targets').delete().eq('id', input.id)
   if (error) return { ok: false, error: error.message }
-  revalidatePath(ROUTES.boardsTargets)
+  refresh()
   return { ok: true }
 }

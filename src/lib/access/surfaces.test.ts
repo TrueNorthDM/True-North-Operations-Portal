@@ -115,7 +115,7 @@ describe('catalogue integrity', () => {
   })
 
   it('maps every guarded route prefix to a real surface', () => {
-    for (const path of ['/admin', '/settings', '/human-resources', '/directory', '/my-work', '/ops/publishing', '/ops/boards', '/ops/client-reports/i7', '/seo/href-links', '/seo/href-links/aaaf', '/chat', '/emails', '/organization']) {
+    for (const path of ['/admin', '/settings', '/human-resources', '/directory', '/my-work', '/ops/publishing', '/ops/client-reports/i7', '/seo/href-links', '/seo/href-links/aaaf', '/chat', '/emails', '/organization']) {
       const surface = surfaceForPath(path)
       expect(surface, path).not.toBeNull()
       expect(SURFACE_KEYS.has(surface!), `${path} -> ${surface}`).toBe(true)

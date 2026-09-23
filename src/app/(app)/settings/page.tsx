@@ -26,7 +26,7 @@ import { ClientsTab } from '@/components/tsheets/settings/ClientsTab'
 import { ClientsProjectsTab } from '@/components/tsheets/settings/ClientsProjectsTab'
 import { ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
-import { TargetsEditor } from '@/components/boards/TargetsEditor'
+import { TargetsEditor } from '@/components/settings/TargetsEditor'
 import { ROUTES } from '@/lib/nav/routes'
 
 interface SiteData {

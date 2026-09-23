@@ -31,7 +31,6 @@ export const NAV_LABEL = {
   // The Tools panel's pages (22 September 2026). Tools has no landing page of
   // its own, so a trail passes through these and not through a "Tools" crumb.
   '/ops/publishing': 'Publishing Goals',
-  '/ops/boards': 'Boards',
   '/ops/client-reports': 'Client Reports',
   '/ops/client-reports/i7': 'Client Report · i7',
   /** The parent of the donation records, and its own report beside the i7 one. */

@@ -126,16 +126,10 @@ export const TOOLS: ToolDef[] = [
     icon: 'publishing-goals',
     description: 'Weekly publishing pace against target, per client.',
   },
-  // Was "Workload"; renamed so it stops colliding with the Report's Workload
-  // tab. The key stays 'workload': every team grant is stored under it.
-  {
-    key: 'workload',
-    label: 'Boards',
-    href: ROUTES.boards,
-    group: 'Operations',
-    icon: 'boards',
-    description: 'The Monday boards review: Goals, Translation and Targets. Work in progress.',
-  },
+  // Boards (key 'workload', the native rewrite of the boards review) was
+  // removed on 23 September 2026: Publishing Goals is the boards review, and
+  // publishing targets are edited in Settings. Its team grants stay in the
+  // table and grant nothing, because the resolver drops unknown keys.
   // One entry per client, not one entry for "reports". Each client's numbers
   // are a separate thing to trust someone with, so each is a separate grant on
   // the Directory's Teams tab. In the Tools panel the two share one row,

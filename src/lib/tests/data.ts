@@ -130,7 +130,7 @@ export const TEST_AREAS: TestArea[] = [
     cases: [
       { id: 'DSH-1', check: 'Open Dashboards.', expect: 'Two cards: “Publishing Goals” and “Workload, IN CONSTRUCTION”.' },
       { id: 'DSH-2', check: 'Open Publishing Goals.', expect: 'The COE dashboard fills the whole content area with the portal’s top bar + sidebar around it; Home is always reachable.' },
-      { id: 'DSH-3', check: 'Open Workload (/ops/boards) and switch Goals / Translation / Targets.', expect: 'All three render with real data. (Note: Boards Review’s purpose is being rethought, TN-019.)' },
+      { id: 'DSH-3', check: 'Open Settings → Publishing targets, change a target and save.', expect: 'It saves, and Publishing Goals counts against the new target. (Boards, the old home of this editor, was removed in September 2026.)' },
     ],
   },
 ]

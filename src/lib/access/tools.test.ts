@@ -41,7 +41,7 @@ describe('tool catalogue', () => {
 
   // Keys are what team grants are stored under: none may change.
   it('keeps every key that grants already point at', () => {
-    for (const k of ['publishing', 'href-links', 'workload', 'i7-budget', 'grant-pass-report']) expect(TOOL_KEYS.has(k), k).toBe(true)
+    for (const k of ['publishing', 'href-links', 'i7-budget', 'grant-pass-report']) expect(TOOL_KEYS.has(k), k).toBe(true)
   })
 
   it('points every tool at a route the Tools area guards', () => {

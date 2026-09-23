@@ -66,7 +66,6 @@ export const MANUAL: ManualSection[] = [
         rows: [
           ['Home', 'Org chart + favourites + pillar shortcuts', 'Anyone signed in'],
           ['Tools → Operations → Publishing Goals', 'Publishing pace vs weekly target (/ops/publishing)', 'By team tool grant'],
-          ['Tools → Operations → Boards', 'The Monday boards review: Goals, Translation, Targets (/ops/boards)', 'By team tool grant'],
           ['Tools → SEO Tools → Href Links', 'hreflang tag management for the AAAF / HFA WordPress pages (/seo/href-links)', 'By team tool grant'],
           ['Tools → Operations → Client Reports', 'i7 and Project Hours & Others, one tab per client (/ops/client-reports)', 'By team tool grant, per client'],
           ['People → Organization', 'The company org chart (/organization)', 'Anyone signed in'],
