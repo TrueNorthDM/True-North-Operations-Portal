@@ -16,7 +16,7 @@
       "runtimeExecutable": "node",
       "runtimeArgs": [
         "-e",
-        "const h=require('http'),f=require('fs'),p=require('path');const root=p.resolve('migration-status');const t={'.html':'text/html','.json':'application/json','.png':'image/png'};h.createServer((q,r)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';const fp=p.join(root,u);if(!fp.startsWith(root)){r.writeHead(403);return r.end()}f.readFile(fp,(e,b)=>{if(e){r.writeHead(404);return r.end('not found')}r.writeHead(200,{'Content-Type':t[p.extname(fp)]||'application/octet-stream','Cache-Control':'no-store'});r.end(b)})}).listen(4321)"
+        "const h=require('http'),f=require('fs'),p=require('path');const root=p.resolve('migration-status');const t={'.html':'text/html','.json':'application/json','.png':'image/png'};h.createServer((q,r)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';const fp=p.join(root,u);if(fp!==root&&!fp.startsWith(root+p.sep)){r.writeHead(403);return r.end()}f.readFile(fp,(e,b)=>{if(e){r.writeHead(404);return r.end('not found')}r.writeHead(200,{'Content-Type':t[p.extname(fp)]||'application/octet-stream','Cache-Control':'no-store'});r.end(b)})}).listen(4321,'127.0.0.1')"
       ],
       "port": 4321
     }
