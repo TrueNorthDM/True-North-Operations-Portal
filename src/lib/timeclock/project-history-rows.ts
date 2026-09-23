@@ -41,42 +41,85 @@ export function historyRows(block: ProjectHistoryBlock): HistoryRowKey[] {
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** "Jan 2026". The year is in every heading so a pasted block still says which year it is. */
-export const historyMonthHeading = (ym: string) => `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
+/** "Jan": the column heading the screen uses. The year is in the title above. */
+export const historyMonthHeading = (ym: string) => MON[Number(ym.slice(5, 7)) - 1]
 
-/** Plain numbers for a spreadsheet: no symbol, no thousands comma, two decimals. */
-const plain = (n: number) => (Math.round(n * 100) / 100).toFixed(2)
-
-function csvValue(key: HistoryRowKey, m: ProjectMonthRow): string {
-  switch (key) {
-    case 'hours': return plain(m.hours)
-    case 'employeeCost': return plain(m.employeeCost)
-    case 'contractorCost': return plain(m.contractorCost)
-    // Blank, never 0.00, when nobody has entered a donation: the screen draws
-    // that month empty for the same reason.
-    case 'donations': return m.donations == null ? '' : plain(m.donations)
-    case 'net': return m.net == null ? '' : plain(m.net)
+/**
+ * A project's year so far, the Total column of the PDF and the CSV. Donations
+ * and net stay blank when no month has one, as each month does.
+ */
+export function historyTotal(b: ProjectHistoryBlock): Omit<ProjectMonthRow, 'month'> {
+  const sum = (pick: (m: ProjectMonthRow) => number | null) => {
+    const parts = b.months.map(pick).filter((n): n is number => n != null)
+    return parts.length === 0 ? null : parts.reduce((a, n) => a + n, 0)
+  }
+  return {
+    hours: sum(m => m.hours) ?? 0,
+    employeeCost: sum(m => m.employeeCost) ?? 0,
+    contractorCost: sum(m => m.contractorCost) ?? 0,
+    donations: sum(m => m.donations),
+    net: sum(m => m.net),
   }
 }
 
+const dollars = (n: number) => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 /**
- * The table as rows of cells, heading first.
+ * One cell, written the way the screen writes it: a dash for nothing, blank
+ * for a donation nobody entered, dollars with thousands and cents.
  *
- * The screen's shape, months across, because that is the shape of the tracking
- * sheet the table copies and the likeliest place these rows get pasted. The
- * project name is repeated on every row rather than written once per block, so
- * the rows can be sorted or filtered without losing whose they are. Money rows
- * say USD in their name, as the report's other CSV does in its headings.
+ * `minus` is the sign in front of a negative net. The screen and the PDF use
+ * the typographic one; the CSV uses a plain hyphen, because a spreadsheet reads
+ * "-$33,737.20" as the number it is and "\u2212$33,737.20" as text.
  */
-export function historyCsvRows(blocks: ProjectHistoryBlock[]): string[][] {
+export function historyText(key: HistoryRowKey, m: Omit<ProjectMonthRow, 'month'>, minus = '\u2212'): string {
+  switch (key) {
+    case 'hours': return m.hours === 0 ? '-' : m.hours.toFixed(2)
+    case 'employeeCost':
+    case 'contractorCost': return m[key] === 0 ? '-' : dollars(m[key])
+    case 'donations': return m.donations == null ? '' : m.donations === 0 ? '-' : dollars(m.donations)
+    case 'net': return m.net == null ? '' : (m.net < 0 ? minus : '') + dollars(m.net)
+  }
+}
+
+/** What the table says under itself, and so what the PDF and the CSV say too. */
+export const HISTORY_NOTE =
+  'Net is donations minus employee and contractor costs, for that month alone. It differs from the '
+  + 'same figure on the tracking sheet by the Grants Pass school-website and church-invoice lines: '
+  + 'those sit on the Grants Pass rows here as hours bought in advance, so counting them again '
+  + 'against these two projects would count them twice.'
+
+/**
+ * The table as a spreadsheet, laid out the way the screen lays it out.
+ *
+ * Asked for by Tina on 16 September 2026: the first version repeated the
+ * project on every row with plain numbers, which suits sorting and is not what
+ * she reads. Now it is the screen: a title, the months across with a Total, one
+ * block per project with its name on a line of its own and its rows under it,
+ * a blank line between projects, and the figures written as the screen writes
+ * them. A spreadsheet still reads "$30,233.01" and "-$33,737.20" as numbers.
+ */
+export function historyCsvRows(
+  blocks: ProjectHistoryBlock[],
+  head: { period: string; generatedOn: string } = { period: '', generatedOn: '' },
+): string[][] {
   if (blocks.length === 0) return []
   const months = blocks[0].months.map(m => m.month)
-  const out: string[][] = [['Project', 'Row', ...months.map(historyMonthHeading)]]
+  const out: string[][] = [
+    ['Project Hours & Others, month by month'],
+    [head.period],
+    [head.generatedOn ? `Generated ${head.generatedOn}` : ''],
+    [],
+    ['Project', ...months.map(historyMonthHeading), 'Total'],
+  ]
   for (const b of blocks) {
+    out.push([b.prepaid ? `${b.name} (prepaid)` : b.name])
+    const total = historyTotal(b)
     for (const key of historyRows(b)) {
-      const name = key === 'hours' ? HISTORY_ROW_NAMES[key] : `${HISTORY_ROW_NAMES[key]} (USD)`
-      out.push([b.name, name, ...b.months.map(m => csvValue(key, m))])
+      out.push([HISTORY_ROW_NAMES[key], ...b.months.map(m => historyText(key, m, '-')), historyText(key, total, '-')])
     }
+    out.push([])
   }
+  out.push([HISTORY_NOTE])
   return out
 }

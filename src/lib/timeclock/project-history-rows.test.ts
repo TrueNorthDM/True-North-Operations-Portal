@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { historyRows, historyCsvRows, historyMonthHeading } from './project-history-rows'
+import { historyRows, historyCsvRows, historyMonthHeading, historyText, historyTotal, HISTORY_NOTE } from './project-history-rows'
 import type { ProjectHistoryBlock, ProjectMonthRow } from './projects'
 
 const month = (ym: string, over: Partial<ProjectMonthRow> = {}): ProjectMonthRow => ({
@@ -47,39 +47,62 @@ describe('historyRows', () => {
   })
 })
 
-describe('historyCsvRows', () => {
-  it('heads the months with their year', () => {
-    expect(historyMonthHeading('2026-09')).toBe('Sep 2026')
-    expect(historyCsvRows([AAAF])[0]).toEqual(['Project', 'Row', 'Jan 2026', 'Feb 2026'])
+describe('historyText: cells written as the screen writes them', () => {
+  const m = AAAF.months[0]
+  it('writes hours with two decimals and a dash for none', () => {
+    expect(historyText('hours', m)).toBe('914.13')
+    expect(historyText('hours', CHURCH.months[1])).toBe('-')
   })
 
-  it('has exactly the rows the screen has, project by project', () => {
-    const rows = historyCsvRows([AAAF, CHURCH]).slice(1).map(r => `${r[0]} / ${r[1]}`)
-    expect(rows).toEqual([
-      'AskAnAdventistFriend.com / Hours',
-      'AskAnAdventistFriend.com / Employee costs (USD)',
-      'AskAnAdventistFriend.com / Contractor costs (USD)',
-      'AskAnAdventistFriend.com / Donations (USD)',
-      'AskAnAdventistFriend.com / Net (USD)',
-      'Grants Pass Church / Hours',
-      'Grants Pass Church / Employee costs (USD)',
+  it('writes dollars with thousands and cents, blank for a donation nobody entered', () => {
+    expect(historyText('employeeCost', m)).toBe('$35,382.46')
+    expect(historyText('donations', AAAF.months[1])).toBe('')
+  })
+
+  it('signs a negative net with the typographic minus on screen and a hyphen for a spreadsheet', () => {
+    expect(historyText('net', m)).toBe('\u2212$31,513.84')
+    expect(historyText('net', m, '-')).toBe('-$31,513.84')
+  })
+})
+
+describe('historyTotal', () => {
+  it('adds the year, and leaves donations blank when no month had one', () => {
+    const t = historyTotal(AAAF)
+    expect(t.hours).toBeCloseTo(1835.53)
+    expect(t.donations).toBe(12104)
+    expect(t.net).toBeCloseTo(-75436.01)
+    expect(historyTotal(CHURCH).donations).toBeNull()
+  })
+})
+
+describe('historyCsvRows: the screen, as a spreadsheet', () => {
+  const rows = historyCsvRows([AAAF, CHURCH], { period: 'Jan to Feb 2026', generatedOn: 'September 23, 2026' })
+
+  it('opens with a title, the period and the date, then the months and a Total', () => {
+    expect(rows.slice(0, 5)).toEqual([
+      ['Project Hours & Others, month by month'],
+      ['Jan to Feb 2026'],
+      ['Generated September 23, 2026'],
+      [],
+      ['Project', 'Jan', 'Feb', 'Total'],
+    ])
+    expect(historyMonthHeading('2026-09')).toBe('Sep')
+  })
+
+  it('gives each project a line of its own, its rows under it, and a blank line after', () => {
+    const labels = rows.slice(5).map(r => r[0] ?? '')
+    expect(labels).toEqual([
+      'AskAnAdventistFriend.com', 'Hours', 'Employee costs', 'Contractor costs', 'Donations', 'Net', '',
+      'Grants Pass Church (prepaid)', 'Hours', 'Employee costs', '',
+      HISTORY_NOTE,
     ])
   })
 
-  it('writes plain numbers a spreadsheet can add, zero included', () => {
-    const [, hours, employee] = historyCsvRows([CHURCH])
-    expect(hours.slice(2)).toEqual(['1.50', '0.00'])
-    expect(employee.slice(2)).toEqual(['96.30', '0.00'])
-    const [, , aaafEmployee] = historyCsvRows([AAAF])
-    expect(aaafEmployee.slice(2)).toEqual(['35382.46', '33215.07'])
-  })
-
-  it('leaves a donation nobody has entered blank, and still gives that month its net', () => {
-    const rows = historyCsvRows([AAAF])
-    const donations = rows.find(r => r[1] === 'Donations (USD)')!
-    const net = rows.find(r => r[1] === 'Net (USD)')!
-    expect(donations.slice(2)).toEqual(['12104.00', ''])
-    expect(net.slice(2)).toEqual(['-31513.84', '-43922.17'])
+  it('writes the figures as the screen does, with a hyphen minus a spreadsheet can read', () => {
+    const net = rows.find(r => r[0] === 'Net')!
+    expect(net.slice(1)).toEqual(['-$31,513.84', '-$43,922.17', '-$75,436.01'])
+    const churchHours = rows[rows.indexOf(rows.find(r => r[0] === 'Grants Pass Church (prepaid)')!) + 1]
+    expect(churchHours.slice(1)).toEqual(['1.50', '-', '1.50'])
   })
 
   it('is empty when there is nothing to export', () => {

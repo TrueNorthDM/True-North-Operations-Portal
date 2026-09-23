@@ -14,8 +14,10 @@
  * only then offered, which is the rule for every PDF in the portal.
  *
  * A third row, "Month by month", is the table under the report. Tina looked for
- * its CSV here in September 2026, so here is where it went. It has no PDF: the
- * table is a year wide and was never laid out for a page.
+ * its CSV here in September 2026, so here is where it went, and on the 16th she
+ * asked for it to look like the screen: the CSV is laid out as the table is, and
+ * there is a PDF of it, landscape, January to the period's last month. That PDF
+ * is not one month, so it does not wait for one.
  */
 
 import { useState, type ReactNode } from 'react'
@@ -43,11 +45,12 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
   const [open, setOpen] = useState(false)
   const [pdf, setPdf] = useState<PdfRequest | null>(null)
 
-  function preview(type: 'internal' | 'client') {
+  function preview(type: 'internal' | 'client' | 'history') {
     setOpen(false)
     setPdf({
-      url: `${ROUTES.i7}/pdf?report=projects&month=${range.from}&type=${type}`,
-      title: type === 'internal' ? 'Project hours by person' : 'Project hours and others',
+      // The month by month table runs to the period's last month; the others are the month chosen.
+      url: `${ROUTES.i7}/pdf?report=projects&month=${type === 'history' ? range.to : range.from}&type=${type}`,
+      title: type === 'internal' ? 'Project hours by person' : type === 'history' ? 'Project hours month by month' : 'Project hours and others',
       fallbackName: `project-hours-${type}.pdf`,
     })
   }
@@ -78,7 +81,7 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
           <div className="absolute right-0 mt-2 z-20 w-[330px] rounded-[14px] border border-slate-200 bg-white shadow-[0_24px_50px_-20px_rgba(1,35,88,.4)] p-3">
             <div className="grid grid-cols-[1fr_44px_44px] items-center gap-x-2 gap-y-2.5">
               <div className="pl-1 text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.1em] text-muted">Report</div>
-              <div className={`text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] ${monthly ? 'text-muted' : 'text-slate-300'}`}>PDF</div>
+              <div className="text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] text-muted">PDF</div>
               <div className="text-center text-[9.5px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.08em] text-muted">CSV</div>
 
               {([
@@ -94,7 +97,8 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
               <Row
                 r={{ key: 'history', name: 'Month by month', sub: `Projects · ${tableMonths}`, tint: 'bg-[rgba(1,35,88,0.07)]', ink: '#012358', hover: 'hover:border-tn-primary hover:bg-[rgba(1,35,88,0.05)]' }}
                 icon={CALENDAR('#012358')}
-                monthly={monthly}
+                monthly
+                onPdf={() => preview('history')}
                 csv={`${ROUTES.projectHours}/history/csv?from=${range.from}&to=${range.to}`}
                 onCsv={() => setOpen(false)}
               />
@@ -104,7 +108,7 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
                 tooltips somebody has to go looking for. */}
             {!monthly && (
               <p className="px-3 pt-3 pb-0.5 text-[11px] text-muted leading-[1.5] m-0">
-                The PDFs are a single month, so they wait for one. The CSVs cover whatever is on screen.
+                The Client and Internal PDFs are a single month, so they wait for one. The CSVs and the month by month PDF cover whatever is on screen.
               </p>
             )}
           </div>

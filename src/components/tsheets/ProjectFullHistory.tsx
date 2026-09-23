@@ -8,15 +8,15 @@
  * under the report the way Full history sits under the i7 one.
  *
  * Her rows exactly: hours, employee costs, contractor costs, donations, net.
- * Which of them each project gets is decided in historyRows, not here, so the
- * Export CSV of this table cannot come out with different rows. In short: the
+ * Which of them each project gets is decided in historyRows, and how each cell
+ * is written in historyText, not here, so the Export CSV and PDF of this table
+ * cannot come out with different rows or differently written figures. In short: the
  * two client projects have no donations and no net, and no Contractor costs
  * until a contractor actually works on one of them.
  */
 
-import { money, moneySigned } from '@/lib/tsheets/format'
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
-import { historyRows, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
+import { historyRows, historyText, HISTORY_NOTE, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const shortMonth = (ym: string) => MON[Number(ym.slice(5, 7)) - 1]
@@ -33,8 +33,6 @@ const th = 'text-right text-[10px] font-(family-name:--font-display) font-extrab
 const cell = 'px-2 py-2 text-right tabular-nums whitespace-nowrap text-[14px] min-w-[94px]'
 const label = 'px-3 py-2 text-left text-[14px] text-tn-ink whitespace-nowrap'
 
-const h2 = (n: number) => (n === 0 ? '-' : n.toFixed(2))
-const m0 = (n: number | null) => (n == null ? '' : n === 0 ? '-' : money(n))
 
 export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlock[]; year: string }) {
   if (blocks.length === 0) return null
@@ -84,7 +82,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
                       key={m.month}
                       className={`${cell} font-semibold ${m.net == null ? '' : m.net < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}
                     >
-                      {m.net == null ? '' : moneySigned(m.net)}
+                      {historyText('net', m)}
                     </td>
                   ))}
                 </tr>
@@ -92,7 +90,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
                 <Row
                   key={key}
                   name={HISTORY_ROW_NAMES[key]}
-                  cells={b.months.map(m => (key === 'hours' ? h2(m.hours) : m0(m[key])))}
+                  cells={b.months.map(m => historyText(key, m))}
                 />
               ))}
             </tbody>
@@ -100,12 +98,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
         </table>
       </div>
 
-      <p className="text-[13.5px] text-muted leading-relaxed m-0">
-        Net is donations minus employee and contractor costs, for that month alone. It differs from the
-        same figure on the tracking sheet by the Grants Pass school-website and church-invoice lines:
-        those sit on the Grants Pass rows here as hours bought in advance, so counting them again
-        against these two projects would count them twice.
-      </p>
+      <p className="text-[13.5px] text-muted leading-relaxed m-0">{HISTORY_NOTE}</p>
     </div>
   )
 }

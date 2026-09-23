@@ -6,8 +6,9 @@
  * the report's other CSV is the table above it, not this one.
  *
  * The same table the screen draws, in the screen's shape: metrics down the side,
- * months across, January to the last month of the period on screen. The rows
- * come from historyRows, the rule the screen itself uses.
+ * months across, January to the last month of the period on screen, one block
+ * per project, figures written as the screen writes them (see historyCsvRows).
+ * The rows come from historyRows, the rule the screen itself uses.
  *
  * Only `to` decides the months, as it does on the page. `from` is read so the
  * link can carry the page's own period and resolve it the same way, including
@@ -50,7 +51,8 @@ export async function GET(request: Request) {
 
   let rows: string[][]
   try {
-    rows = historyCsvRows(await loadProjectHistory(createAdminClient(), from, range.to))
+    const generatedOn = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'long', day: 'numeric' })
+    rows = historyCsvRows(await loadProjectHistory(createAdminClient(), from, range.to), { period: spanWording(from, range.to), generatedOn })
   } catch {
     return new Response('Could not load the report.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
   }

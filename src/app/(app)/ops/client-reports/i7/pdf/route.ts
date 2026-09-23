@@ -1,5 +1,6 @@
 /**
  * GET /ops/client-reports/i7/pdf?month=YYYY-MM&type=client|internal
+ *     (&report=projects for Project Hours, which also has type=history)
  *
  * Server-side PDF of the i7 Budget Usage Report. We render the existing print
  * page (/ops/client-reports/i7/print) in headless Chromium and print it to PDF, so
@@ -20,6 +21,8 @@
 import puppeteer, { type Browser } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
+import { requireSurface } from '@/lib/access/resolve'
+import { spanWording } from '@/lib/tsheets/range'
 import { ROUTES } from '@/lib/nav/routes'
 
 export const runtime = 'nodejs'
@@ -46,15 +49,25 @@ async function launch(): Promise<Browser> {
 }
 
 export async function GET(request: Request) {
-  const denied = await requirePrivileged()
-  if (denied) return denied
-
   const url = new URL(request.url)
   const month = url.searchParams.get('month') ?? ''
-  const type = url.searchParams.get('type') === 'internal' ? 'internal' : 'client'
   // Which report. One route rather than two, because everything below it is
   // launching a headless browser and setting margins, and none of that differs.
   const report = url.searchParams.get('report') === 'projects' ? 'projects' : 'i7'
+  const asked = url.searchParams.get('type')
+  // history: Project Hours' month by month table (September 2026). Anyone who
+  // may open the report and download its CSV may have it as a PDF: the same
+  // figures, the same gate as the CSV and the print page. The other PDFs keep
+  // the privileged gate they always had.
+  const type = asked === 'internal' ? 'internal' : report === 'projects' && asked === 'history' ? 'history' : 'client'
+
+  if (type === 'history') {
+    const access = await requireSurface('tools')
+    if (!access.canTool('grant-pass-report')) return new Response('Not allowed.', { status: 403 })
+  } else {
+    const denied = await requirePrivileged()
+    if (denied) return denied
+  }
   const printPath = report === 'projects'
     ? `${ROUTES.projectHours}/print`
     : `${ROUTES.i7}/print`
@@ -72,7 +85,9 @@ export async function GET(request: Request) {
     // Belt-and-suspenders: make sure the document actually rendered.
     await page.waitForSelector('.print-doc', { timeout: 10_000 })
 
-    const label = monthLabel(month)
+    const label = type === 'history' && /^\d{4}-\d{2}$/.test(month)
+      ? spanWording(`${month.slice(0, 4)}-01`, month)
+      : monthLabel(month)
     // Footer + page numbers rendered by Puppeteer on EVERY page, so the count
     // adapts to the real content. Header/footer templates get no page CSS,
     // inline styles + system fonts only.
@@ -90,7 +105,8 @@ export async function GET(request: Request) {
 
     const pdf = await page.pdf({
       format: 'A4',
-      landscape: type === 'internal', // wide per-person table needs landscape
+      // Wide tables need landscape: per person, and a year of months.
+      landscape: type === 'internal' || type === 'history',
       printBackground: true,
       // Content flows naturally (no forced section breaks), and Puppeteer applies
       // a real margin to EVERY page + a footer/page-number line, so the page
@@ -101,7 +117,9 @@ export async function GET(request: Request) {
       margin: { top: '9mm', right: '9mm', bottom: '13mm', left: '9mm' },
     })
 
-    const name = report === 'projects'
+    const name = type === 'history'
+      ? `Project Hours month by month - ${label}.pdf`
+      : report === 'projects'
       ? (type === 'internal'
         ? `Project Hours by Person - ${label}.pdf`
         : `Project Hours and Others - ${label}.pdf`)
