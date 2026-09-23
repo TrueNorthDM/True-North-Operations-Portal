@@ -21,6 +21,7 @@ import { Select } from '@/components/ui/Select'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import { spanWording } from '@/lib/tsheets/range'
 import type { ProjectTracking } from '@/lib/timeclock/projects'
+import { peopleView } from '@/lib/timeclock/project-people'
 
 // Two header rows: what a block of columns is about, then what each one holds.
 //
@@ -69,7 +70,12 @@ export function ProjectHoursReport(
 ) {
   // A link that arrives with a team opens on People, the only tab a team changes.
   const [view, setView] = useState<'costs' | 'people'>(() => (selectedTeam ? 'people' : 'costs'))
-  const { rows, totals, unratedPeople } = data
+  const { totals, unratedPeople } = data
+  // i7 and MME are on Costs and not on People (September 2026), and People's
+  // totals are of the rows it shows.
+  const onPeople = peopleView(data)
+  const rows = view === 'people' ? onPeople.rows : data.rows
+  const worked = view === 'people' ? onPeople.workedThisMonth : totals.workedThisMonth
 
   // The Team filter, on the People tab since September 2026 (it used to sit in
   // the toolbar, where it looked like it filtered the whole report). Everything
@@ -128,7 +134,7 @@ export function ProjectHoursReport(
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className={card}>
           <div className={label}>Worked {oneMonth ? "this month" : "in this period"}</div>
-          <div className={big}>{totals.workedThisMonth.toFixed(2)}</div>
+          <div className={big}>{worked.toFixed(2)}</div>
           <div className="text-xs text-muted mt-0.5">across {rows.filter(r => r.workedThisMonth > 0).length} projects</div>
         </div>
         {view === 'costs' ? (
@@ -150,15 +156,15 @@ export function ProjectHoursReport(
           <>
             <div className={card}>
               <div className={label}>{thisYear} to date</div>
-              <div className={big}>{totals.yearToDate.toFixed(2)}</div>
+              <div className={big}>{onPeople.yearToDate.toFixed(2)}</div>
               <div className="text-xs text-muted mt-0.5">January to {monthName(data.month).split(' ')[0]}</div>
             </div>
             <div className={card}>
               <div className={label}>Same month, {lastYear}</div>
-              <div className={big}>{totals.sameMonthLastYear.toFixed(2)}</div>
+              <div className={big}>{onPeople.sameMonthLastYear.toFixed(2)}</div>
               <div className="text-xs text-muted mt-0.5">
-                {totals.sameMonthLastYear > 0
-                  ? `${totals.workedThisMonth >= totals.sameMonthLastYear ? '+' : ''}${(totals.workedThisMonth - totals.sameMonthLastYear).toFixed(2)} against it`
+                {onPeople.sameMonthLastYear > 0
+                  ? `${onPeople.workedThisMonth >= onPeople.sameMonthLastYear ? '+' : ''}${(onPeople.workedThisMonth - onPeople.sameMonthLastYear).toFixed(2)} against it`
                   : 'nothing logged that month'}
               </div>
             </div>
@@ -229,14 +235,15 @@ export function ProjectHoursReport(
                 <>
                   <th className={thNum}>Employee</th>
                   <th className={thNum}>Contractor</th>
-                  <th className={thNum}>Donations</th>
+                  {/* i7 and MME hold what was billed here: they have no donations. */}
+                  <th className={thNum}>Donations / billed</th>
                   <th className={thNum}>Net</th>
                 </>
               )}
               <th className={`${thNum} ${edge}`}>Hours</th>
               {view === 'costs' && (
                 <>
-                  <th className={thNum}>Donations</th>
+                  <th className={thNum}>Donations / billed</th>
                   <th className={thNum}>Costs</th>
                 </>
               )}
@@ -249,6 +256,7 @@ export function ProjectHoursReport(
                 <td className="px-4 py-3 sticky left-0 bg-white z-10">
                   <span className="font-(family-name:--font-display) font-bold text-tn-ink whitespace-nowrap">{r.name}</span>
                   {r.prepaid && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-tn-teal">prepaid</span>}
+                  {r.billed && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-[#B8790A]">billed</span>}
                 </td>
                 {/* Blank, not zero, when a project has no allowance: it does not
                     have a balance rather than having one of nothing. */}
@@ -298,7 +306,7 @@ export function ProjectHoursReport(
                   {totals.byPerson[p] ? h2(totals.byPerson[p]) : <span className="text-slate-300">-</span>}
                 </td>
               ))}
-              <td className={`${num} font-extrabold text-tn-ink ${hi} border-l border-[rgba(224,138,30,0.18)]`}>{totals.workedThisMonth.toFixed(2)}</td>
+              <td className={`${num} font-extrabold text-tn-ink ${hi} border-l border-[rgba(224,138,30,0.18)]`}>{worked.toFixed(2)}</td>
               {view === 'costs' && (
                 <>
                   <td className={`${num} font-extrabold`}>{money(totals.employeeCostThisMonth)}</td>
@@ -310,14 +318,14 @@ export function ProjectHoursReport(
                   <td className={`${num} font-extrabold ${netCell(netMonth)}`}>{netMonth == null ? '' : moneySigned(netMonth)}</td>
                 </>
               )}
-              <td className={`${num} ${edge} font-extrabold`}>{totals.yearToDate.toFixed(2)}</td>
+              <td className={`${num} ${edge} font-extrabold`}>{(view === 'people' ? onPeople.yearToDate : totals.yearToDate).toFixed(2)}</td>
               {view === 'costs' && (
                 <>
                   <td className={`${num} font-extrabold`}>{givenYtd == null ? '' : money(givenYtd)}</td>
                   <td className={`${num} font-extrabold`}>{money(totals.totalCosts)}</td>
                 </>
               )}
-              <td className={`${num} ${edge} font-extrabold text-muted`}>{totals.sameMonthLastYear.toFixed(2)}</td>
+              <td className={`${num} ${edge} font-extrabold text-muted`}>{(view === 'people' ? onPeople.sameMonthLastYear : totals.sameMonthLastYear).toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>

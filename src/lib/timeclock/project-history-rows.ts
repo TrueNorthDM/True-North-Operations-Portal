@@ -21,6 +21,13 @@ export const HISTORY_ROW_NAMES: Record<HistoryRowKey, string> = {
 }
 
 /**
+ * A row's name for this block. i7 and MME have no donations: the same row holds
+ * what was billed to the client, and is called that.
+ */
+export const historyRowName = (key: HistoryRowKey, b: Pick<ProjectHistoryBlock, 'billed'>): string =>
+  key === 'donations' && b.billed ? 'Billed' : HISTORY_ROW_NAMES[key]
+
+/**
  * The rows a project's block shows, in order.
  *
  * The two prepaid projects have no donations and so no net: their income is
@@ -78,7 +85,9 @@ export function historyText(key: HistoryRowKey, m: Omit<ProjectMonthRow, 'month'
     case 'employeeCost':
     case 'contractorCost': return m[key] === 0 ? '-' : dollars(m[key])
     case 'donations': return m.donations == null ? '' : m.donations === 0 ? '-' : dollars(m.donations)
-    case 'net': return m.net == null ? '' : (m.net < 0 ? minus : '') + dollars(m.net)
+    // A month with nothing in it, which only i7 and MME can have (no hours,
+    // nothing billed), is a dash like every other empty figure.
+    case 'net': return m.net == null ? '' : m.net === 0 ? '-' : (m.net < 0 ? minus : '') + dollars(m.net)
   }
 }
 
@@ -87,7 +96,8 @@ export const HISTORY_NOTE =
   'Net is donations minus employee and contractor costs, for that month alone. It differs from the '
   + 'same figure on the tracking sheet by the Grants Pass school-website and church-invoice lines: '
   + 'those sit on the Grants Pass rows here as hours bought in advance, so counting them again '
-  + 'against these two projects would count them twice.'
+  + 'against these two projects would count them twice. For i7 and MME, Billed is hours times the '
+  + 'client rate, as on the i7 invoices, and Net is billed minus costs.'
 
 /**
  * The table as a spreadsheet, laid out the way the screen lays it out.
@@ -113,10 +123,10 @@ export function historyCsvRows(
     ['Project', ...months.map(historyMonthHeading), 'Total'],
   ]
   for (const b of blocks) {
-    out.push([b.prepaid ? `${b.name} (prepaid)` : b.name])
+    out.push([b.prepaid ? `${b.name} (prepaid)` : b.billed ? `${b.name} (billed)` : b.name])
     const total = historyTotal(b)
     for (const key of historyRows(b)) {
-      out.push([HISTORY_ROW_NAMES[key], ...b.months.map(m => historyText(key, m, '-')), historyText(key, total, '-')])
+      out.push([historyRowName(key, b), ...b.months.map(m => historyText(key, m, '-')), historyText(key, total, '-')])
     }
     out.push([])
   }

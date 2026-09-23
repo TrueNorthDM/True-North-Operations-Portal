@@ -22,6 +22,7 @@ import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadProjectTracking } from '@/lib/timeclock/projects'
+import { peopleView } from '@/lib/timeclock/project-people'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
@@ -73,17 +74,18 @@ export async function GET(request: Request) {
         lines.push(row([label, r.name, person, hrs(h)]))
       }
     }
-    lines.push(row([label, 'TOTAL', '', hrs(data.totals.workedThisMonth)]))
+    // i7 and MME are not by person (September 2026), so the total is of the four.
+    lines.push(row([label, 'TOTAL', '', hrs(peopleView(data).workedThisMonth)]))
   } else {
     lines.push(row([
       'Period', 'Project', 'Carried in', 'Prepaid', 'Remaining',
-      'Hours', 'Employee costs (USD)', 'Contractor costs (USD)', 'Donations (USD)', 'Net (USD)',
-      `Total hours ${year}`, `Total donations ${year} (USD)`, `Total costs ${year} (USD)`,
+      'Hours', 'Employee costs (USD)', 'Contractor costs (USD)', 'Donations / billed (USD)', 'Net (USD)',
+      `Total hours ${year}`, `Total donations / billed ${year} (USD)`, `Total costs ${year} (USD)`,
       `${lastYear} hours, same period`,
     ]))
     for (const r of data.rows) {
       lines.push(row([
-        label, r.name, hrs(r.carriedIn), hrs(r.boughtThisMonth), hrs(r.remaining),
+        label, r.billed ? `${r.name} (billed)` : r.name, hrs(r.carriedIn), hrs(r.boughtThisMonth), hrs(r.remaining),
         hrs(r.workedThisMonth), cash(r.employeeCostThisMonth), cash(r.contractorCostThisMonth),
         cash(r.donationsThisMonth), cash(r.netThisMonth), hrs(r.yearToDate), cash(r.donationsYtd),
         cash(r.totalCosts), hrs(r.sameMonthLastYear),

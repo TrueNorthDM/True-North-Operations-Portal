@@ -220,6 +220,15 @@ export interface I7DayRow {
 const isMMEProject = (name: string) => /mme|moisture/i.test(name)
 
 /**
+ * The invoice an i7 job code bills to: 'MME' for Moisture Meters, 'i7' for the
+ * rest (i7 Marketing, Wagner Meters, Bessemeter, and anything unassigned).
+ * One rule for the i7 export and for Project Hours' i7 and MME rows, so the
+ * two cannot split the hours differently.
+ */
+export const i7Invoice = (code: string): 'i7' | 'MME' =>
+  isMMEProject(mapCodeToProject((code || NO_CODE).trim() || NO_CODE)) ? 'MME' : 'i7'
+
+/**
  * The same entries buildI7Report adds up, kept apart and dated.
  *
  * The tree answers "what did this cost" and so discards the day on the way in.

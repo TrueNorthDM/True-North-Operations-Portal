@@ -16,7 +16,7 @@
 
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
 import {
-  historyMonthHeading, historyRows, historyText, historyTotal, HISTORY_NOTE, HISTORY_ROW_NAMES,
+  historyMonthHeading, historyRowName, historyRows, historyText, historyTotal, HISTORY_NOTE,
 } from '@/lib/timeclock/project-history-rows'
 
 const INK = '#012358'
@@ -42,7 +42,7 @@ export function ProjectHistoryPrint(
   { blocks, periodLabel, generatedOn }: { blocks: ProjectHistoryBlock[]; periodLabel: string; generatedOn: string },
 ) {
   const months = blocks[0]?.months ?? []
-  const netColor = (n: number | null) => (n == null ? INK : n < 0 ? '#c2410c' : '#1E9E6A')
+  const netColor = (n: number | null) => (n == null || n === 0 ? INK : n < 0 ? '#c2410c' : '#1E9E6A')
 
   return (
     // print-doc is what the PDF route waits for before it prints.
@@ -85,9 +85,9 @@ export function ProjectHistoryPrint(
                 <tr>
                   <td colSpan={months.length + 2} style={{ ...td, textAlign: 'left', background: SHADE, borderTop: `1px solid ${LINE}`, padding: '7px 6px' }}>
                     <span style={{ fontSize: 10, fontWeight: 800 }}>{b.name}</span>
-                    {b.prepaid && (
-                      <span style={{ marginLeft: 8, fontSize: 7.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: TEAL }}>
-                        prepaid
+                    {(b.prepaid || b.billed) && (
+                      <span style={{ marginLeft: 8, fontSize: 7.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: b.billed ? '#B8790A' : TEAL }}>
+                        {b.billed ? 'billed' : 'prepaid'}
                       </span>
                     )}
                   </td>
@@ -96,7 +96,7 @@ export function ProjectHistoryPrint(
                   const isNet = key === 'net'
                   return (
                     <tr key={key}>
-                      <td style={{ ...label, fontWeight: isNet ? 700 : 400 }}>{HISTORY_ROW_NAMES[key]}</td>
+                      <td style={{ ...label, fontWeight: isNet ? 700 : 400 }}>{historyRowName(key, b)}</td>
                       {b.months.map(m => (
                         <td key={m.month} style={isNet ? { ...td, fontWeight: 700, color: netColor(m.net) } : td}>
                           {historyText(key, m)}

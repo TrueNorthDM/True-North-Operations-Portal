@@ -22,10 +22,22 @@
 // MONEY. There is none, with one exception. These are donation funded and not
 // billed. Church and School buy hours in advance at $90, which is what the
 // balance columns track; see migration 062.
+//
+// i7 AND MME, added on 23 September 2026 at Tina's request. They are not "2
+// Project" values: they are i7's job code tree, split by the invoice each code
+// bills to (i7Invoice), the same split the i7 report uses. Costed at break-even
+// rates like everything here, which is why this is not the i7 report: that one
+// is at the client's rate and goes to the client. Their income is what was
+// billed (hours × the client rate), shown where the others show donations, and
+// their net is billed minus costs. Kept off the People tab for now, as asked.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { PROJECT_CF } from '@/lib/tsheets/i7report'
+import { PROJECT_CF, i7Invoice } from '@/lib/tsheets/i7report'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
+import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
+import { loadI7Assignments } from '@/lib/tsheets/report-data'
+import { rateFor, type Assignment } from '@/lib/tsheets/rates'
+import type { I7Entry } from '@/lib/tsheets/types'
 import { shiftMonth, RANGE_FLOOR } from '@/lib/tsheets/range'
 
 /** The sheet starts here, as the i7 report does: budgets and rates begin in 2026. */
@@ -44,10 +56,26 @@ export const TRACKED_PROJECTS = [
   { label: 'Africa', name: 'Hope for Africa', prepaid: false },
 ] as const
 
+/**
+ * The two billed rows, after the four, one per i7 invoice. Their label is the
+ * invoice i7Invoice returns. Not in TRACKED_PROJECTS on purpose: that list is
+ * also where donations are entered, and nobody donates to a client.
+ */
+export const BILLED_PROJECTS = [
+  { label: 'i7', name: 'i7' },
+  { label: 'MME', name: 'MME' },
+] as const
+
 export interface ProjectRow {
   label: string
   name: string
   prepaid: boolean
+  /**
+   * i7 or MME: a client billed by the hour. Its donation fields hold what was
+   * billed (hours × the client rate) and its net is billed minus costs. Kept
+   * off the People tab and the by-person exports.
+   */
+  billed: boolean
   /** Hours left at the end of the month before this one. Null when not prepaid. */
   carriedIn: number | null
   /** Hours bought during this month. Null when not prepaid. */
@@ -210,6 +238,39 @@ async function hoursByMonth(
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/** i7's entries and client rates over a stretch, read once for every window a caller needs. */
+interface BilledSource { entries: I7Entry[]; assignments: Assignment[] }
+
+async function loadBilled(supabase: Client, start: string, end: string): Promise<BilledSource> {
+  const [entries, assignments] = await Promise.all([
+    loadI7EntriesHere(supabase, start, end),
+    loadI7Assignments(supabase),
+  ])
+  return { entries, assignments }
+}
+
+/**
+ * One invoice's hours in a window, like hoursIn's buckets, plus what they
+ * billed: each person's hours at their client rate for the month the day falls
+ * in, the rule the i7 report bills by.
+ */
+function billedIn(
+  src: BilledSource, invoice: string, start: string, end: string, firstNameById: Map<string, string>,
+): Bucket & { billed: number } {
+  const out = { total: 0, byPerson: new Map<string, number>(), byId: new Map<string, number>(), billed: 0 }
+  for (const e of src.entries) {
+    if (e.date < start || e.date > end || i7Invoice(e.i7Code) !== invoice) continue
+    const hours = e.duration / 3600
+    out.total += hours
+    const who = firstNameById.get(e.personId) ?? 'Unknown'
+    out.byPerson.set(who, (out.byPerson.get(who) ?? 0) + hours)
+    out.byId.set(e.personId, (out.byId.get(e.personId) ?? 0) + hours)
+    out.billed += hours * rateFor(src.assignments, e.personId, e.date.slice(0, 7))
+  }
+  return out
+}
+
+
 /**
  * The report for a stretch of months, defaulting to one.
  *
@@ -337,6 +398,7 @@ export async function loadProjectTracking(
       label: p.label,
       name: p.name,
       prepaid: p.prepaid,
+      billed: false,
       carriedIn,
       boughtThisMonth: bought,
       remaining,
@@ -355,6 +417,37 @@ export async function loadProjectTracking(
         : round2((donated(p.label, inMonth) ?? 0) - (monthCost.employee + monthCost.contractor)),
     }
   })
+
+  // i7 and MME, after the four. One read of the i7 tree covers the three
+  // windows the row needs (the period, the year so far, last year's period).
+  const i7 = await loadBilled(supabase, [`${lastFrom}-01`, `${year}-01-01`].sort()[0], monthEnd(to))
+  for (const p of BILLED_PROJECTS) {
+    const here = billedIn(i7, p.label, `${from}-01`, monthEnd(to), firstNameById)
+    const ytdHere = billedIn(i7, p.label, `${year}-01-01`, monthEnd(to), firstNameById)
+    const monthCost = costOf(here.byId)
+    const ytdCost = costOf(ytdHere.byId)
+    for (const who of [...monthCost.unrated, ...ytdCost.unrated]) unratedAll.add(who)
+    rows.push({
+      label: p.label,
+      name: p.name,
+      prepaid: false,
+      billed: true,
+      carriedIn: null,
+      boughtThisMonth: null,
+      remaining: null,
+      workedThisMonth: round2(here.total),
+      // Off the People tab, as asked (September 2026).
+      byPerson: {},
+      yearToDate: round2(ytdHere.total),
+      sameMonthLastYear: round2(billedIn(i7, p.label, `${lastFrom}-01`, monthEnd(lastTo), firstNameById).total),
+      employeeCostThisMonth: monthCost.employee,
+      contractorCostThisMonth: monthCost.contractor,
+      totalCosts: round2(ytdCost.employee + ytdCost.contractor),
+      donationsThisMonth: round2(here.billed),
+      donationsYtd: round2(ytdHere.billed),
+      netThisMonth: round2(here.billed - (monthCost.employee + monthCost.contractor)),
+    })
+  }
 
   // One column per person who worked on anything this month, sorted like the
   // sheet: alphabetically.
@@ -423,6 +516,8 @@ export interface ProjectHistoryBlock {
   label: string
   name: string
   prepaid: boolean
+  /** i7 or MME: `donations` is what was billed, and `net` billed minus costs. */
+  billed: boolean
   months: ProjectMonthRow[]
 }
 
@@ -458,10 +553,11 @@ export async function loadProjectHistory(
   const gifts = (giftRows ?? []) as { project_label: string | null; month: string; amount_usd: number }[]
   const months = monthsOf(from, to)
 
-  return TRACKED_PROJECTS.map(p => ({
+  const four: ProjectHistoryBlock[] = TRACKED_PROJECTS.map(p => ({
     label: p.label,
     name: p.name,
     prepaid: p.prepaid,
+    billed: false,
     months: months.map(ym => {
       const byId = byProject.get(p.label)?.get(ym) ?? new Map<string, number>()
       let hours = 0, employeeCost = 0, contractorCost = 0
@@ -487,4 +583,31 @@ export async function loadProjectHistory(
       }
     }),
   }))
+
+  // i7 and MME: the i7 tree at break-even rates, and what each month billed.
+  const i7 = await loadBilled(supabase, `${from}-01`, monthEnd(to))
+  const billed: ProjectHistoryBlock[] = BILLED_PROJECTS.map(p => ({
+    label: p.label,
+    name: p.name,
+    prepaid: false,
+    billed: true,
+    months: months.map(ym => {
+      const here = billedIn(i7, p.label, `${ym}-01`, monthEnd(ym), new Map())
+      let employeeCost = 0, contractorCost = 0
+      for (const [id, h] of here.byId) {
+        const cost = h * (pay.get(id)?.beRate ?? 0)
+        if (kindById.get(id) === 'contractor') contractorCost += cost
+        else employeeCost += cost
+      }
+      return {
+        month: ym,
+        hours: round2(here.total),
+        employeeCost: round2(employeeCost),
+        contractorCost: round2(contractorCost),
+        donations: round2(here.billed),
+        net: round2(here.billed - (employeeCost + contractorCost)),
+      }
+    }),
+  }))
+  return [...four, ...billed]
 }

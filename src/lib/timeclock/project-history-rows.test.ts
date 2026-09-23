@@ -3,7 +3,9 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { historyRows, historyCsvRows, historyMonthHeading, historyText, historyTotal, HISTORY_NOTE } from './project-history-rows'
+import { historyRowName, historyRows, historyCsvRows, historyMonthHeading, historyText, historyTotal, HISTORY_NOTE } from './project-history-rows'
+import { peopleView } from './project-people'
+import type { ProjectRow } from './projects'
 import type { ProjectHistoryBlock, ProjectMonthRow } from './projects'
 
 const month = (ym: string, over: Partial<ProjectMonthRow> = {}): ProjectMonthRow => ({
@@ -11,7 +13,7 @@ const month = (ym: string, over: Partial<ProjectMonthRow> = {}): ProjectMonthRow
 })
 
 const AAAF: ProjectHistoryBlock = {
-  label: 'AAAF', name: 'AskAnAdventistFriend.com', prepaid: false,
+  label: 'AAAF', name: 'AskAnAdventistFriend.com', prepaid: false, billed: false,
   months: [
     month('2026-01', { hours: 914.13, employeeCost: 35382.46, contractorCost: 8235.38, donations: 12104, net: -31513.84 }),
     month('2026-02', { hours: 921.4, employeeCost: 33215.07, contractorCost: 10707.1, donations: null, net: -43922.17 }),
@@ -19,7 +21,7 @@ const AAAF: ProjectHistoryBlock = {
 }
 
 const CHURCH: ProjectHistoryBlock = {
-  label: 'GP church', name: 'Grants Pass Church', prepaid: true,
+  label: 'GP church', name: 'Grants Pass Church', prepaid: true, billed: false,
   months: [month('2026-01', { hours: 1.5, employeeCost: 96.3 }), month('2026-02')],
 }
 
@@ -107,5 +109,37 @@ describe('historyCsvRows: the screen, as a spreadsheet', () => {
 
   it('is empty when there is nothing to export', () => {
     expect(historyCsvRows([])).toEqual([])
+  })
+})
+
+describe('i7 and MME, the billed rows (September 2026)', () => {
+  const I7: ProjectHistoryBlock = {
+    label: 'i7', name: 'i7', prepaid: false, billed: true,
+    months: [month('2026-01', { hours: 508.58, employeeCost: 27265.85, contractorCost: 3196.78, donations: 40000, net: 9537.37 })],
+  }
+
+  it('has all five rows, the income one called Billed', () => {
+    expect(historyRows(I7)).toEqual(['hours', 'employeeCost', 'contractorCost', 'donations', 'net'])
+    expect(historyRowName('donations', I7)).toBe('Billed')
+    expect(historyRowName('donations', AAAF)).toBe('Donations')
+  })
+
+  it('says billed in the CSV, on its title line and on the row', () => {
+    const rows = historyCsvRows([I7])
+    expect(rows.map(r => r[0])).toContain('i7 (billed)')
+    expect(rows.find(r => r[0] === 'Billed')?.slice(1)).toEqual(['$40,000.00', '$40,000.00'])
+    expect(rows.find(r => r[0] === 'Net')?.slice(1)).toEqual(['$9,537.37', '$9,537.37'])
+  })
+
+  it('stays off the People tab, and People adds up only what it shows', () => {
+    const row = (o: Partial<ProjectRow>): ProjectRow => ({
+      label: 'x', name: 'x', prepaid: false, billed: false, carriedIn: null, boughtThisMonth: null, remaining: null,
+      workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0,
+      contractorCostThisMonth: 0, totalCosts: 0, donationsThisMonth: null, donationsYtd: null, netThisMonth: null, ...o,
+    })
+    const view = peopleView({ rows: [row({ label: 'AAAF', workedThisMonth: 10, yearToDate: 50 }), row({ label: 'i7', billed: true, workedThisMonth: 400, yearToDate: 3000 })] })
+    expect(view.rows.map(r => r.label)).toEqual(['AAAF'])
+    expect(view.workedThisMonth).toBe(10)
+    expect(view.yearToDate).toBe(50)
   })
 })

@@ -16,7 +16,7 @@
  */
 
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
-import { historyRows, historyText, HISTORY_NOTE, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
+import { historyRowName, historyRows, historyText, HISTORY_NOTE, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const shortMonth = (ym: string) => MON[Number(ym.slice(5, 7)) - 1]
@@ -70,6 +70,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
                 <td className="px-3 py-2.5 sticky left-0 bg-[#f6f7f9] z-10 border-r border-slate-200" colSpan={1}>
                   <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap">{b.name}</span>
                   {b.prepaid && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-tn-teal">prepaid</span>}
+                  {b.billed && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-[#B8790A]">billed</span>}
                 </td>
                 <td colSpan={months.length} className="bg-[rgba(1,35,88,0.03)]" />
               </tr>
@@ -80,7 +81,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
                   {b.months.map(m => (
                     <td
                       key={m.month}
-                      className={`${cell} font-semibold ${m.net == null ? '' : m.net < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}
+                      className={`${cell} font-semibold ${m.net == null || m.net === 0 ? '' : m.net < 0 ? 'text-[#c2410c]' : 'text-[#1E9E6A]'}`}
                     >
                       {historyText('net', m)}
                     </td>
@@ -89,7 +90,7 @@ export function ProjectFullHistory({ blocks, year }: { blocks: ProjectHistoryBlo
               ) : (
                 <Row
                   key={key}
-                  name={HISTORY_ROW_NAMES[key]}
+                  name={historyRowName(key, b)}
                   cells={b.months.map(m => historyText(key, m))}
                 />
               ))}

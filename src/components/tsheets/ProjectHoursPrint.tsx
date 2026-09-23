@@ -17,6 +17,7 @@
  */
 
 import type { ProjectTracking } from '@/lib/timeclock/projects'
+import { peopleView } from '@/lib/timeclock/project-people'
 
 const INK = '#012358'
 const MUTED = '#64748b'
@@ -55,7 +56,10 @@ export function ProjectHoursPrint(
 ) {
   const year = data.month.slice(0, 4)
   const lastYear = String(Number(year) - 1)
-  const { rows, totals } = data
+  const { totals } = data
+  // i7 and MME are on the client sheet and not on the by-person one (September 2026).
+  const onPeople = peopleView(data)
+  const rows = type === 'internal' ? onPeople.rows : data.rows
   const people = [...data.people].sort((a, b) => a.localeCompare(b))
 
   const given = (pick: (r: typeof rows[number]) => number | null) => {
@@ -99,10 +103,10 @@ export function ProjectHoursPrint(
               <th style={th}>Hours</th>
               <th style={th}>Employee costs</th>
               <th style={th}>Contractor costs</th>
-              <th style={th}>Donations</th>
+              <th style={th}>Donations / billed</th>
               <th style={th}>Net</th>
               <th style={th}>Hours {year}</th>
-              <th style={th}>Donations {year}</th>
+              <th style={th}>Donations / billed {year}</th>
               <th style={th}>Costs {year}</th>
               <th style={th}>{lastYear} same period</th>
             </tr>
@@ -110,7 +114,14 @@ export function ProjectHoursPrint(
           <tbody>
             {rows.map(r => (
               <tr key={r.label}>
-                <td style={tdL}>{r.name}</td>
+                <td style={tdL}>
+                  {r.name}
+                  {(r.prepaid || r.billed) && (
+                    <span style={{ marginLeft: 6, fontSize: 7, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: r.billed ? '#B8790A' : TEAL }}>
+                      {r.billed ? 'billed' : 'prepaid'}
+                    </span>
+                  )}
+                </td>
                 <td style={td}>{hours(r.carriedIn)}</td>
                 <td style={td}>{hours(r.boughtThisMonth)}</td>
                 <td style={td}>{hours(r.remaining)}</td>
@@ -169,7 +180,7 @@ export function ProjectHoursPrint(
             <tr>
               <td style={footL}>Total hours</td>
               {people.map(p => <td key={p} style={foot}>{hours(totals.byPerson[p] ?? 0)}</td>)}
-              <td style={foot}>{hours(totals.workedThisMonth)}</td>
+              <td style={foot}>{hours(onPeople.workedThisMonth)}</td>
             </tr>
           </tfoot>
         </table>
@@ -180,6 +191,8 @@ export function ProjectHoursPrint(
         the bank. Nothing here is billed. Grants Pass Church and School buy hours in advance at $90,
         which is what the balance columns track; the other two have no allowance, so those cells are
         blank rather than zero. A blank donation means nobody has entered one, not that nothing came in.
+        For i7 and MME, billed is hours times the client rate, as on the i7 invoices, and net is billed
+        minus costs.
       </p>
     </div>
   )

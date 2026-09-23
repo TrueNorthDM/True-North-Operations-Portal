@@ -60,7 +60,7 @@ function build(
 ): ProjectRow {
   const c = costs(byPerson)
   return {
-    label, name, prepaid,
+    label, name, prepaid, billed: false,
     carriedIn: bal.carriedIn, boughtThisMonth: bal.bought, remaining: bal.remaining,
     workedThisMonth: r2(Object.values(byPerson).reduce((s, h) => s + h, 0)),
     byPerson, yearToDate, sameMonthLastYear,

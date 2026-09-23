@@ -57,7 +57,7 @@ const block = (
   label: string, name: string, prepaid: boolean,
   rows: [number, number, number, number | null][],
 ): ProjectHistoryBlock => ({
-  label, name, prepaid,
+  label, name, prepaid, billed: false,
   months: MONTHS_2026.map((month, i) => {
     const [hours, employeeCost, contractorCost, donations] = rows[i] ?? [0, 0, 0, null]
     return {
