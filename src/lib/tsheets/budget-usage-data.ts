@@ -4,6 +4,8 @@
 // own left-nav sections.
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { RANGE_FLOOR } from '@/lib/tsheets/range'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { loadCompensationByPerson, loadAssignmentRates, loadAuditLog } from '@/lib/hr/compensation'
 import { getCurrentProfile } from '@/lib/auth/role'
@@ -73,9 +75,15 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       // contractor whose hours are added by hand: no account, no row here, and
       // nowhere to put the rate their invoice is priced at.
       const withHire = await supabase.from('people').select(WITH_HIRE).eq('status', 'active').order('full_name')
-      return withHire.error
+      const active = withHire.error
         ? await supabase.from('people').select(BASE).eq('status', 'active').order('full_name')
         : withHire
+      // And anyone inactive who still logged time since the rates began: their
+      // hours are in the reports, so their rates have to be settable. Tina could
+      // not give Kim and Lauren a break-even rate in September 2026 because the
+      // tab listed only active people, and their cost counted as nothing.
+      const inactive = (await withLoggedTime(supabase, WITH_HIRE, BASE)) as unknown as NonNullable<typeof active.data>
+      return { ...active, data: [...(active.data ?? []), ...inactive] }
     })(),
     // Rates likewise: privileged read, merged back in below.
     loadAssignmentRates({ activeOnly: true }).then(rows => ({
@@ -197,6 +205,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       projects: (p as { i7_projects?: string[] | null }).i7_projects ?? [],
       tsheetsUserId: (p.tsheets_user_id as number | null) ?? null,
       tsheetsOnly: p.tsheets_only ?? false,
+      inactive: (p as { inactive?: boolean }).inactive === true,
       assignments: (assignmentsByPerson.get(p.id) ?? []).map(a => ({
         id: a.id,
         clientId: a.client_id,
@@ -244,4 +253,30 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     publishingTargets: pubTargetsRaw ?? [],
     publishingAudit: pubAuditRaw ?? [],
   }
+}
+
+/**
+ * Inactive people with at least one time entry since the rates began
+ * (RANGE_FLOOR), for the Rates & Costs tab. Marked `inactive: true`.
+ *
+ * The existence check reads tc_entries with the privileged client: the time
+ * clock's own rule would show an admin only the hours they approve, and this
+ * asks "did this person log anything", not "what may I see".
+ */
+async function withLoggedTime(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  withHire: string,
+  base: string,
+): Promise<Record<string, unknown>[]> {
+  let res = await supabase.from('people').select(withHire).eq('status', 'inactive').order('full_name')
+  if (res.error) res = await supabase.from('people').select(base).eq('status', 'inactive').order('full_name')
+  const rows = (res.data ?? []) as unknown as ({ id: string } & Record<string, unknown>)[]
+  if (!rows.length) return []
+  const { data: logged } = await createAdminClient()
+    .from('tc_entries').select('person_id')
+    .in('person_id', rows.map(r => r.id))
+    .gte('entry_date', `${RANGE_FLOOR}-01`)
+    .limit(20000)
+  const ids = new Set(((logged ?? []) as { person_id: string }[]).map(r => r.person_id))
+  return rows.filter(r => ids.has(r.id)).map(r => ({ ...r, inactive: true }))
 }

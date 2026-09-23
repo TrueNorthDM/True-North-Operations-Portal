@@ -188,11 +188,11 @@ export function ProjectHoursPrint(
 
       <p style={{ fontSize: 8.5, color: MUTED, marginTop: 14, lineHeight: 1.5 }}>
         Costs are hours × each person&rsquo;s break-even rate: what a project consumed, not what left
-        the bank. Nothing here is billed. Grants Pass Church and School buy hours in advance at $90,
-        which is what the balance columns track; the other two have no allowance, so those cells are
-        blank rather than zero. A blank donation means nobody has entered one, not that nothing came in.
+        the bank. The donation funded projects are not billed; i7 and MME are. Grants Pass Church and School buy hours in advance at $90,
+        which is what the balance columns track; the others have no allowance, so those cells are
+        blank rather than zero. A blank donation means nothing came in, unless the month has not ended yet.
         For i7 and MME, billed is hours times the client rate, as on the i7 invoices, and net is billed
-        minus costs.
+        minus employee and contractor costs.
       </p>
     </div>
   )

@@ -105,8 +105,10 @@ export async function GET(request: Request) {
 
     const pdf = await page.pdf({
       format: 'A4',
-      // Wide tables need landscape: per person, and a year of months.
-      landscape: type === 'internal' || type === 'history',
+      // Wide tables need landscape: per person, a year of months, and every
+      // Project Hours sheet (its client table is thirteen columns, and printed
+      // portrait it was cut off: Tina, September 2026).
+      landscape: type === 'internal' || type === 'history' || report === 'projects',
       printBackground: true,
       // Content flows naturally (no forced section breaks), and Puppeteer applies
       // a real margin to EVERY page + a footer/page-number line, so the page

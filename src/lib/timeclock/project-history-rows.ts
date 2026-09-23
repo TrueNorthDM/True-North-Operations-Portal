@@ -97,7 +97,7 @@ export const HISTORY_NOTE =
   + 'same figure on the tracking sheet by the Grants Pass school-website and church-invoice lines: '
   + 'those sit on the Grants Pass rows here as hours bought in advance, so counting them again '
   + 'against these two projects would count them twice. For i7 and MME, Billed is hours times the '
-  + 'client rate, as on the i7 invoices, and Net is billed minus costs.'
+  + 'client rate, as on the i7 invoices, and Net is billed minus employee and contractor costs.'
 
 /**
  * The table as a spreadsheet, laid out the way the screen lays it out.

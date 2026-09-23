@@ -43,6 +43,8 @@ export interface PersonWithAssignments {
   /** Null for somebody who bills hours without a TSheets account. */
   tsheetsUserId: number | null
   tsheetsOnly: boolean
+  /** No longer active, listed because they logged time since the rates began. */
+  inactive?: boolean
   assignments: {
     id: number
     clientId: number
@@ -319,6 +321,9 @@ export function PeopleTab({ people, allClients }: Props) {
                     {initialsOf(p.name)}
                   </span>
                   <span className="text-[14px] font-bold text-tn-ink truncate">{p.name}</span>
+                  {p.inactive && (
+                    <span title="No longer active, listed because they logged time this year" className="shrink-0 rounded-md bg-[var(--chip-neutral-bg)] px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[var(--chip-neutral-fg)]">Inactive</span>
+                  )}
                 </span>
 
                 {/* Team */}

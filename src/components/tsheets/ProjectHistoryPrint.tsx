@@ -113,7 +113,7 @@ export function ProjectHistoryPrint(
       )}
 
       <p style={{ fontSize: 8.5, color: MUTED, marginTop: 14, lineHeight: 1.5 }}>
-        {`${HISTORY_NOTE} Costs are hours × each person’s break-even rate: what a project consumed, not what left the bank. A blank donation means nobody has entered one, not that nothing came in.`}
+        {`${HISTORY_NOTE} Costs are hours × each person’s break-even rate: what a project consumed, not what left the bank. A blank donation means nothing came in, unless the month has not ended yet.`}
       </p>
     </div>
   )
