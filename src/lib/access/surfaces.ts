@@ -148,14 +148,14 @@ export const SURFACES: readonly Surface[] = [
     label: 'Level 2, the whole company list, read-only',
     group: 'People directory',
     defaults: PRIV,
-    note: 'In the Directory, widens the People list from their own teams to everyone, the same list an admin sees, and adds a Teams tab covering every team with who can open which tool. All of it read-only, and still only their OWN card opens. No Emails, Rates & Costs or Access log. My Team stays scoped to their own teams for everyone: that page answers "who do I work with", not "who works here".',
+    note: 'In the Directory, widens the People list from their own teams to everyone, the same list an admin sees, and adds a Teams tab covering every team with who can open which tool. All of it read-only, and still only their OWN card opens. No Emails, Rates & Costs, Access log or Portal access. My Team stays scoped to their own teams for everyone: that page answers "who do I work with", not "who works here".',
   },
   {
     key: 'dir-full',
     label: 'Level 3, the full directory, and edit it',
     group: 'People directory',
     defaults: PRIV,
-    note: 'Everyone’s card, every team, all tabs (Emails, Teams, Rates & Costs, Access log), the sensitive fields (salaries, internal rates, home address, date of birth), and the ability to change them.',
+    note: 'Everyone’s card, every team, all tabs (Emails, Teams, Rates & Costs, Access log, Portal access), the sensitive fields (salaries, internal rates, home address, date of birth), and the ability to change them. Portal access is who can sign in: inviting people, sending the invitation again and revoking access.',
   },
 
   // ── My Work Report ────────────────────────────────────────────────────────

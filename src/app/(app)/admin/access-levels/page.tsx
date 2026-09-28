@@ -110,9 +110,10 @@ export default async function AccessLevelsPage() {
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Access levels</h1>
         <p className="mt-1.5 text-muted leading-relaxed">
           The four access levels, what each one can reach, and who has it today.
-          Anyone with a <strong className="font-semibold text-tn-ink">@goodnewsadvocates.org</strong> or{' '}
-          <strong className="font-semibold text-tn-ink">@truenorthdigitalmarketing.com</strong> address can sign in on their own,
-          and starts as a <strong className="font-semibold text-tn-ink">User</strong>. Set their level here afterwards.
+          People sign in by invitation: an admin invites them from the Directory&apos;s{' '}
+          <strong className="font-semibold text-tn-ink">Portal access</strong> tab, they sign in with their{' '}
+          <strong className="font-semibold text-tn-ink">@goodnewsadvocates.org</strong> address, and start as a{' '}
+          <strong className="font-semibold text-tn-ink">User</strong>. Set their level here afterwards.
         </p>
         <div className="mt-3 flex items-center gap-2.5 flex-wrap">
           <Link

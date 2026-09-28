@@ -12,11 +12,12 @@ import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
 import { RatesCostsTab } from './RatesCostsTab'
 import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
+import { PortalAccessTab } from './PortalAccessTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, Account } from '@/lib/directory/people-types'
 import type { PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
-type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access'
+type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access' | 'portal'
 
 export interface TeamOption { id: string; name: string; key: string; color: string }
 export interface ProjectOption { id: string; name: string; logo: string | null }
@@ -55,6 +56,7 @@ export function DirectoryTabs({
     { key: 'teams', label: 'Teams', count: teamCards.length },
     { key: 'rates', label: 'Rates & Costs' },
     { key: 'access', label: 'Access log', count: accessLog.length },
+    { key: 'portal', label: 'Portal access', count: activePeople.length },
   ]
 
   return (
@@ -166,6 +168,10 @@ export function DirectoryTabs({
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
+      {/* Two-step status joins this list when two-step sign-in ships (p4-2fa). */}
+      {tab === 'portal' && (
+        <PortalAccessTab people={activePeople} twoStep={null} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+      )}
 
       {modal && (
         <PersonModal
