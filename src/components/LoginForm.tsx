@@ -81,7 +81,7 @@ export function LoginForm() {
 
       <div className="pt-3 text-left">
         <label htmlFor="email" style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800, letterSpacing: '.06em' }} className="mb-2 block text-center text-xs uppercase text-tn-ink">
-          Work email
+          Your GNA email
         </label>
         <input
           id="email"
