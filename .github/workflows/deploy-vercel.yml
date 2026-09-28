@@ -1,0 +1,33 @@
+# Push to main deploys production. The Vercel Git integration stayed behind with the
+# old Level-Up-Finance repository, so this workflow uploads each commit to the same
+# Vercel project instead. Vercel builds it with the project's own environment variables.
+# Phase 4 of the migration points this workflow at the new server.
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, in push order, so an older commit never lands after a newer one.
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: team_MGtTHRyqww5d9HxsLNDe3tUU
+      VERCEL_PROJECT_ID: prj_2uLEz5NtJpXpO1azEnsiwZYOjr6S
+      VERCEL_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@53 deploy --prod --yes

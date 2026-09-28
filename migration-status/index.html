@@ -277,15 +277,15 @@
     <a class="widget-navy is-hero" href="#timeline" id="w-progress" aria-describedby="w-progress-sub" aria-label="Progress: see every step" title="See every step">
       <span class="w-label">Progress</span>
       <span class="w-big" id="pct">0%</span>
-      <span class="w-sub" id="w-progress-sub">5 of 57 steps done</span>
+      <span class="w-sub" id="w-progress-sub">6 of 57 steps done</span>
       <div class="bar big" role="progressbar" aria-label="Move progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><span id="bar-fill"></span></div>
       <div class="pips" id="pips" aria-hidden="true"></div>
       <span class="w-info" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r="0.6" fill="currentColor"/></svg></span>
     </a>
     <div class="side">
-      <a class="widget-navy" href="#phase-0" id="w-now" aria-label="Happening now: go to this phase" title="Go to this phase">
+      <a class="widget-navy" href="#phase-1" id="w-now" aria-label="Happening now: go to this phase" title="Go to this phase">
         <span class="w-label">Happening now</span>
-        <span class="w-title" id="now-title">Phase 0 · Getting ready</span>
+        <span class="w-title" id="now-title">Phase 1 · Move the code to True North</span>
         <span class="w-sub" id="now-sub">The portal's code moves to an account True North owns.</span>
         <span class="w-info" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r="0.6" fill="currentColor"/></svg></span>
       </a>
@@ -397,22 +397,22 @@
     </div>
   </section>
 <section aria-labelledby="decisions">
-    <div class="section-head"><h2 id="decisions">Decisions</h2><p>Each one changes the work that follows. The open ones have a recommendation.</p></div>
+    <div class="section-head"><h2 id="decisions">Decisions</h2><p>Each one changes the work that follows. All six were approved on 23 September 2026.</p></div>
     <div class="decisions">
       <div class="card decision">
-        <h3><span class="n">1</span>How to leave Supabase <span class="chip open">Open</span></h3>
+        <h3><span class="n">1</span>How to leave Supabase <span class="chip ok">Decided</span></h3>
         <p>Supabase is two things for the portal: a PostgreSQL database, and a layer on top that handles login, every read and write from the screens (563 calls in 99 files), the 111 security rules and file uploads. The two can be separated.</p>
         <ul>
           <li><b>The database</b> moves to ScalaHosting's own PostgreSQL service, managed from SPanel with ScalaHosting's backups.</li>
           <li><b>The layer on top</b> is open source. The same software runs on the VPS, connected to that database, so the portal works as it does today with no Supabase account behind it.</li>
         </ul>
         <p>Replacing the layer instead means rewriting those 563 calls and moving the 111 rules into code: weeks of work and retesting, not days. That path is compared under "If the server can't run it" below.</p>
-        <p class="rec"><b>Recommended</b>ScalaHosting PostgreSQL for the data, open-source Supabase services on the VPS for login, data access and files.</p>
+        <p class="rec agreed"><b>Agreed</b>ScalaHosting PostgreSQL for the data, open-source Supabase services on the VPS for login, data access and files.</p>
       </div>
       <div class="card decision">
-        <h3><span class="n">2</span>What ScalaHosting must confirm, and the server size <span class="chip open">Open</span></h3>
+        <h3><span class="n">2</span>What ScalaHosting must confirm, and the server size <span class="chip ok">Decided</span></h3>
         <p>SPanel runs Node.js apps and PostgreSQL, and the VPS comes with full root access. The Supabase services run in Docker and need PostgreSQL 15 or newer, permission to create roles, and the <code>pgcrypto</code> and <code>uuid-ossp</code> extensions. They use about 2 GB of RAM, and the portal with its PDF exports about 2 GB more.</p>
-        <p class="rec"><b>Recommended</b>Ask ScalaHosting whether Docker is allowed on this SPanel VPS, which PostgreSQL version SPanel installs, and whether we have superuser on it. Size the VPS at 4 vCPU and 8 GB RAM at least. If any answer is no, take the Firebase path.</p>
+        <p class="rec agreed"><b>Agreed</b>Ask ScalaHosting whether Docker is allowed on this SPanel VPS, which PostgreSQL version SPanel installs, and whether we have superuser on it. Size the VPS at 4 vCPU and 8 GB RAM at least. If any answer is no, take the Firebase path.</p>
       </div>
       <div class="card decision">
         <h3><span class="n">3</span>A more robust login, by invitation <span class="chip ok">Decided</span></h3>
@@ -427,19 +427,19 @@
         <p class="rec agreed"><b>Agreed</b>Invitation only, Google sign-in, 6‑digit code alongside the link, and two-step sign-in for everyone. No domain restriction and no approval needed from IT. It ships on the current portal, before the move.</p>
       </div>
       <div class="card decision">
-        <h3><span class="n">4</span>The addresses on truenorthportal.online <span class="chip open">Open</span></h3>
+        <h3><span class="n">4</span>The addresses on truenorthportal.online <span class="chip ok">Decided</span></h3>
         <p>The domain carries the portal's own name, so the portal can live at its root. The data service needs an address of its own, and a test address is used before the move.</p>
-        <p class="rec"><b>Recommended</b><code>truenorthportal.online</code> for the portal (with <code>www</code> redirecting to it), <code>db.truenorthportal.online</code> for the data service, <code>staging.truenorthportal.online</code> for testing.</p>
+        <p class="rec agreed"><b>Agreed</b><code>truenorthportal.online</code> for the portal (with <code>www</code> redirecting to it), <code>db.truenorthportal.online</code> for the data service, <code>staging.truenorthportal.online</code> for testing.</p>
       </div>
       <div class="card decision">
-        <h3><span class="n">5</span>Who sends the login emails <span class="chip open">Open</span></h3>
+        <h3><span class="n">5</span>Who sends the login emails <span class="chip ok">Decided</span></h3>
         <p>Today Supabase sends them. After the move the server needs a real mail account, or nobody can sign in with the code or the link.</p>
-        <p class="rec"><b>Recommended</b>A mailbox <code>portal@truenorthportal.online</code> created in SPanel, with its SPF, DKIM and DMARC records added in Cloudflare so the emails don't land in spam.</p>
+        <p class="rec agreed"><b>Agreed</b>A mailbox <code>portal@truenorthportal.online</code> created in SPanel, with its SPF, DKIM and DMARC records added in Cloudflare so the emails don't land in spam.</p>
       </div>
       <div class="card decision">
-        <h3><span class="n">6</span>The GitHub account that receives the code <span class="chip open">Open</span></h3>
+        <h3><span class="n">6</span>The GitHub account that receives the code <span class="chip ok">Decided</span></h3>
         <p>A personal account or an organization. An organization is better for a company: people come and go without anyone sharing a login.</p>
-        <p class="rec"><b>Recommended</b>A True North organization on GitHub, with you as owner.</p>
+        <p class="rec agreed"><b>Agreed</b>A True North organization on GitHub, with you as owner.</p>
       </div>
     </div>
   </section>
@@ -525,12 +525,19 @@
         ["p0-plan", "The full migration plan is drafted"],
         ["p0-approve", "Claude's recommendations are analysed and approved", "The open decisions in the plan: how to leave Supabase, the server size, the addresses, the sign-in mailbox and the GitHub organization."]
       ] },
-    { "n": 1, "title": "Move the code to True North", "when": "About an hour", "summary": "The portal's code moves to an account True North owns, with its full history.",
+    { "n": 1, "title": "Move the code to True North", "when": "A few days", "summary": "The portal's code and the tools in progress move to an account True North owns, with their full history.",
       "steps": [
         ["p1-org", "True North's GitHub organization is created"],
-        ["p1-transfer", "The code is transferred to it"],
+        ["p1-2fa", "Two-step sign-in is required for everyone in it"],
+        ["p1-transfer", "The portal's code moves to it, with its full history"],
+        ["p1-vercel", "The current portal keeps updating from its new home"],
         ["p1-remote", "Work continues from the new account"],
-        ["p1-token", "Old access to the code is closed"]
+        ["p1-token", "The old copy is archived and old access is closed"],
+        ["p1-jeannette-list", "Jeannette's tools in progress are listed"],
+        ["p1-jeannette-move", "Jeannette's tools move to the organization"],
+        ["p1-accounts", "Jeannette, Wendy and Dave get True North GitHub accounts"],
+        ["p1-invite", "They join the organization with those accounts only"],
+        ["p1-jeannette-key", "Jeannette's Claude gets its own key to the code she works on"]
       ] },
     { "n": 2, "title": "Connect the new address", "when": "A few hours, up to 2 days", "summary": "truenorthportal.online is set up on Cloudflare, which keeps the address fast and protected.",
       "steps": [
