@@ -18,6 +18,7 @@ import { requestOrigin } from '@/lib/auth/origin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { renderInvite } from '@/lib/email/invite'
 import { sendEmail } from '@/lib/email/resend'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { PersonRow } from '@/lib/types/database.types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
@@ -400,5 +401,27 @@ export async function deletePerson(id: string) {
   if (error) throw new Error(error.message)
   // Removed from the Directory: no person, no access.
   await endSessions((before as { profile_id?: string | null } | null)?.profile_id)
+  revalidate()
+}
+
+/**
+ * Reset a person's two-step sign-in (plan step p4-2fa): for a lost or replaced
+ * phone. Their authenticator app is removed and their sessions end; at their next
+ * sign-in they set it up again with a new QR code.
+ */
+export async function resetTwoStep(id: string): Promise<void> {
+  await requireAdmin()
+  const supabase = await createClient()
+  const { data: row } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
+  const profileId = (row as { profile_id?: string | null } | null)?.profile_id
+  if (!profileId) throw new Error('This person has no account yet.')
+  const admin = createAdminClient()
+  const { data, error } = await admin.auth.admin.mfa.listFactors({ userId: profileId })
+  if (error) throw new Error(error.message)
+  for (const f of data?.factors ?? []) {
+    const { error: delErr } = await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId: profileId })
+    if (delErr) throw new Error(delErr.message)
+  }
+  await endSessions(profileId)
   revalidate()
 }

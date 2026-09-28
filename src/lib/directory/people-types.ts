@@ -100,6 +100,7 @@ export interface PersonView {
   lastAccessAt: string | null // most recent portal access (from access_log)
   lastAccessAgent: string | null
   portalInvitedAt: string | null // invited to the portal (migration 089); null = cannot sign in
+  twoStepSince?: string | null // two-step sign-in set up since (p4-2fa); null = not yet; absent = not loaded
 
   history: string | null
   milestones: PersonMilestone[] // career timeline (joined, promotions, role changes)

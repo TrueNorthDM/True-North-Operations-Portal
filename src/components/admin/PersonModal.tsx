@@ -9,10 +9,11 @@
 import { useMemo, useState, useTransition, type ChangeEvent, type ReactNode } from 'react'
 import { teamTie, leadsTeam, TIE_RANK, type TeamTie } from '@/lib/directory/team-of'
 import { useRouter } from 'next/navigation'
-import { createPerson, updatePerson, deletePerson, type PersonInput } from '@/app/(app)/admin/people/actions'
+import { createPerson, updatePerson, deletePerson, resetTwoStep, type PersonInput } from '@/app/(app)/admin/people/actions'
 import { uploadPersonAttachment, deletePersonAttachment, signedAttachmentUrl } from '@/app/(app)/admin/people/attachment-actions'
 import { Avatar } from '@/components/Avatar'
 import { PortalAccessControl } from './PortalAccessControl'
+import { TwoStepControl } from './TwoStepControl'
 import { Select } from '@/components/ui/Select'
 import { TenureBadge } from '@/components/TenureBadge'
 import { tenureSince, milestoneOf, formatTenure } from '@/lib/tenure'
@@ -398,6 +399,14 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
           <SectionTitle>Login &amp; access</SectionTitle>
           <div className="flex flex-col gap-[13px]">
             {item('Portal access', <PortalAccessControl p={p} />)}
+            {p.twoStepSince !== undefined && item('Two-step sign-in', (
+              <TwoStepControl
+                name={p.full_name}
+                state={!p.accountId ? 'no-account' : p.twoStepSince ? 'on' : 'not-set-up'}
+                since={p.twoStepSince}
+                reset={() => resetTwoStep(p.id)}
+              />
+            ))}
             {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
             {item('True North', link(p.emails.trueNorth))}
             {item('GoodNews', link(p.emails.goodnews))}

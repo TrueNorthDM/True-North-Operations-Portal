@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import { signOut } from '@/app/auth/actions'
 import { Avatar } from '@/components/Avatar'
 
-export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false, canSettings = false }: {
+export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false, canSettings = false, twoStepSetup = false }: {
   userEmail: string | null
   userName?: string | null
   avatarUrl?: string | null
@@ -29,6 +29,8 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
   startOpen?: boolean
   /** May reach Settings: its row appears in the menu. */
   canSettings?: boolean
+  /** No authenticator app yet: offer to set up two-step sign-in (p4-2fa). */
+  twoStepSetup?: boolean
 }) {
   // Name for the avatar initials, the person's name, else the email local part.
   const initialsName = userName ?? (userEmail ? userEmail.split('@')[0].replace(/[._-]+/g, ' ') : null)
@@ -117,6 +119,17 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
             My Team
           </Link>
+          {twoStepSetup && (
+            <Link
+              href="/auth/two-step/setup"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-tn-teal font-semibold hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100 focus:outline-none focus-visible:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M12 8.5 9.5 9.6v2.1c0 1.6 1.1 2.9 2.5 3.3 1.4-.4 2.5-1.7 2.5-3.3V9.6Z" /></svg>
+              Set up two-step sign-in
+            </Link>
+          )}
           {canSettings && (
             <Link
               href="/settings"

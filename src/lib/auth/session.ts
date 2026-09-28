@@ -33,6 +33,8 @@ import { loadCurrentPerson, type CurrentPerson } from '@/lib/directory/current-p
 export interface SessionUser {
   id: string
   email: string | null
+  /** 'aal2' once the second step was given this session (two-step sign-in, p4-2fa). */
+  aal: string | null
 }
 
 /** The signed-in user for this request, or null. Asked once, however many callers ask. */
@@ -41,7 +43,7 @@ export const getSessionUser = cache(async function getSessionUser(): Promise<Ses
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims
   if (!claims?.sub) return null
-  return { id: claims.sub, email: typeof claims.email === 'string' ? claims.email : null }
+  return { id: claims.sub, email: typeof claims.email === 'string' ? claims.email : null, aal: typeof claims.aal === 'string' ? claims.aal : null }
 })
 
 /**

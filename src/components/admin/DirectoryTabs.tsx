@@ -49,6 +49,11 @@ export function DirectoryTabs({
   // Inactive people live only on the People tab; every other surface (Emails,
   // Teams, the person modal's manager picker) sees actives only.
   const activePeople = people.filter(p => p.status === 'active')
+  // Two-step sign-in by person, once it is loaded (migration 090); null leaves
+  // the column out of the Portal access tab.
+  const twoStep = people.some(p => p.twoStepSince !== undefined)
+    ? Object.fromEntries(people.filter(p => p.accountId).map(p => [p.id, p.twoStepSince ? 'on' as const : 'none' as const]))
+    : null
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'people', label: 'People', count: people.length },
@@ -168,9 +173,8 @@ export function DirectoryTabs({
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
-      {/* Two-step status joins this list when two-step sign-in ships (p4-2fa). */}
       {tab === 'portal' && (
-        <PortalAccessTab people={activePeople} twoStep={null} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+        <PortalAccessTab people={activePeople} twoStep={twoStep} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
       )}
 
       {modal && (

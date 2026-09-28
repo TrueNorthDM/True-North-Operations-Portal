@@ -70,7 +70,7 @@ export function Sidebar({
 }: {
   rail: ResolvedEntry[]
   /** The person signed in (or previewed), for the avatar at the foot of the rail. */
-  user: { email: string | null; name: string | null; avatarUrl: string | null }
+  user: { email: string | null; name: string | null; avatarUrl: string | null; twoStepSetup?: boolean }
   /** Settings is a row of the avatar menu, for whoever may reach it. */
   canSettings?: boolean
   /** Design check only: the account menu open. */
@@ -183,7 +183,7 @@ export function Sidebar({
           )}
         </nav>
         <div className="mt-auto pb-1.5 flex justify-center">
-          <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} canSettings={canSettings} />
+          <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} canSettings={canSettings} twoStepSetup={user.twoStepSetup} />
         </div>
       </div>
 

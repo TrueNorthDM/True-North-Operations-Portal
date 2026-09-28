@@ -22,6 +22,7 @@ import { TOOLS, TOOL_KEYS } from '@/lib/access/tools'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadInvitesByPerson } from '@/lib/directory/invites'
+import { loadTwoStepByAccount } from '@/lib/auth/two-step'
 
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
@@ -101,6 +102,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
 
   const people = (pRows ?? []) as unknown as PRow[]
   const invites = await loadInvitesByPerson(supabase)
+  // Two-step sign-in by account (migration 090); null before it runs, and the
+  // Directory then leaves the two-step column and row out.
+  const twoStepByAccount = level >= 3 ? await loadTwoStepByAccount() : null
   const teams = tData ?? []
   // Team memberships + per-team position (040) + is_primary (048). Graceful:
   // pre-migration those columns are absent, so fall back progressively. Cast
@@ -312,6 +316,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         lastAccessAt: lastAccessByPersonId.get(p.id as string)?.at ?? null,
         lastAccessAgent: lastAccessByPersonId.get(p.id as string)?.agent ?? null,
         portalInvitedAt: invites.get(p.id) ?? null,
+        twoStepSince: twoStepByAccount ? (p.profile_id ? twoStepByAccount.get(p.profile_id as string) ?? null : null) : undefined,
         history: str(p.employment_history),
         milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,

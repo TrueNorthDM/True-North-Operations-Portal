@@ -5,9 +5,6 @@
  * page with the person's address filled in, and the usual sign-in email follows.
  * Same look as the sign-in email Supabase sends (supabase/templates/magic-link.html):
  * the portal's gold rule, logo and navy button, readable with images blocked.
- *
- * When two-step sign-in ships (plan step p4-2fa), "What happens next" gains the
- * step about setting up the authenticator app.
  */
 
 export interface InviteVars {
@@ -68,7 +65,8 @@ export function renderInvite(input: InviteVars): { subject: string; html: string
           <tr><td style="padding:18px 20px;font-size:13.5px;line-height:1.6;color:#435066;">
             <p style="margin:0 0 8px;font-family:Raleway,Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#1E7D7F;">What happens next</p>
             <p style="margin:0 0 6px;">1. The button opens the portal's sign-in page with your address filled in. Press the button there, and a sign-in code arrives by email. No password to create.</p>
-                        <p style="margin:0;">2. After that, sign in any time with a link or a 6&#8209;digit code sent to this address.</p>
+                        <p style="margin:0 0 6px;">2. Then the portal asks you to add a second step: a 6&#8209;digit code from an authenticator app on your phone. You have a week to do it, and it takes a minute.</p>
+            <p style="margin:0;">3. After that, sign in any time with a link or a 6&#8209;digit code sent to this address.</p>
           </td></tr>
         </table>
         <p style="margin:18px 0 0;font-size:12.5px;line-height:1.6;color:#8593a4;">This invitation does not expire. The portal lives at <a href="${e(v.origin)}" style="color:#1E7D7F;text-decoration:none;">${e(v.host)}</a>.</p>
@@ -95,7 +93,8 @@ export function renderInvite(input: InviteVars): { subject: string; html: string
     '',
     'What happens next:',
     "1. The link opens the portal's sign-in page with your address filled in. Press the button there, and a sign-in code arrives by email. No password to create.",
-    '2. After that, sign in any time with a link or a 6-digit code sent to this address.',
+    '2. Then the portal asks you to add a second step: a 6-digit code from an authenticator app on your phone. You have a week to do it, and it takes a minute.',
+    '3. After that, sign in any time with a link or a 6-digit code sent to this address.',
     '',
     "You're receiving this because an admin at True North Digital Marketing invited you to the Operations Portal. If you weren't expecting it, you can ignore this email.",
   ].join('\n')

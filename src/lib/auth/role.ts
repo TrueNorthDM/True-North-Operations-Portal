@@ -33,6 +33,12 @@ export async function getCurrentProfile(): Promise<ProfileRow | null> {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return null
+  // Two-step sign-in (p4-2fa): an account with an authenticator app set up is
+  // not trusted for writes until this session has given the app's code. The
+  // page gate already sends such a session to /auth/two-step; this closes the
+  // same door for server actions called directly.
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') return null
   const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
   return data ?? null
 }
