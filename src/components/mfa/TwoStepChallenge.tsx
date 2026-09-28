@@ -45,7 +45,7 @@ export function TwoStepChallenge({ email, verify, signOut }: TwoStepChallengePro
       </div>
       <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-2xl text-tn-ink">Two-step sign-in</h1>
       <p className="text-sm text-foreground">
-        Open your authenticator app and type the 6‑digit code for <strong className="text-tn-ink">True North Operations Portal</strong>.
+        Open your authenticator app and type the 6‑digit code for <strong className="text-tn-ink">True North Portal</strong>.
       </p>
       <input
         inputMode="numeric"

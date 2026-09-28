@@ -19,7 +19,10 @@ import { createClient } from '@/lib/supabase/server'
 import { safeNext } from '@/lib/auth/safe-next'
 import { SKIP_COOKIE, checkTwoStep } from '@/lib/auth/two-step'
 
-const ISSUER = 'True North Operations Portal'
+// Short on purpose: it is written into the QR code twice (label and issuer), and a
+// longer name makes a denser code that phone cameras struggle to read. It is also
+// the name the authenticator app shows next to the code.
+const ISSUER = 'True North Portal'
 
 async function landing(): Promise<string> {
   const store = await cookies()
@@ -53,7 +56,7 @@ export async function startEnroll(): Promise<EnrollStart | { error: string }> {
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: 'totp',
     issuer: ISSUER,
-    friendlyName: `Authenticator app ${new Date().toISOString().slice(0, 10)}`,
+    friendlyName: 'Authenticator app',
   })
   if (error || !data) return { error: error?.message ?? 'Could not start the setup. Try again.' }
   return { factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri }

@@ -88,9 +88,9 @@ export function TwoStepEnroll({ qr, secret, uri, email, verify, signOut, skip }:
           >
             On this phone? Tap to add it to your app
           </a>
-          <div className="inline-flex rounded-2xl border border-slate-200 bg-[#ffffff] p-3">
+          <div className="inline-flex rounded-2xl border border-slate-200 bg-[#ffffff] p-4">
             {/* eslint-disable-next-line @next/next/no-img-element -- an SVG data URL from Supabase, not a file to optimise */}
-            <img src={qr} alt="QR code to add the portal to your authenticator app" width={168} height={168} className="block h-[168px] w-[168px]" />
+            <img src={qr} alt="QR code to add the portal to your authenticator app" width={248} height={248} className="block h-[248px] w-[248px] [image-rendering:pixelated]" />
           </div>
           <p className="mt-2 text-[12px] text-muted">Can&apos;t scan? Type this key in the app instead:</p>
           <div className="mt-1 flex items-center gap-2">
