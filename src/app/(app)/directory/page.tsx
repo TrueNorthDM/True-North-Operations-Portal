@@ -21,6 +21,7 @@ import { directoryLevel } from '@/lib/access/surfaces'
 import { TOOLS, TOOL_KEYS } from '@/lib/access/tools'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
+import { loadInvitesByPerson } from '@/lib/directory/invites'
 
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
@@ -99,6 +100,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   ])
 
   const people = (pRows ?? []) as unknown as PRow[]
+  const invites = await loadInvitesByPerson(supabase)
   const teams = tData ?? []
   // Team memberships + per-team position (040) + is_primary (048). Graceful:
   // pre-migration those columns are absent, so fall back progressively. Cast
@@ -309,6 +311,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         hasTsheets: p.tsheets_user_id != null,
         lastAccessAt: lastAccessByPersonId.get(p.id as string)?.at ?? null,
         lastAccessAgent: lastAccessByPersonId.get(p.id as string)?.agent ?? null,
+        portalInvitedAt: invites.get(p.id) ?? null,
         history: str(p.employment_history),
         milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,

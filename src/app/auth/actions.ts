@@ -3,15 +3,16 @@
 /**
  * Auth Server Actions.
  *
- * - sendMagicLink: validates email domain on the SERVER (not just client),
- *   then asks Supabase to send the magic link.
+ * - sendMagicLink: checks on the SERVER (not just client) that the address is
+ *   invited (migration 089), then asks Supabase to send the magic link.
  * - signOut: clears the session cookies and redirects to /login.
  *
  * Layer 2 of 3 defense-in-depth (client → server → DB trigger).
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { isAllowedEmail } from '@/lib/auth-constants'
+import { isAllowedEmail, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-constants'
+import { canSignIn } from '@/lib/auth/portal-access'
 import { safeNext } from '@/lib/auth/safe-next'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -43,14 +44,11 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
 
   if (!email) return { ok: false, error: 'Enter your email.' }
 
-  // Layer 2 of defense-in-depth: server-side domain check.
-  // (Layer 1 is in the client UI; Layer 3 is the DB trigger.)
-  if (!isAllowedEmail(email)) {
-    return {
-      ok: false,
-      error: 'Only @goodnewsadvocates.org and @truenorthdigitalmarketing.com emails can sign in to this app.',
-    }
-  }
+  // Layer 2 of defense-in-depth: the address must be a GoodNews mailbox of an
+  // active, invited person (or the founding account). Layer 1 is the shape check
+  // in the client UI; layer 3 is the DB trigger on auth.users (migration 089).
+  if (!isAllowedEmail(email)) return { ok: false, error: SHAPE_MESSAGE }
+  if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
 
   // Carry the intended destination through the magic link so the user lands
   // back where they started. Validated here too (defense-in-depth) since it

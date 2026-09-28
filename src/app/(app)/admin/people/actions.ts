@@ -13,6 +13,7 @@ import { isSecurityAdmin } from '@/lib/auth/role'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { notifyLevelChange } from '@/lib/notifications/run'
+import { endSessions } from '@/lib/auth/portal-access'
 import type { PersonRow } from '@/lib/types/database.types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
@@ -304,19 +305,77 @@ export async function updatePerson(id: string, input: PersonInput) {
   if (input.profile_id !== undefined) patch.profile_id = input.profile_id || null
   if (input.tsheets === false) patch.tsheets_user_id = null
 
-  const { data: before } = await supabase.from('people').select('role_type').eq('id', id).maybeSingle()
+  const { data: before } = await supabase.from('people').select('role_type, status, profile_id').eq('id', id).maybeSingle()
   const { error } = await supabase.from('people').update(patch).eq('id', id)
   if (error) throw new Error(mapError(error.message))
   if (input.teams !== undefined) await setPersonTeams(supabase, id, input.teams)
   const { data: { user } } = await supabase.auth.getUser()
-  levelChanged(id, name, (before as { role_type?: string | null } | null)?.role_type, patch.role_type ?? 'user', user?.id ?? null)
+  const was = before as { role_type?: string | null; status?: string | null; profile_id?: string | null } | null
+  levelChanged(id, name, was?.role_type, patch.role_type ?? 'user', user?.id ?? null)
+  // Made inactive: their sessions end now, not when the token runs out. The
+  // page gate (lib/auth/portal-access.ts) already refuses them on the next load.
+  if (patch.status === 'inactive' && was?.status !== 'inactive') await endSessions(was?.profile_id)
+  revalidate()
+}
+
+/** What inviting someone did, for the Directory to say. */
+export interface InviteResult {
+  /** The address they sign in with. */
+  loginEmail: string
+}
+
+/**
+ * Invite a person to the portal (migration 089): from now on they can sign in
+ * with their GoodNews address. Only active people with a GoodNews address can be
+ * invited; the address is the one they will use, one per person.
+ *
+ * Nothing is emailed yet. The Directory shows the address and the admin tells the
+ * person; the invitation email arrives with the email service (plan step p4-code).
+ */
+export async function invitePerson(id: string): Promise<InviteResult> {
+  await requireAdmin()
+  const supabase = await createClient()
+  const { data: person, error: readErr } = await supabase
+    .from('people').select('full_name, status, email_goodnews').eq('id', id).maybeSingle()
+  if (readErr) throw new Error(readErr.message)
+  const p = person as { full_name: string; status: string | null; email_goodnews: string | null } | null
+  if (!p) throw new Error('Person not found')
+  if (p.status === 'inactive') throw new Error(`${p.full_name} is inactive. Make them active before inviting them.`)
+  const loginEmail = p.email_goodnews?.trim().toLowerCase() ?? ''
+  if (!loginEmail.endsWith('@goodnewsadvocates.org')) {
+    throw new Error(`${p.full_name} has no @goodnewsadvocates.org address in the Directory. Add it first: it is the address they sign in with.`)
+  }
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('people')
+    .update({ portal_invited_at: new Date().toISOString(), portal_invited_by: user?.id ?? null } as PersonCols)
+    .eq('id', id)
+  if (error) throw new Error(mapError(error.message))
+  revalidate()
+  return { loginEmail }
+}
+
+/** Withdraw a person's invitation: they cannot sign in, and their sessions end now. */
+export async function revokeInvite(id: string): Promise<void> {
+  await requireAdmin()
+  const supabase = await createClient()
+  const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
+  const { error } = await supabase
+    .from('people')
+    .update({ portal_invited_at: null, portal_invited_by: null } as PersonCols)
+    .eq('id', id)
+  if (error) throw new Error(mapError(error.message))
+  await endSessions((before as { profile_id?: string | null } | null)?.profile_id)
   revalidate()
 }
 
 export async function deletePerson(id: string) {
   await requireAdmin()
   const supabase = await createClient()
+  const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const { error } = await supabase.from('people').delete().eq('id', id)
   if (error) throw new Error(error.message)
+  // Removed from the Directory: no person, no access.
+  await endSessions((before as { profile_id?: string | null } | null)?.profile_id)
   revalidate()
 }

@@ -30,6 +30,17 @@ export const TEST_AREAS: TestArea[] = [
     ],
   },
   {
+    area: 'Sign-in by invitation',
+    cases: [
+      { id: 'INV-1', check: 'On the sign-in page, type a @truenorthdigitalmarketing.com address.', expect: 'Under the field: "Sign in with your @goodnewsadvocates.org address." The button stays disabled.' },
+      { id: 'INV-2', check: 'Type the GoodNews address of an active person who has NOT been invited and send the link.', expect: 'Red message: the address has not been invited, ask an admin. No email arrives.', needs: 'migration 089' },
+      { id: 'INV-3', check: 'Directory → open an active person with a GoodNews address and no access → Login & access → Invite.', expect: 'The pill turns to Invited and a line says which address they sign in with. They can now request a sign-in link.', needs: 'admin, migration 089' },
+      { id: 'INV-4', check: 'Open a person with no GoodNews address.', expect: 'Portal access reads "No GoodNews address", with no Invite button, and says the address must be added first.' },
+      { id: 'INV-5', check: 'While a test person is signed in elsewhere, Revoke their access (or make them Inactive), then have them open any page.', expect: 'They are signed out and land on the sign-in page with the "not invited" message.', needs: 'admin, a second account, migration 089' },
+      { id: 'INV-6', check: 'Sign in as arnaldo.oliveira@me.com.', expect: 'Works: the founding account is the one exception to the GoodNews rule.' },
+    ],
+  },
+  {
     area: 'Theme & account',
     cases: [
       { id: 'THM-1', check: 'Click the moon/sun icon at the top right.', expect: 'The whole portal flips between light and dark instantly; the icon swaps. Text and badges stay readable in both.' },

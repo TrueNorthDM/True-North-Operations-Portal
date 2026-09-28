@@ -4,6 +4,7 @@
 // construction in app/(app)/directory/page.tsx (the Directory owns the canonical
 // version; this is a self-contained copy so it never risks that critical page).
 
+import { loadInvitesByPerson } from '@/lib/directory/invites'
 import { createClient } from '@/lib/supabase/server'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
 import { loadContactByPerson } from '@/lib/hr/contact'
@@ -50,6 +51,7 @@ export async function loadDirectoryPeopleView(
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
+  const invites = await loadInvitesByPerson(supabase)
   const teams = tData ?? []
   const profiles = prData ?? []
 
@@ -202,6 +204,7 @@ export async function loadDirectoryPeopleView(
         hasTsheets: p.tsheets_user_id != null,
         lastAccessAt: null,
         lastAccessAgent: null,
+        portalInvitedAt: invites.get(p.id) ?? null,
         history: str(p.employment_history),
         milestones: milestonesById.get(p.id) ?? [],
         mondayDocs: mondayDocsById.get(p.id) ?? null,

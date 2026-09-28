@@ -3,14 +3,15 @@
 /**
  * LoginForm: magic-link request form.
  *
- * Layer 1 of defense-in-depth: client-side email domain validation for instant
- * feedback. The server (sendMagicLink) and the DB trigger re-validate.
+ * Layer 1 of defense-in-depth: client-side check of the address's shape (a
+ * GoodNews mailbox) for instant feedback. The server (sendMagicLink) checks the
+ * invitation, and the DB trigger re-validates both.
  */
 
 import { useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { sendMagicLink } from '@/app/auth/actions'
-import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS } from '@/lib/auth-constants'
+import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS, SHAPE_MESSAGE } from '@/lib/auth-constants'
 
 export function LoginForm() {
   const searchParams = useSearchParams()
@@ -74,7 +75,7 @@ export function LoginForm() {
       <div>
         <h1 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-2xl text-tn-ink">Welcome back</h1>
         <p className="mt-2 text-sm text-foreground">
-          Use your True North or Good News Advocates email.
+          Use your Good News Advocates email.
         </p>
       </div>
 
@@ -94,7 +95,7 @@ export function LoginForm() {
         />
         {looksLikeEmail && !domainOk && (
           <p className="mt-2 text-center text-xs text-amber-700">
-            Only {ALLOWED_EMAIL_DOMAINS.map(d => `@${d}`).join(' and ')} addresses can sign in.
+            {SHAPE_MESSAGE}
           </p>
         )}
       </div>

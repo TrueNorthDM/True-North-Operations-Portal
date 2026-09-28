@@ -99,6 +99,7 @@ export interface PersonView {
   hasTsheets: boolean
   lastAccessAt: string | null // most recent portal access (from access_log)
   lastAccessAgent: string | null
+  portalInvitedAt: string | null // invited to the portal (migration 089); null = cannot sign in
 
   history: string | null
   milestones: PersonMilestone[] // career timeline (joined, promotions, role changes)

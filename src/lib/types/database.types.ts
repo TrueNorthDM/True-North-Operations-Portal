@@ -153,6 +153,9 @@ export type PersonRow = {
   avatar_url: string | null           // profile photo public URL (migration 036)
   address: PersonAddress | null       // structured mailing address, JSON (migration 042)
   milestones: PersonMilestone[] | null // career timeline, JSON array (migration 044)
+  // Sign-in by invitation (migration 089): when an admin invited them, and who.
+  portal_invited_at: string | null
+  portal_invited_by: string | null
 }
 
 // The "History" file attachments on a person, held in the private person-files

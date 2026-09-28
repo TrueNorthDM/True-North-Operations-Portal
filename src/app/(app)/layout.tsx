@@ -12,7 +12,9 @@ import { NotificationButton } from '@/components/NotificationButton'
 import { Launcher } from '@/components/Launcher'
 import { AccessPing } from '@/components/AccessPing'
 import { ViewAsKeeper } from '@/components/ViewAsKeeper'
+import { redirect } from 'next/navigation'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
+import { checkPortalAccess } from '@/lib/auth/portal-access'
 import { loadAccess } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
 import { directoryLevel } from '@/lib/access/surfaces'
@@ -26,7 +28,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Identity and person come from auth/session.ts, shared with loadAccess and
   // the page underneath, so this layout no longer asks Supabase who is signed in
   // a second time or loads the person a third.
-  const [user, access, me] = await Promise.all([getSessionUser(), loadAccess(), getCurrentPerson()])
+  const [user, access, me, portal] = await Promise.all([getSessionUser(), loadAccess(), getCurrentPerson(), checkPortalAccess()])
+  // Sign-in by invitation (migration 089): a session whose person was
+  // deactivated or had the invitation revoked is signed out here, on the next
+  // page it opens. The route handler does the sign-out, since a layout cannot
+  // clear cookies while it renders.
+  if (portal === 'denied') redirect('/auth/no-access')
   // The rail, its panels and the launcher all come from one resolved model
   // (lib/access/nav.ts), built here for this person: what each of them offers
   // is exactly what the page guards let through.

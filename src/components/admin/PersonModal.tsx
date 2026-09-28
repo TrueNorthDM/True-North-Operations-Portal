@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { createPerson, updatePerson, deletePerson, type PersonInput } from '@/app/(app)/admin/people/actions'
 import { uploadPersonAttachment, deletePersonAttachment, signedAttachmentUrl } from '@/app/(app)/admin/people/attachment-actions'
 import { Avatar } from '@/components/Avatar'
+import { PortalAccessControl } from './PortalAccessControl'
 import { Select } from '@/components/ui/Select'
 import { TenureBadge } from '@/components/TenureBadge'
 import { tenureSince, milestoneOf, formatTenure } from '@/lib/tenure'
@@ -396,6 +397,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         <div>
           <SectionTitle>Login &amp; access</SectionTitle>
           <div className="flex flex-col gap-[13px]">
+            {item('Portal access', <PortalAccessControl p={p} />)}
             {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
             {item('True North', link(p.emails.trueNorth))}
             {item('GoodNews', link(p.emails.goodnews))}
