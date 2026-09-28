@@ -14,6 +14,10 @@ import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { notifyLevelChange } from '@/lib/notifications/run'
 import { endSessions } from '@/lib/auth/portal-access'
+import { requestOrigin } from '@/lib/auth/origin'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { renderInvite } from '@/lib/email/invite'
+import { sendEmail } from '@/lib/email/resend'
 import type { PersonRow } from '@/lib/types/database.types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
@@ -322,23 +326,28 @@ export async function updatePerson(id: string, input: PersonInput) {
 export interface InviteResult {
   /** The address they sign in with. */
   loginEmail: string
+  /** Whether the invitation email went out; if not, why, so the admin can tell them. */
+  emailed: boolean
+  reason?: string
 }
 
 /**
- * Invite a person to the portal (migration 089): from now on they can sign in
- * with their GoodNews address. Only active people with a GoodNews address can be
- * invited; the address is the one they will use, one per person.
+ * Invite a person to the portal (migration 089), or send the invitation again:
+ * from now on they can sign in with their GoodNews address, the only address that
+ * can, one per person. Only active people with a GoodNews address can be invited.
  *
- * Nothing is emailed yet. The Directory shows the address and the admin tells the
- * person; the invitation email arrives with the email service (plan step p4-code).
+ * The portal emails the invitation itself (lib/email/invite.ts). It carries no
+ * sign-in token, so it never expires: its button opens the sign-in page with the
+ * address filled in. If the email cannot go out, the access is still granted and
+ * the Directory says so, so the admin can tell the person another way.
  */
 export async function invitePerson(id: string): Promise<InviteResult> {
   await requireAdmin()
   const supabase = await createClient()
   const { data: person, error: readErr } = await supabase
-    .from('people').select('full_name, status, email_goodnews').eq('id', id).maybeSingle()
+    .from('people').select('full_name, status, email_goodnews, portal_invited_at').eq('id', id).maybeSingle()
   if (readErr) throw new Error(readErr.message)
-  const p = person as { full_name: string; status: string | null; email_goodnews: string | null } | null
+  const p = person as { full_name: string; status: string | null; email_goodnews: string | null; portal_invited_at: string | null } | null
   if (!p) throw new Error('Person not found')
   if (p.status === 'inactive') throw new Error(`${p.full_name} is inactive. Make them active before inviting them.`)
   const loginEmail = p.email_goodnews?.trim().toLowerCase() ?? ''
@@ -346,13 +355,27 @@ export async function invitePerson(id: string): Promise<InviteResult> {
     throw new Error(`${p.full_name} has no @goodnewsadvocates.org address in the Directory. Add it first: it is the address they sign in with.`)
   }
   const { data: { user } } = await supabase.auth.getUser()
-  const { error } = await supabase
-    .from('people')
-    .update({ portal_invited_at: new Date().toISOString(), portal_invited_by: user?.id ?? null } as PersonCols)
-    .eq('id', id)
-  if (error) throw new Error(mapError(error.message))
+  // Sending again keeps the date of the first invitation.
+  if (!p.portal_invited_at) {
+    const { error } = await supabase
+      .from('people')
+      .update({ portal_invited_at: new Date().toISOString(), portal_invited_by: user?.id ?? null })
+      .eq('id', id)
+    if (error) throw new Error(mapError(error.message))
+  }
   revalidate()
-  return { loginEmail }
+
+  const inviter = user ? await loadCurrentPerson(supabase, user, { real: true }) : null
+  const origin = await requestOrigin()
+  const mail = renderInvite({
+    firstName: p.full_name.trim().split(/\s+/)[0] || p.full_name,
+    invitedBy: inviter?.full_name ?? 'An admin at True North',
+    email: loginEmail,
+    url: `${origin}/login?email=${encodeURIComponent(loginEmail)}`,
+    origin,
+  })
+  const sent = await sendEmail({ to: loginEmail, ...mail })
+  return sent.sent ? { loginEmail, emailed: true } : { loginEmail, emailed: false, reason: sent.reason }
 }
 
 /** Withdraw a person's invitation: they cannot sign in, and their sessions end now. */
@@ -362,7 +385,7 @@ export async function revokeInvite(id: string): Promise<void> {
   const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const { error } = await supabase
     .from('people')
-    .update({ portal_invited_at: null, portal_invited_by: null } as PersonCols)
+    .update({ portal_invited_at: null, portal_invited_by: null })
     .eq('id', id)
   if (error) throw new Error(mapError(error.message))
   await endSessions((before as { profile_id?: string | null } | null)?.profile_id)

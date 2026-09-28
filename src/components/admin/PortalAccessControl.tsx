@@ -5,8 +5,8 @@
  * Invite or Revoke that changes it (sign-in by invitation, migration 089).
  *
  * The person signs in with their GoodNews address, the only address that can.
- * No email goes out yet: the admin tells them. The invitation email comes with
- * the email service (plan step p4-code).
+ * Inviting emails them the invitation (lib/email/invite.ts); if the email cannot
+ * go out, access is still granted and this says so, so the admin can tell them.
  */
 
 import { useState, useTransition } from 'react'
@@ -53,10 +53,13 @@ export function PortalAccessControl({ p }: { p: PersonView }) {
     })
   }
 
+  const first = p.full_name.split(' ')[0]
   const invite = () =>
     act(async () => {
-      const { loginEmail } = await invitePerson(p.id)
-      return `Invited. Let ${p.full_name.split(' ')[0]} know to sign in with ${loginEmail}.`
+      const r = await invitePerson(p.id)
+      return r.emailed
+        ? `Invitation sent to ${r.loginEmail}.`
+        : `Invited, but the email did not go out (${r.reason}). Let ${first} know to sign in with ${r.loginEmail}.`
     })
 
   const revoke = () => {
@@ -84,9 +87,14 @@ export function PortalAccessControl({ p }: { p: PersonView }) {
             {pending ? 'Inviting…' : 'Invite'}
           </button>
         )}
+        {state === 'invited' && (
+          <button type="button" disabled={pending} onClick={invite} className={`${btn} text-tn-ink border border-slate-200 hover:border-tn-ink`}>
+            {pending ? 'Sending…' : 'Send again'}
+          </button>
+        )}
         {(state === 'invited' || state === 'signed-in') && (
           <button type="button" disabled={pending} onClick={revoke} className={`${btn} text-red-600 border border-[rgba(215,57,47,.35)] hover:bg-red-50`}>
-            {pending ? 'Revoking…' : 'Revoke'}
+            Revoke
           </button>
         )}
       </span>

@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
   // Sanitize `next` to prevent open-redirect attacks (see safeNext).
-  const next = safeNext(url.searchParams.get('next'))
+  // Where they were going: ?next= from older links, else the cookie
+  // sendMagicLink set when the sign-in started (see app/auth/actions.ts).
+  const next = safeNext(url.searchParams.get('next') ?? request.cookies.get('tn_next')?.value)
 
   if (code) {
     const supabase = await createClient()

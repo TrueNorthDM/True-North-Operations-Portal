@@ -38,6 +38,11 @@ export const TEST_AREAS: TestArea[] = [
       { id: 'INV-4', check: 'Open a person with no GoodNews address.', expect: 'Portal access reads "No GoodNews address", with no Invite button, and says the address must be added first.' },
       { id: 'INV-5', check: 'While a test person is signed in elsewhere, Revoke their access (or make them Inactive), then have them open any page.', expect: 'They are signed out and land on the sign-in page with the "not invited" message.', needs: 'admin, a second account, migration 089' },
       { id: 'INV-6', check: 'Sign in as arnaldo.oliveira@me.com.', expect: 'Works: the founding account is the one exception to the GoodNews rule.' },
+      { id: 'INV-7', check: 'Invite a test person (Directory → Portal access → Invite).', expect: 'The card says "Invitation sent to …". The email arrives from True North Operations Portal, names who invited, and its button opens the sign-in page with the address filled in.', needs: 'admin, RESEND_API_KEY on Vercel' },
+      { id: 'INV-8', check: 'On an invited person who never signed in, press Send again.', expect: 'A second invitation arrives; the Invited date stays the first one.', needs: 'admin, RESEND_API_KEY on Vercel' },
+      { id: 'COD-1', check: 'Sign in: type your address, press Email me a sign-in code, then type the 6 digits from the email.', expect: 'You land where you were going (Home, or the page that sent you to sign in).', needs: 'the new sign-in email template in Supabase' },
+      { id: 'COD-2', check: 'Ask for a code on the computer, then press Sign in to the portal in the email on your phone, and press Sign in on the page that opens.', expect: 'The phone signs in. No "code verifier" error: the link works on any device.', needs: 'the new sign-in email template in Supabase' },
+      { id: 'COD-3', check: 'Type a wrong code, then use the same code twice.', expect: 'A red message says the code is not right or has expired; nothing signs in.' },
     ],
   },
   {

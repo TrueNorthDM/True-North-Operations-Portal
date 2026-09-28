@@ -1,43 +1,37 @@
 'use server'
 
 /**
- * Auth Server Actions.
+ * Auth Server Actions (plan step p4-code).
  *
  * - sendMagicLink: checks on the SERVER (not just client) that the address is
- *   invited (migration 089), then asks Supabase to send the magic link.
+ *   invited (migration 089), then asks Supabase to email a 6-digit code and a
+ *   one-click link. The email template is supabase/templates/magic-link.html.
+ * - verifyCode: signs in with the 6-digit code, typed on any device.
+ * - confirmLink: signs in with the one-click link from the email (the page at
+ *   /auth/confirm calls it when the person presses the button).
  * - signOut: clears the session cookies and redirects to /login.
+ *
+ * Both ways in are verified on the server, with nothing kept in the browser that
+ * asked for the email, so a link opened on the phone works as well as the code.
  *
  * Layer 2 of 3 defense-in-depth (client → server → DB trigger).
  */
 
+import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { isAllowedEmail, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-constants'
 import { canSignIn } from '@/lib/auth/portal-access'
 import { safeNext } from '@/lib/auth/safe-next'
+import { requestOrigin } from '@/lib/auth/origin'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
+import { cookies } from 'next/headers'
 
 /**
- * Builds the absolute callback URL that Supabase embeds in the magic-link
- * email. It MUST point back to the host the user is actually on, otherwise
- * a request from production sends an email pointing to localhost (or vice
- * versa).
- *
- * Strategy: derive from incoming request headers (Option A). Works in every
- * environment without extra config, Vercel sets `host` and `x-forwarded-proto`
- * correctly on prod, previews, and custom domains; the Next.js dev server
- * sets them for localhost. No env vars to remember.
- *
- * Whatever this returns MUST also be present on Supabase's Auth → URL
- * Configuration allow-list, otherwise Supabase silently rewrites it to the
- * project's Site URL.
+ * Where the person was going when the sign-in started, kept for an hour. The code
+ * is always typed in the browser that asked, so it has it; the link usually opens
+ * there too. On another device the cookie is absent and they land on Home.
  */
-async function getCallbackUrl(): Promise<string> {
-  const h = await headers()
-  const proto = h.get('x-forwarded-proto') ?? 'http'
-  const host = h.get('host')
-  return `${proto}://${host}/auth/callback`
-}
+const NEXT_COOKIE = 'tn_next'
 
 export async function sendMagicLink(input: { email: string; next?: string }): Promise<{ ok: boolean; error?: string }> {
   const email = input.email.trim().toLowerCase()
@@ -50,29 +44,60 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
   if (!isAllowedEmail(email)) return { ok: false, error: SHAPE_MESSAGE }
   if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
 
-  // Carry the intended destination through the magic link so the user lands
-  // back where they started. Validated here too (defense-in-depth) since it
-  // round-trips through the email; the callback re-sanitizes on the way in.
-  const callback = await getCallbackUrl()
   const next = safeNext(input.next)
-  const emailRedirectTo = next === '/' ? callback : `${callback}?next=${encodeURIComponent(next)}`
+  const store = await cookies()
+  store.set(NEXT_COOKIE, next, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60 * 60 })
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      // Where Supabase sends the user after they click the email link.
-      // Must be on the Allow-List in Supabase Auth → URL Configuration,
-      // any URL not on that list gets silently replaced by the Site URL.
-      // (Extra query params like ?next= are preserved as long as the callback
-      // PATH is allow-listed, which it already is for the base flow.)
-      emailRedirectTo,
+      // The email's button is built from the template (SiteURL + token_hash, to
+      // /auth/confirm), so this only matters to a template that still uses
+      // ConfirmationURL: that one goes through /auth/callback, which exchanges the
+      // code in the browser that asked. It must be on the allow-list in Supabase
+      // Auth → URL Configuration, which it already is.
+      emailRedirectTo: `${await requestOrigin()}/auth/callback`,
       shouldCreateUser: true,
     },
   })
 
   if (error) return { ok: false, error: error.message }
   return { ok: true }
+}
+
+async function landing(): Promise<string> {
+  const store = await cookies()
+  const next = safeNext(store.get(NEXT_COOKIE)?.value)
+  store.delete(NEXT_COOKIE)
+  return next
+}
+
+/** Sign in with the code from the email. */
+export async function verifyCode(input: { email: string; code: string }): Promise<{ ok: false; error: string } | never> {
+  const email = input.email.trim().toLowerCase()
+  const token = input.code.replace(/\D/g, '')
+  if (token.length < 6) return { ok: false, error: 'Enter the 6-digit code from the email.' }
+  // The invitation check again: the code was sent while they were invited, and
+  // this closes the window if an admin revoked them in between.
+  if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+  if (error) return { ok: false, error: 'That code is not right, or it has expired. Check the latest email, or send a new one.' }
+  redirect(await landing())
+}
+
+/** Sign in with the one-click link from the email (see /auth/confirm). */
+export async function confirmLink(input: { tokenHash: string; type: string }): Promise<{ ok: false; error: string } | never> {
+  const allowed: EmailOtpType[] = ['email', 'magiclink', 'signup', 'invite']
+  const type = allowed.find(t => t === input.type)
+  if (!input.tokenHash || !type) return { ok: false, error: 'This sign-in link is incomplete. Ask for a new one.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.verifyOtp({ token_hash: input.tokenHash, type })
+  if (error) return { ok: false, error: 'This sign-in link has expired or was already used. Ask for a new one.' }
+  redirect(await landing())
 }
 
 export async function signOut() {
