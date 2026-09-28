@@ -9,6 +9,7 @@
  * - verifyEnroll: the first code from the app turns the factor on.
  * - verifyTwoStep: the code at every sign-in after that.
  * - skipTwoStep: "Skip for now", while their week to set it up runs.
+ * - moveTwoStep: from My profile, to set it up again on a new phone.
  *
  * The admin's side (Reset in the Directory) is resetTwoStep in admin/people/actions.
  */
@@ -90,4 +91,22 @@ export async function skipTwoStep(): Promise<void> {
   if (status.need === 'enroll-required') redirect('/auth/two-step/setup')
   ;(await cookies()).set(SKIP_COOKIE, '1', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' })
   redirect(await landing())
+}
+
+/**
+ * Move two-step sign-in to a new phone, from My profile. Only from a session that
+ * has given the current app's code (aal2): the old app is removed, and the setup
+ * screen comes up for the new one. Someone who has lost the old phone cannot get
+ * this far, and asks an admin for a Reset instead.
+ */
+export async function moveTwoStep(): Promise<{ ok: false; error: string } | never> {
+  const supabase = await createClient()
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (aal?.currentLevel !== 'aal2') return { ok: false, error: 'Sign in with your current app first.' }
+  const { data } = await supabase.auth.mfa.listFactors()
+  for (const f of data?.all ?? []) {
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id })
+    if (error) return { ok: false, error: error.message }
+  }
+  redirect('/auth/two-step/setup')
 }

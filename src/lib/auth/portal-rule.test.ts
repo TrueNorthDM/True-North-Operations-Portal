@@ -44,4 +44,8 @@ describe('portalAccessState', () => {
     expect(portalAccessState({ ...invited, hasAccount: false })).toBe('invited')
     expect(portalAccessState({ ...invited, hasAccount: true })).toBe('signed-in')
   })
+
+  it('counts the founding account, invited and signed in without a GoodNews address, as having access', () => {
+    expect(portalAccessState({ ...invited, email_goodnews: null, hasAccount: true })).toBe('signed-in')
+  })
 })

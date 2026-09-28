@@ -221,7 +221,7 @@ export function PortalAccessTab({ people, twoStep, onOpen }: {
                 <span className="block text-xs text-muted truncate">{r.p.title ?? '-'}</span>
               </span>
             </span>
-            <span className="text-[12.5px] text-foreground truncate" title={r.p.emails.goodnews ?? undefined}>{r.p.emails.goodnews ?? <span className="text-slate-300">-</span>}</span>
+            <span className="text-[12.5px] text-foreground truncate" title={r.p.emails.goodnews ?? r.p.accountEmail ?? undefined}>{r.p.emails.goodnews ?? r.p.accountEmail ?? <span className="text-slate-300">-</span>}</span>
             <span className="inline-flex flex-col items-start gap-0.5">
               {pill(ACCESS_PILL[r.state])}
               {r.invitedAt && r.state !== 'no-address' && <span className="text-[11px] text-muted">Invited {formatDate(r.invitedAt)}</span>}

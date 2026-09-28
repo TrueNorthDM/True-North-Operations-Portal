@@ -88,7 +88,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
           <div className="md:hidden">
-            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} canSettings={canSettings} twoStepSetup={!twoStep.hasFactor} />
+            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} canSettings={canSettings} />
           </div>
         </div>
       </header>
@@ -108,7 +108,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Sidebar
           rail={rail}
           canSettings={canSettings}
-          user={{ email: me?.email ?? user?.email ?? null, name: me?.full_name ?? null, avatarUrl: me?.avatar_url ?? null, twoStepSetup: !twoStep.hasFactor }}
+          user={{ email: me?.email ?? user?.email ?? null, name: me?.full_name ?? null, avatarUrl: me?.avatar_url ?? null }}
         />
         <MainContent>{children}</MainContent>
       </div>

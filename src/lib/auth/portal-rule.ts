@@ -37,6 +37,9 @@ export type PortalAccessState = 'no-address' | 'not-invited' | 'invited' | 'sign
 
 export function portalAccessState(p: PortalPerson & { hasAccount: boolean }): PortalAccessState {
   if ((p.status ?? 'active') === 'inactive') return 'inactive'
+  // Invited and already signed in: has access, whichever address it was with
+  // (the founding account signs in with its me.com address, not a GoodNews one).
+  if (p.portal_invited_at && p.hasAccount) return 'signed-in'
   if (!p.email_goodnews) return 'no-address'
   if (!p.portal_invited_at) return 'not-invited'
   return p.hasAccount ? 'signed-in' : 'invited'

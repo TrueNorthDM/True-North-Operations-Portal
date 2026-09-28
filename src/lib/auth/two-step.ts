@@ -22,6 +22,8 @@ export interface TwoStepStatus {
   deadline: Date | null
   /** They skipped the setup screen this browser session. */
   skipped: boolean
+  /** When their app was set up, if it is. */
+  since: string | null
 }
 
 type Row = { user_id: string; account_created: string; factor_since: string | null; launch: string | null; cutoff: string | null }
@@ -36,7 +38,7 @@ export async function loadTwoStepByAccount(): Promise<Map<string, string | null>
 
 /** The signed-in session's two-step status. Asked once per request by the app layout. */
 export const checkTwoStep = cache(async function checkTwoStep(): Promise<TwoStepStatus> {
-  const none: TwoStepStatus = { need: 'ok', hasFactor: false, deadline: null, skipped: false }
+  const none: TwoStepStatus = { need: 'ok', hasFactor: false, deadline: null, skipped: false, since: null }
   const user = await getSessionUser()
   if (!user) return none
   const db = createAdminClient()
@@ -50,5 +52,5 @@ export const checkTwoStep = cache(async function checkTwoStep(): Promise<TwoStep
     cutoff: r.cutoff ? new Date(r.cutoff) : null,
   })
   const skipped = (await cookies()).get(SKIP_COOKIE)?.value === '1'
-  return { need: twoStepNeed({ hasFactor, aal: user.aal, deadline, now: new Date() }), hasFactor, deadline, skipped }
+  return { need: twoStepNeed({ hasFactor, aal: user.aal, deadline, now: new Date() }), hasFactor, deadline, skipped, since: r.factor_since }
 })
