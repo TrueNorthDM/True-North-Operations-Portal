@@ -32,10 +32,14 @@ export function PortalAccessControl({ p }: { p: PersonView }) {
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
+  // Kept here and not read from `p` alone: the Directory card is a snapshot of
+  // the person taken when it opened, so after Invite or Revoke the pill has to
+  // follow what this control just did, not wait for the card to reopen.
+  const [invitedAt, setInvitedAt] = useState<string | null>(p.portalInvitedAt)
   const state = portalAccessState({
     status: p.status,
     email_goodnews: p.emails.goodnews,
-    portal_invited_at: p.portalInvitedAt,
+    portal_invited_at: invitedAt,
     hasAccount: !!p.accountId,
   })
 
@@ -57,6 +61,7 @@ export function PortalAccessControl({ p }: { p: PersonView }) {
   const invite = () =>
     act(async () => {
       const r = await invitePerson(p.id)
+      setInvitedAt(prev => prev ?? new Date().toISOString())
       return r.emailed
         ? `Invitation sent to ${r.loginEmail}.`
         : `Invited, but the email did not go out (${r.reason}). Let ${first} know to sign in with ${r.loginEmail}.`
@@ -66,12 +71,13 @@ export function PortalAccessControl({ p }: { p: PersonView }) {
     if (!window.confirm(`Revoke ${p.full_name}'s access? They are signed out now and cannot sign in until invited again.`)) return
     act(async () => {
       await revokeInvite(p.id)
+      setInvitedAt(null)
       return null
     })
   }
 
   const pill = PILL[state]
-  const since = p.portalInvitedAt ? formatDate(p.portalInvitedAt) : null
+  const since = invitedAt ? formatDate(invitedAt) : null
 
   return (
     <span className="inline-flex flex-col items-end gap-1.5">
