@@ -634,8 +634,18 @@
     plan.phases.forEach(function (p) {
       var s = stepsOf(p); p.total = s.length; p.done = s.filter(function (x) { return done[x[0]]; }).length;
       total += p.total; count += p.done;
-      if (!now && p.done < p.total) now = p;
     });
+    // In progress: every phase with some steps done and some left, since phases
+    // overlap (4 runs alongside 3). If none has started, the first unfinished
+    // one. "Happening now" shows the first of them.
+    var started = function (p) { return p.done > 0 && p.done < p.total; };
+    var inProgress = plan.phases.filter(started);
+    if (!inProgress.length) {
+      var first = plan.phases.filter(function (p) { return p.done < p.total; })[0];
+      if (first) inProgress = [first];
+    }
+    now = inProgress[0] || null;
+    var isNow = function (p) { return inProgress.indexOf(p) >= 0; };
 
     var li = function (x) {
       var d = !!done[x[0]];
@@ -644,7 +654,7 @@
     };
 
     document.getElementById('phases').innerHTML = plan.phases.map(function (p) {
-      var state = p.done === p.total ? 'done' : p === now ? 'now' : 'next';
+      var state = p.done === p.total ? 'done' : isNow(p) ? 'now' : 'next';
       var pill = state === 'done' ? '<span class="pill done">Done</span>' : state === 'now' ? '<span class="pill now">In progress</span>' : (p.down ? '<span class="pill down">Portal offline</span>' : '<span class="pill next">Up next</span>');
       var list = p.days
         ? p.days.map(function (d) { return '<div class="day-head">' + esc(d.title) + '</div><ul class="list">' + d.steps.map(li).join('') + '</ul>'; }).join('')
@@ -659,7 +669,7 @@
 
     // One pip per phase under the big bar: green when done, gold for the one under way.
     document.getElementById('pips').innerHTML = plan.phases.map(function (p) {
-      var st = p.done === p.total ? 'done' : p === now ? 'now' : '';
+      var st = p.done === p.total ? 'done' : isNow(p) ? 'now' : '';
       return '<span class="pip ' + st + '"><i></i>' + p.n + '</span>';
     }).join('');
 
