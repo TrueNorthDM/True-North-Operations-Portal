@@ -424,7 +424,7 @@
           <li><b>Two-step sign-in (2FA) for everyone.</b> After signing in, a 6‑digit code from an authenticator app on the phone (Google Authenticator, Microsoft Authenticator, 1Password), set up once with a QR code. It is built into the Supabase login, so every page can require it. An admin can reset it for someone who loses their phone.</li>
           <li><b>Reliable sending</b> from portal@truenorthportal.online, and <b>longer sessions</b>.</li>
         </ul>
-        <p class="rec agreed"><b>Agreed</b>Invitation only, Google sign-in, 6‑digit code alongside the link, and two-step sign-in for everyone. No domain restriction and no approval needed from IT. It ships on the current portal, before the move.</p>
+        <p class="rec agreed"><b>Agreed</b>Invitation only, Google sign-in, 6‑digit code alongside the link, and two-step sign-in for everyone. No domain restriction and no approval needed from IT. The sign-in changes ship on the current portal, before the move. Two-step sign-in applies to new people from their first sign-in, and to everyone who already had access once the move is finished, each with a week to set it up.</p>
       </div>
       <div class="card decision">
         <h3><span class="n">4</span>The addresses on truenorthportal.online <span class="chip ok">Decided</span></h3>
@@ -568,7 +568,7 @@
         ["p4-google-btn", "\"Sign in with Google\" appears on the sign-in page"],
         ["p4-2fa", "Two-step sign-in is added: a 6‑digit code from an app on your phone", "Set up once, with a QR code."],
         ["p4-2fa-reset", "Admins can reset the second step if someone loses their phone"],
-        ["p4-2fa-enroll", "Everyone sets up their authenticator app", "Once, at your first sign-in after it goes live, before the move."],
+        ["p4-2fa-enroll", "New people set up their authenticator app within a week", "A week from their first sign-in. Everyone who already has access gets their week after the move."],
         ["p4-sessions", "You stay signed in for longer"],
         ["p4-chrome", "PDF exports are prepared for the new server"],
         ["p4-hop", "The Monday sync is prepared for the new server"],
@@ -608,7 +608,9 @@
         ["p7-export", "A last copy of the old data is kept with the backups"],
         ["p7-delete", "The old services are closed"],
         ["p7-revoke", "Old access keys are switched off"],
-        ["p7-cleanup", "Leftovers from the old setup are cleaned up"]
+        ["p7-cleanup", "Leftovers from the old setup are cleaned up"],
+        ["p7-2fa-announce", "The team is asked to install an authenticator app"],
+        ["p7-2fa-cutoff", "Two-step sign-in starts for everyone who already had access", "Each person has one week to set it up; after that, the portal asks for it at every sign-in."]
       ] }
   ]
 }
