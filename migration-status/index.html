@@ -378,7 +378,7 @@
     </div>
   </section>
   <section id="timeline" aria-labelledby="timeline-title">
-    <div class="section-head"><h2 id="timeline-title">The move, step by step</h2><p>Getting ready, then seven phases. Only phase 6 takes the portal offline; everything before it happens while you keep working.</p></div>
+    <div class="section-head"><h2 id="timeline-title">The move, step by step</h2><p>Getting ready, then eight phases. Only phase 6 takes the portal offline; everything before it happens while you keep working.</p></div>
     <div class="timeline" id="phases"></div>
   </section>
 
@@ -525,19 +525,14 @@
         ["p0-plan", "The full migration plan is drafted"],
         ["p0-approve", "Claude's recommendations are analysed and approved", "The open decisions in the plan: how to leave Supabase, the server size, the addresses, the sign-in mailbox and the GitHub organization."]
       ] },
-    { "n": 1, "title": "Move the code to True North", "when": "A few days", "summary": "The portal's code and the tools in progress move to an account True North owns, with their full history.",
+    { "n": 1, "title": "Move the code to True North", "when": "A few days", "summary": "The portal's code moves to an account True North owns, with its full history.",
       "steps": [
         ["p1-org", "True North's GitHub organization is created"],
         ["p1-2fa", "Two-step sign-in is required for everyone in it"],
         ["p1-transfer", "The portal's code moves to it, with its full history"],
         ["p1-vercel", "The current portal keeps updating from its new home"],
         ["p1-remote", "Work continues from the new account"],
-        ["p1-token", "The old copy is removed and old access is closed"],
-        ["p1-jeannette-list", "Jeannette's tools in progress are listed"],
-        ["p1-jeannette-move", "Jeannette's tools move to the organization"],
-        ["p1-accounts", "Jeannette, Wendy and Dave get True North GitHub accounts"],
-        ["p1-invite", "They join the organization with those accounts only"],
-        ["p1-jeannette-key", "Jeannette's Claude gets its own key to the code she works on"]
+        ["p1-token", "The old copy is removed and old access is closed"]
       ] },
     { "n": 2, "title": "Connect the new address", "when": "A few hours, up to 2 days", "summary": "truenorthportal.online is set up on Cloudflare, which keeps the address fast and protected.",
       "steps": [
@@ -603,7 +598,7 @@
           ["p6-announce", "The team gets the new address"]
         ] }
       ] },
-    { "n": 7, "title": "Wrap-up", "when": "2 weeks after the move", "summary": "The old services are closed once the new portal has run smoothly for two weeks.",
+    { "n": 7, "title": "Close the old accounts", "when": "2 weeks after the move", "summary": "The old services are closed once the new portal has run smoothly for two weeks.",
       "steps": [
         ["p7-export", "A last copy of the old data is kept with the backups"],
         ["p7-delete", "The old services are closed"],
@@ -611,6 +606,14 @@
         ["p7-cleanup", "Leftovers from the old setup are cleaned up"],
         ["p7-2fa-announce", "The team is asked to install an authenticator app"],
         ["p7-2fa-cutoff", "Two-step sign-in starts for everyone who already had access", "Each person has one week to set it up; after that, the portal asks for it at every sign-in."]
+      ] },
+    { "n": 8, "title": "Wrap up", "when": "After the move", "summary": "The tools in progress join True North's GitHub too, and the people who work on them get their own True North access.",
+      "steps": [
+        ["p1-jeannette-list", "Jeannette's tools in progress are listed"],
+        ["p1-jeannette-move", "Jeannette's tools move to the organization"],
+        ["p1-accounts", "Jeannette, Wendy and Dave get True North GitHub accounts"],
+        ["p1-invite", "They join the organization with those accounts only"],
+        ["p1-jeannette-key", "Jeannette's Claude gets its own key to the code she works on"]
       ] }
   ]
 }
@@ -670,7 +673,7 @@
       document.getElementById('now-title').textContent = 'Phase ' + now.n + ' · ' + now.title;
       document.getElementById('now-sub').textContent = now.summary;
     } else {
-      nowLink.href = '#phase-7';
+      nowLink.href = '#phase-' + plan.phases[plan.phases.length - 1].n;
       document.getElementById('now-title').textContent = 'The move is complete';
       document.getElementById('now-sub').textContent = 'The portal runs at truenorthportal.online.';
     }
