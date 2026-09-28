@@ -77,7 +77,7 @@ async function landing(): Promise<string> {
 export async function verifyCode(input: { email: string; code: string }): Promise<{ ok: false; error: string } | never> {
   const email = input.email.trim().toLowerCase()
   const token = input.code.replace(/\D/g, '')
-  if (token.length < 6) return { ok: false, error: 'Enter the 6-digit code from the email.' }
+  if (token.length < 6) return { ok: false, error: 'Enter the 6‑digit code from the email.' }
   // The invitation check again: the code was sent while they were invited, and
   // this closes the window if an admin revoked them in between.
   if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
