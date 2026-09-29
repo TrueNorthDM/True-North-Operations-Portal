@@ -101,12 +101,24 @@ export async function GET(request: Request) {
  * URL sits behind Vercel's login (deployment protection): a request to it is
  * redirected to vercel.com/sso, fetch followed the redirect to a page that
  * answers 200, and every hop after the first was lost while the log said the
- * chain had gone on. Found on 21 September 2026. Locally, and anywhere the
- * variable is missing, the request's own origin is used.
+ * chain had gone on. Found on 21 September 2026.
+ *
+ * APP_URL, when set, wins (migration plan, step p4-hop): the portal's own address
+ * once it runs on its own server. There the server cron calls the app directly on
+ * the machine, and the request's own origin would do too; APP_URL is for when a
+ * hop must go through the public address. Locally, and anywhere neither variable
+ * is set, the request's own origin is used.
  */
 function nextHopUrl(url: URL): URL {
-  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL
   const next = new URL(url.toString())
+  const app = process.env.APP_URL
+  if (app) {
+    const base = new URL(app)
+    next.protocol = base.protocol
+    next.host = base.host
+    return next
+  }
+  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL
   if (prod) {
     next.protocol = 'https:'
     next.host = prod

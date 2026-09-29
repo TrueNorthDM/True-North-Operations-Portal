@@ -14,12 +14,11 @@
  * Leaders and Users). We forward the caller's cookies to the headless page so
  * it passes the same gate when it loads /print. No proxy change, no token.
  *
- * Chromium: local dev uses the machine's Chrome; on Vercel we use the bundled
- * @sparticuz/chromium binary.
+ * Chromium: lib/pdf/browser.ts (the server's own, local Chrome, or Vercel's bundle).
  */
 
-import puppeteer, { type Browser } from 'puppeteer-core'
-import chromium from '@sparticuz/chromium'
+import type { Browser } from 'puppeteer-core'
+import { launchBrowser } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { requireSurface } from '@/lib/access/resolve'
 import { spanWording } from '@/lib/tsheets/range'
@@ -33,20 +32,6 @@ export const dynamic = 'force-dynamic'
 const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const monthLabel = (ym: string) => /^\d{4}-\d{2}$/.test(ym) ? `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym
 
-async function launch(): Promise<Browser> {
-  // Local dev: use the installed desktop Chrome. Override with LOCAL_CHROME_PATH.
-  if (process.env.NODE_ENV !== 'production') {
-    const executablePath = process.env.LOCAL_CHROME_PATH
-      || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    return puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
-  }
-  // Vercel: the serverless-friendly bundled Chromium.
-  return puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  })
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -78,7 +63,7 @@ export async function GET(request: Request) {
 
   let browser: Browser | null = null
   try {
-    browser = await launch()
+    browser = await launchBrowser()
     const page = await browser.newPage()
     if (cookie) await page.setExtraHTTPHeaders({ cookie })
     await page.goto(target, { waitUntil: 'networkidle0', timeout: 45_000 })

@@ -10,8 +10,8 @@
  * same gate when it loads /report/print. No proxy change, no token.
  */
 
-import puppeteer, { type Browser } from 'puppeteer-core'
-import chromium from '@sparticuz/chromium'
+import type { Browser } from 'puppeteer-core'
+import { launchBrowser } from '@/lib/pdf/browser'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { SCOPE_LABEL } from '@/lib/report/scope'
 import { resolveReportView } from '@/lib/report/view'
@@ -24,18 +24,6 @@ export const maxDuration = 60
 export const preferredRegion = 'iad1'
 export const dynamic = 'force-dynamic'
 
-async function launch(): Promise<Browser> {
-  if (process.env.NODE_ENV !== 'production') {
-    const executablePath = process.env.LOCAL_CHROME_PATH
-      || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    return puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
-  }
-  return puppeteer.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  })
-}
 
 export async function GET(request: Request) {
   await requireSurface('report')
@@ -66,7 +54,7 @@ export async function GET(request: Request) {
 
   let browser: Browser | null = null
   try {
-    browser = await launch()
+    browser = await launchBrowser()
     const page = await browser.newPage()
     if (cookie) await page.setExtraHTTPHeaders({ cookie })
     await page.goto(target, { waitUntil: 'networkidle0', timeout: 45_000 })

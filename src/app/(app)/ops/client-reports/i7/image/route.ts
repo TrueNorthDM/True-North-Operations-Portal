@@ -12,8 +12,8 @@
  * needed), and screenshot it. Same Chromium setup as the PDF route.
  */
 
-import puppeteer, { type Browser } from 'puppeteer-core'
-import chromium from '@sparticuz/chromium'
+import type { Browser } from 'puppeteer-core'
+import { launchBrowser } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
 
@@ -26,14 +26,6 @@ const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'Au
 const monthLabel = (ym: string) => /^\d{4}-\d{2}$/.test(ym) ? `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym
 const money = (n: number) => (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString('en-US')
 
-async function launch(): Promise<Browser> {
-  if (process.env.NODE_ENV !== 'production') {
-    const executablePath = process.env.LOCAL_CHROME_PATH
-      || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    return puppeteer.launch({ executablePath, headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] })
-  }
-  return puppeteer.launch({ args: chromium.args, executablePath: await chromium.executablePath(), headless: true })
-}
 
 function cardHtml(month: string, c: { opening: number; monthBudget: number; monthUsed: number; totalAvailable: number; totalLeft: number } | null): string {
   const label = monthLabel(month)
@@ -121,7 +113,7 @@ export async function GET(request: Request) {
     const carryover = await loadI7Carryover(month)
     const html = cardHtml(month, carryover)
 
-    browser = await launch()
+    browser = await launchBrowser()
     const page = await browser.newPage()
     await page.setViewport({ width: 1000, height: 600, deviceScaleFactor: 2 })
     await page.setContent(html, { waitUntil: 'load', timeout: 30_000 })
