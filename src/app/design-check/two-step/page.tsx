@@ -145,9 +145,24 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
     )
   }
 
+  if (screen === 'banner') {
+    // The reminder the app layout shows while someone's week runs (see (app)/layout.tsx).
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center"><span className="font-(family-name:--font-display) font-extrabold text-tn-ink">True North · Operations Portal</span></header>
+        <div className="flex items-center justify-center gap-3 border-b border-[#f2dc85] bg-[#fdf6d8] px-6 py-2.5 text-[13px] text-[#6b5500]">
+          <span>Set up two-step sign-in: <strong>6 days left</strong>. After that the portal asks for it before you can go on.</span>
+          <span className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink underline">Set it up now</span>
+        </div>
+        <div className="p-10 text-muted">(The page they opened, as usual.)</div>
+      </div>
+    )
+  }
+
+  const skip = screen === 'enroll-new' ? { label: 'Skip for now (7 days left)' } : null
   return (
     <AuthShell>
-      <TwoStepEnroll qr={mockQr()} secret="JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP" uri="otpauth://totp/True%20North%20Operations%20Portal:ana%40goodnewsadvocates.org?secret=JBSWY3DPEHPK3PXP&issuer=True%20North%20Operations%20Portal" email="ana@goodnewsadvocates.org" verify={null} signOut={null} />
+      <TwoStepEnroll skip={skip} qr={mockQr()} secret="JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP" uri="otpauth://totp/True%20North%20Operations%20Portal:ana%40goodnewsadvocates.org?secret=JBSWY3DPEHPK3PXP&issuer=True%20North%20Operations%20Portal" email="ana@goodnewsadvocates.org" verify={null} signOut={null} />
     </AuthShell>
   )
 }

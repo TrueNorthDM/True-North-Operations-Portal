@@ -23,7 +23,7 @@ export interface TwoStepEnrollProps {
   verify: ((code: string) => Promise<{ ok: false; error: string } | void>) | null
   signOut: (() => void) | null
   /** "Skip for now, N days left": only while their week to set it up runs. */
-  skip?: { label: string; action: () => void } | null
+  skip?: { label: string; action?: () => void } | null
 }
 
 const APPS = ['Google Authenticator', 'Microsoft Authenticator', 'iPhone Passwords', '1Password']
@@ -129,7 +129,7 @@ export function TwoStepEnroll({ qr, secret, uri, email, verify, signOut, skip }:
       </button>
 
       {skip && (
-        <button type="button" onClick={skip.action} className="w-full text-center text-[13px] font-semibold text-tn-teal hover:text-tn-primary">
+        <button type="button" onClick={() => skip.action?.()} className="w-full text-center text-[13px] font-semibold text-tn-teal hover:text-tn-primary">
           {skip.label}
         </button>
       )}
