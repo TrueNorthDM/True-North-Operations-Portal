@@ -2,7 +2,10 @@
 // screens with nothing behind them. ?screen=enroll (first sign-in: set up the
 // app), challenge (every sign-in after that), directory (the admin's Reset) or
 // invite (Portal access in the Directory card, each state) or list (the
-// Directory's Portal access tab, with made-up people).
+// Directory's Portal access tab, with made-up people), enroll-new (the setup a
+// new person meets, with its Skip), banner (the reminder alone) or profile (My
+// profile's Sign-in & security, set up and not). The reminder and the menu row
+// on the real shell are in design-check/rail (?page=home&twoStep=6&open=menu).
 // The QR code here is a stand-in drawn locally; the real one comes from Supabase.
 // Development only.
 
@@ -14,6 +17,9 @@ import { TwoStepControl } from '@/components/admin/TwoStepControl'
 import { PILL_CLASS, type PersonView } from '@/lib/directory/people-types'
 import { PortalAccessControl } from '@/components/admin/PortalAccessControl'
 import { PortalAccessTab } from '@/components/admin/PortalAccessTab'
+import { TwoStepSelf } from '@/components/mfa/TwoStepSelf'
+import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
+import { Row, txt } from '@/components/profile/profile-parts'
 
 export const dynamic = 'force-dynamic'
 
@@ -140,6 +146,7 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
           {card('Tina Gennette', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Tina Gennette" state="on" since="2026-10-02" reset={null} />)}
           {card('Kevin Ames', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Kevin Ames" state="not-set-up" reset={null} />)}
           {card('Ana Silva', pill(PILL_CLASS.teal, 'Invited'), <TwoStepControl name="Ana Silva" state="no-account" reset={null} />)}
+          {card('Joy Deche', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Joy Deche" state="on" since="2026-10-02" reset={null} />)}
         </div>
       </div>
     )
@@ -150,11 +157,34 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center"><span className="font-(family-name:--font-display) font-extrabold text-tn-ink">True North · Operations Portal</span></header>
-        <div className="flex items-center justify-center gap-3 border-b border-[#f2dc85] bg-[#fdf6d8] px-6 py-2.5 text-[13px] text-[#6b5500]">
-          <span>Set up two-step sign-in: <strong>6 days left</strong>. After that the portal asks for it before you can go on.</span>
-          <span className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink underline">Set it up now</span>
-        </div>
+        <TwoStepBanner daysLeft={6} />
         <div className="p-10 text-muted">(The page they opened, as usual.)</div>
+      </div>
+    )
+  }
+
+  if (screen === 'profile') {
+    // My profile's Sign-in & security (see (app)/profile/page.tsx), in its three states.
+    const section = (caption: string, node: React.ReactNode) => (
+      <div className="max-w-[920px] rounded-[18px] border border-slate-200 bg-white overflow-hidden">
+        <p className="m-0 px-8 pt-4 text-[11px] font-extrabold uppercase tracking-wide text-muted">{caption}</p>
+        <div className="px-8 pt-3 pb-6">
+          <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">Sign-in &amp; security</div>
+          <div className="flex flex-col gap-4">
+            <Row label="Signs in with">{txt('ana@goodnewsadvocates.org')}</Row>
+            <div className="flex flex-col gap-2">
+              <span className="text-[12.5px] text-muted font-semibold">Two-step sign-in</span>
+              {node}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+    return (
+      <div className="min-h-screen bg-background p-10 flex flex-col gap-6">
+        {section('1 · New person, their week running', <TwoStepSelf since={null} daysLeft={6} />)}
+        {section('2 · Someone from before, until the cutoff', <TwoStepSelf since={null} daysLeft={null} />)}
+        {section('3 · Set up', <TwoStepSelf since="2026-09-28" daysLeft={null} />)}
       </div>
     )
   }

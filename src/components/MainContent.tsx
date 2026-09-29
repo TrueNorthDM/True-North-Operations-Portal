@@ -18,7 +18,13 @@ import { ROUTES } from '@/lib/nav/routes'
 // hard-coding a single path in the component body.
 const FULL_BLEED_ROUTES = new Set<string>([ROUTES.publishing])
 
-export function MainContent({ children }: { children: React.ReactNode }) {
+export function MainContent({ children, notice = null }: {
+  children: React.ReactNode
+  /** A strip across the top of the content, under the top bar (the two-step
+   *  reminder). Here rather than across the whole window, where it pushed the
+   *  rail, whose height is the window's, and its avatar below the fold. */
+  notice?: React.ReactNode
+}) {
   const pathname = usePathname()
 
   // Framed pages opt out of the centered max-width box and fill the whole area.
@@ -34,11 +40,16 @@ export function MainContent({ children }: { children: React.ReactNode }) {
     // within their own containers instead.
     <main className="flex-1 min-w-0">
       {fullBleed ? (
-        <div className="h-full">{children}</div>
+        notice
+          ? <div className="h-full flex flex-col">{notice}<div className="flex-1 min-h-0">{children}</div></div>
+          : <div className="h-full">{children}</div>
       ) : (
         // Full-bleed on every screen, use the whole width, just a little side
         // padding so content doesn't hug the edges.
-        <div className="px-6 py-8 w-full">{children}</div>
+        <>
+          {notice}
+          <div className="px-6 py-8 w-full">{children}</div>
+        </>
       )}
     </main>
   )

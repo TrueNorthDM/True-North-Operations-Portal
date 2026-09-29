@@ -66,7 +66,7 @@ function PendingBar({ pending }: { pending: boolean }) {
 }
 
 export function Sidebar({
-  rail, user, canSettings = false, menuOpen = false, startHub = null,
+  rail, user, canSettings = false, menuOpen = false, startHub = null, twoStepDaysLeft = null,
 }: {
   rail: ResolvedEntry[]
   /** The person signed in (or previewed), for the avatar at the foot of the rail. */
@@ -77,6 +77,8 @@ export function Sidebar({
   menuOpen?: boolean
   /** Design check only: a hub's panel open. */
   startHub?: string | null
+  /** Days left to set up two-step sign-in, while that week runs: the avatar menu offers it. */
+  twoStepDaysLeft?: number | null
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -183,7 +185,7 @@ export function Sidebar({
           )}
         </nav>
         <div className="mt-auto pb-1.5 flex justify-center">
-          <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} canSettings={canSettings} />
+          <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} canSettings={canSettings} twoStepDaysLeft={twoStepDaysLeft} />
         </div>
       </div>
 

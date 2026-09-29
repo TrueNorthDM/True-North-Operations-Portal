@@ -17,6 +17,7 @@ import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { checkPortalAccess } from '@/lib/auth/portal-access'
 import { checkTwoStep } from '@/lib/auth/two-step'
 import { daysLeft } from '@/lib/auth/two-step-rule'
+import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 import { loadAccess } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
 import { directoryLevel } from '@/lib/access/surfaces'
@@ -88,29 +89,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
           <div className="md:hidden">
-            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} canSettings={canSettings} />
+            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} canSettings={canSettings} twoStepDaysLeft={twoStepDays} />
           </div>
         </div>
       </header>
-
-      {/* The reminder while someone's week to set up two-step sign-in runs. */}
-      {twoStepDays !== null && (
-        <div className="flex items-center justify-center gap-3 border-b border-[#f2dc85] bg-[#fdf6d8] px-6 py-2.5 text-[13px] text-[#6b5500]">
-          <span>
-            Set up two-step sign-in: <strong>{twoStepDays} {twoStepDays === 1 ? 'day' : 'days'} left</strong>. After that the portal asks for it before you can go on.
-          </span>
-          <Link href="/auth/two-step/setup" className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink underline">Set it up now</Link>
-        </div>
-      )}
 
       {/* Sidebar + main */}
       <div className="flex flex-1">
         <Sidebar
           rail={rail}
           canSettings={canSettings}
+          twoStepDaysLeft={twoStepDays}
           user={{ email: me?.email ?? user?.email ?? null, name: me?.full_name ?? null, avatarUrl: me?.avatar_url ?? null }}
         />
-        <MainContent>{children}</MainContent>
+        {/* The reminder while someone's week to set up two-step sign-in runs. */}
+        <MainContent notice={twoStepDays !== null ? <TwoStepBanner daysLeft={twoStepDays} /> : null}>{children}</MainContent>
       </div>
     </>
   )
