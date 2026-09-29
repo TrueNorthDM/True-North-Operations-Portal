@@ -305,7 +305,7 @@
     <div class="changes">
       <div class="change"><span class="icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span><h3>A new address</h3><p>After the move the portal lives at <b>truenorthportal.online</b>.</p></div>
       <div class="change"><span class="icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg></span><h3>Access by invitation</h3><p>Everyone active on the team gets an email invitation. Only invited people can sign in.</p></div>
-      <div class="change"><span class="icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><h3>Easier sign-in</h3><p>Sign in with Google, or with a 6‑digit code sent to your email. The email link still works too.</p></div>
+      <div class="change"><span class="icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><h3>Easier sign-in</h3><p>Sign in with your Good News Advocates email: type the 6‑digit code it sends you, or press its button, on any device.</p></div>
       <div class="change"><span class="icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-3 8-9V6l-8-3-8 3v7c0 6 8 9 8 9z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>A second step</h3><p>After signing in, you enter a 6‑digit code from an app on your phone, such as Google Authenticator. You set it up once, with a QR code.</p></div>
       <div class="change"><span class="icon-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><h3>A short pause</h3><p>The portal is offline for up to three days during the move. You will know the date ahead of time.</p></div>
     </div>
@@ -316,7 +316,7 @@
     <div class="why">
       <div class="card"><h3>True North owns it all</h3><p>The code, the server, the database and the address all end up in accounts that belong to True North, not to third parties.</p></div>
       <div class="card"><h3>One home instead of four</h3><p>Today the portal is spread over GitHub, Vercel and Supabase under another organization. After the move it runs on one server True North controls.</p></div>
-      <div class="card"><h3>A sturdier sign-in</h3><p>Access by invitation, Google sign-in, a 6‑digit code and a second step on your phone replace a single email link that sometimes fails.</p></div>
+      <div class="card"><h3>A sturdier sign-in</h3><p>Access by invitation, a 6‑digit code by email and a second step on your phone replace a single email link that sometimes failed.</p></div>
       <div class="card"><h3>A proper address</h3><p>truenorthportal.online replaces a long hosting address, protected by Cloudflare.</p></div>
     </div>
   </section>
@@ -330,7 +330,7 @@
           <tr><td class="what">App hosting</td><td class="from">Vercel</td><td class="to">ScalaHosting VPS (SPanel, Node.js)</td></tr>
           <tr><td class="what">Database</td><td class="from">Supabase cloud</td><td class="to">ScalaHosting PostgreSQL, managed in SPanel</td></tr>
           <tr><td class="what">Login, data API, files</td><td class="from">Supabase cloud</td><td class="to">Open-source Supabase services on the VPS (Firebase for login if not possible)</td></tr>
-          <tr><td class="what">Who can sign in</td><td class="from">Any company email (domain check)</td><td class="to">Invited people only: Google, email code or link</td></tr>
+          <tr><td class="what">Who can sign in</td><td class="from">Any company email (domain check)</td><td class="to">Invited people only, with their GoodNews address: email code or link</td></tr>
           <tr><td class="what">Second step (2FA)</td><td class="from">None</td><td class="to">A 6‑digit code from an authenticator app, for everyone</td></tr>
           <tr><td class="what">Login emails</td><td class="from">Sent by Supabase</td><td class="to">portal@truenorthportal.online, from our own server</td></tr>
           <tr><td class="what">Address</td><td class="from">truenorthoperationsportal.vercel.app</td><td class="to">truenorthportal.online</td></tr>
@@ -419,12 +419,12 @@
         <p>Today anyone with a company email can sign in, and the only way in is a magic link. The link fails in three common ways: the email is slow or lands in spam, the link is opened on a different device from the one that asked for it, or an email scanner opens it first and uses it up.</p>
         <ul>
           <li><b>Invitation only, not by domain.</b> The portal is open to the people an admin invites, whatever their email, and to nobody else. At launch every active person in the Directory is invited: 31 today, of whom 27 have a work email, 3 only a personal one and 1 none yet.</li>
-          <li><b>Sign in with Google.</b> True North is on Google Workspace, and Gmail works too. It asks only for name and email, so no Workspace admin has to approve anything.</li>
-          <li><b>A 6‑digit code in the same email</b>, typed on any device, for anyone without Google. The link keeps working.</li>
+          <li><b>Sign in with Google</b>, as an extra (phase 9). True North is on Google Workspace, and Gmail works too. It asks only for name and email, so no Workspace admin has to approve anything.</li>
+          <li><b>A 6‑digit code in the same email</b>, typed on any device, and a button that works on any device.</li>
           <li><b>Two-step sign-in (2FA) for everyone.</b> After signing in, a 6‑digit code from an authenticator app on the phone (Google Authenticator, Microsoft Authenticator, 1Password), set up once with a QR code. It is built into the Supabase login, so every page can require it. An admin can reset it for someone who loses their phone.</li>
           <li><b>Reliable sending</b> from portal@truenorthportal.online, and <b>longer sessions</b>.</li>
         </ul>
-        <p class="rec agreed"><b>Agreed</b>Invitation only, Google sign-in, 6‑digit code alongside the link, and two-step sign-in for everyone. No domain restriction and no approval needed from IT. The sign-in changes ship on the current portal, before the move. Two-step sign-in applies to new people from their first sign-in, and to everyone who already had access once the move is finished, each with a week to set it up.</p>
+        <p class="rec agreed"><b>Agreed</b>Invitation only with the GoodNews address, a 6‑digit code alongside the link, and two-step sign-in for everyone; Google sign-in later, as an extra. No domain restriction and no approval needed from IT. The sign-in changes ship on the current portal, before the move. Two-step sign-in applies to new people from their first sign-in, and to everyone who already had access once the move is finished, each with a week to set it up.</p>
       </div>
       <div class="card decision">
         <h3><span class="n">4</span>The addresses on truenorthportal.online <span class="chip ok">Decided</span></h3>
@@ -486,9 +486,9 @@
       <table>
         <thead><tr><th>Risk</th><th>Cover</th></tr></thead>
         <tbody>
-          <tr><td>Login emails land in spam, so nobody can sign in</td><td>SPF, DKIM and DMARC set up in phase 3, tested with a real email on staging; Google sign-in needs no email at all.</td></tr>
+          <tr><td>Login emails land in spam, so nobody can sign in</td><td>SPF, DKIM and DMARC set up in phase 3, tested with a real email; login emails are sent through Resend, already live on the current portal.</td></tr>
           <tr><td>Someone loses or replaces their phone</td><td>An admin resets their second step from the Directory; they set it up again at their next sign-in.</td></tr>
-          <tr><td>People can't get in with the new login</td><td>Invitations, Google and the code go live on the current portal in phase 4, so they are proven before anything else changes.</td></tr>
+          <tr><td>People can't get in with the new login</td><td>Invitations, the code and two-step sign-in go live on the current portal in phase 4, so they are proven before anything else changes.</td></tr>
           <tr><td>ScalaHosting refuses Docker, or the database lacks what the services need</td><td>Asked first (decision 2). The fallback is the Firebase path.</td></tr>
           <tr><td>Backups</td><td>SPanel's backups of the PostgreSQL service, plus a nightly export to storage off the server, checked before the move.</td></tr>
           <tr><td>Monday stops sending webhooks</td><td>Every webhook is re-pointed on day 2 and checked by editing a test item.</td></tr>
@@ -504,7 +504,7 @@
       <details><summary>Do I need to do anything now?</summary><p>No. When the new sign-in is ready you will get an email invitation; accept it, and that's all. We'll tell the team before the portal goes offline.</p></details>
       <details><summary>Will anything be lost?</summary><p>No. All the data (time entries, reports, the Directory, My Work) is copied to the new server and checked against the old one, number by number, before the new portal opens. The whole copy is rehearsed first.</p></details>
       <details><summary>Why is the portal moving?</summary><p>So that True North owns every part of it: the code, the server, the database and the address. Today they live on services under other accounts.</p></details>
-      <details><summary>What if I can't sign in after the move?</summary><p>Try "Sign in with Google" or the 6‑digit code first. If neither works, let Arnaldo know and he will check your invitation.</p></details>
+      <details><summary>What if I can't sign in after the move?</summary><p>Ask for a new code on the sign-in page and type it in. If it still does not work, let Arnaldo know and he will check your invitation.</p></details>
       <details><summary>What is the second step, and what if I lose my phone?</summary><p>After you sign in, the portal asks for a 6‑digit code from an authenticator app on your phone, such as Google Authenticator. You set it up once by scanning a QR code. If you lose or change your phone, Arnaldo resets it and you set it up again.</p></details>
       <details><summary>Will the old address keep working?</summary><p>Until the move, yes. After it, use truenorthportal.online and update your bookmark.</p></details>
     </div>
