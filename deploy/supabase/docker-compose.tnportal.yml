@@ -3,11 +3,11 @@
 # /opt/tnportal/bin/supabase.sh; realtime, edge functions and the pooler are not
 # used by the portal and are not started.
 #
-# userns_mode: host on every service. This server's Docker remaps container
-# users (userns-remap), and its root folder is mode 711, which the remapped
-# runtime cannot open ("error jailing process inside rootfs: open /"). So our
-# containers run with Docker's usual user mapping instead; the services inside
-# still run as their own non-root users.
+# userns_mode: host on every service. ScalaHosting installed Docker with user
+# remapping (userns-remap), and this server's / is mode 711, which the remapped
+# runtime cannot open ("error jailing process inside rootfs: open /"). The
+# remapping was turned off on 30 September 2026 (deploy/README.md); this keeps
+# our containers working if it is ever turned back on.
 
 x-host-userns: &host-userns
   userns_mode: host

@@ -16,8 +16,7 @@ services:
     image: tnportal/portal:${PORTAL_TAG:-latest}
     container_name: tnportal-portal
     restart: unless-stopped
-    # This server's Docker remaps users (userns-remap) and cannot start remapped
-    # containers there (its / is mode 711); see supabase/docker-compose.tnportal.yml.
+    # Safe if Docker's user remapping is ever turned back on (deploy/README.md).
     userns_mode: host
     env_file: /opt/tnportal/portal.env
     # Only on this machine: LiteSpeed forwards the public address to it.

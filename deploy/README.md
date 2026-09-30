@@ -22,10 +22,14 @@ on 127.0.0.1 only; LiteSpeed forwards the public addresses to it.
 
 Two things specific to this server:
 
-- **Docker remaps users** (`userns-remap`) and the server's `/` is mode 711, so
-  remapped containers cannot start. Every container runs with
-  `userns_mode: host`, and the database's config lives in a folder
-  (`volumes/db/config`, owner 100:101) instead of a named volume.
+- **Docker user remapping is off.** ScalaHosting installed Docker with
+  `userns-remap`, but the server's `/` is mode 711 and remapped containers and
+  builds could not start ("open /: permission denied"). On 30 September 2026
+  `userns-remap` was removed from `/etc/docker/daemon.json` (their original is
+  `daemon.json.orig-scalahosting`). The compose files still say
+  `userns_mode: host`, so the containers keep working if it is ever turned back
+  on, and the database's config lives in a folder (`volumes/db/config`, owner
+  100:101) instead of a named volume.
 - **The CSF firewall** flushes Docker's iptables chains when it reloads.
   `/etc/csf/csfpost.sh` restarts Docker when they are missing, and Docker's
   `live-restore` keeps the containers running through that restart.
