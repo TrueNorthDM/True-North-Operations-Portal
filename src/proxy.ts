@@ -123,6 +123,10 @@ export const config = {
     // and the install never appears. It names the app and its icons and holds
     // nothing private. The icon files are already covered by the .svg/.png/.ico
     // rules, which is why only this one had to be named.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|logos/|.*\\.svg|.*\\.png|.*\\.jpg).*)',
+    //
+    // email-templates/ holds the sign-in email templates. The self-hosted
+    // sign-in service (migration plan, step p3-mail) fetches them by URL with no
+    // session; they hold placeholders only, nothing private.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|logos/|email-templates/|.*\\.svg|.*\\.png|.*\\.jpg).*)',
   ],
 }

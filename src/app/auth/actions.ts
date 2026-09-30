@@ -5,7 +5,7 @@
  *
  * - sendMagicLink: checks on the SERVER (not just client) that the address is
  *   invited (migration 089), then asks Supabase to email a 6-digit code and a
- *   one-click link. The email template is supabase/templates/magic-link.html.
+ *   one-click link. The email template is public/email-templates/magic-link.html.
  * - verifyCode: signs in with the 6-digit code, typed on any device.
  * - confirmLink: signs in with the one-click link from the email (the page at
  *   /auth/confirm calls it when the person presses the button).

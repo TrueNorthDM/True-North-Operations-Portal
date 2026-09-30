@@ -3,7 +3,7 @@
  *
  * It carries no sign-in token, so it never expires: the button opens the sign-in
  * page with the person's address filled in, and the usual sign-in email follows.
- * Same look as the sign-in email Supabase sends (supabase/templates/magic-link.html):
+ * Same look as the sign-in email Supabase sends (public/email-templates/magic-link.html):
  * the portal's gold rule, logo and navy button, readable with images blocked.
  */
 

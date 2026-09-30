@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<title>Welcome to the True North Operations Portal</title>
+<title>Your sign-in code for the True North Operations Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@800;900&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0;padding:0;background:#f1efe8;">
 <!-- Preheader: the line inboxes show next to the subject. -->
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your first sign-in code is {{ .Token }}. It works once and expires in one hour.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your code is {{ .Token }}. It works once and expires in one hour.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1efe8;">
   <tr><td align="center" style="padding:32px 16px;">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #e4e7ec;border-radius:14px;overflow:hidden;">
@@ -18,14 +18,14 @@
       <tr><td style="height:3px;background:#F2C40A;font-size:0;line-height:0;">&nbsp;</td></tr>
       <tr><td style="padding:22px 36px 18px;border-bottom:1px solid #e4e7ec;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="vertical-align:bottom;"><img src="https://truenorthoperationsportal.vercel.app/logos/true-north.png" width="92" alt="True North Digital Marketing" style="display:block;width:92px;height:auto;border:0;font-family:Raleway,Arial,sans-serif;font-weight:900;font-size:16px;color:#012358;"></td>
+          <td style="vertical-align:bottom;"><img src="{{ .SiteURL }}/logos/true-north.png" width="92" alt="True North Digital Marketing" style="display:block;width:92px;height:auto;border:0;font-family:Raleway,Arial,sans-serif;font-weight:900;font-size:16px;color:#012358;"></td>
           <td style="vertical-align:bottom;padding:0 0 3px 10px;font-family:'Open Sans',Arial,sans-serif;font-size:13px;font-weight:600;color:#8593a4;">Operations Portal</td>
         </tr></table>
       </td></tr>
       <!-- Body -->
       <tr><td style="padding:34px 36px 8px;font-family:'Open Sans',Arial,sans-serif;color:#435066;">
-        <h1 style="margin:0 0 12px;font-family:Raleway,Arial,sans-serif;font-weight:900;font-size:26px;line-height:1.25;color:#012358;">Welcome to the portal</h1>
-        <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">This is your first sign-in. Type this code on the sign-in page, on any device:</p>
+        <h1 style="margin:0 0 12px;font-family:Raleway,Arial,sans-serif;font-weight:900;font-size:26px;line-height:1.25;color:#012358;">Your sign-in code</h1>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">Type this code on the sign-in page, on any device:</p>
         <!-- The code, large and easy to copy -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
           <td style="background:#f7f6f1;border:1px solid #e4e7ec;border-radius:12px;padding:16px 26px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:34px;font-weight:700;letter-spacing:10px;color:#012358;">{{ .Token }}</td>
@@ -42,7 +42,7 @@
       </td></tr>
       <!-- Footer -->
       <tr><td style="padding:18px 36px 24px;border-top:1px solid #e4e7ec;font-family:'Open Sans',Arial,sans-serif;font-size:12px;line-height:1.6;color:#8593a4;">
-        Sent to {{ .Email }} because you were invited to the True North Operations Portal and signed in for the first time.<br>
+        Sent to {{ .Email }} because a sign-in was requested for the True North Operations Portal.<br>
         <a href="{{ .SiteURL }}" style="color:#1E7D7F;text-decoration:none;font-weight:600;">True North Operations Portal</a>
       </td></tr>
     </table>

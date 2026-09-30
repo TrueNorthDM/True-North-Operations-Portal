@@ -42,6 +42,9 @@ services:
       # Two-step sign-in with an authenticator app.
       GOTRUE_MFA_TOTP_ENROLL_ENABLED: "true"
       GOTRUE_MFA_TOTP_VERIFY_ENABLED: "true"
-      # Email subjects (the templates themselves are wired in with p3-mail).
+      # The branded emails: public/email-templates in the portal's repository,
+      # fetched from the portal itself (EMAIL_TEMPLATES_BASE, set by apply-env.sh).
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: ${EMAIL_TEMPLATES_BASE}/magic-link.html
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: ${EMAIL_TEMPLATES_BASE}/confirm-signup.html
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "Your sign-in code: {{ .Token }}"
       GOTRUE_MAILER_SUBJECTS_CONFIRMATION: "Welcome to the True North Operations Portal: your code is {{ .Token }}"
