@@ -30,6 +30,7 @@ The Operations Portal is back, at its new address: truenorthportal.online ✅
 
 • Sign in with your GoodNews email; you'll get a 6-digit code by email.
 • Everything is where you left it.
+• Please enter the hours you noted down during the pause.
 • If something looks off, tell me right away.
 ```
 
