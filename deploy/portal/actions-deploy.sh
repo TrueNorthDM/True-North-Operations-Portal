@@ -18,9 +18,11 @@ case "$cmd" in
     exec 9>/opt/tnportal/.deploy.lock
     flock -n 9 || { echo "Another deploy is running." >&2; exit 3; }
     # Check the commit out first, so deploy.sh runs from that commit's copy.
+    # Fetch everything, then resolve: GitHub cannot fetch a short hash by name.
     cd /opt/tnportal/app
-    git fetch --quiet origin "$ref"
-    git checkout --quiet --detach FETCH_HEAD
+    git fetch --quiet origin
+    [ "$ref" = main ] && target=origin/main || target="$ref"
+    git checkout --quiet --detach "$(git rev-parse --verify "$target^{commit}")"
     /opt/tnportal/app/deploy/portal/deploy.sh "$ref" 2>&1 | tee -a /opt/tnportal/logs/deploy.log
     ;;
   status)

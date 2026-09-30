@@ -2,7 +2,7 @@
 # Build and start the portal on its server, from the code in /opt/tnportal/app.
 # Run as the portal user:  /opt/tnportal/app/deploy/portal/deploy.sh [git ref]
 #
-# 1. Fetches the code (main by default) and checks it out.
+# 1. Fetches the code and checks out the commit (main, or a full or short hash).
 # 2. Builds a new image tagged with the commit, at low priority so the websites
 #    on this server keep their share of the CPU.
 # 3. Swaps the running container for the new one and waits for it to answer.
@@ -14,8 +14,10 @@ ENV_FILE=/opt/tnportal/portal.env
 REF="${1:-main}"
 cd "$APP"
 
-git fetch --quiet origin "$REF"
-git checkout --quiet --detach FETCH_HEAD
+# Fetch everything, then resolve: GitHub cannot fetch a short hash by name.
+git fetch --quiet origin
+[ "$REF" = main ] && TARGET=origin/main || TARGET="$REF"
+git checkout --quiet --detach "$(git rev-parse --verify "$TARGET^{commit}")"
 SHA="$(git rev-parse --short HEAD)"
 PREV="$(docker inspect --format '{{.Config.Image}}' tnportal-portal 2>/dev/null || true)"
 
