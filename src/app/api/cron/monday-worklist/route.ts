@@ -34,6 +34,7 @@ import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discove
 import { ingestSlice } from '@/lib/monday/worklist/ingest'
 import { applyStaleRule } from '@/app/(app)/settings/monday/actions'
 import { notifyAfterSync, notifyUnlinked } from '@/lib/notifications/run'
+import { acquireLease, releaseLease, startRun, finishRun, failedThisRun } from '@/lib/monday/worklist/sync-run'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -82,6 +83,7 @@ export async function GET(request: Request) {
   const since = url.searchParams.get('since') ?? new Date().toISOString()
   if (hop >= LINKS) {
     after(async () => {
+      await releaseLease(createAdminClient(), since)
       const n = await notifyAfterSync({ since, incomplete: { remaining: null, reason: `the chain hit its limit of ${LINKS} hops.` } })
       console.log('[monday-worklist] notifications', JSON.stringify(summary(n)))
     })
@@ -134,6 +136,14 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
   const started = Date.now()
   let discovered: unknown = null
 
+  // One firing at a time (migration 091). Every hop of this firing may take the
+  // lock again; a different firing that finds it held skips its turn, rather
+  // than rewriting the same boards at the same moment.
+  const lease = await acquireLease(supabase, since)
+  if (!lease.ok) return { hop, since, skipped: `another sync (${lease.heldBy}) holds the lock until ${lease.until}` }
+  const runId = await startRun(supabase, since, hop)
+  let gone = 0
+
   try {
     // Head of the chain: refresh the map before reading the work.
     if (hop === 0) {
@@ -141,16 +151,22 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
       // A Monday account nobody in the Directory is (notification S5).
       await notifyUnlinked(supabase, users.unlinked)
       const boards = await syncMondayBoards(supabase, token)
+      gone = boards.gone
       discovered = {
         accounts: users.users,
         linked: users.linkedByEmail,
         pending: users.unlinked.length,
         boards: boards.boards,
         stepsSeeded: boards.stepsSeeded,
+        gone: boards.gone,
+        back: boards.back,
+        ...(boards.goneRefused ? { goneRefused: boards.goneRefused } : {}),
       }
     }
 
-    const r = await ingestSlice(supabase, token, BUDGET_MS - (Date.now() - started), since)
+    // Boards that already failed in this firing are left for the next one.
+    const skip = await failedThisRun(supabase, since)
+    const r = await ingestSlice(supabase, token, BUDGET_MS - (Date.now() - started), since, skip)
 
     let chained: string | boolean = false
     if (r.remaining > 0) {
@@ -204,12 +220,25 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
       }
     }
 
+    // The chain ends here, whole or broken: the next firing may start.
+    if (r.remaining === 0 || chained !== true) await releaseLease(supabase, since)
+    await finishRun(supabase, runId, {
+      boards_read: r.done.length,
+      items: r.done.reduce((s, b) => s + b.items, 0),
+      assignments: r.done.reduce((s, b) => s + b.assignments, 0),
+      remaining: r.remaining,
+      failed: r.failed,
+      gone,
+      chained: typeof chained === 'string' ? chained : chained ? 'next hop accepted' : null,
+    })
+
     return {
       hop,
       since,
       discovered,
       ...(stale ? { staleHidden: stale.hidden, staleShown: stale.shown } : {}),
       boards: r.done.length,
+      failed: r.failed.map(f => `${f.name}: ${f.error.slice(0, 120)}`),
       items: r.done.reduce((s, b) => s + b.items, 0),
       assignments: r.done.reduce((s, b) => s + b.assignments, 0),
       remaining: r.remaining,
@@ -222,6 +251,8 @@ async function runHop(url: URL, hop: number, since: string, secret: string | und
     // resumes from the oldest, which is exactly where this stopped. The chain
     // ends here, so it is told as a sync that did not finish.
     const message = (e as Error).message
+    await releaseLease(supabase, since)
+    await finishRun(supabase, runId, { error: message.slice(0, 1000), gone })
     const n = Date.now() - started < NOTIFY_BEFORE_MS
       ? summary(await notifyAfterSync({ since, incomplete: { remaining: null, reason: message } }))
       : 'skipped: too close to the time limit'

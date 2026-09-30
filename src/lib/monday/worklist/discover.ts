@@ -11,22 +11,51 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { seedSteps, pickDateColumn, PEOPLE_TYPES, type BoardColumn } from './steps'
 import { missingColumn } from './missing-column'
+import { retryDecision, goneBoards, selectAllPages, type CallFailure } from './resilience'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
 
 const API = 'https://api.monday.com/v2'
 
+/** How long one attempt may take before it counts as a network failure. */
+const CALL_TIMEOUT_MS = 45_000
+
+class MondayError extends Error {}
+
+/**
+ * One Monday GraphQL call, tried again when the failure is the passing kind:
+ * no answer, a timeout, a 429 or 5xx, or Monday's complexity budget running out
+ * (it says when it resets, and the wait follows it). A query Monday refuses is
+ * not retried. Rules and limits in resilience.ts.
+ */
 export async function gql<T>(token: string, query: string, variables?: Record<string, unknown>): Promise<T> {
-  const res = await fetch(API, {
-    method: 'POST',
-    headers: { Authorization: token, 'Content-Type': 'application/json', 'API-Version': '2024-10' },
-    body: JSON.stringify({ query, variables }),
-  })
-  const json = (await res.json()) as { data?: T; errors?: { message: string }[] }
-  if (json.errors?.length) throw new Error(json.errors.map(e => e.message).join('; '))
-  if (!json.data) throw new Error(`Monday: empty response (status ${res.status})`)
-  return json.data
+  for (let attempt = 1; ; attempt++) {
+    let failure: CallFailure
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { Authorization: token, 'Content-Type': 'application/json', 'API-Version': '2024-10' },
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+      })
+      const json = (await res.json().catch(() => null)) as { data?: T; errors?: { message: string }[] } | null
+      if (json?.data && !json.errors?.length) return json.data
+      const retryAfter = Number(res.headers.get('retry-after'))
+      failure = {
+        status: res.status,
+        messages: json?.errors?.map(e => e.message) ?? [],
+        retryAfterSeconds: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null,
+      }
+    } catch (e) {
+      failure = { network: true, messages: [(e as Error).message] }
+    }
+    const next = retryDecision(failure, attempt)
+    const said = failure.messages?.length ? failure.messages.join('; ') : `empty response (status ${failure.status ?? 'none'})`
+    if (!next.retry) throw new MondayError(attempt > 1 ? `${said} (after ${attempt} attempts)` : said)
+    console.warn(`[monday] attempt ${attempt} failed (${said.slice(0, 160)}); trying again in ${next.waitMs} ms`)
+    await new Promise(r => setTimeout(r, next.waitMs))
+  }
 }
 
 // ── People ──────────────────────────────────────────────────────────────────
@@ -170,6 +199,10 @@ export interface BoardSyncResult {
   /** Of those, how many own at least one status with a deadline: the ones My Work shows. */
   stepsWithDeadline: number
   stepsKept: number
+  /** Boards discovery stopped seeing in Monday this time, and ones that came back. */
+  gone: number
+  back: number
+  goneRefused?: string
 }
 
 interface RawBoard {
@@ -282,8 +315,11 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
   const withPeople = boards.filter(b => (b.columns ?? []).some(c => PEOPLE_TYPES.has(c.type)))
 
   // What a person already decided, which the seeding must not undo.
-  const { data: existing } = await supabase
-    .from('monday_board_steps').select('board_id, people_col, source')
+  // Every row, a page at a time: past 1,000 rows a single read stops short, and a
+  // reviewed step missing from this set would be re-seeded as a guess.
+  const { data: existing, error: existingErr } = await selectAllPages((from, to) => supabase
+    .from('monday_board_steps').select('board_id, people_col, source').order('board_id').order('people_col').range(from, to))
+  if (existingErr) throw new Error(`monday_board_steps read: ${existingErr.message}`)
   const reviewed = new Set(
     ((existing ?? []) as { board_id: number; people_col: string; source: string }[])
       .filter(r => r.source !== 'guess')
@@ -335,11 +371,46 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     if (error) throw new Error(`monday_board_steps upsert: ${error.message}`)
   }
 
+  const gone = await markGoneBoards(supabase, new Set(boards.map(b => Number(b.id))))
+
   return {
     boards: boards.length,
     withPeople: withPeople.length,
     stepsSeeded: seeded.length,
     stepsWithDeadline: withDeadline,
     stepsKept: reviewed.size,
+    gone: gone.gone,
+    back: gone.back,
+    ...(gone.refused ? { goneRefused: gone.refused } : {}),
   }
+}
+
+/**
+ * Boards Monday no longer lists (archived or deleted) are marked gone and not
+ * read again; one that comes back is read as usual. A gone board's rows are
+ * cleared without history events: the board went, nobody's work changed hands.
+ * The rule, and its refusal when the listing looks cut short, is goneBoards.
+ * Before migration 091 there is no gone_at, and nothing changes.
+ */
+async function markGoneBoards(supabase: Client, activeIds: Set<number>): Promise<{ gone: number; back: number; refused?: string }> {
+  const { data, error } = await selectAllPages<{ id: number; gone_at: string | null }>((from, to) => supabase
+    .from('monday_boards').select('id, gone_at').order('id').range(from, to))
+  if (missingColumn(error, 'gone_at')) return { gone: 0, back: 0 }
+  if (error) throw new Error(`monday_boards read: ${error.message}`)
+
+  const r = goneBoards(data.map(b => ({ id: Number(b.id), goneAt: b.gone_at })), activeIds)
+  if (r.refused) console.warn(`[monday-discover] ${r.refused}`)
+  const now = new Date().toISOString()
+  for (let i = 0; i < r.gone.length; i += 200) {
+    const ids = r.gone.slice(i, i + 200)
+    const { error: markErr } = await supabase.from('monday_boards').update({ gone_at: now }).in('id', ids)
+    if (markErr) throw new Error(`mark gone boards: ${markErr.message}`)
+    const { error: clearErr } = await supabase.from('monday_assignments').delete().in('board_id', ids)
+    if (clearErr) throw new Error(`clear gone boards: ${clearErr.message}`)
+  }
+  for (let i = 0; i < r.back.length; i += 200) {
+    await supabase.from('monday_boards').update({ gone_at: null }).in('id', r.back.slice(i, i + 200))
+  }
+  if (r.gone.length || r.back.length) console.log(`[monday-discover] boards gone: ${r.gone.length}, back: ${r.back.length}`)
+  return { gone: r.gone.length, back: r.back.length, refused: r.refused }
 }

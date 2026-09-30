@@ -550,7 +550,18 @@ Você respondeu ponto a ponto em 15/09. O plano das seções 4 a 6 foi substitu�
   última atividade em 22/01/2025). Tem um passo aberto em Web Dev & Tech Support ("Not
   Relevant" na coluna Status, que já está no item 3 de `02-monday-fixes.md`). Francês do HFA:
   sem meta por enquanto.
-- A fase 5 (leitura resiliente do Monday).
+- **A fase 5 (leitura resiliente do Monday): feita em 30/09 (itens 1 a 4), migration 091.**
+  Um board que falha não para mais os outros: fica registrado e é pulado até a próxima
+  rodada. Cada chamada ao Monday tem limite de 45 s e até 3 tentativas, esperando o que o
+  Monday indica (orçamento de complexidade, 429, erro 5xx). A leitura do "antes" do histórico
+  vinha cortada em 1.000 linhas (limite do Supabase) e gerava eventos "assigned" falsos em
+  boards grandes; agora lê em páginas, assim como os passos revisados na descoberta. O board é
+  gravado em staging e trocado numa transação só (`monday_swap_board_assignments`). Um lock
+  (`monday_sync_lock`) impede duas rodadas ao mesmo tempo; `monday_sync_runs` registra cada
+  passo. Boards arquivados ou apagados no Monday viram `gone_at` e param de ser lidos, sem
+  eventos falsos, e a descoberta se recusa a marcar se a lista vier cortada pela metade.
+  Sem a migration, o código segue o caminho antigo. Falta o item 5: o Report com as mesmas
+  exclusões do My Work e a idade dos dados na tela, no PDF e no CSV.
 - Marcar "aguardando o passo anterior".
 
 ## 11. Exemplos do J4 (15/09)
