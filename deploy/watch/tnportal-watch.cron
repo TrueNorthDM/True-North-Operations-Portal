@@ -1,0 +1,5 @@
+# The portal server's watch (deploy/watch/watch.py), every 10 minutes.
+# Install as root: install -m 644 deploy/watch/tnportal-watch.cron /etc/cron.d/tnportal-watch
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+*/10 * * * * root /usr/libexec/platform-python /opt/tnportal/app/deploy/watch/watch.py >> /opt/tnportal/logs/watch.log 2>&1
