@@ -17,7 +17,6 @@ unpause the old portal.
 | Phase 5 | Rehearsal: copy the live data into the server (`p5-copy`), compare every table (`p5-compare`), try the main screens on staging (`p5-you`), time the copy (`p5-time`). The copy and count scripts used on the day are the ones proven here. | Claude, Arnaldo |
 | Phase 5 | Check two-step sign-in survives the copy: if Supabase cloud encrypts the authenticator secrets, people set their app up again (a Reset for everyone) and the announcement says so. | Claude |
 | 1 week before | Ask ScalaHosting to forward `truenorthportal.online` and `www` to `127.0.0.1:3000`, with SSL, as they did for staging. Doing it early takes their timing out of the day. | Arnaldo (ticket) |
-| 1 week before | Build the maintenance page for the old portal (one switch, on Vercel) and the redirect from the old address to the new one. | Claude |
 | 3 days before | Tell the team the date and the window (`p6-tell`). A weekend evening, US time. | Arnaldo |
 | The day before | A fresh backup of the server; check the disk has room for the data. | Claude |
 
@@ -27,7 +26,7 @@ Rough times, to be replaced by the rehearsal's (`p5-time`).
 
 | # | Step | Checklist | Time |
 |---|---|---|---|
-| 1 | Turn on the maintenance page on the old portal, and pause its Vercel cron jobs, so nothing changes in the old data from here on. | `p6-freeze` | 5 min |
+| 1 | Turn on the maintenance page on the old portal: `MAINTENANCE_MODE=1` in Vercel's production environment, then redeploy. Every page shows it; cron jobs, Monday webhooks and form posts get 503, so nothing changes in the old data from here on (`src/lib/switch-over.ts`). | `p6-freeze` | 5 min |
 | 2 | Copy the database (users, two-step factors, all the portal's data) from Supabase cloud into the server, with the rehearsal's script. | `p6-copy` | 15 to 30 min |
 | 3 | Copy the uploaded files (avatars, attachments) into the server's storage. | `p6-copy` | 5 min |
 | 4 | Compare every table, number by number, old against new. Any difference stops the switch here. | `p6-counts` | 10 min |
@@ -36,7 +35,7 @@ Rough times, to be replaced by the rehearsal's (`p5-time`).
 | 7 | Re-point the Monday webhooks to `https://truenorthportal.online/api/monday/webhook/...` (by hand in Monday). | `p6-webhooks` | 10 min |
 | 8 | Install the scheduled jobs (`deploy/cron/portal.crontab`) and watch the first Monday and TSheets syncs land. | `p6-cron` | 30 min, mostly waiting |
 | 9 | **Go / no-go.** From here the new portal is where data is written. | | |
-| 10 | Switch the old address to redirect to the new one, so bookmarks and links in PDFs already sent keep working. | | 5 min |
+| 10 | Switch the old address to redirect to the new one: `LEGACY_REDIRECT_TO=https://truenorthportal.online` on Vercel, redeploy. Every path and query goes to the same place on the new address (308), so bookmarks and links in PDFs already sent keep working; Vercel's cron calls get 410. | | 5 min |
 | 11 | Invitations go out; everyone signs in again (sessions do not carry over). | `p6-invites` | |
 | 12 | Tell the team the portal is back, at its new address. | `p6-announce` | |
 
@@ -53,8 +52,8 @@ Rough times, to be replaced by the rehearsal's (`p5-time`).
 
 ## Going back
 
-Before step 9: turn the maintenance page off on the old portal and restart its
-cron jobs. Nothing was written to the old data, so it is exactly as it was.
+Before step 9: remove `MAINTENANCE_MODE` on Vercel and redeploy. Nothing was
+written to the old data, so it is exactly as it was.
 
 After step 9: the new portal has data the old one does not. Going back then
 means copying those changes back by hand, so the go/no-go is the last easy exit.

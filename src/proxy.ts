@@ -13,6 +13,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { skipsSession } from '@/lib/auth/no-session-paths'
+import { switchOverAction } from '@/lib/switch-over'
 
 // Paths that bypass the user-session auth gate.
 //   /login + /auth, sign-in flow itself
@@ -39,6 +40,25 @@ function isPublic(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
+  // Switch-over day (lib/switch-over.ts, deploy/SWITCH-OVER.md): the old
+  // portal's maintenance page and its redirect to the new address. Both are off
+  // unless their environment variable is set, and they come before everything
+  // else, machine routes included.
+  const move = switchOverAction({
+    method: request.method,
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    env: { MAINTENANCE_MODE: process.env.MAINTENANCE_MODE, LEGACY_REDIRECT_TO: process.env.LEGACY_REDIRECT_TO },
+  })
+  if (move?.kind === 'redirect') return NextResponse.redirect(move.location, 308)
+  if (move?.kind === 'maintenance-page') return NextResponse.rewrite(new URL('/maintenance', request.url))
+  if (move?.kind === 'unavailable') {
+    return NextResponse.json(
+      { error: move.status === 410 ? 'This portal has moved.' : 'The portal is paused while it moves.' },
+      { status: move.status, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
   // View Stage: relay the iframe's ?_vs=<token> into the x-vs request header (and
   // strip any forged incoming x-vs). getViewAs re-verifies the token server-side.
   const requestHeaders = new Headers(request.headers)
