@@ -38,6 +38,7 @@ Two things specific to this server:
 
 - `Dockerfile`: Next.js on Node 22, with Debian's Chromium for the PDF exports
   (`CHROME_PATH`).
+- `restart.sh`: restart the running build, e.g. after a change to `portal.env`.
 - `deploy.sh`: fetch, build (low CPU priority), swap, check `/login`, and go
   back to the previous build if the new one does not answer.
 
