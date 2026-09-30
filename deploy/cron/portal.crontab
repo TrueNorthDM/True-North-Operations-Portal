@@ -2,11 +2,11 @@
 # and p3-cron). The same five jobs and schedules as vercel.json, in UTC like
 # Vercel Cron; src/lib/cron-schedule.test.ts fails if the two drift apart.
 #
-# Install as root:  crontab -u <portal user> deploy/cron/portal.crontab
+# Install as root:  crontab -u portal /opt/tnportal/app/deploy/cron/portal.crontab
 # Each line calls one job on the portal running on this machine (run.sh).
 CRON_TZ=UTC
 SHELL=/bin/bash
-PORTAL_DIR=/opt/truenorth-portal
+PORTAL_DIR=/opt/tnportal/app
 
 0 1,5,9,13,17,21 * * *   $PORTAL_DIR/deploy/cron/run.sh /api/cron/ingest
 30 1,5,9,13,17,21 * * *  $PORTAL_DIR/deploy/cron/run.sh /api/cron/tsheets-sync

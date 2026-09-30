@@ -1,0 +1,32 @@
+# The portal's own container on its server (migration plan, step p3-node).
+# Supabase runs beside it in /opt/tnportal/supabase; this file only runs the
+# portal. Values come from /opt/tnportal/portal.env (never from this repository),
+# passed with --env-file by deploy.sh.
+
+name: tnportal
+
+services:
+  portal:
+    build:
+      context: ../..
+      dockerfile: deploy/portal/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: tnportal/portal:${PORTAL_TAG:-latest}
+    container_name: tnportal-portal
+    restart: unless-stopped
+    # This server's Docker remaps users (userns-remap) and cannot start remapped
+    # containers there (its / is mode 711); see supabase/docker-compose.tnportal.yml.
+    userns_mode: host
+    env_file: /opt/tnportal/portal.env
+    # Only on this machine: LiteSpeed forwards the public address to it.
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    # Chromium (the PDF exports) needs more shared memory than Docker's 64 MB.
+    shm_size: 512m
+    # A ceiling, so a runaway export cannot starve the websites on this server.
+    mem_limit: 1536m
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }

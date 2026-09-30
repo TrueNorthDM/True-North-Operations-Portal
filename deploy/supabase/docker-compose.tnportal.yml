@@ -1,0 +1,44 @@
+# True North Operations Portal: our settings on top of Supabase's docker-compose.yml.
+# Loaded through COMPOSE_FILE in .env. The services we run are listed in
+# /opt/tnportal/bin/supabase.sh; realtime, edge functions and the pooler are not
+# used by the portal and are not started.
+#
+# userns_mode: host on every service. This server's Docker remaps container
+# users (userns-remap), and its root folder is mode 711, which the remapped
+# runtime cannot open ("error jailing process inside rootfs: open /"). So our
+# containers run with Docker's usual user mapping instead; the services inside
+# still run as their own non-root users.
+
+x-host-userns: &host-userns
+  userns_mode: host
+
+services:
+  db:
+    <<: *host-userns
+    volumes:
+      # A folder instead of the named volume db-config: named volumes are created
+      # in the remapped area (owner 2000000000), where postgres cannot write its
+      # pgsodium key. Owned by the image's postgres user (100:101).
+      - ./volumes/db/config:/etc/postgresql-custom
+  rest: *host-userns
+  storage: *host-userns
+  imgproxy: *host-userns
+  meta: *host-userns
+  studio: *host-userns
+  api-gw: *host-userns
+  auth:
+    <<: *host-userns
+    environment:
+      # Sessions (the same as on Supabase cloud since 28 September 2026):
+      # sign in again after 2 months, or after 15 days without use.
+      GOTRUE_SESSIONS_TIMEBOX: 1440h
+      GOTRUE_SESSIONS_INACTIVITY_TIMEOUT: 360h
+      # The sign-in code is 6 digits.
+      GOTRUE_MAILER_OTP_LENGTH: "6"
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: "100"
+      # Two-step sign-in with an authenticator app.
+      GOTRUE_MFA_TOTP_ENROLL_ENABLED: "true"
+      GOTRUE_MFA_TOTP_VERIFY_ENABLED: "true"
+      # Email subjects (the templates themselves are wired in with p3-mail).
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "Your sign-in code: {{ .Token }}"
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: "Welcome to the True North Operations Portal: your code is {{ .Token }}"

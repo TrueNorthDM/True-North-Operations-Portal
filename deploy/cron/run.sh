@@ -8,8 +8,8 @@
 set -euo pipefail
 
 job="${1:?usage: run.sh /api/cron/<job>}"
-env_file="${PORTAL_ENV:-/etc/truenorth-portal.env}"
-log_dir="${PORTAL_LOG_DIR:-/var/log/truenorth-portal}"
+env_file="${PORTAL_ENV:-/opt/tnportal/portal.env}"
+log_dir="${PORTAL_LOG_DIR:-/opt/tnportal/logs}"
 
 # shellcheck disable=SC1090
 source "$env_file"

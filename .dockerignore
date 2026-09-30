@@ -1,0 +1,13 @@
+# Keeps the portal image (deploy/portal/Dockerfile) to what the build needs.
+.git
+.next
+node_modules
+.env*
+.vercel
+Design
+docs
+migration-status
+scratchpad
+coverage
+*.log
+Monthly i7 pdfs
