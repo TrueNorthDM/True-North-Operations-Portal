@@ -1,0 +1,73 @@
+# Uptime check from outside: every hour, GitHub's machines open the portal the
+# way people do. The server's own watch (deploy/watch) cannot report the server
+# itself going down; this can. On a failure it tries again a minute later, then
+# emails arnaldo.oliveira@me.com through Resend (secret RESEND_API_KEY).
+#
+# Run it by hand with "test" ticked to check the email path.
+# On switch-over day (deploy/SWITCH-OVER.md), point the first check at
+# https://truenorthportal.online/login and drop the staging one.
+
+name: Uptime check
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a test email"
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Open the portal from outside
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TEST: ${{ inputs.test }}
+        run: |
+          # name | address | answers that mean it is up
+          CHECKS=(
+            "Portal (live, Vercel)|https://truenorthoperationsportal.vercel.app/login|^200$"
+            "Portal (new server)|https://staging.truenorthportal.online/login|^200$"
+            "Database API (new server)|https://db.truenorthportal.online/auth/v1/health|^(200|401)$"
+          )
+
+          run_checks() {
+            FAILED=()
+            for c in "${CHECKS[@]}"; do
+              IFS='|' read -r name url ok <<< "$c"
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$url" || true)"
+              echo "$name: ${code:-000}"
+              [[ "$code" =~ $ok ]] || FAILED+=("$name did not answer ($url, got ${code:-no answer})")
+            done
+          }
+
+          send() { # subject, text
+            jq -n --arg s "$1" --arg t "$2" \
+              '{from: "Portal uptime <portal@truenorthportal.online>", to: ["arnaldo.oliveira@me.com"], subject: $s, text: $t}' \
+            | curl -fsS https://api.resend.com/emails -H "Authorization: Bearer $RESEND_API_KEY" \
+                -H "Content-Type: application/json" -d @- > /dev/null
+          }
+
+          if [ "$TEST" = "true" ]; then
+            send "Portal uptime: the check is on" "This is a test. Every hour GitHub opens the portal from outside, and emails you if it does not answer."
+            echo "test email sent"
+            exit 0
+          fi
+
+          run_checks
+          if [ ${#FAILED[@]} -gt 0 ]; then
+            echo "Trying again in a minute."
+            sleep 60
+            run_checks
+          fi
+          if [ ${#FAILED[@]} -gt 0 ]; then
+            send "Portal uptime: not answering" "$(printf '%s\n' "${FAILED[@]}")
+
+          Checked twice, a minute apart, from GitHub's machines. The next check runs within the hour."
+            exit 1
+          fi

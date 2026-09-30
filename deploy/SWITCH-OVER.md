@@ -47,6 +47,8 @@ Rough times, to be replaced by the rehearsal's (`p5-time`).
   (`p6-backup`).
 - Switch on `push` in `.github/workflows/deploy-server.yml`, so every push to
   main publishes to the server, and retire `deploy-vercel.yml`.
+- Point the uptime check (`.github/workflows/uptime.yml`) at
+  `https://truenorthportal.online/login` and drop the staging line.
 - Two weeks later, phase 7 closes the old services. The redirect from the old
   address stays (links in PDFs sent to clients point at it).
 
