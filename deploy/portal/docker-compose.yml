@@ -29,3 +29,14 @@ services:
     logging:
       driver: json-file
       options: { max-size: 10m, max-file: "3" }
+    networks:
+      - default
+      # Supabase's network, so its sign-in service can fetch the email
+      # templates straight from here (http://tnportal-portal:3000/email-templates).
+      # Through the public address the server's web firewall refuses its client.
+      - supabase
+
+networks:
+  supabase:
+    external: true
+    name: supabase_default

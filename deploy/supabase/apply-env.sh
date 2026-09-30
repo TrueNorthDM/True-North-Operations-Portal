@@ -3,8 +3,8 @@
 set -e
 cd /opt/tnportal/supabase
 # Where people use the portal. Staging until the switch-over (migration plan,
-# phase 6), then https://truenorthportal.online: sign-in links, the email
-# templates' address and the allowed redirects all follow it.
+# phase 6), then https://truenorthportal.online: the sign-in links in the
+# emails follow it.
 PORTAL_URL="${PORTAL_URL:-https://staging.truenorthportal.online}"
 setv() { # setv KEY VALUE: replace the line, or append it
   if grep -q "^$1=" .env; then
@@ -18,7 +18,9 @@ setv COMPOSE_FILE docker-compose.yml:docker-compose.tnportal.yml
 setv SUPABASE_PUBLIC_URL https://db.truenorthportal.online
 setv API_EXTERNAL_URL https://db.truenorthportal.online/auth/v1
 setv SITE_URL "$PORTAL_URL"
-setv EMAIL_TEMPLATES_BASE "$PORTAL_URL/email-templates"
+# Fetched by the sign-in service from the portal container over Docker's network
+# (deploy/portal/docker-compose.yml); the public address refuses its client.
+setv EMAIL_TEMPLATES_BASE http://tnportal-portal:3000/email-templates
 setv ADDITIONAL_REDIRECT_URLS "https://truenorthportal.online/**,https://staging.truenorthportal.online/**,http://localhost:3000/**"
 setv DISABLE_SIGNUP false
 setv ENABLE_EMAIL_SIGNUP true
