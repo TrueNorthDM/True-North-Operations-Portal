@@ -27,8 +27,17 @@ services:
   storage: *host-userns
   imgproxy: *host-userns
   meta: *host-userns
-  studio: *host-userns
-  api-gw: *host-userns
+  studio:
+    <<: *host-userns
+    # Only on this machine; open it through an SSH tunnel (deploy/README.md).
+    # The public address no longer leads to it (close-studio.py).
+    ports:
+      - "127.0.0.1:3010:3000"
+  api-gw:
+    <<: *host-userns
+    volumes:
+      # Supabase's routes with Studio closed (close-studio.py, run by apply-env.sh).
+      - ./volumes/api/envoy/lds.template.tnportal.yaml:/etc/envoy/lds.template.yaml:ro
   auth:
     <<: *host-userns
     environment:

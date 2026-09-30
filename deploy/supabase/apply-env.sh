@@ -40,4 +40,7 @@ setv OPENAI_API_KEY ""
 # Only on this machine: LiteSpeed forwards the public address to it.
 setv API_GW_HTTP_PORT 127.0.0.1:8000
 setv KONG_HTTP_PORT 127.0.0.1:8000
+# Studio closed on the public address (close-studio.py; mounted by docker-compose.tnportal.yml).
+/usr/libexec/platform-python /opt/tnportal/app/deploy/supabase/close-studio.py \
+  volumes/api/envoy/lds.template.yaml volumes/api/envoy/lds.template.tnportal.yaml
 grep -E "^(COMPOSE_FILE|SUPABASE_PUBLIC_URL|API_EXTERNAL_URL|SITE_URL|EMAIL_TEMPLATES_BASE|ADDITIONAL_REDIRECT_URLS|ENABLE_PHONE_SIGNUP|SMTP_HOST|SMTP_PORT|SMTP_USER|SMTP_SENDER_NAME|API_GW_HTTP_PORT|DASHBOARD_USERNAME)=" .env
