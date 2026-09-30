@@ -71,3 +71,22 @@ container, replace `supabase/volumes/db/data` with the unpacked `base-*` archive
 container: the same roles and tables as the live database.
 
 Log: `/opt/tnportal/logs/backup.log`.
+
+## Supabase Studio (the database panel)
+
+Closed on the public address: `db.truenorthportal.online/` answers 403 even with
+the right password (`deploy/supabase/close-studio.py`, re-applied by
+`apply-env.sh`). It listens on the server itself, `127.0.0.1:3010`. To open it
+from Arnaldo's Mac, keep this running in a Terminal and go to
+http://localhost:3010:
+
+    ssh -F /dev/null -i ~/.ssh/truenorth_vps -o IdentitiesOnly=yes -p 6543 -N -L 3010:127.0.0.1:3010 root@174.136.29.221
+
+## The watch (`deploy/watch/`)
+
+`watch.py` runs every 10 minutes (`/etc/cron.d/tnportal-watch`, as root) and
+emails arnaldo.oliveira@me.com through Resend when a problem appears and when
+it clears: a service down or unhealthy, the portal or sign-in not answering,
+less than 10 GB free, or no good nightly backup in 26 hours. State:
+`/opt/tnportal/watch/state.json`; log: `/opt/tnportal/logs/watch.log`.
+`watch.py --test` sends one email to check the path.
