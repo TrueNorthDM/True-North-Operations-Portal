@@ -20,6 +20,9 @@ services:
       # in the remapped area (owner 2000000000), where postgres cannot write its
       # pgsodium key. Owned by the image's postgres user (100:101).
       - ./volumes/db/config:/etc/postgresql-custom
+      # The image's pg_hba.conf plus one line: replication for supabase_admin
+      # over the local socket, for the nightly pg_basebackup (deploy/backup).
+      - ./volumes/db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
   rest: *host-userns
   storage: *host-userns
   imgproxy: *host-userns

@@ -1,0 +1,5 @@
+# The portal's nightly backup (deploy/backup/backup.sh), 03:30 server time.
+# Install as root: install -m 644 deploy/backup/tnportal-backup.cron /etc/cron.d/tnportal-backup
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+30 3 * * * root /opt/tnportal/bin/backup.sh

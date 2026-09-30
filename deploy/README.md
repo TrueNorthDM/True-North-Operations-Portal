@@ -46,3 +46,21 @@ Two things specific to this server:
 
 `portal.crontab` for the `portal` user; `run.sh` calls each job on
 `127.0.0.1:3000` with `CRON_SECRET`, the same five jobs as `vercel.json`.
+
+## Backups (`deploy/backup/`)
+
+`backup.sh` runs every night at 03:30 server time (`/etc/cron.d/tnportal-backup`,
+as root) and writes to `/opt/tnportal/backups`:
+
+- `base-*.tar.gz`: an exact copy of the database files (pg_basebackup), kept
+  14 days. This is the one to restore from.
+- `db-*.sql.gz`: the same database as SQL (pg_dumpall), kept 30 days.
+- `storage-*.tar.gz`: the uploaded files, kept 30 days.
+
+The exact copy goes through the container's own socket; `deploy/supabase/pg_hba.conf`
+is the image's file with one added line allowing that. To restore: stop the db
+container, replace `supabase/volumes/db/data` with the unpacked `base-*` archive
+(owner 100:101, mode 700), start it. Tested on 30 September 2026 in a throwaway
+container: the same roles and tables as the live database.
+
+Log: `/opt/tnportal/logs/backup.log`. Still to add: a copy off this server.
