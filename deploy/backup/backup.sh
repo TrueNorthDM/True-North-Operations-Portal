@@ -8,6 +8,10 @@
 #                     for pulling a single table back. Kept 30 days.
 #   storage-*.tar.gz  The files people uploaded (avatars, attachments). Kept 30 days.
 #
+# The folder is under /home because ScalaHosting's daily server backups cover
+# /home only (not /opt): that way each night's files also leave this server.
+# It is root-only (700), so the SPanel account "tnportal" cannot read them.
+#
 # Restoring base-*: stop the db container, replace volumes/db/data with the
 # unpacked archive (owner 100:101, mode 700), start it again. It must go back
 # into the same Postgres major version (17). See deploy/README.md.
@@ -16,7 +20,7 @@
 # so it can read every file the storage service writes.
 set -euo pipefail
 
-DIR=/opt/tnportal/backups
+DIR=/home/tnportal/portal-backups
 LOG=/opt/tnportal/logs/backup.log
 stamp="$(date -u +%Y-%m-%dT%H%MZ)"
 mkdir -p "$DIR"

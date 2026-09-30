@@ -50,7 +50,9 @@ Two things specific to this server:
 ## Backups (`deploy/backup/`)
 
 `backup.sh` runs every night at 03:30 server time (`/etc/cron.d/tnportal-backup`,
-as root) and writes to `/opt/tnportal/backups`:
+as root) and writes to `/home/tnportal/portal-backups` (root only). It is under
+`/home` because ScalaHosting's daily backups cover `/home` and not `/opt`, so
+every night's files also leave the server with theirs:
 
 - `base-*.tar.gz`: an exact copy of the database files (pg_basebackup), kept
   14 days. This is the one to restore from.
@@ -63,4 +65,4 @@ container, replace `supabase/volumes/db/data` with the unpacked `base-*` archive
 (owner 100:101, mode 700), start it. Tested on 30 September 2026 in a throwaway
 container: the same roles and tables as the live database.
 
-Log: `/opt/tnportal/logs/backup.log`. Still to add: a copy off this server.
+Log: `/opt/tnportal/logs/backup.log`.
