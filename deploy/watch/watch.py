@@ -86,7 +86,9 @@ def send(subject, lines):
     body = "\n".join(lines) + "\n\nThe portal's server (174.136.29.221), checked every 10 minutes."
     data = json.dumps({"from": FROM, "to": [TO], "subject": subject, "text": body}).encode()
     req = urllib.request.Request("https://api.resend.com/emails", data=data, method="POST",
-                                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+                                 # Resend's firewall refuses Python's default client name (error 1010).
+                                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                                          "User-Agent": "tnportal-watch/1.0"})
     urllib.request.urlopen(req, timeout=20).read()
 
 
