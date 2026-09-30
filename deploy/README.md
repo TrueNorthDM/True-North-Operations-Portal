@@ -42,6 +42,11 @@ Two things specific to this server:
 - `deploy.sh`: fetch, build (low CPU priority), swap, check `/login`, and go
   back to the previous build if the new one does not answer.
 
+## Moving the data (`deploy/migrate/`)
+
+The copy from Supabase cloud to this server, and the table-by-table comparison:
+see `deploy/migrate/README.md`. The day itself is `deploy/SWITCH-OVER.md`.
+
 ## Scheduled jobs (`deploy/cron/`)
 
 `portal.crontab` for the `portal` user; `run.sh` calls each job on

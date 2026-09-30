@@ -27,9 +27,9 @@ Rough times, to be replaced by the rehearsal's (`p5-time`).
 | # | Step | Checklist | Time |
 |---|---|---|---|
 | 1 | Turn on the maintenance page on the old portal: `MAINTENANCE_MODE=1` in Vercel's production environment, then redeploy. Every page shows it; cron jobs, Monday webhooks and form posts get 503, so nothing changes in the old data from here on (`src/lib/switch-over.ts`). | `p6-freeze` | 5 min |
-| 2 | Copy the database (users, two-step factors, all the portal's data) from Supabase cloud into the server, with the rehearsal's script. | `p6-copy` | 15 to 30 min |
-| 3 | Copy the uploaded files (avatars, attachments) into the server's storage. | `p6-copy` | 5 min |
-| 4 | Compare every table, number by number, old against new. Any difference stops the switch here. | `p6-counts` | 10 min |
+| 2 | `deploy/migrate/copy.sh --reset` on the server: an empty database, then the schema, the sign-in accounts with their two-step factors, all the portal's data and the uploaded files, copied from Supabase cloud. | `p6-copy` | the rehearsal's time |
+| 3 | Its last step compares every table, number by number (`compare.sh`). Any difference stops the switch here. | `p6-counts` | included |
+| 4 | Check the log for warnings (a trigger or policy that could not be added). | | 5 min |
 | 5 | Point everything at the real address: `PORTAL_URL=https://truenorthportal.online` in `apply-env.sh` (sign-in links, email templates, redirects), `APP_URL` in `portal.env`; restart the sign-in service and the portal. | `p6-redirects` | 5 min |
 | 6 | Open `https://truenorthportal.online`, sign in (code and two-step), open Home, Directory, My Work and the i7 report. | `p6-dns` | 10 min |
 | 7 | Re-point the Monday webhooks to `https://truenorthportal.online/api/monday/webhook/...` (by hand in Monday). | `p6-webhooks` | 10 min |
