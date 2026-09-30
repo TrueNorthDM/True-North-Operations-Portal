@@ -30,6 +30,10 @@ Two things specific to this server:
   `userns_mode: host`, so the containers keep working if it is ever turned back
   on, and the database's config lives in a folder (`volumes/db/config`, owner
   100:101) instead of a named volume.
+- **Root signs in by key only** (`PermitRootLogin prohibit-password` since
+  30 September 2026; original `sshd_config.orig-scalahosting`). Every root
+  login on record was by key (ours, ScalaHosting's support gate and their backup
+  server); password logins stay allowed for the SPanel accounts' SFTP.
 - **The CSF firewall** flushes Docker's iptables chains when it reloads.
   `/etc/csf/csfpost.sh` restarts Docker when they are missing, and Docker's
   `live-restore` keeps the containers running through that restart.
