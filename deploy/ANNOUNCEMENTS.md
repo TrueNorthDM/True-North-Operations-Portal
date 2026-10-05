@@ -43,9 +43,11 @@ We'll keep an eye on everything over the next few days and finish a few last det
 Thanks for your patience during the move!
 ```
 
-## C. Two-step sign-in for everyone who already had access (`p8-2fa-text`, phase 8)
+## C. Two-step sign-in for everyone who already had access (`p7-2fa-announce`, phase 8)
 
-Attach the screenshots of the yellow reminder and of the QR code screen.
+Cutoff set on 5 October 2026: the week runs from Tuesday, October 6 to Tuesday,
+October 13 (midnight US Eastern). Attach the screenshots of the setup screen
+with the QR code and of the yellow reminder.
 
 ```
 New: two-step sign-in for the Operations Portal 🔐
@@ -54,10 +56,12 @@ To keep the portal (and our clients' data) safe, signing in will also ask for a 
 
 Set it up once, it takes a minute:
 1. Install an authenticator app if you don't have one. Google Authenticator, Microsoft Authenticator, iPhone Passwords or 1Password all work.
-2. Sign in to the portal. A yellow reminder at the top says "Set up two-step sign-in": click "Set it up now". You'll also find it in the menu under your picture, and in My profile.
+2. Sign in to the portal. It shows the setup screen right away; you'll also find it in the yellow reminder at the top ("Set it up now") and in My profile.
 3. Scan the QR code with the app and type the 6-digit code it shows.
 
-You have one week, starting [DATE]. After that, the portal asks you to set it up before you can go on.
+From then on, after the email code, the portal asks for the code from your app.
 
-New or lost phone? Ask [Arnaldo / Tina] and we'll reset it for you.
+You have one week: until Tuesday, October 13. Until then you can press "Skip for now". After that, the portal asks you to set it up before you can go on.
+
+New or lost phone? Ask Arnaldo or Tina and we'll reset it for you.
 ```
