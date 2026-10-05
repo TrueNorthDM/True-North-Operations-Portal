@@ -14,7 +14,6 @@ What to expect
 • From [Saturday morning], the portal will be paused while everything is copied over. You'll see a "We're moving" page. It should be back within a couple of days.
 • Nothing is lost: your work, reports and settings all come along.
 • If you need anything from the portal (a report, an export), please get it before [Friday evening].
-• Time clock: while the portal is paused, jot down when you start and stop (and your breaks), and enter those hours in the portal once it's back.
 
 After the move
 • Go to truenorthportal.online and sign in with your GoodNews email, as usual. Everyone signs in once more, since sessions don't carry over.
@@ -30,7 +29,6 @@ The Operations Portal is back, at its new address: truenorthportal.online ✅
 
 • Sign in with your GoodNews email; you'll get a 6-digit code by email.
 • Everything is where you left it.
-• Please enter the hours you noted down during the pause.
 • If something looks off, tell me right away.
 ```
 
