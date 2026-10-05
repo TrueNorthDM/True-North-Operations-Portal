@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@600;700;800;900&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  a { text-decoration: none; }
+  @keyframes tn-ico-pulse  { 0%,100% { transform: scale(1); }  30% { transform: scale(1.28); }  60% { transform: scale(.94); } }
+  @keyframes tn-ico-wiggle { 0%,100% { transform: rotate(0deg); } 20% { transform: rotate(-16deg); } 55% { transform: rotate(16deg); } 80% { transform: rotate(-6deg); } }
+  @keyframes tn-ico-bob    { 0%,100% { transform: translateY(0); }        45% { transform: translateY(-7px); } }
+  @keyframes tn-ico-swing  { 0%,100% { transform: rotate(-11deg); }       50% { transform: rotate(11deg); } }
+  @keyframes tn-split-left  { 0%,100% { transform: translateX(0); }  50% { transform: translateX(-6px); } }
+  @keyframes tn-split-right { 0%,100% { transform: translateX(0); }  50% { transform: translateX(6px); } }
+  @keyframes tn-appear     { 0%,32% { opacity: 0; transform: scale(.2); }  50% { opacity: 1; transform: scale(1); }  68%,100% { opacity: 0; transform: scale(.2); } }
+  @media (prefers-reduced-motion: reduce) { .tn-ico { animation: none !important; } }
+</style>
+</helmet>
+
+<div style="{{ themeStyle }}">
+<div style="min-height:100vh;background:var(--tn-canvas,#f1efe8);font-family:'Open Sans',system-ui,sans-serif;padding:52px 48px 80px;transition:background .3s ease;">
+
+  <!-- turn header -->
+  <div style="max-width:1440px;margin:0 auto 16px;display:flex;align-items:center;gap:10px;">
+    <span style="font-family:'Raleway',sans-serif;font-weight:900;font-size:12px;letter-spacing:.14em;background:var(--tn-badge,#012358);color:#fff;padding:5px 11px;border-radius:7px;">2a</span>
+    <span style="font-family:'Raleway',sans-serif;font-weight:900;font-size:13px;letter-spacing:.16em;color:var(--tn-teal,#1E7D7F);text-transform:uppercase;">Turn 2 &mdash; Home</span>
+    <span style="width:6px;height:6px;border-radius:50%;background:var(--tn-gold,#F2C40A);"></span>
+    <span style="font-size:13px;color:var(--tn-muted,#8593a4);">O hub do portal. Toggle sol/lua na top bar. Org chart com dados de exemplo.</span>
+  </div>
+
+  <!-- ============ APP FRAME ============ -->
+  <div style="max-width:1440px;margin:0 auto;position:relative;border-radius:18px;overflow:hidden;box-shadow:var(--tn-shadow-frame,0 30px 80px -30px rgba(1,35,88,.35));background:var(--tn-canvas,#f1efe8);border:1px solid var(--tn-border,#e4e7ec);">
+
+    <!-- top bar -->
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;background:var(--tn-topbar,#fff);border-bottom:1px solid var(--tn-border,#e4e7ec);transition:background .3s ease;">
+      <div style="display:flex;align-items:flex-end;gap:11px;">
+        <span style="display:inline-flex;align-items:center;background:var(--tn-logo-bg,transparent);padding:var(--tn-logo-pad,0);border-radius:9px;"><img src="brand/logo-large.png" alt="True North Digital Marketing" style="height:40px;display:block;"></span>
+        <span style="font-size:14px;font-weight:600;color:var(--tn-muted,#8593a4);padding-bottom:3px;">Operations Portal</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button type="button" onClick="{{ toggleTheme }}" aria-label="Toggle dark mode" style="display:inline-flex;width:38px;height:38px;align-items:center;justify-content:center;border-radius:10px;border:none;background:transparent;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+          <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </sc-if>
+          <sc-if value="{{ isDark }}">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+          </sc-if>
+        </button>
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--tn-avatar,#012358);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Raleway',sans-serif;font-weight:800;font-size:13px;letter-spacing:.02em;">AO</div>
+      </div>
+    </header>
+
+    <!-- body: rail + main -->
+    <div style="display:flex;min-height:880px;">
+
+      <!-- icon rail -->
+      <aside style="width:64px;flex:none;background:var(--tn-topbar,#fff);border-right:1px solid var(--tn-border,#e4e7ec);display:flex;flex-direction:column;padding:12px 0;transition:background .3s ease;">
+        <nav style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <!-- Home (active) -->
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;background:var(--tn-active-bg,rgba(30,125,127,.10));color:var(--tn-active-ink,#1E7D7F);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+          </div>
+          <!-- Dashboards -->
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+          </div>
+          <!-- Projects -->
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18M15 3v18"></path></svg>
+          </div>
+          <!-- Tools -->
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+          </div>
+        </nav>
+        <div style="margin-top:auto;border-top:1px solid var(--tn-border,#e4e7ec);padding-top:12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <!-- Admin -->
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          </div>
+          <!-- Settings -->
+          <div style="display:flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:12px;color:var(--tn-rail-idle,#9aa7b6);cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-hover-bg,#f4f2ec);color:var(--tn-ink,#012358);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </div>
+        </div>
+      </aside>
+
+      <!-- main content -->
+      <main style="flex:1;min-width:0;padding:34px 40px 48px;">
+
+        <!-- heading -->
+        <div style="margin-bottom:30px;">
+          <h1 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:27px;color:var(--tn-ink,#012358);margin:0;letter-spacing:-.01em;">True North Operations Portal</h1>
+          <p style="font-size:15px;color:var(--tn-muted,#8593a4);margin:6px 0 0;">Where would you like to go?</p>
+        </div>
+
+        <!-- WIDGETS -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:44px;">
+          <!-- Dashboards -->
+          <a href="#" style="border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:14px;padding:18px;display:block;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));transition:all .16s;" style-hover="border-color:var(--tn-teal,#1E7D7F);box-shadow:0 12px 28px -14px rgba(1,35,88,.35);transform:translateY(-2px);">
+            <span style="display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border-radius:11px;background:var(--tn-chip-bg,#eef5f5);color:var(--tn-chip-ink,#1E7D7F);">
+              <svg class="tn-ico" style="animation:tn-ico-pulse 3s ease-in-out infinite;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+            </span>
+            <h2 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:15px;color:var(--tn-ink,#012358);margin:14px 0 0;">Dashboards</h2>
+            <p style="font-size:12.5px;line-height:1.5;color:var(--tn-muted,#8593a4);margin:5px 0 0;">Boards Review &mdash; pipeline &amp; publishing goals.</p>
+          </a>
+          <!-- Tools -->
+          <a href="#" style="border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:14px;padding:18px;display:block;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));transition:all .16s;" style-hover="border-color:var(--tn-teal,#1E7D7F);box-shadow:0 12px 28px -14px rgba(1,35,88,.35);transform:translateY(-2px);">
+            <span style="display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border-radius:11px;background:var(--tn-chip-bg,#eef5f5);color:var(--tn-chip-ink,#1E7D7F);">
+              <svg class="tn-ico" style="animation:tn-ico-wiggle 3.2s ease-in-out infinite;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+            </span>
+            <h2 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:15px;color:var(--tn-ink,#012358);margin:14px 0 0;">Tools</h2>
+            <p style="font-size:12.5px;line-height:1.5;color:var(--tn-muted,#8593a4);margin:5px 0 0;">Capabilities used inside a project.</p>
+          </a>
+          <!-- My Team (soon) -->
+          <div style="border:1.5px dashed var(--tn-dash,#cbd2da);background:transparent;border-radius:14px;padding:18px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+              <span style="display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border-radius:11px;background:var(--tn-chip-bg,#eef5f5);color:var(--tn-muted,#8593a4);">
+                <svg style="overflow:visible;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="tn-ico" data-p="l" style="animation:tn-split-left 3s ease-in-out infinite;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></g><g class="tn-ico" data-p="r" style="animation:tn-split-right 3s ease-in-out infinite;"><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></g><g data-p="m" style="transform:translateX(3px);"><g class="tn-ico" style="transform-box:fill-box;transform-origin:center;animation:tn-appear 3s ease-in-out infinite;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></g></g></svg>
+              </span>
+              <span style="font-size:9.5px;font-family:'Raleway',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.09em;padding:3px 9px;border-radius:999px;background:var(--tn-chip-bg,#eef5f5);color:var(--tn-muted,#8593a4);border:1px solid var(--tn-border,#e4e7ec);">Soon</span>
+            </div>
+            <h2 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:15px;color:var(--tn-muted,#8593a4);margin:14px 0 0;">My Team</h2>
+            <p style="font-size:12.5px;line-height:1.5;color:var(--tn-muted,#8593a4);margin:5px 0 0;">Your team at a glance.</p>
+          </div>
+          <!-- My Work (soon) -->
+          <div style="border:1.5px dashed var(--tn-dash,#cbd2da);background:transparent;border-radius:14px;padding:18px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+              <span style="display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;border-radius:11px;background:var(--tn-chip-bg,#eef5f5);color:var(--tn-muted,#8593a4);">
+                <svg class="tn-ico" style="animation:tn-ico-swing 3.4s ease-in-out infinite;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              </span>
+              <span style="font-size:9.5px;font-family:'Raleway',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.09em;padding:3px 9px;border-radius:999px;background:var(--tn-chip-bg,#eef5f5);color:var(--tn-muted,#8593a4);border:1px solid var(--tn-border,#e4e7ec);">Soon</span>
+            </div>
+            <h2 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:15px;color:var(--tn-muted,#8593a4);margin:14px 0 0;">My Work</h2>
+            <p style="font-size:12.5px;line-height:1.5;color:var(--tn-muted,#8593a4);margin:5px 0 0;">Everything you&rsquo;re working on across Monday.</p>
+          </div>
+        </div>
+
+        <!-- FAVOURITES -->
+        <section style="margin-bottom:44px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px;">
+            <h2 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:18px;color:var(--tn-ink,#012358);margin:0;">My favourites</h2>
+            <sc-if value="{{ favNotEditing }}" hint-placeholder-val="{{ true }}">
+              <button type="button" onClick="{{ openFavEdit }}" style="font-size:12px;font-weight:600;color:var(--tn-muted,#8593a4);border:1px solid var(--tn-border,#e4e7ec);border-radius:9px;padding:6px 13px;background:var(--tn-surface,#fff);cursor:pointer;transition:all .15s;" style-hover="color:var(--tn-ink,#012358);border-color:var(--tn-teal,#1E7D7F);">Edit</button>
+            </sc-if>
+          </div>
+
+          <!-- editor -->
+          <sc-if value="{{ favEditing }}">
+            <div style="border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:14px;padding:22px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;">
+                <p style="font-size:13.5px;color:var(--tn-body,#435066);margin:0;">Pick up to 5 destinations to pin here.</p>
+                <sc-if value="{{ favCapReached }}">
+                  <span style="font-size:12px;font-weight:700;color:var(--tn-gold,#F2C40A);font-variant-numeric:tabular-nums;">{{ favCount }}/5</span>
+                </sc-if>
+                <sc-if value="{{ favNotCap }}">
+                  <span style="font-size:12px;font-weight:700;color:var(--tn-muted,#8593a4);font-variant-numeric:tabular-nums;">{{ favCount }}/5</span>
+                </sc-if>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;">
+                <sc-for list="{{ favGroups }}" as="group" hint-placeholder-count="4">
+                  <div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--tn-muted,#8593a4);margin-bottom:9px;">{{ group.name }}</div>
+                    <div style="display:flex;flex-direction:column;gap:1px;">
+                      <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="3">
+                        <label style="display:flex;align-items:center;gap:9px;font-size:13px;padding:5px 6px;border-radius:7px;cursor:pointer;">
+                          <input type="checkbox" checked="{{ item.checked }}" disabled="{{ item.disabled }}" onChange="{{ item.onToggle }}" style="width:15px;height:15px;accent-color:var(--tn-teal,#1E7D7F);cursor:pointer;">
+                          <span style="color:var(--tn-body,#435066);">{{ item.label }}</span>
+                        </label>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="button" onClick="{{ saveFavEdit }}" style="padding:9px 18px;border-radius:10px;border:none;background:var(--tn-btn-bg,#012358);color:#fff;font-family:'Raleway',sans-serif;font-weight:800;font-size:13px;cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-btn-hover,#0a2f6b);">Save</button>
+                <button type="button" onClick="{{ cancelFavEdit }}" style="padding:9px 18px;border-radius:10px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);color:var(--tn-muted,#8593a4);font-weight:600;font-size:13px;cursor:pointer;transition:all .15s;" style-hover="color:var(--tn-ink,#012358);border-color:var(--tn-teal,#1E7D7F);">Cancel</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- display -->
+          <sc-if value="{{ favNotEditing }}">
+            <sc-if value="{{ favHasPinned }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;">
+                <sc-for list="{{ favPinned }}" as="fav" hint-placeholder-count="5">
+                  <a href="#" style="display:flex;align-items:center;gap:10px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:12px;padding:13px 16px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));transition:all .16s;" style-hover="border-color:var(--tn-teal,#1E7D7F);transform:translateY(-2px);box-shadow:0 12px 26px -14px rgba(1,35,88,.3);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--tn-gold,#F2C40A)" aria-hidden="true" style="flex:none;"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
+                    <span style="font-family:'Raleway',sans-serif;font-weight:700;font-size:13.5px;color:var(--tn-ink,#012358);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ fav.label }}</span>
+                  </a>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ favEmpty }}">
+              <div style="border:1.5px dashed var(--tn-dash,#cbd2da);background:transparent;border-radius:14px;padding:34px 20px;text-align:center;">
+                <p style="font-size:13.5px;color:var(--tn-muted,#8593a4);margin:0;">Nothing pinned yet &mdash; keep your most-used pages one click away.</p>
+                <button type="button" onClick="{{ openFavEdit }}" style="margin-top:14px;padding:9px 18px;border-radius:10px;border:none;background:var(--tn-btn-bg,#012358);color:#fff;font-family:'Raleway',sans-serif;font-weight:800;font-size:13px;cursor:pointer;transition:all .15s;" style-hover="background:var(--tn-btn-hover,#0a2f6b);">Choose favourites</button>
+              </div>
+            </sc-if>
+          </sc-if>
+        </section>
+
+        <!-- ORGANIZATION -->
+        <section>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px;">
+            <div style="display:flex;align-items:baseline;gap:12px;">
+              <h2 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:18px;color:var(--tn-ink,#012358);margin:0;">Organization</h2>
+              <span style="font-size:12px;color:var(--tn-muted,#8593a4);">6 people</span>
+            </div>
+            <button type="button" onClick="{{ openFull }}" style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--tn-muted,#8593a4);border:1px solid var(--tn-border,#e4e7ec);border-radius:9px;padding:6px 13px;background:var(--tn-surface,#fff);cursor:pointer;transition:all .15s;" style-hover="color:var(--tn-ink,#012358);border-color:var(--tn-teal,#1E7D7F);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+              Full screen
+            </button>
+          </div>
+
+          <div style="border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-orgbg,rgba(255,255,255,.6));border-radius:14px;padding:32px 24px;overflow-x:auto;">
+            <!-- org tree (representative sample data) -->
+            <div style="display:flex;flex-direction:column;align-items:center;min-width:760px;">
+              <!-- root -->
+              <div style="width:196px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                <div style="height:6px;background:#012358;"></div>
+                <div style="padding:9px 12px;">
+                  <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:13.5px;color:var(--tn-ink,#012358);line-height:1.2;">Arnaldo Oliveira</div>
+                  <div style="font-size:11px;color:var(--tn-muted,#8593a4);margin-top:2px;">Operations Director</div>
+                </div>
+              </div>
+              <!-- drop -->
+              <div style="width:2px;height:24px;background:var(--tn-thread,#d6d3cb);"></div>
+              <!-- children row -->
+              <div style="position:relative;display:flex;gap:26px;">
+                <div style="position:absolute;top:0;left:97px;right:97px;height:2px;background:var(--tn-thread,#d6d3cb);"></div>
+
+                <!-- child 1: SEO Lead -->
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:24px;background:var(--tn-thread,#d6d3cb);"></div>
+                  <div style="width:196px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="height:6px;background:#F2C40A;"></div>
+                    <div style="padding:9px 12px;">
+                      <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:13.5px;color:var(--tn-ink,#012358);line-height:1.2;">Elias Moraes</div>
+                      <div style="font-size:11px;color:var(--tn-muted,#8593a4);margin-top:2px;">SEO Lead</div>
+                      <div style="display:flex;align-items:center;gap:5px;margin-top:7px;">
+                        <span style="width:7px;height:7px;border-radius:50%;background:#F2C40A;"></span>
+                        <span style="font-size:9.5px;font-weight:600;color:var(--tn-muted,#8593a4);">SEO Sprints</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- child 2: Editorial Lead + team box -->
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:24px;background:var(--tn-thread,#d6d3cb);"></div>
+                  <div style="width:196px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="height:6px;background:#1E7D7F;"></div>
+                    <div style="padding:9px 12px;">
+                      <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:13.5px;color:var(--tn-ink,#012358);line-height:1.2;">Joana Ribeiro</div>
+                      <div style="font-size:11px;color:var(--tn-muted,#8593a4);margin-top:2px;">Editorial Lead</div>
+                    </div>
+                  </div>
+                  <div style="width:2px;height:22px;background:#1E7D7F;"></div>
+                  <!-- team box -->
+                  <div style="width:196px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="padding:7px 12px;font-family:'Raleway',sans-serif;font-weight:800;font-size:12.5px;color:#26261f;background:#94C4C5;">Translation</div>
+                    <div style="padding:6px 12px;font-size:11.5px;color:var(--tn-body,#435066);border-bottom:1px solid var(--tn-border,#e4e7ec);">Lucía Fernández</div>
+                    <div style="padding:6px 12px;font-size:11.5px;color:var(--tn-body,#435066);">Marco Bianchi</div>
+                  </div>
+                </div>
+
+                <!-- child 3: Web Lead -->
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:24px;background:var(--tn-thread,#d6d3cb);"></div>
+                  <div style="width:196px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="height:6px;background:#A9C0DE;"></div>
+                    <div style="padding:9px 12px;">
+                      <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:13.5px;color:var(--tn-ink,#012358);line-height:1.2;">Daniel Costa</div>
+                      <div style="font-size:11px;color:var(--tn-muted,#8593a4);margin-top:2px;">Web Lead</div>
+                      <div style="display:flex;align-items:center;gap:5px;margin-top:7px;">
+                        <span style="width:7px;height:7px;border-radius:50%;background:#A9C0DE;"></span>
+                        <span style="font-size:9.5px;font-weight:600;color:var(--tn-muted,#8593a4);">Web</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- ============ FULL-SCREEN ORG OVERLAY ============ -->
+    <sc-if value="{{ fullscreen }}">
+      <div style="position:absolute;inset:0;z-index:60;background:var(--tn-canvas,#f1efe8);display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;border-bottom:1px solid var(--tn-border,#e4e7ec);background:var(--tn-topbar,#fff);">
+          <h2 style="font-family:'Raleway',sans-serif;font-weight:800;font-size:14px;color:var(--tn-ink,#012358);margin:0;">Organization</h2>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" onClick="{{ zoomOut }}" aria-label="Zoom out" style="display:inline-flex;width:32px;height:32px;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);color:var(--tn-body,#435066);cursor:pointer;transition:all .15s;" style-hover="color:var(--tn-ink,#012358);background:var(--tn-hover-bg,#f4f2ec);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+            </button>
+            <span style="font-size:12px;font-weight:600;color:var(--tn-muted,#8593a4);width:48px;text-align:center;font-variant-numeric:tabular-nums;">{{ zoomPct }}%</span>
+            <button type="button" onClick="{{ zoomIn }}" aria-label="Zoom in" style="display:inline-flex;width:32px;height:32px;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);color:var(--tn-body,#435066);cursor:pointer;transition:all .15s;" style-hover="color:var(--tn-ink,#012358);background:var(--tn-hover-bg,#f4f2ec);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            </button>
+            <button type="button" onClick="{{ resetZoom }}" style="font-size:12px;font-weight:600;color:var(--tn-muted,#8593a4);border:1px solid var(--tn-border,#e4e7ec);border-radius:9px;padding:6px 11px;background:var(--tn-surface,#fff);cursor:pointer;transition:all .15s;" style-hover="color:var(--tn-ink,#012358);border-color:var(--tn-teal,#1E7D7F);">Reset</button>
+            <button type="button" onClick="{{ closeFull }}" style="margin-left:4px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--tn-body,#435066);border:1px solid var(--tn-border,#e4e7ec);border-radius:9px;padding:6px 13px;background:var(--tn-surface,#fff);cursor:pointer;transition:all .15s;" style-hover="color:var(--tn-ink,#012358);border-color:var(--tn-teal,#1E7D7F);">Close &times;</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow:auto;padding:56px 48px;cursor:grab;">
+          <div style="transform:scale({{ zoom }});transform-origin:top left;width:max-content;">
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <!-- root -->
+              <div style="width:210px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                <div style="height:6px;background:#012358;"></div>
+                <div style="padding:11px 14px;">
+                  <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:14.5px;color:var(--tn-ink,#012358);line-height:1.2;">Arnaldo Oliveira</div>
+                  <div style="font-size:12px;color:var(--tn-muted,#8593a4);margin-top:2px;">Operations Director</div>
+                </div>
+              </div>
+              <div style="width:2px;height:28px;background:var(--tn-thread,#d6d3cb);"></div>
+              <div style="position:relative;display:flex;gap:34px;">
+                <div style="position:absolute;top:0;left:105px;right:105px;height:2px;background:var(--tn-thread,#d6d3cb);"></div>
+
+                <!-- child 1 -->
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:28px;background:var(--tn-thread,#d6d3cb);"></div>
+                  <div style="width:210px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="height:6px;background:#F2C40A;"></div>
+                    <div style="padding:11px 14px;">
+                      <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:14.5px;color:var(--tn-ink,#012358);line-height:1.2;">Elias Moraes</div>
+                      <div style="font-size:12px;color:var(--tn-muted,#8593a4);margin-top:2px;">SEO Lead</div>
+                      <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#F2C40A;"></span>
+                        <span style="font-size:10.5px;font-weight:600;color:var(--tn-muted,#8593a4);">SEO Sprints</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- child 2 + team box -->
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:28px;background:var(--tn-thread,#d6d3cb);"></div>
+                  <div style="width:210px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="height:6px;background:#1E7D7F;"></div>
+                    <div style="padding:11px 14px;">
+                      <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:14.5px;color:var(--tn-ink,#012358);line-height:1.2;">Joana Ribeiro</div>
+                      <div style="font-size:12px;color:var(--tn-muted,#8593a4);margin-top:2px;">Editorial Lead</div>
+                    </div>
+                  </div>
+                  <div style="width:2px;height:26px;background:#1E7D7F;"></div>
+                  <div style="width:210px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="padding:8px 14px;font-family:'Raleway',sans-serif;font-weight:800;font-size:13px;color:#26261f;background:#94C4C5;">Translation</div>
+                    <div style="padding:7px 14px;font-size:12.5px;color:var(--tn-body,#435066);border-bottom:1px solid var(--tn-border,#e4e7ec);">Lucía Fernández</div>
+                    <div style="padding:7px 14px;font-size:12.5px;color:var(--tn-body,#435066);">Marco Bianchi</div>
+                  </div>
+                </div>
+
+                <!-- child 3 -->
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:28px;background:var(--tn-thread,#d6d3cb);"></div>
+                  <div style="width:210px;border:1px solid var(--tn-border,#e4e7ec);background:var(--tn-surface,#fff);border-radius:10px;box-shadow:var(--tn-shadow-card,0 1px 2px rgba(1,35,88,.06));overflow:hidden;text-align:left;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;" style-hover="transform:translateY(-4px);border-color:var(--tn-teal,#1E7D7F);box-shadow:0 16px 34px -16px rgba(1,35,88,.45);">
+                    <div style="height:6px;background:#A9C0DE;"></div>
+                    <div style="padding:11px 14px;">
+                      <div style="font-family:'Raleway',sans-serif;font-weight:700;font-size:14.5px;color:var(--tn-ink,#012358);line-height:1.2;">Daniel Costa</div>
+                      <div style="font-size:12px;color:var(--tn-muted,#8593a4);margin-top:2px;">Web Lead</div>
+                      <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#A9C0DE;"></span>
+                        <span style="font-size:10.5px;font-weight:600;color:var(--tn-muted,#8593a4);">Web</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  catalog = [
+    { href: '/dashboards', label: 'Dashboards', group: 'Dashboards' },
+    { href: '/dashboards/publishing', label: 'Publishing Goals', group: 'Dashboards' },
+    { href: '/boards-beta', label: 'Workload (beta)', group: 'Dashboards' },
+    { href: '/projects', label: 'Projects', group: 'Projects' },
+    { href: '/aaaf', label: 'AAAF — Href Links', group: 'Projects' },
+    { href: '/hfa', label: 'HFA — Href Links', group: 'Projects' },
+    { href: '/tools', label: 'Tools', group: 'Tools' },
+    { href: '/admin', label: 'Admin', group: 'Admin' },
+    { href: '/admin/tickets', label: 'Tickets', group: 'Admin' },
+    { href: '/admin/tests', label: 'Tests', group: 'Admin' },
+    { href: '/admin/directory', label: 'Directory', group: 'Admin' },
+  ];
+
+  MAX_FAV = 5;
+
+  state = {
+    theme: 'light', fullscreen: false, zoom: 1,
+    favEditing: false,
+    favSelected: ['/dashboards', '/dashboards/publishing', '/aaaf', '/hfa', '/tools'],
+    favDraft: [],
+  };
+
+  clampZoom(z) { return Math.min(2.5, Math.max(0.4, Math.round(z * 100) / 100)); }
+
+  toggleFav(href) {
+    this.setState(s => {
+      const has = s.favDraft.includes(href);
+      if (has) return { favDraft: s.favDraft.filter(h => h !== href) };
+      if (s.favDraft.length >= this.MAX_FAV) return {};
+      return { favDraft: [...s.favDraft, href] };
+    });
+  }
+
+  favVals() {
+    const draft = this.state.favDraft;
+    const byGroup = {};
+    for (const t of this.catalog) { (byGroup[t.group] = byGroup[t.group] || []).push(t); }
+    const groups = Object.keys(byGroup).map(g => ({
+      name: g,
+      items: byGroup[g].map(t => {
+        const checked = draft.includes(t.href);
+        return { href: t.href, label: t.label, checked, disabled: !checked && draft.length >= this.MAX_FAV, onToggle: () => this.toggleFav(t.href) };
+      }),
+    }));
+    const pinned = this.state.favSelected
+      .map(h => this.catalog.find(c => c.href === h))
+      .filter(Boolean)
+      .map(c => ({ href: c.href, label: c.label }));
+    const capReached = draft.length >= this.MAX_FAV;
+    return {
+      favEditing: this.state.favEditing,
+      favNotEditing: !this.state.favEditing,
+      favGroups: groups,
+      favPinned: pinned,
+      favHasPinned: pinned.length > 0,
+      favEmpty: pinned.length === 0,
+      favCount: draft.length,
+      favCapReached: capReached,
+      favNotCap: !capReached,
+      openFavEdit: () => this.setState(s => ({ favEditing: true, favDraft: [...s.favSelected] })),
+      cancelFavEdit: () => this.setState({ favEditing: false }),
+      saveFavEdit: () => this.setState(s => ({ favEditing: false, favSelected: [...s.favDraft] })),
+    };
+  }
+
+  themeStyle() {
+    const LIGHT = "--tn-canvas:#f1efe8;--tn-surface:#ffffff;--tn-topbar:#ffffff;--tn-ink:#012358;--tn-body:#435066;--tn-muted:#8593a4;--tn-border:#e4e7ec;--tn-divider:#cbd5e1;--tn-teal:#1E7D7F;--tn-gold:#F2C40A;--tn-badge:#012358;--tn-chip-bg:#eef5f5;--tn-chip-ink:#1E7D7F;--tn-active-bg:rgba(30,125,127,.10);--tn-active-ink:#1E7D7F;--tn-rail-idle:#9aa7b6;--tn-hover-bg:#f4f2ec;--tn-avatar:#012358;--tn-dash:#cbd2da;--tn-thread:#d6d3cb;--tn-orgbg:rgba(255,255,255,.55);--tn-shadow-card:0 1px 2px rgba(1,35,88,.06);--tn-shadow-frame:0 30px 80px -30px rgba(1,35,88,.35);--tn-logo-bg:transparent;--tn-logo-pad:0";
+    const DARK = "--tn-canvas:#070f1d;--tn-surface:#101f37;--tn-topbar:#0c1a30;--tn-ink:#eaf1fb;--tn-body:#aebfd4;--tn-muted:#74849c;--tn-border:#20355a;--tn-divider:#2b3f5f;--tn-teal:#5ac2bf;--tn-gold:#F2C40A;--tn-badge:#2a5cab;--tn-chip-bg:#12283a;--tn-chip-ink:#5ac2bf;--tn-active-bg:rgba(90,194,191,.16);--tn-active-ink:#5ac2bf;--tn-rail-idle:#6b7c95;--tn-hover-bg:#0c1a30;--tn-avatar:#2a5cab;--tn-dash:#2a3f60;--tn-thread:#2b3f5f;--tn-orgbg:rgba(16,31,55,.5);--tn-shadow-card:0 1px 2px rgba(0,0,0,.4);--tn-shadow-frame:0 30px 80px -30px rgba(0,0,0,.7);--tn-logo-bg:#ffffff;--tn-logo-pad:5px 8px";
+    return this.state.theme === 'dark' ? DARK : LIGHT;
+  }
+
+  renderVals() {
+    return {
+      ...this.favVals(),
+      themeStyle: this.themeStyle(),
+      isDark: this.state.theme === 'dark',
+      isLight: this.state.theme === 'light',
+      toggleTheme: () => this.setState(s => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+      fullscreen: this.state.fullscreen,
+      zoom: this.state.zoom,
+      zoomPct: Math.round(this.state.zoom * 100),
+      openFull: () => this.setState({ fullscreen: true, zoom: 1 }),
+      closeFull: () => this.setState({ fullscreen: false }),
+      zoomIn: () => this.setState(s => ({ zoom: this.clampZoom(s.zoom + 0.2) })),
+      zoomOut: () => this.setState(s => ({ zoom: this.clampZoom(s.zoom - 0.2) })),
+      resetZoom: () => this.setState({ zoom: 1 }),
+    };
+  }
+}
+</script>
+</body>
+</html>
