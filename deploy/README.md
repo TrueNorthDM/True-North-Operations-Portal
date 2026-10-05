@@ -90,7 +90,9 @@ The exact copy goes through the container's own socket; `deploy/supabase/pg_hba.
 is the image's file with one added line allowing that. To restore: stop the db
 container, replace `supabase/volumes/db/data` with the unpacked `base-*` archive
 (owner 100:101, mode 700), start it. Tested on 30 September 2026 in a throwaway
-container: the same roles and tables as the live database.
+container: the same roles and tables as the live database. Tested again with the
+real data on 5 October 2026, after the switch-over: 94 tables and 239,708 rows,
+every table's count identical to the live database.
 
 Log: `/opt/tnportal/logs/backup.log`.
 
