@@ -25,11 +25,22 @@ Questions? Just reply here. Thanks!
 ## B. When it is back (`p6-announce`)
 
 ```
-The Operations Portal is back, at its new address: truenorthportal.online ✅
+The Operations Portal is back, at its new home: truenorthportal.online ✅
 
-• Sign in with your GoodNews email; you'll get a 6-digit code by email.
-• Everything is where you left it.
-• If something looks off, tell me right away.
+As you know, we've been moving the portal onto True North's own setup: its own domain, its own server, and its own database, instead of services under other accounts. Most of that work is now done, and you can sign back in.
+
+How to sign in
+• Go to truenorthportal.online and sign in with your GoodNews email. You'll get an email with a 6-digit code: type it in, or press the button in the email.
+• If you had set up two-step sign-in, your authenticator app works as before.
+• Everyone signs in once more, since the old sessions didn't come along.
+
+What stays the same
+• Your work, reports, settings and history are all there, exactly as you left them.
+• Old links and bookmarks take you to the new address automatically, but it's worth updating your bookmark.
+
+We'll keep an eye on everything over the next few days and finish a few last details behind the scenes. If something looks off or doesn't work, tell me right away.
+
+Thanks for your patience during the move!
 ```
 
 ## C. Two-step sign-in for everyone who already had access (`p8-2fa-text`, phase 8)
