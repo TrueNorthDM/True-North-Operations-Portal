@@ -146,7 +146,7 @@ if [ "${SKIP_FILES:-}" = 1 ]; then
 else
   LOCAL_SERVICE_KEY="$(grep '^SERVICE_ROLE_KEY=' "$SUPA/.env" | cut -d= -f2-)"
   docker run --rm --network host \
-    -e CLOUD_SUPABASE_URL -e CLOUD_SERVICE_KEY \
+    -e CLOUD_SUPABASE_URL="$CLOUD_SUPABASE_URL" -e CLOUD_SERVICE_KEY="$CLOUD_SERVICE_KEY" \
     -e LOCAL_URL=http://127.0.0.1:8000 -e LOCAL_SERVICE_KEY="$LOCAL_SERVICE_KEY" \
     -v "$HERE/copy-storage.mjs:/copy-storage.mjs:ro" \
     node:22-alpine node /copy-storage.mjs
