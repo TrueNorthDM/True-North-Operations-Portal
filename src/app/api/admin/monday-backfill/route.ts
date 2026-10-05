@@ -19,6 +19,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { isSecurityAdmin } from '@/lib/auth/role'
+import { internalOrigin } from '@/lib/auth/public-origin'
 import {
   backfillEvents, fetchItemLogs, handoffsFrom, type OpenAssignment,
 } from '@/lib/monday/worklist/backfill'
@@ -137,7 +138,7 @@ export async function GET(request: Request) {
     const cookie = request.headers.get('cookie')
     if (cookie) forward.cookie = cookie
 
-    void fetch(`${url.origin}/api/admin/monday-backfill?hop=${hop + 1}`, { headers: forward })
+    void fetch(`${internalOrigin(request.url)}/api/admin/monday-backfill?hop=${hop + 1}`, { headers: forward })
       .catch(() => {})
   }
 

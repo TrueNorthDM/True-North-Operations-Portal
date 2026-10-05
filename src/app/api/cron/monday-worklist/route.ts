@@ -105,14 +105,24 @@ export async function GET(request: Request) {
  * answers 200, and every hop after the first was lost while the log said the
  * chain had gone on. Found on 21 September 2026.
  *
- * APP_URL, when set, wins (migration plan, step p4-hop): the portal's own address
- * once it runs on its own server. There the server cron calls the app directly on
- * the machine, and the request's own origin would do too; APP_URL is for when a
- * hop must go through the public address. Locally, and anywhere neither variable
- * is set, the request's own origin is used.
+ * On the portal's own server INTERNAL_ORIGIN wins (http://127.0.0.1:3000, set in
+ * its Dockerfile): the hop stays on the machine. Sent to the public address
+ * instead, it left the container for Cloudflare and never came back ("fetch
+ * failed", found on 5 October 2026), so only the first hop ran.
+ *
+ * Otherwise APP_URL, when set (migration plan, step p4-hop), then Vercel's
+ * production domain. Locally, and anywhere none is set, the request's own
+ * origin is used.
  */
 function nextHopUrl(url: URL): URL {
   const next = new URL(url.toString())
+  const internal = process.env.INTERNAL_ORIGIN
+  if (internal) {
+    const base = new URL(internal)
+    next.protocol = base.protocol
+    next.host = base.host
+    return next
+  }
   const app = process.env.APP_URL
   if (app) {
     const base = new URL(app)
