@@ -1,13 +1,16 @@
 # Deploy the portal to True North's own server (migration plan, step p4-deploy).
 #
-# Manual until the switch-over: Actions > "Deploy to the portal's server" >
-# Run workflow. Vercel (deploy-vercel.yml) stays the live portal until then.
+# Every push to main deploys here since the switch-over (5 October 2026). To
+# deploy an older commit: Actions > "Deploy to the portal's server" > Run
+# workflow, with its sha.
 # The key in SERVER_SSH_KEY can only run deploy/portal/actions-deploy.sh on the
 # server, which builds and starts the commit with deploy/portal/deploy.sh.
 
 name: Deploy to the portal's server
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
@@ -27,7 +30,7 @@ jobs:
       - name: Build and start on the server
         env:
           SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          REF: ${{ inputs.ref }}
+          REF: ${{ inputs.ref || github.sha }}
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/server

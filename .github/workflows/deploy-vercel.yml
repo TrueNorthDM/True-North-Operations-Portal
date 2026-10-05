@@ -1,12 +1,10 @@
-# Push to main deploys production. The Vercel Git integration stayed behind with the
-# old Level-Up-Finance repository, so this workflow uploads each commit to the same
-# Vercel project instead. Vercel builds it with the project's own environment variables.
-# Phase 4 of the migration points this workflow at the new server.
+# The old address on Vercel. Since the switch-over (5 October 2026) it only
+# redirects to truenorthportal.online (LEGACY_REDIRECT_TO), so pushes no longer
+# deploy it; the portal itself deploys to its own server (deploy-server.yml).
+# Run by hand only to change the redirect. Retired with phase 7.
 name: Deploy to Vercel
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 # One deploy at a time, in push order, so an older commit never lands after a newer one.
