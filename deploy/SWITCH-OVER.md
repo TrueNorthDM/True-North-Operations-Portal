@@ -16,7 +16,7 @@ unpause the old portal.
 |---|---|---|
 | Phase 5 | Rehearsal: copy the live data into the server (`p5-copy`), compare every table (`p5-compare`), try the main screens on staging (`p5-you`), time the copy (`p5-time`). The copy and count scripts used on the day are the ones proven here. | Claude, Arnaldo |
 | Phase 5 | Check two-step sign-in survives the copy: if Supabase cloud encrypts the authenticator secrets, people set their app up again (a Reset for everyone) and the announcement says so. | Claude |
-| 1 week before | Ask ScalaHosting to forward `truenorthportal.online` and `www` to `127.0.0.1:3000`, with SSL, as they did for staging. Doing it early takes their timing out of the day. | Arnaldo (ticket) |
+| 1 week before | Forward `truenorthportal.online` and `www` to `127.0.0.1:3000`, with SSL, as staging is. Done 5 October 2026 with the same `.htaccess` (see `deploy/README.md`, Public addresses). | Claude |
 | 3 days before | Tell the team the date and the window (`p6-tell`). A weekend evening, US time. | Arnaldo |
 | The day before | A fresh backup of the server; check the disk has room for the data. | Claude |
 

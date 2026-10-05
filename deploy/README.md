@@ -11,6 +11,24 @@ on 127.0.0.1 only; LiteSpeed forwards the public addresses to it.
 | `/opt/tnportal/portal.env` | The portal's settings and secrets | Written on the server, never committed |
 | `/opt/tnportal/bin` | `supabase.sh` (up, down, ps, logs), `apply-env.sh` | `deploy/supabase/` |
 
+## Public addresses
+
+Each address is an SPanel domain whose folder holds only an `.htaccess` that
+forwards every request to the service on 127.0.0.1. SPanel's own vhost files
+(`/etc/httpd/vhosts/*.conf`) are left alone; the certificates are SPanel's
+Let's Encrypt ones, renewed by SPanel.
+
+| Address | Folder | Forwards to |
+|---|---|---|
+| `truenorthportal.online` (and `www`, redirected to it) | `/home/tnportal/public_html` | the portal, `127.0.0.1:3000` |
+| `staging.truenorthportal.online` | `/home/tnportal/staging.truenorthportal.online` | the portal, `127.0.0.1:3000` |
+| `db.truenorthportal.online` | `/home/tnportal/db.truenorthportal.online` | Supabase, `127.0.0.1:8000` |
+
+ScalaHosting set up staging and db (ticket #381626); the main domain was done
+the same way on 5 October 2026 (the old file is kept beside it as
+`.htaccess.before-portal-2026-10-05`). The main domain's file answers
+`/.well-known/` itself, so certificate renewals never reach the portal.
+
 ## Supabase (`deploy/supabase/`)
 
 - `docker-compose.tnportal.yml` sits beside Supabase's `docker-compose.yml`
