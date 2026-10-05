@@ -640,16 +640,13 @@
       var s = stepsOf(p); p.total = s.length; p.done = s.filter(function (x) { return done[x[0]]; }).length;
       total += p.total; count += p.done;
     });
-    // In progress: every phase with some steps done and some left, since phases
-    // overlap (4 runs alongside 3). If none has started, the first unfinished
-    // one. "Happening now" shows the first of them.
+    // "Happening now" is the first unfinished phase. In progress: that one, and
+    // any earlier phase with some steps done and some left, since phases overlap
+    // (4 runs alongside 3). A later phase with a step done early (phase 8's
+    // 2FA reset) waits its turn.
+    now = plan.phases.filter(function (p) { return p.done < p.total; })[0] || null;
     var started = function (p) { return p.done > 0 && p.done < p.total; };
-    var inProgress = plan.phases.filter(started);
-    if (!inProgress.length) {
-      var first = plan.phases.filter(function (p) { return p.done < p.total; })[0];
-      if (first) inProgress = [first];
-    }
-    now = inProgress[0] || null;
+    var inProgress = now ? plan.phases.filter(function (p) { return p === now || (p.n < now.n && started(p)); }) : [];
     var isNow = function (p) { return inProgress.indexOf(p) >= 0; };
 
     var li = function (x) {
