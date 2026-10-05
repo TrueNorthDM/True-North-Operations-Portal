@@ -62,9 +62,9 @@ while read -r ext ns; do
   printf 'create schema if not exists "%s"; create extension if not exists "%s" with schema "%s";\n' "$ns" "$ext" "$ns" | dst \
     || echo "   WARNING: could not create extension $ext"
 done < "$WORK/cloud-extensions.txt"
-echo "select rolname from pg_roles order by 1" | src > "$WORK/cloud-roles.txt"
-echo "select rolname from pg_roles order by 1" | dst > "$WORK/server-roles.txt"
-missing_roles="$(comm -23 "$WORK/cloud-roles.txt" "$WORK/server-roles.txt" | grep -v '^pg_' || true)"
+echo "select rolname from pg_roles" | src | LC_ALL=C sort > "$WORK/cloud-roles.txt"
+echo "select rolname from pg_roles" | dst | LC_ALL=C sort > "$WORK/server-roles.txt"
+missing_roles="$(LC_ALL=C comm -23 "$WORK/cloud-roles.txt" "$WORK/server-roles.txt" | grep -v '^pg_' || true)"
 for r in $missing_roles; do
   echo "   creating role $r (no login)"
   printf 'create role "%s" nologin;\n' "$r" | dst || echo "   WARNING: could not create role $r"
@@ -114,12 +114,24 @@ echo "   $added added, $failed warnings"
 took
 
 step "4. The data"
-dargs=(--data-only --quote-all-identifiers --schema=auth)
-for s in $SCHEMAS; do dargs+=(--schema="$s"); done
+# The sign-in tables both sides have. Supabase cloud runs a newer sign-in
+# service than the image here, with tables this one does not know (on
+# 5 October 2026: MFA recovery codes and SCIM, all empty); copying them would
+# stop the load. Their rows are counted and named, so a table left behind that
+# holds data is seen, not lost in silence.
+AUTH_Q="select table_name from information_schema.tables where table_schema = 'auth' and table_type = 'BASE TABLE'"
+echo "$AUTH_Q" | src | LC_ALL=C sort > "$WORK/cloud-auth-tables.txt"
+echo "$AUTH_Q" | dst | LC_ALL=C sort > "$WORK/server-auth-tables.txt"
+for t in $(LC_ALL=C comm -23 "$WORK/cloud-auth-tables.txt" "$WORK/server-auth-tables.txt"); do
+  echo "   auth.$t is not on this server: $(echo "select count(*) from auth.\"$t\"" | src) rows left behind"
+done
 # Sign-in history and live sessions stay behind; everyone signs in again.
-for t in schema_migrations sessions refresh_tokens mfa_challenges mfa_amr_claims flow_state \
-         one_time_tokens audit_log_entries saml_relay_states oauth_authorizations oauth_consents; do
-  dargs+=(--exclude-table="auth.$t")
+SKIP_AUTH=" schema_migrations sessions refresh_tokens mfa_challenges mfa_amr_claims flow_state one_time_tokens audit_log_entries saml_relay_states oauth_authorizations oauth_consents "
+# --table, not --schema: pg_dump ignores --schema once any --table is given.
+dargs=(--data-only --quote-all-identifiers)
+for s in $SCHEMAS; do dargs+=(--table="$s.*"); done
+for t in $(LC_ALL=C comm -12 "$WORK/cloud-auth-tables.txt" "$WORK/server-auth-tables.txt"); do
+  [[ "$SKIP_AUTH" == *" $t "* ]] || dargs+=(--table="auth.$t")
 done
 src_dump "${dargs[@]}" > "$WORK/data.sql"
 echo "   $(du -h "$WORK/data.sql" | cut -f1) of data"
