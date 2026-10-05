@@ -18,6 +18,7 @@
  */
 
 import type { Browser } from 'puppeteer-core'
+import { internalOrigin } from '@/lib/auth/public-origin'
 import { launchBrowser } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { requireSurface } from '@/lib/access/resolve'
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
     : `${ROUTES.i7}/print`
 
   // The page we screenshot to PDF, same origin, cookies forwarded for auth.
-  const target = `${url.origin}${printPath}?month=${encodeURIComponent(month)}&type=${type}&pdf=1`
+  const target = `${internalOrigin(request.url)}${printPath}?month=${encodeURIComponent(month)}&type=${type}&pdf=1`
   const cookie = request.headers.get('cookie') ?? ''
 
   let browser: Browser | null = null

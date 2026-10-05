@@ -15,6 +15,7 @@
  */
 
 import { isSecurityAdmin } from '@/lib/auth/role'
+import { internalOrigin } from '@/lib/auth/public-origin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
   }
 
   const secret = process.env.CRON_SECRET
-  const target = new URL('/api/cron/monday-worklist', url.origin)
+  const target = new URL('/api/cron/monday-worklist', internalOrigin(request.url))
 
   // Fire and forget, exactly as the chain does between its own hops: awaiting
   // it would put the four-minute wait straight back.

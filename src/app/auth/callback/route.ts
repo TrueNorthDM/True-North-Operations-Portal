@@ -8,10 +8,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { safeNext } from '@/lib/auth/safe-next'
+import { publicOrigin } from '@/lib/auth/public-origin'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
+  // Redirects go to the address the person is on (APP_URL on the own server).
+  const base = publicOrigin(request.url)
   const code = url.searchParams.get('code')
   // Sanitize `next` to prevent open-redirect attacks (see safeNext).
   // Where they were going: ?next= from older links, else the cookie
@@ -23,10 +26,10 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
       // Surface the error in the login page
-      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url))
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, base))
     }
-    return NextResponse.redirect(new URL(next, request.url))
+    return NextResponse.redirect(new URL(next, base))
   }
 
-  return NextResponse.redirect(new URL('/login?error=Missing+code', request.url))
+  return NextResponse.redirect(new URL('/login?error=Missing+code', base))
 }

@@ -22,7 +22,8 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     CHROME_PATH=/usr/bin/chromium \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    INTERNAL_ORIGIN=http://127.0.0.1:3000
 WORKDIR /app
 COPY --from=build --chown=node:node /app ./
 USER node

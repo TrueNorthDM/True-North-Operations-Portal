@@ -8,6 +8,10 @@ import { headers } from 'next/headers'
  * environment variable has to be remembered.
  */
 export async function requestOrigin(): Promise<string> {
+  // On the portal's own server a request arrives as https://localhost:3000
+  // (see public-origin.ts); the address people use is APP_URL.
+  const app = process.env.APP_URL
+  if (app) return new URL(app).origin
   const h = await headers()
   const proto = h.get('x-forwarded-proto') ?? 'http'
   const host = h.get('host')

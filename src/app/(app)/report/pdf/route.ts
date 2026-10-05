@@ -11,6 +11,7 @@
  */
 
 import type { Browser } from 'puppeteer-core'
+import { internalOrigin } from '@/lib/auth/public-origin'
 import { launchBrowser } from '@/lib/pdf/browser'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { SCOPE_LABEL } from '@/lib/report/scope'
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
   const query = new URLSearchParams({ tab, scope, period: String(period), pdf: '1' })
   if (team) query.set('team', team)
   if (person) query.set('person', person)
-  const target = `${url.origin}/report/print?${query}`
+  const target = `${internalOrigin(request.url)}/report/print?${query}`
   const cookie = request.headers.get('cookie') ?? ''
 
   let browser: Browser | null = null
