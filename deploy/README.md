@@ -61,8 +61,40 @@ Two things specific to this server:
 - `Dockerfile`: Next.js on Node 22, with Debian's Chromium for the PDF exports
   (`CHROME_PATH`).
 - `restart.sh`: restart the running build, e.g. after a change to `portal.env`.
-- `deploy.sh`: fetch, build (low CPU priority), swap, check `/login`, and go
-  back to the previous build if the new one does not answer.
+- `deploy.sh <ref> [production|staging]`: fetch, build (low CPU priority),
+  swap, check `/login`, and go back to the previous build if the new one does
+  not answer. Each environment has its own build, because the browser code
+  carries its addresses. Keeps the build cache at 3 GB.
+
+## Staging (`deploy/staging/`)
+
+A second copy of the portal, with a copy of production's data, at
+`https://staging.truenorthportal.online` (set up 6 October 2026). Every push to
+main lands there first; production changes only when a commit is promoted.
+
+| | Production | Staging |
+|---|---|---|
+| Address | truenorthportal.online | staging.truenorthportal.online |
+| Portal container | `tnportal-portal`, 127.0.0.1:3000, `portal.env` | `tnportal-staging`, 127.0.0.1:3001, `staging.env` |
+| Supabase | `/opt/tnportal/supabase`, project `supabase`, gateway 127.0.0.1:8000 | `/opt/tnportal/supabase-staging`, project `supabase-staging`, gateway 127.0.0.1:8001 |
+| Supabase's public address | db.truenorthportal.online | the staging address itself: `/auth/v1`, `/rest/v1` and `/storage/v1` go to its gateway |
+| Deploy | Actions, "Promote to production" (`deploy-server.yml`) | every push (`deploy-staging.yml`) |
+| Scheduled jobs, Monday webhooks, backups, watch | yes | none |
+| Emails the portal sends (invitations) | everyone | only `STAGING_EMAIL_ALLOWLIST` |
+
+- Staging has its own sign-in keys (JWT secret, anon and service keys); its
+  sign-in emails come from "True North Operations Portal (staging)". A yellow
+  strip on every page says it is the test copy (`NEXT_PUBLIC_APP_ENV=staging`).
+- **Fresh data:** `deploy/staging/refresh-data.sh` (as root) restores last
+  night's exact copy into staging's database, with `--now` a backup taken on
+  the spot. Production is only read.
+- **The project name trap.** Supabase's own `docker-compose.yml` says
+  `name: supabase`, so a copy of the folder joins production's project and
+  replaces its containers. Staging's copy says `name: supabase-staging`; keep it
+  that way. (On 6 October 2026 the first start took production's database and
+  sign-in down for about 3 minutes before this was caught.)
+- **Database changes** (migrations) go to staging first, and to production when
+  the commit is promoted.
 
 ## Moving the data (`deploy/migrate/`)
 

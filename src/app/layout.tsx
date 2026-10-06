@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Nunito, Open_Sans, Bebas_Neue, Raleway } from 'next/font/google'
 import './globals.css'
+import { IS_STAGING } from '@/lib/environment'
+import { StagingBanner } from '@/components/StagingBanner'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
@@ -44,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           hydration bugs deeper in the tree. Nothing to do with the theme: the
           portal is light, and no script touches <html> before paint. */}
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        {IS_STAGING && <StagingBanner />}
         {children}
       </body>
     </html>

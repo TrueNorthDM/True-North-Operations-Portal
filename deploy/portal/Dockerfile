@@ -1,7 +1,8 @@
 # The portal on its own server (migration plan, step p3-node): Next.js on
 # Node 22, with the server's Chromium for the PDF and image exports
 # (lib/pdf/browser.ts reads CHROME_PATH). Built on the server by
-# deploy/portal/deploy.sh; Vercel does not use this file.
+# deploy/portal/deploy.sh, once per environment (production and staging), since
+# the NEXT_PUBLIC_ values differ.
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
@@ -12,6 +13,8 @@ COPY . .
 # NEXT_PUBLIC_ values are written into the browser code at build time.
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+# "staging" on the staging copy (lib/environment.ts), empty in production.
+ARG NEXT_PUBLIC_APP_ENV
 RUN npm run build && npm prune --omit=dev
 
 FROM node:22-bookworm-slim

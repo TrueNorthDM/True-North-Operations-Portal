@@ -2,6 +2,10 @@
 # Supabase runs beside it in /opt/tnportal/supabase; this file only runs the
 # portal. Values come from /opt/tnportal/portal.env (never from this repository),
 # passed with --env-file by deploy.sh.
+#
+# The same file runs the staging copy (deploy.sh <ref> staging, project
+# tnportal-staging): its env file sets PORTAL_CONTAINER, PORTAL_IMAGE,
+# PORTAL_ENV_FILE, HOST_PORT and SUPABASE_NETWORK. Unset, they mean production.
 
 name: tnportal
 
@@ -13,15 +17,16 @@ services:
       args:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    image: tnportal/portal:${PORTAL_TAG:-latest}
-    container_name: tnportal-portal
+        NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-}
+    image: ${PORTAL_IMAGE:-tnportal/portal}:${PORTAL_TAG:-latest}
+    container_name: ${PORTAL_CONTAINER:-tnportal-portal}
     restart: unless-stopped
     # Safe if Docker's user remapping is ever turned back on (deploy/README.md).
     userns_mode: host
-    env_file: /opt/tnportal/portal.env
+    env_file: ${PORTAL_ENV_FILE:-/opt/tnportal/portal.env}
     # Only on this machine: LiteSpeed forwards the public address to it.
     ports:
-      - "127.0.0.1:${PORT:-3000}:3000"
+      - "127.0.0.1:${HOST_PORT:-${PORT:-3000}}:3000"
     # Chromium (the PDF exports) needs more shared memory than Docker's 64 MB.
     shm_size: 512m
     # A ceiling, so a runaway export cannot starve the websites on this server.
@@ -32,11 +37,12 @@ services:
     networks:
       - default
       # Supabase's network, so its sign-in service can fetch the email
-      # templates straight from here (http://tnportal-portal:3000/email-templates).
+      # templates straight from here (http://tnportal-portal:3000/email-templates;
+      # staging: http://tnportal-staging:3000 on supabase-staging_default).
       # Through the public address the server's web firewall refuses its client.
       - supabase
 
 networks:
   supabase:
     external: true
-    name: supabase_default
+    name: ${SUPABASE_NETWORK:-supabase_default}

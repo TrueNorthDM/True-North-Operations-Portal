@@ -1,20 +1,20 @@
-# Deploy the portal to True North's own server (migration plan, step p4-deploy).
+# Promote a tested commit to production, truenorthportal.online.
 #
-# Every push to main deploys here since the switch-over (5 October 2026). To
-# deploy an older commit: Actions > "Deploy to the portal's server" > Run
-# workflow, with its sha.
+# Since 6 October 2026 a push to main goes to staging first
+# (deploy-staging.yml, staging.truenorthportal.online). Once it has been tried
+# there: Actions > "Promote to production" > Run workflow, with that commit's
+# sha (or main, when staging runs the newest commit). Also how to go back to an
+# older commit.
 # The key in SERVER_SSH_KEY can only run deploy/portal/actions-deploy.sh on the
 # server, which builds and starts the commit with deploy/portal/deploy.sh.
 
-name: Deploy to the portal's server
+name: Promote to production
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
-        description: "Commit to deploy (a sha), or main"
+        description: "Commit to promote (the sha tested on staging), or main"
         required: true
         default: main
 
@@ -30,7 +30,7 @@ jobs:
       - name: Build and start on the server
         env:
           SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          REF: ${{ inputs.ref || github.sha }}
+          REF: ${{ inputs.ref }}
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/server

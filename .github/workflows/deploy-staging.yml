@@ -1,0 +1,39 @@
+# Every push to main goes here first: staging.truenorthportal.online, a copy of
+# the portal with a copy of the data (deploy/README.md, Staging). Production
+# changes only when the commit is promoted (deploy-server.yml).
+# The key in SERVER_SSH_KEY can only run deploy/portal/actions-deploy.sh on the
+# server, which builds and starts the commit with deploy/portal/deploy.sh.
+
+name: Deploy to staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit to put on staging (a sha), or main"
+        required: true
+        default: main
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Build and start on the server
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          REF: ${{ inputs.ref || github.sha }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/server
+          chmod 600 ~/.ssh/server
+          # The server's host key, so the connection cannot be redirected.
+          echo "[174.136.29.221]:6543 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIACs51YqrmoFTzJ1ucV8ZQmucWUl8FlzNB8iczVgINco" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/server -p 6543 -o IdentitiesOnly=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
+            portal@174.136.29.221 "staging $REF"

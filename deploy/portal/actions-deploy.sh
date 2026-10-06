@@ -5,15 +5,16 @@
 #
 #   restrict,command="/opt/tnportal/bin/actions-deploy.sh" ssh-ed25519 ... github-actions
 #
-# Allowed:  deploy <commit sha | main>   build and start that commit (deploy.sh)
+# Allowed:  staging <commit sha | main>  build and start that commit on staging
+#           deploy <commit sha | main>   the same on production (promote)
 #           status                       the running containers
-# One deploy at a time (flock).
+# One build at a time, either environment (flock).
 set -euo pipefail
 
 cmd="${SSH_ORIGINAL_COMMAND:-}"
 case "$cmd" in
-  "deploy "*)
-    ref="${cmd#deploy }"
+  "deploy "*|"staging "*)
+    if [[ "$cmd" == staging* ]]; then env=staging; ref="${cmd#staging }"; else env=production; ref="${cmd#deploy }"; fi
     if ! [[ "$ref" =~ ^([0-9a-f]{7,40}|main)$ ]]; then echo "Not a commit: $ref" >&2; exit 2; fi
     exec 9>/opt/tnportal/.deploy.lock
     flock -n 9 || { echo "Another deploy is running." >&2; exit 3; }
@@ -23,13 +24,13 @@ case "$cmd" in
     git fetch --quiet origin
     [ "$ref" = main ] && target=origin/main || target="$ref"
     git checkout --quiet --detach "$(git rev-parse --verify "$target^{commit}")"
-    /opt/tnportal/app/deploy/portal/deploy.sh "$ref" 2>&1 | tee -a /opt/tnportal/logs/deploy.log
+    /opt/tnportal/app/deploy/portal/deploy.sh "$ref" "$env" 2>&1 | tee -a /opt/tnportal/logs/deploy.log
     ;;
   status)
     docker ps --format '{{.Names}}: {{.Status}}'
     ;;
   *)
-    echo "Allowed: deploy <commit>, status" >&2
+    echo "Allowed: staging <commit>, deploy <commit>, status" >&2
     exit 2
     ;;
 esac
