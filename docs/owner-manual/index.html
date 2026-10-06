@@ -1,0 +1,434 @@
+<title>Manual do Portal True North</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800;900&family=Open+Sans:wght@400;600;700&display=swap">
+<style>
+  /* Layout: brand topbar, a hero, then a sticky contents rail beside one reading column (stacks on phones). */
+  :root {
+    --bg: #f1efe8;
+    --card: #ffffff;
+    --tint: #f6f4ee;
+    --rule: #e4e7ec;
+    --fg: #435066;
+    --muted: #7c8a9c;
+    --heading: #012358;
+    --navy: #012358;
+    --gold: #F2C40A;
+    --gold-soft: #fbf1cf;
+    --gold-ink: #8a6703;
+    --teal: #1E7D7F;
+    --teal-soft: #e3f1f1;
+    --line: #9aa6b5;
+    --code-bg: #eef1f5;
+    --logo-plate: transparent;
+    --display: "Raleway", "Open Sans", system-ui, sans-serif;
+    --sans: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c1424; --card: #131e33; --tint: #18253e; --rule: #25344f; --fg: #c3cddb; --muted: #8b99ae;
+      --heading: #eef2f8; --navy: #9fb6dc; --gold: #F2C40A; --gold-soft: #3a3214; --gold-ink: #f2d35e;
+      --teal: #5cbcbe; --teal-soft: #15343a; --line: #5d6c84; --code-bg: #1c2a44; --logo-plate: #ffffff;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c1424; --card: #131e33; --tint: #18253e; --rule: #25344f; --fg: #c3cddb; --muted: #8b99ae;
+    --heading: #eef2f8; --navy: #9fb6dc; --gold: #F2C40A; --gold-soft: #3a3214; --gold-ink: #f2d35e;
+    --teal: #5cbcbe; --teal-soft: #15343a; --line: #5d6c84; --code-bg: #1c2a44; --logo-plate: #ffffff;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.65; }
+  h1, h2, h3 { font-family: var(--display); color: var(--heading); margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+  p { margin: 0; }
+  a { color: var(--teal); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 3px; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  b, strong { color: var(--heading); font-weight: 700; }
+
+  .topbar { background: var(--card); border-top: 3px solid var(--gold); border-bottom: 1px solid var(--rule); padding-inline: 20px; padding-block: calc(12px + env(safe-area-inset-top, 0px)) 12px; }
+  .topbar-in { max-width: 1120px; margin: 0 auto; display: flex; align-items: flex-end; gap: 10px; }
+  .logo { background: var(--logo-plate); border-radius: 6px; padding: 2px 4px; display: block; }
+  .logo img { height: 34px; width: auto; display: block; }
+  .topbar span { font-weight: 600; font-size: 14px; color: var(--muted); padding-bottom: 2px; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 88px; }
+
+  .hero { display: grid; gap: 12px; max-width: 760px; padding-bottom: 32px; border-bottom: 1px solid var(--rule); }
+  .eyebrow { font-family: var(--display); font-weight: 800; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); }
+  .hero h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 900; line-height: 1.08; }
+  .hero .lead { font-size: 17px; color: var(--fg); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+  .meta b { color: var(--fg); font-weight: 600; }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+  .flow span { font-family: var(--display); font-weight: 800; font-size: 13px; color: var(--navy); background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 12px; }
+  .flow i { font-style: normal; color: var(--gold-ink); font-weight: 700; }
+
+  .layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 48px; padding-top: 32px; }
+  .toc { position: sticky; top: calc(20px + env(safe-area-inset-top, 0px)); align-self: start; display: grid; gap: 2px; font-size: 13.5px; }
+  .toc strong { font-family: var(--display); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 800; padding-bottom: 6px; }
+  .toc a { color: var(--fg); text-decoration: none; padding: 5px 10px; border-left: 2px solid var(--rule); }
+  .toc a:hover { color: var(--teal); border-left-color: var(--teal); }
+
+  main { display: grid; gap: 56px; min-width: 0; }
+  section { display: grid; gap: 16px; min-width: 0; scroll-margin-top: 24px; }
+  section > p, section > ul, section > ol { max-width: 68ch; }
+  h2 { font-size: 25px; font-weight: 900; line-height: 1.2; }
+  h3 { font-size: 17px; font-weight: 800; padding-top: 6px; }
+  .point { font-size: 16px; }
+
+  .tbl { overflow-x: auto; background: var(--card); border: 1px solid var(--rule); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font-family: var(--display); font-weight: 800; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: var(--tint); padding: 10px 14px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 700; color: var(--heading); }
+  table.wide { min-width: 680px; }
+
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 12px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; }
+  ol.steps li::before { content: counter(s); font-family: var(--display); font-weight: 900; font-size: 13px; color: var(--navy); background: var(--gold-soft); border: 1px solid var(--gold); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; }
+
+  ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+
+  .note { background: var(--gold-soft); border: 1px solid var(--gold); border-radius: 10px; padding: 14px 16px; max-width: 68ch; }
+  .note b { color: var(--gold-ink); }
+  .callout { background: var(--teal-soft); border-radius: 10px; padding: 14px 16px; max-width: 68ch; }
+
+  .checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; max-width: 68ch; }
+  .checks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; }
+  .checks li::before { content: ""; width: 16px; height: 16px; margin-top: 4px; border: 1.5px solid var(--line); border-radius: 4px; }
+
+  .diagram { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 12px; overflow-x: auto; }
+  .diagram svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  .diagram .box { fill: var(--card); stroke: var(--line); stroke-width: 1.25; }
+  .diagram .hot { fill: var(--teal-soft); stroke: var(--teal); stroke-width: 2; }
+  .diagram .server { fill: var(--tint); stroke: var(--line); stroke-width: 1.25; }
+  .diagram .edge { fill: none; stroke: var(--line); stroke-width: 1.25; }
+  .diagram .main { stroke: var(--gold); stroke-width: 2; }
+  .diagram .n { font-family: var(--display); font-weight: 800; font-size: 14px; fill: var(--heading); }
+  .diagram .s { font-family: var(--sans); font-size: 11.5px; fill: var(--muted); }
+  .diagram .l { font-family: var(--sans); font-size: 11.5px; fill: var(--fg); }
+  .diagram .arrow { fill: var(--line); }
+  .diagram .arrow-main { fill: var(--gold); }
+
+  dl.gloss { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin: 0; }
+  dl.gloss div { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; }
+  dl.gloss dt { font-family: var(--display); font-weight: 800; color: var(--heading); font-size: 14px; }
+  dl.gloss dd { margin: 2px 0 0; font-size: 13.5px; }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .toc { position: static; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .toc strong { grid-column: 1 / -1; }
+  }
+</style>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <span class="logo"><img src="logo.png" alt="True North Digital Marketing"></span>
+    <span>Operations Portal</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="eyebrow">Operations Portal · manual do dono</span>
+    <h1>Manual do Portal True North</h1>
+    <p class="lead">O portal roda no servidor da True North na ScalaHosting, em <a href="https://truenorthportal.online">truenorthportal.online</a>. Você pede uma mudança ao Claude neste Mac, ele grava no GitHub, e o GitHub publica no servidor em cerca de 5 minutos.</p>
+    <div class="flow" aria-label="O caminho de uma mudança">
+      <span>Você + Claude</span><i>→</i><span>GitHub</span><i>→</i><span>Servidor</span><i>→</i><span>truenorthportal.online</span>
+    </div>
+    <div class="meta"><span>Atualizado em <b>6 de outubro de 2026</b></span><span>Mudança concluída em <b>5 de outubro de 2026</b></span></div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Seções">
+      <strong>Neste manual</strong>
+      <a href="#visao">Visão geral</a>
+      <a href="#contas">Contas</a>
+      <a href="#publicar">Publicar uma mudança</a>
+      <a href="#monitorar">Ver se está tudo bem</a>
+      <a href="#backups">Backups</a>
+      <a href="#pessoas">Pessoas</a>
+      <a href="#problemas">Quando algo quebra</a>
+      <a href="#chaves">Chaves e acessos</a>
+      <a href="#local">Rodar no seu Mac</a>
+      <a href="#glossario">Glossário</a>
+    </nav>
+
+    <main>
+      <section id="visao">
+        <h2>Visão geral</h2>
+        <p class="point">Tudo do portal roda num único servidor. A equipe chega a ele pela Cloudflare, e o Claude cuida dele por SSH. O caminho em dourado é o de uma mudança, do pedido ao ar.</p>
+        <div class="diagram">
+          <svg viewBox="0 0 760 540" role="img" aria-label="Você pede ao Claude, e o GitHub publica no servidor sozinho">
+            <defs>
+              <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>
+              <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-main" d="M0 0L10 5L0 10z"/></marker>
+            </defs>
+            <path class="edge main" d="M224 54H280" marker-end="url(#g)"/>
+            <path class="edge main" d="M380 84V216" marker-end="url(#g)"/>
+            <path class="edge" d="M124 84V216" stroke-dasharray="4 4" marker-end="url(#a)"/>
+            <path class="edge" d="M628 84V120" marker-end="url(#a)"/>
+            <path class="edge" d="M628 180V256" marker-end="url(#a)"/>
+            <path class="edge" d="M480 286H536" marker-start="url(#a)" marker-end="url(#a)"/>
+            <path class="edge" d="M140 316V448" marker-end="url(#a)"/>
+            <path class="edge" d="M628 392V448" marker-end="url(#a)"/>
+
+            <rect class="box" x="24" y="24" width="200" height="60" rx="8"/>
+            <text class="n" x="124" y="49" text-anchor="middle">Você + Claude</text>
+            <text class="s" x="124" y="68" text-anchor="middle">Claude Code, neste Mac</text>
+            <rect class="box" x="280" y="24" width="200" height="60" rx="8"/>
+            <text class="n" x="380" y="49" text-anchor="middle">GitHub</text>
+            <text class="s" x="380" y="68" text-anchor="middle">TrueNorthDM: o código</text>
+            <rect class="box" x="528" y="24" width="200" height="60" rx="8"/>
+            <text class="n" x="628" y="49" text-anchor="middle">Equipe</text>
+            <text class="s" x="628" y="68" text-anchor="middle">no navegador</text>
+            <rect class="box" x="528" y="120" width="200" height="60" rx="8"/>
+            <text class="n" x="628" y="145" text-anchor="middle">Cloudflare</text>
+            <text class="s" x="628" y="164" text-anchor="middle">truenorthportal.online</text>
+
+            <text class="l" x="252" y="44" text-anchor="middle">push</text>
+            <text class="l" x="390" y="142">deploy automático,</text>
+            <text class="l" x="390" y="158">cerca de 5 minutos</text>
+            <text class="l" x="134" y="142">SSH: o Claude</text>
+            <text class="l" x="134" y="158">cuida do servidor</text>
+            <text class="l" x="618" y="208" text-anchor="end">repassa ao portal</text>
+
+            <rect class="server" x="24" y="216" width="712" height="192" rx="8"/>
+            <text class="n" x="40" y="241">Servidor ScalaHosting · 174.136.29.221</text>
+            <rect class="box" x="40" y="256" width="200" height="60" rx="8"/>
+            <text class="n" x="140" y="281" text-anchor="middle">Tarefas automáticas</text>
+            <text class="s" x="140" y="300" text-anchor="middle">Monday e horas, a cada 4 h</text>
+            <rect class="box" x="280" y="256" width="200" height="60" rx="8"/>
+            <text class="n" x="380" y="281" text-anchor="middle">Supabase</text>
+            <text class="s" x="380" y="300" text-anchor="middle">banco, login e arquivos</text>
+            <rect class="hot" x="536" y="256" width="184" height="60" rx="8"/>
+            <text class="n" x="628" y="281" text-anchor="middle">Portal</text>
+            <text class="s" x="628" y="300" text-anchor="middle">as telas que a equipe usa</text>
+            <rect class="box" x="280" y="332" width="200" height="60" rx="8"/>
+            <text class="n" x="380" y="357" text-anchor="middle">Backups</text>
+            <text class="s" x="380" y="376" text-anchor="middle">todas as noites, 03:30</text>
+            <rect class="box" x="536" y="332" width="184" height="60" rx="8"/>
+            <text class="n" x="628" y="357" text-anchor="middle">Vigia</text>
+            <text class="s" x="628" y="376" text-anchor="middle">confere a cada 10 min</text>
+
+            <rect class="box" x="40" y="448" width="200" height="60" rx="8"/>
+            <text class="n" x="140" y="473" text-anchor="middle">Monday e TSheets</text>
+            <text class="s" x="140" y="492" text-anchor="middle">dados de projetos e horas</text>
+            <rect class="box" x="536" y="448" width="184" height="60" rx="8"/>
+            <text class="n" x="628" y="473" text-anchor="middle">Resend</text>
+            <text class="s" x="628" y="492" text-anchor="middle">login, convites e alertas</text>
+            <text class="l" x="148" y="430">lê os dados</text>
+            <text class="l" x="636" y="426">emails</text>
+          </svg>
+        </div>
+        <p>O Monday também avisa o portal quando um quadro muda, pelos webhooks dos quadros AAAF e HFA.</p>
+      </section>
+
+      <section id="contas">
+        <h2>Contas</h2>
+        <p class="point">Cada peça do portal vive numa conta da True North. Nenhuma depende da conta pessoal de ninguém, exceto onde a tabela diz.</p>
+        <div class="tbl">
+          <table class="wide">
+            <thead><tr><th>Serviço</th><th>Para que serve</th><th>Conta</th><th>Onde entrar</th></tr></thead>
+            <tbody>
+              <tr><td>ScalaHosting</td><td>O servidor (VPS 174.136.29.221) onde o portal, o banco e os backups rodam</td><td>Cliente: conta da Wendy. Você é contato: abre tickets, mas não vê o PIN do suporte</td><td><a href="https://my.scalahosting.com">my.scalahosting.com</a> e o SPanel</td></tr>
+              <tr><td>Cloudflare</td><td>O endereço truenorthportal.online: DNS, certificado e proteção</td><td>office@truenorthdigitalmarketing (2FA ligado)</td><td><a href="https://dash.cloudflare.com">dash.cloudflare.com</a></td></tr>
+              <tr><td>GoDaddy</td><td>Onde o domínio foi comprado e é renovado</td><td>True North (Wendy)</td><td>godaddy.com</td></tr>
+              <tr><td>GitHub</td><td>O código do portal (TrueNorthDM) e as cópias datadas das ferramentas do COE (TrueNorthDM-Archive)</td><td>truenorthdigitalmarketing, dona das duas organizações</td><td><a href="https://github.com/TrueNorthDM">github.com/TrueNorthDM</a></td></tr>
+              <tr><td>Resend</td><td>Envia os emails: código de login, convites e alertas</td><td>Time truenorthdigitalmarketing. Chaves: Portal server e Uptime check (GitHub)</td><td><a href="https://resend.com">resend.com</a></td></tr>
+              <tr><td>Monday</td><td>Projetos, quadros e My Work. O portal lê os quadros e recebe os webhooks de AAAF e HFA</td><td>O token fica no portal: Settings, Monday API token</td><td>monday.com</td></tr>
+              <tr><td>QuickBooks Time</td><td>As horas (TSheets), que o portal puxa a cada 4 horas</td><td>O token fica no portal: Settings</td><td>QuickBooks Time</td></tr>
+              <tr><td>Vercel</td><td>Só o redirecionamento do endereço antigo e a página de status da mudança</td><td>Seu time pessoal, junto com outros projetos seus</td><td><a href="https://vercel.com">vercel.com</a></td></tr>
+              <tr><td>Google Workspace</td><td>Os emails da GoodNews com que as pessoas entram no portal</td><td>GoodNews (Wendy é a TI)</td><td>admin.google.com</td></tr>
+              <tr><td>Claude</td><td>Faz as mudanças no código e cuida do servidor, a partir deste Mac</td><td>Sua conta do Claude</td><td>App Claude, aba Code, projeto TN Op Portal</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><b>Em aberto:</b> quando vence o registro do domínio na GoDaddy. Vale confirmar com a Wendy e ligar a renovação automática.</p>
+      </section>
+
+      <section id="publicar">
+        <h2>Publicar uma mudança</h2>
+        <p class="point">Toda mudança passa pelo Claude e chega ao ar sozinha, cerca de 5 minutos depois que ele envia ao GitHub.</p>
+        <ol class="steps">
+          <li><p>Abra o app Claude, aba <b>Code</b>, no projeto <b>TN Op Portal</b>.</p></li>
+          <li><p>Descreva o que quer, em português. Para uma mudança grande e visível, o Claude mostra antes como vai ficar e pergunta se pode publicar.</p></li>
+          <li><p>O Claude altera o código e roda as checagens: os tipos e cerca de 900 testes automáticos.</p></li>
+          <li><p>Ele grava a mudança (commit) e envia ao GitHub (push), sempre na branch <b>main</b>. Existe só essa branch.</p></li>
+          <li><p>O GitHub roda o "Deploy to the portal's server": entra no servidor, monta a versão nova e troca a antiga por ela. Se a nova não responder, o servidor volta sozinho para a anterior.</p></li>
+          <li><p>Para conferir, abra a aba <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions do repositório</a>: verde significa no ar. Ou pergunte ao Claude qual versão está no ar.</p></li>
+        </ol>
+        <p><b>Mudanças no banco de dados</b> (as migrations) o Claude aplica direto no servidor. Antes da mudança, era você quem rodava no painel do Supabase; isso acabou.</p>
+        <p><b>Voltar uma versão:</b> peça ao Claude. Ou, na aba Actions, abra "Deploy to the portal's server", clique em <b>Run workflow</b> e informe o código (sha) de um commit anterior.</p>
+        <p class="note"><b>Cuidado:</b> cada push no main vai direto para o ar, e não há um ambiente de teste separado. O endereço staging.truenorthportal.online mostra o mesmo portal. Se algum dia outra pessoa puder enviar código para o portal, proteja o main antes, com branch e pull request.</p>
+      </section>
+
+      <section id="monitorar">
+        <h2>Ver se está tudo bem</h2>
+        <p class="point">Você não precisa olhar nada todo dia. Se algo der errado, chega um email no arnaldo.oliveira@me.com. Sem email, está tudo funcionando.</p>
+        <div class="tbl">
+          <table class="wide">
+            <thead><tr><th>Vigia</th><th>Olha de</th><th>A cada</th><th>O que confere</th><th>Avisa como</th></tr></thead>
+            <tbody>
+              <tr><td>Vigia do servidor</td><td>Dentro do servidor</td><td>10 min</td><td>Os 9 serviços rodando; o portal e o login respondendo; espaço livre acima de 10 GB; backup da noite com menos de 26 horas</td><td>Email de "Portal server" quando o problema aparece e quando some</td></tr>
+              <tr><td>Uptime check</td><td>Fora, pelas máquinas do GitHub</td><td>1 hora</td><td>O portal abre; o banco responde; o endereço antigo ainda redireciona</td><td>Email depois de uma segunda tentativa, 1 minuto depois</td></tr>
+              <tr><td>Saúde das integrações</td><td>Dentro do portal</td><td>2 dias</td><td>Token do Monday, webhooks do Monday, TSheets</td><td>Faixa no Admin e a tela Admin, Automations</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>O vigia do servidor não consegue avisar se o servidor inteiro cair. Por isso existe o Uptime check, que olha de fora.</p>
+        <h3>Onde olhar quando quiser</h3>
+        <ul class="plain">
+          <li><b>No portal:</b> Admin, Automations mostra cada tarefa automática e webhook, com a última checagem.</li>
+          <li><b>No GitHub:</b> a aba <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions</a> mostra os deploys e as checagens de hora em hora.</li>
+          <li><b>No Resend:</b> a tela Logs mostra cada email enviado. Serve para saber se o código de login de alguém saiu.</li>
+        </ul>
+      </section>
+
+      <section id="backups">
+        <h2>Backups</h2>
+        <p class="point">Todas as noites, às 03:30 (horário do leste dos EUA), o servidor guarda três cópias. A restauração foi testada em 5 de outubro com os dados reais, e as 94 tabelas voltaram idênticas.</p>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>O que</th><th>Conteúdo</th><th>Guardado por</th></tr></thead>
+            <tbody>
+              <tr><td>Cópia exata do banco</td><td>Os arquivos do banco como estão. É a usada para restaurar</td><td>14 dias</td></tr>
+              <tr><td>Banco em SQL</td><td>O mesmo banco em texto, legível</td><td>30 dias</td></tr>
+              <tr><td>Arquivos enviados</td><td>Fotos de perfil e documentos que as pessoas sobem no portal</td><td>30 dias</td></tr>
+              <tr><td>Cópia final do Supabase antigo</td><td>O banco como estava no dia da mudança, 5 de outubro</td><td>Para sempre</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Os backups ficam em <code>/home/tnportal/portal-backups</code>, no servidor. Essa pasta entra no backup diário da própria ScalaHosting, então cada noite também fica guardada fora do servidor.</p>
+        <p><b>Restaurar:</b> peça ao Claude, dizendo de qual dia. O procedimento está em <code>deploy/README.md</code>, seção Backups.</p>
+        <p class="callout"><b>O código</b> não depende desses backups: ele vive no GitHub, com todo o histórico. As ferramentas do COE têm uma cópia congelada de 6 de outubro em TrueNorthDM-Archive.</p>
+      </section>
+
+      <section id="pessoas">
+        <h2>Pessoas</h2>
+        <p class="point">No portal só entra quem um admin convidou, sempre com o email da GoodNews, e todo mundo usa o 2FA. No GitHub, só entra quem você convida para a TrueNorthDM, e cada um vê apenas os repositórios que você liberar.</p>
+        <h3>No portal</h3>
+        <div class="tbl">
+          <table class="wide">
+            <thead><tr><th>Para</th><th>Onde</th><th>Observação</th></tr></thead>
+            <tbody>
+              <tr><td>Convidar alguém</td><td>Directory, aba Portal access: marque a pessoa e clique em Invite</td><td>Chega um email com o botão de entrar. O convite não vence</td></tr>
+              <tr><td>Tirar o acesso</td><td>Directory, a pessoa: inativar, ou Revoke no convite</td><td>As sessões dela terminam na hora</td></tr>
+              <tr><td>Resetar o 2FA</td><td>Directory, a pessoa, Two-step: Reset</td><td>Para celular perdido ou trocado. Ela configura de novo no próximo login. Admins: você e a Tina</td></tr>
+              <tr><td>Ver quem tem 2FA</td><td>Directory, aba Portal access, coluna Two-step</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Regras do login: código de 6 dígitos por email, depois o código do app autenticador. A sessão dura até 2 meses, ou 15 dias sem uso. Quem entra pela primeira vez tem 7 dias para configurar o 2FA; quem já tinha conta tem até 13 de outubro.</p>
+        <h3>No GitHub</h3>
+        <ul class="plain">
+          <li><b>Convidar:</b> em <a href="https://github.com/orgs/TrueNorthDM/people">People</a>, clique em Invite member, use o email ou o username e escolha <b>Member</b>, nunca Owner.</li>
+          <li><b>Liberar um repositório:</b> no repositório, Settings, Collaborators and teams, Add people. <b>Read</b> só vê o código; <b>Write</b> pode enviar código.</li>
+          <li><b>Tirar o acesso:</b> em People, clique na pessoa e depois em Remove from organization. Corta tudo de uma vez.</li>
+          <li><b>Nunca</b> compartilhe o login da conta truenorthdigitalmarketing. Ela é a dona de tudo.</li>
+        </ul>
+        <p>A organização já está fechada: membros novos não veem nada até você liberar, não criam nem copiam repositórios, e o 2FA do GitHub é obrigatório.</p>
+      </section>
+
+      <section id="problemas">
+        <h2>Quando algo quebra</h2>
+        <p class="point">Na dúvida, abra o Claude no projeto TN Op Portal e descreva o que viu, com o print ou o texto do email. Ele entra no servidor e investiga.</p>
+        <div class="tbl">
+          <table class="wide">
+            <thead><tr><th>O que aconteceu</th><th>Primeiro olhe</th><th>O que fazer</th></tr></thead>
+            <tbody>
+              <tr><td>Email "Portal server" com um problema</td><td>Se chegou depois um email dizendo que passou</td><td>Se não passou em 20 minutos, mande o email ao Claude</td></tr>
+              <tr><td>Email do Uptime check: o portal não abre</td><td>Se o portal abre no seu navegador</td><td>Mande ao Claude. Se o servidor inteiro estiver fora, abra um chat ou ticket na ScalaHosting (o PIN está com a Wendy)</td></tr>
+              <tr><td>Alguém não recebe o código de login</td><td>A caixa de spam; no Resend, a tela Logs</td><td>Se a tela de login disse "hasn't been invited", convide a pessoa no Directory</td></tr>
+              <tr><td>Alguém perdeu ou trocou o celular</td><td>&nbsp;</td><td>Directory, a pessoa, Two-step: Reset</td></tr>
+              <tr><td>My Work ou relatórios do Monday parados</td><td>Admin, Automations</td><td>Mande ao Claude. Se o token do Monday venceu, gere outro no Monday e cole em Settings</td></tr>
+              <tr><td>Horas novas não aparecem</td><td>Elas chegam a cada 4 horas</td><td>Se passar disso, mande ao Claude. Se o token do QuickBooks Time venceu, cole o novo em Settings</td></tr>
+              <tr><td>Exportar PDF ou imagem falha</td><td>&nbsp;</td><td>Mande ao Claude o relatório e o mês</td></tr>
+              <tr><td>Alerta de pouco espaço no servidor</td><td>&nbsp;</td><td>Peça ao Claude para liberar espaço. Se não bastar, o plano da ScalaHosting precisa crescer</td></tr>
+              <tr><td>Precisa pausar o portal</td><td>&nbsp;</td><td>Peça ao Claude: ele liga a página de manutenção e desliga depois</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><b>Suporte da ScalaHosting:</b> chat no <a href="https://my.scalahosting.com">my.scalahosting.com</a> ou ticket em Support. Diga o IP do servidor, 174.136.29.221. Pelo chat, eles pedem o PIN da conta, que só a Wendy vê; por ticket aberto já logado, não precisa.</p>
+      </section>
+
+      <section id="chaves">
+        <h2>Chaves e acessos</h2>
+        <p class="point">Duas chaves deste Mac são o caminho do Claude até o servidor e o GitHub. Se o Mac for perdido, dá para recuperar, mas leva um dia de suporte. Vale guardar uma cópia num gerenciador de senhas.</p>
+        <div class="tbl">
+          <table class="wide">
+            <thead><tr><th>Chave</th><th>Onde fica</th><th>Abre o quê</th><th>Se perder</th></tr></thead>
+            <tbody>
+              <tr><td>Chave do servidor</td><td><code>~/.ssh/truenorth_vps</code>, neste Mac</td><td>O servidor, como administrador (porta 6543; só entra por chave, nunca por senha)</td><td>A ScalaHosting instala uma chave nova, por ticket</td></tr>
+              <tr><td>Chave de deploy do GitHub</td><td><code>~/.ssh/truenorthdm_portal_deploy</code>, neste Mac</td><td>Só o repositório do portal, para enviar código</td><td>O Claude cria outra, e você cola no repositório (Settings, Deploy keys)</td></tr>
+              <tr><td>Segredos do portal</td><td>No servidor: <code>/opt/tnportal/portal.env</code> e <code>/opt/tnportal/supabase/.env</code></td><td>Banco, login, envio de emails</td><td>Ficam só no servidor e nos backups dele</td></tr>
+              <tr><td>Segredos do GitHub</td><td>Repositório do portal, Settings, Secrets: <code>SERVER_SSH_KEY</code> e <code>RESEND_API_KEY</code></td><td>O deploy (essa chave só consegue publicar) e o email do Uptime check</td><td>Recriar com o Claude</td></tr>
+              <tr><td>Tokens do Monday e do QuickBooks Time</td><td>No portal, Settings</td><td>Leitura dos quadros e das horas</td><td>Gerar outro no serviço e colar em Settings</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="callout"><b>Segredo nunca vai para o chat.</b> Quando o Claude precisa de um, ele te dá um comando para rodar no Terminal: você cola o segredo lá, ele vai direto para um arquivo protegido, e o Claude usa sem ver.</p>
+        <h3>Guarde em lugar seguro</h3>
+        <ul class="checks">
+          <li>Os códigos de recuperação do 2FA da conta truenorthdigitalmarketing no GitHub</li>
+          <li>Os códigos de recuperação do 2FA da Cloudflare</li>
+          <li>Uma cópia das duas chaves deste Mac, num gerenciador de senhas</li>
+          <li>Considerar a Wendy como segunda dona da TrueNorthDM, só como reserva</li>
+        </ul>
+      </section>
+
+      <section id="local">
+        <h2>Rodar o portal no seu Mac</h2>
+        <p class="point">Desde 5 de outubro, o portal não roda mais no seu Mac (<code>npm run dev</code>): a configuração local apontava para o Supabase antigo, que foi apagado. Isso não afeta nada no ar, e os testes e o deploy continuam funcionando.</p>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Caminho</th><th>Como é</th><th>Risco</th></tr></thead>
+            <tbody>
+              <tr><td>Cópia local (recomendado)</td><td>Um Supabase no seu Mac, com a cópia da noite anterior dos dados. Precisa do Docker Desktop</td><td>Nenhum: o que você fizer não chega ao portal de verdade</td></tr>
+              <tr><td>Apontar para o servidor</td><td>O portal do Mac usa o banco do servidor</td><td>Alto: qualquer clique grava nos dados reais da equipe</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Para montar a cópia local, peça ao Claude: "configure o ambiente local com uma cópia dos dados".</p>
+      </section>
+
+      <section id="glossario">
+        <h2>Glossário</h2>
+        <dl class="gloss">
+          <div><dt>Branch</dt><dd>Uma linha de trabalho do código. O portal usa só a main.</dd></div>
+          <div><dt>Commit</dt><dd>Uma mudança gravada no histórico do código, com data e descrição.</dd></div>
+          <div><dt>Container</dt><dd>Uma caixa isolada no servidor onde roda um programa: o portal, o banco, o login.</dd></div>
+          <div><dt>Cron</dt><dd>Uma tarefa que o servidor roda sozinho em horário marcado.</dd></div>
+          <div><dt>Deploy</dt><dd>Colocar uma versão nova do portal no ar.</dd></div>
+          <div><dt>DNS</dt><dd>O catálogo que diz a que servidor um endereço leva. O nosso fica na Cloudflare.</dd></div>
+          <div><dt>Docker</dt><dd>O programa que roda os containers.</dd></div>
+          <div><dt>Migration</dt><dd>Uma mudança na estrutura do banco de dados.</dd></div>
+          <div><dt>Organização</dt><dd>O espaço da empresa no GitHub, com membros e permissões.</dd></div>
+          <div><dt>Proxy</dt><dd>O porteiro que recebe quem acessa o endereço e repassa ao portal.</dd></div>
+          <div><dt>Pull request</dt><dd>Um pedido para juntar uma branch à main, revisado antes.</dd></div>
+          <div><dt>Push</dt><dd>Enviar ao GitHub os commits feitos no Mac.</dd></div>
+          <div><dt>Repositório</dt><dd>A pasta de um projeto no GitHub, com todo o histórico.</dd></div>
+          <div><dt>SSH</dt><dd>O jeito seguro de entrar no servidor por linha de comando.</dd></div>
+          <div><dt>Supabase</dt><dd>O conjunto que dá ao portal banco, login e arquivos. Roda dentro do nosso servidor.</dd></div>
+          <div><dt>Token</dt><dd>Uma senha para programas, que dá acesso a um serviço.</dd></div>
+          <div><dt>VPS</dt><dd>Um servidor alugado só para nós. O nosso está na ScalaHosting.</dd></div>
+          <div><dt>Webhook</dt><dd>Um aviso automático que um serviço manda ao portal quando algo muda. O Monday faz isso.</dd></div>
+          <div><dt>2FA</dt><dd>O segundo passo do login: o código do app autenticador no celular.</dd></div>
+        </dl>
+      </section>
+    </main>
+  </div>
+
+  <footer>True North Digital Marketing · Operations Portal · manual mantido pelo Claude a cada mudança no setup</footer>
+</div>
