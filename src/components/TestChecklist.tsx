@@ -21,7 +21,7 @@ const C: Record<Result, string> = { pass: '#127A3E', fail: '#E11D2A', skip: '#94
 // Per-area emoji (keyed by area name; falls back to a clipboard).
 const AREA_ICON: Record<string, string> = {
   'Navigation & access': '🧭',
-  'Theme & account': '🎨',
+  'Account': '🎨',
   'Home · Widgets & favourites': '🏠',
   'Home · Org chart': '🌳',
   'Admin · Tickets': '🎫',

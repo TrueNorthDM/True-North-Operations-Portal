@@ -9,10 +9,6 @@ import { Sunrise } from '@/components/Sunrise'
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
-      {/* Theme toggle, the top-bar toggle only exists once signed in, so the
-          login screen gets its own so you can switch before logging in. */}
-      <div className="absolute right-5 top-5 z-10">
-      </div>
       <div className="flex w-full max-w-[1120px] min-h-[620px] overflow-hidden rounded-[22px] bg-card shadow-[0_24px_60px_-24px_rgba(1,35,88,.30)],0,0,.65)]">
         {/* Left brand panel, hidden on small screens */}
         <div

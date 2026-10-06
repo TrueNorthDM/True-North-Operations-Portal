@@ -52,12 +52,9 @@ export const TEST_AREAS: TestArea[] = [
     ],
   },
   {
-    area: 'Theme & account',
+    area: 'Account',
     cases: [
-      { id: 'THM-1', check: 'Click the moon/sun icon at the top right.', expect: 'The whole portal flips between light and dark instantly; the icon swaps. Text and badges stay readable in both.' },
-      { id: 'THM-2', check: 'Toggle dark, reload, and navigate around.', expect: 'The chosen theme sticks (per browser). On a first-ever visit the portal follows the system preference, with no light flash.' },
       { id: 'THM-3', check: 'Look at the top-right corner, then click the avatar.', expect: 'The avatar (your initials, navy circle) is the rightmost element; the menu shows your email and Sign out works (back to login).' },
-      { id: 'THM-4', check: 'In dark mode, open Tickets, People and a project page.', expect: 'Tables, badges and banners are readable. Known exceptions that stay light: the Publishing Goals iframe and the beta charts.' },
     ],
   },
   {
