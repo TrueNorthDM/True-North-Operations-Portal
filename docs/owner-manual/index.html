@@ -1,4 +1,4 @@
-<title>Manual do Portal True North</title>
+<title>True North Portal Manual</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800;900&family=Open+Sans:wght@400;600;700&display=swap">
@@ -128,36 +128,36 @@
 
 <div class="wrap">
   <div class="hero">
-    <span class="eyebrow">Operations Portal · manual do dono</span>
-    <h1>Manual do Portal True North</h1>
-    <p class="lead">O portal roda no servidor da True North na ScalaHosting, em <a href="https://truenorthportal.online">truenorthportal.online</a>. Você pede uma mudança ao Claude neste Mac, ele grava no GitHub, e o GitHub publica no servidor em cerca de 5 minutos.</p>
-    <div class="flow" aria-label="O caminho de uma mudança">
-      <span>Você + Claude</span><i>→</i><span>GitHub</span><i>→</i><span>Servidor</span><i>→</i><span>truenorthportal.online</span>
+    <span class="eyebrow">Operations Portal · owner's manual</span>
+    <h1>True North Portal Manual</h1>
+    <p class="lead">The portal runs on True North's own server at ScalaHosting, at <a href="https://truenorthportal.online">truenorthportal.online</a>. You ask Claude for a change on this Mac, Claude saves it to GitHub, and GitHub publishes it to the server in about 5 minutes.</p>
+    <div class="flow" aria-label="The path of a change">
+      <span>You + Claude</span><i>→</i><span>GitHub</span><i>→</i><span>Server</span><i>→</i><span>truenorthportal.online</span>
     </div>
-    <div class="meta"><span>Atualizado em <b>6 de outubro de 2026</b></span><span>Mudança concluída em <b>5 de outubro de 2026</b></span></div>
+    <div class="meta"><span>Updated <b>October 6, 2026</b></span><span>Move completed <b>October 5, 2026</b></span></div>
   </div>
 
   <div class="layout">
-    <nav class="toc" aria-label="Seções">
-      <strong>Neste manual</strong>
-      <a href="#visao">Visão geral</a>
-      <a href="#contas">Contas</a>
-      <a href="#publicar">Publicar uma mudança</a>
-      <a href="#monitorar">Ver se está tudo bem</a>
+    <nav class="toc" aria-label="Sections">
+      <strong>In this manual</strong>
+      <a href="#overview">Overview</a>
+      <a href="#accounts">Accounts</a>
+      <a href="#publish">Publishing a change</a>
+      <a href="#monitoring">Checking everything is fine</a>
       <a href="#backups">Backups</a>
-      <a href="#pessoas">Pessoas</a>
-      <a href="#problemas">Quando algo quebra</a>
-      <a href="#chaves">Chaves e acessos</a>
-      <a href="#local">Rodar no seu Mac</a>
-      <a href="#glossario">Glossário</a>
+      <a href="#people">People</a>
+      <a href="#trouble">When something breaks</a>
+      <a href="#keys">Keys and access</a>
+      <a href="#local">Running it on your Mac</a>
+      <a href="#glossary">Glossary</a>
     </nav>
 
     <main>
-      <section id="visao">
-        <h2>Visão geral</h2>
-        <p class="point">Tudo do portal roda num único servidor. A equipe chega a ele pela Cloudflare, e o Claude cuida dele por SSH. O caminho em dourado é o de uma mudança, do pedido ao ar.</p>
+      <section id="overview">
+        <h2>Overview</h2>
+        <p class="point">Everything the portal needs runs on one server. The team reaches it through Cloudflare, and Claude looks after it over SSH. The gold path is the path of a change, from your request to live.</p>
         <div class="diagram">
-          <svg viewBox="0 0 760 540" role="img" aria-label="Você pede ao Claude, e o GitHub publica no servidor sozinho">
+          <svg viewBox="0 0 760 540" role="img" aria-label="You ask Claude, and GitHub publishes to the server on its own">
             <defs>
               <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>
               <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-main" d="M0 0L10 5L0 10z"/></marker>
@@ -172,250 +172,250 @@
             <path class="edge" d="M628 392V448" marker-end="url(#a)"/>
 
             <rect class="box" x="24" y="24" width="200" height="60" rx="8"/>
-            <text class="n" x="124" y="49" text-anchor="middle">Você + Claude</text>
-            <text class="s" x="124" y="68" text-anchor="middle">Claude Code, neste Mac</text>
+            <text class="n" x="124" y="49" text-anchor="middle">You + Claude</text>
+            <text class="s" x="124" y="68" text-anchor="middle">Claude Code, on this Mac</text>
             <rect class="box" x="280" y="24" width="200" height="60" rx="8"/>
             <text class="n" x="380" y="49" text-anchor="middle">GitHub</text>
-            <text class="s" x="380" y="68" text-anchor="middle">TrueNorthDM: o código</text>
+            <text class="s" x="380" y="68" text-anchor="middle">TrueNorthDM: the code</text>
             <rect class="box" x="528" y="24" width="200" height="60" rx="8"/>
-            <text class="n" x="628" y="49" text-anchor="middle">Equipe</text>
-            <text class="s" x="628" y="68" text-anchor="middle">no navegador</text>
+            <text class="n" x="628" y="49" text-anchor="middle">Team</text>
+            <text class="s" x="628" y="68" text-anchor="middle">in the browser</text>
             <rect class="box" x="528" y="120" width="200" height="60" rx="8"/>
             <text class="n" x="628" y="145" text-anchor="middle">Cloudflare</text>
             <text class="s" x="628" y="164" text-anchor="middle">truenorthportal.online</text>
 
             <text class="l" x="252" y="44" text-anchor="middle">push</text>
-            <text class="l" x="390" y="142">deploy automático,</text>
-            <text class="l" x="390" y="158">cerca de 5 minutos</text>
-            <text class="l" x="134" y="142">SSH: o Claude</text>
-            <text class="l" x="134" y="158">cuida do servidor</text>
-            <text class="l" x="618" y="208" text-anchor="end">repassa ao portal</text>
+            <text class="l" x="390" y="142">automatic deploy,</text>
+            <text class="l" x="390" y="158">about 5 minutes</text>
+            <text class="l" x="134" y="142">SSH: Claude looks</text>
+            <text class="l" x="134" y="158">after the server</text>
+            <text class="l" x="618" y="208" text-anchor="end">forwards to the portal</text>
 
             <rect class="server" x="24" y="216" width="712" height="192" rx="8"/>
-            <text class="n" x="40" y="241">Servidor ScalaHosting · 174.136.29.221</text>
+            <text class="n" x="40" y="241">ScalaHosting server · 174.136.29.221</text>
             <rect class="box" x="40" y="256" width="200" height="60" rx="8"/>
-            <text class="n" x="140" y="281" text-anchor="middle">Tarefas automáticas</text>
-            <text class="s" x="140" y="300" text-anchor="middle">Monday e horas, a cada 4 h</text>
+            <text class="n" x="140" y="281" text-anchor="middle">Scheduled jobs</text>
+            <text class="s" x="140" y="300" text-anchor="middle">Monday and hours, every 4 h</text>
             <rect class="box" x="280" y="256" width="200" height="60" rx="8"/>
             <text class="n" x="380" y="281" text-anchor="middle">Supabase</text>
-            <text class="s" x="380" y="300" text-anchor="middle">banco, login e arquivos</text>
+            <text class="s" x="380" y="300" text-anchor="middle">database, sign-in and files</text>
             <rect class="hot" x="536" y="256" width="184" height="60" rx="8"/>
             <text class="n" x="628" y="281" text-anchor="middle">Portal</text>
-            <text class="s" x="628" y="300" text-anchor="middle">as telas que a equipe usa</text>
+            <text class="s" x="628" y="300" text-anchor="middle">the screens the team uses</text>
             <rect class="box" x="280" y="332" width="200" height="60" rx="8"/>
             <text class="n" x="380" y="357" text-anchor="middle">Backups</text>
-            <text class="s" x="380" y="376" text-anchor="middle">todas as noites, 03:30</text>
+            <text class="s" x="380" y="376" text-anchor="middle">every night, 03:30</text>
             <rect class="box" x="536" y="332" width="184" height="60" rx="8"/>
-            <text class="n" x="628" y="357" text-anchor="middle">Vigia</text>
-            <text class="s" x="628" y="376" text-anchor="middle">confere a cada 10 min</text>
+            <text class="n" x="628" y="357" text-anchor="middle">Watch</text>
+            <text class="s" x="628" y="376" text-anchor="middle">checks every 10 min</text>
 
             <rect class="box" x="40" y="448" width="200" height="60" rx="8"/>
-            <text class="n" x="140" y="473" text-anchor="middle">Monday e TSheets</text>
-            <text class="s" x="140" y="492" text-anchor="middle">dados de projetos e horas</text>
+            <text class="n" x="140" y="473" text-anchor="middle">Monday and TSheets</text>
+            <text class="s" x="140" y="492" text-anchor="middle">project data and hours</text>
             <rect class="box" x="536" y="448" width="184" height="60" rx="8"/>
             <text class="n" x="628" y="473" text-anchor="middle">Resend</text>
-            <text class="s" x="628" y="492" text-anchor="middle">login, convites e alertas</text>
-            <text class="l" x="148" y="430">lê os dados</text>
+            <text class="s" x="628" y="492" text-anchor="middle">sign-in, invites, alerts</text>
+            <text class="l" x="148" y="430">reads the data</text>
             <text class="l" x="636" y="426">emails</text>
           </svg>
         </div>
-        <p>O Monday também avisa o portal quando um quadro muda, pelos webhooks dos quadros AAAF e HFA.</p>
+        <p>Monday also tells the portal when a board changes, through the webhooks on the AAAF and HFA boards.</p>
       </section>
 
-      <section id="contas">
-        <h2>Contas</h2>
-        <p class="point">Cada peça do portal vive numa conta da True North. Nenhuma depende da conta pessoal de ninguém, exceto onde a tabela diz.</p>
+      <section id="accounts">
+        <h2>Accounts</h2>
+        <p class="point">Every piece of the portal lives in a True North account. None depends on anyone's personal account, except where the table says so.</p>
         <div class="tbl">
           <table class="wide">
-            <thead><tr><th>Serviço</th><th>Para que serve</th><th>Conta</th><th>Onde entrar</th></tr></thead>
+            <thead><tr><th>Service</th><th>What it does</th><th>Account</th><th>Where to sign in</th></tr></thead>
             <tbody>
-              <tr><td>ScalaHosting</td><td>O servidor (VPS 174.136.29.221) onde o portal, o banco e os backups rodam</td><td>Cliente: conta da Wendy. Você é contato: abre tickets, mas não vê o PIN do suporte</td><td><a href="https://my.scalahosting.com">my.scalahosting.com</a> e o SPanel</td></tr>
-              <tr><td>Cloudflare</td><td>O endereço truenorthportal.online: DNS, certificado e proteção</td><td>office@truenorthdigitalmarketing (2FA ligado)</td><td><a href="https://dash.cloudflare.com">dash.cloudflare.com</a></td></tr>
-              <tr><td>GoDaddy</td><td>Onde o domínio foi comprado e é renovado</td><td>True North (Wendy)</td><td>godaddy.com</td></tr>
-              <tr><td>GitHub</td><td>O código do portal (TrueNorthDM) e as cópias datadas das ferramentas do COE (TrueNorthDM-Archive)</td><td>truenorthdigitalmarketing, dona das duas organizações</td><td><a href="https://github.com/TrueNorthDM">github.com/TrueNorthDM</a></td></tr>
-              <tr><td>Resend</td><td>Envia os emails: código de login, convites e alertas</td><td>Time truenorthdigitalmarketing. Chaves: Portal server e Uptime check (GitHub)</td><td><a href="https://resend.com">resend.com</a></td></tr>
-              <tr><td>Monday</td><td>Projetos, quadros e My Work. O portal lê os quadros e recebe os webhooks de AAAF e HFA</td><td>O token fica no portal: Settings, Monday API token</td><td>monday.com</td></tr>
-              <tr><td>QuickBooks Time</td><td>As horas (TSheets), que o portal puxa a cada 4 horas</td><td>O token fica no portal: Settings</td><td>QuickBooks Time</td></tr>
-              <tr><td>Vercel</td><td>Só o redirecionamento do endereço antigo e a página de status da mudança</td><td>Seu time pessoal, junto com outros projetos seus</td><td><a href="https://vercel.com">vercel.com</a></td></tr>
-              <tr><td>Google Workspace</td><td>Os emails da GoodNews com que as pessoas entram no portal</td><td>GoodNews (Wendy é a TI)</td><td>admin.google.com</td></tr>
-              <tr><td>Claude</td><td>Faz as mudanças no código e cuida do servidor, a partir deste Mac</td><td>Sua conta do Claude</td><td>App Claude, aba Code, projeto TN Op Portal</td></tr>
+              <tr><td>ScalaHosting</td><td>The server (VPS 174.136.29.221) that runs the portal, the database and the backups</td><td>Client: Wendy's account. You are a contact: you can open tickets, but cannot see the support PIN</td><td><a href="https://my.scalahosting.com">my.scalahosting.com</a> and SPanel</td></tr>
+              <tr><td>Cloudflare</td><td>The truenorthportal.online address: DNS, certificate and protection</td><td>office@truenorthdigitalmarketing (2FA on)</td><td><a href="https://dash.cloudflare.com">dash.cloudflare.com</a></td></tr>
+              <tr><td>GoDaddy</td><td>Where the domain was bought and is renewed</td><td>True North (Wendy)</td><td>godaddy.com</td></tr>
+              <tr><td>GitHub</td><td>The portal's code (TrueNorthDM) and the dated copies of the COE tools (TrueNorthDM-Archive)</td><td>truenorthdigitalmarketing, owner of both organizations</td><td><a href="https://github.com/TrueNorthDM">github.com/TrueNorthDM</a></td></tr>
+              <tr><td>Resend</td><td>Sends the emails: sign-in codes, invitations and alerts</td><td>truenorthdigitalmarketing team. Keys: Portal server and Uptime check (GitHub)</td><td><a href="https://resend.com">resend.com</a></td></tr>
+              <tr><td>Monday</td><td>Projects, boards and My Work. The portal reads the boards and receives the AAAF and HFA webhooks</td><td>The token lives in the portal: Settings, Monday API token</td><td>monday.com</td></tr>
+              <tr><td>QuickBooks Time</td><td>The hours (TSheets), which the portal pulls every 4 hours</td><td>The token lives in the portal: Settings</td><td>QuickBooks Time</td></tr>
+              <tr><td>Vercel</td><td>Only the old address's redirect and the move status page</td><td>Your personal team, alongside your other projects</td><td><a href="https://vercel.com">vercel.com</a></td></tr>
+              <tr><td>Google Workspace</td><td>The GoodNews email addresses people sign in to the portal with</td><td>GoodNews (Wendy is IT)</td><td>admin.google.com</td></tr>
+              <tr><td>Claude</td><td>Makes the code changes and looks after the server, from this Mac</td><td>Your Claude account</td><td>Claude app, Code tab, TN Op Portal project</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="note"><b>Em aberto:</b> quando vence o registro do domínio na GoDaddy. Vale confirmar com a Wendy e ligar a renovação automática.</p>
+        <p class="note"><b>Open question:</b> when the domain registration at GoDaddy expires. Worth confirming with Wendy and turning on auto-renew.</p>
       </section>
 
-      <section id="publicar">
-        <h2>Publicar uma mudança</h2>
-        <p class="point">Toda mudança passa pelo Claude e chega ao ar sozinha, cerca de 5 minutos depois que ele envia ao GitHub.</p>
+      <section id="publish">
+        <h2>Publishing a change</h2>
+        <p class="point">Every change goes through Claude and goes live on its own, about 5 minutes after Claude sends it to GitHub.</p>
         <ol class="steps">
-          <li><p>Abra o app Claude, aba <b>Code</b>, no projeto <b>TN Op Portal</b>.</p></li>
-          <li><p>Descreva o que quer, em português. Para uma mudança grande e visível, o Claude mostra antes como vai ficar e pergunta se pode publicar.</p></li>
-          <li><p>O Claude altera o código e roda as checagens: os tipos e cerca de 900 testes automáticos.</p></li>
-          <li><p>Ele grava a mudança (commit) e envia ao GitHub (push), sempre na branch <b>main</b>. Existe só essa branch.</p></li>
-          <li><p>O GitHub roda o "Deploy to the portal's server": entra no servidor, monta a versão nova e troca a antiga por ela. Se a nova não responder, o servidor volta sozinho para a anterior.</p></li>
-          <li><p>Para conferir, abra a aba <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions do repositório</a>: verde significa no ar. Ou pergunte ao Claude qual versão está no ar.</p></li>
+          <li><p>Open the Claude app, <b>Code</b> tab, in the <b>TN Op Portal</b> project.</p></li>
+          <li><p>Describe what you want. For a large, visible change, Claude shows you how it will look first and asks before publishing.</p></li>
+          <li><p>Claude changes the code and runs the checks: the type check and about 900 automated tests.</p></li>
+          <li><p>Claude saves the change (commit) and sends it to GitHub (push), always on the <b>main</b> branch. It is the only branch.</p></li>
+          <li><p>GitHub runs "Deploy to the portal's server": it connects to the server, builds the new version and swaps it in. If the new version does not answer, the server goes back to the previous one on its own.</p></li>
+          <li><p>To check, open the repository's <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions tab</a>: green means live. Or ask Claude which version is live.</p></li>
         </ol>
-        <p><b>Mudanças no banco de dados</b> (as migrations) o Claude aplica direto no servidor. Antes da mudança, era você quem rodava no painel do Supabase; isso acabou.</p>
-        <p><b>Voltar uma versão:</b> peça ao Claude. Ou, na aba Actions, abra "Deploy to the portal's server", clique em <b>Run workflow</b> e informe o código (sha) de um commit anterior.</p>
-        <p class="note"><b>Cuidado:</b> cada push no main vai direto para o ar, e não há um ambiente de teste separado. O endereço staging.truenorthportal.online mostra o mesmo portal. Se algum dia outra pessoa puder enviar código para o portal, proteja o main antes, com branch e pull request.</p>
+        <p><b>Database changes</b> (migrations) are applied by Claude directly on the server. Before the move you ran them in the Supabase dashboard; that is over.</p>
+        <p><b>Rolling back:</b> ask Claude. Or, in the Actions tab, open "Deploy to the portal's server", click <b>Run workflow</b> and enter the code (sha) of an earlier commit.</p>
+        <p class="note"><b>Careful:</b> every push to main goes straight to live, and there is no separate test environment. staging.truenorthportal.online shows the same portal. If anyone else is ever allowed to send code to the portal, protect main first, with branches and pull requests.</p>
       </section>
 
-      <section id="monitorar">
-        <h2>Ver se está tudo bem</h2>
-        <p class="point">Você não precisa olhar nada todo dia. Se algo der errado, chega um email no arnaldo.oliveira@me.com. Sem email, está tudo funcionando.</p>
+      <section id="monitoring">
+        <h2>Checking everything is fine</h2>
+        <p class="point">You don't need to look at anything every day. If something goes wrong, an email arrives at arnaldo.oliveira@me.com. No email means everything is working.</p>
         <div class="tbl">
           <table class="wide">
-            <thead><tr><th>Vigia</th><th>Olha de</th><th>A cada</th><th>O que confere</th><th>Avisa como</th></tr></thead>
+            <thead><tr><th>Watcher</th><th>Looks from</th><th>Every</th><th>What it checks</th><th>How it tells you</th></tr></thead>
             <tbody>
-              <tr><td>Vigia do servidor</td><td>Dentro do servidor</td><td>10 min</td><td>Os 9 serviços rodando; o portal e o login respondendo; espaço livre acima de 10 GB; backup da noite com menos de 26 horas</td><td>Email de "Portal server" quando o problema aparece e quando some</td></tr>
-              <tr><td>Uptime check</td><td>Fora, pelas máquinas do GitHub</td><td>1 hora</td><td>O portal abre; o banco responde; o endereço antigo ainda redireciona</td><td>Email depois de uma segunda tentativa, 1 minuto depois</td></tr>
-              <tr><td>Saúde das integrações</td><td>Dentro do portal</td><td>2 dias</td><td>Token do Monday, webhooks do Monday, TSheets</td><td>Faixa no Admin e a tela Admin, Automations</td></tr>
+              <tr><td>Server watch</td><td>Inside the server</td><td>10 min</td><td>The 9 services running; the portal and sign-in answering; more than 10 GB free; last night's backup less than 26 hours old</td><td>An email from "Portal server" when a problem starts and when it clears</td></tr>
+              <tr><td>Uptime check</td><td>Outside, from GitHub's machines</td><td>1 hour</td><td>The portal opens; the database answers; the old address still redirects</td><td>An email after a second try, 1 minute later</td></tr>
+              <tr><td>Integration health</td><td>Inside the portal</td><td>2 days</td><td>The Monday token, the Monday webhooks, TSheets</td><td>A banner in Admin and the Admin, Automations screen</td></tr>
             </tbody>
           </table>
         </div>
-        <p>O vigia do servidor não consegue avisar se o servidor inteiro cair. Por isso existe o Uptime check, que olha de fora.</p>
-        <h3>Onde olhar quando quiser</h3>
+        <p>The server watch cannot warn you if the whole server goes down. That is why the Uptime check looks from outside.</p>
+        <h3>Where to look when you want to</h3>
         <ul class="plain">
-          <li><b>No portal:</b> Admin, Automations mostra cada tarefa automática e webhook, com a última checagem.</li>
-          <li><b>No GitHub:</b> a aba <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions</a> mostra os deploys e as checagens de hora em hora.</li>
-          <li><b>No Resend:</b> a tela Logs mostra cada email enviado. Serve para saber se o código de login de alguém saiu.</li>
+          <li><b>In the portal:</b> Admin, Automations shows every scheduled job and webhook, with its last check.</li>
+          <li><b>On GitHub:</b> the <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions tab</a> shows the deploys and the hourly checks.</li>
+          <li><b>In Resend:</b> the Logs screen shows every email sent. Use it to see whether someone's sign-in code went out.</li>
         </ul>
       </section>
 
       <section id="backups">
         <h2>Backups</h2>
-        <p class="point">Todas as noites, às 03:30 (horário do leste dos EUA), o servidor guarda três cópias. A restauração foi testada em 5 de outubro com os dados reais, e as 94 tabelas voltaram idênticas.</p>
+        <p class="point">Every night at 03:30 (US Eastern), the server keeps three copies. A restore was tested on October 5 with the real data, and all 94 tables came back identical.</p>
         <div class="tbl">
           <table>
-            <thead><tr><th>O que</th><th>Conteúdo</th><th>Guardado por</th></tr></thead>
+            <thead><tr><th>What</th><th>Contents</th><th>Kept for</th></tr></thead>
             <tbody>
-              <tr><td>Cópia exata do banco</td><td>Os arquivos do banco como estão. É a usada para restaurar</td><td>14 dias</td></tr>
-              <tr><td>Banco em SQL</td><td>O mesmo banco em texto, legível</td><td>30 dias</td></tr>
-              <tr><td>Arquivos enviados</td><td>Fotos de perfil e documentos que as pessoas sobem no portal</td><td>30 dias</td></tr>
-              <tr><td>Cópia final do Supabase antigo</td><td>O banco como estava no dia da mudança, 5 de outubro</td><td>Para sempre</td></tr>
+              <tr><td>Exact database copy</td><td>The database files as they are. This is the one used to restore</td><td>14 days</td></tr>
+              <tr><td>Database as SQL</td><td>The same database as readable text</td><td>30 days</td></tr>
+              <tr><td>Uploaded files</td><td>Profile photos and documents people upload to the portal</td><td>30 days</td></tr>
+              <tr><td>Final copy of the old Supabase</td><td>The database as it was on moving day, October 5</td><td>Forever</td></tr>
             </tbody>
           </table>
         </div>
-        <p>Os backups ficam em <code>/home/tnportal/portal-backups</code>, no servidor. Essa pasta entra no backup diário da própria ScalaHosting, então cada noite também fica guardada fora do servidor.</p>
-        <p><b>Restaurar:</b> peça ao Claude, dizendo de qual dia. O procedimento está em <code>deploy/README.md</code>, seção Backups.</p>
-        <p class="callout"><b>O código</b> não depende desses backups: ele vive no GitHub, com todo o histórico. As ferramentas do COE têm uma cópia congelada de 6 de outubro em TrueNorthDM-Archive.</p>
+        <p>The backups live in <code>/home/tnportal/portal-backups</code> on the server. That folder is part of ScalaHosting's own daily backup, so every night is also kept off the server.</p>
+        <p><b>Restoring:</b> ask Claude and say which day. The procedure is in <code>deploy/README.md</code>, Backups section.</p>
+        <p class="callout"><b>The code</b> does not depend on these backups: it lives on GitHub with its whole history. The COE tools have a frozen copy from October 6 in TrueNorthDM-Archive.</p>
       </section>
 
-      <section id="pessoas">
-        <h2>Pessoas</h2>
-        <p class="point">No portal só entra quem um admin convidou, sempre com o email da GoodNews, e todo mundo usa o 2FA. No GitHub, só entra quem você convida para a TrueNorthDM, e cada um vê apenas os repositórios que você liberar.</p>
-        <h3>No portal</h3>
+      <section id="people">
+        <h2>People</h2>
+        <p class="point">Only people an admin invited can sign in to the portal, always with their GoodNews email, and everyone uses 2FA. On GitHub, only people you invite to TrueNorthDM get in, and each sees only the repositories you open to them.</p>
+        <h3>In the portal</h3>
         <div class="tbl">
           <table class="wide">
-            <thead><tr><th>Para</th><th>Onde</th><th>Observação</th></tr></thead>
+            <thead><tr><th>To</th><th>Where</th><th>Note</th></tr></thead>
             <tbody>
-              <tr><td>Convidar alguém</td><td>Directory, aba Portal access: marque a pessoa e clique em Invite</td><td>Chega um email com o botão de entrar. O convite não vence</td></tr>
-              <tr><td>Tirar o acesso</td><td>Directory, a pessoa: inativar, ou Revoke no convite</td><td>As sessões dela terminam na hora</td></tr>
-              <tr><td>Resetar o 2FA</td><td>Directory, a pessoa, Two-step: Reset</td><td>Para celular perdido ou trocado. Ela configura de novo no próximo login. Admins: você e a Tina</td></tr>
-              <tr><td>Ver quem tem 2FA</td><td>Directory, aba Portal access, coluna Two-step</td><td></td></tr>
+              <tr><td>Invite someone</td><td>Directory, Portal access tab: tick the person and click Invite</td><td>They get an email with a sign-in button. The invitation does not expire</td></tr>
+              <tr><td>Remove access</td><td>Directory, the person: make them inactive, or Revoke the invitation</td><td>Their sessions end at once</td></tr>
+              <tr><td>Reset 2FA</td><td>Directory, the person, Two-step: Reset</td><td>For a lost or new phone. They set it up again at their next sign-in. Admins: you and Tina</td></tr>
+              <tr><td>See who has 2FA</td><td>Directory, Portal access tab, Two-step column</td><td></td></tr>
             </tbody>
           </table>
         </div>
-        <p>Regras do login: código de 6 dígitos por email, depois o código do app autenticador. A sessão dura até 2 meses, ou 15 dias sem uso. Quem entra pela primeira vez tem 7 dias para configurar o 2FA; quem já tinha conta tem até 13 de outubro.</p>
-        <h3>No GitHub</h3>
+        <p>Sign-in rules: a 6-digit code by email, then the code from the authenticator app. A session lasts up to 2 months, or 15 days without use. People signing in for the first time have 7 days to set up 2FA; people who already had an account have until October 13.</p>
+        <h3>On GitHub</h3>
         <ul class="plain">
-          <li><b>Convidar:</b> em <a href="https://github.com/orgs/TrueNorthDM/people">People</a>, clique em Invite member, use o email ou o username e escolha <b>Member</b>, nunca Owner.</li>
-          <li><b>Liberar um repositório:</b> no repositório, Settings, Collaborators and teams, Add people. <b>Read</b> só vê o código; <b>Write</b> pode enviar código.</li>
-          <li><b>Tirar o acesso:</b> em People, clique na pessoa e depois em Remove from organization. Corta tudo de uma vez.</li>
-          <li><b>Nunca</b> compartilhe o login da conta truenorthdigitalmarketing. Ela é a dona de tudo.</li>
+          <li><b>Invite:</b> in <a href="https://github.com/orgs/TrueNorthDM/people">People</a>, click Invite member, use the email or username and choose <b>Member</b>, never Owner.</li>
+          <li><b>Open a repository to someone:</b> in the repository, Settings, Collaborators and teams, Add people. <b>Read</b> only sees the code; <b>Write</b> can send code.</li>
+          <li><b>Remove access:</b> in People, click the person, then Remove from organization. It cuts everything at once.</li>
+          <li><b>Never</b> share the truenorthdigitalmarketing login. That account owns everything.</li>
         </ul>
-        <p>A organização já está fechada: membros novos não veem nada até você liberar, não criam nem copiam repositórios, e o 2FA do GitHub é obrigatório.</p>
+        <p>The organization is already locked down: new members see nothing until you open a repository to them, they cannot create or copy repositories, and GitHub 2FA is required.</p>
       </section>
 
-      <section id="problemas">
-        <h2>Quando algo quebra</h2>
-        <p class="point">Na dúvida, abra o Claude no projeto TN Op Portal e descreva o que viu, com o print ou o texto do email. Ele entra no servidor e investiga.</p>
+      <section id="trouble">
+        <h2>When something breaks</h2>
+        <p class="point">When in doubt, open Claude in the TN Op Portal project and describe what you saw, with the screenshot or the email text. Claude connects to the server and investigates.</p>
         <div class="tbl">
           <table class="wide">
-            <thead><tr><th>O que aconteceu</th><th>Primeiro olhe</th><th>O que fazer</th></tr></thead>
+            <thead><tr><th>What happened</th><th>First look at</th><th>What to do</th></tr></thead>
             <tbody>
-              <tr><td>Email "Portal server" com um problema</td><td>Se chegou depois um email dizendo que passou</td><td>Se não passou em 20 minutos, mande o email ao Claude</td></tr>
-              <tr><td>Email do Uptime check: o portal não abre</td><td>Se o portal abre no seu navegador</td><td>Mande ao Claude. Se o servidor inteiro estiver fora, abra um chat ou ticket na ScalaHosting (o PIN está com a Wendy)</td></tr>
-              <tr><td>Alguém não recebe o código de login</td><td>A caixa de spam; no Resend, a tela Logs</td><td>Se a tela de login disse "hasn't been invited", convide a pessoa no Directory</td></tr>
-              <tr><td>Alguém perdeu ou trocou o celular</td><td>&nbsp;</td><td>Directory, a pessoa, Two-step: Reset</td></tr>
-              <tr><td>My Work ou relatórios do Monday parados</td><td>Admin, Automations</td><td>Mande ao Claude. Se o token do Monday venceu, gere outro no Monday e cole em Settings</td></tr>
-              <tr><td>Horas novas não aparecem</td><td>Elas chegam a cada 4 horas</td><td>Se passar disso, mande ao Claude. Se o token do QuickBooks Time venceu, cole o novo em Settings</td></tr>
-              <tr><td>Exportar PDF ou imagem falha</td><td>&nbsp;</td><td>Mande ao Claude o relatório e o mês</td></tr>
-              <tr><td>Alerta de pouco espaço no servidor</td><td>&nbsp;</td><td>Peça ao Claude para liberar espaço. Se não bastar, o plano da ScalaHosting precisa crescer</td></tr>
-              <tr><td>Precisa pausar o portal</td><td>&nbsp;</td><td>Peça ao Claude: ele liga a página de manutenção e desliga depois</td></tr>
+              <tr><td>A "Portal server" email about a problem</td><td>Whether a later email says it cleared</td><td>If it has not cleared in 20 minutes, send the email to Claude</td></tr>
+              <tr><td>An Uptime check email: the portal does not open</td><td>Whether the portal opens in your browser</td><td>Send it to Claude. If the whole server is down, open a chat or ticket with ScalaHosting (Wendy has the PIN)</td></tr>
+              <tr><td>Someone does not get their sign-in code</td><td>Their spam folder; the Logs screen in Resend</td><td>If the sign-in page said "hasn't been invited", invite them in the Directory</td></tr>
+              <tr><td>Someone lost or changed their phone</td><td>&nbsp;</td><td>Directory, the person, Two-step: Reset</td></tr>
+              <tr><td>My Work or the Monday reports stopped updating</td><td>Admin, Automations</td><td>Send it to Claude. If the Monday token expired, create a new one in Monday and paste it in Settings</td></tr>
+              <tr><td>New hours do not show up</td><td>They arrive every 4 hours</td><td>If it takes longer, tell Claude. If the QuickBooks Time token expired, paste the new one in Settings</td></tr>
+              <tr><td>A PDF or image export fails</td><td>&nbsp;</td><td>Send Claude the report and the month</td></tr>
+              <tr><td>A low disk space alert</td><td>&nbsp;</td><td>Ask Claude to free up space. If that is not enough, the ScalaHosting plan needs to grow</td></tr>
+              <tr><td>You need to pause the portal</td><td>&nbsp;</td><td>Ask Claude: it turns the maintenance page on, and off again afterwards</td></tr>
             </tbody>
           </table>
         </div>
-        <p><b>Suporte da ScalaHosting:</b> chat no <a href="https://my.scalahosting.com">my.scalahosting.com</a> ou ticket em Support. Diga o IP do servidor, 174.136.29.221. Pelo chat, eles pedem o PIN da conta, que só a Wendy vê; por ticket aberto já logado, não precisa.</p>
+        <p><b>ScalaHosting support:</b> chat at <a href="https://my.scalahosting.com">my.scalahosting.com</a> or a ticket under Support. Give them the server IP, 174.136.29.221. On chat they ask for the account PIN, which only Wendy can see; a ticket opened while signed in does not need it.</p>
       </section>
 
-      <section id="chaves">
-        <h2>Chaves e acessos</h2>
-        <p class="point">Duas chaves deste Mac são o caminho do Claude até o servidor e o GitHub. Se o Mac for perdido, dá para recuperar, mas leva um dia de suporte. Vale guardar uma cópia num gerenciador de senhas.</p>
+      <section id="keys">
+        <h2>Keys and access</h2>
+        <p class="point">Two keys on this Mac are Claude's way into the server and GitHub. If the Mac is lost, they can be replaced, but it takes a day of support. Keep a copy in a password manager.</p>
         <div class="tbl">
           <table class="wide">
-            <thead><tr><th>Chave</th><th>Onde fica</th><th>Abre o quê</th><th>Se perder</th></tr></thead>
+            <thead><tr><th>Key</th><th>Where it lives</th><th>What it opens</th><th>If lost</th></tr></thead>
             <tbody>
-              <tr><td>Chave do servidor</td><td><code>~/.ssh/truenorth_vps</code>, neste Mac</td><td>O servidor, como administrador (porta 6543; só entra por chave, nunca por senha)</td><td>A ScalaHosting instala uma chave nova, por ticket</td></tr>
-              <tr><td>Chave de deploy do GitHub</td><td><code>~/.ssh/truenorthdm_portal_deploy</code>, neste Mac</td><td>Só o repositório do portal, para enviar código</td><td>O Claude cria outra, e você cola no repositório (Settings, Deploy keys)</td></tr>
-              <tr><td>Segredos do portal</td><td>No servidor: <code>/opt/tnportal/portal.env</code> e <code>/opt/tnportal/supabase/.env</code></td><td>Banco, login, envio de emails</td><td>Ficam só no servidor e nos backups dele</td></tr>
-              <tr><td>Segredos do GitHub</td><td>Repositório do portal, Settings, Secrets: <code>SERVER_SSH_KEY</code> e <code>RESEND_API_KEY</code></td><td>O deploy (essa chave só consegue publicar) e o email do Uptime check</td><td>Recriar com o Claude</td></tr>
-              <tr><td>Tokens do Monday e do QuickBooks Time</td><td>No portal, Settings</td><td>Leitura dos quadros e das horas</td><td>Gerar outro no serviço e colar em Settings</td></tr>
+              <tr><td>Server key</td><td><code>~/.ssh/truenorth_vps</code>, on this Mac</td><td>The server, as administrator (port 6543; key only, never a password)</td><td>ScalaHosting installs a new key, by ticket</td></tr>
+              <tr><td>GitHub deploy key</td><td><code>~/.ssh/truenorthdm_portal_deploy</code>, on this Mac</td><td>Only the portal repository, to send code</td><td>Claude makes a new one, and you paste it in the repository (Settings, Deploy keys)</td></tr>
+              <tr><td>Portal secrets</td><td>On the server: <code>/opt/tnportal/portal.env</code> and <code>/opt/tnportal/supabase/.env</code></td><td>Database, sign-in, sending email</td><td>They exist only on the server and in its backups</td></tr>
+              <tr><td>GitHub secrets</td><td>Portal repository, Settings, Secrets: <code>SERVER_SSH_KEY</code> and <code>RESEND_API_KEY</code></td><td>The deploy (that key can only publish) and the Uptime check email</td><td>Recreate them with Claude</td></tr>
+              <tr><td>Monday and QuickBooks Time tokens</td><td>In the portal, Settings</td><td>Reading the boards and the hours</td><td>Create a new one in the service and paste it in Settings</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="callout"><b>Segredo nunca vai para o chat.</b> Quando o Claude precisa de um, ele te dá um comando para rodar no Terminal: você cola o segredo lá, ele vai direto para um arquivo protegido, e o Claude usa sem ver.</p>
-        <h3>Guarde em lugar seguro</h3>
+        <p class="callout"><b>A secret never goes in the chat.</b> When Claude needs one, it gives you a command to run in Terminal: you paste the secret there, it goes straight into a protected file, and Claude uses it without seeing it.</p>
+        <h3>Keep somewhere safe</h3>
         <ul class="checks">
-          <li>Os códigos de recuperação do 2FA da conta truenorthdigitalmarketing no GitHub</li>
-          <li>Os códigos de recuperação do 2FA da Cloudflare</li>
-          <li>Uma cópia das duas chaves deste Mac, num gerenciador de senhas</li>
-          <li>Considerar a Wendy como segunda dona da TrueNorthDM, só como reserva</li>
+          <li>The 2FA recovery codes for the truenorthdigitalmarketing GitHub account</li>
+          <li>The 2FA recovery codes for Cloudflare</li>
+          <li>A copy of the two keys on this Mac, in a password manager</li>
+          <li>Consider Wendy as a second owner of TrueNorthDM, as a backup only</li>
         </ul>
       </section>
 
       <section id="local">
-        <h2>Rodar o portal no seu Mac</h2>
-        <p class="point">Desde 5 de outubro, o portal não roda mais no seu Mac (<code>npm run dev</code>): a configuração local apontava para o Supabase antigo, que foi apagado. Isso não afeta nada no ar, e os testes e o deploy continuam funcionando.</p>
+        <h2>Running the portal on your Mac</h2>
+        <p class="point">Since October 5, the portal no longer runs on your Mac (<code>npm run dev</code>): the local settings pointed at the old Supabase, which was deleted. Nothing live is affected, and the tests and deploys keep working.</p>
         <div class="tbl">
           <table>
-            <thead><tr><th>Caminho</th><th>Como é</th><th>Risco</th></tr></thead>
+            <thead><tr><th>Option</th><th>What it is</th><th>Risk</th></tr></thead>
             <tbody>
-              <tr><td>Cópia local (recomendado)</td><td>Um Supabase no seu Mac, com a cópia da noite anterior dos dados. Precisa do Docker Desktop</td><td>Nenhum: o que você fizer não chega ao portal de verdade</td></tr>
-              <tr><td>Apontar para o servidor</td><td>O portal do Mac usa o banco do servidor</td><td>Alto: qualquer clique grava nos dados reais da equipe</td></tr>
+              <tr><td>Local copy (recommended)</td><td>A Supabase on your Mac with last night's copy of the data. Needs Docker Desktop</td><td>None: nothing you do reaches the real portal</td></tr>
+              <tr><td>Point at the server</td><td>The portal on your Mac uses the server's database</td><td>High: every click writes to the team's real data</td></tr>
             </tbody>
           </table>
         </div>
-        <p>Para montar a cópia local, peça ao Claude: "configure o ambiente local com uma cópia dos dados".</p>
+        <p>To set up the local copy, ask Claude: "set up the local environment with a copy of the data".</p>
       </section>
 
-      <section id="glossario">
-        <h2>Glossário</h2>
+      <section id="glossary">
+        <h2>Glossary</h2>
         <dl class="gloss">
-          <div><dt>Branch</dt><dd>Uma linha de trabalho do código. O portal usa só a main.</dd></div>
-          <div><dt>Commit</dt><dd>Uma mudança gravada no histórico do código, com data e descrição.</dd></div>
-          <div><dt>Container</dt><dd>Uma caixa isolada no servidor onde roda um programa: o portal, o banco, o login.</dd></div>
-          <div><dt>Cron</dt><dd>Uma tarefa que o servidor roda sozinho em horário marcado.</dd></div>
-          <div><dt>Deploy</dt><dd>Colocar uma versão nova do portal no ar.</dd></div>
-          <div><dt>DNS</dt><dd>O catálogo que diz a que servidor um endereço leva. O nosso fica na Cloudflare.</dd></div>
-          <div><dt>Docker</dt><dd>O programa que roda os containers.</dd></div>
-          <div><dt>Migration</dt><dd>Uma mudança na estrutura do banco de dados.</dd></div>
-          <div><dt>Organização</dt><dd>O espaço da empresa no GitHub, com membros e permissões.</dd></div>
-          <div><dt>Proxy</dt><dd>O porteiro que recebe quem acessa o endereço e repassa ao portal.</dd></div>
-          <div><dt>Pull request</dt><dd>Um pedido para juntar uma branch à main, revisado antes.</dd></div>
-          <div><dt>Push</dt><dd>Enviar ao GitHub os commits feitos no Mac.</dd></div>
-          <div><dt>Repositório</dt><dd>A pasta de um projeto no GitHub, com todo o histórico.</dd></div>
-          <div><dt>SSH</dt><dd>O jeito seguro de entrar no servidor por linha de comando.</dd></div>
-          <div><dt>Supabase</dt><dd>O conjunto que dá ao portal banco, login e arquivos. Roda dentro do nosso servidor.</dd></div>
-          <div><dt>Token</dt><dd>Uma senha para programas, que dá acesso a um serviço.</dd></div>
-          <div><dt>VPS</dt><dd>Um servidor alugado só para nós. O nosso está na ScalaHosting.</dd></div>
-          <div><dt>Webhook</dt><dd>Um aviso automático que um serviço manda ao portal quando algo muda. O Monday faz isso.</dd></div>
-          <div><dt>2FA</dt><dd>O segundo passo do login: o código do app autenticador no celular.</dd></div>
+          <div><dt>Branch</dt><dd>A line of work in the code. The portal uses only main.</dd></div>
+          <div><dt>Commit</dt><dd>A change saved to the code's history, with a date and a description.</dd></div>
+          <div><dt>Container</dt><dd>An isolated box on the server that runs one program: the portal, the database, sign-in.</dd></div>
+          <div><dt>Cron</dt><dd>A job the server runs on its own at a set time.</dd></div>
+          <div><dt>Deploy</dt><dd>Putting a new version of the portal live.</dd></div>
+          <div><dt>DNS</dt><dd>The directory that says which server an address leads to. Ours is at Cloudflare.</dd></div>
+          <div><dt>Docker</dt><dd>The program that runs the containers.</dd></div>
+          <div><dt>Migration</dt><dd>A change to the database's structure.</dd></div>
+          <div><dt>Organization</dt><dd>The company's space on GitHub, with members and permissions.</dd></div>
+          <div><dt>Proxy</dt><dd>The doorman that receives visitors to the address and hands them to the portal.</dd></div>
+          <div><dt>Pull request</dt><dd>A request to merge a branch into main, reviewed first.</dd></div>
+          <div><dt>Push</dt><dd>Sending the commits made on the Mac to GitHub.</dd></div>
+          <div><dt>Repository</dt><dd>A project's folder on GitHub, with its whole history.</dd></div>
+          <div><dt>SSH</dt><dd>The secure way into the server from the command line.</dd></div>
+          <div><dt>Supabase</dt><dd>The set of services that gives the portal its database, sign-in and files. It runs inside our server.</dd></div>
+          <div><dt>Token</dt><dd>A password for programs, giving access to a service.</dd></div>
+          <div><dt>VPS</dt><dd>A server rented just for us. Ours is at ScalaHosting.</dd></div>
+          <div><dt>Webhook</dt><dd>An automatic notice a service sends the portal when something changes. Monday does this.</dd></div>
+          <div><dt>2FA</dt><dd>The second step of signing in: the code from the authenticator app on your phone.</dd></div>
         </dl>
       </section>
     </main>
   </div>
 
-  <footer>True North Digital Marketing · Operations Portal · manual mantido pelo Claude a cada mudança no setup</footer>
+  <footer>True North Digital Marketing · Operations Portal · kept up to date by Claude whenever the setup changes</footer>
 </div>
