@@ -34,7 +34,7 @@ PREV="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER" 2>/dev/null || 
 compose() { PORTAL_TAG="$1" docker compose -p "$PROJECT" --env-file "$ENV_FILE" -f deploy/portal/docker-compose.yml "${@:2}"; }
 
 echo "Building $SHA for $ENVIRONMENT"
-nice -n 10 compose "$SHA" build --pull
+PORTAL_TAG="$SHA" nice -n 10 docker compose -p "$PROJECT" --env-file "$ENV_FILE" -f deploy/portal/docker-compose.yml build --pull
 compose "$SHA" up -d
 
 for _ in $(seq 1 30); do
