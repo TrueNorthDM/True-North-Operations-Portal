@@ -85,7 +85,7 @@ export const MANUAL: ManualSection[] = [
       { kind: 'p', text: 'It lives only in the database (app_settings.monday_api_token) and is set in Settings → Monday API token. It is never hardcoded anywhere; an optional MONDAY_TOKEN env var exists only as a local-dev fallback. The nightly cron, the live snapshot and the webhook all use this one token.' },
       { kind: 'subhead', text: 'Flow 1, Pull (nightly) → Dashboards' },
       { kind: 'steps', items: [
-        'A Vercel Cron runs /api/cron/ingest on a schedule.',
+        'The server crontab runs /api/cron/ingest every 4 hours.',
         'processBoard() pulls items (paginated) + activity logs from the Publishing boards via GraphQL.',
         'The whole snapshot is written to the monday_snapshot store (a JSONB cache), overwriting the previous one.',
         'Dashboards read /api/snapshot, instant from the store, with a live fetch as a fallback if a board is missing.',

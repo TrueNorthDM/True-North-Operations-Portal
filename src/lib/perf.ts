@@ -1,7 +1,7 @@
 /**
- * Timing lines for the Vercel runtime logs.
+ * Timing lines for the portal's logs.
  *
- * Vercel's request logs record the path, the status and the cache result, and not
+ * Request logs record the path, the status and the cache result, and not
  * how long anything took. When the portal was slow in September 2026 there was no
  * number to point at, only a sense that clicks took too long, so the fixes were
  * chosen from reading the code rather than from a stopwatch. These lines are the
@@ -9,7 +9,7 @@
  *
  * One line per measured render, prefixed so it can be pulled out of the logs:
  *
- *   vercel logs --environment production --query "[perf]" --expand
+ *   docker logs tnportal-portal 2>&1 | grep "\[perf\]"
  *
  * Deliberately tiny. It records how long named promises took and prints them once;
  * it does not sample, aggregate or ship anywhere.

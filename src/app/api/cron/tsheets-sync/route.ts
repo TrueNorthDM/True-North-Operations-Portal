@@ -1,7 +1,7 @@
 /**
  * GET /api/cron/tsheets-sync, automatic TSheets → portal sync.
  *
- * Run by Vercel Cron (see vercel.json) on the same 4-hourly cadence as the
+ * Run by the server's crontab (deploy/cron/portal.crontab) on the same 4-hourly cadence as the
  * Monday ingest. Pulls job codes (→ tr_clients) and users (→ people directory
  * link/import) using the token from Settings. Runs with the admin/service-role
  * client because a cron has no user session, the same reason the Monday
@@ -18,7 +18,7 @@ export const preferredRegion = 'iad1'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  // Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
+  // The crontab (deploy/cron/run.sh) sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
   // set. Enforce it so the endpoint can't be triggered by random callers.
   const secret = process.env.CRON_SECRET
   if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {

@@ -5,8 +5,9 @@
  * that comes from Monday is as of the same moment. Anything else invites
  * "why does this page say something different from that one".
  *
- * WHY IT CHAINS. 197 boards do not fit in one invocation: Vercel stops a
- * function at 300 seconds. One firing therefore has to become several. Each
+ * WHY IT CHAINS. 197 boards do not fit in one invocation of 300 seconds (the
+ * limit on Vercel, where this began, and still the route's maxDuration). One
+ * firing therefore has to become several. Each
  * pass takes as many boards as fit in its budget, oldest first, and if any are
  * left it hands on to the next pass (see GET below for how).
  *
@@ -60,8 +61,8 @@ const NOTIFY_BEFORE_MS = 250_000
 
 /**
  * How a hop hands on, since 21 September 2026. It used to fire the next
- * request without waiting and return; Vercel freezes a function the moment it
- * returns, so that request was mostly never sent, and each firing read about
+ * request without waiting and return; Vercel froze a function the moment it
+ * returned, so that request was mostly never sent, and each firing read about
  * 21 of the 36 shown boards. A board was refreshed every eight hours while the
  * page promised four, and "last refreshed" said seven hours.
  *
@@ -98,21 +99,11 @@ export async function GET(request: Request) {
 }
 
 /**
- * Where the next hop is sent: the production domain, not the address this
- * request arrived on. Vercel's cron calls the deployment's own URL, and that
- * URL sits behind Vercel's login (deployment protection): a request to it is
- * redirected to vercel.com/sso, fetch followed the redirect to a page that
- * answers 200, and every hop after the first was lost while the log said the
- * chain had gone on. Found on 21 September 2026.
- *
- * On the portal's own server INTERNAL_ORIGIN wins (http://127.0.0.1:3000, set in
- * its Dockerfile): the hop stays on the machine. Sent to the public address
- * instead, it left the container for Cloudflare and never came back ("fetch
- * failed", found on 5 October 2026), so only the first hop ran.
- *
- * Otherwise APP_URL, when set (migration plan, step p4-hop), then Vercel's
- * production domain. Locally, and anywhere none is set, the request's own
- * origin is used.
+ * Where the next hop is sent: INTERNAL_ORIGIN on the portal's server
+ * (http://127.0.0.1:3000, set in its Dockerfile), so the hop stays on the
+ * machine. Sent to the public address instead, it left the container for
+ * Cloudflare and never came back ("fetch failed", found on 5 October 2026), so
+ * only the first hop ran. Locally the request's own origin is used.
  */
 function nextHopUrl(url: URL): URL {
   const next = new URL(url.toString())
@@ -121,19 +112,6 @@ function nextHopUrl(url: URL): URL {
     const base = new URL(internal)
     next.protocol = base.protocol
     next.host = base.host
-    return next
-  }
-  const app = process.env.APP_URL
-  if (app) {
-    const base = new URL(app)
-    next.protocol = base.protocol
-    next.host = base.host
-    return next
-  }
-  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  if (prod) {
-    next.protocol = 'https:'
-    next.host = prod
   }
   return next
 }

@@ -1,36 +1,45 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// The portal's scheduled jobs are listed twice until the move: vercel.json for
-// Vercel Cron, deploy/cron/portal.crontab for the portal's own server (plan step
-// p4-crontab). They must say the same thing.
+// The portal's scheduled jobs live in deploy/cron/portal.crontab, on its own
+// server. Each line must call a job that exists, and the times stay in UTC.
 
 const root = join(__dirname, '..', '..')
+const crontab = readFileSync(join(root, 'deploy/cron/portal.crontab'), 'utf8')
 
-function fromVercel(): Map<string, string> {
-  const cfg = JSON.parse(readFileSync(join(root, 'vercel.json'), 'utf8')) as { crons: { path: string; schedule: string }[] }
-  return new Map(cfg.crons.map(c => [c.path, c.schedule]))
-}
-
-function fromCrontab(): Map<string, string> {
+function jobs(): Map<string, string> {
   const out = new Map<string, string>()
-  for (const line of readFileSync(join(root, 'deploy/cron/portal.crontab'), 'utf8').split('\n')) {
+  for (const line of crontab.split('\n')) {
     const t = line.trim()
     if (!t || t.startsWith('#') || /^[A-Z_]+=/.test(t)) continue
     const parts = t.split(/\s+/)
-    const job = parts[parts.length - 1]
-    out.set(job, parts.slice(0, 5).join(' '))
+    out.set(parts[parts.length - 1], parts.slice(0, 5).join(' '))
   }
   return out
 }
 
 describe('the server crontab', () => {
-  it('runs the same jobs on the same schedules as vercel.json', () => {
-    expect(Object.fromEntries(fromCrontab())).toEqual(Object.fromEntries(fromVercel()))
+  it('lists the five jobs', () => {
+    expect([...jobs().keys()].sort()).toEqual([
+      '/api/cron/clocky-delta', '/api/cron/health', '/api/cron/ingest',
+      '/api/cron/monday-worklist', '/api/cron/tsheets-sync',
+    ])
   })
 
-  it('keeps the times in UTC, as Vercel Cron does', () => {
-    expect(readFileSync(join(root, 'deploy/cron/portal.crontab'), 'utf8')).toMatch(/^CRON_TZ=UTC$/m)
+  it('calls only jobs that exist', () => {
+    for (const job of jobs().keys()) {
+      expect(existsSync(join(root, 'src/app', job, 'route.ts')), job).toBe(true)
+    }
+  })
+
+  it('runs the syncs six times a day, every 4 hours', () => {
+    for (const [job, when] of jobs()) {
+      if (job !== '/api/cron/health') expect(when.split(' ')[1], job).toBe('1,5,9,13,17,21')
+    }
+  })
+
+  it('keeps the times in UTC', () => {
+    expect(crontab).toMatch(/^CRON_TZ=UTC$/m)
   })
 })

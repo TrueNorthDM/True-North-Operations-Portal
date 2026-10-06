@@ -1,6 +1,6 @@
 # The portal's scheduled jobs on its own server (migration plan, steps p4-crontab
-# and p3-cron). The same five jobs and schedules as vercel.json, in UTC like
-# Vercel Cron; src/lib/cron-schedule.test.ts fails if the two drift apart.
+# and p3-cron), in UTC. src/lib/cron-schedule.test.ts checks each line calls a
+# job that exists.
 #
 # Install as root:  crontab -u portal /opt/tnportal/app/deploy/cron/portal.crontab
 # Each line calls one job on the portal running on this machine (run.sh).

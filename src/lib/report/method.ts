@@ -11,7 +11,7 @@ import type { Recording } from './data'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
 
-/** Matches vercel.json. Six passes a day, which is what the cadence text says. */
+/** Matches deploy/cron/portal.crontab. Six passes a day, which is what the cadence text says. */
 const SYNC_CADENCE = 'every 4 hours'
 
 export async function loadMethod(

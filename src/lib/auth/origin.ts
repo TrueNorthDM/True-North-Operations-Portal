@@ -1,11 +1,9 @@
 import { headers } from 'next/headers'
 
 /**
- * The origin the request came in on (https://truenorthoperationsportal.vercel.app,
- * http://localhost:3000, later https://truenorthportal.online), from the request
- * headers. Links the portal puts in an email must point back to the host the person
- * is actually using. Vercel and the Next.js dev server both set these headers, so no
- * environment variable has to be remembered.
+ * The origin people use (https://truenorthportal.online, or http://localhost:3000
+ * in development). Links the portal puts in an email must point back to it. On the
+ * server that is APP_URL; in development the request headers say it.
  */
 export async function requestOrigin(): Promise<string> {
   // On the portal's own server a request arrives as https://localhost:3000

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "redirects": [
+    { "source": "/", "destination": "https://truenorthportal.online/", "permanent": true },
+    { "source": "/:path*", "destination": "https://truenorthportal.online/:path*", "permanent": true }
+  ]
+}

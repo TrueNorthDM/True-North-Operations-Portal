@@ -46,7 +46,9 @@ Rough times, to be replaced by the rehearsal's (`p5-time`).
 - Confirm the first nightly backup, and repeat the restore test with real data
   (`p6-backup`).
 - Switch on `push` in `.github/workflows/deploy-server.yml`, so every push to
-  main publishes to the server, and retire `deploy-vercel.yml`.
+  main publishes to the server, and retire `deploy-vercel.yml`. Done 5 October
+  2026; the old Vercel project now serves only `deploy/legacy-redirect`, and
+  `LEGACY_REDIRECT_TO` left the portal's code with it.
 - Point the uptime check (`.github/workflows/uptime.yml`) at
   `https://truenorthportal.online/login` and drop the staging line.
 - Two weeks later, phase 7 closes the old services. The redirect from the old

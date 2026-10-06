@@ -1,13 +1,13 @@
 /**
  * GET /api/cron/ingest, nightly Monday → monday_snapshot ingestion.
  *
- * Run by Vercel Cron (see vercel.json). Fetches the Publishing boards from
+ * Run by the server's crontab (deploy/cron/portal.crontab). Fetches the Publishing boards from
  * Monday (using the token from Settings) and writes them to the warm store, so
  * /api/snapshot (and therefore the dashboards) load instantly.
  *
  * Window: a rolling INGEST_DAYS (3 years). Each nightly run does a full
  * re-fetch and OVERWRITES the store, so it always holds exactly the last 3
- * years, no pruning needed. maxDuration 300s (Vercel Pro) covers it
+ * years, no pruning needed. maxDuration 300s covers it
  * comfortably (1yr took ~48s).
  */
 
@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic'
 const INGEST_DAYS = 1095 // 3 years (rolling)
 
 export async function GET(request: Request) {
-  // Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
+  // The crontab (deploy/cron/run.sh) sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
   // set. Enforce it so the endpoint can't be triggered by random callers.
   const secret = process.env.CRON_SECRET
   if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {

@@ -3,7 +3,7 @@
  *
  * Written to take a Supabase client so both callers can reuse it:
  *   - the manual "Sync from TSheets" buttons (settings-actions, user session)
- *   - the Vercel Cron endpoint (admin/service-role client, no user session)
+ *   - the scheduled job endpoint (admin/service-role client, no user session)
  *
  * Kept out of the 'use server' actions file on purpose, this module is imported
  * by an API route as well, and must not be marked as server actions.

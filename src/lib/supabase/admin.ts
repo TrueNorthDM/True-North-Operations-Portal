@@ -5,8 +5,8 @@
  * background jobs). Never instantiate from a Server Action that runs on
  * behalf of a user, or from any Client Component, ever.
  *
- * The service_role key is a privileged secret. It is set as a Vercel
- * environment variable (NOT prefixed with NEXT_PUBLIC_) so it never leaks
+ * The service_role key is a privileged secret. It is set in the server's
+ * /opt/tnportal/portal.env (NOT prefixed with NEXT_PUBLIC_) so it never leaks
  * into client bundles. If this key ever shows up in a browser DevTools
  * Network tab, every RLS guarantee in the system is dead.
  */

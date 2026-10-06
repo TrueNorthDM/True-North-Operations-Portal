@@ -101,7 +101,7 @@ export async function POST(request: Request) {
 
   const results = boardIds.map((id) => stored[id]).filter(Boolean)
   const elapsed = Date.now() - t0
-  const region = process.env.VERCEL_REGION || 'unknown'
+  const region = 'tn-server'
 
   return NextResponse.json(
     {

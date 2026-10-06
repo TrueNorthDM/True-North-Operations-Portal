@@ -184,7 +184,7 @@ export const TICKETS: Ticket[] = [
     code: 'TN-008',
     type: 'chore',
     title: 'Raise nightly ingest window 365 → 730 days',
-    description: 'Arnaldo is Vercel Pro (maxDuration 300s); bump INGEST_DAYS for a true 2-year rolling window in the dashboards.',
+    description: 'The ingest route allows 300 s (maxDuration); bump INGEST_DAYS for a true 2-year rolling window in the dashboards.',
     status: 'backlog',
     priority: 'low',
     area: 'Dashboards',

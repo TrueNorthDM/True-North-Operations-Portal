@@ -40,21 +40,18 @@ function isPublic(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
-  // Switch-over day (lib/switch-over.ts, deploy/SWITCH-OVER.md): the old
-  // portal's maintenance page and its redirect to the new address. Both are off
-  // unless their environment variable is set, and they come before everything
-  // else, machine routes included.
+  // The maintenance pause (lib/switch-over.ts): off unless MAINTENANCE_MODE is
+  // set, and it comes before everything else, machine routes included.
   const move = switchOverAction({
     method: request.method,
     pathname: request.nextUrl.pathname,
     search: request.nextUrl.search,
-    env: { MAINTENANCE_MODE: process.env.MAINTENANCE_MODE, LEGACY_REDIRECT_TO: process.env.LEGACY_REDIRECT_TO },
+    env: { MAINTENANCE_MODE: process.env.MAINTENANCE_MODE },
   })
-  if (move?.kind === 'redirect') return NextResponse.redirect(move.location, 308)
   if (move?.kind === 'maintenance-page') return NextResponse.rewrite(new URL('/maintenance', request.url))
   if (move?.kind === 'unavailable') {
     return NextResponse.json(
-      { error: move.status === 410 ? 'This portal has moved.' : 'The portal is paused while it moves.' },
+      { error: 'The portal is paused for maintenance.' },
       { status: move.status, headers: { 'Cache-Control': 'no-store' } },
     )
   }

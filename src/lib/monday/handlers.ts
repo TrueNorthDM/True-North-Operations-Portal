@@ -173,8 +173,8 @@ export async function runLinkHandler(
 
   // All ready, flip every sibling item to "Apply Link" in Monday. We do
   // this serially and swallow individual failures so one broken item
-  // doesn't block the rest. (Vercel free-tier function time budget is
-  // tight; if siblings ever explode in count, batch via subscriptions.)
+  // doesn't block the rest. (If siblings ever explode in count, batch via
+  // subscriptions.)
   // Active languages only: a paused or discontinued language keeps its
   // page_urls row, and telling Monday to apply its link would undo the pause
   // (audit finding M5-1).

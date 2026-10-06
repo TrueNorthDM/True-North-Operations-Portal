@@ -1,5 +1,5 @@
 /**
- * GET /api/cron/health, integration health check (every 2 days via Vercel Cron).
+ * GET /api/cron/health, integration health check (every 2 days, from the server's crontab).
  *
  * Verifies Monday + TSheets connectivity and that the Monday webhooks are still
  * registered, then records the results to system_health_checks. This is the
@@ -19,7 +19,7 @@ export const preferredRegion = 'iad1'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  // Vercel Cron sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
+  // The crontab (deploy/cron/run.sh) sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
   // set. Enforce it so the endpoint can't be triggered by random callers.
   const secret = process.env.CRON_SECRET
   if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {

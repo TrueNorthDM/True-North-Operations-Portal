@@ -14,7 +14,7 @@
  * Leaders and Users). We forward the caller's cookies to the headless page so
  * it passes the same gate when it loads /print. No proxy change, no token.
  *
- * Chromium: lib/pdf/browser.ts (the server's own, local Chrome, or Vercel's bundle).
+ * Chromium: lib/pdf/browser.ts (the server's own, or local Chrome).
  */
 
 import type { Browser } from 'puppeteer-core'

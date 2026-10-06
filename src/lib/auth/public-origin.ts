@@ -1,11 +1,10 @@
 /**
- * The two addresses a request handler may need, on Vercel and on the portal's
- * own server alike (migration plan, 5 October 2026).
+ * The two addresses a request handler may need (migration plan, 5 October 2026).
  *
  * On its own server the portal sits behind the server's proxy, and a request
  * reaches it as https://localhost:3000: the scheme of the public address with
- * the host of the container. Vercel sets neither variable below, so there both
- * answers are the request's own origin, exactly as before.
+ * the host of the container. In development neither variable below is set, so
+ * both answers are the request's own origin.
  *
  *   publicOrigin    where people are: links in emails, redirects in the
  *                   browser. APP_URL on the portal's own server.
