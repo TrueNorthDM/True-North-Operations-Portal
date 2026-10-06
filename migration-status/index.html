@@ -597,8 +597,8 @@
     { "n": 7, "title": "Close the old accounts", "when": "2 weeks after the move", "summary": "The old services are closed once the new portal has run smoothly for two weeks.",
       "steps": [
         ["p7-export", "A last copy of the old data is kept with the backups"],
-        ["p7-delete", "The old services are closed"],
-        ["p7-revoke", "Old access keys are switched off"],
+        ["p7-delete", "The portal's old projects are closed", "Only what belongs to the portal. The accounts and their other projects stay."],
+        ["p7-revoke", "The portal's old access keys are switched off"],
         ["p7-cleanup", "Leftovers from the old setup are cleaned up"]
       ] },
     { "n": 8, "title": "Wrap up", "when": "After the move", "summary": "The tools in progress join True North's GitHub, the people who work on them get their own True North access, the whole team is invited to the portal, and two-step sign-in starts for everyone.",
