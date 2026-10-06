@@ -359,7 +359,6 @@
       <path d="M190,328 H440" class="e"/>
       <text x="315" y="318" class="el">push to main deploys</text>
       <path d="M540,375 V430" class="e"/><text x="550" y="407" class="el l">reads</text>
-      <path d="M740,375 V430" class="e"/><text x="750" y="407" class="el l">signs in</text>
       <path d="M930,375 V430" class="e"/><text x="940" y="407" class="el l">sends</text>
       <g class="n"><rect x="20" y="60" width="170" height="56" rx="10"/><text x="105" y="85" class="t">Team in the browser</text><text x="105" y="103" class="s">truenorthportal.online</text></g>
       <g class="n"><rect x="20" y="150" width="170" height="56" rx="10"/><text x="105" y="175" class="t">Monday webhooks</text><text x="105" y="193" class="s">board changes</text></g>
@@ -372,13 +371,12 @@
       <g class="sb"><rect x="855" y="80" width="155" height="76" rx="10"/><text x="932.5" y="115" class="t">Supabase services</text><text x="932.5" y="133" class="s">login · data · files</text></g>
       <g class="db"><path d="M855,209 a77.5,9 0 0,1 155,0 v62 a77.5,9 0 0,1 -155,0 z"/><path d="M855,209 a77.5,9 0 0,0 155,0" fill="none"/><text x="932.5" y="242" class="t">PostgreSQL</text><text x="932.5" y="260" class="s">ScalaHosting, SPanel</text></g>
       <g class="ext"><rect x="455" y="430" width="170" height="56" rx="10"/><text x="540" y="455" class="t">Monday, TSheets</text><text x="540" y="473" class="s">their APIs</text></g>
-      <g class="ext"><rect x="655" y="430" width="170" height="56" rx="10"/><text x="740" y="455" class="t">Google sign-in</text><text x="740" y="473" class="s">our own Google setup</text></g>
       <g class="ext"><rect x="855" y="430" width="155" height="56" rx="10"/><text x="932.5" y="455" class="t">Login emails</text><text x="932.5" y="473" class="s">portal@truenorthportal.online</text></g>
     </svg>
     </div>
   </section>
   <section id="timeline" aria-labelledby="timeline-title">
-    <div class="section-head"><h2 id="timeline-title">The move, step by step</h2><p>Getting ready, eight phases, and some extras. Only phase 6 takes the portal offline; everything before it happens while you keep working.</p></div>
+    <div class="section-head"><h2 id="timeline-title">The move, step by step</h2><p>Getting ready and eight phases. Only phase 6 takes the portal offline; everything before it happens while you keep working.</p></div>
     <div class="timeline" id="phases"></div>
   </section>
 
@@ -419,12 +417,11 @@
         <p>Today anyone with a company email can sign in, and the only way in is a magic link. The link fails in three common ways: the email is slow or lands in spam, the link is opened on a different device from the one that asked for it, or an email scanner opens it first and uses it up.</p>
         <ul>
           <li><b>Invitation only, not by domain.</b> The portal is open to the people an admin invites, whatever their email, and to nobody else. At launch every active person in the Directory is invited: 31 today, of whom 27 have a work email, 3 only a personal one and 1 none yet.</li>
-          <li><b>Sign in with Google</b>, as an extra (phase 9). True North is on Google Workspace, and Gmail works too. It asks only for name and email, so no Workspace admin has to approve anything.</li>
           <li><b>A 6‑digit code in the same email</b>, typed on any device, and a button that works on any device.</li>
           <li><b>Two-step sign-in (2FA) for everyone.</b> After signing in, a 6‑digit code from an authenticator app on the phone (Google Authenticator, Microsoft Authenticator, 1Password), set up once with a QR code. It is built into the Supabase login, so every page can require it. An admin can reset it for someone who loses their phone.</li>
           <li><b>Reliable sending</b> from portal@truenorthportal.online, and <b>longer sessions</b>.</li>
         </ul>
-        <p class="rec agreed"><b>Agreed</b>Invitation only with the GoodNews address, a 6‑digit code alongside the link, and two-step sign-in for everyone; Google sign-in later, as an extra. No domain restriction and no approval needed from IT. The sign-in changes ship on the current portal, before the move. Two-step sign-in applies to new people from their first sign-in, and to everyone who already had access once the move is finished, each with a week to set it up.</p>
+        <p class="rec agreed"><b>Agreed</b>Invitation only with the GoodNews address, a 6‑digit code alongside the link, and two-step sign-in for everyone. No domain restriction and no approval needed from IT. The sign-in changes ship on the current portal, before the move. Two-step sign-in applies to new people from their first sign-in, and to everyone who already had access once the move is finished, each with a week to set it up.</p>
       </div>
       <div class="card decision">
         <h3><span class="n">4</span>The addresses on truenorthportal.online <span class="chip ok">Decided</span></h3>
@@ -615,11 +612,6 @@
         ["p4-2fa-enroll", "New people set up their authenticator app within a week", "A week from their first sign-in. Everyone who already has access gets their week after the move."],
         ["p4-2fa-reset", "Admins can reset the second step if someone loses their phone"],
         ["p8-manual", "A how-it-all-works manual is written for the portal's owner", "How the code, the server and the services fit together, and how to use them day to day."]
-      ] },
-    { "n": 9, "title": "Extras", "when": "When there is time", "summary": "Nice to have, not needed for the move: signing in with Google.",
-      "steps": [
-        ["p4-google", "Google sign-in is set up"],
-        ["p4-google-btn", "\"Sign in with Google\" appears on the sign-in page"]
       ] }
   ]
 }
