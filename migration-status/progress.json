@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-05",
+  "updated": "2026-10-06",
   "offlineWindow": null,
   "done": {
     "p0-brainstorm": "2026-09-23",
@@ -67,6 +67,7 @@
     "p1-jeannette-list": "2026-10-06",
     "p1-accounts": "2026-10-06",
     "p1-invite": "2026-10-06",
-    "p1-jeannette-key": "2026-10-06"
+    "p1-jeannette-key": "2026-10-06",
+    "p8-manual": "2026-10-06"
   }
 }
