@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800;900&family=Open+Sans:wght@400;600;700&display=swap">
 <style>
-  /* Layout: brand topbar, a hero, then a sticky contents rail beside one reading column (stacks on phones). */
+  /* Light only, the portal's own palette. Layout: brand topbar, a hero, then a sticky contents rail beside one reading column (stacks on phones). */
   :root {
     --bg: #f1efe8;
     --card: #ffffff;
@@ -23,21 +23,8 @@
     --logo-plate: transparent;
     --display: "Raleway", "Open Sans", system-ui, sans-serif;
     --sans: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: light;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #0c1424; --card: #131e33; --tint: #18253e; --rule: #25344f; --fg: #c3cddb; --muted: #8b99ae;
-      --heading: #eef2f8; --navy: #9fb6dc; --gold: #F2C40A; --gold-soft: #3a3214; --gold-ink: #f2d35e;
-      --teal: #5cbcbe; --teal-soft: #15343a; --line: #5d6c84; --code-bg: #1c2a44; --logo-plate: #ffffff;
-      color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #0c1424; --card: #131e33; --tint: #18253e; --rule: #25344f; --fg: #c3cddb; --muted: #8b99ae;
-    --heading: #eef2f8; --navy: #9fb6dc; --gold: #F2C40A; --gold-soft: #3a3214; --gold-ink: #f2d35e;
-    --teal: #5cbcbe; --teal-soft: #15343a; --line: #5d6c84; --code-bg: #1c2a44; --logo-plate: #ffffff;
-    color-scheme: dark;
   }
 
   * { box-sizing: border-box; }
