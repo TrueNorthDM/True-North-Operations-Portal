@@ -129,9 +129,9 @@
   <div class="hero">
     <span class="eyebrow">Operations Portal · how it runs</span>
     <h1>True North Portal Manual</h1>
-    <p class="lead">The portal runs on True North's own server at ScalaHosting, at <a href="https://truenorthportal.online">truenorthportal.online</a>. A developer asks Claude for a change, Claude saves it to GitHub, and GitHub publishes it to the server in about 5 minutes.</p>
+    <p class="lead">The portal runs on True North's own server at ScalaHosting, at <a href="https://truenorthportal.online">truenorthportal.online</a>. A developer asks Claude for a change, Claude saves it to GitHub, and GitHub puts it on the staging copy in about 5 minutes. Once it has been tried there, it is promoted to production.</p>
     <div class="flow" aria-label="The path of a change">
-      <span>Developers + Claude</span><i>→</i><span>GitHub</span><i>→</i><span>Server</span><i>→</i><span>truenorthportal.online</span>
+      <span>Developers + Claude</span><i>→</i><span>GitHub</span><i>→</i><span>Staging</span><i>→</i><span>truenorthportal.online</span>
     </div>
     <div class="meta"><span>Updated <b>October 6, 2026</b></span><span>Move completed <b>October 5, 2026</b></span></div>
   </div>
@@ -246,18 +246,20 @@
 
       <section id="publish">
         <h2>Publishing a change</h2>
-        <p class="point">Every change goes through Claude and goes live on its own, about 5 minutes after Claude sends it to GitHub. A developer does this:</p>
+        <p class="point">Every change goes through Claude, lands on the staging copy first and reaches the team only when it is promoted. A developer does this:</p>
         <ol class="steps">
           <li><p>Open the Claude app, <b>Code</b> tab, in the <b>TN Op Portal</b> project.</p></li>
           <li><p>Describe the change. For a large, visible change, Claude shows how it will look first and asks before publishing.</p></li>
           <li><p>Claude changes the code and runs the checks: the type check and about 900 automated tests.</p></li>
           <li><p>Claude saves the change (commit) and sends it to GitHub (push), always on the <b>main</b> branch. It is the only branch.</p></li>
-          <li><p>GitHub runs "Deploy to the portal's server": it connects to the server, builds the new version and swaps it in. If the new version does not answer, the server goes back to the previous one on its own.</p></li>
-          <li><p>To check, open the repository's <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions tab</a>: green means live. Or ask Claude which version is live.</p></li>
+          <li><p>GitHub runs "Deploy to staging": in about 5 minutes the change is on <a href="https://staging.truenorthportal.online">staging.truenorthportal.online</a>, a copy of the portal with a copy of the data and a yellow strip on every page.</p></li>
+          <li><p>Try the change on staging. Anything done there stays there.</p></li>
+          <li><p>To publish, tell Claude to promote it, or in the <a href="https://github.com/TrueNorthDM/True-North-Operations-Portal/actions">Actions tab</a> open "Promote to production", click <b>Run workflow</b> and enter the commit tested on staging. About 5 minutes later it is live. If the new version does not answer, the server goes back to the previous one on its own.</p></li>
         </ol>
-        <p><b>Database changes</b> (migrations) are applied by Claude directly on the server. Before the move they were run by hand in the Supabase dashboard; that is over.</p>
-        <p><b>Rolling back:</b> ask Claude. Or, in the Actions tab, open "Deploy to the portal's server", click <b>Run workflow</b> and enter the code (sha) of an earlier commit.</p>
-        <p class="note"><b>Careful:</b> every push to main goes straight to live, and there is no separate test environment. staging.truenorthportal.online shows the same portal. If anyone else is ever allowed to send code to the portal, protect main first, with branches and pull requests.</p>
+        <p><b>Database changes</b> (migrations) are applied by Claude on the server: on staging first, then on production when the change is promoted.</p>
+        <p><b>Rolling back:</b> ask Claude. Or, in the Actions tab, open "Promote to production", click <b>Run workflow</b> and enter the code (sha) of an earlier commit.</p>
+        <p><b>Fresh data on staging:</b> staging's data is a copy of production's. Ask Claude to refresh it whenever it should match today's production.</p>
+        <p class="note"><b>Staging is safe to break.</b> It has its own database and sign-in. The emails the portal sends from staging go only to the owner, it runs no scheduled syncs and Monday sends it no webhooks. Sign-in codes requested on staging do arrive, from "True North Operations Portal (staging)".</p>
       </section>
 
       <section id="monitoring">
