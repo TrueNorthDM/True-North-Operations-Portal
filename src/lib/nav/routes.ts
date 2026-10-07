@@ -20,6 +20,7 @@ export const ROUTES = {
   projectHours: '/ops/client-reports/project-hours',
   hrefLinks: '/seo/href-links',
   organization: '/organization',
+  history: '/history',
   chat: '/chat',
   emails: '/emails',
 } as const

@@ -144,6 +144,8 @@ export const RAIL: readonly RailEntry[] = [
         { key: 'directory', label: NAV_LABEL['/directory'], href: '/directory', icon: 'directory', surface: 'directory' },
         { key: 'organization', label: NAV_LABEL['/organization'], href: ROUTES.organization, icon: 'organization', surface: 'home' },
         { key: 'human-resources', label: NAV_LABEL['/human-resources'], href: '/human-resources', icon: 'human-resources', surface: 'human-resources', minLevel: 2 },
+        // Everyone signed in, like Organization (7 October 2026).
+        { key: 'history', label: NAV_LABEL['/history'], href: ROUTES.history, icon: 'history', surface: 'home' },
       ],
     }],
   },
@@ -330,6 +332,7 @@ const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
   { prefix: '/ops', surface: 'tools' },
   { prefix: '/seo', surface: 'tools' },
   { prefix: '/organization', surface: 'home' },
+  { prefix: '/history', surface: 'home' },
   { prefix: '/chat', surface: 'chat' },
   { prefix: '/emails', surface: 'emails' },
 ]

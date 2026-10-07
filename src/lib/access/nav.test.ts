@@ -51,10 +51,11 @@ describe('the rail', () => {
     }
   })
 
-  // Human Resources is level 2 and up, on top of its own surface.
+  // Human Resources is level 2 and up, on top of its own surface. History,
+  // like Organization, is for everyone signed in.
   it('keeps Human Resources from a user', () => {
     const people = hub(railFor('user'), 'people')!
-    expect(people.groups.flatMap(g => g.items.map(i => i.key))).toEqual(['directory', 'organization'])
+    expect(people.groups.flatMap(g => g.items.map(i => i.key))).toEqual(['directory', 'organization', 'history'])
   })
 
   it('lights a hub on every page under its rows', () => {
