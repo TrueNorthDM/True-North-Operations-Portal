@@ -133,7 +133,7 @@
     <div class="flow" aria-label="The path of a change">
       <span>Developers + Claude</span><i>→</i><span>GitHub</span><i>→</i><span>Staging</span><i>→</i><span>truenorthportal.online</span>
     </div>
-    <div class="meta"><span>Updated <b>October 6, 2026</b></span><span>Move completed <b>October 5, 2026</b></span></div>
+    <div class="meta"><span>Updated <b>October 7, 2026</b></span><span>Move completed <b>October 5, 2026</b></span><span>Staging added <b>October 6, 2026</b></span></div>
   </div>
 
   <div class="layout">
@@ -142,6 +142,7 @@
       <a href="#overview">Overview</a>
       <a href="#accounts">Accounts</a>
       <a href="#publish">Publishing a change</a>
+      <a href="#staging">Staging</a>
       <a href="#monitoring">Checking everything is fine</a>
       <a href="#backups">Backups</a>
       <a href="#people">People</a>
@@ -154,21 +155,23 @@
     <main>
       <section id="overview">
         <h2>Overview</h2>
-        <p class="point">Everything the portal needs runs on one server. The team reaches it through Cloudflare, and Claude looks after it over SSH. The gold path is the path of a change, from request to live.</p>
+        <p class="point">Everything runs on one server, in two copies: staging, where every change lands first, and production, the portal the team uses. The team reaches both through Cloudflare, and Claude looks after the server over SSH. The gold path is the path of a change: pushed to staging, then promoted to production.</p>
         <div class="diagram">
-          <svg viewBox="0 0 760 540" role="img" aria-label="Developers ask Claude, and GitHub publishes to the server on its own">
+          <svg viewBox="0 0 760 620" role="img" aria-label="Every change lands on staging first and is promoted to production">
             <defs>
               <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>
               <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-main" d="M0 0L10 5L0 10z"/></marker>
             </defs>
             <path class="edge main" d="M224 54H280" marker-end="url(#g)"/>
-            <path class="edge main" d="M380 84V216" marker-end="url(#g)"/>
+            <path class="edge main" d="M380 84V252" marker-end="url(#g)"/>
+            <path class="edge main" d="M340 312V352" marker-end="url(#g)"/>
             <path class="edge" d="M124 84V216" stroke-dasharray="4 4" marker-end="url(#a)"/>
             <path class="edge" d="M628 84V120" marker-end="url(#a)"/>
-            <path class="edge" d="M628 180V256" marker-end="url(#a)"/>
-            <path class="edge" d="M480 286H536" marker-start="url(#a)" marker-end="url(#a)"/>
-            <path class="edge" d="M140 316V448" marker-end="url(#a)"/>
-            <path class="edge" d="M628 392V448" marker-end="url(#a)"/>
+            <path class="edge" d="M628 180V332H430V352" marker-end="url(#a)"/>
+            <path class="edge" d="M628 282H480" marker-end="url(#a)"/>
+            <path class="edge" d="M240 382H280" marker-start="url(#a)" marker-end="url(#a)"/>
+            <path class="edge" d="M628 412V536" marker-end="url(#a)"/>
+            <path class="edge" d="M380 488V536" marker-end="url(#a)"/>
 
             <rect class="box" x="24" y="24" width="200" height="60" rx="8"/>
             <text class="n" x="124" y="49" text-anchor="middle">Developers + Claude</text>
@@ -181,41 +184,50 @@
             <text class="s" x="628" y="68" text-anchor="middle">in the browser</text>
             <rect class="box" x="528" y="120" width="200" height="60" rx="8"/>
             <text class="n" x="628" y="145" text-anchor="middle">Cloudflare</text>
-            <text class="s" x="628" y="164" text-anchor="middle">truenorthportal.online</text>
+            <text class="s" x="628" y="164" text-anchor="middle">both addresses</text>
 
             <text class="l" x="252" y="44" text-anchor="middle">push</text>
-            <text class="l" x="390" y="142">automatic deploy,</text>
+            <text class="l" x="390" y="142">every push,</text>
             <text class="l" x="390" y="158">about 5 minutes</text>
             <text class="l" x="134" y="142">SSH: Claude looks</text>
             <text class="l" x="134" y="158">after the server</text>
-            <text class="l" x="618" y="208" text-anchor="end">forwards to the portal</text>
+            <text class="l" x="554" y="274" text-anchor="middle">staging.</text>
+            <text class="l" x="532" y="324" text-anchor="middle">main address</text>
+            <text class="l" x="330" y="338" text-anchor="end" font-weight="700">promote</text>
 
-            <rect class="server" x="24" y="216" width="712" height="192" rx="8"/>
+            <rect class="server" x="24" y="216" width="712" height="288" rx="8"/>
             <text class="n" x="40" y="241">ScalaHosting server · 174.136.29.221</text>
-            <rect class="box" x="40" y="256" width="200" height="60" rx="8"/>
-            <text class="n" x="140" y="281" text-anchor="middle">Scheduled jobs</text>
-            <text class="s" x="140" y="300" text-anchor="middle">Monday and hours, every 4 h</text>
-            <rect class="box" x="280" y="256" width="200" height="60" rx="8"/>
-            <text class="n" x="380" y="281" text-anchor="middle">Supabase</text>
-            <text class="s" x="380" y="300" text-anchor="middle">database, sign-in and files</text>
-            <rect class="hot" x="536" y="256" width="184" height="60" rx="8"/>
-            <text class="n" x="628" y="281" text-anchor="middle">Portal</text>
-            <text class="s" x="628" y="300" text-anchor="middle">the screens the team uses</text>
-            <rect class="box" x="280" y="332" width="200" height="60" rx="8"/>
-            <text class="n" x="380" y="357" text-anchor="middle">Backups</text>
-            <text class="s" x="380" y="376" text-anchor="middle">every night, 03:30</text>
-            <rect class="box" x="536" y="332" width="184" height="60" rx="8"/>
-            <text class="n" x="628" y="357" text-anchor="middle">Watch</text>
-            <text class="s" x="628" y="376" text-anchor="middle">checks every 10 min</text>
+            <text class="s" x="40" y="276">STAGING</text>
+            <text class="s" x="40" y="292">a copy to try changes on</text>
+            <rect class="box" x="280" y="252" width="200" height="60" rx="8" stroke-dasharray="5 4"/>
+            <text class="n" x="380" y="277" text-anchor="middle">Staging copy</text>
+            <text class="s" x="380" y="296" text-anchor="middle">portal + its own database</text>
 
-            <rect class="box" x="40" y="448" width="200" height="60" rx="8"/>
-            <text class="n" x="140" y="473" text-anchor="middle">Monday and TSheets</text>
-            <text class="s" x="140" y="492" text-anchor="middle">project data and hours</text>
-            <rect class="box" x="536" y="448" width="184" height="60" rx="8"/>
-            <text class="n" x="628" y="473" text-anchor="middle">Resend</text>
-            <text class="s" x="628" y="492" text-anchor="middle">sign-in, invites, alerts</text>
-            <text class="l" x="148" y="430">reads the data</text>
-            <text class="l" x="636" y="426">emails</text>
+            <text class="s" x="40" y="344">PRODUCTION</text>
+            <rect class="box" x="40" y="352" width="200" height="60" rx="8"/>
+            <text class="n" x="140" y="377" text-anchor="middle">Supabase</text>
+            <text class="s" x="140" y="396" text-anchor="middle">database, sign-in and files</text>
+            <rect class="hot" x="280" y="352" width="200" height="60" rx="8"/>
+            <text class="n" x="380" y="377" text-anchor="middle">Portal</text>
+            <text class="s" x="380" y="396" text-anchor="middle">the screens the team uses</text>
+            <rect class="box" x="536" y="352" width="184" height="60" rx="8"/>
+            <text class="n" x="628" y="377" text-anchor="middle">Scheduled jobs</text>
+            <text class="s" x="628" y="396" text-anchor="middle">Monday and hours, every 4 h</text>
+            <rect class="box" x="40" y="428" width="200" height="60" rx="8"/>
+            <text class="n" x="140" y="453" text-anchor="middle">Backups</text>
+            <text class="s" x="140" y="472" text-anchor="middle">every night, 03:30</text>
+            <rect class="box" x="280" y="428" width="200" height="60" rx="8"/>
+            <text class="n" x="380" y="453" text-anchor="middle">Watch</text>
+            <text class="s" x="380" y="472" text-anchor="middle">checks every 10 min</text>
+
+            <rect class="box" x="280" y="536" width="200" height="60" rx="8"/>
+            <text class="n" x="380" y="561" text-anchor="middle">Resend</text>
+            <text class="s" x="380" y="580" text-anchor="middle">sign-in, invites, alerts</text>
+            <rect class="box" x="536" y="536" width="184" height="60" rx="8"/>
+            <text class="n" x="628" y="561" text-anchor="middle">Monday and TSheets</text>
+            <text class="s" x="628" y="580" text-anchor="middle">project data and hours</text>
+            <text class="l" x="388" y="522">emails</text>
+            <text class="l" x="636" y="522">reads the data</text>
           </svg>
         </div>
         <p>Monday also tells the portal when a board changes, through the webhooks on the AAAF and HFA boards.</p>
@@ -262,6 +274,33 @@
         <p class="note"><b>Staging is safe to break.</b> It has its own database and sign-in. The emails the portal sends from staging go only to the owner, it runs no scheduled syncs and Monday sends it no webhooks. Sign-in codes requested on staging do arrive, from "True North Operations Portal (staging)".</p>
       </section>
 
+      <section id="staging">
+        <h2>Staging</h2>
+        <p class="point"><a href="https://staging.truenorthportal.online">staging.truenorthportal.online</a> is a full copy of the portal, with its own database holding a copy of production's data. Every change lands there first, and nothing done there reaches the team.</p>
+        <div class="tbl">
+          <table class="wide">
+            <thead><tr><th></th><th>Production</th><th>Staging</th></tr></thead>
+            <tbody>
+              <tr><td>Address</td><td>truenorthportal.online</td><td>staging.truenorthportal.online, with a yellow strip on every page</td></tr>
+              <tr><td>Who uses it</td><td>The whole team</td><td>Developers and whoever is testing a change</td></tr>
+              <tr><td>Gets a new version</td><td>When a tested commit is promoted</td><td>On every push, in about 5 minutes</td></tr>
+              <tr><td>Data</td><td>The real data</td><td>A copy of production's, from the last refresh</td></tr>
+              <tr><td>Signing in</td><td>Email code and 2FA</td><td>The same accounts and 2FA, from the last refresh. Codes come from "True North Operations Portal (staging)"</td></tr>
+              <tr><td>Emails the portal sends (invitations)</td><td>To everyone</td><td>Only to the owner</td></tr>
+              <tr><td>Monday and TSheets syncs, Monday webhooks</td><td>Yes</td><td>No</td></tr>
+              <tr><td>Backups and alerts</td><td>Yes</td><td>No</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Using it</h3>
+        <ul class="plain">
+          <li><b>Try a change:</b> open staging in a private window after Claude says the change is on staging, and use the portal as the team would.</li>
+          <li><b>Publish it:</b> tell Claude to promote it, or use "Promote to production" in the GitHub Actions tab.</li>
+          <li><b>Fresh data:</b> ask Claude to refresh staging. It copies last night's backup, or a backup taken on the spot, into staging. Production is only read.</li>
+          <li><b>Something on staging looks wrong:</b> don't promote. Tell Claude what you saw; the fix lands on staging again first.</li>
+        </ul>
+      </section>
+
       <section id="monitoring">
         <h2>Checking everything is fine</h2>
         <p class="point">Nobody needs to look at anything every day. If something goes wrong, an alert email goes to the portal owner. No email means everything is working.</p>
@@ -275,7 +314,7 @@
             </tbody>
           </table>
         </div>
-        <p>The server watch cannot send an alert if the whole server goes down. That is why the Uptime check looks from outside.</p>
+        <p>The server watch cannot send an alert if the whole server goes down. That is why the Uptime check looks from outside. Staging is not watched: the alerts are about production only.</p>
         <h3>Where to look</h3>
         <ul class="plain">
           <li><b>In the portal:</b> Admin, Automations shows every scheduled job and webhook, with its last check.</li>
@@ -299,6 +338,7 @@
           </table>
         </div>
         <p>The backups live in <code>/home/tnportal/portal-backups</code> on the server. That folder is part of ScalaHosting's own daily backup, so every night is also kept off the server.</p>
+        <p>Staging has no backups of its own: its data is a copy of production's, refreshed on request.</p>
         <p><b>Restoring:</b> ask Claude and say which day. The procedure is in <code>deploy/README.md</code>, Backups section.</p>
         <p class="callout"><b>The code</b> does not depend on these backups: it lives on GitHub with its whole history. The COE tools have a frozen copy from October 6 in TrueNorthDM-Archive.</p>
       </section>
@@ -326,6 +366,7 @@
           <li><b>Remove access:</b> in People, click the person, then Remove from organization. It cuts everything at once.</li>
           <li><b>Never</b> share the truenorthdigitalmarketing login. That account owns everything.</li>
         </ul>
+        <p>On staging, people and invitations are those of production at the last refresh. Inviting someone or resetting 2FA on staging changes only staging.</p>
         <p>The organization is already locked down: new members see nothing until a repository is opened to them, they cannot create or copy repositories, and GitHub 2FA is required.</p>
       </section>
 
@@ -342,6 +383,8 @@
               <tr><td>Someone lost or changed their phone</td><td>&nbsp;</td><td>Directory, the person, Two-step: Reset</td></tr>
               <tr><td>My Work or the Monday reports stopped updating</td><td>Admin, Automations</td><td>Send it to Claude. If the Monday token expired, create a new one in Monday and paste it in Settings</td></tr>
               <tr><td>New hours do not show up</td><td>They arrive every 4 hours</td><td>If it takes longer, tell Claude. If the QuickBooks Time token expired, paste the new one in Settings</td></tr>
+              <tr><td>A change looks wrong on staging</td><td>The yellow strip, to be sure it is staging</td><td>Don't promote it. Tell Claude what you saw</td></tr>
+              <tr><td>Something broke right after a promote</td><td>Whether staging shows the same problem</td><td>Ask Claude to roll back, or promote the previous commit in the Actions tab</td></tr>
               <tr><td>A PDF or image export fails</td><td>&nbsp;</td><td>Send Claude the report and the month</td></tr>
               <tr><td>A low disk space alert</td><td>&nbsp;</td><td>Ask Claude to free up space. If that is not enough, the ScalaHosting plan needs to grow</td></tr>
               <tr><td>The portal needs a maintenance pause</td><td>&nbsp;</td><td>Ask Claude: it turns the maintenance page on, and off again afterwards</td></tr>
@@ -361,6 +404,7 @@
               <tr><td>Server key</td><td><code>~/.ssh/truenorth_vps</code>, on the developer's Mac</td><td>The server, as administrator (port 6543; key only, never a password)</td><td>ScalaHosting installs a new key, by ticket</td></tr>
               <tr><td>GitHub deploy key</td><td><code>~/.ssh/truenorthdm_portal_deploy</code>, on the developer's Mac</td><td>Only the portal repository, to send code</td><td>Claude makes a new one, and the owner adds it to the repository (Settings, Deploy keys)</td></tr>
               <tr><td>Portal secrets</td><td>On the server: <code>/opt/tnportal/portal.env</code> and <code>/opt/tnportal/supabase/.env</code></td><td>Database, sign-in, sending email</td><td>They exist only on the server and in its backups</td></tr>
+              <tr><td>Staging secrets</td><td>On the server: <code>/opt/tnportal/staging.env</code> and <code>/opt/tnportal/supabase-staging/.env</code></td><td>Staging's own database, sign-in keys and email limit</td><td>Recreate them with Claude</td></tr>
               <tr><td>GitHub secrets</td><td>Portal repository, Settings, Secrets: <code>SERVER_SSH_KEY</code> and <code>RESEND_API_KEY</code></td><td>The deploy (that key can only publish) and the Uptime check email</td><td>Recreate them with Claude</td></tr>
               <tr><td>Monday and QuickBooks Time tokens</td><td>In the portal, Settings</td><td>Reading the boards and the hours</td><td>Create a new one in the service and paste it in Settings</td></tr>
             </tbody>
@@ -378,7 +422,7 @@
 
       <section id="local">
         <h2>Running the portal locally</h2>
-        <p class="point">Since October 5, the portal no longer runs on a developer's Mac (<code>npm run dev</code>): the local settings pointed at the old Supabase, which was deleted. Nothing live is affected, and the tests and deploys keep working.</p>
+        <p class="point">Since October 5, the portal no longer runs on a developer's Mac (<code>npm run dev</code>): the local settings pointed at the old Supabase, which was deleted. Nothing live is affected, and the tests and deploys keep working. Staging now covers most of what running locally was for: every change can be tried there before the team sees it. A local copy is only worth it for quick experiments that should not even reach staging.</p>
         <div class="tbl">
           <table>
             <thead><tr><th>Option</th><th>What it is</th><th>Risk</th></tr></thead>
@@ -403,11 +447,14 @@
           <div><dt>Docker</dt><dd>The program that runs the containers.</dd></div>
           <div><dt>Migration</dt><dd>A change to the database's structure.</dd></div>
           <div><dt>Organization</dt><dd>The company's space on GitHub, with members and permissions.</dd></div>
+          <div><dt>Production</dt><dd>The portal the team uses, at truenorthportal.online.</dd></div>
+          <div><dt>Promote</dt><dd>Putting a version that was tried on staging onto production.</dd></div>
           <div><dt>Proxy</dt><dd>The doorman that receives visitors to the address and hands them to the portal.</dd></div>
           <div><dt>Pull request</dt><dd>A request to merge a branch into main, reviewed first.</dd></div>
           <div><dt>Push</dt><dd>Sending the commits made on the Mac to GitHub.</dd></div>
           <div><dt>Repository</dt><dd>A project's folder on GitHub, with its whole history.</dd></div>
           <div><dt>SSH</dt><dd>The secure way into the server from the command line.</dd></div>
+          <div><dt>Staging</dt><dd>The test copy of the portal, at staging.truenorthportal.online, with a copy of the data.</dd></div>
           <div><dt>Supabase</dt><dd>The set of services that gives the portal its database, sign-in and files. It runs inside our server.</dd></div>
           <div><dt>Token</dt><dd>A password for programs, giving access to a service.</dd></div>
           <div><dt>VPS</dt><dd>A server rented just for us. Ours is at ScalaHosting.</dd></div>
