@@ -33,7 +33,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
 import { ingestSlice } from '@/lib/monday/worklist/ingest'
-import { applyStaleRule } from '@/app/(app)/settings/monday/actions'
+import { applyStaleRule } from '@/app/(app)/admin/settings/monday/actions'
 import { notifyAfterSync, notifyUnlinked } from '@/lib/notifications/run'
 import { acquireLease, releaseLease, startRun, finishRun, failedThisRun } from '@/lib/monday/worklist/sync-run'
 

@@ -231,8 +231,8 @@ export function HowItRuns() {
               ['GoDaddy', 'Where the domain was bought and is renewed', 'True North (Wendy)', 'godaddy.com'],
               ['GitHub', 'The portal\'s code (TrueNorthDM) and the dated copies of the COE tools (TrueNorthDM-Archive)', 'truenorthdigitalmarketing, owner of both organizations', <A key="g" href="https://github.com/TrueNorthDM">github.com/TrueNorthDM</A>],
               ['Resend', 'Sends the emails: sign-in codes, invitations and alerts', 'truenorthdigitalmarketing team. Keys: Portal server and Uptime check (GitHub)', <A key="r" href="https://resend.com">resend.com</A>],
-              ['Monday', 'Projects, boards and My Work. The portal reads the boards and receives the AAAF and HFA webhooks', 'The token lives in the portal: Settings, Monday API token', 'monday.com'],
-              ['QuickBooks Time', 'The hours (TSheets), which the portal pulls every 4 hours', 'The token lives in the portal: Settings', 'QuickBooks Time'],
+              ['Monday', 'Projects, boards and My Work. The portal reads the boards and receives the AAAF and HFA webhooks', 'The token lives in the portal: Admin, Company settings', 'monday.com'],
+              ['QuickBooks Time', 'The hours (TSheets), which the portal pulls every 4 hours', 'The token lives in the portal: Admin, Company settings', 'QuickBooks Time'],
               ['Vercel', 'Only the old address\'s redirect and the move status page', 'A personal Vercel team that also holds other, unrelated projects', <A key="v" href="https://vercel.com">vercel.com</A>],
               ['Google Workspace', 'The GoodNews email addresses people sign in to the portal with', 'GoodNews (Wendy is IT)', 'admin.google.com'],
               ['Claude', 'Makes the code changes and looks after the server, from a developer\'s Mac', 'The developer\'s Claude account', 'Claude app, Code tab, TN Op Portal project'],
@@ -370,8 +370,8 @@ export function HowItRuns() {
               ['An Uptime check email: the portal does not open', 'Whether the portal opens in your browser', 'Send it to Claude. If the whole server is down, open a chat or ticket with ScalaHosting (Wendy has the PIN)'],
               ['Someone does not get their sign-in code', 'Their spam folder; the Logs screen in Resend', 'If the sign-in page said "hasn\'t been invited", invite them in the Directory'],
               ['Someone lost or changed their phone', '', 'Directory, the person, Two-step: Reset'],
-              ['My Work or the Monday reports stopped updating', 'Admin, Automations', 'Send it to Claude. If the Monday token expired, create a new one in Monday and paste it in Settings'],
-              ['New hours do not show up', 'They arrive every 4 hours', 'If it takes longer, tell Claude. If the QuickBooks Time token expired, paste the new one in Settings'],
+              ['My Work or the Monday reports stopped updating', 'Admin, Automations', 'Send it to Claude. If the Monday token expired, create a new one in Monday and paste it in Admin, Company settings'],
+              ['New hours do not show up', 'They arrive every 4 hours', 'If it takes longer, tell Claude. If the QuickBooks Time token expired, paste the new one in Admin, Company settings'],
               ['A change looks wrong on staging', 'The yellow strip, to be sure it is staging', 'Don\'t promote it. Tell Claude what you saw'],
               ['Something broke right after a promote', 'Whether staging shows the same problem', 'Ask Claude to roll back, or promote the previous commit in the Actions tab'],
               ['A PDF or image export fails', '', 'Send Claude the report and the month'],
@@ -396,7 +396,7 @@ export function HowItRuns() {
               ['Portal secrets', <span key="k3">On the server: <Code>/opt/tnportal/portal.env</Code> and <Code>/opt/tnportal/supabase/.env</Code></span>, 'Database, sign-in, sending email', 'They exist only on the server and in its backups'],
               ['Staging secrets', <span key="k4">On the server: <Code>/opt/tnportal/staging.env</Code> and <Code>/opt/tnportal/supabase-staging/.env</Code></span>, 'Staging\'s own database, sign-in keys and email limit', 'Recreate them with Claude'],
               ['GitHub secrets', <span key="k5">Portal repository, Settings, Secrets: <Code>SERVER_SSH_KEY</Code> and <Code>RESEND_API_KEY</Code></span>, 'The deploys (that key can only publish) and the Uptime check email', 'Recreate them with Claude'],
-              ['Monday and QuickBooks Time tokens', 'In the portal, Settings', 'Reading the boards and the hours', 'Create a new one in the service and paste it in Settings'],
+              ['Monday and QuickBooks Time tokens', 'In the portal: Admin, Company settings', 'Reading the boards and the hours', 'Create a new one in the service and paste it there'],
             ]}
           />
           <Callout><B>A secret never goes in the chat.</B> When Claude needs one, it gives the developer a command to run in Terminal: they paste the secret there, it goes straight into a protected file, and Claude uses it without seeing it.</Callout>

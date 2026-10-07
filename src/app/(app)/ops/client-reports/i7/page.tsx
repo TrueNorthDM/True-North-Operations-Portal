@@ -99,7 +99,7 @@ export default async function ClientsReportsPage({ searchParams }: Props) {
           </p>
         </div>
         <Link
-          href="/settings"
+          href="/admin/settings"
           title="Manage rates & budgets in Settings"
           aria-label="Settings"
           className="shrink-0 w-11 h-11 rounded-full border border-slate-200 bg-white text-muted flex items-center justify-center transition-colors hover:text-tn-ink hover:border-tn-teal"
@@ -194,7 +194,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         <p className="font-semibold text-red-700">Couldn&apos;t load the report</p>
         <p className="text-sm text-red-600 font-mono">{fetchError}</p>
         <p className="text-sm text-red-500">
-          The report reads from the synced cache. If this persists, run a sync from <Link href="/settings" className="underline">Settings</Link>.
+          The report reads from the synced cache. If this persists, run a sync from <Link href="/admin/settings" className="underline">Settings</Link>.
         </p>
       </div>
     )

@@ -12,7 +12,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { setHideStaleBoards } from '@/app/(app)/settings/monday/actions'
+import { setHideStaleBoards } from '@/app/(app)/admin/settings/monday/actions'
 import { STALE_MONTHS } from '@/lib/monday/worklist/stale'
 
 export function StaleRuleToggle(

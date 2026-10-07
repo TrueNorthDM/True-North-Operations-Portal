@@ -1,7 +1,8 @@
 // Notification settings (22 September 2026), opened from the two notification
 // drawers. Every notification the portal has, the ones still to come faded,
 // each with where, when and on/off. Admins get a second tab with the rules for
-// everyone. The catalogue is src/lib/notifications/catalogue.ts.
+// everyone, also reached from Admin > Configuration > Notification rules
+// (?tab=rules). The catalogue is src/lib/notifications/catalogue.ts.
 //
 // Shown for the person this page renders as: in a View Stage preview, the
 // previewed person's list and choices, read-only (the actions refuse to save
@@ -20,7 +21,8 @@ import { saveNotificationPref, saveNotificationRule } from './actions'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notification settings' }
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams
   const access = await requireSurface('home')
   const me = await getCurrentPerson()
   const db = createAdminClient()
@@ -56,6 +58,7 @@ export default async function Page() {
         rules={rules}
         prefs={(me && prefs.get(me.id)) ?? {}}
         isAdmin={access.isAdmin}
+        initialTab={access.isAdmin && tab === 'rules' ? 'rules' : 'mine'}
         savePref={saveNotificationPref}
         saveRule={access.isAdmin ? saveNotificationRule : null}
         blocked={!ready ? 'Not saved: migration 088 is not in the database yet.' : !me ? 'Not saved: your login has no Directory person.' : undefined}

@@ -14,7 +14,7 @@ async function guard(): Promise<string | null> {
 }
 
 function done() {
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath('/my-work')
 }
 

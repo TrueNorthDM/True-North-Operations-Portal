@@ -15,7 +15,7 @@ import { revalidatePath } from 'next/cache'
 import { ROUTES } from '@/lib/nav/routes'
 
 /** Where targets are edited, and where they are read. */
-const refresh = () => { revalidatePath('/settings'); revalidatePath(ROUTES.publishing) }
+const refresh = () => { revalidatePath('/admin/settings'); revalidatePath(ROUTES.publishing) }
 
 type Result = { ok: boolean; error?: string }
 

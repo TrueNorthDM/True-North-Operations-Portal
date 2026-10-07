@@ -302,7 +302,7 @@ export function syncDrafts(ctx: Ctx, info: { since: string; remaining: number | 
   return ctx.aud.admins().flatMap(a => draftFor(ctx, 'sync-incomplete', a, {
     title: "A sync didn't finish",
     body: `The Monday sync that started at ${started} stopped ${left}: ${info.reason}`,
-    href: '/settings/monday',
+    href: '/admin/settings#my-work',
     dedupeKey: info.since,
   }))
 }

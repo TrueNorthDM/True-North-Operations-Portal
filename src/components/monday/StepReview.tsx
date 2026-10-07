@@ -12,7 +12,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
-import { setStepSource } from '@/app/(app)/settings/monday/actions'
+import { setStepSource } from '@/app/(app)/admin/settings/monday/actions'
 import { chip } from '@/components/monday/tokens'
 import { isNotAStep, type StepUnderReview } from '@/lib/monday/worklist/steps-review'
 

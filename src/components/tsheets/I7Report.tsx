@@ -172,7 +172,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         <div className="flex items-center gap-3 rounded-[12px] border border-[#f0d69a] bg-hfa-soft px-4 py-3 text-sm text-[#8a6d1a]">
           <span className="text-base">&#x26A0;&#xFE0F;</span>
           <span><strong className="font-(family-name:--font-display) font-extrabold">Sample data</strong>, structure preview only. Add your TSheets API token in{' '}
-            <Link href="/settings" className="underline font-semibold hover:text-[#6d5612]">Settings</Link> to pull real hours.</span>
+            <Link href="/admin/settings" className="underline font-semibold hover:text-[#6d5612]">Settings</Link> to pull real hours.</span>
         </div>
       )}
 

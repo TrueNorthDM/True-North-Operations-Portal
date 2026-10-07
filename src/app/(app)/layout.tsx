@@ -48,7 +48,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // (lib/access/nav.ts), built here for this person: what each of them offers
   // is exactly what the page guards let through.
   const rail = buildRail({ can: access.can, canTool: access.canTool, level: directoryLevel(access.can) })
-  const canSettings = access.can('settings')
   // The bell's notifications, for the person this page renders as. One
   // indexed read; empty while migration 088 has not been run.
   const inbox = me ? await loadInbox(me.id) : {}
@@ -83,13 +82,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
 
         <div className="flex items-center gap-2">
-          <Launcher rail={rail} canSettings={canSettings} canPeople={access.can('directory')} />
+          <Launcher rail={rail} canPeople={access.can('directory')} />
           <NotificationButton kind="inbox" />
           <NotificationBell items={inbox} />
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
           <div className="md:hidden">
-            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} canSettings={canSettings} twoStepDaysLeft={twoStepDays} />
+            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} twoStepDaysLeft={twoStepDays} />
           </div>
         </div>
       </header>
@@ -98,7 +97,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1">
         <Sidebar
           rail={rail}
-          canSettings={canSettings}
           twoStepDaysLeft={twoStepDays}
           user={{ email: me?.email ?? user?.email ?? null, name: me?.full_name ?? null, avatarUrl: me?.avatar_url ?? null }}
         />

@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
 import {
   setBoardIncluded, setWorkspaceIncluded, setUserHidden, setBoardPriority, setWorkspacePriority,
-} from '@/app/(app)/settings/monday/actions'
+} from '@/app/(app)/admin/settings/monday/actions'
 import { StaleRuleToggle } from '@/components/monday/StaleRuleToggle'
 import type { WorklistSources, Priority } from '@/lib/monday/worklist/sources'
 

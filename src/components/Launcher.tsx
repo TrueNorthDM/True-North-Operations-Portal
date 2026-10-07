@@ -23,7 +23,7 @@ interface Row { key: string; label: string; href: string; icon: NavIconKey; soon
 interface Group { label: string; rows: Row[] }
 
 /** The rail, regrouped the way a person thinks of it: their own things first. */
-function groupsFrom(rail: ResolvedEntry[], canSettings: boolean): Group[] {
+function groupsFrom(rail: ResolvedEntry[]): Group[] {
   const yours: Row[] = []
   const out: Group[] = []
   const add = (label: string, rows: NavItem[]) => {
@@ -38,13 +38,11 @@ function groupsFrom(rail: ResolvedEntry[], canSettings: boolean): Group[] {
     if (e.key === 'tools') { for (const g of e.groups) add(g.label ?? 'Tools', g.items); continue }
     add(e.label, e.groups.flatMap(g => g.items))
   }
-  if (canSettings) add('Admin', [{ key: 'settings', label: 'Settings', href: '/settings', icon: 'settings' }])
   return [{ label: 'Yours', rows: yours }, ...out]
 }
 
-export function Launcher({ rail, canSettings = false, canPeople = false, startOpen = false }: {
+export function Launcher({ rail, canPeople = false, startOpen = false }: {
   rail: ResolvedEntry[]
-  canSettings?: boolean
   canPeople?: boolean
   /** Design check only: open without a click. */
   startOpen?: boolean
@@ -82,7 +80,7 @@ export function Launcher({ rail, canSettings = false, canPeople = false, startOp
 
   const q = query.trim().toLowerCase()
   const groups = useMemo(() => {
-    const all = groupsFrom(rail, canSettings)
+    const all = groupsFrom(rail)
     if (q && people?.length) {
       all.push({ label: 'Colleagues', rows: people.map(p => ({ key: `person-${p.id}`, label: p.name, href: `/directory?open=${p.id}`, icon: 'directory' as const })) })
     }
@@ -92,7 +90,7 @@ export function Launcher({ rail, canSettings = false, canPeople = false, startOp
       .map(g => ({ ...g, rows: g.rows.filter(r => !q || r.label.toLowerCase().includes(q)).slice(0, g.label === 'Colleagues' ? 8 : undefined) }))
       .filter(g => g.rows.length > 0)
       .map(g => ({ ...g, rows: g.rows.map(r => ({ ...r, i: i++ })) }))
-  }, [rail, canSettings, people, q])
+  }, [rail, people, q])
   const flat = groups.flatMap(g => g.rows)
   const at = Math.min(active, Math.max(0, flat.length - 1))
 

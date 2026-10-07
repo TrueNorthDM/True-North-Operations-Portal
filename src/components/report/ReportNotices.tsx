@@ -77,7 +77,7 @@ export function NothingInWindow({ periodDays }: { periodDays: number }) {
             that chunk, including the first, and " days" became "days". */}
         No delivered work in the last {`${periodDays} days`}. Check the period, or whether
         this team&rsquo;s boards are switched on in{' '}
-        <a href="/settings" className="text-tn-teal font-semibold hover:underline">Settings</a>.
+        <a href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Settings</a>.
       </p>
     </div>
   )

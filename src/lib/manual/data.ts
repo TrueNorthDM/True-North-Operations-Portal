@@ -34,7 +34,7 @@ export const MANUAL: ManualSection[] = [
         'The navy rail on the left, in three groups. Yours: Home, My Work (a panel of My Work, Report, My Team), My Hours, Chat and Emails (coming soon). The company: Tools and People. For admins: Admin and Clocky.',
         'Tools opens a panel in two groups. SEO Tools: Href Links, and seven tools coming soon (Schema App, Schema Scraper, Knowledge Graph, Page Auditor, Image Optimization, Analytics, Impact Globe). Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team, on the Directory\u2019s Teams tab.',
         'People opens the Directory, the Organization chart and, from level 2, Human Resources.',
-        'The avatar at the foot of the rail holds My profile, My Team, Settings (admins) and Sign out.',
+        'The avatar at the foot of the rail holds My profile, My Team and Sign out. Company settings live in the Admin panel, under Configuration.',
         'The top bar: search (Cmd+K finds any page, tool or person you can open), Messages (Chat and Email) and Notifications (Tools and System). Notifications are being set up; the drawers say what will land in them.',
       ] },
       { kind: 'p', text: 'Home shows the company org chart, your pinned favourites, and shortcuts to the pillars.' },
@@ -69,7 +69,7 @@ export const MANUAL: ManualSection[] = [
           ['Tools → SEO Tools → Href Links', 'hreflang tag management for the AAAF / HFA WordPress pages (/seo/href-links)', 'By team tool grant'],
           ['Tools → Operations → Client Reports', 'i7 and Project Hours & Others, one tab per client (/ops/client-reports)', 'By team tool grant, per client'],
           ['People → Organization', 'The company org chart (/organization)', 'Anyone signed in'],
-          ['Settings', 'Languages per project, Monday + TSheets API tokens, publishing targets', 'Admins edit; others read'],
+          ['Company settings', 'Languages per project, Monday + TSheets API tokens, publishing targets', 'Admins edit; others read'],
           ['Admin → People / Teams / Access', 'The directory + RBAC (who can access what)', 'Admins'],
           ['Admin → Tickets / Tests / Manual', 'Dev work tracker, QA checklist, this document', 'Admins'],
         ],
@@ -82,7 +82,7 @@ export const MANUAL: ManualSection[] = [
     body: [
       { kind: 'p', text: 'The Monday API is touched in just three files (monday/snapshot.ts, monday/client.ts, monday/handlers.ts), through two distinct flows, with one shared token.' },
       { kind: 'subhead', text: 'The token' },
-      { kind: 'p', text: 'It lives only in the database (app_settings.monday_api_token) and is set in Settings → Monday API token. It is never hardcoded anywhere; an optional MONDAY_TOKEN env var exists only as a local-dev fallback. The nightly cron, the live snapshot and the webhook all use this one token.' },
+      { kind: 'p', text: 'It lives only in the database (app_settings.monday_api_token) and is set in Company settings → Monday API token. It is never hardcoded anywhere; an optional MONDAY_TOKEN env var exists only as a local-dev fallback. The nightly cron, the live snapshot and the webhook all use this one token.' },
       { kind: 'subhead', text: 'Flow 1, Pull (nightly) → Dashboards' },
       { kind: 'steps', items: [
         'The server crontab runs /api/cron/ingest every 4 hours.',
@@ -134,7 +134,7 @@ export const MANUAL: ManualSection[] = [
     body: [
       { kind: 'p', text: 'The Budget Usage Report tool at /ops/client-reports/i7 replaces a manual process: the admin assistant used to export a TSheets CSV, build a pivot table in Excel, and copy hours cell-by-cell into the monthly Google Sheet. The portal does all of that automatically.' },
       { kind: 'subhead', text: 'The token' },
-      { kind: 'p', text: 'A static API access token lives in app_settings.tsheets_api_token and is set in Settings → QuickBooks Time API. Like the Monday token, it never leaves the server, the component only receives { exists, last4 }. To generate one: TSheets → company menu → Company Settings → Add-ons → API Access.' },
+      { kind: 'p', text: 'A static API access token lives in app_settings.tsheets_api_token and is set in Company settings → QuickBooks Time API. Like the Monday token, it never leaves the server, the component only receives { exists, last4 }. To generate one: TSheets → company menu → Company Settings → Add-ons → API Access.' },
       { kind: 'subhead', text: 'How it works' },
       { kind: 'steps', items: [
         'User opens /ops/client-reports/i7 (optionally with ?month=YYYY-MM; defaults to current month).',

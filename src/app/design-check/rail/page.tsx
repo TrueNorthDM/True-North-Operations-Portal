@@ -39,7 +39,6 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
   const can = (k: string) => surfaceAllowed(role, k, new Map())
   const canTool = (k: string) => role === 'admin' || GRANTS.has(k)
   const rail = buildRail({ can, canTool, level: directoryLevel(can) })
-  const canSettings = can('settings')
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -51,11 +50,11 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
           <span className="text-sm font-semibold text-slate-500 pb-0.5">Operations Portal</span>
         </span>
         <div className="flex items-center gap-2">
-          <Launcher rail={rail} canSettings={canSettings} canPeople={can('directory')} startOpen={open === 'launcher'} />
+          <Launcher rail={rail} canPeople={can('directory')} startOpen={open === 'launcher'} />
           <NotificationButton kind="inbox" startOpen={open === 'inbox'} />
           <NotificationBell startOpen={open === 'bell'} />
           <div className="md:hidden">
-            <UserMenu userEmail="arnaldo@leveluponline.org" userName="Arnaldo Oliveira" avatarUrl={null} startOpen={open === 'menu'} canSettings={canSettings} twoStepDaysLeft={twoStepDaysLeft} />
+            <UserMenu userEmail="arnaldo@leveluponline.org" userName="Arnaldo Oliveira" avatarUrl={null} startOpen={open === 'menu'} twoStepDaysLeft={twoStepDaysLeft} />
           </div>
         </div>
       </header>
@@ -63,7 +62,6 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
       <div className="flex flex-1">
         <Sidebar
           rail={rail}
-          canSettings={canSettings}
           menuOpen={open === 'menu'}
           twoStepDaysLeft={twoStepDaysLeft}
           startHub={hub ?? null}

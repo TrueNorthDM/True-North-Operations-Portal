@@ -84,7 +84,7 @@ export async function saveTrBudget(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -144,7 +144,7 @@ export async function saveMonthlyBudgets(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath(ROUTES.i7)
   return { ok: true }
 }
@@ -216,7 +216,7 @@ export async function saveProjectMonthHours(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath(ROUTES.i7)
   return { ok: true }
 }
@@ -279,7 +279,7 @@ export async function saveProjectBudget(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -363,7 +363,7 @@ export async function saveTrAssignment(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -401,7 +401,7 @@ export async function savePersonCostRate(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -440,7 +440,7 @@ export async function savePersonBeRate(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath('/directory')
   return { ok: true }
 }
@@ -480,7 +480,7 @@ export async function savePersonMonthlySalary(input: {
   })
 
   revalidatePath('/directory')
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -520,7 +520,7 @@ export async function savePersonProjects(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -569,7 +569,7 @@ export async function saveProjectRoster(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -617,6 +617,6 @@ export async function deactivateTrAssignment(input: {
     changed_by: user?.id,
   })
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }

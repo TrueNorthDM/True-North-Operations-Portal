@@ -174,6 +174,15 @@ export const RAIL: readonly RailEntry[] = [
         ],
       },
       {
+        // The company-wide settings (7 October 2026): they left the avatar menu,
+        // which is for each person's own things.
+        label: 'Configuration',
+        items: [
+          { key: 'company-settings', label: NAV_LABEL['/admin/settings'], href: '/admin/settings', icon: 'settings', surface: 'settings' },
+          { key: 'notification-rules', label: 'Notification rules', href: '/notifications?tab=rules', icon: 'bell', surface: 'admin' },
+        ],
+      },
+      {
         label: 'Portal',
         items: [
           { key: 'tickets', label: 'Tickets', href: '/admin/tickets', icon: 'tickets', surface: 'admin' },
@@ -316,6 +325,7 @@ export function onPath(pathname: string, prefix: string): boolean {
  * carry their own checks, e.g. /profile is always your own).
  */
 const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
+  { prefix: '/admin/settings', surface: 'settings' },
   { prefix: '/admin', surface: 'admin' },
   { prefix: '/clocky-hours', surface: 'clocky-hours' },
   { prefix: '/hours', surface: 'my-hours' },

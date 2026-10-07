@@ -52,7 +52,7 @@ const RAIL = [
   { icon: 'dir', name: 'People', desc: 'A panel: the Directory, the Organization chart, and Human Resources from level 2.', admin: false },
   { icon: 'admin', name: 'Admin', desc: 'A panel: Access levels, View Stage, Monday accounts, Automations, Tickets, Tests and this manual. Its title opens the Admin page.', admin: true },
   { icon: 'test', name: 'Clocky', desc: 'A panel: everyone’s hours, its rules and the import from QuickBooks Time, plus Reports and Approvals (coming soon).', admin: true },
-  { icon: 'settings', name: 'Settings', desc: 'In the avatar menu at the foot of the rail, not on the rail: sites, targets, clients, rates and API tokens.', admin: true },
+  { icon: 'settings', name: 'Company settings', desc: 'In the Admin panel, under Configuration: sites, targets, clients and budgets, My Work sources and API tokens. Notification rules for everyone sit beside it.', admin: true },
 ]
 
 const SRC: Record<string, { color: string; bg: string }> = {
@@ -72,7 +72,7 @@ const PAGES = [
   { icon: 'test', name: 'Tests', desc: 'A pre-launch checklist to verify the whole system end to end, walk each area, tick off what works, flag what doesn’t.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'dir', name: 'Directory', desc: 'People, teams and access in one place. Add or edit people, manage team membership, and grant each team access to projects and tools.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'book', name: 'System manual', desc: 'This page, how the portal works, who can see what, and how the data flows in.', src: 'Portal', srcKey: 'portal' as const },
-  { icon: 'settings', name: 'Settings', desc: 'Sites & languages, publishing targets, clients & budgets, people & rates, and API tokens. This is where connections are configured.', src: 'Config', srcKey: 'config' as const },
+  { icon: 'settings', name: 'Company settings', desc: 'Sites & languages, publishing targets, clients & budgets, My Work sources, and API tokens. This is where connections are configured. In Admin, Configuration.', src: 'Config', srcKey: 'config' as const },
 ]
 
 const FLOWS = [
@@ -157,7 +157,7 @@ export function SystemManual() {
           <section id="navigation" className="scroll-mt-6">
             <Eyebrow>Getting around</Eyebrow>
             <Heading>The left rail</Heading>
-            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon; My Hours and Clocky are in progress). Your avatar sits at the foot and holds My profile, My Team, Settings and Sign out. The top bar carries search (Cmd+K) and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts only ever appear on those two, never on the rail.</Lede>
+            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon; My Hours and Clocky are in progress). Your avatar sits at the foot and holds My profile, My Team and Sign out. The top bar carries search (Cmd+K) and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts only ever appear on those two, never on the rail.</Lede>
             <div className={`${card} overflow-hidden`}>
               {RAIL.map((r, i) => (
                 <div key={r.name} className={`flex items-center gap-3.5 px-[18px] py-3.5 ${i > 0 ? 'border-t border-slate-100' : ''} ${r.admin ? 'bg-subtle' : ''}`}>
@@ -249,7 +249,7 @@ export function SystemManual() {
           <section id="monday" className="scroll-mt-6">
             <Eyebrow>Data flow</Eyebrow>
             <Heading>How Monday feeds the portal</Heading>
-            <Lede>Monday.com is the system of record for work. The portal connects with an API token (set in <Link href="/settings" className="text-tn-teal font-semibold hover:underline">Settings → API tokens</Link>), pulls the boards it needs on a schedule, and shows them as clean, read-only views. A few actions write back to Monday.</Lede>
+            <Lede>Monday.com is the system of record for work. The portal connects with an API token (set in <Link href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Settings → API tokens</Link>), pulls the boards it needs on a schedule, and shows them as clean, read-only views. A few actions write back to Monday.</Lede>
             <div className={`${card} p-6 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3.5 items-center`}>
               <div className="rounded-xl border-[1.5px] p-4" style={{ borderColor: '#7c3aed33', background: '#7c3aed0d' }}>
                 <div className="flex items-center gap-2 mb-2.5"><span className="w-[9px] h-[9px] rounded-[3px]" style={{ background: '#7c3aed' }} /><span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Monday boards</span></div>
@@ -259,7 +259,7 @@ export function SystemManual() {
               <div className="rounded-xl border-[1.5px] border-tn-teal bg-tn-teal-soft p-4 text-center">
                 <span className="inline-flex w-[38px] h-[38px] items-center justify-center rounded-[10px] bg-tn-teal-soft text-tn-teal mb-2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg></span>
                 <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Scheduled sync</div>
-                <div className="text-[11.5px] text-muted mt-1 leading-snug">API token pulls fresh data; last sync shown in Settings</div>
+                <div className="text-[11.5px] text-muted mt-1 leading-snug">API token pulls fresh data; last sync shown in Company settings</div>
               </div>
               <div className="hidden md:flex flex-col items-center text-muted"><Arrow /></div>
               <div className="rounded-xl border-[1.5px] border-slate-200 bg-subtle p-4">
@@ -291,7 +291,7 @@ export function SystemManual() {
           <section id="sources" className="scroll-mt-6">
             <Eyebrow>Connections</Eyebrow>
             <Heading>Data sources</Heading>
-            <Lede>Three systems feed the portal. Credentials for each live in <Link href="/settings" className="text-tn-teal font-semibold hover:underline">Settings</Link>.</Lede>
+            <Lede>Three systems feed the portal. Credentials for each live in <Link href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Company settings</Link>.</Lede>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {[
                 { name: 'Monday.com', color: '#7c3aed', bg: '#7c3aed1a', d: 'System of record for publishing, projects and assignments. Connected by API token.', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 4v16M16 4v16" /></svg> },

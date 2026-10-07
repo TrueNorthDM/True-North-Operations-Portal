@@ -45,7 +45,7 @@ export async function linkTsheetsPersonToDirectory(input: {
   })
   if (error) return { ok: false, error: error.message }
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath('/admin/people')
   revalidatePath('/')
   return { ok: true }
@@ -73,7 +73,7 @@ export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: strin
 
   await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath(ROUTES.i7)
   return { ok: true }
 }

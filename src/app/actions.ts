@@ -154,7 +154,7 @@ export async function updateSiteLanguages(input: {
     flaggedPagesCount = count ?? pageIds.length
   }
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath('/')
   revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true, flaggedPagesCount }
@@ -205,7 +205,7 @@ export async function setLanguagePaused(input: {
     .eq('id', site.id)
   if (updErr) return { ok: false, error: updErr.message }
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath('/')
   revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true }
@@ -263,7 +263,7 @@ export async function saveMondayBoardId(input: {
     .update({ monday_board_id: trimmed === '' ? null : trimmed })
     .eq('code', input.siteCode)
   if (error) return { ok: false, error: error.message }
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   return { ok: true }
 }
 
@@ -309,7 +309,7 @@ export async function saveSiteWpUrls(input: {
     .eq('code', input.siteCode)
   if (error) return { ok: false, error: error.message }
 
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath(hrefLinksSite(input.siteCode))
   return { ok: true }
 }
@@ -348,7 +348,7 @@ async function saveAppSecret(
     .eq('singleton_id', 1)
 
   if (error) return { ok: false, error: error.message }
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   for (const path of alsoRevalidate) revalidatePath(path)
   return { ok: true }
 }
@@ -377,7 +377,7 @@ export async function regenerateMondayWebhookSecret(): Promise<{ ok: boolean; se
     .eq('singleton_id', 1)
 
   if (error) return { ok: false, error: error.message }
-  revalidatePath('/settings')
+  revalidatePath('/admin/settings')
   revalidatePath('/admin/automations')
   return { ok: true, secret }
 }

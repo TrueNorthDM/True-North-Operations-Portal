@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
 import { chip } from '@/components/monday/tokens'
-import { setBoardJobcode } from '@/app/(app)/settings/monday/actions'
+import { setBoardJobcode } from '@/app/(app)/admin/settings/monday/actions'
 
 export type BoardLink = {
   id: number

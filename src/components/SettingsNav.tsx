@@ -30,7 +30,7 @@ export function SettingsNav({
   const [active, setActive] = useState(sections[0]?.id)
   const [editing, setEditing] = useState(false)
 
-  // Deep-link support: /settings#people opens that section (e.g. from Directory).
+  // Deep-link support: /admin/settings#clients opens that section.
   // Done in an effect (not the initial state) to avoid a hydration mismatch.
   useEffect(() => {
     const h = window.location.hash.slice(1)

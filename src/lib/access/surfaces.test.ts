@@ -124,6 +124,9 @@ describe('catalogue integrity', () => {
 
   it('matches a route prefix on its own path and its children, not on a lookalike', () => {
     expect(surfaceForPath('/settings')).toBe('settings')
+    // Company settings moved under Admin (7 October 2026) but keep their own surface.
+    expect(surfaceForPath('/admin/settings')).toBe('settings')
+    expect(surfaceForPath('/admin/access-levels')).toBe('admin')
     expect(surfaceForPath('/settings/anything')).toBe('settings')
     expect(surfaceForPath('/settings-other')).toBeNull()
   })
