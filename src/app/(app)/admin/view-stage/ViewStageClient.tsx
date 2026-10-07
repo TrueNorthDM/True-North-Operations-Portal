@@ -12,13 +12,13 @@ import { Select } from '@/components/ui/Select'
 import type { ViewAsRole } from '@/lib/auth/view-as'
 import { PREVIEW_CAVEATS } from '@/lib/access/preview-fidelity'
 
-type Tier = ViewAsRole
-const TIERS: Tier[] = ['admin', 'admin_assistant', 'team_leader', 'user']
+type Tier = 'super_admin' | ViewAsRole
+const TIERS: Tier[] = ['super_admin', 'admin', 'team_leader', 'user']
 const LABEL: Record<Tier, string> = {
-  admin: 'Admin', admin_assistant: 'Admin Assistant', team_leader: 'Team Leader', user: 'User',
+  super_admin: 'Super Admin', admin: 'Admin', team_leader: 'Team Leader', user: 'User',
 }
-// Admin = your own live session (no token); the rest impersonate.
-const IMPERSONATE = (t: Tier) => t !== 'admin'
+// Super Admin = your own live session (no token); the rest impersonate.
+const IMPERSONATE = (t: Tier): t is ViewAsRole => t !== 'super_admin'
 
 const DV = { label: 'Desktop · 1440px', w: 1440, h: 900, base: 0.34 }
 
@@ -31,9 +31,10 @@ export default function ViewStageClient({ myName }: { myName: string }) {
 
   const load = useCallback((t: Tier, force = false) => {
     if (!IMPERSONATE(t)) return
+    const role = t
     setToks(prev => (!force && (prev[t]?.loading || prev[t]?.token) ? prev : { ...prev, [t]: { loading: true } }))
     startTransition(async () => {
-      const res = await tokenViewAs(t)
+      const res = await tokenViewAs(role)
       setToks(prev => ({ ...prev, [t]: { token: res.token, name: res.name, error: res.error, loading: false } }))
     })
   }, [])
@@ -185,7 +186,7 @@ export default function ViewStageClient({ myName }: { myName: string }) {
           <div className="flex items-start gap-6 p-8">
             {cols.map((t, i) => {
               const st = IMPERSONATE(t) ? toks[t] : undefined
-              const name = t === 'admin' ? `${myName} · you` : (st?.name ?? '-')
+              const name = t === 'super_admin' ? `${myName} · you` : (st?.name ?? '-')
               const src = IMPERSONATE(t) ? (st?.token ? `/?_vs=${encodeURIComponent(st.token)}` : null) : '/'
               return (
                 <div key={i} className="flex flex-col items-center gap-2" style={{ width: DV.w * DV.base }}>

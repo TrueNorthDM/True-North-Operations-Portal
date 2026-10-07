@@ -6,7 +6,7 @@
  * and back.
  */
 
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadAccountProfile } from '@/lib/monday/worklist/account'
 
@@ -14,7 +14,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  if (!(await isSecurityAdmin())) return new Response('Admins only.', { status: 403 })
+  if (!(await allowedTo('monday-accounts'))) return new Response('Admins only.', { status: 403 })
   const id = Number(new URL(request.url).searchParams.get('id') ?? '')
   if (!Number.isFinite(id)) return Response.json({ error: 'Pass ?id=<monday user id>' }, { status: 400 })
   try {

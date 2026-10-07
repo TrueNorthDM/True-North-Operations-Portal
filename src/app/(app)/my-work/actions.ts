@@ -19,8 +19,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { surfaceAllowed } from '@/lib/access/surfaces'
-import { canSetOrder, cleanLevels, cleanSavedOrder, priorityLevel, priorityRights } from '@/lib/monday/worklist/team-priority'
+import { loadRealAccess } from '@/lib/access/resolve'
+import { canSetOrder, cleanLevels, cleanSavedOrder, priorityRights } from '@/lib/monday/worklist/team-priority'
 import { loadMemberships, loadPriorityGrant } from '@/lib/monday/worklist/team-priority-data'
 import { missingColumn } from '@/lib/monday/worklist/missing-column'
 import { notifyTeamOrder } from '@/lib/notifications/run'
@@ -57,18 +57,14 @@ export async function saveTeamPriority(
   // Read with the privileged client: whether this person may change the order
   // should not depend on what their own session can read.
   const db = createAdminClient()
-  const [{ data: profile }, { data: pageRows }, memberships, grant] = await Promise.all([
-    db.from('profiles').select('role').eq('id', user.id).maybeSingle(),
-    db.from('access_level_pages').select('role_type, surface_key, allowed'),
+  // The signed-in person's own access (never a preview's): the access rule.
+  const [access, memberships, grant] = await Promise.all([
+    loadRealAccess(),
     loadMemberships(db, me.id),
     loadPriorityGrant(db, me.id),
   ])
 
-  const { matrixLevel, isAdmin } = priorityLevel(me.roleType, (profile as { role?: string } | null)?.role)
-  const configured = new Map(((pageRows ?? []) as { role_type: string; surface_key: string; allowed: boolean }[])
-    .map(r => [`${r.role_type}:${r.surface_key}`, r.allowed]))
-
-  const rights = priorityRights({ isAdmin, can: key => surfaceAllowed(matrixLevel, key, configured), grant })
+  const rights = priorityRights({ isAdmin: access.isSuperAdmin, can: access.can, grant })
   if (!canSetOrder(teamId, memberships, rights)) {
     return { ok: false, error: "You do not have access to change this team's order." }
   }

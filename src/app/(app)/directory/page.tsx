@@ -9,7 +9,7 @@ import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
-import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey } from '@/lib/directory/people-types'
+import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import type { TeamCard } from '@/components/admin/TeamsManager'
@@ -123,7 +123,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const members = tmData.map((m) => ({
     team_id: m.team_id,
     person_id: m.person_id,
-    position: m.position === 'founder' ? 'founder' : m.position === 'manager' ? 'manager' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    position: normalPosition(m.position),
     is_primary: m.is_primary === true,
   }))
   const grants = gData ?? []
@@ -460,7 +460,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
             name: nameById.get(m.person_id) ?? 'Unknown',
             title: str(people.find(p => p.id === m.person_id)?.title ?? null),
             avatarUrl: avatarById.get(m.person_id) ?? null,
-            positionLabel: TEAM_POSITION_LABEL[(m as { position?: string }).position ?? 'collaborator'] ?? 'Collaborator',
+            positionLabel: TEAM_POSITION_LABEL[(m as { position?: string }).position ?? 'member'] ?? 'Member',
           }))
           .sort((a, b) => a.name.localeCompare(b.name)),
         tools: level >= 2
@@ -475,7 +475,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     return (
       <div className="space-y-6">
         <Breadcrumb self="/directory" />
-        <RestrictedDirectory people={dirPeople} teams={dirTeams} showTeams={level >= 2} />
+        <RestrictedDirectory people={dirPeople} teams={dirTeams} showTeams={level >= 2 && access.can('d-teams')} />
       </div>
     )
   }
@@ -530,6 +530,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         ratesClients={budget.clients.map(c => ({ id: c.id, name: c.name }))}
         accessLog={accessLog}
         initialOpenId={openId}
+        allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['rates', 'd-rates'], ['access', 'd-log'], ['portal', 'd-portal']] as const)
+          .filter(([, key]) => access.can(key)).map(([tab]) => tab)}
       />
     </div>
   )

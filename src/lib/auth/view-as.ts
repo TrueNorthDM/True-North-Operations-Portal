@@ -13,8 +13,9 @@
 
 import { createHmac, timingSafeEqual } from 'crypto'
 
-export type ViewAsRole = 'admin' | 'admin_assistant' | 'team_leader' | 'user'
-const ROLES: ViewAsRole[] = ['admin', 'admin_assistant', 'team_leader', 'user']
+/** The levels a Super Admin can preview (their own is the portal without a token). Since 7 October 2026. */
+export type ViewAsRole = 'admin' | 'team_leader' | 'user'
+const ROLES: ViewAsRole[] = ['admin', 'team_leader', 'user']
 
 /** Query param on the iframe URL and the request header the middleware relays it to. */
 export const VS_PARAM = '_vs'

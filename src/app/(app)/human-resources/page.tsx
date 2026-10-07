@@ -1,11 +1,9 @@
 // Human Resources, for now, the anniversary badge gallery: every service
 // milestone (quarterly through the first year, then 1–20 years) with the people
-// who currently hold it. Privileged only. Clicking a person opens their card
+// who currently hold it. The access item Human Resources. Clicking a person opens their card
 // in place (no navigation).
 
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentTier } from '@/lib/auth/role'
 import { tenureSince, milestoneOf, formatTenureShort, yearColor } from '@/lib/tenure'
 import { loadDirectoryPeopleView } from '@/lib/directory/people-view'
 import { HrGallery, type HrHolder, type HrSection } from '@/components/hr/HrGallery'
@@ -15,8 +13,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function HumanResourcesPage() {
   await requireSurface('human-resources')
-
-  if (!(await getCurrentTier()).isPrivileged) redirect('/')
 
   const supabase = await createClient()
   const { people, teamOptions, availableAccounts } = await loadDirectoryPeopleView(supabase)

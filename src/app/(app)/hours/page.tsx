@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/server'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
 import { periodFor, type SubmissionState } from '@/lib/timeclock/periods'
 import { workingDays } from '@/lib/timeclock/absence'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { HoursClient } from './HoursClient'
 import type { TcEntryRow } from '@/lib/types/database.types'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -190,7 +190,7 @@ export default async function MyHoursPage({
     : { data: [] }
   const approvers = ((approverRows ?? []) as { id: string; full_name: string }[]).map(p => p.full_name)
 
-  const isAdmin = await isSecurityAdmin()
+  const isAdmin = await allowedTo('h-reopen')
 
   // ── Time off ────────────────────────────────────────────────────────────
   // RLS returns mine and anyone I sign for in one query, the same shape as the

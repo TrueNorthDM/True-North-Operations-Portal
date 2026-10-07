@@ -10,17 +10,18 @@
  * people who sign in every day are matched by email, so reading profile_id
  * alone would leave most of the company out.
  *
- * Admin is the ACCESS LEVEL (people.role_type), with the same floor as
- * getCurrentTier: an account whose security role is admin counts as one even
- * when the directory says otherwise. Tools follow loadAccess exactly: the
- * `tools` surface for the level, then the team grants (grantedTools).
+ * Admin means Super Admin or Admin. Tools, and everything else, follow the
+ * access rule exactly as the person's own pages do (lib/access/decide.ts):
+ * their level's ticks, the tool's team list, and their exceptions.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { surfaceAllowed } from '@/lib/access/surfaces'
-import { grantedTools, type Membership, type ToolGrant } from '@/lib/access/tool-grants'
+import type { Membership } from '@/lib/access/tool-grants'
 import { teamPositionLeads } from '@/lib/directory/people-types'
-import { asRoleType, type RoleType } from '@/lib/auth/tier'
+import type { RoleType } from '@/lib/auth/tier'
+import { allowedKeys } from '@/lib/access/decide'
+import { loadRules, loadSubjects } from '@/lib/access/store'
+import { zoneDate } from './schedule'
 import { reaches, type NotificationType } from './catalogue'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -57,27 +58,26 @@ export interface Audience {
 const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
 
 export async function loadAudience(db: Client): Promise<Audience> {
-  const [{ data: peopleRows }, { data: profileRows }, { data: memberRows }, { data: grantRows }, { data: pageRows }, { data: teamRows }] =
+  const [{ data: peopleRows }, { data: profileRows }, { data: memberRows }, { data: teamRows }, rules, subjects] =
     await Promise.all([
-      db.from('people').select('id, full_name, role_type, profile_id, status, email_true_north, email_goodnews, email_coe, email_personal'),
+      db.from('people').select('id, full_name, profile_id, status, email_true_north, email_goodnews, email_coe, email_personal'),
       db.from('profiles').select('id, email, role'),
       db.from('team_members').select('team_id, person_id, position'),
-      db.from('team_tool_grants').select('team_id, tool_key, audience'),
-      db.from('access_level_pages').select('role_type, surface_key, allowed'),
       db.from('teams').select('id, name'),
+      loadRules(db),
+      loadSubjects(db),
     ])
+  const subjectOf = new Map(subjects.map(s => [s.id, s]))
+  const today = zoneDate(new Date())
 
   type P = {
-    id: string; full_name: string; role_type: string | null; profile_id: string | null; status: string | null
+    id: string; full_name: string; profile_id: string | null; status: string | null
     email_true_north: string | null; email_goodnews: string | null; email_coe: string | null; email_personal: string | null
   }
   const profiles = (profileRows ?? []) as { id: string; email: string | null; role: string | null }[]
   const profileById = new Map(profiles.map(p => [p.id, p]))
   const profileByEmail = new Map(profiles.filter(p => p.email).map(p => [norm(p.email), p]))
 
-  const configured = new Map(((pageRows ?? []) as { role_type: string; surface_key: string; allowed: boolean }[])
-    .map(r => [`${r.role_type}:${r.surface_key}`, r.allowed]))
-  const grants = (grantRows ?? []) as ToolGrant[]
   const members = (memberRows ?? []) as (Membership & { person_id: string })[]
   const membershipsOf = new Map<string, Membership[]>()
   const teamMembers = new Map<string, string[]>()
@@ -95,13 +95,13 @@ export async function loadAudience(db: Client): Promise<Audience> {
         .find(Boolean)
     if (!profile) continue
 
-    let roleType = asRoleType(p.role_type)
-    if (profile.role === 'admin' && roleType !== 'admin' && roleType !== 'admin_assistant') roleType = 'admin'
-    const isAdmin = roleType === 'admin'
+    // The access rule decides, as for the person themselves (lib/access/decide.ts).
+    const subject = subjectOf.get(p.id)
+    if (!subject) continue
+    const roleType: RoleType = subject.level
+    const isAdmin = subject.level === 'super_admin' || subject.level === 'admin'
     const mine = membershipsOf.get(p.id) ?? []
-    const tools = isAdmin
-      ? null
-      : surfaceAllowed(roleType, 'tools', configured) ? grantedTools(mine, grants) : new Set<string>()
+    const open = allowedKeys(subject, rules, { today })
 
     people.push({
       personId: p.id,
@@ -110,8 +110,8 @@ export async function loadAudience(db: Client): Promise<Audience> {
       email: profile.email,
       roleType,
       isAdmin,
-      teams: new Map(mine.map(m => [m.team_id, teamPositionLeads(m.position ?? 'collaborator')])),
-      canTool: key => tools === null || tools.has(key),
+      teams: new Map(mine.map(m => [m.team_id, teamPositionLeads(m.position ?? 'member')])),
+      canTool: key => open.has(key),
     })
   }
 

@@ -5,7 +5,7 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { loadEntryFieldKeys } from './manual-fields'
 import { i7JobcodeIdsHere } from './report-source'
@@ -31,7 +31,7 @@ type Result = { ok: boolean; error?: string }
  * single insert, which Postgres either applies whole or not at all.
  */
 export async function addManualEntries(inputs: ManualEntryInput[]): Promise<Result> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Admins only.' }
+  if (!(await allowedTo('i7-manual')) && !(await allowedTo('ph-manual'))) return { ok: false, error: 'You cannot add manual hours.' }
   if (!inputs.length) return { ok: false, error: 'Add a line first.' }
 
   // Named by position, but only when there is more than one: "Line 1:" in front
@@ -102,7 +102,7 @@ export async function addManualEntries(inputs: ManualEntryInput[]): Promise<Resu
 }
 
 export async function deleteManualEntry(id: number): Promise<Result> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Admins only.' }
+  if (!(await allowedTo('i7-manual')) && !(await allowedTo('ph-manual'))) return { ok: false, error: 'You cannot add manual hours.' }
 
   const { error } = await createAdminClient()
     .from('tc_entries').delete().eq('id', id).eq('kind', 'manual').is('external_id', null)

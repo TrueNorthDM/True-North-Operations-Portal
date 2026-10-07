@@ -8,7 +8,7 @@
 // by accident.
 
 import { revalidatePath } from 'next/cache'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Rules } from './RulesForm'
 
@@ -22,7 +22,7 @@ const PERIODS = new Set(['monthly', 'semimonthly', 'biweekly', 'weekly'])
 const DIRECTIONS = new Set(['nearest', 'up', 'down'])
 
 export async function saveRules(input: Rules): Promise<Result> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only an admin can change the rules.' }
+  if (!(await allowedTo('ck-rules'))) return { ok: false, error: 'Only an admin can change the rules.' }
 
   // Each of these is also a CHECK in migration 057. Repeating them here is not
   // redundancy for its own sake: the database refuses with a constraint name,

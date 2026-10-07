@@ -3,8 +3,7 @@
 // redirected home. Card layout + animated icons match the handoff prototype.
 
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { requireSurface } from '@/lib/access/resolve'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
@@ -86,20 +85,20 @@ const BellIcon = (
 
 // Finished and in daily use.
 const ACTIVE = [
-  { href: '/admin/access-levels', title: 'Access levels', icon: AccessIcon, description: 'The four access levels, what each one can see, and who has it today.' },
-  { href: '/admin/view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level (admin, team leader, user) side by side.' },
-  { href: '/admin/settings', title: 'Company settings', icon: SettingsIcon, description: 'Sites and languages, publishing targets, clients and budgets, My Work sources, and the API tokens.' },
-  { href: '/notifications?tab=rules', title: 'Notification rules', icon: BellIcon, description: 'The default for every notification, and which choices people may change.' },
+  { href: '/admin/access-levels', key: 'access-levels', title: 'Access levels', icon: AccessIcon, description: 'Who can open what: the four levels, every page, tab and action, the teams for each tool, and the change log.' },
+  { href: '/admin/view-stage', key: 'view-stage', title: 'View Stage', icon: StageIcon, description: 'Preview the portal through each access level (Admin, Team Leader, User) side by side.' },
+  { href: '/admin/settings', key: 'settings', title: 'Company settings', icon: SettingsIcon, description: 'Sites and languages, publishing targets, clients and budgets, My Work sources, and the API tokens.' },
+  { href: '/notifications?tab=rules', key: 'notification-rules', title: 'Notification rules', icon: BellIcon, description: 'The default for every notification, and which choices people may change.' },
 ] as const
 
 // Usable, but still being built out. Grouped separately so the finished tools
 // above are not mistaken for work in progress.
 const IN_CONSTRUCTION = [
-  { href: '/admin/tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker, everything we need to resolve, so nothing gets lost.' },
-  { href: '/admin/tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
-  { href: '/admin/automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },
-  { href: '/admin/manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
-  { href: '/admin/monday-links', title: 'Monday accounts', icon: AutomationsIcon, description: 'Which Monday account is which person, so My Work can be filtered by team.' },
+  { href: '/admin/tickets', key: 'tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker, everything we need to resolve, so nothing gets lost.' },
+  { href: '/admin/tests', key: 'tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
+  { href: '/admin/automations', key: 'automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },
+  { href: '/admin/manual', key: 'manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
+  { href: '/admin/monday-links', key: 'monday-accounts', title: 'Monday accounts', icon: AutomationsIcon, description: 'Which Monday account is which person, so My Work can be filtered by team.' },
 ] as const
 
 type AdminCard = (typeof ACTIVE)[number] | (typeof IN_CONSTRUCTION)[number]
@@ -131,7 +130,9 @@ function CardGrid({ cards }: { cards: readonly AdminCard[] }) {
 }
 
 export default async function AdminPage() {
-  if (!(await isSecurityAdmin())) redirect('/')
+  const access = await requireSurface('admin')
+  // Each card follows its own tick (Access levels and View Stage: Super Admin only).
+  const mine = (cards: readonly AdminCard[]) => cards.filter(c => access.can(c.key))
 
   return (
     <div className="space-y-10">
@@ -144,18 +145,18 @@ export default async function AdminPage() {
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Active</h2>
-        <CardGrid cards={ACTIVE} />
+        <CardGrid cards={mine(ACTIVE)} />
       </section>
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">In construction</h2>
-        <CardGrid cards={IN_CONSTRUCTION} />
+        <CardGrid cards={mine(IN_CONSTRUCTION)} />
       </section>
 
       <p className="text-[13px] leading-relaxed text-muted">
-        Access model: each person has one <strong className="font-bold text-foreground">access level</strong>, which decides the
-        pages they reach, and the <strong className="font-bold text-foreground">teams</strong> they belong to decide which tools
-        appear inside them. Levels are set above; teams and their tools on the Directory.
+        Access model: each person has one <strong className="font-bold text-foreground">access level</strong> (Super Admin, Admin,
+        Team Leader or User), which decides every page, tab and action they reach; a tool also needs one of their
+        <strong className="font-bold text-foreground"> teams</strong> on its list. All of it lives on Access levels; teams and who leads them on the Directory.
       </p>
     </div>
   )

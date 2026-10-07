@@ -350,7 +350,7 @@ export function levelDrafts(ctx: Ctx, change: { personId: string; name: string; 
     out.push(...draftFor(ctx, 'level-changed', a, {
       title: 'An access level was changed',
       body: `${change.name} is now ${label(change.to)} (was ${label(change.from)}).`,
-      href: '/admin/access-levels',
+      href: a.roleType === 'super_admin' ? '/admin/access-levels?tab=people' : '/directory',
       dedupeKey: key,
     }))
   }
@@ -360,6 +360,21 @@ export function levelDrafts(ctx: Ctx, change: { personId: string; name: string; 
     href: '/',
     dedupeKey: key,
   }))
+  return out
+}
+
+/** S6: access rules changed (7 October 2026). Every Super Admin but the one who did it, with the reason. */
+export function accessChangeDrafts(ctx: Ctx, change: { changeId: number; summary: string; reason: string; actorPersonId: string | null }): Draft[] {
+  const out: Draft[] = []
+  for (const r of ctx.aud.withTool('access-levels')) {
+    if (r.personId === change.actorPersonId) continue
+    out.push(...draftFor(ctx, 'access-rules-changed', r, {
+      title: 'Access rules were changed',
+      body: `${sentence(change.summary)} Why: ${sentence(change.reason)}`,
+      href: '/admin/access-levels?tab=log',
+      dedupeKey: `change-${change.changeId}`,
+    }))
+  }
   return out
 }
 

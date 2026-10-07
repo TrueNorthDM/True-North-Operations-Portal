@@ -26,9 +26,9 @@ export interface PanelItem {
   label: string
   href: string
   icon: NavIconKey
-  /** Shown when this surface is granted. */
+  /** Shown when this access item is open to the person (lib/access/catalogue.ts). */
   surface?: string
-  /** Or when any of these tools is granted (a team grant, Directory → Teams). */
+  /** Or when any of these tools is open to them (level and team list, Access levels). */
   tools?: readonly string[]
   minLevel?: Level
   soon?: boolean
@@ -104,14 +104,13 @@ export const RAIL: readonly RailEntry[] = [
     label: NAV_LABEL['/hours'],
     icon: 'my-hours',
     hint: 'Your own time: what you logged, what it adds up to, and what was approved.',
-    surface: 'my-hours',
     readiness: 'building',
     groups: [{
       label: null,
       items: [
         { key: 'my-hours', label: 'Hours', href: '/hours', icon: 'my-hours', surface: 'my-hours' },
-        { key: 'my-hours-reports', label: 'Reports', href: '/hours/reports', icon: 'client-reports', surface: 'my-hours', soon: true },
-        { key: 'my-hours-approvals', label: 'Approvals and Invoices', href: '/hours/approvals', icon: 'tests', surface: 'my-hours', soon: true },
+        { key: 'my-hours-reports', label: 'Reports', href: '/hours/reports', icon: 'client-reports', surface: 'my-hours-reports', soon: true },
+        { key: 'my-hours-approvals', label: 'Approvals and Invoices', href: '/hours/approvals', icon: 'tests', surface: 'my-hours-approvals', soon: true },
       ],
     }],
   },
@@ -123,7 +122,7 @@ export const RAIL: readonly RailEntry[] = [
     key: 'tools',
     label: 'Tools',
     icon: 'tools',
-    hint: "Granted per team. Ask an admin to add one on the Directory's Teams tab.",
+    hint: 'Each tool is open to some levels and some teams. Ask a Super Admin to add one.',
     alsoMatches: ['/ops', '/seo'],
     groups: [
       { label: 'SEO Tools', items: toolRows('SEO Tools') },
@@ -136,16 +135,15 @@ export const RAIL: readonly RailEntry[] = [
     label: 'People',
     icon: 'people',
     hint: 'Everyone in the company. How much of each card opens depends on your level.',
-    surface: 'directory',
     alsoMatches: ['/my-team'],
     groups: [{
       label: null,
       items: [
         { key: 'directory', label: NAV_LABEL['/directory'], href: '/directory', icon: 'directory', surface: 'directory' },
-        { key: 'organization', label: NAV_LABEL['/organization'], href: ROUTES.organization, icon: 'organization', surface: 'home' },
-        { key: 'human-resources', label: NAV_LABEL['/human-resources'], href: '/human-resources', icon: 'human-resources', surface: 'human-resources', minLevel: 2 },
+        { key: 'organization', label: NAV_LABEL['/organization'], href: ROUTES.organization, icon: 'organization', surface: 'organization' },
+        { key: 'human-resources', label: NAV_LABEL['/human-resources'], href: '/human-resources', icon: 'human-resources', surface: 'human-resources' },
         // Everyone signed in, like Organization (7 October 2026).
-        { key: 'history', label: NAV_LABEL['/history'], href: ROUTES.history, icon: 'history', surface: 'home' },
+        { key: 'history', label: NAV_LABEL['/history'], href: ROUTES.history, icon: 'history', surface: 'history' },
       ],
     }],
   },
@@ -156,21 +154,20 @@ export const RAIL: readonly RailEntry[] = [
     label: NAV_LABEL['/admin'],
     icon: 'admin',
     hint: 'People, teams, and who can access what.',
-    surface: 'admin',
     landing: '/admin',
     groups: [
       {
         label: 'Access',
         items: [
-          { key: 'access-levels', label: 'Access levels', href: '/admin/access-levels', icon: 'admin', surface: 'admin' },
-          { key: 'view-stage', label: 'View Stage', href: '/admin/view-stage', icon: 'view-stage', surface: 'admin' },
+          { key: 'access-levels', label: 'Access levels', href: '/admin/access-levels', icon: 'admin', surface: 'access-levels' },
+          { key: 'view-stage', label: 'View Stage', href: '/admin/view-stage', icon: 'view-stage', surface: 'view-stage' },
         ],
       },
       {
         label: 'Integrations',
         items: [
-          { key: 'monday-accounts', label: 'Monday accounts', href: '/admin/monday-links', icon: 'monday-accounts', surface: 'admin' },
-          { key: 'automations', label: 'Automations', href: '/admin/automations', icon: 'automations', surface: 'admin' },
+          { key: 'monday-accounts', label: 'Monday accounts', href: '/admin/monday-links', icon: 'monday-accounts', surface: 'monday-accounts' },
+          { key: 'automations', label: 'Automations', href: '/admin/automations', icon: 'automations', surface: 'automations' },
         ],
       },
       {
@@ -179,15 +176,15 @@ export const RAIL: readonly RailEntry[] = [
         label: 'Configuration',
         items: [
           { key: 'company-settings', label: NAV_LABEL['/admin/settings'], href: '/admin/settings', icon: 'settings', surface: 'settings' },
-          { key: 'notification-rules', label: 'Notification rules', href: '/notifications?tab=rules', icon: 'bell', surface: 'admin' },
+          { key: 'notification-rules', label: 'Notification rules', href: '/notifications?tab=rules', icon: 'bell', surface: 'notification-rules' },
         ],
       },
       {
         label: 'Portal',
         items: [
-          { key: 'tickets', label: 'Tickets', href: '/admin/tickets', icon: 'tickets', surface: 'admin' },
-          { key: 'tests', label: 'Tests', href: '/admin/tests', icon: 'tests', surface: 'admin' },
-          { key: 'manual', label: 'System manual', href: '/admin/manual', icon: 'manual', surface: 'admin' },
+          { key: 'tickets', label: 'Tickets', href: '/admin/tickets', icon: 'tickets', surface: 'tickets' },
+          { key: 'tests', label: 'Tests', href: '/admin/tests', icon: 'tests', surface: 'tests' },
+          { key: 'manual', label: 'System manual', href: '/admin/manual', icon: 'manual', surface: 'manual' },
         ],
       },
     ],
@@ -198,15 +195,14 @@ export const RAIL: readonly RailEntry[] = [
     label: NAV_LABEL['/clocky-hours'],
     icon: 'clocky',
     hint: "The time module: everyone's hours, and the rules behind them.",
-    surface: 'clocky-hours',
     readiness: 'building',
     groups: [
       {
         label: null,
         items: [
           { key: 'clocky-hours', label: 'Hours', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
-          { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-hours', soon: true },
-          { key: 'clocky-approvals', label: 'Approvals and Invoices', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-hours', soon: true },
+          { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-reports', soon: true },
+          { key: 'clocky-approvals', label: 'Approvals and Invoices', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', soon: true },
         ],
       },
       {
@@ -214,8 +210,8 @@ export const RAIL: readonly RailEntry[] = [
         // Import open the same page, at their own section.
         label: 'The module',
         items: [
-          { key: 'clocky-rules', label: 'Rules', href: '/clocky-hours#rules', icon: 'settings', surface: 'clocky-hours' },
-          { key: 'clocky-import', label: 'Import', href: '/clocky-hours#import', icon: 'schema-scraper', surface: 'clocky-hours' },
+          { key: 'clocky-rules', label: 'Rules', href: '/clocky-hours#rules', icon: 'settings', surface: 'ck-rules' },
+          { key: 'clocky-import', label: 'Import', href: '/clocky-hours#import', icon: 'schema-scraper', surface: 'ck-import' },
         ],
       },
     ],
@@ -264,7 +260,7 @@ export function pathOf(href: string): string {
 
 function rowVisible(i: PanelItem, ctx: NavContext): boolean {
   if ((i.minLevel ?? 1) > ctx.level) return false
-  if (i.tools) return i.tools.some(t => ctx.canTool(t)) && ctx.can('tools')
+  if (i.tools) return i.tools.some(t => ctx.canTool(t))
   return !i.surface || ctx.can(i.surface)
 }
 
@@ -340,11 +336,11 @@ const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
   // parameter and the tab is ?tab=team.
   { prefix: '/report', surface: 'report' },
   // The Tools panel's pages. Each is also gated in the page itself by its own
-  // tool grant (Directory → Teams), which is what decides who sees it.
+  // tool (its level tick and its team list, on Access levels).
   { prefix: '/ops', surface: 'tools' },
   { prefix: '/seo', surface: 'tools' },
-  { prefix: '/organization', surface: 'home' },
-  { prefix: '/history', surface: 'home' },
+  { prefix: '/organization', surface: 'organization' },
+  { prefix: '/history', surface: 'history' },
   { prefix: '/chat', surface: 'chat' },
   { prefix: '/emails', surface: 'emails' },
 ]

@@ -34,6 +34,8 @@ export default async function ReportPrintPage(
   },
 ) {
   await requireSurface('report')
+  // The printable page is an export, like the CSV and the PDF.
+  await requireSurface('rp-export')
 
   const access = await loadAccess()
   const sp = await searchParams

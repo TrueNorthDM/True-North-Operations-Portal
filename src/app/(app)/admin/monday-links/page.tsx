@@ -4,8 +4,7 @@
 // four hundred assignments is the first thing on the screen and the one with
 // two is at the bottom where it belongs.
 
-import { redirect } from 'next/navigation'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLinkBoard } from '@/lib/monday/worklist/links'
 import { MondayLinksClient } from '@/components/monday/MondayLinksClient'
@@ -15,7 +14,7 @@ export const metadata = { title: 'Monday accounts' }
 export const dynamic = 'force-dynamic'
 
 export default async function MondayLinksPage() {
-  if (!(await isSecurityAdmin())) redirect('/')
+  await requireSurface('monday-accounts')
 
   const supabase = createAdminClient()
   const [board, { data: peopleRows }] = await Promise.all([

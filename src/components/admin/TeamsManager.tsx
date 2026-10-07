@@ -1,22 +1,22 @@
 'use client'
 
 /**
- * TeamsManager: the Teams tab. Admins create, rename and delete teams, set the
- * team lead, and add/remove members here. Each card lists members with the team
- * lead (then anyone typed Team Leader) at the top and users below alphabetically,
- * each showing their contact-type. The full explanation of what each contact
- * type can see/do lives on Admin → Access levels (this tab only links to it);
- * per-team tool access is set on each card.
+ * TeamsManager: the Teams tab. Create, rename and delete teams, and add or
+ * remove members, each a Lead or a Member of the team (7 October 2026). Being
+ * Lead of any team makes someone a Team Leader in the portal (unless they are
+ * an Admin or Super Admin), so the cards show each member's access level too.
+ * Which teams may use a tool is set on the tool itself, on Admin > Access
+ * levels; the cards no longer carry it.
  */
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition, setTeamTool, removeTeamTool } from '@/app/(app)/admin/teams/actions'
+import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition } from '@/app/(app)/admin/teams/actions'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, teamPositionPill, PILL_CLASS, type PersonView, type TeamKey } from '@/lib/directory/people-types'
-import { TOOLS, type ToolAudience } from '@/lib/access/tools'
+import { normalPosition, roleTypePill, teamPositionPill, PILL_CLASS, type PersonView, type TeamKey } from '@/lib/directory/people-types'
+import type { ToolAudience } from '@/lib/access/tools'
 import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/color-palette'
 import { Select } from '@/components/ui/Select'
 
@@ -75,7 +75,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
     <div>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-[18px]">
         <p className="text-[13.5px] text-muted leading-relaxed">
-          Create teams and add members. Each member has a <b className="text-foreground font-semibold">Team Position</b> here (Team Leader or Collaborator), separate from their <b className="text-foreground font-semibold">Contact type</b> (portal access). A person can be in several teams with a different position in each.
+          Each member is the team&apos;s <b className="text-foreground font-semibold">Lead</b> or a <b className="text-foreground font-semibold">Member</b>, and can be in several teams with a different position in each. Being Lead of any team makes someone a <b className="text-foreground font-semibold">Team Leader</b> in the portal (unless they are an Admin or Super Admin).
         </p>
         <button type="button" onClick={() => setDialog({ mode: 'new' })} disabled={pending}
           className="inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[15px] py-[9px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:opacity-50">
@@ -84,33 +84,18 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
         </button>
       </div>
 
-      {/* Short pointer, the full access reference lives on Admin → Access levels
-          so this tab can stay about teams. */}
-      <div className="rounded-[16px] border border-slate-200 bg-white p-5 mb-6 space-y-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-0.5">Team Position is not portal access</div>
-            <p className="text-[12.5px] text-muted leading-relaxed m-0">
-              The pills on the member cards below (Founder, Manager, Team&nbsp;Leader, Collaborator) say what someone does
-              <b className="text-foreground font-semibold"> inside this team</b>. What they can open in the portal is their
-              <b className="text-foreground font-semibold"> contact type</b>, set per person and explained in full on the Access levels page.
-            </p>
-          </div>
-          <Link
-            href="/admin/access-levels"
-            className="shrink-0 inline-flex items-center gap-2 rounded-full px-[15px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] border border-slate-200 text-foreground hover:border-tn-teal hover:text-tn-teal transition-colors"
-          >
-            Access levels
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
-          </Link>
-        </div>
-        <div className="pt-4 border-t border-slate-100">
-          <div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink mb-1.5">How tool access works</div>
-          <p className="text-[12.5px] text-muted leading-relaxed m-0">
-            On each team card below, set who can open each tool, <b className="text-foreground font-semibold">Off</b> (hidden), <b className="text-foreground font-semibold">Lead only</b> (just the team lead), or <b className="text-foreground font-semibold">Whole team</b>.{' '}
-            A tool is only reachable if the person’s <b className="text-foreground font-semibold">level</b> allows Tools <i>and</i> one of their teams grants it, so a tool left <b className="text-foreground font-semibold">Off</b> everywhere is hidden from everyone except admins.
-          </p>
-        </div>
+      {/* Tool access moved to the tools themselves (7 October 2026). */}
+      <div className="rounded-[14px] border border-[#f0d98a] bg-[#fbf1cf] px-5 py-3.5 mb-6 flex items-center justify-between gap-4 flex-wrap">
+        <p className="text-[13px] text-[#6b5000] leading-relaxed m-0">
+          <b className="text-tn-ink">Tool access moved.</b> Which teams may use each tool, the whole team or only its Leads, is now set on the tool itself, on Admin, Access levels.
+        </p>
+        <Link
+          href="/admin/access-levels"
+          className="shrink-0 inline-flex items-center gap-2 rounded-full px-[15px] py-2 font-(family-name:--font-display) font-extrabold text-[12px] border border-[#e4c766] bg-white text-tn-ink hover:border-tn-teal hover:text-tn-teal transition-colors"
+        >
+          Access levels
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+        </Link>
       </div>
 
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
@@ -172,20 +157,19 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
 
         <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mt-[18px] mb-2 shrink-0">Members · {team.memberCount}</div>
         {/* Only the member list scrolls, the card keeps a fixed height and the
-            tool-access footer stays pinned at the bottom. */}
+            add-member picker stays pinned at the bottom. */}
         <div className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
           {team.members.length === 0 && <span className="text-[12.5px] text-muted italic">No members yet.</span>}
           {team.members.map(m => {
             const posPill = teamPositionPill(m.position)
             const access = roleTypePill(m.roleType)
-            const isLeader = m.position === 'team_leader'
-            const isFounder = m.position === 'founder'
+            const isLeader = normalPosition(m.position) === 'lead'
             return (
               <div key={m.id} className="group/mem flex items-center gap-2.5 py-[5px]">
                 {/* The card's colour, not the member's: this face is on this team. */}
                 <Avatar name={m.name} avatarUrl={m.avatarUrl} size={28} color={team.color} />
                 <span className="text-[13.5px] text-foreground font-semibold truncate min-w-0">{m.name}</span>
-                {/* Right cluster: the ACCESS (contact type) shown discreetly only when
+                {/* Right cluster: the ACCESS LEVEL shown discreetly only when
                     it's elevated, then the TEAM POSITION prominently. On hover both
                     give way to the row actions (toggle position / remove). */}
                 <span className="ml-auto shrink-0 flex items-center gap-1.5 justify-end">
@@ -197,13 +181,10 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
                   )}
                   <span className={`group-hover/mem:hidden font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
                   <span className="hidden group-hover/mem:flex items-center gap-1">
-                    {/* Quick promote/demote between Team Leader and Collaborator.
-                        Founder is a deliberate role, set it in the person's card. */}
-                    {!isFounder && (
-                      <button type="button" title={isLeader ? 'Set as Collaborator' : 'Set as Team Leader'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'collaborator' : 'team_leader'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                      </button>
-                    )}
+                    {/* Quick switch between Lead and Member. */}
+                    <button type="button" title={isLeader ? 'Make Member' : 'Make Lead'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'member' : 'lead'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                    </button>
                     <button type="button" title="Remove from team" disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>
@@ -230,49 +211,6 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
           </div>
         )}
 
-        <div className="shrink-0 mt-[18px] pt-4 border-t border-slate-100">
-        <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mb-[3px]">Tool access</div>
-        <p className="text-[11px] text-muted leading-snug mb-2.5">Who on this team can open each tool. <b className="text-foreground font-semibold">Off</b> hides it.</p>
-        <div className="flex flex-col gap-1.5">
-          {TOOLS.map(tool => {
-            const current = team.tools.find(t => t.toolKey === tool.key)?.audience ?? null
-            return (
-              <div key={tool.key} className="flex items-center justify-between gap-2.5">
-                <span className="inline-flex items-center gap-1.5 min-w-0">
-                  <span className="text-[12.5px] font-semibold text-foreground truncate">{tool.label}</span>
-                  {tool.sensitive && (
-                    <span title="Exposes money / PII" aria-label="Sensitive" className="shrink-0 inline-flex text-amber-500">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                    </span>
-                  )}
-                </span>
-                <div className="inline-flex shrink-0 bg-subtle rounded-[9px] p-0.5" role="group" aria-label={`${tool.label} access`}>
-                  {(['off', 'lead', 'all'] as const).map(val => {
-                    const active = val === 'off' ? current === null : current === val
-                    const label = val === 'off' ? 'Off' : val === 'lead' ? 'Lead' : 'Team'
-                    const title = val === 'off' ? 'No access' : val === 'lead' ? 'Team lead only' : 'Whole team'
-                    return (
-                      <button
-                        key={val}
-                        type="button"
-                        disabled={pending}
-                        aria-pressed={active}
-                        title={title}
-                        onClick={() => run(() => (val === 'off' ? removeTeamTool(team.id, tool.key) : setTeamTool(team.id, tool.key, val)))}
-                        className={`font-(family-name:--font-display) font-extrabold text-[10.5px] rounded-[7px] px-[9px] py-1 transition-colors disabled:opacity-50 ${
-                          active ? 'bg-white text-tn-ink shadow-[0_1px_2px_rgba(1,35,88,.12)]' : 'text-muted hover:text-tn-ink'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        </div>
       </div>
     </div>
   )

@@ -243,7 +243,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
   // The hand-entry panel is a month's business, so over a range it lists the
   // last month in it: adding an hour means adding it to a month, and the newest
   // one in view is the one somebody is adding to.
-  const manual = access.isAdmin
+  const manual = access.can('i7-manual')
     ? { ...(await loadAllManualHours(createAdminClient(), range.to)), blurb: MANUAL_BLURB }
     : undefined
 
@@ -270,7 +270,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         stdRate={data?.stdRate ?? 0}
         trend={data?.trend ?? []}
         manual={manual}
-        canExport={access.can('report-export')}
+        canExport={access.can('i7-export')}
         canTeamUpdate={access.can('report-team-update')}
         restricted={restricted}
         teams={filterTeams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
@@ -279,7 +279,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
       <ClientFullHistory
         trend={data?.trend ?? []}
         currentMonth={currentYearMonth()}
-        canExport={access.can('report-export')}
+        canExport={access.can('i7-export')}
       />
     </>
   )

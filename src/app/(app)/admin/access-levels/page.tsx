@@ -1,139 +1,100 @@
-// Admin → Access levels: the reference for what each contact type
-// (people.role_type) can see and do, plus who currently holds each level, with
-// inline reassignment. Replaces the cramped legend that used to live on the
-// Directory's Teams tab.
-//
-// Admin-guarded server-side; the level picker calls setPersonRoleType, which
-// re-checks admin on the server.
+// Admin > Access levels (7 October 2026): who can open what, in one place.
+// Super Admin only. Five tabs: Permissions (every module, page, tool, tab and
+// action, ticked per level, with each tool's team list), People and levels,
+// Check a person, Exceptions, and the Change log. The rule behind every tick is
+// lib/access/decide.ts; the design is docs/access/01-design.md.
 
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { isSecurityAdmin } from '@/lib/auth/role'
-import { loadContactByPerson } from '@/lib/hr/contact'
-import { asRoleType } from '@/lib/auth/tier'
-import { AccessLevelsBoard, type AccessPerson } from '@/components/admin/AccessLevelsBoard'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { AccessLevels, type AccessPageData } from '@/components/access/AccessLevels'
+import { requireSurface } from '@/lib/access/resolve'
+import { getRealPerson } from '@/lib/auth/session'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { allowedKeys } from '@/lib/access/decide'
+import { loadRules, loadSubjects } from '@/lib/access/store'
+import { zoneDate } from '@/lib/notifications/schedule'
 import { loadPriorityGrants } from '@/lib/monday/worklist/team-priority-data'
 import type { Membership } from '@/lib/monday/worklist/team-priority'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Access levels' }
 
-export default async function AccessLevelsPage() {
-  if (!(await isSecurityAdmin())) redirect('/')
+type Tab = AccessPageData['initialTab']
+const TABS: readonly Tab[] = ['permissions', 'people', 'why', 'exceptions', 'log']
 
-  const supabase = await createClient()
-  const [{ data }, { data: profileRows }] = await Promise.all([
-    supabase
-      .from('people')
-      .select('id, full_name, title, avatar_url, role_type, profile_id, status, tsheets_only, email_true_north, email_goodnews, email_coe')
-      .eq('status', 'active')
-      .order('full_name'),
-    supabase.from('profiles').select('id, email, role'),
+export default async function AccessLevelsPage({ searchParams }: { searchParams: Promise<{ tab?: string; who?: string }> }) {
+  await requireSurface('access-levels')
+  const { tab, who } = await searchParams
+  const db = createAdminClient()
+  const today = zoneDate(new Date())
+
+  const [rules, subjects, me, { data: teamRows }, { data: memberRows }, { data: peopleRows }, { data: excRows }, { data: logRows }, grants] = await Promise.all([
+    loadRules(db),
+    loadSubjects(db),
+    getRealPerson(),
+    db.from('teams').select('id, name, color').order('name'),
+    db.from('team_members').select('team_id, person_id, position'),
+    db.from('people').select('id, full_name, avatar_url').or('status.is.null,status.eq.active'),
+    db.from('access_exceptions').select('id, person_id, item_key, effect, until, reason, created_by, created_at').is('ended_at', null).order('created_at', { ascending: false }),
+    db.from('access_changes').select('id, at, actor_id, kind, summary, reason, changes, impact, undoes, undone_by').order('at', { ascending: false }).limit(200),
+    loadPriorityGrants(db),
   ])
 
-  // The configured matrix. Absent rows fall back to the catalogue defaults,
-  // resolved in the board so a new surface needs no backfill.
-  const contacts = await loadContactByPerson()
-  const personalEmails = new Map([...contacts].map(([id, c]) => [id, c.emailPersonal]))
+  const nameOf = new Map(((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
+  const avatarOf = new Map(((peopleRows ?? []) as { id: string; avatar_url: string | null }[]).map(p => [p.id, p.avatar_url]))
+  // Names of whoever acted, active or not.
+  const actorIds = [...new Set([
+    ...((logRows ?? []) as { actor_id: string | null }[]).map(r => r.actor_id),
+    ...((excRows ?? []) as { created_by: string | null }[]).map(r => r.created_by),
+  ].filter((x): x is string => !!x && !nameOf.has(x)))]
+  if (actorIds.length) {
+    const { data } = await db.from('people').select('id, full_name').in('id', actorIds)
+    for (const p of (data ?? []) as { id: string; full_name: string }[]) nameOf.set(p.id, p.full_name)
+  }
 
-  const [{ data: surfaceRows }, { data: teamRows }, { data: memberRows }, grants] = await Promise.all([
-    supabase.from('access_level_pages').select('role_type, surface_key, allowed'),
-    supabase.from('teams').select('id, name').order('name'),
-    supabase.from('team_members').select('team_id, person_id, position'),
-    loadPriorityGrants(supabase),
-  ])
-  const configured: Record<string, boolean> = {}
-  for (const r of surfaceRows ?? []) configured[`${r.role_type}:${r.surface_key}`] = r.allowed
-
-  // Team priority on My Work: who leads what, for the section that says who can
-  // change a team's order and why.
-  const teams = (teamRows ?? []) as { id: string; name: string }[]
+  const teams = ((teamRows ?? []) as { id: string; name: string; color: string | null }[])
   const teamName = new Map(teams.map(t => [t.id, t.name]))
   const memberships: Record<string, Membership[]> = {}
   for (const m of (memberRows ?? []) as { team_id: string; person_id: string; position: string | null }[]) {
-    ;(memberships[m.person_id] ??= []).push({
-      teamId: m.team_id,
-      teamName: teamName.get(m.team_id) ?? 'Team',
-      // Which team is primary decides whose order a person follows, not who may
-      // change an order, so this page does not need it.
-      isPrimary: false,
-      position: m.position,
-    })
+    ;(memberships[m.person_id] ??= []).push({ teamId: m.team_id, teamName: teamName.get(m.team_id) ?? 'Team', isPrimary: false, position: m.position })
   }
 
-  // Whether someone has actually signed in. people.profile_id is only set when
-  // an admin links the account by hand, so most rows have it null even for
-  // people who log in daily; matching any of their addresses against profiles
-  // catches those too (same resolution the Directory's access log uses).
-  const roleByProfileId = new Map((profileRows ?? []).map(p => [p.id, p.role ?? null]))
-  const profileByEmail = new Map(
-    (profileRows ?? [])
-      .map(p => [(p.email ?? '').trim().toLowerCase(), p] as const)
-      .filter(([e]) => e),
-  )
-
-  // Only real portal contacts: TSheets-only rows exist to attribute hours and
-  // never sign in, so listing them here would just be noise.
-  const people: AccessPerson[] = (data ?? [])
-    .filter(p => !p.tsheets_only)
-    .map(p => {
-      // The personal mailbox is a privileged read now (migration 056) but is
-      // still part of the match: someone whose login IS their personal address
-      // would otherwise show as having no account at all.
-      const emails = [p.email_true_north, p.email_goodnews, p.email_coe, personalEmails.get(p.id)]
-        .map(e => (e ?? '').trim().toLowerCase())
-        .filter(Boolean)
-      // The account behind this person: the explicit link if it resolves, else
-      // a mailbox that matches a profile.
-      const linkedId = p.profile_id && roleByProfileId.has(p.profile_id) ? p.profile_id : null
-      const matched = linkedId ?? emails.map(e => profileByEmail.get(e)?.id).find(Boolean) ?? null
-
-      return {
-        id: p.id,
-        name: p.full_name,
-        title: p.title,
-        avatarUrl: p.avatar_url,
-        roleType: asRoleType(p.role_type),
-        hasAccount: Boolean(matched),
-        // The hard gate (profiles.role) as it stands right now. Surfaced so an
-        // account whose security role drifted from its level is visible instead
-        // of silently half-privileged, the exact failure this page had.
-        securityRole: matched ? (roleByProfileId.get(matched) ?? null) : null,
-      }
-    })
+  const data: AccessPageData = {
+    today,
+    meId: me?.id ?? null,
+    initialTab: TABS.includes(tab as Tab) ? (tab as Tab) : 'permissions',
+    initialWho: who ?? null,
+    rules: {
+      levels: [...rules.levels],
+      tools: [...rules.tools].map(([k, s]) => [k, { every: s.every, teams: [...s.teams] }]),
+    },
+    people: subjects.map(s => ({
+      id: s.id, name: s.name, avatarUrl: avatarOf.get(s.id) ?? null, level: s.level, given: s.given,
+      teams: [...s.teams], exceptions: [...(s.exceptions ?? [])],
+    })),
+    teams: teams.map(t => ({ id: t.id, name: t.name, color: t.color })),
+    exceptions: ((excRows ?? []) as { id: string; person_id: string; item_key: string; effect: 'grant' | 'deny'; until: string | null; reason: string; created_by: string | null; created_at: string }[])
+      .map(e => ({ id: e.id, personId: e.person_id, person: nameOf.get(e.person_id) ?? 'Someone', key: e.item_key, effect: e.effect, until: e.until, reason: e.reason, by: e.created_by ? nameOf.get(e.created_by) ?? null : null, at: e.created_at })),
+    log: ((logRows ?? []) as { id: number; at: string; actor_id: string | null; kind: string; summary: string; reason: string; changes: unknown; impact: unknown; undoes: number | null; undone_by: number | null }[])
+      .map(r => ({ id: r.id, at: r.at, actor: r.actor_id ? nameOf.get(r.actor_id) ?? 'Someone' : 'The portal', kind: r.kind, summary: r.summary, reason: r.reason, changes: r.changes, impact: r.impact, undoes: r.undoes, undoneBy: r.undone_by })),
+    priority: {
+      data: { grantsAvailable: grants.available, teams: teams.map(t => ({ id: t.id, name: t.name })), memberships, grants: grants.grants },
+      people: subjects.map(s => {
+        const open = allowedKeys(s, rules, { today })
+        return { id: s.id, name: s.name, avatarUrl: avatarOf.get(s.id) ?? null, level: s.level, isSuperAdmin: s.level === 'super_admin', own: open.has('priority-own'), all: open.has('priority-all') }
+      }),
+    },
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div>
         <Breadcrumb parents={['/admin']} now="Access levels" />
-        <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Access levels</h1>
-        <p className="mt-1.5 text-muted leading-relaxed">
-          The four access levels, what each one can reach, and who has it today.
-          People sign in by invitation: an admin invites them from the Directory&apos;s{' '}
-          <strong className="font-semibold text-tn-ink">Portal access</strong> tab, they sign in with their{' '}
-          <strong className="font-semibold text-tn-ink">@goodnewsadvocates.org</strong> address, and start as a{' '}
-          <strong className="font-semibold text-tn-ink">User</strong>. Set their level here afterwards.
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Access levels</h1>
+        <p className="mt-1.5 text-muted leading-relaxed m-0">
+          Who can open what, in one place. Four levels, one list of every module, page, tool, tab and action, and for tools, which teams may use them. Only Super Admins see this page.
         </p>
-        <div className="mt-3 flex items-center gap-2.5 flex-wrap">
-          <Link
-            href="/admin/view-stage"
-            className="inline-flex items-center gap-2 rounded-full px-[17px] py-2.5 font-(family-name:--font-display) font-extrabold text-[12.5px] border bg-tn-primary border-tn-primary text-white shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1" /><rect x="9.5" y="4" width="5" height="16" rx="1" /><rect x="16" y="4" width="5" height="16" rx="1" /></svg>
-            Preview each level
-          </Link>
-          <Link href="/directory" className="text-[12.5px] font-(family-name:--font-display) font-extrabold text-muted hover:text-tn-teal transition-colors">
-            Open the Directory →
-          </Link>
-        </div>
       </div>
-
-      <AccessLevelsBoard
-        people={people}
-        configured={configured}
-        priority={{ grantsAvailable: grants.available, teams, memberships, grants: grants.grants }}
-      />
+      <AccessLevels data={data} />
     </div>
   )
 }

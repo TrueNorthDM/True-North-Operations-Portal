@@ -2,14 +2,13 @@
 // server, its accounts and where the keys live. Two tabs (ManualHeader):
 // "The portal" (lib/manual/data.ts, SystemManual) and "How it runs" (HowItRuns).
 
-import { redirect } from 'next/navigation'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { requireSurface } from '@/lib/access/resolve'
 import { SystemManual } from '@/components/SystemManual'
 import { HowItRuns } from '@/components/manual/HowItRuns'
 import { ManualHeader, type ManualTab } from '@/components/manual/ManualHeader'
 
 export default async function ManualPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  if (!(await isSecurityAdmin())) redirect('/')
+  await requireSurface('manual')
   const { tab } = await searchParams
   const active: ManualTab = tab === 'runs' ? 'runs' : 'portal'
   return (

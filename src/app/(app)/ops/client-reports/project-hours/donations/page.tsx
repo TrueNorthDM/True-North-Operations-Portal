@@ -7,10 +7,9 @@
  * previous figure without leaving anything behind. This is that place.
  *
  * Gated tighter than the report it belongs to. The report's own grant decides
- * who may read the figures; this page also asks for the privileged tier,
- * because it is the screen for the person who maintains them and it names who
- * changed what. Admins and the Admin Assistant, which is the same pair that may
- * write them.
+ * who may read the figures; this page also asks for the action "Money in and
+ * donation records", because it is the screen for the person who maintains
+ * them and it names who changed what. The same action allows writing them.
  */
 
 import { redirect } from 'next/navigation'
@@ -30,7 +29,7 @@ export default async function DonationRecordsPage(
 ) {
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/')
-  if (!access.isPrivileged) redirect(ROUTES.projectHours)
+  if (!access.can('ph-money')) redirect(ROUTES.projectHours)
 
   const { year: raw } = await searchParams
   // Four digits or nothing: a junk parameter shows everything rather than an
@@ -78,7 +77,7 @@ export default async function DonationRecordsPage(
         years={ledger.years}
         year={year}
         logMissing={ledger.logMissing}
-        canEdit={access.isPrivileged}
+        canEdit={access.can('ph-money')}
       />
     </div>
   )

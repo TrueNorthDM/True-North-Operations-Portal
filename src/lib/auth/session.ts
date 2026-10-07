@@ -57,3 +57,12 @@ export const getCurrentPerson = cache(async function getCurrentPerson(): Promise
   const [supabase, user] = await Promise.all([createClient(), getSessionUser()])
   return loadCurrentPerson(supabase, user)
 })
+
+/**
+ * The directory person actually signed in, never a View Stage preview's: whose
+ * access a WRITE is decided by (access/resolve.ts, loadRealAccess).
+ */
+export const getRealPerson = cache(async function getRealPerson(): Promise<CurrentPerson | null> {
+  const [supabase, user] = await Promise.all([createClient(), getSessionUser()])
+  return loadCurrentPerson(supabase, user, { real: true })
+})

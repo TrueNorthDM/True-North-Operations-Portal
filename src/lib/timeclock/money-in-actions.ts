@@ -19,9 +19,8 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { loadAccess } from '@/lib/access/resolve'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
 import { TRACKED_PROJECTS } from './projects'
 import { parseMoney } from './money-in-data'
 import { currentActor, logDonationChange } from './donations-log'
@@ -36,13 +35,8 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
 const LABELS: string[] = TRACKED_PROJECTS.map(p => p.label)
 
 /**
- * Admin OR Admin Assistant.
- *
- * `isAdmin` would have been the obvious check and the wrong one: it is
- * `roleType === 'admin'` exactly, and the Admin Assistant is the person who
- * holds these figures. At the database she already counts as an admin, because
- * migration 038 set profiles.role for that tier, so this is the only gate that
- * would have shut her out.
+ * Whoever has the access item "Money in and donation records" (Client Report ·
+ * Project Hours & Others), decided by the access rule.
  */
 async function mayWrite(): Promise<boolean> {
   // Asked of the Auth server, not read from the token. loadAccess takes the
@@ -50,9 +44,8 @@ async function mayWrite(): Promise<boolean> {
   // trusts an unexpired token without asking whether its session was revoked.
   // Right for reading a page, wrong for writing money: of every server action in
   // the portal, this was the one that authorised through loadAccess alone.
-  const supabase = await createClient()
-  const [{ data: { user } }, access] = await Promise.all([supabase.auth.getUser(), loadAccess()])
-  return !!user && access.isPrivileged
+  // allowedTo asks the Auth server and refuses during a preview that lacks it.
+  return allowedTo('ph-money')
 }
 
 /**

@@ -1,35 +1,32 @@
 'use server'
 
-// View Stage, sign a read-only impersonation token for a tier, so a column can
-// render the portal AS that role. Only a real portal admin (profiles.role) may
-// sign; the token is bound to that admin and expires in 30 min. The token only
-// changes what the app RENDERS, writes always run under the real session.
+// View Stage: sign a read-only impersonation token for a level, so a column can
+// render the portal AS that level. Super Admins only; the token is bound to the
+// Super Admin who signed it and expires in 30 minutes. It only changes what the
+// app RENDERS; writes always run under the real session, and a preview can only
+// take powers away (access/resolve.ts, allowedTo).
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { signViewAs, type ViewAsRole } from '@/lib/auth/view-as'
+import { isSuperAdmin } from '@/lib/access/resolve'
+import { loadSubjects } from '@/lib/access/store'
+import { LEVEL_LABEL } from '@/lib/access/catalogue'
 
-const ROLES: ViewAsRole[] = ['admin', 'admin_assistant', 'team_leader', 'user']
+const ROLES: ViewAsRole[] = ['admin', 'team_leader', 'user']
 
 export async function tokenViewAs(role: ViewAsRole): Promise<{ token?: string; name?: string; error?: string }> {
-  if (!ROLES.includes(role)) return { error: 'Invalid role.' }
+  if (!ROLES.includes(role)) return { error: 'Invalid level.' }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not signed in.' }
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') return { error: 'Admins only.' }
+  if (!(await isSuperAdmin())) return { error: 'Super Admins only.' }
 
-  // Pick a real, active person of that tier, the identity the column shows.
-  const { data: people } = await supabase
-    .from('people')
-    .select('id, full_name, role_type, status')
-    .eq('role_type', role)
-    .eq('status', 'active')
-    .order('full_name')
-  const person = (people ?? [])[0]
-  if (!person) return { error: `No active "${role.replace('_', ' ')}" to view as.` }
+  // The first active person of that level, the identity the column shows (the
+  // same choice current-person.ts makes for every request of the preview).
+  const person = (await loadSubjects(createAdminClient())).find(p => p.level === role)
+  if (!person) return { error: `Nobody is a ${LEVEL_LABEL[role]} right now.` }
 
-  // The token names the LEVEL only; the person is resolved live per request,
-  // so `name` here is just the label for the column header.
   const token = signViewAs({ sadmin: user.id, role, exp: Date.now() + 30 * 60_000 })
-  return { token, name: person.full_name }
+  return { token, name: person.name }
 }

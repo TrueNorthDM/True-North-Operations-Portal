@@ -12,8 +12,7 @@
 // tells you it finished, not that it is right; this ends in their number beside
 // ours, month by month, for every month since 2017.
 
-import { redirect } from 'next/navigation'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ImportRunner } from './ImportRunner'
 import { RulesForm, type Rules } from './RulesForm'
@@ -51,7 +50,7 @@ function runState(run: { state: string; started_at: string | null }): string {
 }
 
 export default async function ClockyHoursPage() {
-  if (!(await isSecurityAdmin())) redirect('/')
+  await requireSurface('clocky-hours')
   const supabase = createAdminClient()
 
   const [settingsRes, reconRes, runRes, entriesRes, jobcodesRes] = await Promise.all([

@@ -9,10 +9,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 
 async function guard(): Promise<string | null> {
-  return (await isSecurityAdmin()) ? null : 'Admins only.'
+  return (await allowedTo('monday-accounts')) ? null : 'Admins only.'
 }
 
 /**

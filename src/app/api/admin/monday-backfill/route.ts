@@ -18,7 +18,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { internalOrigin } from '@/lib/auth/public-origin'
 import {
   backfillEvents, fetchItemLogs, handoffsFrom, type OpenAssignment,
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   // carry the cron secret instead of a session.
   const secret = process.env.CRON_SECRET
   const chained = secret && request.headers.get('authorization') === `Bearer ${secret}`
-  if (!chained && !(await isSecurityAdmin())) {
+  if (!chained && !(await allowedTo('cs-my-work'))) {
     return NextResponse.json({ error: 'Admins only.' }, { status: 403 })
   }
   if (hop >= LINKS) return NextResponse.json({ stopped: `Chain hit its limit of ${LINKS} hops.` })

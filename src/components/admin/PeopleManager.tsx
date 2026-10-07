@@ -34,7 +34,7 @@ type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 
 // Ordered to match the contact card (components/admin/RestrictedDirectory →
 // ProfileCard, the same layout as My profile), so scanning a row and reading a
 // card follow the same sequence:
-//   header      job title, team, contact type, status
+//   header      job title, team, access level, status
 //   Employment  type, schedule
 //   Reporting   reports to
 //   Dates       joined
@@ -46,7 +46,7 @@ type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 
 const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'job', label: 'Job title', fr: '1.2fr' },
   { id: 'team', label: 'Team', fr: '1fr' },
-  { id: 'role', label: 'Contact type', fr: '1.1fr' },
+  { id: 'role', label: 'Access level', fr: '1.1fr' },
   { id: 'status', label: 'Status', fr: '0.9fr' },
   { id: 'type', label: 'Type', fr: '0.9fr' },
   { id: 'time', label: 'Schedule', fr: '0.85fr' },
@@ -78,7 +78,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
   const filterColumns = useMemo<GridColumn<PersonView>[]>(() => [
     { id: 'name', label: 'Name', type: 'text', get: p => p.full_name },
     { id: 'team', label: 'Team', type: 'enum', get: p => p.teamName, options: teamOptions.map(t => ({ value: t.name, label: t.name })) },
-    { id: 'role', label: 'Contact type', type: 'enum', get: p => p.roleType, options: ROLE_TYPE_OPTIONS.map(v => ({ value: v, label: ROLE_TYPE_LABEL[v] })) },
+    { id: 'role', label: 'Access level', type: 'enum', get: p => p.roleType, options: ROLE_TYPE_OPTIONS.map(v => ({ value: v, label: ROLE_TYPE_LABEL[v] })) },
     { id: 'job', label: 'Job title', type: 'text', get: p => p.title },
     { id: 'reports', label: 'Reports to', type: 'text', get: p => p.managerName },
     { id: 'type', label: 'Type', type: 'enum', get: p => p.employmentType, options: [{ value: 'us', label: 'US Employee' }, { value: 'contractor', label: 'Contractor' }] },

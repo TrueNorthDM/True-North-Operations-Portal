@@ -17,7 +17,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { headers } from 'next/headers'
 import { NOTIFICATION_TYPES, TYPE_BY_KEY, cleanPref, cleanRule, tabOf, type Pref, type Rule } from '@/lib/notifications/catalogue'
@@ -67,7 +67,7 @@ export async function saveNotificationRule(key: string, rule: Rule): Promise<Res
   if (!clean) return { ok: false, error: 'That rule could not be read. Reload the page and try again.' }
   const me = await signedInPerson()
   if ('error' in me) return { ok: false, error: me.error }
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only an admin can change the rules for everyone.' }
+  if (!(await allowedTo('notification-rules'))) return { ok: false, error: 'Only an admin can change the rules for everyone.' }
 
   const { error } = await createAdminClient().from('notification_rules').upsert({
     ...ruleToRow(key, clean), updated_by: me.personId, updated_at: new Date().toISOString(),

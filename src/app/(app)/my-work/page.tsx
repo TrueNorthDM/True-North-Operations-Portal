@@ -10,7 +10,7 @@
 // search param so the page stays a server component and each tab is linkable.
 
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
-import { directoryLevel } from '@/lib/access/surfaces'
+import { myTeamLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
 import { loadMyTeam } from '@/lib/directory/my-team'
 import { TeamPeople } from '@/components/team/TeamPeople'
@@ -18,7 +18,7 @@ import { WorkList } from '@/components/monday/WorkList'
 import { TeamPriorityEditor } from '@/components/monday/TeamPriorityEditor'
 import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { loadWorklist } from '@/lib/monday/worklist/data'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { resolvePersonFilter } from '@/lib/monday/worklist/filters'
 import {
   canSetOrder, editorTeamFor, hasLevels, orderTeamFor, priorityRights, settableTeams, stepKey, type Membership, type TeamOrderView,
@@ -109,7 +109,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   const personId = resolvePersonFilter(sp, selfPersonId)
 
   const [admin, access, myTeams, myGrant, { data: teamRows }] = await Promise.all([
-    isSecurityAdmin(),
+    allowedTo('monday-accounts'),
     loadAccess(),
     selfPersonId ? loadMemberships(supabase, selfPersonId) : Promise.resolve([] as Membership[]),
     selfPersonId ? loadPriorityGrant(supabase, selfPersonId) : Promise.resolve(null),
@@ -121,7 +121,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   // Access levels use. Rendered from the level and person on screen, which are
   // the previewed ones under View Stage; saving checks the person really signed
   // in (my-work/actions.ts).
-  const rights = priorityRights({ isAdmin: access.isAdmin, can: access.can, grant: myGrant })
+  const rights = priorityRights({ isAdmin: access.isSuperAdmin, can: access.can, grant: myGrant })
   const settable = settableTeams(teams, myTeams, rights)
 
   if (sp.view === 'priority' && settable.length) {
@@ -248,7 +248,7 @@ async function MyTeamTab() {
   // Same rule the Directory follows: level 3 opens every teammate's card,
   // levels 1 and 2 only your own.
   const access = await loadAccess()
-  const level = directoryLevel(access.can)
+  const level = myTeamLevel(access.can)
   const { people, teams, profiles, selfId } = await loadMyTeam(supabase, user, level)
 
   // The Teams tab is what level 2 adds; below that the tab does not exist,

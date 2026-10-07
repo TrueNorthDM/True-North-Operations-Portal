@@ -14,14 +14,14 @@
  * Nothing is lost if the tab is closed a second later.
  */
 
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { internalOrigin } from '@/lib/auth/public-origin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  if (!(await isSecurityAdmin())) return new Response('Admins only.', { status: 403 })
+  if (!(await allowedTo('cs-my-work'))) return new Response('Admins only.', { status: 403 })
 
   const url = new URL(request.url)
   if (url.searchParams.get('run') !== 'yes') {

@@ -23,7 +23,7 @@ describe('the catalogue', () => {
     const by = (w: string) => NOTIFICATION_TYPES.filter(t => t.timings === w).map(t => t.key).sort()
     expect(by('both')).toEqual(['first-login', 'i7-budget', 'step-assigned', 'sync-incomplete', 'team-order-changed'])
     expect(by('daily')).toEqual(['monday-account-unlinked', 'publishing-behind', 'step-due-tomorrow', 'step-late', 'team-late-pile'])
-    expect(by('instant')).toEqual(['integration-failed', 'level-changed', 'step-released'])
+    expect(by('instant')).toEqual(['access-rules-changed', 'integration-failed', 'level-changed', 'step-released'])
   })
 
   it("starts every type on a timing it allows, with where following when", () => {

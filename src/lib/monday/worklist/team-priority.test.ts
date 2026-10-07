@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   stepKey, isStepKey, compareDefault, defaultOrder, teamRanking, pinsFor, moveTo, agreement, displacement,
   cleanSavedOrder, leads, orderTeamFor, canSetOrder, editorTeamFor, updatedWhen, MAX_STEPS,
-  priorityRights, orderRightFor, settableTeams, isGrantScope, priorityLevel, priorityReach,
+  priorityRights, orderRightFor, settableTeams, isGrantScope, priorityReach,
   hasLevels, trueNorthWorkspaces, workspaceRanking, boardRanking, levelOrder, baseOrder, cleanLevels,
   type OrderableStep, type Membership, type GrantScope,
 } from './team-priority'
@@ -396,27 +396,6 @@ describe('updatedWhen', () => {
   it('gives the date otherwise, and the year only when it is not this one', () => {
     expect(updatedWhen(new Date(2026, 8, 2, 9, 0).toISOString(), now)).toBe('Sep 2 at 9:00 AM')
     expect(updatedWhen(new Date(2025, 11, 30, 9, 0).toISOString(), now)).toBe('Dec 30, 2025 at 9:00 AM')
-  })
-})
-
-describe('priorityLevel', () => {
-  it('reads a security admin with no level set as Admin', () => {
-    expect(priorityLevel('user', 'admin')).toEqual({ matrixLevel: 'admin', isAdmin: true })
-  })
-
-  it('keeps Admin Assistant on its own row of the matrix, security admin or not', () => {
-    expect(priorityLevel('admin_assistant', 'admin')).toEqual({ matrixLevel: 'admin_assistant', isAdmin: false })
-  })
-
-  // A level that says Admin on an account whose security role is not admin is
-  // drift, and drift must not hand out admin powers.
-  it('gives a level that says Admin without the security role no more than a User', () => {
-    expect(priorityLevel('admin', 'viewer')).toEqual({ matrixLevel: 'user', isAdmin: false })
-    expect(priorityLevel('admin', null)).toEqual({ matrixLevel: 'user', isAdmin: false })
-  })
-
-  it('leaves everyone else on their own level', () => {
-    expect(priorityLevel('team_leader', 'viewer')).toEqual({ matrixLevel: 'team_leader', isAdmin: false })
   })
 })
 

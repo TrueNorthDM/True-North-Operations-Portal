@@ -21,7 +21,7 @@
  *   ?part=people              the Monday user list, to match against the portal directory
  */
 
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { BOARDS } from '@/lib/boards/config'
@@ -77,7 +77,7 @@ const PEOPLE_TYPES = new Set(['people', 'person', 'multiple-person'])
 const STATE_TYPES = new Set(['status', 'color', 'dropdown'])
 
 export async function GET(request: Request) {
-  if (!(await isSecurityAdmin())) return new Response('Admins only.', { status: 403 })
+  if (!(await allowedTo('cs-my-work'))) return new Response('Admins only.', { status: 403 })
 
   const token = await getMondayToken()
   if (!token) return new Response('No Monday token configured in Settings.', { status: 400 })

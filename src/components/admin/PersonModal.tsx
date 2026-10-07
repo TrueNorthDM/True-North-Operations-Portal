@@ -32,9 +32,9 @@ import {
   statusPill,
   ynPill,
   roleTypePill,
-  ROLE_TYPE_OPTIONS,
   ROLE_TYPE_LABEL,
   TEAM_POSITION_OPTIONS,
+  normalPosition,
   TEAM_POSITION_LABEL,
   teamPositionPill,
   LIFECYCLE_OPTIONS,
@@ -97,7 +97,7 @@ function toDraft(p: PersonView | null): Draft {
     }
   }
   return {
-    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teams: p.teams.map(t => ({ teamId: t.teamId, position: t.position, primary: t.primary })), manager_id: p.manager_id ?? '',
+    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teams: p.teams.map(t => ({ teamId: t.teamId, position: normalPosition(t.position), primary: t.primary })), manager_id: p.manager_id ?? '',
     alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
     employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
     weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
@@ -176,7 +176,6 @@ export function PersonModal({
       schedule: draft.schedule || null,
       weekly_hours: parseNum(draft.weeklyHours),
       internal_rate: parseNum(draft.internalRate),
-      role_type: draft.roleType,
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
@@ -407,7 +406,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
                 reset={() => resetTwoStep(p.id)}
               />
             ))}
-            {item('Contact type (access)', <PillBadge pill={roleTypePill(p.roleType)} />)}
+            {item('Access level', <PillBadge pill={roleTypePill(p.roleType)} />)}
             {item('True North', link(p.emails.trueNorth))}
             {item('GoodNews', link(p.emails.goodnews))}
             {item('COE', link(p.emails.coe))}
@@ -629,8 +628,11 @@ function EditBody({
         <div>
           <SectionTitle>Login &amp; access</SectionTitle>
           <div className="flex flex-col gap-3.5">
-            {field('Contact type (access)', (
-              <Select fullWidth value={draft.roleType} onChange={v => set('roleType', v)} options={ROLE_TYPE_OPTIONS.map(r => ({ value: r, label: ROLE_TYPE_LABEL[r] }))} className={fieldCls} ariaLabel="Contact type" />
+            {field('Access level', (
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <PillBadge pill={roleTypePill(draft.roleType)} />
+                <span className="text-[12px] text-muted leading-snug">{`Super Admin and Admin are given on Admin, Access levels. Team Leader comes from being Lead of a team; everyone else is a ${ROLE_TYPE_LABEL.user}.`}</span>
+              </div>
             ))}
             {emailInput('trueNorth', 'True North')}
             {emailInput('goodnews', 'GoodNews')}
@@ -678,7 +680,7 @@ function EditBody({
                 </button>
               </div>
             ))}
-            <button type="button" onClick={() => setDraft(d => ({ ...d, teams: [...d.teams, { teamId: '', position: 'collaborator', primary: d.teams.length === 0 }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
+            <button type="button" onClick={() => setDraft(d => ({ ...d, teams: [...d.teams, { teamId: '', position: 'member', primary: d.teams.length === 0 }] }))} className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3 py-2 transition-colors hover:border-tn-teal">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
               Add team
             </button>

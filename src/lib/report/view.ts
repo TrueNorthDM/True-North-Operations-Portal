@@ -6,7 +6,7 @@
 // parts (scope.ts, ReportTabs) stay testable on their own.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { directoryLevel, type DirectoryLevel } from '@/lib/access/surfaces'
+import type { DirectoryLevel } from '@/lib/access/surfaces'
 import { resolveTab, tabRights, type ReportTabKey, type TabRights } from '@/components/report/ReportTabs'
 import { reportFilter, resolvePeriod, resolveScope, scopesFor, type Period, type Scope } from './scope'
 import type { PeopleFilter } from '@/lib/monday/worklist/data'
@@ -41,11 +41,13 @@ export async function resolveReportView(
   meId: string | null,
   asked: { tab?: string | null; scope?: string | null; period?: string | null; team?: string | null; person?: string | null },
 ): Promise<ReportView> {
-  const level = directoryLevel(can)
+  // Everyone, with the Report action "See everyone"; otherwise themselves and,
+  // for a Lead, the teams they lead (access catalogue, 7 October 2026).
+  const level: DirectoryLevel = can('rp-everyone') ? 3 : 2
   const rights = tabRights(can)
 
-  // Leading a team is a team position (Founder, Manager or Team Leader), the
-  // same rule team priority and the org chart use. Only level 2 needs it.
+  // Leading a team is the Lead position, the same rule team priority and the
+  // org chart use. Only level 2 needs it.
   const led = level === 2 && meId
     ? (await loadMemberships(supabase, meId)).filter(leads).map(m => m.teamId)
     : []

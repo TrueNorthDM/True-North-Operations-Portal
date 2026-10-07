@@ -31,6 +31,7 @@ export function DirectoryTabs({
   ratesClients,
   accessLog,
   initialOpenId,
+  allowed,
 }: {
   people: PersonView[]
   teamOptions: TeamOption[]
@@ -40,6 +41,8 @@ export function DirectoryTabs({
   ratesClients: { id: number; name: string }[]
   accessLog: AccessLogEntry[]
   initialOpenId?: string | null
+  /** The tabs this person's access opens (People always); every tab when omitted. */
+  allowed?: readonly string[]
 }) {
   const [tab, setTab] = useState<Tab>('people')
   // Deep-link: open a person's card on mount when ?open=<id> was passed.
@@ -55,7 +58,7 @@ export function DirectoryTabs({
     ? Object.fromEntries(people.filter(p => p.accountId).map(p => [p.id, p.twoStepSince ? 'on' as const : 'none' as const]))
     : null
 
-  const tabs: { key: Tab; label: string; count?: number }[] = [
+  const allTabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'people', label: 'People', count: people.length },
     { key: 'emails', label: 'Emails', count: activePeople.length },
     { key: 'teams', label: 'Teams', count: teamCards.length },
@@ -63,6 +66,7 @@ export function DirectoryTabs({
     { key: 'access', label: 'Access log', count: accessLog.length },
     { key: 'portal', label: 'Portal access', count: activePeople.length },
   ]
+  const tabs = allTabs.filter(t => t.key === 'people' || !allowed || allowed.includes(t.key))
 
   return (
     <div className="space-y-6">
@@ -71,7 +75,7 @@ export function DirectoryTabs({
         <div className="max-w-[880px]">
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">Directory</h1>
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-            Add or edit people, manage team membership, and set each team’s tool access.
+            Add or edit people, and manage teams and who is in them.
           </p>
         </div>
 
@@ -155,7 +159,7 @@ export function DirectoryTabs({
             <div className="min-w-0">
               <div className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">People is the source of truth</div>
               <p className="text-[13px] text-foreground leading-relaxed mt-1">
-                Add or edit someone once here, their name, team, reporting line and contact type flow everywhere else. These all read from People:
+                Add or edit someone once here, their name, team, reporting line and teams flow everywhere else. These all read from People:
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2.5">
                 {['Emails', 'Teams', 'Access', 'Rates & Costs', 'Org chart', 'Profiles', 'i7 Budget Report', 'My Work'].map(x => (

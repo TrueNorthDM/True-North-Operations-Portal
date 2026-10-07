@@ -20,7 +20,7 @@
  *   ?part=year&year=2024      the real entry count for one year, plus a sample
  */
 
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadGrantPassData } from '@/lib/timeclock/grant-pass'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
@@ -36,7 +36,7 @@ const BASE = 'https://rest.tsheets.com/api/v1'
 type Json = Record<string, unknown>
 
 export async function GET(request: Request) {
-  if (!(await isSecurityAdmin())) {
+  if (!(await allowedTo('cs-clients'))) {
     return new Response('Admins only.', { status: 403 })
   }
 

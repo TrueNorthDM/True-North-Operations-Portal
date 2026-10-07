@@ -23,21 +23,22 @@ import { UserMenu } from '@/components/UserMenu'
 import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 import { HomeBody } from '../home-widgets/HomeBody'
 import { buildRail } from '@/lib/access/nav'
-import { directoryLevel, surfaceAllowed } from '@/lib/access/surfaces'
-import type { RoleType } from '@/lib/auth/tier'
+import { directoryLevel } from '@/lib/access/surfaces'
+import { canAs, rulesWithTools } from '@/lib/access/simulate'
+import type { AccessLevel } from '@/lib/access/catalogue'
 
 export const dynamic = 'force-dynamic'
 
-const ROLE: Record<string, RoleType> = { user: 'user', lead: 'team_leader', admin: 'admin' }
+const ROLE: Record<string, AccessLevel> = { user: 'user', lead: 'team_leader', admin: 'super_admin' }
 const GRANTS = new Set(['publishing', 'href-links', 'i7-budget'])
 
 export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string; hub?: string; page?: string; twoStep?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
   const { level = 'admin', open, hub, page, twoStep } = await searchParams
   const twoStepDaysLeft = twoStep ? Number(twoStep) : null
-  const role = ROLE[level] ?? 'admin'
-  const can = (k: string) => surfaceAllowed(role, k, new Map())
-  const canTool = (k: string) => role === 'admin' || GRANTS.has(k)
+  const role = ROLE[level] ?? 'super_admin'
+  const can = canAs(role, { teams: [['team', role === 'team_leader']], rules: rulesWithTools(GRANTS) })
+  const canTool = can
   const rail = buildRail({ can, canTool, level: directoryLevel(can) })
 
   return (
@@ -71,11 +72,11 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
           {twoStepDaysLeft !== null && <TwoStepBanner daysLeft={twoStepDaysLeft} />}
           <div className={page === 'home' ? 'px-6 py-8' : 'p-8'}>
           {page === 'home' ? <HomeBody /> : page === 'soon' ? (
-            <ComingSoon icon="schema-app" title="Schema App" description="Write and publish schema markup for the sites' pages." canSuggest={role === 'admin'} />
+            <ComingSoon icon="schema-app" title="Schema App" description="Write and publish schema markup for the sites' pages." canSuggest={role === 'super_admin'} />
           ) : <>
           <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.14em] text-tn-teal m-0">Design check · as built</p>
           <h1 className="font-(family-name:--font-display) font-extrabold text-[24px] text-tn-ink m-0">
-            {role === 'admin' ? 'The shell, as an admin' : role === 'team_leader' ? 'The shell, as a team leader' : 'The shell, as a user'}
+            {role === 'super_admin' ? 'The shell, as a Super Admin' : role === 'team_leader' ? 'The shell, as a team leader' : 'The shell, as a user'}
           </h1>
           </>}
           </div>

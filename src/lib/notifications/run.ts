@@ -9,6 +9,7 @@
  *   notifyHealth      after the integration checks (S1).
  *   notifyTeamOrder   after a team's order is saved (T4).
  *   notifyLevelChange after an access level is changed (S4).
+ *   notifyAccessChange after access rules change on Admin > Access levels (S6).
  *
  * Nothing here may break the thing it rides on: a sync, a save or a health
  * check that worked must not report failure because a notification did not
@@ -26,7 +27,7 @@ import { KEEP_READ_DAYS, KEEP_UNREAD_DAYS } from './catalogue'
 import { loadAudience } from './audience'
 import { deliver, type Draft, type DeliverResult, type Row } from './deliver'
 import {
-  firstLoginDrafts, i7Drafts, integrationDrafts, levelDrafts, makeCtx, publishingDrafts,
+  accessChangeDrafts, firstLoginDrafts, i7Drafts, integrationDrafts, levelDrafts, makeCtx, publishingDrafts,
   syncDrafts, teamOrderDrafts, unlinkedDrafts, workDrafts, type Ctx,
 } from './generators'
 import { loadRules } from './store'
@@ -117,6 +118,9 @@ export const notifyHealth = (db: Client, results: readonly HealthResult[]) =>
 
 export const notifyTeamOrder = (teamId: string, actorPersonId: string) =>
   simple('team-order', ctx => teamOrderDrafts(ctx, teamId, actorPersonId))
+
+export const notifyAccessChange = (change: { changeId: number; summary: string; reason: string; actorPersonId: string | null }) =>
+  simple('access', ctx => accessChangeDrafts(ctx, change))
 
 export const notifyLevelChange = (change: { personId: string; name: string; from: string; to: string; actorProfileId: string | null }) =>
   simple('level', ctx => levelDrafts(ctx, change))

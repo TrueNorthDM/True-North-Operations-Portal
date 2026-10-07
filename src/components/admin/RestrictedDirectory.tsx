@@ -381,7 +381,7 @@ export function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProf
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
             <Section title="Employment">
-              <Row label="Contact type"><Badge pill={roleTypePill(p.roleType)} /></Row>
+              <Row label="Access level"><Badge pill={roleTypePill(p.roleType)} /></Row>
               <Row label="Type"><Badge pill={typePill(p.employmentType)} /></Row>
               <Row label="Time"><Badge pill={timePill(p.schedule)} /></Row>
               <Row label="Weekly hours">{txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null)}</Row>

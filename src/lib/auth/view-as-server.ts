@@ -3,15 +3,15 @@
 // header; here we verify it, confirm the current (real) user is the admin who
 // signed it, and confirm they still hold that role.
 //
-// The last check is not decoration. isSecurityAdmin() reads the previewed role,
-// and it is what gates the /admin area, the API tokens, the webhook secret and
-// every budget, rate and salary write. A token lives 30 minutes, so without a
-// live check, demoting someone left them holding admin write powers until it
-// expired. Verified against the database on every request instead.
+// The last check is not decoration: a token lives 30 minutes, so without a live
+// check, someone who stopped being a Super Admin would keep previewing until it
+// expired. Verified against the database on every request instead. View Stage
+// is Super Admin only (access catalogue, 7 October 2026).
 
 import { cache } from 'react'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyViewAs, VS_HEADER, type ViewAsRole } from '@/lib/auth/view-as'
 
 export interface ViewAs {
@@ -29,9 +29,19 @@ export const getViewAs = cache(async function getViewAs(): Promise<ViewAs | null
   const { data: { user } } = await supabase.auth.getUser()
   if (!user || user.id !== payload.sadmin) return null // only the signing admin
 
-  // Queried directly rather than through isSecurityAdmin(), which calls this.
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') return null            // and only while they still are one
+  // Queried directly rather than through the access resolver, which calls this.
+  // The founding account is a Super Admin even before it is linked to a person.
+  if (user.email?.toLowerCase() !== 'arnaldo.oliveira@me.com') {
+    const { data: byLink } = await supabase.from('people').select('access_level').eq('profile_id', user.id).limit(1)
+    let level = (byLink?.[0] as { access_level: string | null } | undefined)?.access_level ?? null
+    if (!level && user.email) {
+      const em = user.email
+      const { data: byMail } = await createAdminClient().from('people').select('access_level')
+        .or(`email_personal.eq.${em},email_true_north.eq.${em},email_goodnews.eq.${em},email_coe.eq.${em}`).limit(1)
+      level = (byMail?.[0] as { access_level: string | null } | undefined)?.access_level ?? null
+    }
+    if (level !== 'super_admin') return null          // and only while they still are one
+  }
 
   return { role: payload.role }
 })

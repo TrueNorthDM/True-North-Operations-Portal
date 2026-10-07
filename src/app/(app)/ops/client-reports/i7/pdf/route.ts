@@ -49,9 +49,10 @@ export async function GET(request: Request) {
 
   if (type === 'history') {
     const access = await requireSurface('tools')
-    if (!access.canTool('grant-pass-report')) return new Response('Not allowed.', { status: 403 })
+    if (!access.canTool('grant-pass-report') || !access.can('ph-export')) return new Response('Not allowed.', { status: 403 })
   } else {
-    const denied = await requirePrivileged()
+    // Each report's own Export tick (access catalogue, 7 October 2026).
+    const denied = await requirePrivileged(report === 'projects' ? 'ph-export' : 'i7-export')
     if (denied) return denied
   }
   const printPath = report === 'projects'

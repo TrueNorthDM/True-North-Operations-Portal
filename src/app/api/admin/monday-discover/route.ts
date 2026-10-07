@@ -12,7 +12,7 @@
  * or switched off is left exactly as they left it.
  */
 
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
@@ -22,7 +22,7 @@ export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  if (!(await isSecurityAdmin())) return new Response('Admins only.', { status: 403 })
+  if (!(await allowedTo('cs-my-work'))) return new Response('Admins only.', { status: 403 })
 
   const url = new URL(request.url)
   if (url.searchParams.get('run') !== 'yes') {

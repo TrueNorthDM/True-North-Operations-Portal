@@ -39,6 +39,8 @@ const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 export async function GET(request: Request) {
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/')
+  // An export: the same tick as the Export button (it was missing until 7 October 2026).
+  if (!access.can('ph-export')) redirect('/')
 
   const q = new URL(request.url).searchParams
   const legacy = q.get('month') ?? undefined

@@ -1,4 +1,4 @@
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 
 /**
  * requireAdmin: shared guard for the i7 settings server actions.
@@ -10,6 +10,6 @@ import { isSecurityAdmin } from '@/lib/auth/role'
  * Plain module (not "use server") so both settings-actions.ts and
  * sync-actions.ts can import it without exposing it as its own server action.
  */
-export async function requireAdmin(): Promise<string | null> {
-  return (await isSecurityAdmin()) ? null : 'You must be an admin to run this.'
+export async function requireAdmin(key = 'cs-clients'): Promise<string | null> {
+  return (await allowedTo(key)) ? null : 'You are not allowed to change this.'
 }

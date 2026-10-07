@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { requireSurface } from '@/lib/access/resolve'
 import ViewStageClient from './ViewStageClient'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export default async function ViewStagePage() {
   const user = await getSessionUser()
   if (!user) redirect('/login')
-  if (!(await isSecurityAdmin())) redirect('/')
+  await requireSurface('view-stage')
   const me = await getCurrentPerson()
   return <ViewStageClient myName={me?.full_name ?? user.email ?? 'Admin'} />
 }

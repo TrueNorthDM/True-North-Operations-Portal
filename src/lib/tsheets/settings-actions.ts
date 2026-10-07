@@ -151,7 +151,7 @@ export async function saveMonthlyBudgets(input: {
 
 // ─── Per-month report narrative (shown on the report + in the PDF) ───────────
 export async function saveReportNote(input: { month: string; note: string }): Promise<{ ok: boolean; error?: string }> {
-  const notAdmin = await requireAdmin()
+  const notAdmin = await requireAdmin('i7-note')
   if (notAdmin) return { ok: false, error: notAdmin }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -374,7 +374,7 @@ export async function savePersonCostRate(input: {
   costRate: number
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
-  const notAdmin = await requireAdmin()
+  const notAdmin = await requireAdmin('d-rates')
   if (notAdmin) return { ok: false, error: notAdmin }
 
   const supabase = await createClient()
@@ -413,7 +413,7 @@ export async function savePersonBeRate(input: {
   beRate: number
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
-  const notAdmin = await requireAdmin()
+  const notAdmin = await requireAdmin('d-rates')
   if (notAdmin) return { ok: false, error: notAdmin }
 
   const supabase = await createClient()
@@ -453,7 +453,7 @@ export async function savePersonMonthlySalary(input: {
   monthlySalary: number
   justification: string
 }): Promise<{ ok: boolean; error?: string }> {
-  const notAdmin = await requireAdmin()
+  const notAdmin = await requireAdmin('d-rates')
   if (notAdmin) return { ok: false, error: notAdmin }
 
   const supabase = await createClient()

@@ -41,7 +41,7 @@ export default async function SettingsPage() {
   ])
 
   const leads = ((memberships ?? []) as { position: string | null }[]).some(m => teamPositionLeads(m.position ?? 'collaborator'))
-  const mine = NOTIFICATION_TYPES.filter(t => !t.available || reaches(t, { isAdmin: access.isAdmin, leads, canTool: access.canTool })).map(t => t.key)
+  const mine = NOTIFICATION_TYPES.filter(t => !t.available || reaches(t, { isAdmin: access.isAdmin, leads, canTool: access.can })).map(t => t.key)
   const rail = buildRail({ can: access.can, canTool: access.canTool, level: directoryLevel(access.can) })
   const twoStepDays = !twoStep.hasFactor && twoStep.deadline ? twoStepDaysLeft(twoStep.deadline, new Date()) : null
   const blocked = viewAs ? 'View Stage is only a preview. Close it to change settings.' : !me ? 'Your login is not linked to anyone in the Directory.' : undefined
@@ -53,7 +53,7 @@ export default async function SettingsPage() {
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Settings</h1>
         <p className="mt-1.5 text-muted leading-relaxed m-0">
           How the portal works for you. Your choices follow you to any computer or phone.
-          {access.isAdmin && ' Company settings live in Admin, Configuration.'}
+          {access.can('settings') && ' Company settings live in Admin, Configuration.'}
         </p>
       </div>
       <PersonalSettings

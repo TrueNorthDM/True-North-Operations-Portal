@@ -5,7 +5,7 @@
 // revalidate the affected routes so the UI reflects the new DB state.
 
 import { createClient } from '@/lib/supabase/server'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateWebhookSecret } from '@/lib/monday/webhook-secret'
 import { revalidatePath } from 'next/cache'
@@ -98,7 +98,7 @@ export async function updateSiteLanguages(input: {
   siteCode: SiteCode
   newLanguages: string[]
 }): Promise<{ ok: boolean; error?: string; flaggedPagesCount?: number }> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
 
@@ -172,7 +172,7 @@ export async function setLanguagePaused(input: {
   language: string
   paused: boolean
 }): Promise<{ ok: boolean; error?: string }> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
 
@@ -250,7 +250,7 @@ export async function saveMondayBoardId(input: {
   siteCode: SiteCode
   boardId: string
 }): Promise<{ ok: boolean; error?: string }> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
   const trimmed = input.boardId.trim()
@@ -277,7 +277,7 @@ export async function saveSiteWpUrls(input: {
   devUrl: string
   liveUrl: string
 }): Promise<{ ok: boolean; error?: string }> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
 
@@ -332,7 +332,7 @@ async function saveAppSecret(
   raw: string,
   alsoRevalidate: string[] = [],
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change this.' }
+  if (!(await allowedTo('cs-apis'))) return { ok: false, error: 'Only admins can change this.' }
 
   const supabase = await createClient()
   const trimmed = raw.trim()
@@ -367,7 +367,7 @@ export async function saveMondayApiToken(input: { value: string }) {
  * defeat the point.
  */
 export async function regenerateMondayWebhookSecret(): Promise<{ ok: boolean; secret?: string; error?: string }> {
-  if (!(await isSecurityAdmin())) return { ok: false, error: 'Only admins can change this.' }
+  if (!(await allowedTo('cs-apis'))) return { ok: false, error: 'Only admins can change this.' }
 
   const secret = generateWebhookSecret()
   const supabase = await createClient()

@@ -8,7 +8,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { loadMyTeam } from '@/lib/directory/my-team'
 import { loadAccess } from '@/lib/access/resolve'
-import { directoryLevel } from '@/lib/access/surfaces'
+import { myTeamLevel } from '@/lib/access/surfaces'
 import { RestrictedDirectory } from '@/components/admin/RestrictedDirectory'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getSessionUser } from '@/lib/auth/session'
@@ -21,7 +21,7 @@ export default async function MyTeamPage() {
   // Same rule the Directory follows: level 3 opens every teammate's card,
   // levels 1 and 2 only your own.
   const access = await loadAccess()
-  const { people, profiles, selfId } = await loadMyTeam(supabase, user, directoryLevel(access.can))
+  const { people, profiles, selfId } = await loadMyTeam(supabase, user, myTeamLevel(access.can))
 
   return (
     <div className="space-y-6">

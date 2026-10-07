@@ -6,27 +6,41 @@
  * people given it by name.
  *
  * Decided on 16 September 2026: the right comes from three places, and this
- * section is where an admin can see all three at once.
- *   1. Admins, every team, always.
- *   2. A level, through the two Team priority rows of the matrix above.
+ * section is where a Super Admin can see all three at once.
+ *   1. Super Admins, every team, always.
+ *   2. A level, through the two My Work actions "Set the priority order of
+ *      the teams they lead" and "of every team" (Permissions tab).
  *   3. A person, by name, from the list here: the teams they are on, or every
  *      team.
  *
  * "Who can today" is worked out with the same function My Work and its save
- * action use (priorityRights), from what is SAVED: a draft in the matrix above
- * changes nothing here until it is saved, and says so.
+ * action use (priorityRights), from the SAVED rules: the server hands in each
+ * person's answers to the two actions, decided by the access rule.
  */
 
 import { useMemo, useState, useTransition } from 'react'
 import { Select } from '@/components/ui/Select'
 import { initialsOf, PILL_CLASS, roleTypePill, TEAM_POSITION_LABEL } from '@/lib/directory/people-types'
-import { surfaceAllowed } from '@/lib/access/surfaces'
+import { PRIORITY_ALL, PRIORITY_OWN } from '@/lib/access/surfaces'
 import {
-  GRANT_SCOPES, priorityLevel, priorityReach, priorityRights, type GrantScope, type Membership, type PriorityReach,
+  GRANT_SCOPES, priorityReach, priorityRights, type GrantScope, type Membership, type PriorityReach,
 } from '@/lib/monday/worklist/team-priority'
 import type { PriorityGrant } from '@/lib/monday/worklist/team-priority-data'
-import type { AccessPerson } from '@/components/admin/AccessLevelsBoard'
 import { setPriorityGrant } from '@/app/(app)/admin/access-levels/actions'
+
+/** A person as this section needs them, with the access rule's answers already in. */
+export interface PriorityPerson {
+  id: string
+  name: string
+  avatarUrl: string | null
+  /** Their level (super_admin, admin, team_leader, user), for the pill. */
+  level: string
+  isSuperAdmin: boolean
+  /** The two My Work actions, as the access rule answers them for this person. */
+  own: boolean
+  all: boolean
+}
+type AccessPerson = PriorityPerson
 
 export interface PriorityAccessData {
   /** False until migration 085 is run: nobody can be added by name yet. */
@@ -63,7 +77,7 @@ function Avatar({ person }: { person: AccessPerson }) {
 
 /** Why a person reaches what they reach, in words. */
 function reason(reach: PriorityReach, levelLabel: string): string {
-  if (reach.every === 'admin') return 'Admin'
+  if (reach.every === 'admin') return 'Super Admin'
   if (reach.every === 'level') return `${levelLabel} level: every team`
   if (reach.every === 'name') return 'Added by name: every team'
   const led = reach.teams.filter(t => t.why === 'leads')
@@ -76,14 +90,12 @@ function reason(reach: PriorityReach, levelLabel: string): string {
 }
 
 export function TeamPriorityAccess({
-  people, configured, data, editingMatrix, onChanged,
+  people, data, editingMatrix = false, onChanged,
 }: {
   people: AccessPerson[]
-  /** The saved matrix, keyed "roleType:surfaceKey". */
-  configured: Record<string, boolean>
   data: PriorityAccessData
-  /** The matrix above has unsaved edits open. */
-  editingMatrix: boolean
+  /** The permissions have unsaved edits open. */
+  editingMatrix?: boolean
   onChanged: () => void
 }) {
   const [pending, startTransition] = useTransition()
@@ -91,33 +103,26 @@ export function TeamPriorityAccess({
   const [adding, setAdding] = useState('')
   const [addScope, setAddScope] = useState<GrantScope>('member')
 
-  const saved = useMemo(() => new Map(Object.entries(configured)), [configured])
   const grantOf = useMemo(() => new Map(data.grants.map(g => [g.personId, g])), [data.grants])
   const nameOf = useMemo(() => new Map(people.map(p => [p.id, p.name])), [people])
 
-  // A person with no login yet has no security role; the one their level will
-  // be given at first sign-in stands in for it (migration 038's rule).
-  const levelOf = (p: AccessPerson) => priorityLevel(
-    p.roleType,
-    p.securityRole ?? (p.roleType === 'admin' || p.roleType === 'admin_assistant' ? 'admin' : 'viewer'),
-  )
+  const levelOf = (p: AccessPerson) => ({ isAdmin: p.isSuperAdmin })
 
   const rows = useMemo(() => people
     .map(p => {
-      const { matrixLevel, isAdmin } = levelOf(p)
       const rights = priorityRights({
-        isAdmin,
-        can: key => surfaceAllowed(matrixLevel, key, saved),
+        isAdmin: p.isSuperAdmin,
+        can: key => (key === PRIORITY_ALL ? p.all : key === PRIORITY_OWN ? p.own : false),
         grant: grantOf.get(p.id)?.scope ?? null,
       })
-      return { person: p, level: isAdmin ? 'admin' : matrixLevel, reach: priorityReach(data.teams, data.memberships[p.id] ?? [], rights) }
+      return { person: p, level: p.level, reach: priorityReach(data.teams, data.memberships[p.id] ?? [], rights) }
     })
     .filter(r => r.reach.every || r.reach.teams.length)
     .sort((a, b) => {
       const rank = (r: typeof a) => (r.reach.every === 'admin' ? 0 : r.reach.every ? 1 : 2)
       return rank(a) - rank(b) || a.person.name.localeCompare(b.person.name)
     }),
-  [people, saved, grantOf, data.teams, data.memberships])
+  [people, grantOf, data.teams, data.memberships])
 
   const grantRows = data.grants
     .map(g => ({ grant: g, person: people.find(p => p.id === g.personId) }))
@@ -151,7 +156,7 @@ export function TeamPriorityAccess({
         <p className="mt-1 text-[13.5px] text-muted leading-relaxed m-0">
           Each team has one priority order for its open steps, and everyone on the team sees their own steps in it.
           This is who can change that order, and why.
-          {editingMatrix && <strong className="font-semibold text-tn-ink"> It shows what is saved: press Save above to see your changes here.</strong>}
+          {editingMatrix && <strong className="font-semibold text-tn-ink"> It shows what is saved: save your changes to see them here.</strong>}
         </p>
       </div>
 
@@ -160,8 +165,8 @@ export function TeamPriorityAccess({
           <h3 className={cardHead}>How it is decided</h3>
           <ol className="mt-3 space-y-2.5 text-[13px] text-foreground leading-relaxed list-none p-0 m-0">
             {[
-              ['Admins', "set every team's order, always."],
-              ['By level', 'the two Team priority rows in the table above. "The teams they lead" also needs a team position: Founder, Manager or Team Leader on that team, set on the Directory.'],
+              ['Super Admins', "set every team's order, always."],
+              ['By level', 'the two My Work actions on the Permissions tab. "The teams they lead" also needs them to be Lead of that team, on the Directory\'s Teams tab.'],
               ['By name', 'the people added here, whatever their level: for the teams they are on, or for every team.'],
               ['Everyone else', "sees their own steps in their team's order and cannot change it. Someone on more than one team follows their main team's order, or another of their teams' when the main one has none, and can switch between them."],
             ].map(([title, text], i) => (
@@ -182,7 +187,7 @@ export function TeamPriorityAccess({
 
           {!data.grantsAvailable ? (
             <p className="mt-3 rounded-[10px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3.5 py-3 text-[12.5px] leading-relaxed text-[var(--warn-fg)] m-0">
-              This list needs migration 085 in the database. Until it is run, nobody can be added by name; the level rows above already work.
+              This list needs migration 085 in the database. Until it is run, nobody can be added by name; the level ticks already work.
             </p>
           ) : (
             <>
@@ -196,7 +201,7 @@ export function TeamPriorityAccess({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink truncate">{person.name}</span>
-                        <LevelPill level={levelOf(person).isAdmin ? 'admin' : person.roleType} />
+                        <LevelPill level={person.level} />
                       </div>
                       {grant.grantedBy && nameOf.get(grant.grantedBy) && (
                         <div className="text-[11.5px] text-muted truncate">{`Added by ${nameOf.get(grant.grantedBy)}`}</div>

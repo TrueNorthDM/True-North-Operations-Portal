@@ -73,15 +73,14 @@ export default async function ProjectHoursPage({
   const history = await loadProjectHistory(createAdminClient(), `${range.to.slice(0, 4)}-01`, range.to)
   const selectedTeam = teams.some(t => t.id === team) ? team! : ''
 
-  // Donations and prepaid hours, for whoever may edit them. isPrivileged, not
-  // isAdmin: the Admin Assistant is the person who holds these figures, and
-  // isAdmin is roleType === 'admin' exactly, which is not her.
-  const moneyIn = access.isPrivileged
+  // Donations and prepaid hours, for whoever may edit them (the access item
+  // "Money in and donation records").
+  const moneyIn = access.can('ph-money')
     ? await loadMoneyIn(createAdminClient(), selected)
     : null
 
   // Admins only: these hours reach a client report.
-  const manual = access.isAdmin
+  const manual = access.can('ph-manual')
     ? { ...(await loadAllManualHours(createAdminClient(), selected)), blurb: MANUAL_BLURB }
     : undefined
 
@@ -139,7 +138,7 @@ export default async function ProjectHoursPage({
             )}
             {/* The file exports, on the same grant the i7 ones use: this carries
                 the same figures and, for the internal one, the same names. */}
-            {access.can('report-export') && (
+            {access.can('ph-export') && (
               <ProjectExportMenu range={range} monthly={range.from === range.to} />
             )}
           </div>

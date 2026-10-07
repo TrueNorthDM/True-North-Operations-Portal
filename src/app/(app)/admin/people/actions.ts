@@ -1,21 +1,26 @@
 'use server'
 
 /**
- * People directory mutations (admin-only). Writes go through the signed-in
- * admin's session, RLS (people_admin_write) permits is_admin(auth.uid()), so
- * no service role is needed. Every change revalidates the Directory AND the
- * home org chart, which reads the same directory.
+ * People directory mutations. Each is allowed by its own access item (Add and
+ * edit people, Invite, Reset two-step), decided by the access rule. Writes go
+ * through the signed-in person's session; RLS (people_admin_write) permits
+ * is_admin(auth.uid()), which Super Admins and Admins hold. Every change
+ * revalidates the Directory AND the home org chart, which reads the same
+ * directory.
+ *
+ * A person's level is not set here (since 7 October 2026): Super Admin and
+ * Admin are given on Admin > Access levels; Team Leader follows team
+ * positions, so a change of teams here can move it, and that is logged.
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { loadOwnContact } from '@/lib/hr/contact'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
+import { levelsOf, noteLevelShifts } from '@/lib/access/log'
 import { revalidatePath } from 'next/cache'
-import { after } from 'next/server'
-import { notifyLevelChange } from '@/lib/notifications/run'
 import { endSessions } from '@/lib/auth/portal-access'
 import { requestOrigin } from '@/lib/auth/origin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { normalPosition } from '@/lib/directory/people-types'
 import { renderInvite } from '@/lib/email/invite'
 import { sendEmail } from '@/lib/email/resend'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -25,18 +30,8 @@ import type { PersonMilestone } from '@/lib/milestones'
 
 type PersonCols = Partial<Omit<PersonRow, 'id' | 'created_at' | 'updated_at'>>
 
-async function requireAdmin() {
-  if (!(await isSecurityAdmin())) throw new Error('Not authorized')
-}
-
-/**
- * Tells admins and the person that a level changed (notification S4), after
- * the answer is sent: a save must not wait on, or fail because of, it.
- */
-function levelChanged(personId: string, name: string, from: string | null | undefined, to: string, actorProfileId: string | null) {
-  const was = from || 'user'
-  if (was === to) return
-  after(() => notifyLevelChange({ personId, name, from: was, to, actorProfileId }))
+async function requireAllowed(key: string) {
+  if (!(await allowedTo(key))) throw new Error('Not authorized')
 }
 
 function revalidate() {
@@ -44,94 +39,6 @@ function revalidate() {
   revalidatePath('/admin/people')
   revalidatePath('/admin/access-levels') // the access-levels board lists role_type
   revalidatePath('/') // home org chart reads the same directory
-}
-
-// Mirrors the CHECK constraint in migration 035.
-const ROLE_TYPES: readonly string[] = ['user', 'admin', 'admin_assistant', 'team_leader']
-const PRIVILEGED_TYPES: readonly string[] = ['admin', 'admin_assistant']
-
-/** What setPersonRoleType actually managed to apply. */
-export interface RoleTypeResult {
-  /** 'live' = the security role was synced too; 'pending' = no account yet. */
-  applied: 'live' | 'pending'
-}
-
-/**
- * Set a person's contact type (people.role_type), the portal access level.
- *
- * The portal keeps TWO role fields: people.role_type drives what the interface
- * shows, and profiles.role is the hard gate (RLS + isSecurityAdmin). Nothing
- * in the database syncs them (migration 038 was a one-time backfill, explicitly
- * not a login-time sync), so writing role_type alone produced levels that only
- * half worked: a promotion granted the admin VIEW but no admin POWER, and a
- * demotion did nothing at all, because getCurrentTier floors anyone whose
- * profiles.role is 'admin' back up to admin. This writes BOTH, so the level a
- * person is given is the level they get.
- *
- * profiles rows only exist after a first sign-in, so for someone who has never
- * logged in we save role_type and report 'pending'. Nothing else is needed: the
- * sign-up trigger (migration 050) reads the level and creates the profile with
- * the matching role, so the level applies by itself at first login.
- *
- * A focused counterpart to updatePerson, which needs the whole PersonInput and
- * would reset any field the caller omits.
- */
-export async function setPersonRoleType(id: string, roleType: string): Promise<RoleTypeResult> {
-  await requireAdmin()
-  if (!ROLE_TYPES.includes(roleType)) throw new Error('Unknown access level')
-  const privileged = PRIVILEGED_TYPES.includes(roleType)
-  const supabase = await createClient()
-
-  const { data: person } = await supabase
-    .from('people')
-    .select('id, full_name, role_type, profile_id, email_true_north, email_goodnews, email_coe')
-    .eq('id', id)
-    .maybeSingle()
-  if (!person) throw new Error('Person not found')
-
-  // Find their auth account: the explicit link if set, else a mailbox that
-  // matches a profile. profile_id is only filled in by hand, so most people who
-  // sign in daily are matched by email here.
-  let profileId = person.profile_id as string | null
-  if (!profileId) {
-    // Personal mailbox via the privileged reader (migration 056); dropping it
-    // from the match would leave anyone who signs in with their personal
-    // address looking accountless.
-    const personal = (await loadOwnContact(id)).emailPersonal
-    const emails = [person.email_true_north, person.email_goodnews, person.email_coe, personal]
-      .map(e => (e ?? '').trim().toLowerCase())
-      .filter(Boolean)
-    if (emails.length) {
-      const { data: profileRows } = await supabase.from('profiles').select('id, email')
-      profileId = (profileRows ?? []).find(p => emails.includes((p.email ?? '').trim().toLowerCase()))?.id ?? null
-    }
-  }
-
-  // Never let an admin strip their own access, that would lock them out of the
-  // very screen they'd need to undo it.
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user && profileId === user.id && !privileged) {
-    throw new Error('You cannot remove your own admin access. Ask another admin to do it.')
-  }
-
-  const patch: PersonCols = { role_type: roleType }
-  // Repair the link while we're here, so the account shows as connected.
-  if (!person.profile_id && profileId) patch.profile_id = profileId
-
-  const { error } = await supabase.from('people').update(patch).eq('id', id)
-  if (error) throw new Error(error.message)
-
-  if (profileId) {
-    const { error: roleError } = await supabase
-      .from('profiles')
-      .update({ role: privileged ? 'admin' : 'viewer' })
-      .eq('id', profileId)
-    if (roleError) throw new Error(`Level saved, but the security role could not be updated: ${roleError.message}`)
-  }
-
-  levelChanged(id, person.full_name, person.role_type, roleType, user?.id ?? null)
-  revalidate()
-  return { applied: profileId ? 'live' : 'pending' }
 }
 
 export interface PersonInput {
@@ -169,7 +76,6 @@ export interface PersonInput {
   whatsapp_same_number?: string | null
   monday_docs?: string | null
   milestones?: PersonMilestone[] | null
-  role_type?: string
 
   /**
    * The person's team memberships + POSITION in each (Team Leader / Collaborator,
@@ -220,7 +126,6 @@ function personColumns(input: PersonInput): PersonCols {
     whatsapp_same_number: input.whatsapp_same_number || null,
     monday_docs: trimOrNull(input.monday_docs),
     milestones: input.milestones ?? null,
-    role_type: input.role_type || 'user',
   }
   return cols
 }
@@ -231,7 +136,7 @@ async function setPersonTeams(supabase: Awaited<ReturnType<typeof createClient>>
   const { error: delErr } = await supabase.from('team_members').delete().eq('person_id', personId)
   if (delErr) throw new Error(delErr.message)
   // Dedupe by team (last wins) and normalise the position value.
-  const norm = (pos: string) => (pos === 'founder' ? 'founder' : pos === 'manager' ? 'manager' : pos === 'team_leader' ? 'team_leader' : 'collaborator')
+  const norm = (pos: string) => normalPosition(pos)
   const byTeam = new Map<string, { position: string; primary: boolean }>()
   for (const t of teams) if (t.teamId) byTeam.set(t.teamId, { position: norm(t.position), primary: !!t.primary })
   const entries = [...byTeam]
@@ -258,7 +163,7 @@ async function setPersonTeams(supabase: Awaited<ReturnType<typeof createClient>>
 }
 
 export async function createPerson(input: PersonInput) {
-  await requireAdmin()
+  await requireAllowed('d-edit')
   const name = input.full_name.trim()
   if (!name) throw new Error('Name is required')
   const supabase = await createClient()
@@ -296,7 +201,7 @@ async function wouldCreateCycle(
 }
 
 export async function updatePerson(id: string, input: PersonInput) {
-  await requireAdmin()
+  await requireAllowed('d-edit')
   const name = input.full_name.trim()
   if (!name) throw new Error('Name is required')
   if (input.manager_id === id) throw new Error('A person cannot report to themselves')
@@ -310,13 +215,16 @@ export async function updatePerson(id: string, input: PersonInput) {
   if (input.profile_id !== undefined) patch.profile_id = input.profile_id || null
   if (input.tsheets === false) patch.tsheets_user_id = null
 
-  const { data: before } = await supabase.from('people').select('role_type, status, profile_id').eq('id', id).maybeSingle()
+  const { data: before } = await supabase.from('people').select('status, profile_id').eq('id', id).maybeSingle()
+  const levelsBefore = await levelsOf(createAdminClient(), [id])
   const { error } = await supabase.from('people').update(patch).eq('id', id)
   if (error) throw new Error(mapError(error.message))
   if (input.teams !== undefined) await setPersonTeams(supabase, id, input.teams)
   const { data: { user } } = await supabase.auth.getUser()
-  const was = before as { role_type?: string | null; status?: string | null; profile_id?: string | null } | null
-  levelChanged(id, name, was?.role_type, patch.role_type ?? 'user', user?.id ?? null)
+  const was = before as { status?: string | null; profile_id?: string | null } | null
+  // Lead of a team or not decides Team Leader: a change of teams can move the level.
+  const actor = user ? await loadCurrentPerson(supabase, user, { real: true }) : null
+  await noteLevelShifts(createAdminClient(), levelsBefore, { personId: actor?.id ?? null, profileId: user?.id ?? null }, `Teams changed on ${name}'s card in the Directory.`)
   // Made inactive: their sessions end now, not when the token runs out. The
   // page gate (lib/auth/portal-access.ts) already refuses them on the next load.
   if (patch.status === 'inactive' && was?.status !== 'inactive') await endSessions(was?.profile_id)
@@ -343,7 +251,7 @@ export interface InviteResult {
  * the Directory says so, so the admin can tell the person another way.
  */
 export async function invitePerson(id: string): Promise<InviteResult> {
-  await requireAdmin()
+  await requireAllowed('d-invite')
   const supabase = await createClient()
   const { data: person, error: readErr } = await supabase
     .from('people').select('full_name, status, email_goodnews, portal_invited_at').eq('id', id).maybeSingle()
@@ -381,7 +289,7 @@ export async function invitePerson(id: string): Promise<InviteResult> {
 
 /** Withdraw a person's invitation: they cannot sign in, and their sessions end now. */
 export async function revokeInvite(id: string): Promise<void> {
-  await requireAdmin()
+  await requireAllowed('d-invite')
   const supabase = await createClient()
   const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const { error } = await supabase
@@ -394,7 +302,7 @@ export async function revokeInvite(id: string): Promise<void> {
 }
 
 export async function deletePerson(id: string) {
-  await requireAdmin()
+  await requireAllowed('d-edit')
   const supabase = await createClient()
   const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const { error } = await supabase.from('people').delete().eq('id', id)
@@ -410,7 +318,7 @@ export async function deletePerson(id: string) {
  * sign-in they set it up again with a new QR code.
  */
 export async function resetTwoStep(id: string): Promise<void> {
-  await requireAdmin()
+  await requireAllowed('d-2fa')
   const supabase = await createClient()
   const { data: row } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const profileId = (row as { profile_id?: string | null } | null)?.profile_id

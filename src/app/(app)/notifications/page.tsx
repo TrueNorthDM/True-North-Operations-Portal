@@ -35,7 +35,7 @@ async function offCountsFor(db: Db): Promise<Record<string, { off: number; reach
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams
   const access = await requireSurface('home')
-  if (!access.isAdmin || tab !== 'rules') redirect('/settings#notifications')
+  if (!access.can('notification-rules') || tab !== 'rules') redirect('/settings#notifications')
   const db = createAdminClient()
   const [{ rules, ready }, offCounts] = await Promise.all([loadRules(db), offCountsFor(db)])
 

@@ -18,6 +18,7 @@ import {
   type PersonTeam,
   type Account,
   type TeamKey,
+  normalPosition,
 } from '@/lib/directory/people-types'
 import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
 import type { TeamOption } from '@/components/admin/DirectoryTabs'
@@ -69,7 +70,7 @@ export async function loadDirectoryPeopleView(
   const members = tmData.map((m) => ({
     team_id: m.team_id,
     person_id: m.person_id,
-    position: m.position === 'founder' ? 'founder' : m.position === 'manager' ? 'manager' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    position: normalPosition(m.position),
     is_primary: m.is_primary === true,
   }))
 

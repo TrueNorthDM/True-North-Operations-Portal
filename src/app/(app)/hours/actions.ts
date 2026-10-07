@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { dateInZone, durationSeconds, validateDraft, wallToInstant, type Draft } from '@/lib/timeclock/clock'
 import { periodFor } from '@/lib/timeclock/periods'
 import { workingDays, validateAbsence, absenceOverlaps } from '@/lib/timeclock/absence'
@@ -400,7 +400,7 @@ export async function decidePeriod(input: {
 export async function reopenPeriod(personId: string, month: string): Promise<Result> {
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
-  if (!(await isSecurityAdmin())) return fail('Only an admin can reopen a month.')
+  if (!(await allowedTo('h-reopen'))) return fail('Only an admin can reopen a month.')
 
   const { start, end } = periodFor(`${month}-01`)
   const admin = createAdminClient()

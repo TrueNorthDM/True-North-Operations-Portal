@@ -16,7 +16,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runImport } from '@/lib/timeclock/runner'
 
@@ -25,7 +25,7 @@ export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
-  if (!(await isSecurityAdmin())) {
+  if (!(await allowedTo('ck-import'))) {
     return NextResponse.json({ error: 'Admins only.' }, { status: 403 })
   }
 

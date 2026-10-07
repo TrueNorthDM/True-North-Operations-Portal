@@ -1,6 +1,5 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
-import { asRoleType, type RoleType } from '@/lib/auth/tier'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -8,7 +7,8 @@ export interface CurrentPerson {
   id: string
   full_name: string
   avatar_url: string | null
-  roleType: RoleType
+  /** The level given to them (Super Admin, Admin), or null: Team Leader or User follows their teams. */
+  accessLevel: 'super_admin' | 'admin' | null
   /** Their work mailbox, so the top bar shows THEIR address, not the session's. */
   email: string | null
 }
@@ -19,20 +19,20 @@ type PersonRow = {
   id: string
   full_name: string
   avatar_url?: string | null
-  role_type?: string | null
+  access_level?: string | null
   email_true_north?: string | null
   email_goodnews?: string | null
   email_coe?: string | null
   email_personal?: string | null
 }
 
-const FULL_SEL = 'id, full_name, avatar_url, role_type, email_true_north, email_goodnews, email_coe, email_personal'
+const FULL_SEL = 'id, full_name, avatar_url, access_level, email_true_north, email_goodnews, email_coe, email_personal'
 
 const shape = (row: PersonRow): CurrentPerson => ({
   id: row.id,
   full_name: row.full_name,
   avatar_url: row.avatar_url ?? null,
-  roleType: asRoleType(row.role_type),
+  accessLevel: row.access_level === 'super_admin' || row.access_level === 'admin' ? row.access_level : null,
   email: row.email_true_north || row.email_goodnews || row.email_coe || row.email_personal || null,
 })
 
@@ -77,12 +77,13 @@ export async function loadCurrentPerson(
     // Resolved on every request, not frozen into the token: change someone's
     // level and the preview follows on the next load, both in who it shows and
     // in what they can reach.
-    const pick = (sel: string) => supabase.from('people').select(sel)
-      .eq('role_type', vs.role).eq('status', 'active').order('full_name').limit(1)
-    let r = await pick(FULL_SEL) as unknown as { data: PersonRow[] | null; error: unknown }
-    if (r.error) r = await pick('id, full_name') as unknown as typeof r
-    const row = r.data?.[0] as PersonRow | undefined
-    return row ? shape(row) : null
+    // The first active person of that level, alphabetically (a Team Leader is
+    // whoever leads a team, so the level is worked out, not read).
+    const { loadSubjects } = await import('@/lib/access/store')
+    const who = (await loadSubjects(supabase)).find(p => p.level === vs.role)
+    if (!who) return null
+    const { data } = await supabase.from('people').select(FULL_SEL).eq('id', who.id).maybeSingle()
+    return data ? shape(data as PersonRow) : null
   }
   if (!user) return null
 

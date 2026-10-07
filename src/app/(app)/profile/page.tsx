@@ -7,7 +7,7 @@ import { leadsTeam, TIE_RANK, type TeamTie } from '@/lib/directory/team-of'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadOwnContact } from '@/lib/hr/contact'
-import { getCurrentTier } from '@/lib/auth/role'
+import { loadAccess } from '@/lib/access/resolve'
 import {
   initialsOf, formatDate,
   typePill, timePill, ynPill, statusPill, roleTypePill, lifecyclePill,
@@ -71,7 +71,7 @@ export default async function ProfilePage() {
     )
   }
 
-  const { isPrivileged } = await getCurrentTier()
+  const isPrivileged = (await loadAccess()).can('d-edit')
 
   // Resolve related records for a complete card.
   const relIds = [me.manager_id, me.also_reports_to_id].filter(Boolean) as string[]
@@ -193,7 +193,7 @@ export default async function ProfilePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
             <Section title="Employment">
-              <Row label="Contact type"><Badge pill={roleTypePill(me.role_type ?? 'user')} /></Row>
+              <Row label="Access level"><Badge pill={roleTypePill(me.role_type ?? 'user')} /></Row>
               <Row label="Type"><Badge pill={typePill(me.employment_type)} /></Row>
               <Row label="Time"><Badge pill={timePill(me.schedule)} /></Row>
               <Row label="Weekly hours">{txt(me.weekly_hours != null ? `${me.weekly_hours} h / week` : null)}</Row>

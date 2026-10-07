@@ -5,13 +5,13 @@
 // page so fresh status shows.
 
 import { revalidatePath } from 'next/cache'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runHealthChecks } from '@/lib/health/checks'
 import { notifyHealth } from '@/lib/notifications/run'
 
 export async function runChecksNow(): Promise<void> {
-  if (!(await isSecurityAdmin())) return
+  if (!(await allowedTo('au-run'))) return
   const admin = createAdminClient()
   const results = await runHealthChecks(admin)
   if (results.some(r => !r.ok)) await notifyHealth(admin, results)

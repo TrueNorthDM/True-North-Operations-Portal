@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { resolveTab, rightsForLevel, tabRights, visibleTabs } from '@/components/report/ReportTabs'
-import { REPORT_PEOPLE, REPORT_WORKLOAD, surfaceAllowed } from '@/lib/access/surfaces'
+import { REPORT_PEOPLE, REPORT_WORKLOAD } from '@/lib/access/surfaces'
+import { canAs } from '@/lib/access/simulate'
+import { ruleKey } from '@/lib/access/decide'
 
 const keys = (r: Parameters<typeof visibleTabs>[0]) => visibleTabs(r).map(t => t.key)
 
@@ -24,22 +26,19 @@ describe('visibleTabs', () => {
   })
 })
 
-describe('tab rows on Access levels', () => {
-  const none = new Map<string, boolean>()
-  const can = (role: Parameters<typeof surfaceAllowed>[0], configured = none) =>
-    tabRights(k => surfaceAllowed(role, k, configured))
-
-  // Nothing configured: what the directory levels gave before 18 September 2026.
-  it('defaults to what each level had before', () => {
-    expect(can('user')).toEqual({ people: false, workload: false })
-    expect(can('team_leader')).toEqual({ people: true, workload: false })
-    expect(can('admin_assistant')).toEqual({ people: true, workload: true })
-    expect(can('admin')).toEqual({ people: true, workload: true })
+describe('tab ticks on Access levels', () => {
+  // The catalogue's starting answers (7 October 2026): Report itself is off for
+  // Team Leaders and Users, as it was configured on the day of the move.
+  it('starts each level where the portal was', () => {
+    expect(tabRights(canAs('user'))).toEqual({ people: false, workload: false })
+    expect(tabRights(canAs('team_leader'))).toEqual({ people: false, workload: false })
+    expect(tabRights(canAs('admin'))).toEqual({ people: true, workload: true })
+    expect(tabRights(canAs('super_admin'))).toEqual({ people: true, workload: true })
   })
 
-  it('lets an admin give team leaders the Workload tab, or take People away', () => {
-    const set = new Map([[`team_leader:${REPORT_WORKLOAD}`, true], [`team_leader:${REPORT_PEOPLE}`, false]])
-    expect(can('team_leader', set)).toEqual({ people: false, workload: true })
+  it('lets a Super Admin give Team Leaders the Report and its Workload tab, or take People away', () => {
+    const rules = { levels: new Map([[ruleKey('team_leader', 'report'), true], [ruleKey('team_leader', REPORT_WORKLOAD), true], [ruleKey('team_leader', REPORT_PEOPLE), false]]), tools: new Map() }
+    expect(tabRights(canAs('team_leader', { rules }))).toEqual({ people: false, workload: true })
   })
 })
 

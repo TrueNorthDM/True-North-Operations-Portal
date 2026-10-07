@@ -1,82 +1,82 @@
-// Design check: Admin → Access levels, the real board on sample people.
-//
-// Built for the Team priority rows and section added on 16 September 2026, so
-// they can be looked at without signing in as an admin. Development only;
-// every button here would call the real admin actions, which refuse anyone
-// who is not signed in as an admin, so nothing is saved.
-// ?grants=off shows the section before migration 085 is run.
+// Design check: Admin > Access levels (7 October 2026), the real component with
+// invented people and teams and the catalogue's starting answers. Nothing is
+// saved (the actions refuse: no Super Admin is signed in). ?tab=permissions |
+// people | why | exceptions | log. Development only.
 
 import { notFound } from 'next/navigation'
-import { AccessLevelsBoard, type AccessPerson } from '@/components/admin/AccessLevelsBoard'
-import type { Membership } from '@/lib/monday/worklist/team-priority'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { AccessLevels, type AccessPageData } from '@/components/access/AccessLevels'
+import { allowedKeys, levelOf } from '@/lib/access/decide'
+import { NO_RULES } from '@/lib/access/simulate'
 
 export const dynamic = 'force-dynamic'
 
-const person = (id: string, name: string, roleType: AccessPerson['roleType'], title: string | null = null): AccessPerson => ({
-  id, name, title, avatarUrl: null, roleType, hasAccount: true,
-  securityRole: roleType === 'admin' || roleType === 'admin_assistant' ? 'admin' : 'viewer',
-})
-
-const PEOPLE: AccessPerson[] = [
-  person('arnaldo', 'Arnaldo Oliveira', 'admin', 'Operations'),
-  person('tina', 'Tina Gennette', 'admin', 'Admin Assistant'),
-  person('jeannette', 'Jeannette Owens', 'team_leader', 'SEO Lead'),
-  person('jonatas', 'Jônatas Queiroz', 'team_leader'),
-  person('stephanie', 'Stephanie Aguirre', 'team_leader', 'Graphics Lead'),
-  person('joy', 'Joy Deche', 'team_leader'),
-  person('rock', 'Rock Kai', 'user'),
-  person('ed', 'Ed Wagner', 'user', 'Founder'),
-  person('devon', 'Devon Smith', 'user'),
-  person('kevin', 'Kevin Ames', 'user'),
-]
-
 const TEAMS = [
-  { id: 'assistants', name: 'Admin Assistants' }, { id: 'africa', name: 'Africa' }, { id: 'graphics', name: 'Graphics' },
-  { id: 'leadership', name: 'Leadership' }, { id: 'operations', name: 'Operations' }, { id: 'seo', name: 'SEO' },
-  { id: 'special', name: 'Special Projects' }, { id: 'translation', name: 'Translation' },
+  { id: 't-seo', name: 'SEO', color: '#e8b70a' },
+  { id: 't-writers', name: 'Writers', color: '#1E9E6A' },
+  { id: 't-design', name: 'Design', color: '#b43fc4' },
+  { id: 't-lead', name: 'Leadership', color: '#2a44b8' },
+  { id: 't-ops', name: 'Operations', color: '#8a3b12' },
 ]
-const name = new Map(TEAMS.map(t => [t.id, t.name]))
-const on = (teamId: string, position = 'collaborator', isPrimary = false): Membership =>
-  ({ teamId, teamName: name.get(teamId)!, isPrimary, position })
+const PEOPLE: { name: string; given: 'super_admin' | 'admin' | null; teams: [string, boolean][] }[] = [
+  { name: 'Alex Morgan', given: 'super_admin', teams: [['t-lead', true], ['t-ops', true]] },
+  { name: 'Blake Rivera', given: 'super_admin', teams: [['t-lead', true]] },
+  { name: 'Casey Park', given: 'admin', teams: [['t-ops', false]] },
+  { name: 'Drew Santos', given: 'admin', teams: [['t-seo', true]] },
+  { name: 'Emery Lane', given: null, teams: [['t-writers', true]] },
+  { name: 'Finley Cho', given: null, teams: [['t-design', true], ['t-seo', false]] },
+  { name: 'Gray Okafor', given: null, teams: [['t-writers', false]] },
+  { name: 'Harper Quinn', given: null, teams: [['t-seo', false]] },
+  { name: 'Indy Nakamura', given: null, teams: [['t-design', false], ['t-writers', false]] },
+]
 
-const MEMBERSHIPS: Record<string, Membership[]> = {
-  arnaldo: [on('leadership', 'manager', true), on('seo'), on('operations', 'team_leader')],
-  tina: [on('assistants', 'team_leader', true)],
-  jeannette: [on('seo', 'team_leader', true)],
-  jonatas: [on('assistants', 'collaborator', true), on('translation')],
-  stephanie: [on('graphics', 'team_leader', true), on('seo')],
-  joy: [on('translation', 'team_leader', true), on('africa')],
-  rock: [on('africa', 'manager', true)],
-  ed: [on('leadership', 'founder', true)],
-  devon: [on('assistants', 'collaborator', true)],
-  kevin: [on('special', 'team_leader', true), on('seo')],
-}
-
-export default async function AccessLevelsDesignCheck(
-  { searchParams }: { searchParams: Promise<{ grants?: string }> },
-) {
+export default async function AccessLevelsCheck({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
-  const { grants } = await searchParams
-  const available = grants !== 'off'
+  const { tab } = await searchParams
+  const today = '2026-10-07'
+  const rules = {
+    levels: [] as [string, boolean][],
+    tools: [
+      ['href-links', { every: false, teams: [['t-seo', 'team'], ['t-lead', 'lead']] }],
+      ['publishing', { every: true, teams: [] }],
+      ['i7-budget', { every: false, teams: TEAMS.map(t => [t.id, 'lead']) }],
+      ['grant-pass-report', { every: false, teams: [['t-lead', 'lead']] }],
+    ] as AccessPageData['rules']['tools'],
+  }
+  const people = PEOPLE.map((p, i) => ({
+    id: `p${i}`, name: p.name, avatarUrl: null, given: p.given,
+    level: levelOf(p.given, p.teams.some(([, l]) => l)), teams: p.teams,
+    exceptions: i === 6 ? [{ key: 'report', effect: 'grant' as const, until: '2026-10-31' }] : [],
+  }))
+  const data: AccessPageData = {
+    today, meId: 'p0',
+    initialTab: (['permissions', 'people', 'why', 'exceptions', 'log'].includes(tab ?? '') ? tab : 'permissions') as AccessPageData['initialTab'],
+    initialWho: null,
+    rules,
+    people,
+    teams: TEAMS,
+    exceptions: [{ id: 'e1', personId: 'p6', person: 'Gray Okafor', key: 'report', effect: 'grant', until: '2026-10-31', reason: 'Covering the weekly report while Emery is away.', by: 'Alex Morgan', at: '2026-10-07T14:20:00Z' }],
+    log: [
+      { id: 3, at: '2026-10-07T18:20:00Z', actor: 'Alex Morgan', kind: 'rules', summary: 'Team Leader: Workload on', reason: 'Team Leaders plan the week with it.', changes: [{ kind: 'rule', level: 'team_leader', key: 'report-workload', label: 'Workload', before: null, beforeEffective: false, after: true }], impact: [{ person: 'Emery Lane', gained: ['report-workload'], lost: [] }], undoes: null, undoneBy: null },
+      { id: 2, at: '2026-10-06T20:05:00Z', actor: 'Blake Rivera', kind: 'tool-teams', summary: 'Teams for Href Links', reason: "Writers' Leads check the published links of their own articles.", changes: [{ kind: 'tool', key: 'href-links', label: 'Href Links', before: { every: false, teams: { 't-seo': 'team' } }, after: { every: false, teams: { 't-seo': 'team', 't-writers': 'lead' } } }], impact: [{ person: 'Emery Lane', gained: ['href-links', 'hl-sites'], lost: [] }], undoes: null, undoneBy: null },
+      { id: 1, at: '2026-10-05T13:40:00Z', actor: 'The portal', kind: 'level', summary: 'The new access model', reason: "Owner's decision: four levels, one list of every page, tab and action, and team lists per tool.", changes: {}, impact: null, undoes: null, undoneBy: null },
+    ],
+    priority: {
+      data: { grantsAvailable: true, teams: TEAMS.map(t => ({ id: t.id, name: t.name })), memberships: Object.fromEntries(people.map(p => [p.id, p.teams.map(([teamId, lead]) => ({ teamId, teamName: TEAMS.find(t => t.id === teamId)!.name, isPrimary: false, position: lead ? 'lead' : 'member' }))])), grants: [] },
+      people: people.map(p => {
+        const open = allowedKeys({ level: p.level, teams: new Map(p.teams) }, NO_RULES, { today })
+        return { id: p.id, name: p.name, avatarUrl: null, level: p.level, isSuperAdmin: p.level === 'super_admin', own: open.has('priority-own'), all: open.has('priority-all') }
+      }),
+    },
+  }
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-[1180px] mx-auto space-y-8">
-        <div>
-          <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.14em] text-tn-teal m-0">Design check · as built</p>
-          <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink m-0">Access levels</h1>
-          <p className="mt-1.5 text-muted leading-relaxed m-0">The real board on sample people, with Jônatas added by name for the teams he is on.</p>
-        </div>
-        <AccessLevelsBoard
-          people={PEOPLE}
-          configured={{}}
-          priority={{
-            grantsAvailable: available,
-            teams: TEAMS,
-            memberships: MEMBERSHIPS,
-            grants: available ? [{ personId: 'jonatas', scope: 'member', grantedAt: new Date().toISOString(), grantedBy: 'arnaldo' }] : [],
-          }}
-        />
+    <div className="min-h-screen bg-background p-8 space-y-5">
+      <div>
+        <Breadcrumb parents={['/admin']} now="Access levels" />
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Access levels</h1>
+        <p className="mt-1.5 text-muted leading-relaxed m-0">Who can open what, in one place. Four levels, one list of every module, page, tool, tab and action, and for tools, which teams may use them. Only Super Admins see this page.</p>
       </div>
+      <AccessLevels data={data} />
     </div>
   )
 }

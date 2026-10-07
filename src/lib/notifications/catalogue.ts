@@ -212,6 +212,14 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     who: 'Admins, and the person', audience: { kind: 'everyone' },
   },
   {
+    key: 'access-rules-changed', src: 'Access levels', block: 'system', icon: 'admin', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Access rules', stat: 'access rule changes', statOne: 'access rule change',
+    example: { title: 'Access rules were changed', body: "Team Leader: Workload on. Why: Team Leaders plan the week with it." },
+    title: 'Access rules were changed',
+    description: 'A Super Admin changed who can open what, an exception or a level, with the reason.',
+    who: 'Super Admins', audience: { kind: 'tool', tool: 'access-levels' },
+  },
+  {
     key: 'monday-account-unlinked', src: 'Monday accounts', block: 'system', icon: 'monday-accounts', defaultTiming: 'daily', available: true,
     timings: 'daily', section: 'Monday accounts', stat: 'Monday accounts', statOne: 'Monday account',
     example: { title: 'A new Monday account with no person', body: 'New Writer (new.writer@example.org) has no person in the Directory, so its work shows under Unknown user.' },

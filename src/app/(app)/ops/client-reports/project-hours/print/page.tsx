@@ -48,6 +48,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function ProjectHoursPrintPage({ searchParams }: Props) {
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/')
+  // An export: the same tick as the Export button (it was missing until 7 October 2026).
+  if (!access.can('ph-export')) redirect('/')
 
   const { month, type } = await searchParams
   const selected = resolveMonth(month)

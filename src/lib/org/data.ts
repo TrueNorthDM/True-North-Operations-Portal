@@ -5,6 +5,7 @@
  * everyone (the chart is public to logged-in users).
  */
 
+import { normalPosition } from '@/lib/directory/people-types'
 import { createClient } from '@/lib/supabase/server'
 
 export interface OrgPerson {
@@ -60,7 +61,7 @@ interface TeamRow {
 interface MemberRow {
   team_id: string
   person_id: string
-  position: string // 'founder' | 'manager' | 'team_leader' | 'collaborator'
+  position: string // 'lead' | 'member'
   is_primary: boolean // migration 048: the person's main department
 }
 
@@ -101,7 +102,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   const members: MemberRow[] = tmData.map((m) => ({
     team_id: m.team_id,
     person_id: m.person_id,
-    position: m.position === 'founder' ? 'founder' : m.position === 'manager' ? 'manager' : m.position === 'team_leader' ? 'team_leader' : 'collaborator',
+    position: normalPosition(m.position),
     is_primary: m.is_primary === true,
   }))
 
@@ -122,7 +123,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // color even when they aren't listed as a member), else their first team.
   const leaderColor = new Map<string, string | null>()
   for (const m of members) {
-    if (m.position !== 'team_leader' && m.position !== 'founder' && m.position !== 'manager') continue
+    if (m.position !== 'lead') continue
     const t = teamById.get(m.team_id)
     if (t?.color) leaderColor.set(m.person_id, t.color)
   }
@@ -142,7 +143,7 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
   // Teams each person leads, with their members.
   const ledTeamsByLeader = new Map<string, OrgTeamGroup[]>()
   for (const m of members) {
-    if (m.position !== 'team_leader' && m.position !== 'founder' && m.position !== 'manager') continue
+    if (m.position !== 'lead') continue
     const t = teamById.get(m.team_id)
     if (!t) continue
     const arr = ledTeamsByLeader.get(m.person_id) ?? []
@@ -188,11 +189,11 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
     arr.push(m)
     membersByTeamId.set(m.team_id, arr)
   }
-  const posRank = (pos: string) => (pos === 'founder' ? 0 : pos === 'manager' ? 1 : pos === 'team_leader' ? 2 : 3)
+  const posRank = (pos: string) => (pos === 'lead' ? 0 : 1)
   for (const [teamId, mem] of membersByTeamId) {
     const t = teamById.get(teamId)
     if (!t) continue
-    const leaders = mem.filter(m => m.position === 'founder' || m.position === 'manager' || m.position === 'team_leader').sort((a, b) => posRank(a.position) - posRank(b.position))
+    const leaders = mem.filter(m => m.position === 'lead').sort((a, b) => posRank(a.position) - posRank(b.position))
     const leaderId = leaders[0]?.person_id
     if (!leaderId) continue
     const leaderNode = nodeById.get(leaderId)

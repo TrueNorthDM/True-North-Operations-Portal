@@ -9,14 +9,14 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { revalidatePath } from 'next/cache'
 import type { PersonAttachment } from '@/lib/directory/people-types'
 
 const BUCKET = 'person-files'
 
 async function requireAdmin() {
-  if (!(await isSecurityAdmin())) throw new Error('Not authorized')
+  if (!(await allowedTo('d-edit'))) throw new Error('Not authorized')
 }
 
 /** Upload one document for a person; returns the created record for the UI. */

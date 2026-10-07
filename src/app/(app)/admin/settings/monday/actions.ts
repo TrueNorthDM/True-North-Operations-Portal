@@ -4,13 +4,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isSecurityAdmin } from '@/lib/auth/role'
+import { allowedTo } from '@/lib/access/resolve'
 import { staleSweep } from '@/lib/monday/worklist/stale'
 
 type Result = { ok: boolean; error?: string }
 
 async function guard(): Promise<string | null> {
-  return (await isSecurityAdmin()) ? null : 'Admins only.'
+  return (await allowedTo('cs-my-work')) ? null : 'Admins only.'
 }
 
 function done() {

@@ -29,7 +29,6 @@
 
 import { teamPositionLeads } from '@/lib/directory/people-types'
 import { PRIORITY_ALL, PRIORITY_OWN } from '@/lib/access/surfaces'
-import type { RoleType } from '@/lib/auth/tier'
 
 export type Priority = 'high' | 'medium' | 'low'
 
@@ -560,25 +559,6 @@ export function canSetOrder(teamId: string, memberships: Membership[], rights: P
 /** The teams, of those given, whose order this person may set. */
 export function settableTeams<T extends { id: string }>(teams: T[], memberships: Membership[], rights: PriorityRights): T[] {
   return teams.filter(t => canSetOrder(t.id, memberships, rights))
-}
-
-/**
- * The level team priority reads for a person, and whether they count as Admin.
- *
- * As the screens read it (getCurrentTier): a security admin whose level was
- * never set counts as Admin. Admin powers also need the security role itself,
- * as every admin write in the portal does, so a level that says Admin on an
- * account that is not one reads the matrix as a User.
- */
-export function priorityLevel(
-  roleType: RoleType,
-  securityRole: string | null | undefined,
-): { matrixLevel: RoleType; isAdmin: boolean } {
-  const securityAdmin = securityRole === 'admin'
-  let level = roleType
-  if (securityAdmin && level !== 'admin' && level !== 'admin_assistant') level = 'admin'
-  const isAdmin = level === 'admin' && securityAdmin
-  return { matrixLevel: level === 'admin' && !isAdmin ? 'user' : level, isAdmin }
 }
 
 export interface PriorityReach {

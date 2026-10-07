@@ -74,7 +74,7 @@ export interface PersonView {
   schedule: string | null // 'full' | 'part'
   weeklyHours: number | null
   internalRate: number | null
-  roleType: string // contact type: 'user'|'admin'|'admin_assistant'|'team_leader'
+  roleType: string // access level: 'super_admin'|'admin'|'team_leader'|'user' (people.role_type mirrors it)
   status: 'active' | 'inactive'
 
   // Contact
@@ -214,34 +214,35 @@ export const lifecyclePill = (v: string | null): Pill => {
   return { kind: 'grey', label: 'Not started' }
 }
 
-// Contact type (migration 035), a directory label, distinct from RBAC grants.
-export const ROLE_TYPE_OPTIONS = ['user', 'admin', 'admin_assistant', 'team_leader'] as const
+// The access level (people.role_type mirrors it since 7 October 2026): Super
+// Admin and Admin are given on Admin > Access levels; Team Leader and User
+// follow team positions. Shown as "Access level" on cards and lists.
+export const ROLE_TYPE_OPTIONS = ['super_admin', 'admin', 'team_leader', 'user'] as const
 export const ROLE_TYPE_LABEL: Record<string, string> = {
-  user: 'User', admin: 'Admin', admin_assistant: 'Admin Assistant', team_leader: 'Team Leader',
+  super_admin: 'Super Admin', admin: 'Admin', team_leader: 'Team Leader', user: 'User',
 }
 export const roleTypePill = (v: string): Pill => {
-  if (v === 'admin') return { kind: 'violet', label: 'Admin' }
-  if (v === 'admin_assistant') return { kind: 'blue', label: 'Admin Assistant' }
+  if (v === 'super_admin') return { kind: 'violet', label: 'Super Admin' }
+  if (v === 'admin') return { kind: 'blue', label: 'Admin' }
   if (v === 'team_leader') return { kind: 'amber', label: 'Team Leader' }
   return { kind: 'grey', label: 'User' }
 }
 
-// Team Position (migration 040), a person's role WITHIN a specific team, which
-// is separate from their global Contact Type / access. Team Leaders sort to the
-// top of a team's member list.
-export const TEAM_POSITION_OPTIONS = ['founder', 'manager', 'team_leader', 'collaborator'] as const
+// Team position (7 October 2026): Lead or Member of a team. Being Lead of any
+// team makes someone a Team Leader. The older words (Founder, Manager, Team
+// Leader, Collaborator) read as Lead and Member until migration 095 has run.
+export const TEAM_POSITION_OPTIONS = ['lead', 'member'] as const
+export const normalPosition = (v: string | null | undefined): 'lead' | 'member' =>
+  v === 'lead' || v === 'founder' || v === 'manager' || v === 'team_leader' ? 'lead' : 'member'
 export const TEAM_POSITION_LABEL: Record<string, string> = {
-  founder: 'Founder', manager: 'Manager', team_leader: 'Team Leader', collaborator: 'Collaborator',
+  lead: 'Lead', member: 'Member', founder: 'Lead', manager: 'Lead', team_leader: 'Lead', collaborator: 'Member',
 }
 export const teamPositionPill = (v: string): Pill =>
-  v === 'founder' ? { kind: 'violet', label: 'Founder' }
-    : v === 'manager' ? { kind: 'blue', label: 'Manager' }
-      : v === 'team_leader' ? { kind: 'teal', label: 'Team Leader' }
-        : { kind: 'grey', label: 'Collaborator' }
-// Order within a team's member list: Founder → Manager → Team Leader → Collaborator.
-export const teamPositionRank = (v: string): number => (v === 'founder' ? 0 : v === 'manager' ? 1 : v === 'team_leader' ? 2 : 3)
-// Whether the position "leads" the team (drives org-chart colour + tier scope).
-export const teamPositionLeads = (v: string): boolean => v === 'founder' || v === 'manager' || v === 'team_leader'
+  normalPosition(v) === 'lead' ? { kind: 'teal', label: 'Lead' } : { kind: 'grey', label: 'Member' }
+// Order within a team's member list: Leads first.
+export const teamPositionRank = (v: string): number => (normalPosition(v) === 'lead' ? 0 : 1)
+// Whether the position leads the team (Team Leader level, org-chart colour, "Leads only" tools).
+export const teamPositionLeads = (v: string): boolean => normalPosition(v) === 'lead'
 
 // Access-grant roles, the product vocabulary from the design (migration 030).
 // Legacy keys (admin/member) are mapped too, so grants still read correctly in

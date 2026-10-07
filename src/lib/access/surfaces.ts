@@ -1,286 +1,40 @@
 /**
- * access/surfaces.ts: the catalogue of gateable surfaces, the rows of the
- * Access levels matrix.
+ * access/surfaces.ts: what is left of the first access matrix (2026-07 to
+ * 7 October 2026), kept for the names other modules import. The catalogue of
+ * what can be opened is now access/catalogue.ts, and the rule that decides is
+ * access/decide.ts.
  *
- * A "surface" is either a navigable area (Settings, Human Resources) or a
- * capability inside one (see salaries, export the report). Each has a stable
- * `key` stored in access_level_pages.surface_key, so labels can be reworded
- * freely but keys must never change once shipped.
- *
- * `defaults` is what applies before anyone configures the surface, chosen to
- * match how the portal behaved when the matrix was still hardcoded, so turning
- * this on changed nothing until an admin actually edited something.
- *
- * Admin is never listed: a real admin always passes every surface, which is
- * what makes it impossible to configure the portal into a locked-out state.
- *
- * Pure module (no server imports) so the client matrix can render from it.
+ * Pure module.
  */
 
-import type { RoleType } from '@/lib/auth/tier'
+import { ITEM } from './catalogue'
 
-/** The levels that can be configured. Admin is always allowed everything. */
-export type ConfigurableRole = Exclude<RoleType, 'admin'>
-export const CONFIGURABLE_ROLES: readonly ConfigurableRole[] = ['admin_assistant', 'team_leader', 'user']
-
-export type SurfaceGroup = 'Navigation' | 'People directory' | 'My Work Report' | 'Team priority' | 'Clients Reports' | 'Managing'
-
-export interface Surface {
-  key: string
-  label: string
-  group: SurfaceGroup
-  /**
-   * 'always' = everyone reaches it and it cannot be switched off (the portal
-   * needs a landing page). 'admin' = admin only, never configurable.
-   */
-  locked?: 'always' | 'admin'
-  /** Applies when access_level_pages has no row for this surface + level. */
-  defaults: Record<ConfigurableRole, boolean>
-  /** Longer explanation shown under the row when it needs one. */
-  note?: string
-}
-
-/**
- * The two Team priority rows, named here because My Work, its save action and
- * this page all check them (lib/monday/worklist/team-priority.ts).
- */
+/** Item keys My Work, its save action and the Access page check by name. */
 export const PRIORITY_OWN = 'priority-own'
 export const PRIORITY_ALL = 'priority-all'
-
-/** The two Report tabs that name other people, checked by the Report's pages and exports. */
 export const REPORT_PEOPLE = 'report-people'
 export const REPORT_WORKLOAD = 'report-workload'
 
-const ON: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: true, user: true }
-const PRIV: Record<ConfigurableRole, boolean> = { admin_assistant: true, team_leader: false, user: false }
-
-export const SURFACES: readonly Surface[] = [
-  // ── Navigation ────────────────────────────────────────────────────────────
-  { key: 'home', label: 'Home dashboard', group: 'Navigation', locked: 'always', defaults: ON },
-  {
-    key: 'tools',
-    label: 'Tools',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'Opens the Tools panel on the rail (SEO Tools and Operations). Which tools appear inside it is set per team, on the Directory’s Teams tab.',
-  },
-  // Three grants, not one. They were a single row while they were one page
-  // with two tabs; Report made them three views of different things, with
-  // different audiences. Splitting the switch is the point: a person can be
-  // given their own work without being given the team's delivery figures.
-  {
-    key: 'my-work',
-    label: 'My Work',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'Every step assigned to them across Monday. Opens the area; Report and My Team are separate.',
-  },
-  {
-    key: 'report',
-    label: 'Report',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'Delivery, held time and lateness. Whose work it covers follows the People directory level below: level 1 sees only their own; level 2 their own and the teams they lead (Founder, Manager or Team Leader on that team); level 3 everyone. Which tabs they get is set under My Work Report.',
-  },
-  {
-    key: 'my-team',
-    label: 'My Team',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'The people they work with and what each can reach.',
-  },
-  {
-    key: 'my-hours',
-    label: 'My Hours',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'Where a person tracks their own hours. Everyone sees only their own, and that is enforced by the database rather than by the screen. Being built; QuickBooks Time is still the official record, so anything logged here does not count yet.',
-  },
-  {
-    key: 'directory',
-    label: 'People directory',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'Switching this off does not remove the personal team view from the avatar menu: seeing your own team is personal, and stays available whatever this row says. The My Team row above is the one that governs the tab inside My Work. The People directory levels below still decide how much of a teammate’s card opens.',
-  },
-  { key: 'human-resources', label: 'Human Resources', group: 'Navigation', defaults: PRIV },
-  // Two rail items added on 22 September 2026 with the navigation redesign.
-  // Neither is built yet: both open a Coming soon page, for everyone by default.
-  {
-    key: 'chat',
-    label: 'Chat',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'Internal chat for the company. Not built yet: the page says Coming soon.',
-  },
-  {
-    key: 'emails',
-    label: 'Emails',
-    group: 'Navigation',
-    defaults: ON,
-    note: 'The mailboxes a person holds, inside the portal. Not built yet: the page says Coming soon.',
-  },
-  // Settings holds the budgets, the hourly rates and the API tokens, so it is
-  // locked to admin rather than left configurable.
-  { key: 'settings', label: 'Settings', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-  { key: 'admin', label: 'Admin', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-  // Clocky is the time module: the rules, the migration from QuickBooks
-  // Time, and later the approvals and payroll. My Hours above is the
-  // person-facing half of it. Admin only while it is being built, and locked
-  // rather than configurable so nobody can hand out the migration controls by
-  // ticking a box.
-  { key: 'clocky-hours', label: 'Clocky (the time module)', group: 'Navigation', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-
-  // ── People directory ──────────────────────────────────────────────────────
-  // Three cumulative levels rather than independent switches, because that is
-  // how the screens actually stack. Level 1 is the floor everyone gets; each
-  // row below adds to it. See directoryLevel() for the resolution.
-  {
-    key: 'dir-base',
-    label: 'Level 1, their own team and their own card',
-    group: 'People directory',
-    locked: 'always',
-    defaults: ON,
-    note: 'In the Directory, the People list shows the members of the teams they belong to (all of them, if several) and they can open only their own card. Someone in no team sees just themselves. Note that the org chart on the Home page is company-wide for everyone: this level narrows whose DETAILS they reach, not who they know exists.',
-  },
-  {
-    key: 'dir-teams-config',
-    label: 'Level 2, the whole company list, read-only',
-    group: 'People directory',
-    defaults: PRIV,
-    note: 'In the Directory, widens the People list from their own teams to everyone, the same list an admin sees, and adds a Teams tab covering every team with who can open which tool. All of it read-only, and still only their OWN card opens. No Emails, Rates & Costs, Access log or Portal access. My Team stays scoped to their own teams for everyone: that page answers "who do I work with", not "who works here".',
-  },
-  {
-    key: 'dir-full',
-    label: 'Level 3, the full directory, and edit it',
-    group: 'People directory',
-    defaults: PRIV,
-    note: 'Everyone’s card, every team, all tabs (Emails, Teams, Rates & Costs, Access log, Portal access), the sensitive fields (salaries, internal rates, home address, date of birth), and the ability to change them. Portal access is who can sign in: inviting people, sending the invitation again and revoking access.',
-  },
-
-  // ── My Work Report ────────────────────────────────────────────────────────
-  // The two tabs that are nothing but other people's figures, each a switch of
-  // its own since 18 September 2026. They were tied to the directory level
-  // (People from level 2, Workload at level 3), which meant a team leader could
-  // not be given the Workload tab without being given the whole directory.
-  // Defaults are what those levels gave before, so nothing changed on the day.
-  // Whose rows the tab holds still follows the scope in the Report row above.
-  {
-    key: REPORT_PEOPLE,
-    label: 'The People tab: how long each person held each step',
-    group: 'My Work Report',
-    defaults: { admin_assistant: true, team_leader: true, user: false },
-    note: 'Person by person: steps delivered, how long each one sat with them, and how many came in late. For whose work the Report covers, as set in the Report row: at level 1 only their own row.',
-  },
-  {
-    key: REPORT_WORKLOAD,
-    label: 'The Workload tab: each person\'s open work and load',
-    group: 'My Work Report',
-    defaults: PRIV,
-    note: 'Open steps, backlog and estimated hours for each person, with team and person filters. A team leader sees the teams they lead and nobody else, including in the filters.',
-  },
-
-  // ── Team priority ─────────────────────────────────────────────────────────
-  // Who may set a team's priority order on My Work. The second row includes the
-  // first, like the directory levels above. Admins set every team's order
-  // whatever these say, and people can also be given it by name, further down
-  // this page. Defaults chosen on 16 September 2026: leading a team is enough
-  // at any level (how it behaved when it shipped), and the Admin Assistant
-  // level sets every team's order.
-  {
-    key: PRIORITY_OWN,
-    label: 'Set the priority order of the teams they lead',
-    group: 'Team priority',
-    defaults: ON,
-    note: 'Leading a team is a team position, not a level: Founder, Manager or Team Leader on that team, set on the Directory. Without one this row gives nothing. Everyone on the team sees their own steps on My Work in the order it sets.',
-  },
-  {
-    key: PRIORITY_ALL,
-    label: 'Set the priority order of every team',
-    group: 'Team priority',
-    defaults: PRIV,
-    note: 'Any team, whether or not they are on it, including the teams they lead.',
-  },
-
-  // ── Clients Reports ───────────────────────────────────────────────────────
-  { key: 'report-widget', label: 'Budget widget on the Home dashboard', group: 'Clients Reports', defaults: PRIV },
-  // Written as a capability someone HAS rather than a restriction they suffer,
-  // like every other row here, so the matrix reads one way throughout: a tick
-  // always means more.
-  {
-    key: 'report-full',
-    label: 'See the whole client report',
-    group: 'Clients Reports',
-    defaults: PRIV,
-    note: 'Without this the report still opens, with two columns hidden (Budget hrs and Budget used) and only their own teammates in the per-person hour columns. Hrs avail. and Budget avail. stay visible, and the team filter is not shown, since the columns are already their own team. The totals stay honest: Hours used is still the figure for everyone, not the sum of the columns they can see, so nobody reads a partial number as the whole.',
-  },
-  // Two controls, not one. They were a single row while both were "the buttons
-  // in the corner", which meant nobody could grant one without the other and
-  // the matrix could not say which of the two it was talking about.
-  //
-  // Both stay locked to admin. An export is a file that leaves the portal and
-  // gets sent to a client, so it carries the full budget, every person's cost
-  // and the rates behind them, with nothing on the page afterwards to say who
-  // sent what.
-  {
-    key: 'report-export',
-    label: 'Export the report as a file (PDF, CSV, printable page)',
-    group: 'Clients Reports',
-    locked: 'admin',
-    defaults: { admin_assistant: false, team_leader: false, user: false },
-    note: 'Admin only, and not configurable. The file carries the whole budget, the per-person cost and the hourly rates behind it, and it leaves the portal: once sent, nothing here records who sent which version. The buttons are hidden for every other level and the URLs refuse them too, since a hidden button is not a gate.',
-  },
-  {
-    key: 'report-team-update',
-    label: 'Team Update, the shareable budget image',
-    group: 'Clients Reports',
-    locked: 'admin',
-    defaults: { admin_assistant: false, team_leader: false, user: false },
-    note: 'Admin only, and not configurable. The picture is meant for the team rather than the client, but it still states the budget, how much of it is gone and what is left, so it is granted separately from the file exports rather than riding along with them.',
-  },
-  { key: 'report-note', label: "Edit the month's note", group: 'Clients Reports', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-
-  // ── Managing (admin only, never configurable) ─────────────────────────────
-  { key: 'manage-people', label: 'Add or edit people and teams', group: 'Managing', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-  { key: 'manage-levels', label: 'Change access levels', group: 'Managing', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-  { key: 'manage-budgets', label: 'Edit budgets, rates and API tokens', group: 'Managing', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-  { key: 'view-stage', label: 'View Stage, preview each level side by side', group: 'Managing', locked: 'admin', defaults: { admin_assistant: false, team_leader: false, user: false } },
-] as const
-
-export const SURFACE_KEYS: ReadonlySet<string> = new Set(SURFACES.map(s => s.key))
-export const SURFACE_BY_KEY: ReadonlyMap<string, Surface> = new Map(SURFACES.map(s => [s.key, s]))
-
-export const SURFACE_GROUPS: readonly SurfaceGroup[] = ['Navigation', 'People directory', 'My Work Report', 'Team priority', 'Clients Reports', 'Managing']
+/** Every catalogue key: what a guard may ask for. */
+export const SURFACE_KEYS: ReadonlySet<string> = new Set([...ITEM.keys(), 'tools'])
 
 /**
- * Whether a level reaches a surface, given whatever rows are configured.
- * `configured` is keyed "roleType:surfaceKey". Admin short-circuits to true.
- */
-export function surfaceAllowed(
-  role: RoleType,
-  key: string,
-  configured: ReadonlyMap<string, boolean>,
-): boolean {
-  const surface = SURFACE_BY_KEY.get(key)
-  if (!surface) return false
-  if (surface.locked === 'always') return true
-  if (role === 'admin') return true
-  if (surface.locked === 'admin') return false
-  const set = configured.get(`${role}:${key}`)
-  return set ?? surface.defaults[role as ConfigurableRole] ?? false
-}
-
-/**
- * The three People-directory levels, resolved from the cumulative rows.
- *
- *   1 = their own team's list, their own card (the floor, always granted)
- *   2 = + the Teams tab for their own teams, tool access read-only
- *   3 = + the whole directory, every tab, the sensitive fields, and editing
+ * How much of the People directory someone reaches, as the Directory and the
+ * other people lists draw it:
+ *   3  anyone's card (and the tabs each have their own tick)
+ *   2  the whole company list, read-only
+ *   1  their own teams and their own card
  */
 export type DirectoryLevel = 1 | 2 | 3
+export function directoryLevel(can: (key: string) => boolean): DirectoryLevel {
+  if (can('d-cards')) return 3
+  if (can('d-company')) return 2
+  return 1
+}
 
-export function directoryLevel(can: (surfaceKey: string) => boolean): DirectoryLevel {
-  if (can('dir-full')) return 3
-  if (can('dir-teams-config')) return 2
+/** The same three steps for My Team: 2 adds its Teams tab, 3 opens teammates' cards. */
+export function myTeamLevel(can: (key: string) => boolean): DirectoryLevel {
+  if (can('mt-cards')) return 3
+  if (can('mt-teams')) return 2
   return 1
 }
