@@ -1,31 +1,42 @@
 'use client'
 
 /**
- * The Notification settings page (22 September 2026): the whole catalogue in
- * four blocks (the two tabs of each drawer), each notification with three
- * settings: where (in app, email, both), when (as it happens, daily summary)
- * and on or off. What the portal cannot do yet is listed faded, with the
- * reason, rather than hidden.
+ * The Notification settings page. First built 22 September 2026; redrawn on
+ * 7 October 2026 as one table with a Category column, when the daily summary
+ * email arrived:
  *
- * Admins get a second tab, "Rules for everyone": a default for each setting
- * and whether people may change it or it is fixed. A fixed setting shows on
- * the person's own tab locked, with a line saying what the admin set.
+ *   On        on or off (a lock when an admin fixed it).
+ *   When      as it happens (the bell at once) or the daily summary (the bell
+ *             at 8:00 and the summary email). "When" decides "where", so there
+ *             is no Where column. A type that only makes sense one way shows
+ *             that way, fixed, with "only".
+ *   Preview   the eye: how it looks in the bell and in the email, and "Send me
+ *             a test" to either.
  *
- * Each change saves on its own. The person's tab lists only the notifications
- * that can reach them; the rules tab lists them all.
+ * Above the table, the person's own time zone: the summary arrives at 8:00 in
+ * it. What the portal cannot do yet is listed faded, with the reason.
+ *
+ * Admins get a second tab, "Rules for everyone": a default for On and When,
+ * whether people may change each, and how many people switched each one off.
+ * Each change saves on its own.
  */
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
+import { Select } from '@/components/ui/Select'
 import {
-  BLOCKS, CHANNELS, DAILY_HOUR, EMAIL_BLOCKED, KEEP_READ_DAYS, KEEP_UNREAD_DAYS,
-  effective, ruleScope,
-  type BlockKey, type Channel, type NotificationType, type Pref, type Rule, type Timing,
+  BLOCKS, CATEGORY_LABEL, DAILY_HOUR, KEEP_READ_DAYS, KEEP_UNREAD_DAYS,
+  effective, timingIsChoice,
+  type NotificationType, type Pref, type Rule, type Timing,
 } from '@/lib/notifications/catalogue'
+import { zoneLabel, zoneOptions } from '@/lib/notifications/zones'
 
 type Result = { ok: boolean; error?: string }
 type SavePref = (key: string, pref: Pref) => Promise<Result>
 type SaveRule = (key: string, rule: Rule) => Promise<Result>
+type SaveZone = (zone: string) => Promise<Result>
+type SendTest = (key: string, channel: 'app' | 'email') => Promise<Result>
 type Tab = 'mine' | 'rules'
 
 function LockGlyph({ open = false, size = 11 }: { open?: boolean; size?: number }) {
@@ -37,59 +48,74 @@ function LockGlyph({ open = false, size = 11 }: { open?: boolean; size?: number 
   )
 }
 
-function Switch({ on, onChange, disabled, locked, label }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; locked?: boolean; label: string }) {
+const BellGlyph = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+  </svg>
+)
+const MailGlyph = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+    <rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" />
+  </svg>
+)
+const EyeGlyph = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
+function Switch({ on, onChange, disabled, label }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      {locked && <span className="text-muted" title="Set by an admin"><LockGlyph /></span>}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label={label}
-        disabled={disabled || locked}
-        onClick={() => onChange(!on)}
-        className={`shrink-0 w-10 h-[22px] rounded-full transition-colors disabled:cursor-default ${on ? 'bg-tn-teal' : 'bg-slate-300'} ${locked ? 'opacity-60' : ''}`}
-      >
-        <span className={`block w-[18px] h-[18px] rounded-full bg-white transition-transform ${on ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
-      </button>
-    </span>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className={`shrink-0 w-10 h-[22px] rounded-full transition-colors disabled:cursor-default disabled:opacity-50 ${on ? 'bg-tn-teal' : 'bg-slate-300'}`}
+    >
+      <span className={`block w-[18px] h-[18px] rounded-full bg-white transition-transform ${on ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
+    </button>
   )
 }
 
-interface SegOption<K extends string> { key: K; label: string; available?: boolean; title?: string }
+const TIMING: Record<Timing, { label: string; glyph: React.ReactNode }> = {
+  instant: { label: 'As it happens', glyph: <BellGlyph /> },
+  daily: { label: 'Daily summary', glyph: <MailGlyph /> },
+}
 
-function Segmented<K extends string>({ options, value, onChange, disabled, locked, label }: {
-  options: readonly SegOption<K>[]; value: K; onChange: (k: K) => void; disabled?: boolean; locked?: boolean; label: string
-}) {
-  const seg = (on: boolean, off: boolean) =>
-    `px-2.5 py-1 rounded-[7px] text-[12px] font-semibold whitespace-nowrap transition-colors disabled:cursor-default ${
-      on ? 'bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]' : off ? 'text-muted/50' : 'text-muted hover:text-tn-ink'}`
+/** As it happens | Daily summary, for the types that allow both. */
+function WhenChoice({ value, onChange, disabled, label }: { value: Timing; onChange: (t: Timing) => void; disabled?: boolean; label: string }) {
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      title={locked ? 'Set by an admin' : undefined}
-      className={`inline-flex items-center bg-subtle border border-[var(--panel-border)] rounded-[9px] p-[3px] ${disabled ? 'opacity-50 pointer-events-none' : ''} ${locked ? 'pointer-events-none' : ''}`}
-    >
-      {locked && <span className="px-1.5 text-muted"><LockGlyph /></span>}
-      {options.map(o => {
-        const off = o.available === false || (!!locked && o.key !== value)
-        return (
-          <button key={o.key} type="button" role="radio" aria-checked={value === o.key} disabled={off || locked} title={o.title}
-            onClick={() => onChange(o.key)} className={seg(value === o.key, off)}>
-            {o.label}
-          </button>
-        )
-      })}
+    <div role="radiogroup" aria-label={label}
+      className={`inline-flex items-center gap-0.5 bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+      {(['instant', 'daily'] as const).map(k => (
+        <button key={k} type="button" role="radio" aria-checked={value === k} disabled={disabled} onClick={() => onChange(k)}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-[7px] text-[12px] font-bold whitespace-nowrap transition-colors ${
+            value === k ? 'bg-tn-primary text-[#ffffff]' : 'text-muted hover:text-tn-ink'}`}>
+          {TIMING[k].glyph}{TIMING[k].label}
+        </button>
+      ))}
     </div>
   )
 }
 
-const TIMING_OPTIONS: readonly SegOption<Timing>[] = [
-  { key: 'instant', label: 'As it happens' },
-  { key: 'daily', label: 'Daily summary' },
-]
-const CHANNEL_OPTIONS: readonly SegOption<Channel>[] = CHANNELS.map(c => ({ ...c, title: c.available ? undefined : EMAIL_BLOCKED }))
+/** One timing, not a choice: "Daily summary only", or the admin's fixed value with a lock. */
+function WhenFixed({ timing, only, locked, faded }: { timing: Timing; only?: boolean; locked?: boolean; faded?: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-[9px] px-2.5 py-[6px] text-[12px] font-bold whitespace-nowrap ${faded ? 'text-muted' : 'bg-subtle text-tn-ink'}`}>
+      {TIMING[timing].glyph}{TIMING[timing].label}
+      {only && <span className="font-semibold text-muted">only</span>}
+      {locked && <span className="text-[#a67c04]" title="Set by an admin"><LockGlyph /></span>}
+    </span>
+  )
+}
+
+function CategoryPill({ block }: { block: NotificationType['block'] }) {
+  const cls = block === 'system' ? 'bg-[#efedfc] text-[#5b4bc4]' : 'bg-[rgba(30,125,127,.1)] text-tn-teal'
+  return <span className={`inline-block rounded-full px-[9px] py-0.5 text-[10.5px] font-extrabold tracking-[.08em] uppercase font-(family-name:--font-display) ${cls}`}>{CATEGORY_LABEL[block]}</span>
+}
 
 /** The admin's per-setting choice: people may change it, or it is fixed. */
 function FixToggle({ fixed, onChange, disabled }: { fixed: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
@@ -108,54 +134,146 @@ function FixToggle({ fixed, onChange, disabled }: { fixed: boolean; onChange: (v
   )
 }
 
-/** Fixed-width columns, so the controls line up from row to row whether or not a lock sits in them. */
-const COL = { where: 'w-[178px]', when: 'w-[236px]', on: 'w-[64px]' } as const
-function Col({ w, stack, children }: { w: keyof typeof COL; stack?: boolean; children: React.ReactNode }) {
-  return <div className={`${COL[w]} shrink-0 flex ${stack ? 'flex-col items-center gap-1.5' : 'justify-end'}`}>{children}</div>
-}
-
 const WHEN_WORDS: Record<Timing, string> = { instant: 'always as it happens', daily: 'always in the daily summary' }
-const WHERE_WORDS: Record<Channel, string> = { app: 'always in the portal', email: 'always by email', both: 'always in the portal and by email' }
 
 /** "Set by an admin: you can't turn it off, always as it happens." */
-function fixedSentence(r: Rule): string | null {
+function fixedSentence(t: NotificationType, r: Rule): string | null {
   if (r.fixEnabled && !r.enabled) return 'An admin turned this off for everyone.'
   const parts = [
     r.fixEnabled ? "you can't turn it off" : null,
-    r.fixTiming ? WHEN_WORDS[r.timing] : null,
-    r.fixChannel ? WHERE_WORDS[r.channel] : null,
+    r.fixTiming && timingIsChoice(t) ? WHEN_WORDS[r.timing] : null,
   ].filter(Boolean)
   return parts.length ? `Set by an admin: ${parts.join(', ')}.` : null
 }
 
-const SCOPE_TAG: Record<ReturnType<typeof ruleScope>, { text: string; cls: string }> = {
-  full: { text: 'FULL CONTROL', cls: 'bg-[rgba(30,158,106,.12)] text-[#16794f]' },
-  partial: { text: 'PARTLY FIXED', cls: 'bg-[#fbf1cf] text-[#a67c04]' },
-  fixed: { text: 'FIXED', cls: 'bg-tn-primary text-[#F2C40A]' },
+const TH = 'text-left font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted bg-subtle px-4 py-2.5 border-b border-[var(--panel-border)] whitespace-nowrap'
+const TD = 'px-4 py-3 border-t border-[var(--row-rule)] align-middle'
+
+function NameCell({ t, faded, below }: { t: NotificationType; faded: boolean; below?: React.ReactNode }) {
+  return (
+    <td className={TD}>
+      <div className="flex items-start gap-3 min-w-[260px]">
+        <span className={`w-8 h-8 rounded-[9px] shrink-0 inline-flex items-center justify-center ${faded ? 'bg-subtle text-muted' : 'bg-[rgba(30,125,127,.1)] text-tn-teal'}`}>
+          <NavIcon name={t.icon} size={16} />
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">{t.title}</span>
+            {faded && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">NOT YET</span>}
+          </div>
+          <p className="text-[12px] text-muted m-0 mt-0.5 leading-snug">{faded ? t.blockedBy : `${t.description} Goes to: ${t.who}.`}</p>
+          {below}
+        </div>
+      </div>
+    </td>
+  )
 }
 
-function RowShell({ t, faded, tags, children, below }: { t: NotificationType; faded: boolean; tags?: React.ReactNode; children: React.ReactNode; below?: React.ReactNode }) {
+// ── The preview window ──────────────────────────────────────────────────────
+
+function Preview({ t, sendTest, onClose }: { t: NotificationType; sendTest: SendTest | null; onClose: () => void }) {
+  const router = useRouter()
+  const [tab, setTab] = useState<'app' | 'email'>('app')
+  const [state, setState] = useState<{ kind: 'idle' | 'sending' | 'sent' | 'error'; text?: string }>({ kind: 'idle' })
+  const [, start] = useTransition()
+  const canEmail = timingIsChoice(t) || t.timings === 'daily'
+  const send = () => {
+    if (!sendTest) { setState({ kind: 'sent', text: 'Here in the design check nothing is sent.' }); return }
+    setState({ kind: 'sending' })
+    start(async () => {
+      const res = await sendTest(t.key, tab).catch(e => ({ ok: false, error: String(e) }))
+      if (res.ok) {
+        setState({ kind: 'sent', text: tab === 'app' ? 'Sent: it is in your bell now, marked Test.' : 'Sent: check your inbox in a minute.' })
+        if (tab === 'app') router.refresh()
+      } else setState({ kind: 'error', text: res.error ?? 'Not sent.' })
+    })
+  }
+  const pick = (k: 'app' | 'email') => { setTab(k); setState({ kind: 'idle' }) }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
   return (
-    <div className={`flex items-center gap-4 px-5 py-3.5 border-b border-[var(--row-rule)] last:border-b-0 flex-wrap ${faded ? 'opacity-50' : ''}`}>
-      <span className={`w-8 h-8 rounded-[9px] shrink-0 inline-flex items-center justify-center ${faded ? 'bg-subtle text-muted' : 'bg-[rgba(30,125,127,.1)] text-tn-teal'}`}>
-        <NavIcon name={t.icon} size={16} />
-      </span>
-      <div className="flex-1 min-w-[240px]">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[13.5px] font-semibold text-tn-ink">{t.title}</span>
-          {faded && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">NOT YET</span>}
-          {tags}
+    <div className="fixed inset-0 z-50 bg-[rgba(1,35,88,.35)] flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="notif-preview-title" className="w-full max-w-[560px] bg-white rounded-[18px] shadow-[0_30px_60px_-20px_rgba(1,35,88,.5)] overflow-hidden">
+        <div className="px-5 pt-[18px]">
+          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.12em] uppercase text-tn-teal">Preview</span>
+          <h3 id="notif-preview-title" className="font-(family-name:--font-display) font-black text-[18px] text-tn-ink m-0 mt-0.5">{t.title}</h3>
         </div>
-        <p className="text-[12.5px] text-muted m-0 mt-0.5 leading-snug">{faded ? t.blockedBy : t.description}</p>
-        <p className="text-[11.5px] text-muted m-0 mt-0.5"><span className="font-semibold">Goes to:</span> {t.who}</p>
-        {below}
+        <div role="tablist" className="flex gap-0.5 px-5 mt-3 border-b border-[var(--panel-border)]">
+          {([['app', 'In the portal'], ['email', 'By email']] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => pick(k)}
+              className={`px-3 py-2.5 -mb-px border-b-2 text-[13px] font-bold transition-colors ${tab === k ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="bg-subtle px-5 py-[18px] space-y-2.5">
+          {tab === 'app' ? (
+            <>
+              <div className="rounded-[14px] border border-[var(--panel-border)] bg-white overflow-hidden">
+                <div className="flex justify-between px-3.5 py-2.5 border-b border-[var(--row-rule)]">
+                  <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Notifications</span>
+                  <span className="text-[12px] font-semibold text-tn-teal">Mark all read</span>
+                </div>
+                <div className="flex gap-3 px-3.5 py-3 bg-[#f8fbfb]">
+                  <span className="w-[34px] h-[34px] rounded-[10px] shrink-0 inline-flex items-center justify-center bg-[rgba(30,125,127,.12)] text-tn-teal"><NavIcon name={t.icon} size={17} /></span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                    <span className="flex justify-between items-baseline gap-2">
+                      <span className="flex items-baseline gap-1.5 min-w-0">
+                        <span className="w-[7px] h-[7px] rounded-full bg-tn-teal shrink-0 -translate-y-px" />
+                        <span className="text-[13.5px] font-bold text-tn-ink leading-snug">{t.example.title}</span>
+                      </span>
+                      <span className="text-[11.5px] text-muted whitespace-nowrap">9:40 AM</span>
+                    </span>
+                    <span className="text-[12.5px] text-foreground leading-normal">{t.example.body}</span>
+                    <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted mt-0.5">{t.src}</span>
+                  </span>
+                </div>
+              </div>
+              <p className="text-[12px] text-muted m-0">How it shows in the bell at the top right. Example content.</p>
+            </>
+          ) : canEmail ? (
+            <>
+              <div className="rounded-[12px] border border-[var(--row-rule)] bg-white flex items-center gap-3.5 pr-3.5 overflow-hidden">
+                <span className={`self-stretch w-1 shrink-0 ${t.alarm ? 'bg-[#c8323d]' : t.key === 'step-due-tomorrow' ? 'bg-[#F2C40A]' : t.block === 'system' ? 'bg-[#5b4bc4]' : 'bg-tn-teal'}`} />
+                <div className="flex-1 min-w-0 py-3">
+                  <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted">{t.src}</div>
+                  <div className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink leading-snug">{t.example.title}</div>
+                  <div className="text-[13px] text-foreground leading-normal">{t.example.body}</div>
+                </div>
+                <span className="text-[12.5px] font-bold text-tn-teal whitespace-nowrap">Open →</span>
+              </div>
+              <p className="text-[12px] text-muted m-0">
+                {`One line in your ${CATEGORY_LABEL[t.block]} summary email, under "${t.section}". The summary arrives at ${DAILY_HOUR}:00, Monday to Friday. Example content.`}
+              </p>
+            </>
+          ) : (
+            <p className="text-[13px] text-muted m-0 py-3">This one is never emailed: it always arrives in the bell the moment it happens.</p>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3.5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <button type="button" onClick={send} disabled={state.kind === 'sending' || (tab === 'email' && !canEmail) || !t.available}
+              className="rounded-[9px] bg-tn-primary text-[#ffffff] px-3.5 py-2 text-[13px] font-bold disabled:opacity-40">
+              {state.kind === 'sending' ? 'Sending…' : tab === 'app' ? 'Send me a test' : 'Email me a test'}
+            </button>
+            {state.text && <span className={`text-[12.5px] font-bold ${state.kind === 'error' ? 'text-[#b3271f]' : 'text-[#0d7a4f]'}`}>{state.text}</span>}
+          </div>
+          <button type="button" onClick={onClose} className="rounded-[9px] border border-[var(--panel-border)] bg-white text-tn-ink px-3.5 py-2 text-[13px] font-bold">Close</button>
+        </div>
       </div>
-      {children}
     </div>
   )
 }
 
-export function NotificationSettings({ types, mine, rules: initialRules, prefs: initialPrefs, isAdmin, savePref, saveRule, initialTab = 'mine', blocked }: {
+// ── The page ────────────────────────────────────────────────────────────────
+
+export function NotificationSettings({
+  types, mine, rules: initialRules, prefs: initialPrefs, isAdmin, savePref, saveRule, initialTab = 'mine', blocked,
+  zone: initialZone, saveZone, sendTest, offCounts,
+}: {
   /** The whole catalogue. */
   types: readonly NotificationType[]
   /** Keys of the ones that can reach this person (faded ones included). */
@@ -169,10 +287,18 @@ export function NotificationSettings({ types, mine, rules: initialRules, prefs: 
   initialTab?: Tab
   /** Why nothing can be saved right now (no migration yet, no Directory person). Changes are refused with it. */
   blocked?: string
+  /** The person's own time zone; null follows the company's. */
+  zone: string | null
+  saveZone: SaveZone | null
+  sendTest: SendTest | null
+  /** Admins: per type, how many it reaches and how many of them switched it off. */
+  offCounts?: Record<string, { off: number; reach: number }>
 }) {
   const [tab, setTab] = useState<Tab>(isAdmin ? initialTab : 'mine')
   const [rules, setRules] = useState(initialRules)
   const [prefs, setPrefs] = useState(initialPrefs)
+  const [zone, setZone] = useState(initialZone ?? 'America/New_York')
+  const [preview, setPreview] = useState<NotificationType | null>(null)
   const [status, setStatus] = useState<{ key: string; state: 'saving' | 'saved' | 'error'; error?: string } | null>(null)
   const [, start] = useTransition()
 
@@ -201,17 +327,27 @@ export function NotificationSettings({ types, mine, rules: initialRules, prefs: 
     persist(`rules:${key}`, saveRule && (() => saveRule(key, next)), () => setRules(r => ({ ...r, [key]: before })))
   }
 
+  const changeZone = (z: string) => {
+    const before = zone
+    setZone(z)
+    persist('zone', saveZone && (() => saveZone(z)), () => setZone(before))
+  }
+
   const statusFor = (id: string) => {
     const s = status?.key === id ? status : null
     if (!s) return null
     return (
-      <span className={`text-[11.5px] ${s.state === 'error' ? 'text-[#b3271f]' : 'text-muted'}`}>
+      <span className={`block text-[11.5px] mt-1 ${s.state === 'error' ? 'text-[#b3271f]' : 'text-muted'}`}>
         {s.state === 'saving' ? 'Saving…' : s.state === 'saved' ? 'Saved' : s.error ?? 'Not saved'}
       </span>
     )
   }
 
-  const listed = (b: BlockKey) => types.filter(t => t.block === b && (tab === 'rules' || mine.includes(t.key)))
+  // Tools first, then System, in the catalogue's order; the ones still to come last in each.
+  const listed = types
+    .filter(t => (t.block === 'tools' || t.block === 'system') && (tab === 'rules' || mine.includes(t.key)))
+    .sort((a, b) => (a.block === b.block ? Number(!a.available) - Number(!b.available) : a.block === 'tools' ? -1 : 1))
+  const later = BLOCKS.filter(b => !b.available)
 
   const tabBtn = (k: Tab, text: string) => (
     <button type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
@@ -232,100 +368,122 @@ export function NotificationSettings({ types, mine, rules: initialRules, prefs: 
       <div className="rounded-[12px] border border-[var(--panel-border)] bg-white px-4 py-3 text-[13px] text-foreground leading-relaxed flex items-start gap-2.5">
         <NavIcon name={tab === 'rules' ? 'admin' : 'bell'} size={17} className="shrink-0 mt-0.5 text-tn-teal" />
         {tab === 'mine' ? (
-          <span>
-            {`Notifications arrive in the two icons at the top right: the bell (Tools and System) and the speech bubble (Chat and Email). A daily summary lands at ${DAILY_HOUR}:00 New York time. Read notifications are cleared after ${KEEP_READ_DAYS} days, unread ones after ${KEEP_UNREAD_DAYS}. A lock means an admin set that choice for everyone. Email is coming: until it is built, everything arrives in the portal. Changes save on their own.`}
-          </span>
+          <div className="flex-1 min-w-0 space-y-2.5">
+            <p className="m-0">
+              <strong className="text-tn-ink">As it happens</strong> arrives in the bell right away. <strong className="text-tn-ink">Daily summary</strong>
+              {` arrives by email at ${DAILY_HOUR}:00 your time, Monday to Friday, and also in the bell; after a weekend or a US holiday, the next summary catches you up. You get at most two summary emails a day, one per category, and none when there is nothing to tell. A lock means an admin set that choice for everyone. Use the eye to see how a notification looks, and to send yourself a test. Read notifications leave the bell after ${KEEP_READ_DAYS} days, unread ones after ${KEEP_UNREAD_DAYS}. Changes save on their own.`}
+            </p>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="font-semibold text-tn-ink">Your time zone</span>
+              <Select value={zone} onChange={changeZone} options={zoneOptions()} searchable ariaLabel="Your time zone" />
+              <span className="text-[12px] text-muted">{`The summary arrives at ${DAILY_HOUR}:00 in ${zoneLabel(zone)}.`}</span>
+              {statusFor('zone')}
+            </div>
+          </div>
         ) : (
           <span>
-            The rule for everyone each notification reaches. For each setting, pick the default and whether people can change it
-            or it is <strong className="text-tn-ink">fixed</strong>. People who never changed an open setting follow its default;
-            a fixed one shows on their page locked, with a line saying what you set. Your own page follows these rules too.
+            The rule for everyone each notification reaches. Pick the default and whether people can change it or it is
+            <strong className="text-tn-ink"> fixed</strong>. People who never changed an open setting follow its default; a fixed one shows on
+            their page locked. &quot;Turned off by&quot; counts the people it reaches who switched it off: a high share can mean it is noisy or not useful.
           </span>
         )}
       </div>
 
-      {BLOCKS.map(b => {
-        const list = listed(b.key)
-        return (
-          <section key={b.key} className={`rounded-[14px] border border-[var(--panel-border)] bg-white overflow-hidden ${b.available ? '' : 'opacity-55'}`}>
-            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[var(--row-rule)] bg-subtle">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h2 className="font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink m-0">{b.title}</h2>
-                  <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">{`In ${b.drawer}`}</span>
-                </div>
-                <p className="text-[12.5px] text-muted m-0 mt-0.5">{b.description}</p>
-              </div>
-              {!b.available && <span className="shrink-0 rounded bg-[#fbf1cf] px-2 py-0.5 text-[10px] font-bold tracking-[.06em] text-[#a67c04]">NOT YET</span>}
-            </div>
-
-            {!b.available && <p className="px-5 py-4 text-[13px] text-muted m-0">{b.blockedBy}</p>}
-
-            {b.available && list.length === 0 && (
-              <p className="px-5 py-4 text-[13px] text-muted m-0">Nothing in this block reaches you at your level.</p>
+      <div className="rounded-[14px] border border-[var(--panel-border)] bg-white overflow-x-auto">
+        <table className="w-full border-collapse text-[13.5px] min-w-[860px]">
+          <thead>
+            {tab === 'mine' ? (
+              <tr><th className={TH}>Notification</th><th className={TH}>Category</th><th className={TH}>On</th><th className={TH}>When</th><th className={`${TH} text-center`}>Preview</th></tr>
+            ) : (
+              <tr><th className={TH}>Notification</th><th className={TH}>Category</th><th className={TH}>Default on</th><th className={TH}>Default when</th><th className={TH}>Turned off by</th></tr>
             )}
-
-            {b.available && list.map(t => {
+          </thead>
+          <tbody>
+            {listed.map(t => {
               const faded = !t.available
               const rule = rules[t.key]
 
               if (tab === 'rules') {
-                const scope = SCOPE_TAG[ruleScope(rule)]
+                const c = offCounts?.[t.key]
+                const pct = c && c.reach ? Math.round((100 * c.off) / c.reach) : 0
                 return (
-                  <RowShell key={t.key} t={t} faded={faded}
-                    tags={!faded && <span className={`rounded px-[6px] py-0.5 text-[9.5px] font-bold tracking-[.06em] ${scope.cls}`}>{scope.text}</span>}>
-                    <div className="flex items-start gap-3 ml-auto">
-                      {statusFor(`rules:${t.key}`)}
-                      <Col w="where" stack>
-                        <Segmented label="Where" options={CHANNEL_OPTIONS} value={rule.channel} disabled={faded} onChange={v => changeRule(t.key, { channel: v })} />
-                        <FixToggle fixed={rule.fixChannel} disabled={faded} onChange={v => changeRule(t.key, { fixChannel: v })} />
-                      </Col>
-                      <Col w="when" stack>
-                        <Segmented label="When" options={TIMING_OPTIONS} value={rule.timing} disabled={faded} onChange={v => changeRule(t.key, { timing: v })} />
-                        <FixToggle fixed={rule.fixTiming} disabled={faded} onChange={v => changeRule(t.key, { fixTiming: v })} />
-                      </Col>
-                      <div className="w-[120px] shrink-0 flex flex-col items-center gap-1.5 pt-[3px]">
-                        <Switch on={faded ? false : rule.enabled} disabled={faded} label={`${t.title}: ${rule.enabled ? 'on' : 'off'} for everyone`} onChange={v => changeRule(t.key, { enabled: v })} />
-                        <span className="pt-[5px]"><FixToggle fixed={rule.fixEnabled} disabled={faded} onChange={v => changeRule(t.key, { fixEnabled: v })} /></span>
+                  <tr key={t.key} className={faded ? 'opacity-55' : ''}>
+                    <NameCell t={t} faded={faded} below={statusFor(`rules:${t.key}`)} />
+                    <td className={TD}><CategoryPill block={t.block} /></td>
+                    <td className={TD}>
+                      <div className="flex items-center gap-2">
+                        <Switch on={!faded && rule.enabled} disabled={faded} label={`${t.title}: ${rule.enabled ? 'on' : 'off'} for everyone`} onChange={v => changeRule(t.key, { enabled: v })} />
+                        <FixToggle fixed={rule.fixEnabled} disabled={faded} onChange={v => changeRule(t.key, { fixEnabled: v })} />
                       </div>
-                    </div>
-                  </RowShell>
+                    </td>
+                    <td className={TD}>
+                      {timingIsChoice(t) ? (
+                        <div className="flex items-center gap-2">
+                          <WhenChoice label={`${t.title}: default when`} value={rule.timing} disabled={faded} onChange={v => changeRule(t.key, { timing: v })} />
+                          <FixToggle fixed={rule.fixTiming} disabled={faded} onChange={v => changeRule(t.key, { fixTiming: v })} />
+                        </div>
+                      ) : <WhenFixed timing={t.timings as Timing} only faded={faded} />}
+                    </td>
+                    <td className={TD}>
+                      {faded || !c ? <span className="text-[12.5px] text-muted">{faded ? 'not built yet' : 'n/a'}</span> : (
+                        <div className={`flex items-center gap-2 text-[12.5px] whitespace-nowrap ${pct >= 25 ? 'text-[#b25e09] font-bold' : 'text-foreground'}`}>
+                          <span className="w-[90px] h-1.5 rounded-full bg-[var(--row-rule)] overflow-hidden">
+                            <span className="block h-full rounded-full bg-[#e8a33a]" style={{ width: `${pct}%` }} />
+                          </span>
+                          {`${c.off} of ${c.reach}`}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
                 )
               }
 
-              const eff = effective(rule, prefs[t.key])
-              const sentence = faded ? null : fixedSentence(rule)
+              const eff = effective(t, rule, prefs[t.key])
+              const sentence = faded ? null : fixedSentence(t, rule)
               const offForAll = rule.fixEnabled && !rule.enabled
+              const whenLocked = rule.fixTiming && timingIsChoice(t)
               return (
-                <RowShell key={t.key} t={t} faded={faded}
-                  below={sentence && (
-                    <p className="text-[11.5px] font-semibold text-tn-primary m-0 mt-1 inline-flex items-center gap-1.5">
-                      <span className="text-[#a67c04]"><LockGlyph /></span>{sentence}
-                    </p>
-                  )}>
-                  <div className="flex items-center gap-3 ml-auto">
+                <tr key={t.key} className={faded ? 'opacity-55' : ''}>
+                  <NameCell t={t} faded={faded} below={<>
+                    {sentence && (
+                      <p className="text-[11.5px] font-semibold text-tn-primary m-0 mt-1 inline-flex items-center gap-1.5">
+                        <span className="text-[#a67c04]"><LockGlyph /></span>{sentence}
+                      </p>
+                    )}
                     {statusFor(`mine:${t.key}`)}
-                    <Col w="where">
-                      <Segmented label="Where" options={CHANNEL_OPTIONS} value={eff.channel}
-                        disabled={faded || !eff.enabled} locked={!faded && !offForAll && rule.fixChannel}
-                        onChange={v => changePref(t.key, { channel: v })} />
-                    </Col>
-                    <Col w="when">
-                      <Segmented label="When" options={TIMING_OPTIONS} value={eff.timing}
-                        disabled={faded || !eff.enabled} locked={!faded && !offForAll && rule.fixTiming}
-                        onChange={v => changePref(t.key, { timing: v })} />
-                    </Col>
-                    <Col w="on">
-                      <Switch on={faded ? false : eff.enabled} disabled={faded} locked={!faded && rule.fixEnabled}
-                        label={`${t.title}: ${eff.enabled ? 'on' : 'off'}`} onChange={v => changePref(t.key, { enabled: v })} />
-                    </Col>
-                  </div>
-                </RowShell>
+                  </>} />
+                  <td className={TD}><CategoryPill block={t.block} /></td>
+                  <td className={TD}>
+                    {!faded && rule.fixEnabled
+                      ? <span className="inline-flex items-center gap-1.5 text-[#a67c04]" title="Set by an admin"><LockGlyph size={14} /><span className="text-[12px] font-bold text-tn-ink">{rule.enabled ? 'On' : 'Off'}</span></span>
+                      : <Switch on={!faded && eff.enabled} disabled={faded} label={`${t.title}: ${eff.enabled ? 'on' : 'off'}`} onChange={v => changePref(t.key, { enabled: v })} />}
+                  </td>
+                  <td className={TD}>
+                    {faded ? <WhenFixed timing={t.defaultTiming} faded />
+                      : !timingIsChoice(t) ? <WhenFixed timing={eff.timing} only />
+                      : whenLocked || offForAll ? <WhenFixed timing={eff.timing} locked={whenLocked} />
+                      : <WhenChoice label={`${t.title}: when`} value={eff.timing} disabled={!eff.enabled} onChange={v => changePref(t.key, { timing: v })} />}
+                  </td>
+                  <td className={`${TD} text-center`}>
+                    <button type="button" onClick={() => setPreview(t)} aria-label={`Preview: ${t.title}`}
+                      className="w-[34px] h-[34px] rounded-[9px] border border-[var(--panel-border)] bg-white text-tn-teal inline-flex items-center justify-center hover:border-tn-teal hover:bg-[rgba(30,125,127,.08)]">
+                      <EyeGlyph />
+                    </button>
+                  </td>
+                </tr>
               )
             })}
-          </section>
-        )
-      })}
+          </tbody>
+        </table>
+      </div>
+
+      {later.length > 0 && (
+        <p className="text-[12.5px] text-muted m-0">
+          {`Still to come: ${later.map(b => b.title).join(' and ')} notifications, which arrive with those parts of the portal.`}
+        </p>
+      )}
+
+      {preview && <Preview t={preview} sendTest={sendTest} onClose={() => setPreview(null)} />}
     </div>
   )
 }

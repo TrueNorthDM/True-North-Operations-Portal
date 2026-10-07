@@ -13,3 +13,4 @@ PORTAL_DIR=/opt/tnportal/app
 0 9 */2 * *              $PORTAL_DIR/deploy/cron/run.sh /api/cron/health
 45 1,5,9,13,17,21 * * *  $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-delta
 15 1,5,9,13,17,21 * * *  $PORTAL_DIR/deploy/cron/run.sh /api/cron/monday-worklist
+*/15 * * * *             $PORTAL_DIR/deploy/cron/run.sh /api/cron/daily-summary

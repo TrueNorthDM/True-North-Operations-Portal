@@ -5,7 +5,8 @@
  * and when, is decided here and nowhere else: the admin's rule for the type,
  * then the person's own choice where the rule leaves it open (`effective`).
  * Switched off means no row at all; the daily summary means a row that waits
- * until 8:00 in New York.
+ * until 8:00 in the person's time zone (New York unless they chose another),
+ * and then goes out in the summary email too (summary.ts).
  *
  * Every notification carries a dedupe key, and the table is unique on
  * (person, type, key): the same thing found by two runs is one notification.
@@ -15,7 +16,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { TYPE_BY_KEY, effective, type Pref, type Rule } from './catalogue'
 import { deliverAt, zoneDate } from './schedule'
-import { loadPrefs, loadRules } from './store'
+import { loadPrefs, loadRules, loadZones } from './store'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -29,9 +30,9 @@ export interface Draft {
   /** Unique per person and type: the same thing found twice is one notification. */
   dedupeKey: string
   /**
-   * The New York day it must land on, or not at all. "Due tomorrow" is only
-   * true the day before: a daily summary that would arrive on the day itself
-   * is skipped, and an earlier run will have caught it.
+   * The day it must land on, in the person's calendar, or not at all. "Due
+   * tomorrow" is only true the day before: a daily summary that would arrive
+   * on the day itself is skipped, and an earlier run will have caught it.
    */
   deliverDay?: string
 }
@@ -47,12 +48,13 @@ export interface Row {
   deliver_at: string
 }
 
-/** Pure: which drafts become rows, and when they land. */
+/** Pure: which drafts become rows, and when they land. `zones`: person -> time zone, New York when missing. */
 export function plan(
   drafts: readonly Draft[],
   rules: Record<string, Rule>,
   prefs: ReadonlyMap<string, Record<string, Pref>>,
   now: Date,
+  zones: ReadonlyMap<string, string> = new Map(),
 ): Row[] {
   const rows: Row[] = []
   const seen = new Set<string>()
@@ -62,10 +64,11 @@ export function plan(
     if (!t || !t.available || !rule) continue
     const key = `${d.personId}|${d.type}|${d.dedupeKey}`
     if (seen.has(key)) continue
-    const eff = effective(rule, prefs.get(d.personId)?.[d.type])
+    const eff = effective(t, rule, prefs.get(d.personId)?.[d.type])
     if (!eff.enabled) continue
-    const at = deliverAt(eff.timing, now)
-    if (d.deliverDay && zoneDate(at) !== d.deliverDay) continue
+    const zone = zones.get(d.personId)
+    const at = deliverAt(eff.timing, now, zone)
+    if (d.deliverDay && zoneDate(at, zone) !== d.deliverDay) continue
     seen.add(key)
     rows.push({
       person_id: d.personId, type_key: d.type, title: d.title, body: d.body, href: d.href,
@@ -80,11 +83,9 @@ export interface DeliverResult { drafts: number; rows: number; byType: Record<st
 export async function deliver(db: Client, drafts: readonly Draft[], opts: { now?: Date; dryRun?: boolean } = {}): Promise<DeliverResult & { planned?: Row[] }> {
   const now = opts.now ?? new Date()
   if (!drafts.length) return { drafts: 0, rows: 0, byType: {} }
-  const [{ rules }, prefs] = await Promise.all([
-    loadRules(db),
-    loadPrefs(db, [...new Set(drafts.map(d => d.personId))]),
-  ])
-  const rows = plan(drafts, rules, prefs, now)
+  const people = [...new Set(drafts.map(d => d.personId))]
+  const [{ rules }, prefs, zones] = await Promise.all([loadRules(db), loadPrefs(db, people), loadZones(db, people)])
+  const rows = plan(drafts, rules, prefs, now, zones)
   const byType: Record<string, number> = {}
   for (const r of rows) byType[r.type_key] = (byType[r.type_key] ?? 0) + 1
   if (opts.dryRun) return { drafts: drafts.length, rows: rows.length, byType, planned: rows }

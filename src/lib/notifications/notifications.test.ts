@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { NOTIFICATION_TYPES, TYPE_BY_KEY, cleanPref, cleanRule, defaultRule, effective, ruleScope, type Rule } from './catalogue'
+import { NOTIFICATION_TYPES, TYPE_BY_KEY, channelFor, cleanPref, cleanRule, defaultRule, effective, type Rule } from './catalogue'
 import { addDays, deliverAt, weekOf, zoneDate, zoneTime } from './schedule'
 import { plan, type Draft } from './deliver'
 import { crossed, expectedSoFar, listOf } from './generators'
@@ -15,30 +15,59 @@ describe('the catalogue', () => {
   })
 
   it('starts integration failures fixed on, everything else open', () => {
-    expect(ruleScope(rule('integration-failed'))).toBe('partial')
     expect(rule('integration-failed').fixEnabled).toBe(true)
-    expect(ruleScope(rule('step-late'))).toBe('full')
+    expect(rule('step-late').fixEnabled || rule('step-late').fixTiming).toBe(false)
+  })
+
+  it('follows the table of 7 October 2026 for when each one may arrive', () => {
+    const by = (w: string) => NOTIFICATION_TYPES.filter(t => t.timings === w).map(t => t.key).sort()
+    expect(by('both')).toEqual(['first-login', 'i7-budget', 'step-assigned', 'sync-incomplete', 'team-order-changed'])
+    expect(by('daily')).toEqual(['monday-account-unlinked', 'publishing-behind', 'step-due-tomorrow', 'step-late', 'team-late-pile'])
+    expect(by('instant')).toEqual(['integration-failed', 'level-changed', 'step-released'])
+  })
+
+  it("starts every type on a timing it allows, with where following when", () => {
+    for (const t of NOTIFICATION_TYPES) {
+      const r = defaultRule(t)
+      expect(t.timings === 'both' || t.timings === r.timing, t.key).toBe(true)
+      expect(r.channel, t.key).toBe(channelFor(r.timing))
+    }
+    expect(channelFor('instant')).toBe('app')
+    expect(channelFor('daily')).toBe('both')
+  })
+
+  it('gives every type an example, a section and a stat for the preview and the email', () => {
+    for (const t of NOTIFICATION_TYPES) {
+      expect(t.example.title && t.example.body && t.section && t.stat, t.key).toBeTruthy()
+    }
   })
 })
 
 describe('effective: the admin rule over the person', () => {
+  const T = (k: string) => TYPE_BY_KEY.get(k)!
   it('uses the default when the person never chose', () => {
-    expect(effective(rule('step-late'), undefined)).toEqual({ enabled: true, timing: 'daily', channel: 'app' })
+    expect(effective(T('step-late'), rule('step-late'), undefined)).toEqual({ enabled: true, timing: 'daily', channel: 'both' })
+    expect(effective(T('step-assigned'), rule('step-assigned'), undefined)).toEqual({ enabled: true, timing: 'instant', channel: 'app' })
   })
 
   it("uses the person's choice where the rule is open", () => {
-    expect(effective(rule('step-late'), { timing: 'instant', enabled: false }).timing).toBe('instant')
-    expect(effective(rule('step-late'), { enabled: false }).enabled).toBe(false)
+    expect(effective(T('team-order-changed'), rule('team-order-changed'), { timing: 'instant' }).timing).toBe('instant')
+    expect(effective(T('step-late'), rule('step-late'), { enabled: false }).enabled).toBe(false)
+  })
+
+  it('keeps a type to the timing it allows, whatever was chosen before', () => {
+    expect(effective(T('step-late'), rule('step-late'), { timing: 'instant' }).timing).toBe('daily')
+    expect(effective(T('level-changed'), rule('level-changed', { timing: 'daily' }), undefined).timing).toBe('instant')
   })
 
   it('ignores the person on a fixed setting, and gives their choice back when it opens again', () => {
     const pref = { timing: 'instant' as const }
-    expect(effective(rule('step-late', { fixTiming: true }), pref).timing).toBe('daily')
-    expect(effective(rule('step-late', { fixTiming: false }), pref).timing).toBe('instant')
+    expect(effective(T('team-order-changed'), rule('team-order-changed', { fixTiming: true }), pref).timing).toBe('daily')
+    expect(effective(T('team-order-changed'), rule('team-order-changed', { fixTiming: false }), pref).timing).toBe('instant')
   })
 
   it('an admin turning a type off and fixing it turns it off for everyone', () => {
-    expect(effective(rule('step-late', { enabled: false, fixEnabled: true }), { enabled: true }).enabled).toBe(false)
+    expect(effective(T('step-late'), rule('step-late', { enabled: false, fixEnabled: true }), { enabled: true }).enabled).toBe(false)
   })
 })
 
@@ -49,10 +78,9 @@ describe('what a browser may send', () => {
     expect(cleanPref({ enabled: 'yes' })).toBeNull()
   })
 
-  it('refuses email until email delivery exists', () => {
-    expect(cleanPref({ channel: 'email' })).toBeNull()
-    expect(cleanPref({ channel: 'app' })).toEqual({ channel: 'app' })
-    expect(cleanRule({ ...rule('step-late'), channel: 'both' })).toBeNull()
+  it('never takes a channel: it follows when', () => {
+    expect(cleanPref({ channel: 'email' })).toEqual({})
+    expect(cleanRule({ ...rule('step-assigned'), timing: 'daily', channel: 'app' })?.channel).toBe('both')
   })
 
   it('needs a whole rule', () => {
@@ -120,9 +148,18 @@ describe('plan: drafts into notifications', () => {
     const fri = d({ type: 'step-due-tomorrow', dedupeKey: '2026-09-25', deliverDay: '2026-09-24' })
     const thu = d({ type: 'step-due-tomorrow', dedupeKey: '2026-09-24', deliverDay: '2026-09-23' })
     expect(plan([fri, thu], allRules(), new Map(), now).map(r => r.dedupe_key)).toEqual(['2026-09-25'])
-    // As it happens, Thursday's deadline is told today, Friday's waits.
+    // It only comes in the summary: an old "as it happens" choice changes nothing.
     const prefs = new Map([['p1', { 'step-due-tomorrow': { timing: 'instant' as const } }]])
-    expect(plan([fri, thu], allRules(), prefs, now).map(r => r.dedupe_key)).toEqual(['2026-09-24'])
+    expect(plan([fri, thu], allRules(), prefs, now).map(r => r.dedupe_key)).toEqual(['2026-09-25'])
+  })
+
+  it("lands the summary at 8:00 in the person's own time zone", () => {
+    // Wednesday 11:00 in New York is 12:00 in Sao Paulo: both summaries are tomorrow at 8:00, an hour apart.
+    const zones = new Map([['p1', 'America/Sao_Paulo']])
+    const [r] = plan([d({ type: 'step-late' })], allRules(), new Map(), now, zones)
+    expect(r.deliver_at).toBe('2026-09-24T11:00:00.000Z')
+    const [ny] = plan([d({ type: 'step-late' })], allRules(), new Map(), now)
+    expect(ny.deliver_at).toBe('2026-09-24T12:00:00.000Z')
   })
 
   it('collapses the same thing found twice', () => {

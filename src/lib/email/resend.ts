@@ -14,13 +14,18 @@ import { IS_STAGING, stagingMayEmail } from '@/lib/environment'
 
 export const PORTAL_SENDER = 'True North Operations Portal <portal@truenorthportal.online>'
 
-export type SendResult = { sent: true } | { sent: false; reason: string }
+/**
+ * `blocked`: this copy of the portal cannot email this address at all (no
+ * email service, or the staging copy and an address not on its list), as
+ * opposed to a send that failed and may work if tried again.
+ */
+export type SendResult = { sent: true } | { sent: false; reason: string; blocked?: true }
 
 export async function sendEmail(msg: { to: string; subject: string; html: string; text: string }): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY
-  if (!key) return { sent: false, reason: 'the email service is not set up yet (RESEND_API_KEY)' }
+  if (!key) return { sent: false, reason: 'the email service is not set up yet (RESEND_API_KEY)', blocked: true }
   if (IS_STAGING && !stagingMayEmail(msg.to, process.env.STAGING_EMAIL_ALLOWLIST)) {
-    return { sent: false, reason: `this is the staging copy, which only emails ${process.env.STAGING_EMAIL_ALLOWLIST || 'nobody'}` }
+    return { sent: false, reason: `this is the staging copy, which only emails ${process.env.STAGING_EMAIL_ALLOWLIST || 'nobody'}`, blocked: true }
   }
   try {
     const res = await fetch('https://api.resend.com/emails', {

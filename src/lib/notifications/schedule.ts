@@ -1,37 +1,58 @@
 /**
- * When a notification lands, in the company's calendar (New York, like
- * Clocky). Pure: the generators, the delivery and the tests share it.
+ * When a notification lands, in a calendar: the company's (New York, like
+ * Clocky) unless a person chose their own time zone. Pure: the generators, the
+ * delivery, the summary email and the tests share it.
  *
- * "As it happens" lands at once. "Daily summary" lands at the next 8:00 in New
- * York, which is 12:00 or 13:00 UTC depending on daylight saving, so the hour
- * is worked out from the zone rather than written down as an offset.
+ * "As it happens" lands at once. "Daily summary" lands at the next 8:00 in the
+ * person's zone (in New York that is 12:00 or 13:00 UTC depending on daylight
+ * saving), so the hour is worked out from the zone rather than written down as
+ * an offset.
  */
 
 import { DAILY_HOUR, DAILY_ZONE, type Timing } from './catalogue'
 
 const DAY = 86_400_000
 
-const PARTS = new Intl.DateTimeFormat('en-US', {
-  timeZone: DAILY_ZONE, hourCycle: 'h23',
-  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-})
+const FORMATS = new Map<string, Intl.DateTimeFormat>()
+function parts(zone: string): Intl.DateTimeFormat {
+  let f = FORMATS.get(zone)
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    })
+    FORMATS.set(zone, f)
+  }
+  return f
+}
 
-function zoneParts(d: Date): Record<string, number> {
+/** A zone name the runtime knows. Anything else (a typo, an old name) is the company's. */
+export function validZone(zone: string | null | undefined): string {
+  if (!zone) return DAILY_ZONE
+  try { parts(zone); return zone } catch { return DAILY_ZONE }
+}
+
+function zoneParts(d: Date, zone: string): Record<string, number> {
   const out: Record<string, number> = {}
-  for (const p of PARTS.formatToParts(d)) if (p.type !== 'literal') out[p.type] = Number(p.value)
+  for (const p of parts(zone).formatToParts(d)) if (p.type !== 'literal') out[p.type] = Number(p.value)
   return out
 }
 
-/** How far New York's wall clock is from UTC at this instant, in ms (negative: behind). */
-function zoneOffset(d: Date): number {
-  const p = zoneParts(d)
+/** How far a zone's wall clock is from UTC at this instant, in ms (negative: behind). */
+function zoneOffset(d: Date, zone: string): number {
+  const p = zoneParts(d, zone)
   return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(d.getTime() / 1000) * 1000
 }
 
-/** The calendar day in New York, as YYYY-MM-DD. */
-export function zoneDate(d: Date): string {
-  const p = zoneParts(d)
+/** The calendar day in a zone (New York unless told), as YYYY-MM-DD. */
+export function zoneDate(d: Date, zone: string = DAILY_ZONE): string {
+  const p = zoneParts(d, zone)
   return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`
+}
+
+/** The wall-clock hour in a zone, 0 to 23. */
+export function zoneHour(d: Date, zone: string = DAILY_ZONE): number {
+  return zoneParts(d, zone).hour
 }
 
 export function addDays(iso: string, days: number): string {
@@ -46,21 +67,21 @@ export function weekOf(iso: string): string {
   return addDays(iso, -((dow + 6) % 7))
 }
 
-/** The instant a New York wall-clock hour happens on a given day. */
-export function zoneTime(iso: string, hour: number): Date {
+/** The instant a wall-clock hour happens on a given day in a zone. */
+export function zoneTime(iso: string, hour: number, zone: string = DAILY_ZONE): Date {
   const [y, m, d] = iso.split('-').map(Number)
   const guess = Date.UTC(y, m - 1, d, hour)
   // Twice: the first pass can land across a daylight-saving change from the
   // hour being asked for, the second settles on the right side of it.
-  let t = guess - zoneOffset(new Date(guess))
-  t = guess - zoneOffset(new Date(t))
+  let t = guess - zoneOffset(new Date(guess), zone)
+  t = guess - zoneOffset(new Date(t), zone)
   return new Date(t)
 }
 
-/** When a notification made now lands for someone who chose this timing. */
-export function deliverAt(timing: Timing, now: Date): Date {
+/** When a notification made now lands for someone who chose this timing, in their zone. */
+export function deliverAt(timing: Timing, now: Date, zone: string = DAILY_ZONE): Date {
   if (timing === 'instant') return now
-  const today = zoneDate(now)
-  const at = zoneTime(today, DAILY_HOUR)
-  return now < at ? at : zoneTime(addDays(today, 1), DAILY_HOUR)
+  const today = zoneDate(now, zone)
+  const at = zoneTime(today, DAILY_HOUR, zone)
+  return now < at ? at : zoneTime(addDays(today, 1), DAILY_HOUR, zone)
 }

@@ -1,5 +1,5 @@
 /**
- * Reading and writing the notification tables (migration 088), always with the
+ * Reading and writing the notification tables (migrations 088 and 092), always with the
  * privileged client. Who is asking is decided before this is called: the
  * directory person behind a login is usually found by email, which row-level
  * security cannot see, so the tables are closed to the signed-in role and the
@@ -11,6 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NOTIFICATION_TYPES, defaultRule, type Channel, type Pref, type Rule, type Timing } from './catalogue'
+import { validZone } from './schedule'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -74,4 +75,35 @@ export async function readState<T>(db: Client, key: string): Promise<T | null> {
 
 export async function writeState(db: Client, key: string, value: unknown): Promise<void> {
   await db.from('notification_state').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+}
+
+/**
+ * Each person's own time zone (person_settings, migration 092), only for those
+ * who chose one. Missing, or not there yet, means the company's.
+ */
+export async function loadZones(db: Client, personIds: readonly string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  for (let i = 0; i < personIds.length; i += 200) {
+    const { data, error } = await db.from('person_settings').select('person_id, time_zone').in('person_id', personIds.slice(i, i + 200))
+    if (error) break
+    for (const r of (data ?? []) as { person_id: string; time_zone: string | null }[]) {
+      if (r.time_zone) out.set(r.person_id, validZone(r.time_zone))
+    }
+  }
+  return out
+}
+
+/**
+ * How many people switched each notification off (prefs with enabled false),
+ * for the admin's "Turned off by" column. Only people in `among` count, so a
+ * choice left behind by someone the type no longer reaches is not counted.
+ */
+export async function loadOffCounts(db: Client, among: (typeKey: string, personId: string) => boolean): Promise<Record<string, number>> {
+  const out: Record<string, number> = {}
+  const { data, error } = await db.from('notification_prefs').select('person_id, type_key').eq('enabled', false)
+  if (error) return out
+  for (const r of (data ?? []) as { person_id: string; type_key: string }[]) {
+    if (among(r.type_key, r.person_id)) out[r.type_key] = (out[r.type_key] ?? 0) + 1
+  }
+  return out
 }

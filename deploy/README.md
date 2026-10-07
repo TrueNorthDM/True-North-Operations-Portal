@@ -104,7 +104,8 @@ see `deploy/migrate/README.md`. The day itself is `deploy/SWITCH-OVER.md`.
 ## Scheduled jobs (`deploy/cron/`)
 
 `portal.crontab` for the `portal` user; `run.sh` calls each job on
-`127.0.0.1:3000` with `CRON_SECRET`. The five jobs and their times live only here.
+`127.0.0.1:3000` with `CRON_SECRET`. The six jobs and their times live only here
+(the daily summary emails run every 15 minutes; most runs find nothing to do).
 
 ## Backups (`deploy/backup/`)
 

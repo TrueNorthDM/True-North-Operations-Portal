@@ -27,15 +27,17 @@ export default async function NotificationSettingsCheck({ searchParams }: { sear
   const rules = Object.fromEntries(NOTIFICATION_TYPES.map(t => [t.key, { ...defaultRule(t), ...EXAMPLE_LOCKS[t.key] }]))
   return (
     <div className="min-h-screen bg-background p-8">
-      <div className="max-w-[1080px] mx-auto space-y-5">
+      <div className="space-y-5">
         <div>
           <Breadcrumb now="Notification settings" />
           <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Notification settings</h1>
-          <p className="mt-1.5 text-muted leading-relaxed m-0">What notifies you, when, and where. Every notification the portal has, including the ones still to come.</p>
+          <p className="mt-1.5 text-muted leading-relaxed m-0">What notifies you, and when: in the bell as it happens, or in the daily summary email. Every notification the portal has, including the ones still to come.</p>
         </div>
         <NotificationSettings
           types={NOTIFICATION_TYPES} mine={mine} rules={rules} prefs={{}} isAdmin={isAdmin}
           savePref={null} saveRule={null} initialTab={tab === 'rules' ? 'rules' : 'mine'}
+          zone={null} saveZone={null} sendTest={null}
+          offCounts={Object.fromEntries(NOTIFICATION_TYPES.map((t, i) => [t.key, { off: [2, 1, 4, 5, 0, 3, 0, 1, 0, 2, 5, 0, 1][i] ?? 0, reach: [31, 31, 31, 8, 31, 6, 3, 8, 4, 4, 4, 31, 4][i] ?? 1 }]))}
         />
       </div>
     </div>

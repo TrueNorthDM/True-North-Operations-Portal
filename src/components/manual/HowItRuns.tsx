@@ -158,7 +158,7 @@ function Diagram() {
         <text x={40} y={344} {...S}>PRODUCTION</text>
         <Box x={40} y={352} name="Supabase" sub="database, sign-in and files" />
         <Box x={280} y={352} name="Portal" sub="the screens the team uses" hot />
-        <Box x={536} y={352} w={184} name="Scheduled jobs" sub="Monday and hours, every 4 h" />
+        <Box x={536} y={352} w={184} name="Scheduled jobs" sub="Syncs every 4 h, emails 8:00" />
         <Box x={40} y={428} name="Backups" sub="every night, 03:30" />
         <Box x={280} y={428} name="Watch" sub="checks every 10 min" />
 

@@ -1,8 +1,8 @@
 'use server'
 
 /**
- * Writes for notifications: a person's own choices, an admin's rules, and
- * marking notifications read.
+ * Writes for notifications: a person's own choices, their time zone, an
+ * admin's rules, "Send me a test", and marking notifications read.
  *
  * Each one verifies the login with auth.getUser() and resolves the person who
  * is actually signed in (real: true), never the one a View Stage preview is
@@ -18,21 +18,28 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { isSecurityAdmin } from '@/lib/auth/role'
 import { getViewAs } from '@/lib/auth/view-as-server'
+import { headers } from 'next/headers'
 import { NOTIFICATION_TYPES, TYPE_BY_KEY, cleanPref, cleanRule, tabOf, type Pref, type Rule } from '@/lib/notifications/catalogue'
-import { ruleToRow } from '@/lib/notifications/store'
+import { ruleToRow, loadZones } from '@/lib/notifications/store'
+import { validZone, zoneDate } from '@/lib/notifications/schedule'
+import { zoneLabel } from '@/lib/notifications/zones'
+import { firstName } from '@/lib/notifications/summary'
+import { renderSummary } from '@/lib/email/summary'
+import { sendEmail } from '@/lib/email/resend'
+import { publicOrigin } from '@/lib/auth/public-origin'
 
 type Result = { ok: boolean; error?: string }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-async function signedInPerson(): Promise<{ personId: string } | { error: string }> {
+async function signedInPerson(): Promise<{ personId: string; name: string; email: string | null } | { error: string }> {
   if (await getViewAs()) return { error: 'View Stage is only a preview. Close it to change notifications.' }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'You are signed out. Sign in again to save.' }
   const me = await loadCurrentPerson(supabase, user, { real: true })
   if (!me) return { error: 'Your login is not linked to anyone in the Directory.' }
-  return { personId: me.id }
+  return { personId: me.id, name: me.full_name ?? '', email: user.email ?? null }
 }
 
 export async function saveNotificationPref(key: string, pref: Pref): Promise<Result> {
@@ -94,4 +101,56 @@ export async function markTabRead(tab: string): Promise<Result> {
     .eq('person_id', me.personId).in('type_key', keys).is('read_at', null).lte('deliver_at', now)
   if (error) return { ok: false, error: error.message }
   return { ok: true }
+}
+
+/** A person's own time zone for the daily summary. The company's zone clears the choice. */
+export async function saveTimeZone(zone: string): Promise<Result> {
+  if (typeof zone !== 'string' || validZone(zone) !== zone) return { ok: false, error: 'That time zone is not known.' }
+  const me = await signedInPerson()
+  if ('error' in me) return { ok: false, error: me.error }
+  const { error } = await createAdminClient().from('person_settings').upsert({
+    person_id: me.personId, time_zone: zone, updated_at: new Date().toISOString(),
+  }, { onConflict: 'person_id' })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+/**
+ * "Send me a test" from the preview window: the type's example, to the person
+ * asking, either in the bell (marked Test, as it happens) or as a one-item
+ * summary email. Only ever to the person asking. In the bell, one test per
+ * type every 30 seconds (the dedupe key), so a double click is one.
+ */
+export async function sendTestNotification(key: string, channel: 'app' | 'email'): Promise<Result> {
+  const t = TYPE_BY_KEY.get(key)
+  if (!t || !t.available) return { ok: false, error: 'That notification is not available yet.' }
+  if (t.block !== 'tools' && t.block !== 'system') return { ok: false, error: 'That notification has no test yet.' }
+  const me = await signedInPerson()
+  if ('error' in me) return { ok: false, error: me.error }
+  const db = createAdminClient()
+  const now = new Date()
+  const slot = Math.floor(now.getTime() / 30_000)
+
+  if (channel === 'app') {
+    const { error } = await db.from('notifications').upsert({
+      person_id: me.personId, type_key: key, title: `Test: ${t.example.title}`, body: t.example.body,
+      href: '/notifications', dedupe_key: `test:${slot}`, timing: 'instant',
+      deliver_at: now.toISOString(), emailed_at: now.toISOString(),
+    }, { onConflict: 'person_id,type_key,dedupe_key', ignoreDuplicates: true })
+    if (error) return { ok: false, error: error.message }
+    revalidatePath('/', 'layout')
+    return { ok: true }
+  }
+
+  if (!me.email) return { ok: false, error: 'Your login has no email address.' }
+  const zone = (await loadZones(db, [me.personId])).get(me.personId)
+  const h = await headers()
+  const origin = publicOrigin(`${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host') ?? 'localhost:3000'}`)
+  const mail = renderSummary({
+    category: t.block, firstName: firstName(me.name), today: zoneDate(now, zone), missed: [], test: true,
+    items: [{ type: key, title: t.example.title, body: t.example.body, href: '/notifications', day: zoneDate(now, zone) }],
+    origin, zoneLabel: zoneLabel(zone),
+  })
+  const res = await sendEmail({ to: me.email, ...mail })
+  return res.sent ? { ok: true } : { ok: false, error: `Not sent: ${res.reason}.` }
 }

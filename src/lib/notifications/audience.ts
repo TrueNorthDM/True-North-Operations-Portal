@@ -30,6 +30,8 @@ export interface Recipient {
   personId: string
   profileId: string
   name: string
+  /** The address they sign in with: where the summary email goes. */
+  email: string | null
   roleType: RoleType
   isAdmin: boolean
   /** team id -> leads it */
@@ -105,6 +107,7 @@ export async function loadAudience(db: Client): Promise<Audience> {
       personId: p.id,
       profileId: profile.id,
       name: p.full_name,
+      email: profile.email,
       roleType,
       isAdmin,
       teams: new Map(mine.map(m => [m.team_id, teamPositionLeads(m.position ?? 'collaborator')])),

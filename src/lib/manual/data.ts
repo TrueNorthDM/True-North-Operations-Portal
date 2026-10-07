@@ -35,7 +35,7 @@ export const MANUAL: ManualSection[] = [
         'Tools opens a panel in two groups. SEO Tools: Href Links, and seven tools coming soon (Schema App, Schema Scraper, Knowledge Graph, Page Auditor, Image Optimization, Analytics, Impact Globe). Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team, on the Directory\u2019s Teams tab.',
         'People opens the Directory, the Organization chart and, from level 2, Human Resources.',
         'The avatar at the foot of the rail holds My profile, My Team and Sign out. Company settings live in the Admin panel, under Configuration.',
-        'The top bar: search (Cmd+K finds any page, tool or person you can open), Messages (Chat and Email) and Notifications (Tools and System). Notifications are being set up; the drawers say what will land in them.',
+        'The top bar: search (Cmd+K finds any page, tool or person you can open), Messages (Chat and Email) and Notifications (Tools and System). The bell brings work, deadlines and syncs as they happen; what you chose for the daily summary also arrives by email at 8:00 on working days. Choose per notification in the notification settings (the link at the bottom of the bell).',
       ] },
       { kind: 'p', text: 'Home shows the company org chart, your pinned favourites, and shortcuts to the pillars.' },
     ],
