@@ -1,7 +1,8 @@
 'use client'
 
 /**
- * SystemManual: the internal docs, hand-built to match the handoff prototype:
+ * SystemManual: the internal docs (the System manual's "The portal" tab; the
+ * header and tabs are ManualHeader), hand-built to match the handoff prototype:
  * a sticky scroll-spy table of contents on the left, richly-laid-out sections
  * on the right (cards, the left-rail reference, page cards, the access-model
  * flow, the Monday data-flow, and the data-source cards). Content is static;
@@ -10,7 +11,6 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 // ── Icons (line style, system look) ─────────────────────────────────
 const S = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
@@ -110,14 +110,7 @@ export function SystemManual() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Breadcrumb parents={['/admin']} now="System manual" />
-        <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">System manual</h1>
-        <p className="mt-1.5 max-w-2xl text-muted">How the Operations Portal is put together, every page, who can see what, and how Monday, WordPress and QuickBooks Time feed the numbers you see.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[214px_1fr] gap-10 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[214px_1fr] gap-10 items-start">
         {/* Sticky scroll-spy TOC */}
         <nav className="lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto flex flex-col gap-0.5">
           <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.09em] text-muted px-3 pb-2">On this page</div>
@@ -314,7 +307,6 @@ export function SystemManual() {
             </div>
           </section>
         </div>
-      </div>
     </div>
   )
 }
