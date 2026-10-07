@@ -289,8 +289,7 @@ audit found and what changed:
   the browser. Each part is now read only when its item is open: Directory
   (rates, access log, portal access, two-step, teams), Human Resources (cards
   follow the Directory's items), Company settings (each section, including the
-  API tokens and the webhook secret), the i7 report (no budget or budget used
-  without "See the whole report"), Project Hours (costs, money in, people),
+  API tokens and the webhook secret), Project Hours (costs, money in, people),
   Report (all five tabs), Hours, Clocky and the System manual (whose "How it
   runs" text is no longer in a public script file).
 - **Exports** need every item whose figures the file carries
@@ -311,10 +310,15 @@ audit found and what changed:
   item on Access levels is asked for somewhere. `store.test.ts` follows a saved
   tick, team list, position and exception from the database rows to the answer.
 
-Left as decided, for the owner to revisit: the Home budget widget (its own
-item, ticked for Team Leaders) shows the i7 balance, which the i7 report hides
-from the same Team Leaders without "See the whole report"; and the i7 budget
-alert tells everyone with the tool the percentage used, never amounts.
+Owner's decisions after the audit (7 October 2026):
+
+- Whoever may open the i7 report sees all of it and the budget widget on
+  Home. "See the whole report" and "Budget widget" are no longer items: both
+  follow the i7 tool (level and team list), and the report's restricted view
+  is gone. Before, nine Team Leaders saw the budget on Home that the report
+  hid from them.
+- The i7 budget alert keeps telling everyone with the tool the percentage
+  used, never amounts.
 
 ## 9. What to revisit as it grows
 

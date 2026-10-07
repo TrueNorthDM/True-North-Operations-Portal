@@ -37,19 +37,6 @@ interface Props {
   canTeamUpdate?: boolean                 // the Team Update image, granted separately
   /** Names with hours this month but no rate, so their cost lands as zero. */
   unratedPeople?: string[]
-  /**
-   * Restricted view, for a level without 'report-full'. Hides two columns,
-   * Budget hrs and Budget used, and narrows the per-person columns to
-   * `visiblePeople`. Hrs avail. and Budget avail. stay: what is left to spend
-   * is what the level is meant to plan against.
-   *
-   * What it deliberately does NOT touch: the totals. Hours used per row is the
-   * project's own figure and the footer is data.totalHours, both computed from
-   * every entry in the month. Someone seeing three columns still reads the real
-   * 43.25, not the 12 they can add up, so a partial view never reads as a whole
-   * one.
-   */
-  restricted?: boolean
   /** The views this person's access opens (i7-numbers, i7-graphics), in order. */
   views?: readonly ('numbers' | 'graphics')[]
   /**
@@ -66,7 +53,7 @@ function newestOf(months: string[]): string {
   return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
   const router = useRouter()
   const [navigating, startNav] = useTransition()
   const [view, setView] = useState<'numbers' | 'graphics' | undefined>(views[0])
@@ -95,15 +82,12 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
   // decision already made, in the one place the viewer can edit.
   const teamPeople = teams.find(t => t.id === selectedTeam)?.members ?? null
   const people = data.people.filter(n => !teamPeople || teamPeople.includes(n))
-  // Four columns, four separate decisions. The restricted level hides exactly
-  // two of them, Budget hrs and Budget used, and keeps Hrs avail. and Budget
-  // avail.: what is left to spend is what a team leader plans against, and it
-  // was never part of what should be hidden.
+  // Four columns, four separate decisions.
   const hasBudget = Object.keys(projectHours).length > 0
-  const showBudgetHrs = hasBudget && !restricted
+  const showBudgetHrs = hasBudget
   const showHrsAvail = hasBudget
   const showBudgetAvail = hasBudget && data.hasRates && stdRate > 0   // $ available needs a rate
-  const showCost = data.hasRates && !restricted
+  const showCost = data.hasRates
   const totalBudgetHours = Object.values(projectHours).reduce((s, h) => s + h, 0)
   const totalHrsAvail = totalBudgetHours - data.totalHours
   const projectOnlyCols = (showBudgetHrs ? 1 : 0) + (showHrsAvail ? 1 : 0) + (showBudgetAvail ? 1 : 0)
@@ -251,7 +235,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         {!view ? (
           <p className="text-sm text-muted">Neither view of this report is open to your access level.</p>
         ) : view === 'graphics' ? (
-          <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} showBudget={!restricted} trend={trend} />
+          <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} trend={trend} />
         ) : (
         <>
         {/* Carryover: bank-account running balance */}

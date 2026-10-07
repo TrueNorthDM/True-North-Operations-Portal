@@ -22,7 +22,6 @@ import { currentYearMonth, monthBounds } from '@/lib/tsheets/report'
 import { resolveRange, spanWording, type Range } from '@/lib/tsheets/range'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
-import { narrowReport } from '@/lib/tsheets/narrow'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
 import { getHoursImportStatus } from '@/lib/timeclock/import-status'
 import { I7Report as I7ReportView } from '@/components/tsheets/I7Report'
@@ -202,32 +201,16 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
 
   const access = await loadAccess()
 
-  // Without 'report-full' the report still opens: budget and money columns are
-  // hidden and the per-person columns narrow to the viewer's own teammates.
-  // Only resolved when it is actually needed, so the full view costs nothing.
-  //
-  // This is now the ONLY thing that narrows the report. It used to have a
-  // silent partner: row-level security on tc_entries, which cut the hours to
-  // whoever the viewer approves. Nobody configured that, no screen showed it,
-  // and it contradicted this line, so a level granted the whole report still
-  // got a fraction of it. The report reads completely now and the narrowing
-  // happens here, where an admin can see the rule and change it.
-  const restricted = !access.can('report-full')
+  // Whoever opens the report sees all of it, budget included (owner's
+  // decision, 7 October 2026): the i7 tool's level and team list decide who
+  // that is. Until then a level without "See the whole report" got a cut
+  // version, and Home showed the same people the budget it hid.
   // In Numbers and In Graphics are items of their own.
   const views = (['numbers', 'graphics'] as const).filter(v => access.can(v === 'numbers' ? 'i7-numbers' : 'i7-graphics'))
 
-  // The same roster answers both questions, so it is read once either way: which
-  // teams the filter offers, and (when restricted) who the viewer may see at all.
-  const { teams, myTeamIds } = await loadTeamRoster()
-  const myTeams = teams.filter(t => myTeamIds.has(t.id))
-  const visiblePeople = restricted
-    ? [...new Set(myTeams.flatMap(t => t.members))]
-    : undefined
-
-  // No team filter on the restricted level. Its columns are already the
-  // viewer's own teams and nothing else, so the control would only offer to
-  // re-cut a list that is already cut.
-  const filterTeams = restricted ? [] : teams
+  // The teams the filter offers.
+  const { teams } = await loadTeamRoster()
+  const filterTeams = teams
   const selectedTeam = filterTeams.some(t => t.id === team) ? team! : ''
 
   // A month with no logged hours still shows the full report (month picker,
@@ -237,9 +220,6 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
   // widget, which already shows the budget for such months.
   const full = data?.report ?? emptyReport(range, (data?.stdRate ?? 0) > 0)
 
-  // Narrowed HERE, on the server, not in the component. The component used to
-  // filter the columns while receiving everybody's, which was safe only while
-  // the database had already removed them.
   // Admins only: these hours reach a client invoice. Loaded here so the dialog
   // in the toolbar opens with its lists already in hand.
   // The hand-entry panel is a month's business, so over a range it lists the
@@ -249,16 +229,8 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
     ? { ...(await loadAllManualHours(createAdminClient(), range.to)), blurb: MANUAL_BLURB }
     : undefined
 
-  const report = restricted
-    ? narrowReport(full, { people: visiblePeople ?? [], keepCost: false })
-    : full
-
-  // The same cut for the unrated warning: it is a list of names, and a name is
-  // exactly what the restricted level does not get to see beyond its own team.
-  const unrated = data?.unratedPeople ?? []
-  const unratedPeople = restricted && visiblePeople
-    ? unrated.filter(n => visiblePeople.includes(n))
-    : unrated
+  const report = full
+  const unratedPeople = data?.unratedPeople ?? []
 
   return (
     <>
@@ -268,28 +240,22 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         range={range}
         availableMonths={availableMonths}
         projectHours={data?.projectHours ?? {}}
-        // Without the whole report: no budget and no budget used. What is left
-        // stays in the table (Hrs avail., Budget avail.); the carryover panel
-        // (budget against used), the monthly cost and budget trend and the
-        // history below are not sent at all.
-        carryover={restricted || !views.includes('numbers') ? null : data?.carryover ?? null}
+        // The carryover panel is In Numbers' alone.
+        carryover={views.includes('numbers') ? data?.carryover ?? null : null}
         stdRate={data?.stdRate ?? 0}
-        trend={restricted ? [] : data?.trend ?? []}
+        trend={data?.trend ?? []}
         views={views}
         manual={manual}
-        canExport={access.can('i7-export') && !restricted}
-        canTeamUpdate={access.can('report-team-update') && !restricted}
-        restricted={restricted}
+        canExport={access.can('i7-export')}
+        canTeamUpdate={access.can('report-team-update')}
         teams={filterTeams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
         selectedTeam={selectedTeam}
       />
-      {!restricted && (
-        <ClientFullHistory
-          trend={data?.trend ?? []}
-          currentMonth={currentYearMonth()}
-          canExport={access.can('i7-export') && access.can('report-full')}
-        />
-      )}
+      <ClientFullHistory
+        trend={data?.trend ?? []}
+        currentMonth={currentYearMonth()}
+        canExport={access.can('i7-export')}
+      />
     </>
   )
 }

@@ -14,5 +14,5 @@ export function projectsExportKeys(type: ProjectsExport): string[] {
   return ['ph-export', 'ph-costs', 'ph-money']
 }
 
-/** Client Report · i7: every file carries budget and cost, which is the whole report. */
-export const I7_EXPORT_KEYS = ['i7-export', 'report-full'] as const
+/** Client Report · i7: whoever opens it sees the whole report, so the Export item is enough. */
+export const I7_EXPORT_KEYS = ['i7-export'] as const

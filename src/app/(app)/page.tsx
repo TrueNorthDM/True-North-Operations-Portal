@@ -45,9 +45,9 @@ export default async function HomePage() {
   // nothing else, and building the whole report to keep one figure of it was
   // 1.2 of the page's 1.24 seconds.
   const carryoverP = accessP.then(a =>
-    // Its item needs the i7 tool too (catalogue: needs), so its team list
-    // applies here as well as in the Access page's preview.
-    a.can('report-widget') ? loadI7Carryover(month) : null)
+    // Whoever opens the i7 report sees its budget here too: the tool itself,
+    // level and team list (owner's decision, 7 October 2026).
+    a.canTool('i7-budget') ? loadI7Carryover(month) : null)
 
   // Publishing goals is for everyone, so it is loaded for everyone. It reads the
   // published facts the ingest stores beside the snapshot, about 20 KB, not the

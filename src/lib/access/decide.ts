@@ -6,8 +6,7 @@
  *   1. Super Admin                          -> yes ("Super Admin")
  *   2. an item unknown to the catalogue, or Super Admin only
  *                                           -> no, whatever an exception says
- *   3. the parent page or tool must open, and any item it needs
- *                                           -> else no ("Needs <parent>")
+ *   3. the parent page or tool must open    -> else no ("Needs <parent>")
  *   4. an exception for the person and item, still in date
  *                                           -> its answer ("Exception until ...")
  *   5. always-on items                      -> yes ("Everyone")
@@ -99,10 +98,6 @@ function decideOnce(subject: Subject, key: string, rules: Rules, opts: DecideOpt
   const parent = item.parent ? ITEM.get(item.parent) : undefined
   if (parent && parent.kind !== 'module' && !decide(subject, parent.key, rules, opts).ok) {
     return { ok: false, reasons: [{ kind: 'parent', text: `Needs ${parent.label}` }] }
-  }
-  const needed = item.needs ? ITEM.get(item.needs) : undefined
-  if (needed && !decide(subject, needed.key, rules, opts).ok) {
-    return { ok: false, reasons: [{ kind: 'parent', text: `Needs ${needed.label}` }] }
   }
 
   // After the parent: an exception opens or closes one item, never a tab whose

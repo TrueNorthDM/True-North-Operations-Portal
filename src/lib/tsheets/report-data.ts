@@ -59,9 +59,9 @@ async function loadCachedEntries(start: string, end: string): Promise<I7Entry[]>
   //
   // Nothing about it was configured, nothing on screen said it was happening,
   // and the Access levels page said the opposite. Who may open this report is
-  // decided by the tools surface plus the i7-budget team grant, and how much of
-  // it they receive is decided by report-full, applied on the server. Both are
-  // rules an admin can see and change, which the database rule never was.
+  // decided by the i7 tool on Admin > Access levels (level and team list), and
+  // whoever opens it receives the whole report. That is a rule an admin can see
+  // and change, which the database rule never was.
   return loadI7EntriesHere(createAdminClient(), start, end)
 }
 

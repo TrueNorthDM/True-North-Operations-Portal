@@ -26,7 +26,7 @@ describe('preview caveats', () => {
   // somebody has put a database rule back under a client-facing number.
   it('does not list the client report', () => {
     const keys = PREVIEW_CAVEATS.map(c => c.surfaceKey)
-    expect(keys).not.toContain('report-full')
+    expect(keys).not.toContain('i7-budget')
     expect(keys).not.toContain('tools')
   })
 })

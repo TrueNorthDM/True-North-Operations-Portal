@@ -49,8 +49,6 @@ export interface CatalogueItem {
   building?: boolean
   /** The Tools panel group a tool sits in. */
   group?: string
-  /** Another item that must be open too, besides the parent: a window on a tool needs the tool. */
-  needs?: string
   note?: string
 }
 
@@ -59,8 +57,9 @@ type Node = Omit<CatalogueItem, 'parent' | 'defaults'> & { v?: [0 | 1, 0 | 1, 0 
 // v = [Admin, Team Leader, User]
 const TREE: Node[] = [
   { key: 'm-home', label: 'Home', kind: 'module', ch: [
+    // The i7 budget widget is not an item: whoever opens the i7 report sees it
+    // (owner's decision, 7 October 2026).
     { key: 'home', label: 'Home page', kind: 'page', always: true, ch: [
-      { key: 'home-budget', label: 'Budget widget (i7 at a glance)', kind: 'action', v: [1, 1, 0], needs: 'i7-budget' },
       { key: 'home-health', label: 'Alert when an integration is down', kind: 'action', v: [1, 0, 0] },
     ] },
   ] },
@@ -108,11 +107,12 @@ const TREE: Node[] = [
     { key: 'analytics', label: 'Analytics', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
     { key: 'impact-globe', label: 'Impact Globe', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
     { key: 'publishing', label: 'Publishing Goals', kind: 'tool', group: 'Operations', v: [1, 1, 1] },
+    // Whoever opens it sees the whole report, budget included, and the budget
+    // widget on Home (owner's decision, 7 October 2026).
     { key: 'i7-budget', label: 'Client Report · i7', kind: 'tool', group: 'Operations', v: [1, 1, 1], ch: [
       { key: 'i7-numbers', label: 'In Numbers', kind: 'tab', v: [1, 1, 1] },
       { key: 'i7-graphics', label: 'In Graphics', kind: 'tab', v: [1, 1, 1] },
       { key: 'i7-guide', label: 'Guide', kind: 'tab', v: [1, 1, 1] },
-      { key: 'report-full', label: 'See the whole report (budget hours and budget used)', kind: 'action', v: [1, 0, 0] },
       { key: 'i7-export', label: 'Export (PDF, CSV and the printable page)', kind: 'action', v: [1, 0, 0] },
       { key: 'report-team-update', label: 'Team Update, the shareable budget image', kind: 'action', v: [1, 0, 0] },
       { key: 'i7-manual', label: 'Add manual hours', kind: 'action', v: [0, 0, 0] },
@@ -220,7 +220,6 @@ export const isConfigurable = (i: CatalogueItem): boolean => !!i.defaults
 /** Older keys some pages still ask for, read as the catalogue item they became. */
 export const ALIAS: Readonly<Record<string, string>> = {
   tools: 'm-tools',
-  'report-widget': 'home-budget',
   'report-export': 'rp-export',
   clocky: 'clocky-hours',
 }

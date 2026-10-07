@@ -98,9 +98,6 @@ describe('the rule', () => {
     expect(lead.has('report')).toBe(false)
     expect(user.has('directory')).toBe(false)
     expect(lead.has('directory')).toBe(true)
-    // The widget needs the i7 tool, so it follows the tool's team list.
-    expect(lead.has('home-budget')).toBe(false)
-    expect(allowedKeys(who('team_leader', [[seo, true]]), tools([['i7-budget', { every: true }]]), { today: T }).has('home-budget')).toBe(true)
     expect(lead.has('my-hours')).toBe(false)
   })
 
@@ -219,17 +216,3 @@ describe('impact', () => {
   })
 })
 
-describe('items that need another item', () => {
-  it('opens the Home budget widget only with the i7 tool, team list included', () => {
-    const lead = who('team_leader', [[seo, true]])
-    expect(decide(lead, 'home-budget', NO_RULES, { today: T }).ok).toBe(false)
-    expect(decide(lead, 'home-budget', NO_RULES, { today: T }).reasons[0].text).toBe('Needs Client Report · i7')
-    const rules = tools([['i7-budget', { teams: [[seo, 'lead']] }]])
-    expect(decide(lead, 'home-budget', rules, { today: T }).ok).toBe(true)
-    expect(decide(who('team_leader', [[writers, true]]), 'home-budget', rules, { today: T }).ok).toBe(false)
-  })
-
-  it('names only items the catalogue knows', () => {
-    for (const i of CATALOGUE) if (i.needs) expect(ITEM.has(i.needs), i.key).toBe(true)
-  })
-})

@@ -21,8 +21,6 @@ interface Props {
   projectHours: Record<string, number>
   totalByPerson: Record<string, number>
   showCost: boolean
-  /** Budget hours per project, "x of y hrs used": the whole report (report-full) only. */
-  showBudget?: boolean
   trend: I7TrendPoint[]
   // 'full' = the on-screen In Graphics tab. 'client' = the client PDF.
   variant?: 'full' | 'client'
@@ -214,7 +212,7 @@ function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours
   )
 }
 
-export function I7Charts({ data, projectHours, totalByPerson, variant = 'full', showBudget = true }: Props) {
+export function I7Charts({ data, projectHours, totalByPerson, variant = 'full' }: Props) {
   // Donut + rings, per project
   const projectSegments = data.projects.map((p, i) => ({ label: p.project, value: p.hours, color: PROJ[i % PROJ.length] }))
   const rings = data.projects.map(p => {
@@ -286,11 +284,9 @@ export function I7Charts({ data, projectHours, totalByPerson, variant = 'full', 
         <PersonBars rows={personRows} />
       </Card>
 
-      {showBudget && (
-        <Card title="Budget utilization" subtitle="Hours used against each project’s period budget" className="lg:col-span-2">
-          <Rings rows={rings} />
-        </Card>
-      )}
+      <Card title="Budget utilization" subtitle="Hours used against each project’s period budget" className="lg:col-span-2">
+        <Rings rows={rings} />
+      </Card>
 
       <Card title="Activity mix" subtitle="Where the hours went, by activity type" className="lg:col-span-2">
         <ActivityMix parts={globalParts} total={actTotal} colorOf={colorOf} />

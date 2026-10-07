@@ -19,9 +19,8 @@ import { loadAccess } from '@/lib/access/resolve'
  * it. Returns a 403 Response when the caller may not pass, else null.
  */
 export async function requirePrivileged(...keys: string[]): Promise<Response | null> {
-  // Every item the file's contents need, not only the export itself: an i7 file
-  // carries budget and cost, so it needs the whole report (report-full) too.
-  const need = keys.length ? keys : ['i7-export', 'report-full']
+  // Every item the file's contents need, not only the export itself.
+  const need = keys.length ? keys : ['i7-export']
   const access = await loadAccess()
   if (need.every(k => access.can(k))) return null
   return new Response('Not authorized. This is limited to admins.', {
