@@ -12,6 +12,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { mailboxFilter } from '@/lib/auth/mailbox-filter'
 
 export interface DonationActor {
   personId: string | null
@@ -39,11 +40,9 @@ export async function currentActor(): Promise<DonationActor> {
   const byProfile = await supabase.from('people').select('id, full_name').eq('profile_id', user.id).limit(1)
   row = byProfile.data?.[0] ?? null
 
-  if (!row && user.email) {
-    const em = user.email
-    const byEmail = await supabase.from('people').select('id, full_name')
-      .or(`email_personal.eq.${em},email_true_north.eq.${em},email_goodnews.eq.${em},email_coe.eq.${em}`)
-      .limit(1)
+  const mailbox = row ? null : mailboxFilter(user.email)
+  if (mailbox) {
+    const byEmail = await supabase.from('people').select('id, full_name').or(mailbox).limit(1)
     row = byEmail.data?.[0] ?? null
   }
 

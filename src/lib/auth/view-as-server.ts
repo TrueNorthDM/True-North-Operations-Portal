@@ -13,6 +13,7 @@ import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyViewAs, VS_HEADER, type ViewAsRole } from '@/lib/auth/view-as'
+import { mailboxFilter } from '@/lib/auth/mailbox-filter'
 
 export interface ViewAs {
   /** The level being previewed. The person shown is resolved live from it. */
@@ -34,10 +35,9 @@ export const getViewAs = cache(async function getViewAs(): Promise<ViewAs | null
   if (user.email?.toLowerCase() !== 'arnaldo.oliveira@me.com') {
     const { data: byLink } = await supabase.from('people').select('access_level').eq('profile_id', user.id).limit(1)
     let level = (byLink?.[0] as { access_level: string | null } | undefined)?.access_level ?? null
-    if (!level && user.email) {
-      const em = user.email
-      const { data: byMail } = await createAdminClient().from('people').select('access_level')
-        .or(`email_personal.eq.${em},email_true_north.eq.${em},email_goodnews.eq.${em},email_coe.eq.${em}`).limit(1)
+    const mailbox = level ? null : mailboxFilter(user.email)
+    if (mailbox) {
+      const { data: byMail } = await createAdminClient().from('people').select('access_level').or(mailbox).limit(1)
       level = (byMail?.[0] as { access_level: string | null } | undefined)?.access_level ?? null
     }
     if (level !== 'super_admin') return null          // and only while they still are one

@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database.types'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { mailboxFilter } from '@/lib/auth/mailbox-filter'
 
 export interface CurrentPerson {
   id: string
@@ -91,9 +92,8 @@ export async function loadCurrentPerson(
   if (a.error) a = await supabase.from('people').select('id, full_name').eq('profile_id', user.id).limit(1) as typeof a
   let row = a.data?.[0] as PersonRow | undefined
 
-  if (!row && user.email) {
-    const em = user.email
-    const orEmail = `email_personal.eq.${em},email_true_north.eq.${em},email_goodnews.eq.${em},email_coe.eq.${em}`
+  const orEmail = row ? null : mailboxFilter(user.email)
+  if (orEmail) {
     let b = await supabase.from('people').select(FULL_SEL).or(orEmail).limit(1)
     if (b.error) b = await supabase.from('people').select('id, full_name').or(orEmail).limit(1) as typeof b
     row = b.data?.[0] as PersonRow | undefined
