@@ -4,6 +4,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { loadContactByPerson } from '@/lib/hr/contact'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { loadCelebrationOptOuts } from '@/lib/settings/person'
 import { teamKeyFromName, type TeamKey } from '@/lib/directory/people-types'
 import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 
@@ -51,10 +53,13 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
   // else here is public-by-design directory material.
   let pRes = await supabase.from('people').select('id, full_name, status, hire_date, avatar_url')
   if (pRes.error) pRes = (await supabase.from('people').select('id, full_name, status, hire_date')) as typeof pRes
-  const [{ data: tData }, { data: mData }, birthdays] = await Promise.all([
+  // Each person may keep their birthday or anniversary off Home (Settings,
+  // Privacy, 7 October 2026): the date is left out, so the card skips them.
+  const [{ data: tData }, { data: mData }, birthdays, optOut] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('team_members').select('team_id, person_id'),
     loadContactByPerson(),
+    loadCelebrationOptOuts(createAdminClient()),
   ])
 
   const teamById = new Map((tData ?? []).map(t => [t.id, t.name]))
@@ -82,8 +87,8 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
         id: p.id,
         name: p.full_name,
         avatarUrl: p.avatar_url ?? null,
-        hireDate: p.hire_date,
-        dob: birthdays.get(p.id)?.dateOfBirth ?? null,
+        hireDate: optOut.anniversary.has(p.id) ? null : p.hire_date,
+        dob: optOut.birthday.has(p.id) ? null : birthdays.get(p.id)?.dateOfBirth ?? null,
         teamName: tn,
         teamKey: teamKeyFromName(tn),
         color: colourOf(colours, tn),

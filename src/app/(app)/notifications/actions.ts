@@ -1,8 +1,9 @@
 'use server'
 
 /**
- * Writes for notifications: a person's own choices, their time zone, an
- * admin's rules, "Send me a test", and marking notifications read.
+ * Writes for notifications: a person's own choices, an admin's rules, "Send me
+ * a test", and marking notifications read. The time zone and summary hour are
+ * the Settings page's (app/(app)/settings/actions.ts).
  *
  * Each one verifies the login with auth.getUser() and resolves the person who
  * is actually signed in (real: true), never the one a View Stage preview is
@@ -20,8 +21,8 @@ import { isSecurityAdmin } from '@/lib/auth/role'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { headers } from 'next/headers'
 import { NOTIFICATION_TYPES, TYPE_BY_KEY, cleanPref, cleanRule, tabOf, type Pref, type Rule } from '@/lib/notifications/catalogue'
-import { ruleToRow, loadZones } from '@/lib/notifications/store'
-import { validZone, zoneDate } from '@/lib/notifications/schedule'
+import { ruleToRow, loadDelivery } from '@/lib/notifications/store'
+import { zoneDate } from '@/lib/notifications/schedule'
 import { zoneLabel } from '@/lib/notifications/zones'
 import { firstName } from '@/lib/notifications/summary'
 import { renderSummary } from '@/lib/email/summary'
@@ -73,6 +74,7 @@ export async function saveNotificationRule(key: string, rule: Rule): Promise<Res
   }, { onConflict: 'type_key' })
   if (error) return { ok: false, error: error.message }
   revalidatePath('/notifications')
+  revalidatePath('/settings')
   return { ok: true }
 }
 
@@ -103,18 +105,6 @@ export async function markTabRead(tab: string): Promise<Result> {
   return { ok: true }
 }
 
-/** A person's own time zone for the daily summary. The company's zone clears the choice. */
-export async function saveTimeZone(zone: string): Promise<Result> {
-  if (typeof zone !== 'string' || validZone(zone) !== zone) return { ok: false, error: 'That time zone is not known.' }
-  const me = await signedInPerson()
-  if ('error' in me) return { ok: false, error: me.error }
-  const { error } = await createAdminClient().from('person_settings').upsert({
-    person_id: me.personId, time_zone: zone, updated_at: new Date().toISOString(),
-  }, { onConflict: 'person_id' })
-  if (error) return { ok: false, error: error.message }
-  return { ok: true }
-}
-
 /**
  * "Send me a test" from the preview window: the type's example, to the person
  * asking, either in the bell (marked Test, as it happens) or as a one-item
@@ -134,7 +124,7 @@ export async function sendTestNotification(key: string, channel: 'app' | 'email'
   if (channel === 'app') {
     const { error } = await db.from('notifications').upsert({
       person_id: me.personId, type_key: key, title: `Test: ${t.example.title}`, body: t.example.body,
-      href: '/notifications', dedupe_key: `test:${slot}`, timing: 'instant',
+      href: '/settings#notifications', dedupe_key: `test:${slot}`, timing: 'instant',
       deliver_at: now.toISOString(), emailed_at: now.toISOString(),
     }, { onConflict: 'person_id,type_key,dedupe_key', ignoreDuplicates: true })
     if (error) return { ok: false, error: error.message }
@@ -143,13 +133,14 @@ export async function sendTestNotification(key: string, channel: 'app' | 'email'
   }
 
   if (!me.email) return { ok: false, error: 'Your login has no email address.' }
-  const zone = (await loadZones(db, [me.personId])).get(me.personId)
+  const delivery = (await loadDelivery(db, [me.personId])).get(me.personId)
+  const zone = delivery?.zone
   const h = await headers()
   const origin = publicOrigin(`${h.get('x-forwarded-proto') ?? 'https'}://${h.get('host') ?? 'localhost:3000'}`)
   const mail = renderSummary({
     category: t.block, firstName: firstName(me.name), today: zoneDate(now, zone), missed: [], test: true,
-    items: [{ type: key, title: t.example.title, body: t.example.body, href: '/notifications', day: zoneDate(now, zone) }],
-    origin, zoneLabel: zoneLabel(zone),
+    items: [{ type: key, title: t.example.title, body: t.example.body, href: '/settings#notifications', day: zoneDate(now, zone) }],
+    origin, zoneLabel: zoneLabel(zone), hour: delivery?.hour,
   })
   const res = await sendEmail({ to: me.email, ...mail })
   return res.sent ? { ok: true } : { ok: false, error: `Not sent: ${res.reason}.` }

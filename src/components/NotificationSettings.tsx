@@ -13,29 +13,30 @@
  *   Preview   the eye: how it looks in the bell and in the email, and "Send me
  *             a test" to either.
  *
- * Above the table, the person's own time zone: the summary arrives at 8:00 in
- * it. What the portal cannot do yet is listed faded, with the reason.
+ * The summary arrives at the person's own hour and time zone, chosen in
+ * Settings, Time and region. What the portal cannot do yet is listed faded,
+ * with the reason.
  *
- * Admins get a second tab, "Rules for everyone": a default for On and When,
- * whether people may change each, and how many people switched each one off.
- * Each change saves on its own.
+ * Admins also get "Rules for everyone": a default for On and When, whether
+ * people may change each, and how many people switched each one off. The
+ * personal Settings page shows only the person's tab (`only="mine"`), Admin's
+ * Notification rules only the rules (`only="rules"`). Each change saves on its
+ * own.
  */
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
-import { Select } from '@/components/ui/Select'
 import {
   BLOCKS, CATEGORY_LABEL, DAILY_HOUR, KEEP_READ_DAYS, KEEP_UNREAD_DAYS,
   effective, timingIsChoice,
   type NotificationType, type Pref, type Rule, type Timing,
 } from '@/lib/notifications/catalogue'
-import { zoneLabel, zoneOptions } from '@/lib/notifications/zones'
+import { zoneLabel } from '@/lib/notifications/zones'
 
 type Result = { ok: boolean; error?: string }
 type SavePref = (key: string, pref: Pref) => Promise<Result>
 type SaveRule = (key: string, rule: Rule) => Promise<Result>
-type SaveZone = (zone: string) => Promise<Result>
 type SendTest = (key: string, channel: 'app' | 'email') => Promise<Result>
 type Tab = 'mine' | 'rules'
 
@@ -117,19 +118,25 @@ function CategoryPill({ block }: { block: NotificationType['block'] }) {
   return <span className={`inline-block rounded-full px-[9px] py-0.5 text-[10.5px] font-extrabold tracking-[.08em] uppercase font-(family-name:--font-display) ${cls}`}>{CATEGORY_LABEL[block]}</span>
 }
 
-/** The admin's per-setting choice: people may change it, or it is fixed. */
+/**
+ * The admin's per-setting choice: people may change it (an open lock), or it
+ * is fixed (a gold lock on navy). Square, so the rules table fits beside the
+ * Admin panel; the words are in its label and tooltip.
+ */
 function FixToggle({ fixed, onChange, disabled }: { fixed: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  const words = fixed ? 'Fixed for everyone. Click to let people change it.' : 'People can change it. Click to fix it for everyone.'
   return (
     <button
       type="button"
       aria-pressed={fixed}
+      aria-label={words}
+      title={words}
       disabled={disabled}
       onClick={() => onChange(!fixed)}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[10.5px] font-bold tracking-[.02em] whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-default ${
-        fixed ? 'bg-tn-primary text-[#ffffff]' : 'bg-subtle text-muted border border-[var(--panel-border)] hover:text-tn-ink'}`}
+      className={`shrink-0 w-7 h-7 rounded-[8px] inline-flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-default ${
+        fixed ? 'bg-tn-primary text-[#F2C40A]' : 'bg-white text-[#b3bcc8] border border-[var(--panel-border)] hover:text-tn-ink'}`}
     >
-      <span className={fixed ? 'text-[#F2C40A]' : ''}><LockGlyph open={!fixed} size={10} /></span>
-      {fixed ? 'Fixed' : 'People can change'}
+      <LockGlyph open={!fixed} size={13} />
     </button>
   )
 }
@@ -152,7 +159,7 @@ const TD = 'px-4 py-3 border-t border-[var(--row-rule)] align-middle'
 function NameCell({ t, faded, below }: { t: NotificationType; faded: boolean; below?: React.ReactNode }) {
   return (
     <td className={TD}>
-      <div className="flex items-start gap-3 min-w-[260px]">
+      <div className="flex items-start gap-3 min-w-[220px]">
         <span className={`w-8 h-8 rounded-[9px] shrink-0 inline-flex items-center justify-center ${faded ? 'bg-subtle text-muted' : 'bg-[rgba(30,125,127,.1)] text-tn-teal'}`}>
           <NavIcon name={t.icon} size={16} />
         </span>
@@ -171,7 +178,7 @@ function NameCell({ t, faded, below }: { t: NotificationType; faded: boolean; be
 
 // ── The preview window ──────────────────────────────────────────────────────
 
-function Preview({ t, sendTest, onClose }: { t: NotificationType; sendTest: SendTest | null; onClose: () => void }) {
+function Preview({ t, hour, sendTest, onClose }: { t: NotificationType; hour: number; sendTest: SendTest | null; onClose: () => void }) {
   const router = useRouter()
   const [tab, setTab] = useState<'app' | 'email'>('app')
   const [state, setState] = useState<{ kind: 'idle' | 'sending' | 'sent' | 'error'; text?: string }>({ kind: 'idle' })
@@ -246,7 +253,7 @@ function Preview({ t, sendTest, onClose }: { t: NotificationType; sendTest: Send
                 <span className="text-[12.5px] font-bold text-tn-teal whitespace-nowrap">Open →</span>
               </div>
               <p className="text-[12px] text-muted m-0">
-                {`One line in your ${CATEGORY_LABEL[t.block]} summary email, under "${t.section}". The summary arrives at ${DAILY_HOUR}:00, Monday to Friday. Example content.`}
+                {`One line in your ${CATEGORY_LABEL[t.block]} summary email, under "${t.section}". The summary arrives at ${hour}:00, Monday to Friday. Example content.`}
               </p>
             </>
           ) : (
@@ -271,8 +278,8 @@ function Preview({ t, sendTest, onClose }: { t: NotificationType; sendTest: Send
 // ── The page ────────────────────────────────────────────────────────────────
 
 export function NotificationSettings({
-  types, mine, rules: initialRules, prefs: initialPrefs, isAdmin, savePref, saveRule, initialTab = 'mine', blocked,
-  zone: initialZone, saveZone, sendTest, offCounts,
+  types, mine, rules: initialRules, prefs: initialPrefs, isAdmin, savePref, saveRule, initialTab = 'mine', only, blocked,
+  zone, hour = DAILY_HOUR, sendTest, offCounts,
 }: {
   /** The whole catalogue. */
   types: readonly NotificationType[]
@@ -285,19 +292,20 @@ export function NotificationSettings({
   savePref: SavePref | null
   saveRule: SaveRule | null
   initialTab?: Tab
+  /** Show one tab alone, with no switch: the Settings page ('mine'), Admin's rules ('rules'). */
+  only?: Tab
   /** Why nothing can be saved right now (no migration yet, no Directory person). Changes are refused with it. */
   blocked?: string
-  /** The person's own time zone; null follows the company's. */
+  /** The person's own time zone and summary hour, for the words above the table. Null: New York. */
   zone: string | null
-  saveZone: SaveZone | null
+  hour?: number
   sendTest: SendTest | null
   /** Admins: per type, how many it reaches and how many of them switched it off. */
   offCounts?: Record<string, { off: number; reach: number }>
 }) {
-  const [tab, setTab] = useState<Tab>(isAdmin ? initialTab : 'mine')
+  const [tab, setTab] = useState<Tab>(only ?? (isAdmin ? initialTab : 'mine'))
   const [rules, setRules] = useState(initialRules)
   const [prefs, setPrefs] = useState(initialPrefs)
-  const [zone, setZone] = useState(initialZone ?? 'America/New_York')
   const [preview, setPreview] = useState<NotificationType | null>(null)
   const [status, setStatus] = useState<{ key: string; state: 'saving' | 'saved' | 'error'; error?: string } | null>(null)
   const [, start] = useTransition()
@@ -327,12 +335,6 @@ export function NotificationSettings({
     persist(`rules:${key}`, saveRule && (() => saveRule(key, next)), () => setRules(r => ({ ...r, [key]: before })))
   }
 
-  const changeZone = (z: string) => {
-    const before = zone
-    setZone(z)
-    persist('zone', saveZone && (() => saveZone(z)), () => setZone(before))
-  }
-
   const statusFor = (id: string) => {
     const s = status?.key === id ? status : null
     if (!s) return null
@@ -358,7 +360,7 @@ export function NotificationSettings({
 
   return (
     <div className="space-y-5">
-      {isAdmin && (
+      {isAdmin && !only && (
         <div role="tablist" className="inline-flex items-center gap-1 rounded-[11px] border border-[var(--panel-border)] bg-white p-1">
           {tabBtn('mine', 'My notifications')}
           {tabBtn('rules', 'Rules for everyone')}
@@ -368,29 +370,21 @@ export function NotificationSettings({
       <div className="rounded-[12px] border border-[var(--panel-border)] bg-white px-4 py-3 text-[13px] text-foreground leading-relaxed flex items-start gap-2.5">
         <NavIcon name={tab === 'rules' ? 'admin' : 'bell'} size={17} className="shrink-0 mt-0.5 text-tn-teal" />
         {tab === 'mine' ? (
-          <div className="flex-1 min-w-0 space-y-2.5">
-            <p className="m-0">
-              <strong className="text-tn-ink">As it happens</strong> arrives in the bell right away. <strong className="text-tn-ink">Daily summary</strong>
-              {` arrives by email at ${DAILY_HOUR}:00 your time, Monday to Friday, and also in the bell; after a weekend or a US holiday, the next summary catches you up. You get at most two summary emails a day, one per category, and none when there is nothing to tell. A lock means an admin set that choice for everyone. Use the eye to see how a notification looks, and to send yourself a test. Read notifications leave the bell after ${KEEP_READ_DAYS} days, unread ones after ${KEEP_UNREAD_DAYS}. Changes save on their own.`}
-            </p>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="font-semibold text-tn-ink">Your time zone</span>
-              <Select value={zone} onChange={changeZone} options={zoneOptions()} searchable ariaLabel="Your time zone" />
-              <span className="text-[12px] text-muted">{`The summary arrives at ${DAILY_HOUR}:00 in ${zoneLabel(zone)}.`}</span>
-              {statusFor('zone')}
-            </div>
-          </div>
+          <p className="m-0 flex-1 min-w-0">
+            <strong className="text-tn-ink">As it happens</strong> arrives in the bell right away. <strong className="text-tn-ink">Daily summary</strong>
+            {` arrives by email at ${hour}:00 ${zoneLabel(zone)} time (change it in Time and region), Monday to Friday, and also in the bell; after a weekend or a US holiday, the next summary catches you up. You get at most two summary emails a day, one per category, and none when there is nothing to tell. A lock means an admin set that choice for everyone. Use the eye to see how a notification looks, and to send yourself a test. Read notifications leave the bell after ${KEEP_READ_DAYS} days, unread ones after ${KEEP_UNREAD_DAYS}. Changes save on their own.`}
+          </p>
         ) : (
           <span>
-            The rule for everyone each notification reaches. Pick the default and whether people can change it or it is
-            <strong className="text-tn-ink"> fixed</strong>. People who never changed an open setting follow its default; a fixed one shows on
+            The rule for everyone each notification reaches. Pick the default, and click the lock beside it to make it
+            <strong className="text-tn-ink"> fixed</strong> (gold) or let people change it (open). People who never changed an open setting follow its default; a fixed one shows on
             their page locked. &quot;Turned off by&quot; counts the people it reaches who switched it off: a high share can mean it is noisy or not useful.
           </span>
         )}
       </div>
 
       <div className="rounded-[14px] border border-[var(--panel-border)] bg-white overflow-x-auto">
-        <table className="w-full border-collapse text-[13.5px] min-w-[860px]">
+        <table className="w-full border-collapse text-[13.5px] min-w-[760px]">
           <thead>
             {tab === 'mine' ? (
               <tr><th className={TH}>Notification</th><th className={TH}>Category</th><th className={TH}>On</th><th className={TH}>When</th><th className={`${TH} text-center`}>Preview</th></tr>
@@ -483,7 +477,7 @@ export function NotificationSettings({
         </p>
       )}
 
-      {preview && <Preview t={preview} sendTest={sendTest} onClose={() => setPreview(null)} />}
+      {preview && <Preview t={preview} hour={hour} sendTest={sendTest} onClose={() => setPreview(null)} />}
     </div>
   )
 }

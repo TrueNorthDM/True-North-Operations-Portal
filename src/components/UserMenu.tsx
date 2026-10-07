@@ -2,20 +2,23 @@
 
 /**
  * UserMenu: the person's avatar. Initials circle in the portal navy; clicking
- * opens a small menu with the signed-in email, My profile, My Team and Sign out.
+ * opens a small menu with the signed-in email, My profile, My Team, Settings and
+ * Sign out.
  *
  * Two places since 21 September 2026: at the foot of the rail on a desktop
  * (`placement="rail"`, the menu opening to the right and upward), and at the
  * right of the top bar on a phone, where the rail is hidden.
  *
  * The company settings were a row here from 22 September to 7 October 2026;
- * they now live in Admin, Configuration (/admin/settings). On the navy rail the avatar is a gold circle with a faint white ring, the ring
+ * they now live in Admin, Configuration (/admin/settings), and the row is each
+ * person's own Settings (/settings). On the navy rail the avatar is a gold
+ * circle with a faint white ring, the ring
  * going solid while the menu is open.
  *
  * Since 28 September 2026 (two-step sign-in), someone whose week to set it up is
  * running gets a "Two-step sign-in" row under My profile, straight to the setup
  * screen, and a small amber dot on the avatar. Once it is on the row goes away:
- * from then on it lives in My profile, under Sign-in & security.
+ * from then on it lives in Settings, under Sign-in and security.
  */
 
 import Link from 'next/link'
@@ -140,6 +143,15 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
             My Team
+          </Link>
+          <Link
+            href="/settings"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100 focus:outline-none focus-visible:bg-slate-50 focus-visible:text-tn-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+            Settings
           </Link>
           <form action={signOut}>
             <button

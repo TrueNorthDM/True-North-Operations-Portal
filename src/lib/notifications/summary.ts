@@ -5,7 +5,8 @@
  * A daily-summary notification lands in the bell at 8:00 in its person's time
  * zone. Each run looks for the ones that landed and have not been emailed, and
  * for each person whose own calendar says it is a working day (Monday to
- * Friday, not a US federal holiday) and past 8:00, sends them: one email per
+ * Friday, not a US federal holiday) and past their summary hour (8:00 unless
+ * they chose another), sends them: one email per
  * category, Tools and System, so never more than two. On a day off nothing
  * goes; the next working day's email holds everything since ("what you missed
  * since Friday"). Nobody gets an empty email: no notifications, no email.
@@ -28,7 +29,7 @@ import { DAILY_HOUR, TYPE_BY_KEY } from './catalogue'
 import { isWorkingDay, missedDays } from './calendar'
 import { loadAudience } from './audience'
 import { zoneDate, zoneHour } from './schedule'
-import { loadZones, missingTable } from './store'
+import { loadDelivery, missingTable } from './store'
 import { zoneLabel } from './zones'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -106,9 +107,9 @@ export async function sendDailySummaries(opts: { origin: string; now?: Date; db?
   for (const w of waiting) (byPerson.get(w.person_id) ?? byPerson.set(w.person_id, []).get(w.person_id)!).push(w)
   const people = [...byPerson.keys()]
 
-  const [aud, zones, { data: digestRows }] = await Promise.all([
+  const [aud, delivery, { data: digestRows }] = await Promise.all([
     loadAudience(db),
-    loadZones(db, people),
+    loadDelivery(db, people),
     db.from('notification_digests').select('person_id, category, status, attempts, local_day')
       .in('person_id', people).gte('local_day', zoneDate(new Date(now.getTime() - 2 * DAY))),
   ])
@@ -116,7 +117,8 @@ export async function sendDailySummaries(opts: { origin: string; now?: Date; db?
   for (const d of (digestRows ?? []) as (Digest & { local_day: string })[]) digests.set(`${d.person_id}|${d.category}|${d.local_day}`, d)
 
   for (const [personId, rows] of byPerson) {
-    const zone = zones.get(personId)
+    const zone = delivery.get(personId)?.zone
+    const hour = delivery.get(personId)?.hour ?? DAILY_HOUR
     const today = zoneDate(now, zone)
     const who = aud.byId.get(personId)
     if (!who || !who.email) {
@@ -124,7 +126,7 @@ export async function sendDailySummaries(opts: { origin: string; now?: Date; db?
       report.letGo += rows.length
       continue
     }
-    if (!isWorkingDay(today) || zoneHour(now, zone) < DAILY_HOUR) { report.notYet += 1; continue }
+    if (!isWorkingDay(today) || zoneHour(now, zone) < hour) { report.notYet += 1; continue }
 
     for (const category of CATEGORIES) {
       const mine = rows.filter(r => categoryOf(r.type_key) === category)
@@ -138,7 +140,7 @@ export async function sendDailySummaries(opts: { origin: string; now?: Date; db?
         type: r.type_key, title: r.title, body: r.body, href: r.href, day: zoneDate(new Date(r.deliver_at), zone),
       }))
       const mail = renderSummary({
-        category, firstName: firstName(who.name), today, missed: missedDays(today), items, origin, zoneLabel: zoneLabel(zone),
+        category, firstName: firstName(who.name), today, missed: missedDays(today), items, origin, zoneLabel: zoneLabel(zone), hour,
       })
       const res = await sendEmail({ to: who.email, ...mail })
       const record = async (status: Digest['status'], error: string | null) => {

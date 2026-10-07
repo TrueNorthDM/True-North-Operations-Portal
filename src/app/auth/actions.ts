@@ -22,6 +22,8 @@ import { createClient } from '@/lib/supabase/server'
 import { isAllowedEmail, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-constants'
 import { canSignIn } from '@/lib/auth/portal-access'
 import { safeNext } from '@/lib/auth/safe-next'
+import { withStartPage } from '@/lib/auth/start-page'
+import type { SignedInIdentity } from '@/lib/directory/current-person'
 import { requestOrigin } from '@/lib/auth/origin'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
@@ -66,11 +68,12 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
   return { ok: true }
 }
 
-async function landing(): Promise<string> {
+/** Where they were going, else the start page they chose in Settings (Home by default). */
+async function landing(user: SignedInIdentity | null | undefined): Promise<string> {
   const store = await cookies()
   const next = safeNext(store.get(NEXT_COOKIE)?.value)
   store.delete(NEXT_COOKIE)
-  return next
+  return withStartPage(next, user)
 }
 
 /** Sign in with the code from the email. */
@@ -83,9 +86,9 @@ export async function verifyCode(input: { email: string; code: string }): Promis
   if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
   if (error) return { ok: false, error: 'That code is not right, or it has expired. Check the latest email, or send a new one.' }
-  redirect(await landing())
+  redirect(await landing(data.user))
 }
 
 /** Sign in with the one-click link from the email (see /auth/confirm). */
@@ -95,13 +98,25 @@ export async function confirmLink(input: { tokenHash: string; type: string }): P
   if (!input.tokenHash || !type) return { ok: false, error: 'This sign-in link is incomplete. Ask for a new one.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.verifyOtp({ token_hash: input.tokenHash, type })
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: input.tokenHash, type })
   if (error) return { ok: false, error: 'This sign-in link has expired or was already used. Ask for a new one.' }
-  redirect(await landing())
+  redirect(await landing(data.user))
 }
 
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  redirect('/login')
+}
+
+/**
+ * Settings, "Sign out on all devices": ends every session of this account, this
+ * one included. Other devices find out when their access token next renews
+ * (within the hour), since pages trust a valid token without asking the
+ * sign-in service each time (lib/auth/session.ts).
+ */
+export async function signOutEverywhere() {
+  const supabase = await createClient()
+  await supabase.auth.signOut({ scope: 'global' })
   redirect('/login')
 }

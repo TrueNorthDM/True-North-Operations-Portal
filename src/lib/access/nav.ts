@@ -329,7 +329,9 @@ const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
   { prefix: '/admin', surface: 'admin' },
   { prefix: '/clocky-hours', surface: 'clocky-hours' },
   { prefix: '/hours', surface: 'my-hours' },
-  { prefix: '/settings', surface: 'settings' },
+  // Each person's own Settings (7 October 2026): everyone signed in. Its old
+  // sub-pages redirect to Company settings, which /admin/settings guards.
+  { prefix: '/settings', surface: 'home' },
   { prefix: '/human-resources', surface: 'human-resources' },
   { prefix: '/directory', surface: 'directory' },
   { prefix: '/my-work', surface: 'my-work' },

@@ -1,4 +1,5 @@
-// Home: welcome banner, the i7 budget at a glance (privileged tiers),
+// Home: welcome banner, the person's favourite pages (Settings, Home and
+// start, since 7 October 2026), the i7 budget at a glance (privileged tiers),
 // publishing goals, this month's celebrations, and the company org chart.
 //
 // The three shortcut cards (My Work, My Team, Work Tools) were removed:
@@ -21,6 +22,12 @@ import { loadI7Carryover } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 import { perfRun } from '@/lib/perf'
+import { Favourites } from '@/components/home/Favourites'
+import { buildRail } from '@/lib/access/nav'
+import { directoryLevel } from '@/lib/access/surfaces'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { loadSettings } from '@/lib/settings/person'
+import { resolveFavourites } from '@/lib/settings/pages'
 
 export default async function HomePage() {
   const perf = perfRun('home')
@@ -43,19 +50,25 @@ export default async function HomePage() {
   // Publishing goals is for everyone, so it is loaded for everyone. It reads the
   // published facts the ingest stores beside the snapshot, about 20 KB, not the
   // snapshot itself; see lib/boards/published-items.ts.
-  const [org, access, me, celebPeople, publishing, i7Carryover] = await Promise.all([
+  const meP = getCurrentPerson()
+  const favouritesP = Promise.all([accessP, meP.then(m => (m ? loadSettings(createAdminClient(), m.id) : null))])
+    .then(([a, s]) => (s ? resolveFavourites(buildRail({ can: a.can, canTool: a.canTool, level: directoryLevel(a.can) }), s.favourites) : []))
+  const [org, access, me, celebPeople, publishing, i7Carryover, favourites] = await Promise.all([
     perf.time('org', getOrgChart()),
     perf.time('access', accessP),
-    perf.time('person', getCurrentPerson()),
+    perf.time('person', meP),
     perf.time('celebrations', loadCelebrationPeople()),
     perf.time('publishing', loadPublishingWeeks()),
     perf.time('i7', carryoverP),
+    perf.time('favourites', favouritesP),
   ])
   perf.done({ budget: i7Carryover !== null })
 
   return (
     <div className="space-y-8">
       <WelcomeBanner name={me?.full_name ?? null} />
+
+      <Favourites items={favourites} />
 
       {/* Surfaces a red alert to admins if a monitored integration is down.
           In its own boundary: it checks the security role with a full round

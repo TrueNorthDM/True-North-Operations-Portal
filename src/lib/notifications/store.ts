@@ -11,7 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NOTIFICATION_TYPES, defaultRule, type Channel, type Pref, type Rule, type Timing } from './catalogue'
-import { validZone } from './schedule'
+import { loadSettingsFor } from '@/lib/settings/person'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -77,20 +77,16 @@ export async function writeState(db: Client, key: string, value: unknown): Promi
   await db.from('notification_state').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
 }
 
+/** When a person's daily summary lands: their time zone and hour. */
+export interface Delivery { zone: string; hour: number }
+
 /**
- * Each person's own time zone (person_settings, migration 092), only for those
- * who chose one. Missing, or not there yet, means the company's.
+ * Each person's summary time (person_settings, migrations 092 and 093). Anyone
+ * missing, or everyone before the migration, gets 8:00 New York.
  */
-export async function loadZones(db: Client, personIds: readonly string[]): Promise<Map<string, string>> {
-  const out = new Map<string, string>()
-  for (let i = 0; i < personIds.length; i += 200) {
-    const { data, error } = await db.from('person_settings').select('person_id, time_zone').in('person_id', personIds.slice(i, i + 200))
-    if (error) break
-    for (const r of (data ?? []) as { person_id: string; time_zone: string | null }[]) {
-      if (r.time_zone) out.set(r.person_id, validZone(r.time_zone))
-    }
-  }
-  return out
+export async function loadDelivery(db: Client, personIds: readonly string[]): Promise<Map<string, Delivery>> {
+  const settings = await loadSettingsFor(db, personIds)
+  return new Map([...settings].map(([id, s]) => [id, { zone: s.timeZone, hour: s.summaryHour }]))
 }
 
 /**

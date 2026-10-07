@@ -36,7 +36,7 @@ export default async function NotificationSettingsCheck({ searchParams }: { sear
         <NotificationSettings
           types={NOTIFICATION_TYPES} mine={mine} rules={rules} prefs={{}} isAdmin={isAdmin}
           savePref={null} saveRule={null} initialTab={tab === 'rules' ? 'rules' : 'mine'}
-          zone={null} saveZone={null} sendTest={null}
+          zone={null} sendTest={null}
           offCounts={Object.fromEntries(NOTIFICATION_TYPES.map((t, i) => [t.key, { off: [2, 1, 4, 5, 0, 3, 0, 1, 0, 2, 5, 0, 1][i] ?? 0, reach: [31, 31, 31, 8, 31, 6, 3, 8, 4, 4, 4, 31, 4][i] ?? 1 }]))}
         />
       </div>

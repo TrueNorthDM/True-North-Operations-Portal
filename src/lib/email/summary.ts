@@ -38,6 +38,8 @@ export interface SummaryInput {
   origin: string
   /** "New York", "Sao Paulo": the person's zone, said in the footer. */
   zoneLabel: string
+  /** The hour it arrives, said in the footer. 8 unless they chose another. */
+  hour?: number
   /** Sent from "Send me a test": says so at the top. */
   test?: boolean
 }
@@ -124,7 +126,7 @@ const barColor = (type: string, category: SummaryCategory) => {
 function itemHtml(i: SummaryItem, category: SummaryCategory, origin: string, showDay: boolean): string {
   const t = TYPE_BY_KEY.get(i.type)
   const tag = [t?.src ?? '', showDay ? shortDay(i.day) : ''].filter(Boolean).join(' · ')
-  const link = i.href ? `${origin}${i.href}` : `${origin}/notifications`
+  const link = i.href ? `${origin}${i.href}` : `${origin}/settings#notifications`
   return `
           <tr><td style="padding:0 0 8px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.row};border-left:4px solid ${barColor(i.type, category)};border-radius:10px;">
@@ -235,9 +237,9 @@ export function renderSummary(input: SummaryInput): { subject: string; html: str
       </td></tr>
       <tr><td style="background:${C.subtle};padding:18px 28px;font-family:${SANS};font-size:12px;line-height:1.6;color:${C.muted};">
         <p style="margin:0 0 6px;">${category === 'tools'
-          ? `You get this summary Monday to Friday at 8:00, your time (${e(input.zoneLabel)}). After a weekend or a US holiday, it catches you up on the days you missed. Everything here is also in the bell.`
-          : `Urgent problems, like an integration that stops answering, never wait for this email: they reach the bell the moment they happen. This summary comes Monday to Friday at 8:00, your time (${e(input.zoneLabel)}).`}</p>
-        <p style="margin:0 0 6px;"><a href="${e(origin)}/notifications" style="color:${C.teal};font-weight:700;text-decoration:none;">Choose what reaches you</a> in your notification settings.</p>
+          ? `You get this summary Monday to Friday at ${input.hour ?? 8}:00, your time (${e(input.zoneLabel)}). After a weekend or a US holiday, it catches you up on the days you missed. Everything here is also in the bell.`
+          : `Urgent problems, like an integration that stops answering, never wait for this email: they reach the bell the moment they happen. This summary comes Monday to Friday at ${input.hour ?? 8}:00, your time (${e(input.zoneLabel)}).`}</p>
+        <p style="margin:0 0 6px;"><a href="${e(origin)}/settings#notifications" style="color:${C.teal};font-weight:700;text-decoration:none;">Choose what reaches you</a> in your notification settings.</p>
         <p style="margin:0;">True North Digital Marketing · Operations Portal</p>
       </td></tr>
     </table>
@@ -256,12 +258,12 @@ export function renderSummary(input: SummaryInput): { subject: string; html: str
     ...sections.flatMap(s => [
       '',
       `${s.heading.toUpperCase()} (${countIn(s)})`,
-      ...s.items.map(i => `- ${showDay ? `[${shortDay(i.day)}] ` : ''}${i.title}: ${i.body}\n  ${i.href ? origin + i.href : origin + '/notifications'}`),
+      ...s.items.map(i => `- ${showDay ? `[${shortDay(i.day)}] ` : ''}${i.title}: ${i.body}\n  ${i.href ? origin + i.href : origin + '/settings#notifications'}`),
     ]),
     '',
     `${cta.text}: ${origin}${cta.href}`,
     '',
-    `Choose what reaches you: ${origin}/notifications`,
+    `Choose what reaches you: ${origin}/settings#notifications`,
     `True North Digital Marketing · Operations Portal · ${CATEGORY_LABEL[category]} summary`,
   ].filter((l, n, a) => l !== '' || a[n - 1] !== '').join('\n')
 

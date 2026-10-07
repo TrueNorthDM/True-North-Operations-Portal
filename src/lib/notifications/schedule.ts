@@ -78,10 +78,10 @@ export function zoneTime(iso: string, hour: number, zone: string = DAILY_ZONE): 
   return new Date(t)
 }
 
-/** When a notification made now lands for someone who chose this timing, in their zone. */
-export function deliverAt(timing: Timing, now: Date, zone: string = DAILY_ZONE): Date {
+/** When a notification made now lands for someone who chose this timing, in their zone, at their summary hour. */
+export function deliverAt(timing: Timing, now: Date, zone: string = DAILY_ZONE, hour: number = DAILY_HOUR): Date {
   if (timing === 'instant') return now
   const today = zoneDate(now, zone)
-  const at = zoneTime(today, DAILY_HOUR, zone)
-  return now < at ? at : zoneTime(addDays(today, 1), DAILY_HOUR, zone)
+  const at = zoneTime(today, hour, zone)
+  return now < at ? at : zoneTime(addDays(today, 1), hour, zone)
 }

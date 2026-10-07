@@ -155,9 +155,12 @@ describe('plan: drafts into notifications', () => {
 
   it("lands the summary at 8:00 in the person's own time zone", () => {
     // Wednesday 11:00 in New York is 12:00 in Sao Paulo: both summaries are tomorrow at 8:00, an hour apart.
-    const zones = new Map([['p1', 'America/Sao_Paulo']])
-    const [r] = plan([d({ type: 'step-late' })], allRules(), new Map(), now, zones)
+    const delivery = new Map([['p1', { zone: 'America/Sao_Paulo', hour: 8 }]])
+    const [r] = plan([d({ type: 'step-late' })], allRules(), new Map(), now, delivery)
     expect(r.deliver_at).toBe('2026-09-24T11:00:00.000Z')
+    // And at the hour they chose: 6:00 in Sao Paulo is 09:00 UTC.
+    const [early] = plan([d({ type: 'step-late' })], allRules(), new Map(), now, new Map([['p1', { zone: 'America/Sao_Paulo', hour: 6 }]]))
+    expect(early.deliver_at).toBe('2026-09-24T09:00:00.000Z')
     const [ny] = plan([d({ type: 'step-late' })], allRules(), new Map(), now)
     expect(ny.deliver_at).toBe('2026-09-24T12:00:00.000Z')
   })

@@ -175,7 +175,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
         </div>
 
         <div className="px-5 py-3 border-t border-[var(--panel-border)]">
-          <Link href="/notifications" onClick={onClose} className={`${BTN.navy} w-full justify-center`}>Open notification settings</Link>
+          <Link href="/settings#notifications" onClick={onClose} className={`${BTN.navy} w-full justify-center`}>Open notification settings</Link>
         </div>
       </div>
     </>

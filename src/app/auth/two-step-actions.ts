@@ -18,6 +18,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { safeNext } from '@/lib/auth/safe-next'
+import { withStartPage } from '@/lib/auth/start-page'
 import { SKIP_COOKIE, checkTwoStep } from '@/lib/auth/two-step'
 
 // Short on purpose: it is written into the QR code twice (label and issuer), and a
@@ -25,11 +26,14 @@ import { SKIP_COOKIE, checkTwoStep } from '@/lib/auth/two-step'
 // the name the authenticator app shows next to the code.
 const ISSUER = 'True North Portal'
 
+/** Where they were going, else the start page they chose in Settings (Home by default). */
 async function landing(): Promise<string> {
   const store = await cookies()
   const next = safeNext(store.get('tn_next')?.value)
   store.delete('tn_next')
-  return next
+  if (next !== '/') return next
+  const { data: { user } } = await (await createClient()).auth.getUser()
+  return withStartPage(next, user)
 }
 
 export interface EnrollStart {

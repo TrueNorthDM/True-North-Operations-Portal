@@ -7,7 +7,7 @@
  * Enter opens one.
  *
  * It offers exactly what the rail offers this person (the same resolved model,
- * lib/access/nav.ts), plus Settings for whoever may reach it, plus the people
+ * lib/access/nav.ts), plus the person's own Settings, plus the people
  * in the Directory for whoever may open it, loaded the first time it opens.
  */
 
@@ -16,29 +16,18 @@ import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { NavIcon } from '@/components/NavIcon'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
-import type { NavItem, ResolvedEntry } from '@/lib/access/nav'
+import type { ResolvedEntry } from '@/lib/access/nav'
+import { pageGroups } from '@/lib/settings/pages'
 import { launcherPeople } from '@/app/(app)/launcher-actions'
 
 interface Row { key: string; label: string; href: string; icon: NavIconKey; soon?: boolean }
 interface Group { label: string; rows: Row[] }
 
-/** The rail, regrouped the way a person thinks of it: their own things first. */
+/** The rail, regrouped the way a person thinks of it (lib/settings/pages.ts), plus Settings, which everyone has. */
 function groupsFrom(rail: ResolvedEntry[]): Group[] {
-  const yours: Row[] = []
-  const out: Group[] = []
-  const add = (label: string, rows: NavItem[]) => {
-    const g = out.find(x => x.label === label)
-    if (g) g.rows.push(...rows)
-    else out.push({ label, rows: [...rows] })
-  }
-  for (const e of rail) {
-    if (e.kind === 'rule') continue
-    if (e.kind === 'page') { yours.push(e.item); continue }
-    if (e.key === 'my-work' || e.key === 'my-hours') { yours.push(...e.groups.flatMap(g => g.items)); continue }
-    if (e.key === 'tools') { for (const g of e.groups) add(g.label ?? 'Tools', g.items); continue }
-    add(e.label, e.groups.flatMap(g => g.items))
-  }
-  return [{ label: 'Yours', rows: yours }, ...out]
+  const groups: Group[] = pageGroups(rail)
+  groups[0].rows.push({ key: 'settings', label: 'Settings', href: '/settings', icon: 'settings' })
+  return groups
 }
 
 export function Launcher({ rail, canPeople = false, startOpen = false }: {

@@ -16,7 +16,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { TYPE_BY_KEY, effective, type Pref, type Rule } from './catalogue'
 import { deliverAt, zoneDate } from './schedule'
-import { loadPrefs, loadRules, loadZones } from './store'
+import { loadDelivery, loadPrefs, loadRules, type Delivery } from './store'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Client = SupabaseClient<any, any, any>
@@ -48,13 +48,13 @@ export interface Row {
   deliver_at: string
 }
 
-/** Pure: which drafts become rows, and when they land. `zones`: person -> time zone, New York when missing. */
+/** Pure: which drafts become rows, and when they land. `delivery`: person -> summary zone and hour, 8:00 New York when missing. */
 export function plan(
   drafts: readonly Draft[],
   rules: Record<string, Rule>,
   prefs: ReadonlyMap<string, Record<string, Pref>>,
   now: Date,
-  zones: ReadonlyMap<string, string> = new Map(),
+  delivery: ReadonlyMap<string, Delivery> = new Map(),
 ): Row[] {
   const rows: Row[] = []
   const seen = new Set<string>()
@@ -66,8 +66,8 @@ export function plan(
     if (seen.has(key)) continue
     const eff = effective(t, rule, prefs.get(d.personId)?.[d.type])
     if (!eff.enabled) continue
-    const zone = zones.get(d.personId)
-    const at = deliverAt(eff.timing, now, zone)
+    const { zone, hour } = delivery.get(d.personId) ?? {}
+    const at = deliverAt(eff.timing, now, zone, hour)
     if (d.deliverDay && zoneDate(at, zone) !== d.deliverDay) continue
     seen.add(key)
     rows.push({
@@ -84,8 +84,8 @@ export async function deliver(db: Client, drafts: readonly Draft[], opts: { now?
   const now = opts.now ?? new Date()
   if (!drafts.length) return { drafts: 0, rows: 0, byType: {} }
   const people = [...new Set(drafts.map(d => d.personId))]
-  const [{ rules }, prefs, zones] = await Promise.all([loadRules(db), loadPrefs(db, people), loadZones(db, people)])
-  const rows = plan(drafts, rules, prefs, now, zones)
+  const [{ rules }, prefs, delivery] = await Promise.all([loadRules(db), loadPrefs(db, people), loadDelivery(db, people)])
+  const rows = plan(drafts, rules, prefs, now, delivery)
   const byType: Record<string, number> = {}
   for (const r of rows) byType[r.type_key] = (byType[r.type_key] ?? 0) + 1
   if (opts.dryRun) return { drafts: drafts.length, rows: rows.length, byType, planned: rows }

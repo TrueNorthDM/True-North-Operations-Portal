@@ -20,9 +20,6 @@ import { ProfileAvatar } from '@/components/ProfileAvatar'
 import { PersonalDetails } from '@/components/PersonalDetails'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
-import { checkTwoStep } from '@/lib/auth/two-step'
-import { daysLeft as twoStepDaysLeft } from '@/lib/auth/two-step-rule'
-import { TwoStepSelf } from '@/components/mfa/TwoStepSelf'
 
 export const dynamic = 'force-dynamic'
 
@@ -148,10 +145,6 @@ export default async function ProfilePage() {
 
   const active = me.status !== 'inactive'
 
-  // Two-step sign-in is the signed-in person's own, never a View Stage preview's.
-  const twoStep = await checkTwoStep()
-  const twoStepDays = !twoStep.hasFactor && twoStep.deadline ? twoStepDaysLeft(twoStep.deadline, new Date()) : null
-
   return (
     <div className="max-w-[920px] mx-auto space-y-6">
       <Breadcrumb now="My profile" />
@@ -186,16 +179,12 @@ export default async function ProfilePage() {
           }} />
         </div>
 
-        {/* Sign-in and security: the address they sign in with and their second step. */}
-        <div className="px-8 pt-6 pb-6 border-b border-slate-200">
-          <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">Sign-in &amp; security</div>
-          <div className="flex flex-col gap-4">
-            <Row label="Signs in with">{txt(user.email)}</Row>
-            <div className="flex flex-col gap-2">
-              <span className="text-[12.5px] text-muted font-semibold">Two-step sign-in</span>
-              <TwoStepSelf since={twoStep.since} daysLeft={twoStepDays} />
-            </div>
-          </div>
+        {/* Sign-in and security moved to Settings on 7 October 2026. */}
+        <div className="px-8 pt-5 pb-5 border-b border-slate-200 flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-[13.5px] text-muted m-0">
+            Signs in with <strong className="text-tn-ink">{user.email ?? '-'}</strong>. Two-step sign-in and signing out on every device are in Settings.
+          </p>
+          <Link href="/settings#security" className="shrink-0 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink border border-slate-200 rounded-[10px] px-4 py-2.5 transition-all hover:border-tn-ink">Sign-in and security →</Link>
         </div>
 
         {/* Part 2, HR-managed, read-only for the user (future HR module) */}
