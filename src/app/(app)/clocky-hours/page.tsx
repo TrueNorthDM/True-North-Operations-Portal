@@ -50,15 +50,19 @@ function runState(run: { state: string; started_at: string | null }): string {
 }
 
 export default async function ClockyHoursPage() {
-  await requireSurface('clocky-hours')
+  const access = await requireSurface('clocky-hours')
+  // Rules in force, Migration and Reconciliation are items of their own; a
+  // section that is off is neither read nor drawn.
+  const can = { rules: access.can('ck-rules'), import: access.can('ck-import'), recon: access.can('ck-recon') }
   const supabase = createAdminClient()
+  const none = { data: null, error: null, count: null }
 
   const [settingsRes, reconRes, runRes, entriesRes, jobcodesRes] = await Promise.all([
-    supabase.from('tc_settings').select('*').eq('singleton_id', 1).maybeSingle(),
-    supabase.from('tc_reconciliation').select('*').order('month'),
-    supabase.from('tc_import_runs').select('*').order('id', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('tc_entries').select('id', { count: 'exact', head: true }),
-    supabase.from('tc_jobcodes').select('id', { count: 'exact', head: true }),
+    can.rules || can.import ? supabase.from('tc_settings').select('*').eq('singleton_id', 1).maybeSingle() : Promise.resolve(none),
+    can.recon || can.import ? supabase.from('tc_reconciliation').select('*').order('month') : Promise.resolve(none),
+    can.import ? supabase.from('tc_import_runs').select('*').order('id', { ascending: false }).limit(1).maybeSingle() : Promise.resolve(none),
+    can.import ? supabase.from('tc_entries').select('id', { count: 'exact', head: true }) : Promise.resolve(none),
+    can.import ? supabase.from('tc_jobcodes').select('id', { count: 'exact', head: true }) : Promise.resolve(none),
   ])
 
   // The tables land with migration 057. Until it is applied, say so plainly
@@ -101,8 +105,12 @@ export default async function ClockyHoursPage() {
         </p>
       </div>
 
+      {!can.rules && !can.import && !can.recon && (
+        <p className="text-sm text-muted m-0">None of the sections here is open to your access level.</p>
+      )}
+
       {/* Phase 0: the rules, as imported. Read only until the clock exists. */}
-      <section className="space-y-3">
+      {can.rules && <section className="space-y-3">
         <h2 id="rules" className="scroll-mt-24 font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Rules in force</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className={card}>
@@ -132,10 +140,10 @@ export default async function ClockyHoursPage() {
           </div>
         </div>
         {s && <RulesForm rules={s} />}
-      </section>
+      </section>}
 
       {/* Phase 1: the migration. */}
-      <section className="space-y-3">
+      {can.import && <section className="space-y-3">
         <h2 id="import" className="scroll-mt-24 font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Migration</h2>
         <div className="flex items-center gap-6 flex-wrap text-sm">
           <span><span className="text-muted">Entries here:</span> <strong className="tabular-nums">{(entriesRes.count ?? 0).toLocaleString()}</strong>{sourceTotal > 0 && <> of <span className="tabular-nums">{sourceTotal.toLocaleString()}</span> in QuickBooks Time</>}</span>
@@ -152,10 +160,10 @@ export default async function ClockyHoursPage() {
         {run?.error && <p className="text-sm text-red-600 font-mono m-0">{run.error}</p>}
 
         <ImportRunner hasCutoff={Boolean(s?.import_cutoff_date)} mismatched={mismatched.length} />
-      </section>
+      </section>}
 
       {/* The part that decides whether phase 1 is finished. */}
-      <section className="space-y-3">
+      {can.recon && <section className="space-y-3">
         <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Reconciliation</h2>
         {recon.length === 0 ? (
           <p className="text-sm text-muted m-0">Nothing checked yet. It fills in as the import walks the months.</p>
@@ -208,7 +216,7 @@ export default async function ClockyHoursPage() {
             </div>
           </>
         )}
-      </section>
+      </section>}
     </div>
   )
 }

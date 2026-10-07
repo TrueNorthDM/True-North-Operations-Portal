@@ -7,13 +7,15 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RANGE_FLOOR } from '@/lib/tsheets/range'
 import { getTsheetsStatus } from '@/lib/tsheets/status'
-import { loadCompensationByPerson, loadAssignmentRates, loadAuditLog } from '@/lib/hr/compensation'
-import { getCurrentProfile } from '@/lib/auth/role'
+import { loadCompensationByPerson, loadAssignmentRates, loadAuditLog, type Compensation } from '@/lib/hr/compensation'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import type { ClientWithBudget } from '@/components/tsheets/settings/ClientsTab'
 import type { PersonWithAssignments, DirectoryOption } from '@/components/tsheets/settings/PeopleTab'
 import type { AuditEntry } from '@/components/tsheets/settings/HistoryTab'
 import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
+
+/** Change history entries about budgets, which carry no pay. */
+const BUDGET_ENTITIES = new Set(['budget', 'monthly_budget', 'project_budget', 'project_month_hours', 'budget_history'])
 
 export interface BudgetUsageData {
   clients: ClientWithBudget[]
@@ -21,22 +23,25 @@ export interface BudgetUsageData {
   auditLog: AuditEntry[]
   directoryOptions: DirectoryOption[]
   syncedAt: string | null
-  canSync: boolean
   publishingTargets: PublishingTargetRow[]
   publishingAudit: AuditLogRow[]
 }
 
-export async function getBudgetUsageData(): Promise<BudgetUsageData> {
+/**
+ * `pay`: salaries, cost and break-even rates, client rates, and the change
+ * history entries that repeat them. Only for a caller whose access has Rates &
+ * Costs (d-rates); without it they are never read, and the history keeps only
+ * the budget entries.
+ */
+export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<BudgetUsageData> {
   const supabase = await createClient()
 
-  const profile = await getCurrentProfile()
-  const isAdmin = profile?.role === 'admin'
   // This function also feeds /directory, which is not admin-only, so the
   // timestamp comes from the narrow reader rather than the user's client.
   // That is what lets app_settings be admin-only (migration 052).
   const { syncedAt } = await getTsheetsStatus()
   // Pay per person, read privileged and merged in below (migration 054).
-  const compensation = await loadCompensationByPerson()
+  const compensation = pay ? await loadCompensationByPerson() : new Map<string, Compensation>()
 
   const [
     { data: clientsRaw },
@@ -86,7 +91,7 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
       return { ...active, data: [...(active.data ?? []), ...inactive] }
     })(),
     // Rates likewise: privileged read, merged back in below.
-    loadAssignmentRates({ activeOnly: true }).then(rows => ({
+    (pay ? loadAssignmentRates({ activeOnly: true }) : Promise.resolve([] as Awaited<ReturnType<typeof loadAssignmentRates>>)).then(rows => ({
       data: rows.map(r => ({
         id: r.id, tsheets_user_id: r.tsheetsUserId, person_id: r.personId,
         client_id: r.clientId, hourly_rate: r.hourlyRate, effective_from: r.effectiveFrom ?? '',
@@ -218,14 +223,15 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
 
   // Resolve who changed each row (changed_by → profiles.full_name) and which
   // client it was (entity_id → client name for budget-family entities).
-  const actorIds = [...new Set((auditRaw ?? []).map(e => (e as { changed_by?: string | null }).changed_by).filter(Boolean))] as string[]
+  const actorIds = [...new Set((auditRaw ?? []).filter(e => pay || BUDGET_ENTITIES.has(e.entity_type)).map(e => (e as { changed_by?: string | null }).changed_by).filter(Boolean))] as string[]
   const { data: actorProfiles } = actorIds.length
     ? await supabase.from('profiles').select('id, full_name').in('id', actorIds)
     : { data: [] as { id: string; full_name: string | null }[] }
   const actorNameById = new Map((actorProfiles ?? []).map(p => [p.id, p.full_name]))
-  const BUDGET_ENTITIES = new Set(['budget', 'monthly_budget', 'project_budget', 'project_month_hours', 'budget_history'])
 
-  const auditLog: AuditEntry[] = (auditRaw ?? []).map(e => {
+  // Without pay, only the budget entries: the others carry pay before and after.
+  const auditVisible = (auditRaw ?? []).filter(e => pay || BUDGET_ENTITIES.has(e.entity_type))
+  const auditLog: AuditEntry[] = auditVisible.map(e => {
     const changedBy = (e as { changed_by?: string | null }).changed_by ?? null
     return {
       id: e.id,
@@ -249,7 +255,6 @@ export async function getBudgetUsageData(): Promise<BudgetUsageData> {
     auditLog,
     directoryOptions: directoryOptions as DirectoryOption[],
     syncedAt,
-    canSync: isAdmin,
     publishingTargets: pubTargetsRaw ?? [],
     publishingAudit: pubAuditRaw ?? [],
   }

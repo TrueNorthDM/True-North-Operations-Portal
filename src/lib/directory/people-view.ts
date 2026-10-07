@@ -16,7 +16,7 @@ import {
   type PersonView,
   type PersonAttachment,
   type PersonTeam,
-  type Account,
+  type CardRights,
   type TeamKey,
   normalPosition,
 } from '@/lib/directory/people-types'
@@ -36,7 +36,8 @@ type PRow = Record<string, unknown> & { id: string; full_name: string }
 
 export async function loadDirectoryPeopleView(
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<{ people: PersonView[]; teamOptions: TeamOption[]; availableAccounts: Account[] }> {
+  rights: CardRights,
+): Promise<{ people: PersonView[]; teamOptions: TeamOption[] }> {
   let pRes = await supabase.from('people').select(PEOPLE_FULL)
   if (pRes.error) pRes = await supabase.from('people').select(PEOPLE_BASE)
 
@@ -52,7 +53,8 @@ export async function loadDirectoryPeopleView(
   ])
 
   const people = (pRes.data ?? []) as unknown as PRow[]
-  const invites = await loadInvitesByPerson(supabase)
+  // Portal access and pay only for the viewer whose access opens them.
+  const invites = rights.portal ? await loadInvitesByPerson(supabase) : new Map<string, string>()
   const teams = tData ?? []
   const profiles = prData ?? []
 
@@ -142,18 +144,12 @@ export async function loadDirectoryPeopleView(
   }
 
   const emailByProfile = new Map(profiles.map(pr => [pr.id, pr.email ?? '(no email)']))
-  const linkedProfileIds = new Set(people.map(p => (typeof p.profile_id === 'string' ? p.profile_id : null)).filter(Boolean) as string[])
-  const availableAccounts = profiles
-    .filter(pr => !linkedProfileIds.has(pr.id))
-    .map(pr => ({ id: pr.id, email: pr.email ?? '(no email)' }))
-    .sort((a, b) => a.email.localeCompare(b.email))
 
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
 
-  // Pay is a privileged read now (migration 054). The only caller of this
-  // function is /human-resources, which is already behind requireSurface plus
-  // an isPrivileged check, so the gate is upstream and unchanged.
-  const compensation = await loadCompensationByPerson()
+  // Pay is a privileged read now (migration 054), and Rates & Costs (d-rates)
+  // decides whether this viewer gets it at all.
+  const compensation = rights.rates ? await loadCompensationByPerson() : new Map<string, { internalRate: number | null }>()
 
   const peopleView: PersonView[] = people
     .map((p): PersonView => {
@@ -218,5 +214,5 @@ export async function loadDirectoryPeopleView(
     .map(t => ({ id: t.id, name: t.name, key: teamKeyFromName(t.name), color: teamColour(t.color, t.name) }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  return { people: peopleView, teamOptions, availableAccounts }
+  return { people: peopleView, teamOptions }
 }

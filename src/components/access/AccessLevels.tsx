@@ -56,12 +56,14 @@ type Person = Omit<AccessPageData['people'][number], 'teams'> & Subject
 
 // ── Small parts ────────────────────────────────────────────────────────────
 
-const KIND_TAG: Record<Exclude<ItemKind, 'module'>, { label: string; cls: string; help: string }> = {
-  page: { label: 'Page', cls: 'bg-[rgba(30,125,127,.1)] text-tn-teal', help: 'A screen with its own address, like Report or Directory.' },
-  tool: { label: 'Tool', cls: 'bg-[#efedfc] text-[#5b4bc4]', help: 'A page in the Tools panel. Besides the level, one of the person\'s teams must be on its team list.' },
-  tab: { label: 'Tab', cls: 'bg-subtle text-muted', help: 'A part of a page you switch to with tabs, like Report > Workload.' },
-  action: { label: 'Action', cls: 'bg-[#eef3fb] text-[#3a5a8c]', help: 'Something you can do or see inside a page: export, edit, a sensitive column.' },
+const KIND_TAG: Record<Exclude<ItemKind, 'module'>, { label: string; plural: string; cls: string; card: string; help: string }> = {
+  page: { label: 'Page', plural: 'pages', cls: 'bg-[rgba(30,125,127,.1)] text-tn-teal', card: 'bg-[rgba(30,125,127,.07)] border-[#cfe5e5] text-tn-teal', help: 'A screen with its own address, like Report or Directory.' },
+  tool: { label: 'Tool', plural: 'tools', cls: 'bg-[#efedfc] text-[#5b4bc4]', card: 'bg-[#f5f3fd] border-[#dcd7f6] text-[#5b4bc4]', help: 'A page in the Tools panel. Besides the level, one of the person\'s teams must be on its team list.' },
+  tab: { label: 'Tab', plural: 'tabs', cls: 'bg-subtle text-muted', card: 'bg-subtle border-[var(--panel-border)] text-muted', help: 'A part of a page you switch to with tabs, like Report > Workload.' },
+  action: { label: 'Action', plural: 'actions', cls: 'bg-[#eef3fb] text-[#3a5a8c]', card: 'bg-[#eef3fb] border-[#d9e3f3] text-[#3a5a8c]', help: 'Something you can do or see inside a page: export, edit, a sensitive column.' },
 }
+
+const KIND_COUNT = Object.fromEntries((['page', 'tool', 'tab', 'action'] as const).map(k => [k, CATALOGUE.filter(i => i.kind === k).length])) as Record<Exclude<ItemKind, 'module'>, number>
 
 function Tag({ kind }: { kind: Exclude<ItemKind, 'module'> }) {
   const k = KIND_TAG[kind]
@@ -72,6 +74,7 @@ const Glyph = {
   check: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m5 12 5 5 9-10" /></svg>,
   dash: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><path d="M7 12h10" /></svg>,
   lock: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>,
+  people: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
   eye: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>,
   chev: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 9 6 6 6-6" /></svg>,
 }
@@ -329,6 +332,7 @@ function Permissions({
               {item.building && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">BEING BUILT</span>}
             </button>
           </td>
+          <td className="border-t border-[var(--panel-border)]" />
           {LEVELS.map(l => <td key={l.key} className="text-center border-t border-[var(--panel-border)]">{moduleCell(item, l.key)}</td>)}
           <td className="border-t border-[var(--panel-border)]" />
         </tr>,
@@ -342,13 +346,13 @@ function Permissions({
         <td className="py-2 pr-3 border-t border-[var(--row-rule)]" style={{ paddingLeft: d === 1 ? 30 : 54 }}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className={d === 1 ? 'text-[13.5px] font-semibold text-tn-ink' : 'text-[13px] text-foreground'}>{item.label}</span>
-            <Tag kind={item.kind as Exclude<ItemKind, 'module'>} />
             {item.soon && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">SOON</span>}
             {item.superOnly && <span className="rounded bg-tn-primary px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#F2C40A]">SUPER ADMIN ONLY</span>}
             {item.group && <span className="text-[11.5px] text-muted">{item.group}</span>}
           </div>
           {item.note && <div className="text-[11.5px] text-muted mt-px">{item.note}</div>}
         </td>
+        <td className="text-center border-t border-[var(--row-rule)] px-1"><Tag kind={item.kind as Exclude<ItemKind, 'module'>} /></td>
         {LEVELS.map(l => <td key={l.key} className="text-center border-t border-[var(--row-rule)]">{cell(item, l.key)}</td>)}
         <td className="text-center border-t border-[var(--row-rule)] px-2">{item.kind === 'tool' ? teamsCell(item) : null}</td>
       </tr>,
@@ -361,9 +365,18 @@ function Permissions({
         <p className="m-0">
           Someone opens an item when <strong className="text-tn-ink">their level has it ticked</strong>, the page or tool above it is open to them too, and, for tools, <strong className="text-tn-ink">one of their teams is on its list</strong> (the Teams column). <strong className="text-tn-ink">Super Admin</strong> always has everything. <strong className="text-tn-ink">Team Leader</strong> is automatic: whoever is Lead of a team. The eye on a column shows the portal as that level, for a team you choose.
         </p>
-        <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-muted">
-          {(['page', 'tool', 'tab', 'action'] as const).map(k => <span key={k} className="inline-flex items-center gap-1.5"><Tag kind={k} />{KIND_TAG[k].help}</span>)}
-        </div>
+      </div>
+
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        {(['page', 'tool', 'tab', 'action'] as const).map(k => (
+          <div key={k} className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 items-center rounded-[12px] border px-3.5 py-3 ${KIND_TAG[k].card}`}>
+            <h4 className="m-0 font-(family-name:--font-display) font-black text-[12px] tracking-[.1em] uppercase">{KIND_TAG[k].label}</h4>
+            <div className="row-span-2 text-right font-(family-name:--font-display) font-black text-[26px] leading-none">
+              {KIND_COUNT[k]}<small className="block font-sans font-semibold text-[11px] tracking-normal">{KIND_TAG[k].plural}</small>
+            </div>
+            <p className="m-0 text-[12.5px] text-foreground">{KIND_TAG[k].help}</p>
+          </div>
+        ))}
       </div>
 
       <div className="flex items-center gap-2.5 flex-wrap">
@@ -386,25 +399,32 @@ function Permissions({
       </div>
 
       <div className={`${card} overflow-x-auto`}>
-        <table className="w-full border-separate border-spacing-0 min-w-[980px]">
+        <table className="w-full border-separate border-spacing-0 min-w-[1060px]">
           <thead>
             <tr>
               <th className="text-left bg-subtle px-4 py-2.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted align-bottom">Module, page, tool, tab or action</th>
+              <th className="w-[78px] bg-subtle border-b border-[var(--panel-border)]" aria-label="Kind" />
               {LEVELS.map(l => (
-                <th key={l.key} className="w-[120px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom">
-                  <div className="grid justify-items-center gap-1">
+                <th key={l.key} className="w-[128px] min-w-[128px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom">
+                  <div className="grid justify-items-center gap-1.5">
                     <span className="font-(family-name:--font-display) font-black text-[12.5px] text-tn-ink">{l.label}</span>
-                    <span className="text-[11px] text-muted font-semibold">{counts[l.key]} {counts[l.key] === 1 ? 'person' : 'people'}{l.key === 'team_leader' ? ' · automatic' : ''}</span>
-                    {l.key === 'super_admin'
-                      ? <span className="text-[10.5px] font-bold text-[#a67c04]">Everything, always</span>
-                      : <button type="button" onClick={() => onPreview(l.key as ConfigurableLevel)} className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--panel-border)] bg-white text-tn-teal px-2 py-0.5 text-[11.5px] font-bold hover:border-tn-teal">{Glyph.eye}Preview</button>}
+                    <span className="inline-flex items-center gap-1.5">
+                      <span title={`${counts[l.key]} ${counts[l.key] === 1 ? 'person' : 'people'}${l.key === 'team_leader' ? ', automatic: Leads of a team' : ''}`}
+                        className="inline-flex items-center gap-1 rounded-[8px] border border-[var(--panel-border)] bg-white px-[7px] py-[3px] text-[12px] font-bold text-tn-ink">
+                        <span className="text-muted">{Glyph.people}</span>{counts[l.key]}
+                      </span>
+                      {l.key !== 'super_admin' && (
+                        <button type="button" onClick={() => onPreview(l.key as ConfigurableLevel)} title={`Preview the portal as ${l.label}`} aria-label={`Preview ${l.label}`}
+                          className="inline-grid place-items-center w-7 h-[26px] rounded-[8px] border border-[var(--panel-border)] bg-white text-tn-teal hover:border-tn-teal hover:bg-[rgba(30,125,127,.07)]">{Glyph.eye}</button>
+                      )}
+                    </span>
                   </div>
                 </th>
               ))}
               <th className="w-[230px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">Teams<div className="normal-case tracking-normal font-sans font-semibold text-[11px]">tools only</div></th>
             </tr>
           </thead>
-          <tbody>{rows.length ? rows : <tr><td colSpan={6} className="px-4 py-6 text-muted text-[13px]">Nothing matches.</td></tr>}</tbody>
+          <tbody>{rows.length ? rows : <tr><td colSpan={7} className="px-4 py-6 text-muted text-[13px]">Nothing matches.</td></tr>}</tbody>
         </table>
       </div>
 

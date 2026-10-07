@@ -25,7 +25,8 @@ const fail = (error: string): Result => ({ ok: false, error })
 async function context() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const me = await loadCurrentPerson(supabase, user)
+  // The person really signed in, never a View Stage preview: these write.
+  const me = await loadCurrentPerson(supabase, user, { real: true })
   if (!me) return null
 
   const [{ data: settings }, { data: fields }] = await Promise.all([
@@ -68,6 +69,7 @@ export async function startClock(input: {
   fields: Record<string, string>
   notes: string
 }): Promise<Result> {
+  if (!(await allowedTo('h-week'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
@@ -112,6 +114,7 @@ export async function startClock(input: {
 }
 
 export async function stopClock(): Promise<Result> {
+  if (!(await allowedTo('h-week'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
@@ -153,6 +156,7 @@ export async function saveEntry(input: {
   fields: Record<string, string>
   notes: string
 }): Promise<Result> {
+  if (!(await allowedTo('h-week'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
@@ -217,6 +221,7 @@ export async function saveEntry(input: {
 }
 
 export async function deleteEntry(id: number): Promise<Result> {
+  if (!(await allowedTo('h-week'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
@@ -238,7 +243,7 @@ export async function deleteEntry(id: number): Promise<Result> {
  * the service role for the same reason the current person is: "who is my boss"
  * is not a question the caller should have to be allowed to ask.
  */
-export async function myApprovers(
+async function myApprovers(
   ctx: NonNullable<Awaited<ReturnType<typeof context>>>,
 ): Promise<{ id: string; name: string }[]> {
   const admin = createAdminClient()
@@ -291,6 +296,7 @@ async function periodId(
 }
 
 export async function submitPeriod(month: string): Promise<Result> {
+  if (!(await allowedTo('h-month'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
@@ -354,6 +360,7 @@ export async function decidePeriod(input: {
   decision: 'approve' | 'return'
   note?: string
 }): Promise<Result> {
+  if (!(await allowedTo('h-waiting'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
   if (input.personId === ctx.me.id) return fail('You cannot approve your own hours.')
@@ -483,6 +490,7 @@ export async function requestAbsence(input: {
   hoursPerDay: number
   reason: string
 }): Promise<Result> {
+  if (!(await allowedTo('h-timeoff'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
@@ -530,6 +538,7 @@ export async function decideAbsence(input: {
   decision: 'approve' | 'deny'
   note?: string
 }): Promise<Result> {
+  if (!(await allowedTo('h-timeoff')) || !(await allowedTo('h-waiting'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 
@@ -563,6 +572,7 @@ export async function decideAbsence(input: {
 }
 
 export async function cancelAbsence(id: number): Promise<Result> {
+  if (!(await allowedTo('h-timeoff'))) return fail('That part of My Hours is not open to your access.')
   const ctx = await context()
   if (!ctx) return fail('We could not tell who you are. Sign out and back in.')
 

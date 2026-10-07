@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * The System manual's "How it runs" tab: where the portal runs and how it is
  * looked after (the server and its accounts, staging and promoting, alerts,
@@ -8,23 +6,15 @@
  *
  * The same text lives as a standalone page in docs/owner-manual/index.html;
  * change both together. Text runs the full width of its column on purpose.
+ *
+ * A server component, so the text (the server, its accounts, where the keys
+ * live) is sent only in the page of someone the manual is open to, never in a
+ * script file anyone could fetch. Only the contents list (RunsToc) runs in the
+ * browser.
  */
 
-import { useEffect, useState } from 'react'
+import { RunsToc } from './RunsToc'
 
-const TOC = [
-  { id: 'runs-overview', label: 'Overview' },
-  { id: 'runs-accounts', label: 'Accounts' },
-  { id: 'runs-publish', label: 'Publishing a change' },
-  { id: 'runs-staging', label: 'Staging' },
-  { id: 'runs-monitoring', label: 'Checking everything is fine' },
-  { id: 'runs-backups', label: 'Backups' },
-  { id: 'runs-people', label: 'People' },
-  { id: 'runs-trouble', label: 'When something breaks' },
-  { id: 'runs-keys', label: 'Keys and access' },
-  { id: 'runs-local', label: 'Running it locally' },
-  { id: 'runs-glossary', label: 'Glossary' },
-]
 
 const ACTIONS = 'https://github.com/TrueNorthDM/True-North-Operations-Portal/actions'
 
@@ -173,38 +163,9 @@ function Diagram() {
 
 // ── The tab ──────────────────────────────────────────────────────────
 export function HowItRuns() {
-  const [active, setActive] = useState(TOC[0].id)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        const visible = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-        if (visible[0]) setActive(visible[0].target.id)
-      },
-      { rootMargin: '-12% 0px -70% 0px', threshold: 0 },
-    )
-    for (const t of TOC) { const el = document.getElementById(t.id); if (el) observer.observe(el) }
-    return () => observer.disconnect()
-  }, [])
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[214px_1fr] gap-10 items-start">
-      <nav className="lg:sticky lg:top-[81px] lg:max-h-[calc(100vh-97px)] lg:overflow-y-auto flex flex-col gap-0.5">
-        <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] uppercase tracking-[.09em] text-muted px-3 pb-2">On this page</div>
-        {TOC.map(t => (
-          <a
-            key={t.id}
-            href={`#${t.id}`}
-            onClick={() => setActive(t.id)}
-            className={`text-[13px] px-3 py-[7px] rounded-lg border-l-2 transition-colors ${active === t.id ? 'border-tn-teal bg-tn-teal-soft text-tn-teal font-bold' : 'border-transparent text-muted font-semibold hover:text-tn-ink hover:bg-subtle'}`}
-          >
-            {t.label}
-          </a>
-        ))}
-        <div className="mt-4 pt-3 px-3 border-t border-slate-200 text-xs leading-relaxed text-muted">
-          Last updated<br /><strong className="font-bold text-foreground">October 7, 2026</strong>
-        </div>
-      </nav>
+      <RunsToc />
 
       <div className="min-w-0 flex flex-col gap-11">
         <section id="runs-overview" className="scroll-mt-6 flex flex-col gap-4">

@@ -108,12 +108,12 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
     return (
       <div className="min-h-screen bg-background p-10">
         <div className="flex flex-wrap gap-6">
-          {card('1 · Not invited yet', 'Active, with a GoodNews address. One click invites.', <PortalAccessControl p={person('Ana Silva', {})} />)}
+          {card('1 · Not invited yet', 'Active, with a GoodNews address. One click invites.', <PortalAccessControl p={person('Ana Silva', {})} canInvite />)}
           {card('2 · Right after Invite', 'The invitation email went out.', sent)}
-          {card('3 · Invited, not signed in yet', 'Send again resends the email; Revoke withdraws it.', <PortalAccessControl p={person('Ana Silva', { portalInvitedAt: '2026-09-28' })} />)}
-          {card('4 · Signed in', 'Revoke signs them out at once.', <PortalAccessControl p={person('Tina Gennette', { portalInvitedAt: '2026-09-28', accountId: 'x' })} />)}
-          {card('5 · No GoodNews address', 'The address comes first: it is the one they sign in with.', <PortalAccessControl p={person('Devon Smith', { emails: { trueNorth: 'devon@truenorthdigitalmarketing.com', goodnews: null, coe: null, personal: null } })} />)}
-          {card('6 · Inactive', 'No access, and no Invite, while inactive.', <PortalAccessControl p={person('Former Person', { status: 'inactive' })} />)}
+          {card('3 · Invited, not signed in yet', 'Send again resends the email; Revoke withdraws it.', <PortalAccessControl p={person('Ana Silva', { portalInvitedAt: '2026-09-28' })} canInvite />)}
+          {card('4 · Signed in', 'Revoke signs them out at once.', <PortalAccessControl p={person('Tina Gennette', { portalInvitedAt: '2026-09-28', accountId: 'x' })} canInvite />)}
+          {card('5 · No GoodNews address', 'The address comes first: it is the one they sign in with.', <PortalAccessControl p={person('Devon Smith', { emails: { trueNorth: 'devon@truenorthdigitalmarketing.com', goodnews: null, coe: null, personal: null } })} canInvite />)}
+          {card('6 · Inactive', 'No access, and no Invite, while inactive.', <PortalAccessControl p={person('Former Person', { status: 'inactive' })} canInvite />)}
         </div>
       </div>
     )

@@ -793,7 +793,7 @@ export interface PreviewState {
 }
 
 export function WorkList({
-  data, people, teams, selfPersonId, isAdmin = false, preview, stickyTop = 65, teamOrder = null, canSetPriority = false,
+  data, people, teams, selfPersonId, isAdmin = false, preview, stickyTop = 65, teamOrder = null, canSetPriority = false, canSeeEveryone = true,
 }: {
   data: Worklist
   people: Option[]
@@ -803,6 +803,8 @@ export function WorkList({
   preview?: PreviewState
   /** The team order this list follows, when it follows one. Rows then carry teamRank. */
   teamOrder?: TeamOrderView | null
+  /** "See everyone's list" (mw-everyone). Off: no Everyone, no person or team pickers. */
+  canSeeEveryone?: boolean
   /** A team leader or an admin: shows Team priority beside Mine and Everyone. */
   canSetPriority?: boolean
   /**
@@ -898,7 +900,8 @@ export function WorkList({
   const person = personSelectValue(params.get('person'), team, selfPersonId)
   const includeDone = preview?.done ?? params.get('done') === '1'
   const mineFromUrl = isMine(person, team, selfPersonId)
-  const mine = wanted ?? mineFromUrl
+  // Without the Everyone view the server shows their own list whatever the address says.
+  const mine = !canSeeEveryone || (wanted ?? mineFromUrl)
 
   /**
    * `want` carries the tab the click chose, so the highlight can move before
@@ -1028,7 +1031,7 @@ export function WorkList({
         <div className="flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]">
           {([
             { key: 'mine', label: 'Mine' },
-            { key: 'all', label: 'Everyone' },
+            ...(canSeeEveryone ? [{ key: 'all', label: 'Everyone' }] as const : []),
           ] as const).map(t => {
             const on = t.key === 'mine' ? mine : !mine
             const dead = t.key === 'mine' && !selfPersonId
@@ -1076,7 +1079,7 @@ export function WorkList({
           )}
         </div>
 
-        {!mine && (
+        {!mine && canSeeEveryone && (
           <>
             <Select
               value={person}

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Approvals and Invoices' }
 
 export default async function Page() {
-  const access = await requireSurface('my-hours')
+  const access = await requireSurface('my-hours-approvals')
   return (
     <ComingSoon
       icon="tests"

@@ -1,9 +1,10 @@
 /**
  * Admin Supabase client, bypasses RLS.
  *
- * Use ONLY in server-side machine-to-machine endpoints (webhooks, cron jobs,
- * background jobs). Never instantiate from a Server Action that runs on
- * behalf of a user, or from any Client Component, ever.
+ * Use only on the server: in machine endpoints (webhooks, cron jobs), or for a
+ * person AFTER their access was checked (requireSurface, allowedTo, or
+ * access.can for the item the data belongs to). Then the access item decides
+ * what they reach, not the database role. Never from a Client Component.
  *
  * The service_role key is a privileged secret. It is set in the server's
  * /opt/tnportal/portal.env (NOT prefixed with NEXT_PUBLIC_) so it never leaks
@@ -12,6 +13,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { gateHeaders } from './gate'
 
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -22,6 +24,7 @@ export function createAdminClient() {
     )
   }
   return createClient(url, key, {
+    global: { headers: gateHeaders() },
     auth: {
       // No cookie/session storage, service_role doesn't need to be a "user".
       persistSession: false,

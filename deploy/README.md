@@ -66,6 +66,27 @@ Two things specific to this server:
   not answer. Each environment has its own build, because the browser code
   carries its addresses. Keeps the build cache at 3 GB.
 
+## Database gate (`deploy/portal/db-gate.sh`)
+
+Supabase's public address has to answer the browser for sign-in links, public
+files (avatars) and signed links (attachments), but nothing in the browser
+reads tables: every page gets its data through the portal's server. So the
+address refuses tables (`/rest`, `/graphql`, `/realtime`, `/pg`, `/functions`)
+and private files to any request without the `X-Portal-Key` header, which only
+the portal's server sends (`SUPABASE_GATE_KEY` in `portal.env` / `staging.env`,
+`src/lib/supabase/gate.ts`). Without it, anyone signed in could copy their
+session from the browser and read a table directly, past every page's access
+check, wherever a table's row rules are broad.
+
+- Turn on: `db-gate.sh <env> key`, deploy, `db-gate.sh <env> on`. "on" refuses
+  while the running portal lacks the key or its build does not send it, then
+  checks itself from outside and puts the file back if the check fails.
+- Files: public files and signed links pass only as GET or HEAD; creating a
+  signed link, or any other storage call, needs the key.
+- Roll back: `db-gate.sh <env> off`. The `.htaccess` before the first "on" is
+  kept beside it as `.htaccess.before-gate`.
+- Check from outside: `/rest/v1/` answers 403, `/auth/v1/health` answers 200.
+
 ## Staging (`deploy/staging/`)
 
 A second copy of the portal, with a copy of production's data, at

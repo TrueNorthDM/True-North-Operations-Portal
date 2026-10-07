@@ -15,6 +15,7 @@
  */
 
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
+import { I7_EXPORT_KEYS } from '@/lib/tsheets/export-keys'
 import { loadI7History } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { DATA_START } from '@/lib/tsheets/retention'
@@ -37,7 +38,7 @@ function month(v: string | null): string | null {
 }
 
 export async function GET(request: Request) {
-  const denied = await requirePrivileged()
+  const denied = await requirePrivileged(...I7_EXPORT_KEYS)
   if (denied) return denied
 
   const url = new URL(request.url)

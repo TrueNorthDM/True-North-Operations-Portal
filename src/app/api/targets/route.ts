@@ -15,6 +15,8 @@
  */
 
 import { NextResponse } from 'next/server'
+import { isSuperAdmin } from '@/lib/access/resolve'
+import { gateHeaders } from '@/lib/supabase/gate'
 
 export const runtime = 'nodejs'
 export const maxDuration = 10
@@ -29,6 +31,8 @@ interface TargetRow {
 }
 
 export async function GET() {
+  // No caller in the portal any more; Super Admins only until it is removed.
+  if (!(await isSuperAdmin())) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 })
   // Read with the service role, not the anon key. publishing_targets carried
   // the same policy defect as monday_snapshot: `FOR SELECT USING (true)` with
   // no TO clause is TO PUBLIC, so the targets were readable by anyone with the
@@ -51,6 +55,8 @@ export async function GET() {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
+        // The database gate (lib/supabase/gate.ts): a raw request has to carry it too.
+        ...gateHeaders(),
       },
     })
 

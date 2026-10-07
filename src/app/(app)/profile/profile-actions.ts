@@ -20,7 +20,8 @@ async function myPersonId(): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not signed in')
-  const me = await loadCurrentPerson(supabase, user)
+  // The person really signed in, never a View Stage preview: these write.
+  const me = await loadCurrentPerson(supabase, user, { real: true })
   if (!me) throw new Error('Your account isn’t linked to a directory record.')
   return me.id
 }

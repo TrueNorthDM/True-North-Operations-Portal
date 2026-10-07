@@ -20,6 +20,7 @@
 
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
+import { projectsExportKeys } from '@/lib/tsheets/export-keys'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadProjectHistory } from '@/lib/timeclock/projects'
 import { historyCsvRows } from '@/lib/timeclock/project-history-rows'
@@ -39,8 +40,8 @@ const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 export async function GET(request: Request) {
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/')
-  // An export: the same tick as the Export button (it was missing until 7 October 2026).
-  if (!access.can('ph-export')) redirect('/')
+  // An export: the Export tick, and the items whose figures this file carries.
+  if (!projectsExportKeys('history').every(k => access.can(k))) redirect('/')
 
   const q = new URL(request.url).searchParams
   const legacy = q.get('month') ?? undefined

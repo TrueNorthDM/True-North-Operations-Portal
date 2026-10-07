@@ -21,7 +21,7 @@ import type { Browser } from 'puppeteer-core'
 import { internalOrigin } from '@/lib/auth/public-origin'
 import { launchBrowser } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
-import { requireSurface } from '@/lib/access/resolve'
+import { I7_EXPORT_KEYS, projectsExportKeys } from '@/lib/tsheets/export-keys'
 import { spanWording } from '@/lib/tsheets/range'
 import { ROUTES } from '@/lib/nav/routes'
 
@@ -47,14 +47,11 @@ export async function GET(request: Request) {
   // the privileged gate they always had.
   const type = asked === 'internal' ? 'internal' : report === 'projects' && asked === 'history' ? 'history' : 'client'
 
-  if (type === 'history') {
-    const access = await requireSurface('tools')
-    if (!access.canTool('grant-pass-report') || !access.can('ph-export')) return new Response('Not allowed.', { status: 403 })
-  } else {
-    // Each report's own Export tick (access catalogue, 7 October 2026).
-    const denied = await requirePrivileged(report === 'projects' ? 'ph-export' : 'i7-export')
-    if (denied) return denied
-  }
+  // Each report's own Export tick, and every item whose figures the file
+  // carries (access catalogue, 7 October 2026). The print page it renders
+  // checks the same again.
+  const denied = await requirePrivileged(...(report === 'projects' ? projectsExportKeys(type) : I7_EXPORT_KEYS))
+  if (denied) return denied
   const printPath = report === 'projects'
     ? `${ROUTES.projectHours}/print`
     : `${ROUTES.i7}/print`

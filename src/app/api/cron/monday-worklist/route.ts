@@ -33,7 +33,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
 import { ingestSlice } from '@/lib/monday/worklist/ingest'
-import { applyStaleRule } from '@/app/(app)/admin/settings/monday/actions'
+import { applyStaleRule } from '@/lib/monday/worklist/stale-rule'
 import { notifyAfterSync, notifyUnlinked } from '@/lib/notifications/run'
 import { acquireLease, releaseLease, startRun, finishRun, failedThisRun } from '@/lib/monday/worklist/sync-run'
 
@@ -75,7 +75,8 @@ const NOTIFY_BEFORE_MS = 250_000
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET
-  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
+  // Closed when the secret is missing too: an unset variable must not open it.
+  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

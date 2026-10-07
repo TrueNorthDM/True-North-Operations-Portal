@@ -13,6 +13,14 @@ import { activePeople } from '@/lib/report/directory'
 export async function launcherPeople(): Promise<{ id: string; name: string }[]> {
   const access = await loadAccess()
   if (!access.can('directory')) return []
-  const people = await activePeople(await createClient(), {})
-  return people.map(p => ({ id: p.id, name: p.full_name }))
+  const supabase = await createClient()
+  // The whole company is "See the whole company" (d-company); without it, the
+  // people of their own teams, as the Directory itself shows them.
+  if (access.can('d-company')) return (await activePeople(supabase, {})).map(p => ({ id: p.id, name: p.full_name }))
+  if (!access.personId) return []
+  const { data } = await supabase.from('team_members').select('team_id').eq('person_id', access.personId)
+  const teamIds = ((data ?? []) as { team_id: string }[]).map(m => m.team_id)
+  const people = await activePeople(supabase, { teamIds })
+  const own = people.some(p => p.id === access.personId) ? [] : await activePeople(supabase, { personIds: [access.personId] })
+  return [...people, ...own].map(p => ({ id: p.id, name: p.full_name }))
 }

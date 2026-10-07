@@ -66,7 +66,9 @@ function PillBadge({ pill }: { pill: Pill }) {
   )
 }
 
-export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void }) {
+export function PeopleManager({ people, teamOptions, onOpen, showRate }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void; showRate: boolean }) {
+  // Without Rates & Costs the rate is not sent at all; the column and its filter go too.
+  const columns = showRate ? COLUMNS : COLUMNS.filter(c => c.id !== 'rate')
   const [q, setQ] = useState('')
   const [conds, setConds] = useState<FilterCond[]>([])
   const [sort, setSort] = useState<SortState | null>(null)
@@ -84,10 +86,10 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
     { id: 'type', label: 'Type', type: 'enum', get: p => p.employmentType, options: [{ value: 'us', label: 'US Employee' }, { value: 'contractor', label: 'Contractor' }] },
     { id: 'time', label: 'Schedule', type: 'enum', get: p => p.schedule, options: [{ value: 'full', label: 'Full-Time' }, { value: 'part', label: 'Part-Time' }] },
     { id: 'joined', label: 'Joined', type: 'date', get: p => p.hireDate },
-    { id: 'rate', label: 'Internal rate', type: 'number', get: p => p.internalRate },
+    ...(showRate ? [{ id: 'rate', label: 'Internal rate', type: 'number' as const, get: (p: PersonView) => p.internalRate }] : []),
     { id: 'status', label: 'Status', type: 'enum', get: p => p.status, options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
     { id: 'tsheets', label: 'TSheets', type: 'enum', get: p => (p.hasTsheets ? 'linked' : 'unlinked'), options: [{ value: 'linked', label: 'Linked' }, { value: 'unlinked', label: 'Not linked' }] },
-  ], [teamOptions])
+  ], [teamOptions, showRate])
 
   // Hydrate saved column choices once on mount. Deliberately a post-mount effect
   // (not a lazy initializer) so the server and first client render agree, then we
@@ -131,7 +133,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
     return applyFilters(base, filterColumns, conds)
   }, [people, q, conds, filterColumns])
 
-  const visCols = COLUMNS.filter(c => cols.includes(c.id))
+  const visCols = columns.filter(c => cols.includes(c.id))
   const gridTemplate = `2fr ${visCols.map(c => c.fr).join(' ')}`
   // Sort is applied WITHIN each group so the Active / Inactive split is preserved.
   const groups = [
@@ -176,7 +178,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
                   <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">Person</span>
                   <span className="ml-auto text-[10.5px] font-bold text-muted">Always</span>
                 </div>
-                {COLUMNS.map(c => {
+                {columns.map(c => {
                   const on = cols.includes(c.id)
                   return (
                     <button key={c.id} type="button" onClick={() => toggleCol(c.id)} className="flex items-center gap-2.5 w-full p-2.5 rounded-[9px] text-left transition-colors hover:bg-subtle">

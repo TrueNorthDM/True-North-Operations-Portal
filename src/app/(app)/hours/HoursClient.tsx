@@ -36,6 +36,8 @@ interface Props {
   timeOff: Absence[]
   timeOffKinds: { id: number; label: string }[]
   running: { id: number; startedAt: string; jobcodeId: number | null } | null
+  /** The parts of the page this person's access opens (h-week, h-month, h-timeoff). */
+  sections: { week: boolean; month: boolean; timeOff: boolean }
 }
 
 const card = 'rounded-[14px] border border-slate-200 bg-white p-5'
@@ -58,7 +60,7 @@ export function HoursClient(props: Props) {
   const {
     timezone, today, weekStartDate, weekEndDate, jobcodes, fields, entries, running,
     month, monthSeconds, submissionState, submissionNote, waiting,
-    approvers, isAdmin, myPersonId, timeOff, timeOffKinds,
+    approvers, isAdmin, myPersonId, timeOff, timeOffKinds, sections,
   } = props
 
   // Time off form
@@ -172,6 +174,7 @@ export function HoursClient(props: Props) {
         <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
+      {sections.month && (<>
       {/* ── The month, and whether it is still yours ──────────────────────── */}
       <section className={`${card} flex items-center gap-4 flex-wrap`}>
         <div>
@@ -220,6 +223,7 @@ export function HoursClient(props: Props) {
           </button>
         )}
       </section>
+      </>)}
 
       {/* ── Waiting on me ─────────────────────────────────────────────────── */}
       {waiting.length > 0 && (
@@ -285,6 +289,7 @@ export function HoursClient(props: Props) {
         </section>
       )}
 
+      {sections.timeOff && (<>
       {/* ── Time off ──────────────────────────────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
@@ -437,7 +442,9 @@ export function HoursClient(props: Props) {
           </div>
         )}
       </section>
+      </>)}
 
+      {sections.week && (<>
       {/* ── The clock ─────────────────────────────────────────────────────── */}
       <section className={card}>
         {!period.canEdit && !running ? (
@@ -625,6 +632,7 @@ export function HoursClient(props: Props) {
           })}
         </div>
       </section>
+      </>)}
     </div>
   )
 }

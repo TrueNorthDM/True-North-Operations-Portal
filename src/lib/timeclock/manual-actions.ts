@@ -52,7 +52,8 @@ export async function addManualEntries(inputs: ManualEntryInput[]): Promise<Resu
 
   const session = await createClient()
   const { data: { user } } = await session.auth.getUser()
-  const me = await loadCurrentPerson(session, user ?? null)
+  // Who added them: the person really signed in, never a View Stage preview.
+  const me = await loadCurrentPerson(session, user ?? null, { real: true })
 
   const rows = []
   for (const [i, input] of inputs.entries()) {

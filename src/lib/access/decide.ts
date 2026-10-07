@@ -4,11 +4,12 @@
  * ask this function, so they can never disagree.
  *
  *   1. Super Admin                          -> yes ("Super Admin")
- *   2. an exception for the person and item, still in date
+ *   2. an item unknown to the catalogue, or Super Admin only
+ *                                           -> no, whatever an exception says
+ *   3. the parent page or tool must open, and any item it needs
+ *                                           -> else no ("Needs <parent>")
+ *   4. an exception for the person and item, still in date
  *                                           -> its answer ("Exception until ...")
- *   3. an item unknown to the catalogue, or Super Admin only
- *                                           -> no
- *   4. the parent page or tool must open    -> else no ("Needs <parent>")
  *   5. always-on items                      -> yes ("Everyone")
  *   6. the level's tick (saved rule, else the catalogue's default)
  *                                           -> else no ("<Level> is off")
@@ -84,9 +85,8 @@ function decideOnce(subject: Subject, key: string, rules: Rules, opts: DecideOpt
   const item = ITEM.get(key)
   if (subject.level === 'super_admin') return { ok: true, reasons: [{ kind: 'super', text: 'Super Admin' }] }
 
-  const ex = subject.exceptions?.find(e => e.key === key && (!e.until || e.until >= opts.today))
-  if (ex) return { ok: ex.effect === 'grant', reasons: [{ kind: 'exception', text: ex.until ? `Exception until ${ex.until}` : 'Exception' }] }
-
+  // Before any exception: an exception left behind on an item that later
+  // became Super Admin only, or left the catalogue, must not open it.
   if (!item) return { ok: false, reasons: [{ kind: 'unknown', text: 'Not in the catalogue' }] }
   if (item.superOnly) return { ok: false, reasons: [{ kind: 'super-only', text: 'Super Admin only' }] }
 
@@ -100,6 +100,15 @@ function decideOnce(subject: Subject, key: string, rules: Rules, opts: DecideOpt
   if (parent && parent.kind !== 'module' && !decide(subject, parent.key, rules, opts).ok) {
     return { ok: false, reasons: [{ kind: 'parent', text: `Needs ${parent.label}` }] }
   }
+  const needed = item.needs ? ITEM.get(item.needs) : undefined
+  if (needed && !decide(subject, needed.key, rules, opts).ok) {
+    return { ok: false, reasons: [{ kind: 'parent', text: `Needs ${needed.label}` }] }
+  }
+
+  // After the parent: an exception opens or closes one item, never a tab whose
+  // page the person cannot open (grant the page too).
+  const ex = subject.exceptions?.find(e => e.key === key && (!e.until || e.until >= opts.today))
+  if (ex) return { ok: ex.effect === 'grant', reasons: [{ kind: 'exception', text: ex.until ? `Exception until ${ex.until}` : 'Exception' }] }
 
   if (item.always) return { ok: true, reasons: [{ kind: 'always', text: 'Everyone' }] }
 

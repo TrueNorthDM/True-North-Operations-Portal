@@ -18,8 +18,12 @@ import { loadAccess } from '@/lib/access/resolve'
  * Plain module (not "use server") so route handlers and pages can both import
  * it. Returns a 403 Response when the caller may not pass, else null.
  */
-export async function requirePrivileged(surfaceKey = 'i7-export'): Promise<Response | null> {
-  if ((await loadAccess()).can(surfaceKey)) return null
+export async function requirePrivileged(...keys: string[]): Promise<Response | null> {
+  // Every item the file's contents need, not only the export itself: an i7 file
+  // carries budget and cost, so it needs the whole report (report-full) too.
+  const need = keys.length ? keys : ['i7-export', 'report-full']
+  const access = await loadAccess()
+  if (need.every(k => access.can(k))) return null
   return new Response('Not authorized. This is limited to admins.', {
     status: 403,
     headers: { 'Content-Type': 'text/plain' },

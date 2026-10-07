@@ -11,6 +11,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr'
+import { gateHeaders } from '@/lib/supabase/gate'
 import { NextResponse, type NextRequest } from 'next/server'
 import { skipsSession } from '@/lib/auth/no-session-paths'
 import { switchOverAction } from '@/lib/switch-over'
@@ -77,6 +78,7 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { headers: gateHeaders() },
       cookies: {
         getAll() {
           return request.cookies.getAll()

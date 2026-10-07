@@ -20,7 +20,8 @@ export function ReportMeta(
   { sourceLine, guideHref, syncedAt, failed = false }: {
     /** Where the hours came from, in the report's own words. */
     sourceLine: string
-    guideHref: string
+    /** Null when the guide (i7-guide) is not open to the viewer. */
+    guideHref: string | null
     syncedAt: string | null
     failed?: boolean
   },
@@ -32,14 +33,14 @@ export function ReportMeta(
           to take the whole line, the group wraps underneath and stays right. */}
       <div className="ml-auto shrink-0 flex items-center gap-2.5">
         <SyncStatus syncedAt={syncedAt} failed={failed} />
-        <Link
+        {guideHref && <Link
           href={guideHref}
           title="How the report works"
           aria-label="How the report works"
           className="shrink-0 w-9 h-9 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-        </Link>
+        </Link>}
       </div>
     </div>
   )

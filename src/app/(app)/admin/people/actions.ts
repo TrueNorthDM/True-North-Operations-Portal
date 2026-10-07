@@ -169,6 +169,8 @@ export async function createPerson(input: PersonInput) {
   const supabase = await createClient()
 
   const row: PersonCols & { full_name: string } = { full_name: name, ...personColumns(input) }
+  // The rate is Rates & Costs (d-rates): without it, a new person starts with none.
+  if (!(await allowedTo('d-rates'))) row.internal_rate = null
   if (input.profile_id !== undefined) row.profile_id = input.profile_id || null
   if (input.tsheets === false) row.tsheets_user_id = null
 
@@ -211,6 +213,9 @@ export async function updatePerson(id: string, input: PersonInput) {
   }
 
   const patch: PersonCols & { full_name: string } = { full_name: name, ...personColumns(input) }
+  // The rate is Rates & Costs (d-rates). Without it the card never showed the
+  // rate, so the save leaves it as it is instead of clearing it.
+  if (input.internal_rate === undefined || !(await allowedTo('d-rates'))) delete patch.internal_rate
   // Only touch the account link when the caller passed it.
   if (input.profile_id !== undefined) patch.profile_id = input.profile_id || null
   if (input.tsheets === false) patch.tsheets_user_id = null

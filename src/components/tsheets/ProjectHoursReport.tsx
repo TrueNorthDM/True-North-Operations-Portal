@@ -61,15 +61,17 @@ function monthName(ym: string): string {
 }
 
 export function ProjectHoursReport(
-  { data, teams = [], selectedTeam = '' }: {
+  { data, teams = [], selectedTeam = '', views = ['costs', 'people'] }: {
     data: ProjectTracking
+    /** The tabs this person's access opens (ph-costs, ph-people), in order. */
+    views?: readonly ('costs' | 'people')[]
     /** Teams the filter offers, with the first names of their members. */
     teams?: readonly { id: string; name: string; members: readonly string[] }[]
     selectedTeam?: string
   },
 ) {
   // A link that arrives with a team opens on People, the only tab a team changes.
-  const [view, setView] = useState<'costs' | 'people'>(() => (selectedTeam ? 'people' : 'costs'))
+  const [view, setView] = useState<'costs' | 'people' | undefined>(() => (selectedTeam && views.includes('people') ? 'people' : views[0]))
   const { totals, unratedPeople } = data
   // i7 and MME are on Costs and not on People (September 2026), and People's
   // totals are of the rows it shows.
@@ -127,6 +129,8 @@ export function ProjectHoursReport(
   const prepaidLeft = prepaid.reduce((s, r) => s + (r.remaining ?? 0), 0)
   const costThisMonth = totals.employeeCostThisMonth + totals.contractorCostThisMonth
 
+  if (!view) return <p className="text-sm text-muted">Neither tab of this report is open to your access level.</p>
+
   return (
     <div className="space-y-6">
       {/* Cards follow the view: the same four slots, answering the question the
@@ -183,7 +187,7 @@ export function ProjectHoursReport(
           would run under the filter and leave the tabs floating above it. */}
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3 sm:border-b sm:border-slate-200">
         <div className="flex gap-1 w-full sm:w-auto border-b border-slate-200 sm:border-b-0">
-          {(['costs', 'people'] as const).map(v => (
+          {views.map(v => (
             <button
               key={v}
               type="button"

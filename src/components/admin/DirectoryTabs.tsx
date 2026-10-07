@@ -14,7 +14,7 @@ import { RatesCostsTab } from './RatesCostsTab'
 import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
 import { PortalAccessTab } from './PortalAccessTab'
 import { PersonModal, type ModalState } from './PersonModal'
-import type { PersonView, Account } from '@/lib/directory/people-types'
+import type { PersonView, CardRights } from '@/lib/directory/people-types'
 import type { PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
 type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access' | 'portal'
@@ -26,7 +26,7 @@ export function DirectoryTabs({
   people,
   teamOptions,
   teamCards,
-  availableAccounts,
+  rights,
   ratesPeople,
   ratesClients,
   accessLog,
@@ -36,7 +36,7 @@ export function DirectoryTabs({
   people: PersonView[]
   teamOptions: TeamOption[]
   teamCards: TeamCard[]
-  availableAccounts: Account[]
+  rights: CardRights
   ratesPeople: PersonWithAssignments[]
   ratesClients: { id: number; name: string }[]
   accessLog: AccessLogEntry[]
@@ -81,7 +81,7 @@ export function DirectoryTabs({
 
         {/* Add person split-button, People is the only tab where a person can be
             created, so the control only appears there. */}
-        {tab === 'people' && (
+        {tab === 'people' && rights.edit && (
         <div className="relative shrink-0">
           <button
             type="button"
@@ -168,17 +168,17 @@ export function DirectoryTabs({
               </div>
             </div>
           </div>
-          <PeopleManager people={people} teamOptions={teamOptions} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+          <PeopleManager people={people} teamOptions={teamOptions} showRate={rights.rates} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
         </div>
       )}
       {tab === 'emails' && (
-        <EmailsTab people={activePeople} onOpen={id => setModal({ mode: 'edit', person: people.find(p => p.id === id) ?? null })} />
+        <EmailsTab people={activePeople} onOpen={id => setModal({ mode: rights.edit ? 'edit' : 'view', person: people.find(p => p.id === id) ?? null })} />
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
       {tab === 'portal' && (
-        <PortalAccessTab people={activePeople} twoStep={twoStep} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+        <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
       )}
 
       {modal && (
@@ -187,7 +187,7 @@ export function DirectoryTabs({
           setState={setModal}
           people={activePeople}
           teamOptions={teamOptions}
-          availableAccounts={availableAccounts}
+          rights={rights}
         />
       )}
     </div>

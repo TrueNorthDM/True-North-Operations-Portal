@@ -273,7 +273,50 @@ teams", so nobody gains access by the migration.
 4. Promote. One release later, drop `access_level_pages`, `team_tool_grants`,
    `role_type`.
 
-## 8. What to revisit as it grows
+## 8. Audit before staging (7 October 2026)
+
+The owner asked, before staging, for proof that changing who may open what,
+exceptions included, works and that nobody can see what they may not. What the
+audit found and what changed:
+
+- **Direct database access.** The database's public address answered table
+  reads to anyone signed in who copied their session from the browser, and
+  several tables were readable by every signed-in role. Nothing in the browser
+  needs it, so the address now refuses tables and private files without a key
+  only the portal's server sends (the database gate, `deploy/README.md`). Row
+  rules stay as the second, coarse line (ADR-1).
+- **Data for hidden parts.** Several pages loaded everything and hid tabs in
+  the browser. Each part is now read only when its item is open: Directory
+  (rates, access log, portal access, two-step, teams), Human Resources (cards
+  follow the Directory's items), Company settings (each section, including the
+  API tokens and the webhook secret), the i7 report (no budget or budget used
+  without "See the whole report"), Project Hours (costs, money in, people),
+  Report (all five tabs), Hours, Clocky and the System manual (whose "How it
+  runs" text is no longer in a public script file).
+- **Exports** need every item whose figures the file carries
+  (`lib/tsheets/export-keys.ts`).
+- **Actions** that checked nothing now check their item (Href Links, Hours,
+  publishing targets, Monday item history); site configuration has one item,
+  Company settings > Sites & languages.
+- **The rule.** An exception is decided after "Super Admin only" and after the
+  parent page, so it can never open a Super Admin page, a key that left the
+  catalogue, or a tab whose page is closed (the Add exception form already said
+  so). A failed read of the rules or exceptions now refuses instead of falling
+  back to the starting answers.
+- **Items that were the page itself or a twin** left the catalogue: Directory
+  People and My Team People (the page), Href Links' sites tab (the tool) and its
+  configure action (the same as Sites & languages).
+- **Tests that keep it so** (`lib/access/coverage.test.ts`): every page, file
+  route and server action asks the rule or is listed with its reason, and every
+  item on Access levels is asked for somewhere. `store.test.ts` follows a saved
+  tick, team list, position and exception from the database rows to the answer.
+
+Left as decided, for the owner to revisit: the Home budget widget (its own
+item, ticked for Team Leaders) shows the i7 balance, which the i7 report hides
+from the same Team Leaders without "See the whole report"; and the i7 budget
+alert tells everyone with the tool the percentage used, never amounts.
+
+## 9. What to revisit as it grows
 
 - If the team count grows past a few dozen, the team picker needs search and the
   impact preview should be computed on the server only.

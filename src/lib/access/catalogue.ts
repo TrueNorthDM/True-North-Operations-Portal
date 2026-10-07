@@ -49,6 +49,8 @@ export interface CatalogueItem {
   building?: boolean
   /** The Tools panel group a tool sits in. */
   group?: string
+  /** Another item that must be open too, besides the parent: a window on a tool needs the tool. */
+  needs?: string
   note?: string
 }
 
@@ -58,7 +60,7 @@ type Node = Omit<CatalogueItem, 'parent' | 'defaults'> & { v?: [0 | 1, 0 | 1, 0 
 const TREE: Node[] = [
   { key: 'm-home', label: 'Home', kind: 'module', ch: [
     { key: 'home', label: 'Home page', kind: 'page', always: true, ch: [
-      { key: 'home-budget', label: 'Budget widget (i7 at a glance)', kind: 'action', v: [1, 1, 0] },
+      { key: 'home-budget', label: 'Budget widget (i7 at a glance)', kind: 'action', v: [1, 1, 0], needs: 'i7-budget' },
       { key: 'home-health', label: 'Alert when an integration is down', kind: 'action', v: [1, 0, 0] },
     ] },
   ] },
@@ -69,7 +71,6 @@ const TREE: Node[] = [
       { key: 'priority-all', label: 'Set the priority order of every team', kind: 'action', v: [1, 0, 0] },
     ] },
     { key: 'my-team', label: 'My Team', kind: 'page', v: [1, 1, 1], ch: [
-      { key: 'mt-people', label: 'People', kind: 'tab', v: [1, 1, 1] },
       { key: 'mt-teams', label: 'Teams', kind: 'tab', v: [1, 1, 0] },
       { key: 'mt-cards', label: "Open teammates' cards", kind: 'action', v: [1, 0, 0] },
     ] },
@@ -97,10 +98,8 @@ const TREE: Node[] = [
   { key: 'm-chat', label: 'Chat', kind: 'module', ch: [{ key: 'chat', label: 'Chat', kind: 'page', soon: true, v: [1, 1, 1] }] },
   { key: 'm-emails', label: 'Emails', kind: 'module', ch: [{ key: 'emails', label: 'Emails', kind: 'page', soon: true, v: [1, 1, 1] }] },
   { key: 'm-tools', label: 'Tools', kind: 'module', ch: [
-    { key: 'href-links', label: 'Href Links', kind: 'tool', group: 'SEO Tools', v: [1, 1, 1], ch: [
-      { key: 'hl-sites', label: 'Sites and their pages', kind: 'tab', v: [1, 1, 1] },
-      { key: 'hl-config', label: 'Configure sites, languages and their Monday boards', kind: 'action', v: [1, 0, 0] },
-    ] },
+    // Its sites and languages are configured in Company settings (cs-sites).
+    { key: 'href-links', label: 'Href Links', kind: 'tool', group: 'SEO Tools', v: [1, 1, 1] },
     { key: 'schema-app', label: 'Schema App', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
     { key: 'schema-scraper', label: 'Schema Scraper', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
     { key: 'knowledge-graph', label: 'Knowledge Graph', kind: 'tool', group: 'SEO Tools', soon: true, v: [1, 1, 1] },
@@ -129,7 +128,6 @@ const TREE: Node[] = [
   ] },
   { key: 'm-people', label: 'People', kind: 'module', ch: [
     { key: 'directory', label: 'Directory', kind: 'page', v: [1, 1, 0], ch: [
-      { key: 'd-people', label: 'People', kind: 'tab', v: [1, 1, 1] },
       { key: 'd-company', label: 'See the whole company, not only their own teams', kind: 'action', v: [1, 1, 0] },
       { key: 'd-teams', label: 'Teams', kind: 'tab', v: [1, 1, 0] },
       { key: 'd-emails', label: 'Emails', kind: 'tab', v: [1, 0, 0] },

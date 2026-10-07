@@ -39,7 +39,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function ReportPrintPage({ searchParams }: Props) {
   // Same gate as the Export buttons that lead here: this layout carries the
   // full budget and (for `internal`) per-person cost detail.
-  if (!(await loadAccess()).can('i7-export')) redirect(ROUTES.i7)
+  const access = await loadAccess()
+  if (!access.can('i7-export') || !access.can('report-full')) redirect(ROUTES.i7)
 
   const { month, type } = await searchParams
   const selectedMonth = resolveMonth(month)

@@ -38,6 +38,38 @@ export interface PersonTeam {
   primary: boolean // the person's main department (migration 048)
 }
 
+/**
+ * What the viewer of a person's card may see and do beyond the card itself,
+ * from Admin > Access levels. The page leaves out what is false, so the data
+ * never reaches the browser; these flags only shape the screen around it.
+ */
+export interface CardRights {
+  /** d-rates: the internal rate. */
+  rates: boolean
+  /** d-log: the last access. */
+  accessLog: boolean
+  /** d-portal or d-invite: portal access and the two-step state. */
+  portal: boolean
+  /** d-invite: invite, send again, revoke. */
+  invite: boolean
+  /** d-2fa: reset someone's two-step sign-in. */
+  resetTwoStep: boolean
+  /** d-edit: add and edit people. */
+  edit: boolean
+}
+
+/** The card rights a person's access gives them (the Directory and Human Resources). */
+export function cardRights(can: (key: string) => boolean): CardRights {
+  return {
+    rates: can('d-rates'),
+    accessLog: can('d-log'),
+    portal: can('d-portal') || can('d-invite'),
+    invite: can('d-invite'),
+    resetTwoStep: can('d-2fa'),
+    edit: can('d-edit'),
+  }
+}
+
 export interface PersonView {
   id: string
   full_name: string

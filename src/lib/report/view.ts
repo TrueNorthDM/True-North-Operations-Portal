@@ -6,6 +6,7 @@
 // parts (scope.ts, ReportTabs) stay testable on their own.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { redirect } from 'next/navigation'
 import type { DirectoryLevel } from '@/lib/access/surfaces'
 import { resolveTab, tabRights, type ReportTabKey, type TabRights } from '@/components/report/ReportTabs'
 import { reportFilter, resolvePeriod, resolveScope, scopesFor, type Period, type Scope } from './scope'
@@ -57,6 +58,12 @@ export async function resolveReportView(
     ledMembers = new Set(((data ?? []) as { person_id: string }[]).map(m => m.person_id))
   }
 
+  // Every tab is an item of its own. The page, the print page and the files all
+  // come through here, so a tab that is off is off for all four; with none open
+  // there is nothing to show.
+  const tab = resolveTab(asked.tab ?? undefined, rights)
+  if (!tab) redirect('/')
+
   const leadsATeam = led.length > 0
   const scope = resolveScope(asked.scope ?? undefined, level, leadsATeam)
   const { filter, team, person } = reportFilter({
@@ -66,7 +73,7 @@ export async function resolveReportView(
   return {
     level,
     rights,
-    tab: resolveTab(asked.tab ?? undefined, rights),
+    tab,
     scope,
     scopes: scopesFor(level, leadsATeam),
     period: resolvePeriod(asked.period ?? undefined),

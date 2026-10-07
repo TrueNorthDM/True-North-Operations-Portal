@@ -47,6 +47,7 @@ export default async function ReportGuidePage() {
   // Explains the Clients Reports figures, so it follows the report itself.
   const access = await requireSurface('tools')
   if (!access.canTool('i7-budget')) redirect('/')
+  if (!access.can('i7-guide')) redirect(ROUTES.i7)
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">

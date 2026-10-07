@@ -5,12 +5,16 @@
  * targets. It lived under the Boards page until Boards was removed on
  * 23 September 2026.
  *
- * All writes are admin-gated twice: here (friendly error) and by RLS on
- * publishing_targets (is_admin(auth.uid())). Each write stamps updated_by with
- * the actor's email, which the log_target_change trigger records in audit_log.
+ * Every write needs Publishing targets (cs-targets) on Admin > Access levels,
+ * checked for the person really signed in, and then goes through the
+ * privileged client, so the tick decides and not the database role. Each write
+ * stamps updated_by with the actor's email, which the log_target_change
+ * trigger records in audit_log.
  */
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { allowedTo } from '@/lib/access/resolve'
 import { revalidatePath } from 'next/cache'
 import { ROUTES } from '@/lib/nav/routes'
 
@@ -20,14 +24,12 @@ const refresh = () => { revalidatePath('/admin/settings'); revalidatePath(ROUTES
 type Result = { ok: boolean; error?: string }
 
 async function requireAdmin(): Promise<{ ok: false; error: string } | { ok: true; email: string }> {
-  const supabase = await createClient()
+  if (!(await allowedTo('cs-targets'))) return { ok: false, error: 'Publishing targets is not open to your access.' }
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await (await createClient()).auth.getUser()
   if (!user) return { ok: false, error: 'Not signed in.' }
-  const { data: profile } = await supabase.from('profiles').select('role, email').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') return { ok: false, error: 'Admins only, you have view-only access.' }
-  return { ok: true, email: profile.email ?? user.email ?? 'unknown' }
+  return { ok: true, email: user.email ?? 'unknown' }
 }
 
 export async function saveTargetValue(input: { id: string; targetValue: number }): Promise<Result> {
@@ -36,7 +38,7 @@ export async function saveTargetValue(input: { id: string; targetValue: number }
   if (!Number.isFinite(input.targetValue) || input.targetValue < 0) {
     return { ok: false, error: 'Target must be a non-negative number.' }
   }
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('publishing_targets')
     .update({ target_value: Math.round(input.targetValue), updated_by: auth.email })
@@ -59,7 +61,7 @@ export async function addTarget(input: {
   if (!Number.isFinite(input.targetValue) || input.targetValue < 0) {
     return { ok: false, error: 'Target must be a non-negative number.' }
   }
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase.from('publishing_targets').insert({
     board_id: input.boardId,
     board_short: input.boardShort,
@@ -80,7 +82,7 @@ export async function addTarget(input: {
 export async function deleteTarget(input: { id: string }): Promise<Result> {
   const auth = await requireAdmin()
   if (!auth.ok) return { ok: false, error: auth.error }
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase.from('publishing_targets').delete().eq('id', input.id)
   if (error) return { ok: false, error: error.message }
   refresh()

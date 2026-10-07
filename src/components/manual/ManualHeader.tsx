@@ -18,7 +18,7 @@ const INTRO: Record<ManualTab, string> = {
   runs: 'Where the portal runs and how it is looked after: the server and its accounts, how a change travels through staging to production, the alerts, the backups, people, what to do when something breaks, and the keys.',
 }
 
-export function ManualHeader({ active }: { active: ManualTab }) {
+export function ManualHeader({ active, tabs = ['portal', 'runs'] }: { active: ManualTab; tabs?: readonly ManualTab[] }) {
   return (
     <div className="space-y-4">
       <div>
@@ -27,7 +27,7 @@ export function ManualHeader({ active }: { active: ManualTab }) {
         <p className="mt-1.5 text-muted">{INTRO[active]}</p>
       </div>
       <nav aria-label="System manual" className="flex items-center gap-0.5 border-b border-[var(--panel-border)]">
-        {TABS.map(t => (
+        {TABS.filter(t => tabs.includes(t.key)).map(t => (
           <Link
             key={t.key}
             href={t.href}

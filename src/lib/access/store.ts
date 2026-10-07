@@ -4,9 +4,10 @@
  * teams, exceptions). The signed-in role reads none of these tables; the
  * server reads them for a person it has already identified.
  *
- * Every reader degrades to the catalogue's defaults while the migration has
- * not been run, so a deploy that lands before it does not lock anyone out of
- * what they had (tools then follow nobody's list but the Super Admins').
+ * A read that fails throws, and the page with it. It never falls back to the
+ * catalogue's starting answers or to no exceptions: either could open what a
+ * Super Admin closed (an unticked box, a "closed" exception) for as long as
+ * the database is having a bad moment. Migration 094 runs before this code.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -22,6 +23,7 @@ export async function loadRules(db: Client): Promise<Rules> {
     db.from('access_tool_scope').select('item_key, every_team'),
     db.from('access_tool_teams').select('item_key, team_id, audience'),
   ])
+  failed('the access rules', r.error, s.error, t.error)
   const levels = new Map<string, boolean>()
   for (const row of (r.data ?? []) as { level: ConfigurableLevel; item_key: string; allowed: boolean }[]) {
     levels.set(ruleKey(row.level, row.item_key), row.allowed)
@@ -31,6 +33,12 @@ export async function loadRules(db: Client): Promise<Rules> {
   for (const row of (s.data ?? []) as { item_key: string; every_team: boolean }[]) scopeOf(row.item_key).every = row.every_team
   for (const row of (t.data ?? []) as { item_key: string; team_id: string; audience: Audience }[]) scopeOf(row.item_key).teams.set(row.team_id, row.audience)
   return { levels, tools: tools as Map<string, ToolScope> }
+}
+
+/** Refuse rather than decide on half the facts. */
+function failed(what: string, ...errors: ({ message: string } | null | undefined)[]): void {
+  const e = errors.find(Boolean)
+  if (e) throw new Error(`Could not read ${what}: ${e.message}`)
 }
 
 export interface PersonSubject extends Subject {
@@ -62,11 +70,12 @@ function build(p: PersonRow, members: readonly MemberRow[], exceptions: readonly
 export async function loadSubjects(db: Client, opts: { includeInactive?: boolean } = {}): Promise<PersonSubject[]> {
   let q = db.from('people').select('id, full_name, access_level, profile_id, status').order('full_name')
   if (!opts.includeInactive) q = q.or('status.is.null,status.eq.active')
-  const [{ data: people }, { data: members }, { data: exc }] = await Promise.all([
+  const [{ data: people, error: e1 }, { data: members, error: e2 }, { data: exc, error: e3 }] = await Promise.all([
     q,
     db.from('team_members').select('person_id, team_id, position'),
     db.from('access_exceptions').select('person_id, item_key, effect, until').is('ended_at', null),
   ])
+  failed('who is on which team, and their exceptions', e1, e2, e3)
   const byPerson = new Map<string, MemberRow[]>()
   for (const m of (members ?? []) as MemberRow[]) (byPerson.get(m.person_id) ?? byPerson.set(m.person_id, []).get(m.person_id)!).push(m)
   const excBy = new Map<string, ExceptionRow[]>()
@@ -76,11 +85,12 @@ export async function loadSubjects(db: Client, opts: { includeInactive?: boolean
 
 /** One person, as the rule sees them. */
 export async function loadSubject(db: Client, personId: string): Promise<PersonSubject | null> {
-  const [{ data: p }, { data: members }, { data: exc }] = await Promise.all([
+  const [{ data: p, error: e1 }, { data: members, error: e2 }, { data: exc, error: e3 }] = await Promise.all([
     db.from('people').select('id, full_name, access_level, profile_id, status').eq('id', personId).maybeSingle(),
     db.from('team_members').select('person_id, team_id, position').eq('person_id', personId),
     db.from('access_exceptions').select('person_id, item_key, effect, until').eq('person_id', personId).is('ended_at', null),
   ])
+  failed('this person\'s teams and exceptions', e1, e2, e3)
   if (!p) return null
   return build(p as PersonRow, (members ?? []) as MemberRow[], (exc ?? []) as ExceptionRow[])
 }

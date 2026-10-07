@@ -10,6 +10,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { isSuperAdmin } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { BOARDS } from '@/lib/boards/config'
 import { processBoard, getMondayToken, type BoardReq, type BoardSnapshot } from '@/lib/monday/snapshot'
@@ -38,6 +39,10 @@ function readClient() {
 }
 
 export async function POST(request: Request) {
+  // Nothing in the portal calls this any more (the Boards page left on 23
+  // September 2026), and it returns whole boards: items, assignees, activity.
+  // Super Admins only until it is removed.
+  if (!(await isSuperAdmin())) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 })
   let body: { boards?: BoardReq[]; since?: string }
   try {
     body = await request.json()

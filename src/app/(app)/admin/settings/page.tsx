@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/role'
 import { requireSurface } from '@/lib/access/resolve'
+import { LEVEL_LABEL } from '@/lib/access/catalogue'
 import { SettingsNav, type SettingsSection } from '@/components/SettingsNav'
 import { SiteCard } from '@/components/settings/SiteCard'
 import { SecretField } from '@/components/settings/SecretField'
@@ -74,26 +75,41 @@ export default async function SettingsPage() {
   // Settings exposes budgets, hourly rates and the API token panel, so it is
   // gated on the server, not just by hiding the sidebar icon (which left the
   // page reachable by typing the URL). Same gate as /human-resources.
-  await requireSurface('settings')
+  const access = await requireSurface('settings')
+  // Each section is its own item on Admin > Access levels. A section the
+  // person's access does not open is neither read nor sent to the browser.
+  const can = {
+    apis: access.can('cs-apis'),
+    myWork: access.can('cs-my-work'),
+    clients: access.can('cs-clients'),
+    catalog: access.can('cs-catalog'),
+    targets: access.can('cs-targets'),
+    sites: access.can('cs-sites'),
+  }
 
   const supabase = await createClient()
 
-  const { data: sites } = await supabase
-    .from('sites')
-    .select('id, code, name, domain, languages, language_paths, monday_board_id, wp_dev_url, wp_live_url')
-    .order('code')
+  const { data: sites } = can.sites
+    ? await supabase
+      .from('sites')
+      .select('id, code, name, domain, languages, language_paths, monday_board_id, wp_dev_url, wp_live_url')
+      .order('code')
+    : { data: [] }
 
   // paused_languages is fetched separately and tolerantly, so a not-yet-migrated
   // column doesn't break the whole Settings page (returns null → treated empty).
   const pausedByCode = new Map<string, string[]>()
-  const { data: pausedRows } = await supabase.from('sites').select('code, paused_languages')
+  const { data: pausedRows } = can.sites ? await supabase.from('sites').select('code, paused_languages') : { data: [] }
   for (const r of pausedRows ?? []) pausedByCode.set(r.code, ((r as { paused_languages?: string[] | null }).paused_languages) ?? [])
 
-  const { data: appSettings } = await supabase
-    .from('app_settings')
-    .select('monday_api_token, tsheets_api_token, monday_webhook_secret, tsheets_synced_at')
-    .eq('singleton_id', 1)
-    .maybeSingle()
+  // The tokens and the webhook secret: APIs & tokens (cs-apis) only.
+  const { data: appSettings } = can.apis
+    ? await supabase
+      .from('app_settings')
+      .select('monday_api_token, tsheets_api_token, monday_webhook_secret, tsheets_synced_at')
+      .eq('singleton_id', 1)
+      .maybeSingle()
+    : { data: null }
 
   const { data: mondaySnap } = await supabase
     .from('monday_snapshot')
@@ -134,32 +150,35 @@ export default async function SettingsPage() {
     })
   }
 
-  // Budget Usage Report data (clients & budgets, people & rates, history, targets).
-  const budget = await getBudgetUsageData()
+  // Budget Usage Report data (clients & budgets, history, targets). Pay only
+  // with Rates & Costs: the history repeats it.
+  const budget = can.clients || can.targets ? await getBudgetUsageData({ pay: access.can('d-rates') }) : null
 
   // Clients → Projects → Job codes directory + the auto avg rate (current month).
-  const projectDirectory = await loadProjectDirectory(new Date().toISOString().slice(0, 7))
+  // highestRate is the top client rate: Rates & Costs (d-rates) only. Without
+  // it the budget editor simply offers no hours estimate.
+  const fullDirectory = can.catalog || can.clients ? await loadProjectDirectory(new Date().toISOString().slice(0, 7)) : null
+  const projectDirectory = fullDirectory && !access.can('d-rates') ? { ...fullDirectory, highestRate: 0 } : fullDirectory
 
   // The month note printed on the client PDF. It used to be edited from the
   // report page itself; that page is for reading the month, and this is where
   // the rest of what shapes the report already lives.
   const noteMonth = currentYearMonth()
-  const reportNote = await loadReportNote(noteMonth)
+  const reportNote = can.clients ? await loadReportNote(noteMonth) : null
 
   // "Signed in as", the current user's directory name (fallback to email).
   const profile = await getCurrentProfile()
   const { data: me } = profile
     ? await supabase.from('people').select('full_name').eq('profile_id', profile.id).maybeSingle()
     : { data: null }
-  const roleLabel = profile?.role ? profile.role[0].toUpperCase() + profile.role.slice(1) : 'Member'
-  const signedIn = { name: profile?.full_name ?? me?.full_name ?? profile?.email ?? 'You', role: `${roleLabel} · True North` }
+  const signedIn = { name: profile?.full_name ?? me?.full_name ?? profile?.email ?? 'You', role: `${LEVEL_LABEL[access.level]} · True North` }
 
-  const worklistSources = await loadWorklistSources(createAdminClient())
-  const stepsForReview = await loadStepsForReview(createAdminClient())
-  const boardLinks = await loadBoardLinks()
+  const worklistSources = can.myWork ? await loadWorklistSources(createAdminClient()) : null
+  const stepsForReview = can.myWork ? await loadStepsForReview(createAdminClient()) : null
+  const boardLinks = can.myWork ? await loadBoardLinks() : null
 
-  const sections: SettingsSection[] = [
-    {
+  const sections: (SettingsSection | false | null)[] = [
+    can.apis && {
       id: 'apis',
       label: 'APIs & tokens',
       icon: ApisIcon,
@@ -197,7 +216,7 @@ export default async function SettingsPage() {
         </div>
       ),
     },
-    {
+    can.myWork && worklistSources && stepsForReview && boardLinks && {
       id: 'my-work',
       label: 'My Work sources',
       icon: CatalogIcon,
@@ -228,7 +247,7 @@ export default async function SettingsPage() {
         </div>
       ),
     },
-    {
+    can.clients && budget && projectDirectory && {
       id: 'clients',
       label: 'Clients & budgets',
       icon: ClientsIcon,
@@ -238,17 +257,17 @@ export default async function SettingsPage() {
           <div className="space-y-5">
             <SectionHead title="Clients & budgets" desc="The dollar budget and budget period for each client. “Extra” is an approved top-up covering part of the period. Hours are read live from QuickBooks Time and power the Clients Reports page." />
             <div className="flex items-center gap-3.5 flex-wrap">
-              <Link
+              {access.can('i7-guide') && <Link
                 href={`${ROUTES.i7}/guide`}
                 title="How the report works"
                 aria-label="How the report works"
                 className="shrink-0 w-11 h-11 rounded-full bg-tn-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-0.5"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-              </Link>
-              <SyncStatus syncedAt={budget.syncedAt} interactive={budget.canSync} />
+              </Link>}
+              <SyncStatus syncedAt={budget.syncedAt} interactive={can.clients} />
             </div>
-            <ClientsTab clients={budget.clients} estimateRate={projectDirectory.highestRate} />
+            <ClientsTab clients={budget.clients} estimateRate={access.can('d-rates') ? projectDirectory.highestRate : undefined} />
             {/* Grant Pass framework placeholder: it is an hours-based retainer
                 (Church + School) with no dollar budget and no QuickBooks Time
                 feed, so it doesn't fit the budget table above. This reserves the
@@ -257,7 +276,7 @@ export default async function SettingsPage() {
                 editor used to sit on the report page; the report page is for
                 reading the month, and this section already owns everything else
                 that shapes what the client receives. */}
-            <NoteCard month={noteMonth} note={reportNote} canEdit />
+            <NoteCard month={noteMonth} note={reportNote ?? ''} canEdit={access.can('i7-note')} />
 
             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-4">
               <div className="flex items-center gap-2">
@@ -276,7 +295,7 @@ export default async function SettingsPage() {
         </div>
       ),
     },
-    {
+    can.catalog && projectDirectory && {
       id: 'catalog',
       label: 'Clients, Projects & Job Codes',
       icon: CatalogIcon,
@@ -288,7 +307,7 @@ export default async function SettingsPage() {
         </div>
       ),
     },
-    {
+    can.targets && budget && {
       id: 'targets',
       label: 'Publishing targets',
       icon: TargetsIcon,
@@ -296,11 +315,11 @@ export default async function SettingsPage() {
       content: (
         <div className="space-y-5">
           <SectionHead title="Publishing targets" desc="The weekly pace goal per site & language. These drive the Publishing Goals dashboard." />
-          <TargetsEditor targets={budget.publishingTargets} isAdmin={budget.canSync} audit={budget.publishingAudit} grid />
+          <TargetsEditor targets={budget.publishingTargets} isAdmin={can.targets} audit={budget.publishingAudit} grid />
         </div>
       ),
     },
-    {
+    can.sites && {
       id: 'sites',
       label: 'Sites & languages',
       icon: SitesIcon,
@@ -328,7 +347,9 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsNav signedIn={signedIn} sections={sections} />
+      {sections.some(Boolean)
+        ? <SettingsNav signedIn={signedIn} sections={sections.filter((x): x is SettingsSection => !!x)} />
+        : <p className="text-[14px] text-muted">None of the sections here is open to your access level. A Super Admin can open them on Admin &gt; Access levels.</p>}
     </div>
   )
 }

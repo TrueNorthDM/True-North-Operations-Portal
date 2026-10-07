@@ -12,6 +12,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
+import { projectsExportKeys } from '@/lib/tsheets/export-keys'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadProjectHistory, loadProjectTracking } from '@/lib/timeclock/projects'
 import { availableMonths } from '@/lib/tsheets/retention'
@@ -48,10 +49,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function ProjectHoursPrintPage({ searchParams }: Props) {
   const access = await requireSurface('tools')
   if (!access.canTool('grant-pass-report')) redirect('/')
-  // An export: the same tick as the Export button (it was missing until 7 October 2026).
-  if (!access.can('ph-export')) redirect('/')
-
   const { month, type } = await searchParams
+  // An export: the Export tick, and the items whose figures this file carries.
+  if (!projectsExportKeys(type === 'internal' ? 'internal' : type === 'history' ? 'history' : 'client').every(k => access.can(k))) redirect('/')
+
   const selected = resolveMonth(month)
   const kind = type === 'internal' ? 'internal' : 'client'
   const generatedOn = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'long', day: 'numeric' })

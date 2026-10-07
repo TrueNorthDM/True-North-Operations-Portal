@@ -8,14 +8,19 @@ import { tenureSince, milestoneOf, formatTenureShort, yearColor } from '@/lib/te
 import { loadDirectoryPeopleView } from '@/lib/directory/people-view'
 import { HrGallery, type HrHolder, type HrSection } from '@/components/hr/HrGallery'
 import { requireSurface } from '@/lib/access/resolve'
+import { cardRights } from '@/lib/directory/people-types'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HumanResourcesPage() {
-  await requireSurface('human-resources')
+  const access = await requireSurface('human-resources')
+  // The badges are this page; the cards behind the names are "Open anyone's
+  // card" (d-cards), and what each card carries follows the Directory's items.
+  const opensCards = access.can('d-cards')
+  const rights = cardRights(access.can)
 
   const supabase = await createClient()
-  const { people, teamOptions, availableAccounts } = await loadDirectoryPeopleView(supabase)
+  const { people, teamOptions } = await loadDirectoryPeopleView(supabase, rights)
 
   const now = new Date()
   const quarterHolders: Record<number, HrHolder[]> = { 1: [], 2: [], 3: [] }
@@ -55,7 +60,7 @@ export default async function HumanResourcesPage() {
         </p>
       </div>
 
-      <HrGallery quarters={quarters} years={years} people={people} teamOptions={teamOptions} availableAccounts={availableAccounts} />
+      <HrGallery quarters={quarters} years={years} people={opensCards ? people : []} teamOptions={teamOptions} rights={opensCards ? rights : null} />
 
       {underThree > 0 && (
         <p className="text-[12.5px] text-muted">

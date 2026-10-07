@@ -43,7 +43,7 @@ import {
   teamKeyFromName,
   type PersonView,
   type PersonAttachment,
-  type Account,
+  type CardRights,
   type Pill,
   type TeamKey,
 } from '@/lib/directory/people-types'
@@ -124,13 +124,13 @@ export function PersonModal({
   setState,
   people,
   teamOptions,
-  availableAccounts: _availableAccounts,
+  rights,
 }: {
   state: NonNullable<ModalState>
   setState: (s: ModalState) => void
   people: PersonView[]
   teamOptions: TeamOption[]
-  availableAccounts: Account[]
+  rights: CardRights
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -175,7 +175,9 @@ export function PersonModal({
       employment_type: draft.employmentType || null,
       schedule: draft.schedule || null,
       weekly_hours: parseNum(draft.weeklyHours),
-      internal_rate: parseNum(draft.internalRate),
+      // Without Rates & Costs the rate was never sent here; leave it out so the
+      // save cannot clear it (the server ignores it then too).
+      ...(rights.rates ? { internal_rate: parseNum(draft.internalRate) } : {}),
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
@@ -249,7 +251,7 @@ export function PersonModal({
 
         {/* body */}
         <div className="flex-1 overflow-y-auto px-8 pt-6 pb-2">
-          {!isEdit && p ? <ViewBody p={p} people={people} /> : <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={managerOptions} teamOptions={teamOptions} personId={state.person?.id ?? null} attachments={state.person?.attachments ?? []} />}
+          {!isEdit && p ? <ViewBody p={p} people={people} rights={rights} /> : <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={managerOptions} teamOptions={teamOptions} personId={state.person?.id ?? null} attachments={state.person?.attachments ?? []} rights={rights} />}
           {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         </div>
 
@@ -263,10 +265,10 @@ export function PersonModal({
                 <span className="font-(family-name:--font-display) font-extrabold text-[8.5px] tracking-wide uppercase text-muted bg-white rounded-full px-[7px] py-0.5">Soon</span>
               </span>
               <button type="button" onClick={() => setState(null)} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink">Close</button>
-              <button type="button" onClick={() => { setDraft(toDraft(p)); setState({ mode: 'edit', person: p }) }} className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px">
+              {rights.edit && <button type="button" onClick={() => { setDraft(toDraft(p)); setState({ mode: 'edit', person: p }) }} className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                 <span className="text-[#ffffff]">Edit person</span>
-              </button>
+              </button>}
             </>
           ) : (
             <>
@@ -316,7 +318,7 @@ function GroupTitle({ children, right, className = '' }: { children: ReactNode; 
 }
 
 // ── VIEW ──
-function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
+function ViewBody({ p, people, rights }: { p: PersonView; people: PersonView[]; rights: CardRights }) {
   // My Team: the shared rule, so this screen and /profile cannot drift apart.
   const ledTeamIds = new Set(p.teams.filter(t => leadsTeam(t.position)).map(t => t.teamId))
   const reports = people
@@ -397,13 +399,13 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
         <div>
           <SectionTitle>Login &amp; access</SectionTitle>
           <div className="flex flex-col gap-[13px]">
-            {item('Portal access', <PortalAccessControl p={p} />)}
-            {p.twoStepSince !== undefined && item('Two-step sign-in', (
+            {rights.portal && item('Portal access', <PortalAccessControl p={p} canInvite={rights.invite} />)}
+            {rights.portal && p.twoStepSince !== undefined && item('Two-step sign-in', (
               <TwoStepControl
                 name={p.full_name}
                 state={!p.accountId ? 'no-account' : p.twoStepSince ? 'on' : 'not-set-up'}
                 since={p.twoStepSince}
-                reset={() => resetTwoStep(p.id)}
+                reset={rights.resetTwoStep ? () => resetTwoStep(p.id) : null}
               />
             ))}
             {item('Access level', <PillBadge pill={roleTypePill(p.roleType)} />)}
@@ -411,7 +413,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             {item('GoodNews', link(p.emails.goodnews))}
             {item('COE', link(p.emails.coe))}
             {item('QuickBooks Time', pillNode(p.hasTsheets ? { kind: 'green', label: 'Linked' } : { kind: 'grey', label: 'Not linked' }))}
-            {item('Last access', txt(lastAccessText(p.lastAccessAt, p.lastAccessAgent)))}
+            {rights.accessLog && item('Last access', txt(lastAccessText(p.lastAccessAt, p.lastAccessAgent)))}
           </div>
         </div>
       </div>
@@ -427,7 +429,7 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
             {item('Type', pillNode(typePill(p.employmentType)))}
             {item('Time', pillNode(timePill(p.schedule)))}
             {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
-            {item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
+            {rights.rates && item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
             {item('Status', pillNode(statusPill(p.status === 'active')))}
           </div>
         </div>
@@ -550,8 +552,9 @@ function ViewBody({ p, people }: { p: PersonView; people: PersonView[] }) {
 const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[11px] w-full transition-all focus:outline-none focus:border-tn-teal'
 
 function EditBody({
-  draft, set, setDraft, managerOptions, teamOptions, personId, attachments,
+  draft, set, setDraft, managerOptions, teamOptions, personId, attachments, rights,
 }: {
+  rights: CardRights
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
   setDraft: (fn: (d: Draft) => Draft) => void
@@ -653,7 +656,7 @@ function EditBody({
             {field('Type', seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v)))}
             {field('Time', seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v)))}
             {field('Weekly hours', <input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" />)}
-            {field('Internal rate ($/hr)', <input type="number" value={draft.internalRate} onChange={e => set('internalRate', e.target.value)} className={fieldCls} placeholder="60" />)}
+            {rights.rates && field('Internal rate ($/hr)', <input type="number" value={draft.internalRate} onChange={e => set('internalRate', e.target.value)} className={fieldCls} placeholder="60" />)}
             {field('Status', seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive')))}
           </div>
         </div>

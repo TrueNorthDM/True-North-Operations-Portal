@@ -98,7 +98,9 @@ describe('the rule', () => {
     expect(lead.has('report')).toBe(false)
     expect(user.has('directory')).toBe(false)
     expect(lead.has('directory')).toBe(true)
-    expect(lead.has('home-budget')).toBe(true)
+    // The widget needs the i7 tool, so it follows the tool's team list.
+    expect(lead.has('home-budget')).toBe(false)
+    expect(allowedKeys(who('team_leader', [[seo, true]]), tools([['i7-budget', { every: true }]]), { today: T }).has('home-budget')).toBe(true)
     expect(lead.has('my-hours')).toBe(false)
   })
 
@@ -163,6 +165,34 @@ describe('exceptions', () => {
     expect(decide(deny, 'report-people', NO_RULES, { today: T }).ok).toBe(true)
   })
 
+  it('never opens a Super Admin only page, or a key the catalogue lost', () => {
+    const p = who('admin', [], [
+      { key: 'access-levels', effect: 'grant', until: null },
+      { key: 'gone-page', effect: 'grant', until: null },
+    ])
+    expect(decide(p, 'access-levels', NO_RULES, { today: T }).ok).toBe(false)
+    expect(decide(p, 'gone-page', NO_RULES, { today: T }).ok).toBe(false)
+  })
+
+  it('never opens a tab whose page stays closed', () => {
+    const tab = who('user', [], [{ key: 'report-people', effect: 'grant', until: null }])
+    expect(decide(tab, 'report-people', NO_RULES, { today: T }).reasons[0].text).toBe('Needs Report')
+    const both = who('user', [], [{ key: 'report', effect: 'grant', until: null }, { key: 'report-people', effect: 'grant', until: null }])
+    expect(decide(both, 'report-people', NO_RULES, { today: T }).ok).toBe(true)
+  })
+
+  it('closes everything inside a page it closes', () => {
+    const p = who('admin', [], [{ key: 'directory', effect: 'deny', until: null }])
+    for (const k of ['directory', 'd-rates', 'd-edit', 'd-log']) expect(decide(p, k, NO_RULES, { today: T }).ok, k).toBe(false)
+  })
+
+  it('opens a tool past its team list for that one person', () => {
+    const p = who('user', [[writers, false]], [{ key: 'href-links', effect: 'grant', until: null }])
+    const rules = tools([['href-links', { teams: [[seo, 'team']] }]])
+    expect(decide(p, 'href-links', rules, { today: T }).ok).toBe(true)
+    expect(decide(who('user', [[writers, false]]), 'href-links', rules, { today: T }).ok).toBe(false)
+  })
+
   it('never narrows a Super Admin', () => {
     const sa = who('super_admin', [], [{ key: 'report', effect: 'deny', until: null }])
     expect(decide(sa, 'report', NO_RULES, { today: T }).ok).toBe(true)
@@ -186,5 +216,20 @@ describe('impact', () => {
     const [row] = impact(people, NO_RULES, after, { today: T })
     expect(row.gained.some(k => ITEM.get(k)?.kind === 'module')).toBe(false)
     expect(CHILDREN.get('m-hours')?.length).toBeGreaterThan(0)
+  })
+})
+
+describe('items that need another item', () => {
+  it('opens the Home budget widget only with the i7 tool, team list included', () => {
+    const lead = who('team_leader', [[seo, true]])
+    expect(decide(lead, 'home-budget', NO_RULES, { today: T }).ok).toBe(false)
+    expect(decide(lead, 'home-budget', NO_RULES, { today: T }).reasons[0].text).toBe('Needs Client Report · i7')
+    const rules = tools([['i7-budget', { teams: [[seo, 'lead']] }]])
+    expect(decide(lead, 'home-budget', rules, { today: T }).ok).toBe(true)
+    expect(decide(who('team_leader', [[writers, true]]), 'home-budget', rules, { today: T }).ok).toBe(false)
+  })
+
+  it('names only items the catalogue knows', () => {
+    for (const i of CATALOGUE) if (i.needs) expect(ITEM.has(i.needs), i.key).toBe(true)
   })
 })

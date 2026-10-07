@@ -26,7 +26,7 @@ const PILL: Record<PortalAccessState, Pill> = {
 const btn =
   'font-(family-name:--font-display) font-extrabold text-[12px] rounded-[8px] px-3 py-1.5 transition-all disabled:opacity-50'
 
-export function PortalAccessControl({ p }: { p: PersonView }) {
+export function PortalAccessControl({ p, canInvite }: { p: PersonView; canInvite: boolean }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -88,17 +88,17 @@ export function PortalAccessControl({ p }: { p: PersonView }) {
         >
           {pill.label}
         </span>
-        {state === 'not-invited' && (
+        {canInvite && state === 'not-invited' && (
           <button type="button" disabled={pending} onClick={invite} className={`${btn} text-[#ffffff] bg-tn-primary hover:brightness-110`}>
             {pending ? 'Inviting…' : 'Invite'}
           </button>
         )}
-        {state === 'invited' && (
+        {canInvite && state === 'invited' && (
           <button type="button" disabled={pending} onClick={invite} className={`${btn} text-tn-ink border border-slate-200 hover:border-tn-ink`}>
             {pending ? 'Sending…' : 'Send again'}
           </button>
         )}
-        {(state === 'invited' || state === 'signed-in') && (
+        {canInvite && (state === 'invited' || state === 'signed-in') && (
           <button type="button" disabled={pending} onClick={revoke} className={`${btn} text-red-600 border border-[rgba(215,57,47,.35)] hover:bg-red-50`}>
             Revoke
           </button>

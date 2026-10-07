@@ -100,7 +100,7 @@ function cardHtml(month: string, c: { opening: number; monthBudget: number; mont
 
 export async function GET(request: Request) {
   // Its own control now: this is the Team Update picture, not a file export.
-  const denied = await requirePrivileged('report-team-update')
+  const denied = await requirePrivileged('report-team-update', 'report-full')
   if (denied) return denied
 
   const url = new URL(request.url)

@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { loadProjectTracking, loadProjectHistory } from '@/lib/timeclock/projects'
+import { narrowHistory, narrowProjects } from '@/lib/timeclock/project-narrow'
 import { ProjectHoursReport } from '@/components/tsheets/ProjectHoursReport'
 import { ProjectPeriodFilter } from '@/components/tsheets/ProjectPeriodFilter'
 import { ProjectExportMenu } from '@/components/tsheets/ProjectExportMenu'
@@ -64,13 +65,20 @@ export default async function ProjectHoursPage({
   // as a smaller number rather than an error. Who may open this page is the
   // tools surface plus the grant-pass-report team grant, checked right above,
   // and that is the rule an admin can actually see.
-  const data = await loadProjectTracking(createAdminClient(), range.from, range.to)
+  // Cut to the person's access before anything is sent (project-narrow.ts):
+  // costs, money in and hours per person are items of their own.
+  const rights = { costs: access.can('ph-costs'), money: access.can('ph-money'), people: access.can('ph-people') }
+  const data = narrowProjects(await loadProjectTracking(createAdminClient(), range.from, range.to), rights)
+  const views = (['costs', 'people'] as const).filter(v => rights[v])
 
   // The same roster the i7 report filters by, so "Team" means one thing across
   // both reports rather than two.
   const { teams } = await loadTeamRoster()
   const lastUpdated = await loadLastUpdated(createAdminClient(), range.from, range.to)
-  const history = await loadProjectHistory(createAdminClient(), `${range.to.slice(0, 4)}-01`, range.to)
+  // The history is a table of costs and money by month: Costs (ph-costs) only.
+  const history = rights.costs
+    ? narrowHistory(await loadProjectHistory(createAdminClient(), `${range.to.slice(0, 4)}-01`, range.to), rights)
+    : null
   const selectedTeam = teams.some(t => t.id === team) ? team! : ''
 
   // Donations and prepaid hours, for whoever may edit them (the access item
@@ -144,11 +152,11 @@ export default async function ProjectHoursPage({
           </div>
         </div>
         {/* The Team filter is inside, on the People tab: the only place it does anything. */}
-        <ProjectHoursReport data={data} teams={teams} selectedTeam={selectedTeam} />
+        <ProjectHoursReport data={data} teams={teams} selectedTeam={selectedTeam} views={views} />
 
         {/* January to the month on screen, which is what her tracking sheet
             covers and what the report's own year columns run to. */}
-        <ProjectFullHistory blocks={history} year={range.to.slice(0, 4)} />
+        {history && <ProjectFullHistory blocks={history} year={range.to.slice(0, 4)} />}
         </div>
     </div>
   )

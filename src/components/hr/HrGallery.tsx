@@ -8,19 +8,21 @@ import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import { PersonModal, type ModalState } from '@/components/admin/PersonModal'
-import { type PersonView, type Account, type TeamKey } from '@/lib/directory/people-types'
+import { type PersonView, type CardRights, type TeamKey } from '@/lib/directory/people-types'
 import type { TeamOption } from '@/components/admin/DirectoryTabs'
 import type { Milestone } from '@/lib/tenure'
 
 export interface HrHolder { id: string; name: string; avatarUrl: string | null; teamName: string | null; teamKey: TeamKey; color: string; tenure: string }
 export interface HrSection { key: string; milestone: Milestone; label: string; holders: HrHolder[] }
 
-export function HrGallery({ quarters, years, people, teamOptions, availableAccounts }: {
+export function HrGallery({ quarters, years, people, teamOptions, rights }: {
   quarters: HrSection[]
   years: HrSection[]
+  /** Empty when the viewer's access does not open cards. */
   people: PersonView[]
   teamOptions: TeamOption[]
-  availableAccounts: Account[]
+  /** Null: the names do not open a card. */
+  rights: CardRights | null
 }) {
   const [modal, setModal] = useState<ModalState>(null)
   const activePeople = people.filter(p => p.status === 'active')
@@ -40,7 +42,7 @@ export function HrGallery({ quarters, years, people, teamOptions, availableAccou
       ) : (
         <div className="mt-3 flex flex-col gap-0.5 border-t border-slate-100 pt-3">
           {s.holders.map(h => (
-            <button key={h.id} type="button" onClick={() => open(h.id)} className="group flex items-center gap-2.5 rounded-[9px] -mx-1 px-1 py-1 text-left transition-colors hover:bg-subtle">
+            <button key={h.id} type="button" disabled={!rights} onClick={() => open(h.id)} className="disabled:cursor-default group flex items-center gap-2.5 rounded-[9px] -mx-1 px-1 py-1 text-left transition-colors hover:bg-subtle">
               <Avatar name={h.name} avatarUrl={h.avatarUrl} size={28} color={h.color} />
               <span className="min-w-0 flex-1">
                 <span className="block text-[12.5px] font-semibold text-tn-ink truncate group-hover:text-tn-teal transition-colors">{h.name}</span>
@@ -71,7 +73,7 @@ export function HrGallery({ quarters, years, people, teamOptions, availableAccou
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">{years.map(card)}</div>
       </section>
 
-      {modal && <PersonModal state={modal} setState={setModal} people={activePeople} teamOptions={teamOptions} availableAccounts={availableAccounts} />}
+      {modal && rights && <PersonModal state={modal} setState={setModal} people={activePeople} teamOptions={teamOptions} rights={rights} />}
     </>
   )
 }

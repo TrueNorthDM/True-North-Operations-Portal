@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Reports' }
 
 export default async function Page() {
-  const access = await requireSurface('clocky-hours')
+  const access = await requireSurface('clocky-reports')
   return (
     <ComingSoon
       icon="client-reports"

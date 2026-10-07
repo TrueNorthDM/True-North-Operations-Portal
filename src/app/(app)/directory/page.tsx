@@ -9,7 +9,7 @@ import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
-import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
+import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, cardRights, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
 import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import type { TeamCard } from '@/components/admin/TeamsManager'
@@ -45,6 +45,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // Resolved up here, not next to the view models, because it decides which
   // COLUMNS to read a few lines below and not just what to render.
   const level = directoryLevel(access.can)
+  // What the full cards may carry beyond the card itself (Admin > Access
+  // levels). What is false is never read, so it never reaches the browser.
+  const rights = cardRights(access.can)
 
   const supabase = await createClient()
   const user = await getSessionUser()
@@ -97,14 +100,18 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     // Isolated + graceful: milestones (044).
     supabase.from('people').select('id, milestones'),
     // Access log (045), admin-readable; graceful if the table isn't there yet.
-    supabase.from('access_log').select('id, profile_id, person_id, name, email, user_agent, accessed_at').order('accessed_at', { ascending: false }).limit(1000),
+    // Only for the Access log tab and the cards' last access (d-log).
+    level >= 3 && rights.accessLog
+      ? supabase.from('access_log').select('id, profile_id, person_id, name, email, user_agent, accessed_at').order('accessed_at', { ascending: false }).limit(1000)
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   const people = (pRows ?? []) as unknown as PRow[]
-  const invites = await loadInvitesByPerson(supabase)
+  // Invitations and two-step sign-in: Portal access (d-portal, d-invite, d-2fa).
+  const invites = level >= 3 && rights.portal ? await loadInvitesByPerson(supabase) : new Map<string, string>()
   // Two-step sign-in by account (migration 090); null before it runs, and the
   // Directory then leaves the two-step column and row out.
-  const twoStepByAccount = level >= 3 ? await loadTwoStepByAccount() : null
+  const twoStepByAccount = level >= 3 && (rights.portal || rights.resetTwoStep) ? await loadTwoStepByAccount() : null
   const teams = tData ?? []
   // Team memberships + per-team position (040) + is_primary (048). Graceful:
   // pre-migration those columns are absent, so fall back progressively. Cast
@@ -254,16 +261,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       ?? (r.email ? personIdByEmail.get(r.email.toLowerCase()) ?? null : null)
     if (pid && !lastAccessByPersonId.has(pid)) lastAccessByPersonId.set(pid, { at: r.accessed_at, agent: r.user_agent })
   }
-  const linkedProfileIds = new Set(people.map(p => (typeof p.profile_id === 'string' ? p.profile_id : null)).filter(Boolean) as string[])
-  const availableAccounts = profiles
-    .filter(pr => !linkedProfileIds.has(pr.id))
-    .map(pr => ({ id: pr.id, email: pr.email ?? '(no email)' }))
-    .sort((a, b) => a.email.localeCompare(b.email))
-
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
 
   // ── People view models ──
-  const compensation = level >= 3 ? await loadCompensationByPerson() : new Map<string, { internalRate: number | null }>()
+  const compensation = level >= 3 && rights.rates ? await loadCompensationByPerson() : new Map<string, { internalRate: number | null }>()
 
   const peopleView: PersonView[] = people
     .map((p): PersonView => {
@@ -472,18 +473,19 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       }))
       .sort((a, b) => a.name.localeCompare(b.name))
 
+    const showTeams = level >= 2 && access.can('d-teams')
     return (
       <div className="space-y-6">
         <Breadcrumb self="/directory" />
-        <RestrictedDirectory people={dirPeople} teams={dirTeams} showTeams={level >= 2 && access.can('d-teams')} />
+        <RestrictedDirectory people={dirPeople} teams={showTeams ? dirTeams : []} showTeams={showTeams} />
       </div>
     )
   }
 
   // Privileged only: the Rates & Costs tab data (moved here from Settings →
   // People & rates). Loaded after the restricted branch so non-admins never
-  // trigger it.
-  const budget = await getBudgetUsageData()
+  // trigger it, and only with Rates & Costs (d-rates): it carries every pay rate.
+  const budget = rights.rates ? await getBudgetUsageData({ pay: true }) : null
 
   // Access-log rows resolved to the current person (avatar/team) for the tab.
   // Resolve each access row to a person by any key we hold, most specific
@@ -524,10 +526,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       <DirectoryTabs
         people={peopleView}
         teamOptions={teamOptions}
-        teamCards={teamCards}
-        availableAccounts={availableAccounts}
-        ratesPeople={budget.people}
-        ratesClients={budget.clients.map(c => ({ id: c.id, name: c.name }))}
+        teamCards={access.can('d-teams') ? teamCards : []}
+        rights={rights}
+        ratesPeople={budget?.people ?? []}
+        ratesClients={(budget?.clients ?? []).map(c => ({ id: c.id, name: c.name }))}
         accessLog={accessLog}
         initialOpenId={openId}
         allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['rates', 'd-rates'], ['access', 'd-log'], ['portal', 'd-portal']] as const)

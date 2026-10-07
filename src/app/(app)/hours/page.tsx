@@ -71,7 +71,14 @@ export interface Entry {
 export default async function MyHoursPage({
   searchParams,
 }: { searchParams: Promise<{ week?: string }> }) {
-  await requireSurface('my-hours')
+  const access = await requireSurface('my-hours')
+  // Each part of the page is an item of its own; what is off is not read.
+  const can = {
+    week: access.can('h-week'),
+    month: access.can('h-month'),
+    waiting: access.can('h-waiting'),
+    timeOff: access.can('h-timeoff'),
+  }
   const supabase = await createClient()
   const me = await getCurrentPerson()
 
@@ -134,17 +141,21 @@ export default async function MyHoursPage({
 
   // Everyone's rows for this period that RLS lets through: mine, plus anyone I
   // sign for. One query, and the database decides which of the two each row is.
+  // Other people's rows only with "Waiting for you" (h-waiting).
   const { data: subRows } = periodRow
-    ? await supabase.from('tc_submissions').select('*').eq('period_id', (periodRow as { id: number }).id)
+    ? await (can.waiting
+      ? supabase.from('tc_submissions').select('*').eq('period_id', (periodRow as { id: number }).id)
+      : supabase.from('tc_submissions').select('*').eq('period_id', (periodRow as { id: number }).id).eq('person_id', me.id))
     : { data: [] }
   const subs = (subRows ?? []) as { person_id: string; state: SubmissionState; submitted_at: string | null; note: string | null }[]
   const mySubmission = subs.find(r => r.person_id === me.id) ?? null
   const others = subs.filter(r => r.person_id !== me.id)
 
   // The month's own totals, which is what the button is about, not the week's.
-  const { data: monthRows } = await supabase
+  const monthQuery = supabase
     .from('tc_entries').select('person_id, duration_seconds')
     .gte('entry_date', period.start).lte('entry_date', period.end)
+  const { data: monthRows } = await (can.waiting ? monthQuery : monthQuery.eq('person_id', me.id))
   const monthAll = (monthRows ?? []) as { person_id: string; duration_seconds: number }[]
   const mineThisMonth = monthAll.filter(r => r.person_id === me.id)
 
@@ -195,9 +206,13 @@ export default async function MyHoursPage({
   // ── Time off ────────────────────────────────────────────────────────────
   // RLS returns mine and anyone I sign for in one query, the same shape as the
   // submissions above.
-  const { data: absRows } = await supabase
+  // Only with Time off (h-timeoff), and other people's only with h-waiting.
+  const absQuery = supabase
     .from('tc_absence_requests').select('*')
     .order('start_date', { ascending: false }).limit(60)
+  const { data: absRows } = !can.timeOff
+    ? { data: [] }
+    : await (can.waiting ? absQuery : absQuery.eq('person_id', me.id))
   const absences = (absRows ?? []) as {
     id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string
     hours_per_day: number; state: Absence['state']; reason: string | null; decision_note: string | null
@@ -282,6 +297,7 @@ export default async function MyHoursPage({
         myPersonId={me.id}
         timeOff={timeOff}
         timeOffKinds={timeOffKinds}
+        sections={{ week: can.week, month: can.month, timeOff: can.timeOff }}
         running={running && {
           id: running.id,
           startedAt: running.started_at!,

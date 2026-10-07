@@ -153,7 +153,7 @@ async function I7Tab({ month, from, to, team }: { month?: string; from?: string;
     <div className="space-y-5">
       <ReportMeta
         sourceLine={sourceLine}
-        guideHref={`${ROUTES.i7}/guide`}
+        guideHref={access.can('i7-guide') ? `${ROUTES.i7}/guide` : null}
         syncedAt={hours.syncedAt}
         failed={hours.failed}
       />
@@ -213,6 +213,8 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
   // got a fraction of it. The report reads completely now and the narrowing
   // happens here, where an admin can see the rule and change it.
   const restricted = !access.can('report-full')
+  // In Numbers and In Graphics are items of their own.
+  const views = (['numbers', 'graphics'] as const).filter(v => access.can(v === 'numbers' ? 'i7-numbers' : 'i7-graphics'))
 
   // The same roster answers both questions, so it is read once either way: which
   // teams the filter offers, and (when restricted) who the viewer may see at all.
@@ -266,21 +268,28 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         range={range}
         availableMonths={availableMonths}
         projectHours={data?.projectHours ?? {}}
-        carryover={data?.carryover ?? null}
+        // Without the whole report: no budget and no budget used. What is left
+        // stays in the table (Hrs avail., Budget avail.); the carryover panel
+        // (budget against used), the monthly cost and budget trend and the
+        // history below are not sent at all.
+        carryover={restricted || !views.includes('numbers') ? null : data?.carryover ?? null}
         stdRate={data?.stdRate ?? 0}
-        trend={data?.trend ?? []}
+        trend={restricted ? [] : data?.trend ?? []}
+        views={views}
         manual={manual}
-        canExport={access.can('i7-export')}
-        canTeamUpdate={access.can('report-team-update')}
+        canExport={access.can('i7-export') && !restricted}
+        canTeamUpdate={access.can('report-team-update') && !restricted}
         restricted={restricted}
         teams={filterTeams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
         selectedTeam={selectedTeam}
       />
-      <ClientFullHistory
-        trend={data?.trend ?? []}
-        currentMonth={currentYearMonth()}
-        canExport={access.can('i7-export')}
-      />
+      {!restricted && (
+        <ClientFullHistory
+          trend={data?.trend ?? []}
+          currentMonth={currentYearMonth()}
+          canExport={access.can('i7-export') && access.can('report-full')}
+        />
+      )}
     </>
   )
 }

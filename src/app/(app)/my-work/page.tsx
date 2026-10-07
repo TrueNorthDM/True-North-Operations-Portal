@@ -106,8 +106,6 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   const me = await getCurrentPerson()
   const selfPersonId = me?.id ?? null
 
-  const personId = resolvePersonFilter(sp, selfPersonId)
-
   const [admin, access, myTeams, myGrant, { data: teamRows }] = await Promise.all([
     allowedTo('monday-accounts'),
     loadAccess(),
@@ -117,6 +115,13 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   ])
   const teams = (teamRows ?? []) as { id: string; name: string }[]
   const teamName = (id: string) => teams.find(t => t.id === id)?.name ?? 'team'
+
+  // "See everyone's list" (mw-everyone). Without it the list is their own,
+  // whatever ?person or ?team the address carries, and someone whose login is
+  // not linked to a person sees nothing rather than everybody's.
+  const everyone = access.can('mw-everyone')
+  const personId = everyone ? resolvePersonFilter(sp, selfPersonId) : selfPersonId
+  const teamFilter = everyone ? (sp.team || null) : null
   // Who may set which team's order: the same rule the save action and Admin →
   // Access levels use. Rendered from the level and person on screen, which are
   // the previewed ones under View Stage; saving checks the person really signed
@@ -169,12 +174,14 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   // Whose order the list follows: one of a person's teams, or the team chosen.
   let orderChoices: Membership[] = []
   if (personId) orderChoices = personId === selfPersonId ? myTeams : await loadMemberships(supabase, personId)
-  const candidates = personId ? orderChoices.map(m => m.teamId) : sp.team ? [sp.team] : []
+  const candidates = personId ? orderChoices.map(m => m.teamId) : teamFilter ? [teamFilter] : []
 
   // The list itself starts reading now; everything below only decides its order.
   // Handled here so a failure while the order is still being worked out is not
   // an unhandled rejection; awaited below, it still throws.
-  const dataRead = loadWorklist(supabase, { personId, teamId: sp.team || null, includeDone: sp.done === '1' })
+  const dataRead = loadWorklist(supabase, personId || everyone
+    ? { personId, teamId: teamFilter, includeDone: sp.done === '1' }
+    : { personIds: [], includeDone: sp.done === '1' })
   dataRead.catch(() => {})
 
   // Which of those teams have an order, in one small query. A person follows
@@ -190,7 +197,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   // Placed steps, or a workspace or board order: anything that makes the list
   // differ from True North's.
   const hasOrder = (id: string) => summaries.byTeam.get(id)?.ordered ?? false
-  const orderTeamId = personId ? orderTeamFor(orderChoices, sp.pteam, hasOrder) : (sp.team || null)
+  const orderTeamId = personId ? orderTeamFor(orderChoices, sp.pteam, hasOrder) : teamFilter
   const canEdit = !!orderTeamId && canSetOrder(orderTeamId, myTeams, rights)
 
   // Nothing to say and nothing to rank for someone on one team that has no
@@ -203,7 +210,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   // list already holds them.
   const [data, { data: peopleRows }, order, teamWork] = await Promise.all([
     dataRead,
-    supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name'),
+    everyone ? supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name') : Promise.resolve({ data: [] }),
     needed && orderTeamId ? loadSavedOrder(supabase, orderTeamId) : Promise.resolve(null),
     needed && orderTeamId && personId ? loadWorklist(supabase, { teamId: orderTeamId, openOnly: true }) : Promise.resolve(null),
   ])
@@ -235,7 +242,8 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
       selfPersonId={selfPersonId}
       isAdmin={admin}
       people={((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => ({ value: p.id, label: p.full_name }))}
-      teams={teams.map(t => ({ value: t.id, label: t.name }))}
+      teams={everyone ? teams.map(t => ({ value: t.id, label: t.name })) : []}
+      canSeeEveryone={everyone}
       teamOrder={teamOrder}
       canSetPriority={available && settable.length > 0}
     />

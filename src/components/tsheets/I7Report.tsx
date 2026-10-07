@@ -50,6 +50,8 @@ interface Props {
    * one.
    */
   restricted?: boolean
+  /** The views this person's access opens (i7-numbers, i7-graphics), in order. */
+  views?: readonly ('numbers' | 'graphics')[]
   /**
    * Teams offered by the filter beside the pay period, straight from the
    * Directory's Teams tab, with the first names of their members.
@@ -64,10 +66,10 @@ function newestOf(months: string[]): string {
   return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '' }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], restricted = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
   const router = useRouter()
   const [navigating, startNav] = useTransition()
-  const [view, setView] = useState<'numbers' | 'graphics'>('numbers')
+  const [view, setView] = useState<'numbers' | 'graphics' | undefined>(views[0])
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set())
   const [openCodes, setOpenCodes] = useState<Set<string>>(new Set())
 
@@ -235,7 +237,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
 
         {/* View tabs, the same month's data as a table (In Numbers) or charts (In Graphics) */}
         <div className="flex gap-1 border-b border-slate-200">
-          {(['numbers', 'graphics'] as const).map(v => (
+          {views.map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -246,8 +248,10 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
           ))}
         </div>
 
-        {view === 'graphics' ? (
-          <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} trend={trend} />
+        {!view ? (
+          <p className="text-sm text-muted">Neither view of this report is open to your access level.</p>
+        ) : view === 'graphics' ? (
+          <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} showBudget={!restricted} trend={trend} />
         ) : (
         <>
         {/* Carryover: bank-account running balance */}

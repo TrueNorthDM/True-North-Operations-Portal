@@ -83,7 +83,9 @@ export function reportFilter(o: {
   /** Everyone on those teams. */
   ledMembers: ReadonlySet<string>
 }): { filter: PeopleFilter; team: string | null; person: string | null } {
-  const me = { filter: { personId: o.meId }, team: null, person: null }
+  // Themselves. A login linked to nobody reads nobody: a null person would be
+  // no filter at all, which is everyone.
+  const me = { filter: o.meId ? { personId: o.meId } : { personIds: [] }, team: null, person: null }
   if (o.scope === 'me' || o.level < 2) return me
 
   if (o.level >= 3) {

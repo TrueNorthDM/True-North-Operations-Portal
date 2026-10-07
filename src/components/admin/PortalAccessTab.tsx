@@ -51,13 +51,15 @@ function ago(iso: string | null): string {
   return formatDate(iso) ?? 'Never'
 }
 
-export function PortalAccessTab({ people, twoStep, onOpen }: {
+export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: {
   /** Active people only. */
   people: PersonView[]
   /** Second step by person id, for people with an account. Null until two-step sign-in ships. */
   twoStep: Record<string, TwoStep> | null
   /** Opens the person's card. Absent in design checks. */
   onOpen?: (id: string) => void
+  /** d-invite: the checkboxes and "Invite selected". */
+  canInvite?: boolean
 }) {
   const router = useRouter()
   const withTwoStep = twoStep !== null
@@ -97,7 +99,7 @@ export function PortalAccessTab({ people, twoStep, onOpen }: {
   }, [rows, filter, q])
 
   // Only people an invitation can go to: not invited yet, or invited and not in yet.
-  const pickable = (s: PortalAccessState) => s === 'not-invited' || s === 'invited'
+  const pickable = (s: PortalAccessState) => canInvite && (s === 'not-invited' || s === 'invited')
   const pickedRows = rows.filter(r => picked.has(r.p.id) && pickable(r.state))
   const toggle = (id: string) => setPicked(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
   const allShownPickable = shown.filter(r => pickable(r.state))
@@ -169,14 +171,14 @@ export function PortalAccessTab({ people, twoStep, onOpen }: {
         <SearchField value={q} onChange={setQ} placeholder="Search people…" className="flex-1 min-w-[230px] max-w-[340px]" />
         <div className="ml-auto flex items-center gap-3">
           {progress && <span className="text-[12.5px] font-semibold text-tn-teal">{progress}</span>}
-          <button
+          {canInvite && <button
             type="button"
             disabled={pickedRows.length === 0 || pending}
             onClick={inviteAll}
             className="font-(family-name:--font-display) font-extrabold text-[13px] rounded-[10px] px-4 py-2.5 text-[#ffffff] bg-tn-primary transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {pickedRows.length === 0 ? 'Invite selected' : `Invite ${pickedRows.length} selected`}
-          </button>
+          </button>}
         </div>
       </div>
       {report && <p className="text-[12.5px] font-semibold text-tn-teal mb-3">{report}</p>}

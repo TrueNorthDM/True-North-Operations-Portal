@@ -36,6 +36,7 @@ export async function deletePage(input: {
   pageId: string
   siteCode: SiteCode
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await allowedTo('href-links'))) return { ok: false, error: 'Href Links is not open to your access.' }
   const supabase = await createClient()
 
   // Look up the page name + site board id BEFORE deleting, so the audit
@@ -98,7 +99,7 @@ export async function updateSiteLanguages(input: {
   siteCode: SiteCode
   newLanguages: string[]
 }): Promise<{ ok: boolean; error?: string; flaggedPagesCount?: number }> {
-  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('cs-sites'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
 
@@ -172,7 +173,7 @@ export async function setLanguagePaused(input: {
   language: string
   paused: boolean
 }): Promise<{ ok: boolean; error?: string }> {
-  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('cs-sites'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
 
@@ -230,6 +231,7 @@ export async function setPageNotRelevant(input: {
   siteCode: SiteCode
   value: boolean
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await allowedTo('href-links'))) return { ok: false, error: 'Href Links is not open to your access.' }
   const supabase = await createClient()
   const { error } = await supabase
     .from('pages')
@@ -250,7 +252,7 @@ export async function saveMondayBoardId(input: {
   siteCode: SiteCode
   boardId: string
 }): Promise<{ ok: boolean; error?: string }> {
-  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('cs-sites'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
   const trimmed = input.boardId.trim()
@@ -277,7 +279,7 @@ export async function saveSiteWpUrls(input: {
   devUrl: string
   liveUrl: string
 }): Promise<{ ok: boolean; error?: string }> {
-  if (!(await allowedTo('hl-config'))) return { ok: false, error: 'Only admins can change site configuration.' }
+  if (!(await allowedTo('cs-sites'))) return { ok: false, error: 'Only admins can change site configuration.' }
 
   const supabase = await createClient()
 
@@ -404,6 +406,7 @@ export async function savePageUrls(input: {
   siteCode: SiteCode
   urls: { language_code: string; url: string }[]
 }) {
+  if (!(await allowedTo('href-links'))) return { ok: false, error: 'Href Links is not open to your access.' }
   const supabase = await createClient()
 
   const toUpsert = input.urls
@@ -464,6 +467,7 @@ export async function toggleConfirmation(input: {
   field: 'confirmed_on_live'
   value: boolean
 }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await allowedTo('href-links'))) return { ok: false, error: 'Href Links is not open to your access.' }
   const supabase = await createClient()
   const { pageId, languageCode, field, value } = input
 
