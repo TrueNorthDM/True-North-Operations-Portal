@@ -77,10 +77,18 @@ case "$ACTION" in
 
     # Prove it from outside, through Cloudflare: without the key the gate
     # answers 403; with it the request reaches Supabase, whose gateway answers
-    # 401 to a call with no API key. Anything else puts the file back.
-    sleep 2
+    # 401 to a call with no API key. A busy address can take LiteSpeed several
+    # seconds to read the new file, so it waits up to a minute for the 403. A
+    # refused request WITH the key (the portal shut out) puts the file back at
+    # once, and so does a minute without the gate taking effect.
     code() { curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$@" "https://$HOST/rest/v1/"; }
-    WITHOUT="$(code)"; WITH="$(code -H "X-Portal-Key: $KEY")"
+    WITHOUT=; WITH=
+    for _ in $(seq 1 20); do
+      sleep 3
+      WITH="$(code -H "X-Portal-Key: $KEY")"; WITHOUT="$(code)"
+      { [ "$WITH" = 403 ] || [ "$WITH" = 000 ]; } && break
+      [ "$WITHOUT" = 403 ] && break
+    done
     if [ "$WITHOUT" != 403 ] || [ "$WITH" = 403 ] || [ "$WITH" = 000 ]; then
       mv "$HTACCESS.before-on" "$HTACCESS"
       echo "Gate check failed (without key: $WITHOUT, with key: $WITH). Put the previous file back." >&2
