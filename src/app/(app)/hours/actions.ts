@@ -10,6 +10,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { loadApprovers } from '@/lib/timeclock/approvers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { allowedTo } from '@/lib/access/resolve'
@@ -237,36 +238,9 @@ export async function deleteEntry(id: number): Promise<Result> {
   return OK
 }
 
-/**
- * Who can sign off for me: my manager on the org chart, and the leader of any
- * team I am on. Mirrors tc_approves_for() in migration 059, and is read with
- * the service role for the same reason the current person is: "who is my boss"
- * is not a question the caller should have to be allowed to ask.
- */
-async function myApprovers(
-  ctx: NonNullable<Awaited<ReturnType<typeof context>>>,
-): Promise<{ id: string; name: string }[]> {
-  const admin = createAdminClient()
-  const [{ data: mine }, { data: memberships }] = await Promise.all([
-    admin.from('people').select('manager_id').eq('id', ctx.me.id).maybeSingle(),
-    admin.from('team_members').select('team_id').eq('person_id', ctx.me.id),
-  ])
-  const teamIds = ((memberships ?? []) as { team_id: string }[]).map(t => t.team_id)
-  const { data: teams } = teamIds.length
-    ? await admin.from('teams').select('leader_person_id').in('id', teamIds)
-    : { data: [] }
-
-  const ids = new Set<string>()
-  const managerId = (mine as { manager_id: string | null } | null)?.manager_id
-  if (managerId) ids.add(managerId)
-  for (const t of (teams ?? []) as { leader_person_id: string | null }[]) {
-    if (t.leader_person_id) ids.add(t.leader_person_id)
-  }
-  ids.delete(ctx.me.id)          // nobody approves their own hours
-  if (!ids.size) return []
-
-  const { data: people } = await admin.from('people').select('id, full_name').in('id', [...ids])
-  return ((people ?? []) as { id: string; full_name: string }[]).map(p => ({ id: p.id, name: p.full_name }))
+/** Who can sign off for me (lib/timeclock/approvers.ts: the Super Admins, for now). */
+async function myApprovers(ctx: NonNullable<Awaited<ReturnType<typeof context>>>) {
+  return loadApprovers(createAdminClient(), ctx.me.id)
 }
 
 // ─── Submitting and approving ───────────────────────────────────────────────
@@ -315,7 +289,7 @@ export async function submitPeriod(month: string): Promise<Result> {
   // Somebody has to be able to receive it. Without this the button is a
   // one-way door for anyone with no manager and no team leader.
   if (!(await myApprovers(ctx)).length) {
-    return fail('Nobody is set up to approve your hours yet, so this would go nowhere. Ask an admin to set your manager or a team leader.')
+    return fail('Nobody is set up to approve hours yet, so this would go nowhere. Ask a Super Admin.')
   }
 
   const { data: existing } = await ctx.supabase
@@ -378,7 +352,8 @@ export async function decidePeriod(input: {
       approved_by: ctx.me.id,
       note: input.note || null,
     }, { count: 'exact' })
-    .eq('person_id', input.personId).eq('period_id', pid)
+    // Only a month that was sent: the approver's row rules may allow more.
+    .eq('person_id', input.personId).eq('period_id', pid).eq('state', 'submitted')
   if (error) return fail(error.message)
   // The policy allows the update only when the row is still 'submitted' and the
   // caller may sign for that person, and it refuses by changing nothing rather
@@ -504,7 +479,7 @@ export async function requestAbsence(input: {
   if (problem) return fail(problem)
 
   if (!(await myApprovers(ctx)).length) {
-    return fail('Nobody is set up to approve your time off yet. Ask an admin to set your manager or a team leader.')
+    return fail('Nobody is set up to approve time off yet. Ask a Super Admin.')
   }
 
   // Booking the same day twice is a mistake nobody notices until payroll.
@@ -559,7 +534,8 @@ export async function decideAbsence(input: {
       decided_at: new Date().toISOString(),
       decision_note: input.note || null,
     }, { count: 'exact' })
-    .eq('id', input.id)
+    // Only a request still waiting: the approver's row rules may allow more.
+    .eq('id', input.id).eq('state', 'pending')
   if (error) return fail(error.message)
   // The policy refuses by changing nothing rather than by raising, so zero rows
   // is the refusal: either it is no longer pending, or this is not yours to

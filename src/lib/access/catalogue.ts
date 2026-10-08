@@ -87,7 +87,7 @@ const TREE: Node[] = [
     { key: 'my-hours', label: 'Hours', kind: 'page', v: [1, 0, 0], note: 'Being built; QuickBooks Time is still the official record.', ch: [
       { key: 'h-week', label: 'Week', kind: 'tab', v: [1, 1, 1] },
       { key: 'h-month', label: 'Month submission', kind: 'tab', v: [1, 1, 1] },
-      { key: 'h-waiting', label: 'Waiting for you (approvals)', kind: 'tab', v: [1, 1, 1] },
+      { key: 'h-waiting', label: 'Waiting for you (approvals)', kind: 'tab', v: [0, 0, 0], note: 'Approving hours and time off: Super Admins only, for now (8 October 2026).' },
       { key: 'h-timeoff', label: 'Time off', kind: 'tab', v: [1, 1, 1] },
       { key: 'h-reopen', label: 'Reopen a submitted month', kind: 'action', v: [0, 0, 0] },
     ] },

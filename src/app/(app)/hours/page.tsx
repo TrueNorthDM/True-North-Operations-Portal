@@ -11,6 +11,8 @@
 
 import { requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { loadApprovers } from '@/lib/timeclock/approvers'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
 import { periodFor, type SubmissionState } from '@/lib/timeclock/periods'
 import { workingDays } from '@/lib/timeclock/absence'
@@ -181,25 +183,9 @@ export default async function MyHoursPage({
   // Who would receive this month, named on the button. A person should know
   // where their timesheet is going before they send it, and if the answer is
   // nowhere they should find that out now rather than after.
-  const [{ data: meRow }, { data: myTeams }] = await Promise.all([
-    supabase.from('people').select('manager_id').eq('id', me.id).maybeSingle(),
-    supabase.from('team_members').select('team_id').eq('person_id', me.id),
-  ])
-  const teamIds = ((myTeams ?? []) as { team_id: string }[]).map(t => t.team_id)
-  const { data: leaderRows } = teamIds.length
-    ? await supabase.from('teams').select('leader_person_id').in('id', teamIds)
-    : { data: [] }
-  const approverIds = new Set<string>()
-  const mgr = (meRow as { manager_id: string | null } | null)?.manager_id
-  if (mgr) approverIds.add(mgr)
-  for (const t of (leaderRows ?? []) as { leader_person_id: string | null }[]) {
-    if (t.leader_person_id) approverIds.add(t.leader_person_id)
-  }
-  approverIds.delete(me.id)
-  const { data: approverRows } = approverIds.size
-    ? await supabase.from('people').select('id, full_name').in('id', [...approverIds])
-    : { data: [] }
-  const approvers = ((approverRows ?? []) as { id: string; full_name: string }[]).map(p => p.full_name)
+  // The Super Admins, for now (lib/timeclock/approvers.ts), the same answer
+  // the submit action checks.
+  const approvers = (await loadApprovers(createAdminClient(), me.id)).map(a => a.name)
 
   const isAdmin = await allowedTo('h-reopen')
 
