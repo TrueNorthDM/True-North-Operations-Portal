@@ -2846,6 +2846,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      set_person_teams: {
+        Args: { p_person: string; p_teams: Json }
+        Returns: undefined
+      }
       tc_approves_for: { Args: { target: string }; Returns: boolean }
       tc_i_approve_hours: { Args: never; Returns: boolean }
       tc_people_i_approve: { Args: never; Returns: string[] }

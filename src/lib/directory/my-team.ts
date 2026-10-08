@@ -9,6 +9,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { primaryTeamByPerson } from './primary-team'
 import { loadRules } from '@/lib/access/store'
 import { toolsByTeam, type TeamTool } from '@/lib/access/team-tools'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -91,17 +92,13 @@ export async function loadMyTeam(
   // The primary team drives the avatar colour; one lookup for the whole set.
   const { data: primary } = await supabase
     .from('team_members')
-    .select('person_id, team_id, teams(name)')
+    .select('person_id, is_primary, teams(name)')
     .in('person_id', [...personIds])
-  const teamNamesByPerson = new Map<string, string[]>()
-  for (const m of (primary ?? []) as unknown as { person_id: string; teams: { name: string } | null }[]) {
-    if (!m.teams?.name) continue
-    const list = teamNamesByPerson.get(m.person_id) ?? []
-    if (!list.includes(m.teams.name)) list.push(m.teams.name)
-    teamNamesByPerson.set(m.person_id, list)
-  }
-  for (const list of teamNamesByPerson.values()) list.sort((a, b) => a.localeCompare(b))
-  const teamNameByPerson = new Map([...teamNamesByPerson].map(([id, list]) => [id, list[0]]))
+  // The portal's one rule for a main team (lib/directory/primary-team).
+  const teamNameByPerson = new Map([...primaryTeamByPerson(
+    ((primary ?? []) as unknown as { person_id: string; is_primary: boolean | null; teams: { name: string } | null }[])
+      .flatMap(m => (m.teams?.name ? [{ personId: m.person_id, team: { name: m.teams.name }, isPrimary: m.is_primary === true }] : [])),
+  )].map(([id, t]) => [id, t.name]))
 
   const people: RestrictedPerson[] = (rows ?? [])
     .filter(p => p.status !== 'inactive')
@@ -134,6 +131,8 @@ export async function loadMyTeam(
     ])
 
     const titleById = new Map((rows ?? []).map(r => [r.id, str(r.title)]))
+    // Inactive people are on no team card (decided 8 October 2026).
+    const inactive = new Set((rows ?? []).filter(r => r.status === 'inactive').map(r => r.id))
     const avatarById = new Map((rows ?? []).map(r => [r.id, r.avatar_url ?? null]))
     const toolLabel = new Map(TOOLS.map(t => [t.key, t.label]))
 
@@ -152,6 +151,7 @@ export async function loadMyTeam(
         teamKey: teamKeyFromName(t.name),
         color: colourOf(colours, t.name),
         members: (byTeam.get(t.id) ?? [])
+          .filter(m => !inactive.has(m.person_id))
           .map(m => ({
             id: m.person_id,
             name: nameById.get(m.person_id) ?? 'Unknown',

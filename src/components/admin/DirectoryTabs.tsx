@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { personHref } from '@/lib/directory/page-rights'
 import { withViewAs } from '@/components/ViewAsKeeper'
+import { tabKeys } from '@/components/ui/tab-keys'
 import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
@@ -103,7 +104,7 @@ export function DirectoryTabs({
                 <div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.1em] uppercase text-muted px-2.5 pt-2 pb-1.5">Add someone</div>
                 <button
                   type="button"
-                  onClick={() => { setAddMenu(false); setModal({ mode: 'edit', person: null }) }}
+                  onClick={() => { setAddMenu(false); setModal({ mode: 'add' }) }}
                   className="group flex items-start gap-3 w-full text-left border border-slate-200 rounded-[10px] px-3 py-[11px] mb-1.5 transition-all hover:border-tn-teal hover:bg-subtle"
                 >
                   <span className="shrink-0 w-[30px] h-[30px] rounded-lg bg-tn-teal-soft inline-flex items-center justify-center">
@@ -134,12 +135,19 @@ export function DirectoryTabs({
       </div>
 
       {/* tabs */}
-      <div className="flex gap-1 border-b border-slate-200">
+      <div role="tablist" aria-label="Directory" onKeyDown={tabKeys(tabs.map(t => t.key), tab, setTab)} className="flex gap-1 border-b border-slate-200">
         {tabs.map(t => {
           const active = tab === t.key
           return (
             <button
               key={t.key}
+              type="button"
+              role="tab"
+              id={`dir-tab-${t.key}`}
+              data-tab={t.key}
+              aria-selected={active}
+              aria-controls="dir-panel"
+              tabIndex={active ? 0 : -1}
               onClick={() => setTab(t.key)}
               className={`relative inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-sm px-1.5 py-3 mr-5 -mb-px transition-colors ${
                 active ? 'text-tn-ink border-b-[2.5px] border-tn-teal' : 'text-muted border-b-[2.5px] border-transparent hover:text-tn-ink'
@@ -152,6 +160,7 @@ export function DirectoryTabs({
         })}
       </div>
 
+      <div role="tabpanel" id="dir-panel" aria-labelledby={`dir-tab-${tab}`}>
       {tab === 'people' && (
         <div className="space-y-5">
           {/* Source-of-truth notice, People feeds every other surface. */}
@@ -171,7 +180,7 @@ export function DirectoryTabs({
               </div>
             </div>
           </div>
-          <PeopleManager people={people} teamOptions={teamOptions} onOpen={id => router.push(withViewAs(personHref(id)))} />
+          <PeopleManager people={people} teamOptions={teamOptions} workColumns={rights.work} onOpen={id => router.push(withViewAs(personHref(id)))} />
         </div>
       )}
       {tab === 'emails' && (
@@ -181,12 +190,12 @@ export function DirectoryTabs({
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
       {tab === 'portal' && (
-        <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
+        <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
       )}
+      </div>
 
       {modal && (
         <PersonModal
-          state={modal}
           setState={setModal}
           people={activePeople}
           teamOptions={teamOptions}

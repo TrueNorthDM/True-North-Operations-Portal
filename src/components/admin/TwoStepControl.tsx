@@ -8,6 +8,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { useConfirm } from '@/components/ui/useConfirm'
 import { PILL_CLASS, formatDate, type Pill } from '@/lib/directory/people-types'
 
 export type TwoStepState = 'on' | 'not-set-up' | 'no-account'
@@ -25,7 +26,8 @@ export function TwoStepControl({ name, state, since, reset }: {
   state: TwoStepState
   /** When the factor was added, for the tooltip. */
   since?: string | null
-  reset: (() => Promise<void>) | null
+  /** The reset action: its result says why it failed, if it did. */
+  reset: (() => Promise<{ ok: true } | { ok: false; error: string } | void>) | null
 }) {
   const [pending, start] = useTransition()
   const [note, setNote] = useState<string | null>(null)
@@ -36,12 +38,15 @@ export function TwoStepControl({ name, state, since, reset }: {
   const pill = PILL[current]
   const first = name.split(' ')[0]
 
-  function onReset() {
-    if (!window.confirm(`Reset ${name}'s second step? Use this when they lose or replace their phone. They are signed out, and set it up again with a new QR code at their next sign-in.`)) return
+  const [confirmDialog, confirm] = useConfirm()
+
+  async function onReset() {
+    if (!(await confirm({ title: `Reset ${name}'s second step?`, body: 'Use this when they lose or replace their phone. They are signed out, and set it up again with a new QR code at their next sign-in.', action: 'Reset', danger: true }))) return
     setError(null)
     start(async () => {
       try {
-        await reset?.()
+        const r = await reset?.()
+        if (r && !r.ok) { setError(r.error); return }
         setCurrent('not-set-up')
         setNote(`Reset. ${first} sets it up again at the next sign-in.`)
       } catch (e) {
@@ -52,6 +57,7 @@ export function TwoStepControl({ name, state, since, reset }: {
 
   return (
     <span className="inline-flex flex-col items-end gap-1.5">
+      {confirmDialog}
       <span className="inline-flex items-center gap-2">
         <span
           className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}

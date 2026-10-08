@@ -7,6 +7,7 @@
 
 import type { Db } from '@/lib/supabase/types'
 import { normalPosition } from './people-types'
+import { mailboxFilter } from '@/lib/auth/mailbox-filter'
 
 type Client = Db
 
@@ -35,7 +36,12 @@ export async function wouldCreateCycle(db: Client, id: string, newManagerId: str
   return false
 }
 
-/** Set a person's teams to exactly these, with exactly one primary department. */
+/**
+ * Set a person's teams to exactly these, with exactly one primary department,
+ * in one transaction (set_person_teams, migration 099): the old memberships go
+ * and the new ones arrive together, or nothing changes. Needs the privileged
+ * client; callers check access first.
+ */
 export async function setPersonTeams(db: Client, personId: string, teams: { teamId: string; position: string; primary?: boolean }[]) {
   const byTeam = new Map<string, { position: string; primary: boolean }>()
   for (const t of teams) if (t.teamId) byTeam.set(t.teamId, { position: normalPosition(t.position), primary: !!t.primary })
@@ -48,11 +54,29 @@ export async function setPersonTeams(db: Client, personId: string, teams: { team
     if (primarySeen) v.primary = false
     else primarySeen = true
   }
-  const { error: delErr } = await db.from('team_members').delete().eq('person_id', personId)
-  if (delErr) throw new Error(delErr.message)
-  const rows = entries.map(([team_id, v]) => ({ team_id, person_id: personId, position: v.position, is_primary: v.primary }))
-  if (rows.length) {
-    const { error } = await db.from('team_members').insert(rows)
-    if (error) throw new Error(error.message)
+  const { error } = await db.rpc('set_person_teams', {
+    p_person: personId,
+    p_teams: entries.map(([team_id, v]) => ({ team_id, position: v.position, is_primary: v.primary })),
+  })
+  if (error) throw new Error('The teams could not be saved. Nothing changed; try again.')
+}
+
+/**
+ * The first of these company mailboxes that already belongs to someone else,
+ * or null. A sign-in is matched to a person by their mailboxes, so one address
+ * must never belong to two people (audit, 8 October 2026). Any of the four
+ * address columns counts; an address the matcher refuses to search for is
+ * never matched at sign-in either, so it is skipped.
+ */
+export async function takenMailbox(db: Client, addresses: (string | null)[], exceptPersonId: string | null): Promise<string | null> {
+  for (const a of addresses) {
+    const filter = a ? mailboxFilter(a.toLowerCase()) : null
+    if (!filter) continue
+    let q = db.from('people').select('id').or(filter).limit(1)
+    if (exceptPersonId) q = q.neq('id', exceptPersonId)
+    const { data, error } = await q
+    // Fails closed: a read that fails must not let a duplicate through.
+    if (error || (data ?? []).length) return a
   }
+  return null
 }

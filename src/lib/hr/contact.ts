@@ -40,6 +40,15 @@ export interface Contact {
  * Pass `personIds` to narrow it to the people the caller may actually show;
  * omit it only where the whole directory is legitimately in scope.
  */
+/**
+ * Dates of birth alone, for the Home birthdays card (audit, 8 October 2026):
+ * it read every person's address, phone and personal email to use one date.
+ */
+export async function loadBirthDates(): Promise<Map<string, string>> {
+  const { data } = await createAdminClient().from('people').select('id, date_of_birth').not('date_of_birth', 'is', null)
+  return new Map(((data ?? []) as { id: string; date_of_birth: string }[]).map(r => [r.id, r.date_of_birth]))
+}
+
 export async function loadContactByPerson(
   personIds?: readonly string[],
 ): Promise<Map<string, Contact>> {

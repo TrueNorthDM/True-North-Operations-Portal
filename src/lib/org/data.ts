@@ -6,6 +6,7 @@
  */
 
 import { normalPosition } from '@/lib/directory/people-types'
+import { effectiveManagers } from './managers'
 import { createClient } from '@/lib/supabase/server'
 
 export interface OrgPerson {
@@ -207,21 +208,8 @@ export async function getOrgChart(): Promise<{ roots: OrgPerson[]; total: number
     }
   }
 
-  // Effective manager = the primary manager, but only if it exists among active
-  // people. Then BREAK CYCLES: if following manager links loops (A → B → A, or
-  // longer), sever the link at the first repeat so that person becomes a root
-  // instead of the whole loop (and everyone under it) vanishing from the chart.
-  const effManager = new Map<string, string | null>()
-  for (const p of people) effManager.set(p.id, p.manager_id && nodeById.has(p.manager_id) ? p.manager_id : null)
-  for (const p of people) {
-    const seen = new Set<string>()
-    let cur: string | null = p.id
-    while (cur) {
-      if (seen.has(cur)) { effManager.set(cur, null); break }
-      seen.add(cur)
-      cur = effManager.get(cur) ?? null
-    }
-  }
+  // Effective manager, with any reporting loop cut (lib/org/managers.ts).
+  const effManager = effectiveManagers(people, id => nodeById.has(id))
 
   const sortOf = new Map(people.map(p => [p.id, p.sort_order]))
   const roots: OrgPerson[] = []

@@ -6,25 +6,13 @@
 // into components. Plain module (no 'use client'), so server pages and client
 // components both import it.
 
-import type { PersonAddress } from '@/lib/address'
 import { isLeadPosition } from '@/lib/access/catalogue'
-import type { PersonMilestone } from '@/lib/milestones'
 
+/** The company mailboxes. The personal address is on the person's own page. */
 export interface PersonEmails {
   trueNorth: string | null
   goodnews: string | null
   coe: string | null
-  personal: string | null
-}
-
-/** A "History" document attached to a person (private person-files bucket). */
-export interface PersonAttachment {
-  id: string
-  fileName: string
-  storagePath: string
-  mime: string | null
-  sizeBytes: number | null
-  uploadedAt: string
 }
 
 /** One of a person's team memberships + their POSITION in that team (migration
@@ -59,6 +47,8 @@ export interface CardRights {
   edit: boolean
   /** d-positions: teams and who is on them, who leads them (Super Admin only). */
   positions: boolean
+  /** p-work: type, schedule and joined date on the list (only for the pages it opens). */
+  work: boolean
 }
 
 /** The card rights a person's access gives them (the Directory and Human Resources). */
@@ -71,17 +61,24 @@ export function cardRights(can: (key: string) => boolean): CardRights {
     resetTwoStep: can('d-2fa'),
     edit: can('d-edit'),
     positions: can('d-positions'),
+    work: can('p-work'),
   }
 }
 
+/**
+ * One row of the Directory's full list (directory/page.tsx), and only what its
+ * tabs show. Everything else about a person (personal data, HR, history,
+ * milestones) is on their own page, read per tab by Access levels
+ * (lib/directory/person-page-data.ts), so it has no field here to fill by
+ * mistake. Emails and the Work columns are null unless their item is open.
+ */
 export interface PersonView {
   id: string
   full_name: string
-  lastName: string | null
   avatarUrl: string | null // profile photo (public URL)
   title: string | null // job title
 
-  // Primary team (first membership), drives the badge, filter and group.
+  // Primary team (lib/directory/primary-team), drives the badge, filter and group.
   teamId: string | null
   teamName: string | null
   teamKey: TeamKey
@@ -98,35 +95,16 @@ export interface PersonView {
   // Reporting
   manager_id: string | null
   managerName: string | null
-  managerTeamKey: TeamKey | null
   alsoReportsToId: string | null
   alsoReportsToName: string | null
-  alsoReportsToTeamKey: TeamKey | null
-  reportsToManager: string | null // 'yes' | 'no' | 'sometimes'
-  managerNameText: string | null // free-text manager name (board question)
 
-  // Employment
+  // Employment (Work tab item)
   employmentType: string | null // 'us' | 'contractor'
   schedule: string | null // 'full' | 'part'
   weeklyHours: number | null
-  internalRate: number | null
+  hireDate: string | null
   roleType: string // access level: 'super_admin'|'admin'|'team_leader'|'user' (people.role_type mirrors it)
   status: 'active' | 'inactive'
-
-  // Contact
-  phone: string | null
-  location: string | null
-  address: PersonAddress | null // structured mailing address
-  whatsappSameNumber: string | null // 'yes' | 'no', same number on WhatsApp?
-
-  // Onboarding / Offboarding lifecycle status
-  onboardingStatus: string | null // 'not_started' | 'in_progress' | 'completed'
-  offboardingStatus: string | null // 'not_started' | 'in_progress' | 'completed'
-
-  // Dates (stored as ISO; formatted for display)
-  dateOfBirth: string | null
-  hireDate: string | null
-  leftOn: string | null
 
   // Emails + account
   emails: PersonEmails
@@ -134,49 +112,13 @@ export interface PersonView {
   accountEmail: string | null
   hasTsheets: boolean
   lastAccessAt: string | null // most recent portal access (from access_log)
-  lastAccessAgent: string | null
   portalInvitedAt: string | null // invited to the portal (migration 089); null = cannot sign in
   twoStepSince?: string | null // two-step sign-in set up since (p4-2fa); null = not yet; absent = not loaded
-
-  history: string | null
-  milestones: PersonMilestone[] // career timeline (joined, promotions, role changes)
-  mondayDocs: string | null // text of the person's "History" Monday Doc
-  attachments: PersonAttachment[] // "History" documents
 }
 
 export interface Account {
   id: string
   email: string
-}
-
-/** The payload the modal sends back on save. Mirrors the DB columns. */
-export interface PersonDraft {
-  full_name: string
-  lastName: string | null
-  title: string | null
-  teams: { teamId: string; position: string }[] // memberships + per-team position
-  manager_id: string | null
-  alsoReportsToId: string | null
-  reportsToManager: string | null
-  managerNameText: string | null
-  employmentType: string | null
-  schedule: string | null
-  weeklyHours: number | null
-  internalRate: number | null
-  roleType: string
-  status: 'active' | 'inactive'
-  phone: string | null
-  location: string | null
-  whatsappSameNumber: string | null
-  onboardingStatus: string | null
-  offboardingStatus: string | null
-  dateOfBirth: string | null
-  hireDate: string | null
-  leftOn: string | null
-  emails: PersonEmails
-  hasTsheets: boolean
-  history: string | null
-  mondayDocs: string | null
 }
 
 // ── Team colour system ──────────────────────────────────────────────────────

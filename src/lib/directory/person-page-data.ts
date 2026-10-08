@@ -13,6 +13,7 @@ import { loadSettings } from '@/lib/settings/person'
 import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 import { normalPosition } from '@/lib/directory/people-types'
 import { teamTie, TIE_RANK, type TeamTie } from '@/lib/directory/team-of'
+import { primaryTeamByPerson } from '@/lib/directory/primary-team'
 import { formatPhone } from '@/lib/phone'
 import { formatTenure, milestoneOf, tenureSince, type Milestone, type Tenure } from '@/lib/tenure'
 import type { PersonAddress } from '@/lib/address'
@@ -21,14 +22,21 @@ import { pageRights, personHref, relationTo, type PageRights } from './page-righ
 
 type Client = Db
 
-/** Everyone on the teams this person leads (the person included). */
+/**
+ * Everyone ACTIVE on the teams this person leads (the person included). A Team
+ * Leader does not open the page of someone made inactive (decided 8 October
+ * 2026): that person's record is the company's from then on, not the team's.
+ */
 export async function loadLedMemberIds(db: Client, personId: string | null): Promise<Set<string>> {
   if (!personId) return new Set()
   const { data: mine } = await db.from('team_members').select('team_id, position').eq('person_id', personId)
   const led = ((mine ?? []) as { team_id: string; position: string | null }[]).filter(m => isLeadPosition(m.position)).map(m => m.team_id)
   if (!led.length) return new Set()
-  const { data: members } = await db.from('team_members').select('person_id').in('team_id', led)
-  return new Set(((members ?? []) as { person_id: string }[]).map(m => m.person_id))
+  const { data: members } = await db.from('team_members').select('person_id, people!inner(status)').in('team_id', led)
+  const ids = ((members ?? []) as unknown as { person_id: string; people: { status: string | null } | null }[])
+    .filter(m => m.people?.status !== 'inactive')
+    .map(m => m.person_id)
+  return new Set([personId, ...ids])
 }
 
 export interface PageTeam { teamId: string; teamName: string; color: string; position: 'lead' | 'member'; primary: boolean }
@@ -144,7 +152,9 @@ export async function loadPersonPage(
       position: (normalPosition(m.position) === 'lead' ? 'lead' : 'member') as 'lead' | 'member', primary: m.is_primary === true,
     }))
     .sort((a, b) => Number(b.primary) - Number(a.primary) || Number(b.position === 'lead') - Number(a.position === 'lead') || a.teamName.localeCompare(b.teamName))
-  const color = teams[0]?.color ?? colourOf(palette, null)
+  // The colour of their main team (lib/directory/primary-team), as on every screen.
+  const main = primaryTeamByPerson(teams.map(t => ({ personId, team: { name: t.teamName }, isPrimary: t.primary }))).get(personId)
+  const color = colourOf(palette, main?.name ?? null)
 
   const tenure = tenureSince(str(p.hire_date), str(p.left_on) ? new Date(`${p.left_on}T12:00:00Z`) : new Date())
 
@@ -214,21 +224,21 @@ export async function loadPersonPage(
       db.from('people').select('id, full_name, title, manager_id, also_reports_to_id').or('status.is.null,status.eq.active'),
       db.from('team_members').select('person_id, team_id, is_primary'),
     ])
+    const rows = (memberships ?? []) as { person_id: string; team_id: string; is_primary: boolean | null }[]
     const teamsOf = new Map<string, string[]>()
-    const primaryOf = new Map<string, string>()
-    for (const m of (memberships ?? []) as { person_id: string; team_id: string; is_primary: boolean | null }[]) {
-      (teamsOf.get(m.person_id) ?? teamsOf.set(m.person_id, []).get(m.person_id)!).push(m.team_id)
-      if (m.is_primary) primaryOf.set(m.person_id, m.team_id)
-    }
+    for (const m of rows) (teamsOf.get(m.person_id) ?? teamsOf.set(m.person_id, []).get(m.person_id)!).push(m.team_id)
+    const mainOf = primaryTeamByPerson(rows.flatMap(m => {
+      const name = teamName.get(m.team_id)
+      return name ? [{ personId: m.person_id, team: { name }, isPrimary: m.is_primary === true }] : []
+    }))
     reports = ((everyone ?? []) as { id: string; full_name: string; title: string | null; manager_id: string | null; also_reports_to_id: string | null }[])
       .map(x => {
         const via = teamTie({ id: x.id, managerId: x.manager_id, alsoReportsToId: x.also_reports_to_id, teamIds: teamsOf.get(x.id) ?? [] }, personId, ledTeamIds)
         if (!via) return null
         const viaTeam = via === 'team' ? (teamsOf.get(x.id) ?? []).find(t => ledTeamIds.has(t)) : undefined
-        const own = primaryOf.get(x.id) ?? (teamsOf.get(x.id) ?? [])[0]
         const opens = pageRights(viewer.can, relationTo(viewer.personId, x.id, ledByViewer))
         return {
-          id: x.id, name: x.full_name, title: x.title, color: colourOf(palette, own ? teamName.get(own) : null),
+          id: x.id, name: x.full_name, title: x.title, color: colourOf(palette, mainOf.get(x.id)?.name ?? null),
           via, teamName: viaTeam ? teamName.get(viaTeam) ?? null : null, href: opens ? personHref(x.id) : null,
         }
       })

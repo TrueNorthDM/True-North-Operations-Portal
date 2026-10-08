@@ -14,7 +14,7 @@
 
 import { useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
-import { roleTypePill } from '@/lib/directory/people-types'
+import { initialsOf, roleTypePill } from '@/lib/directory/people-types'
 import Link from 'next/link'
 import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 
@@ -22,8 +22,6 @@ import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/Restri
 // fully round, and never allowed to grow with its row.
 const PILL = 'inline-flex items-center shrink-0 font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.05em] uppercase rounded-full px-2 py-[3px]'
 
-const initialsOf = (name: string) =>
-  name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
 /**
  * One team, as a card: a colour bar, who is on it, and what it can reach.

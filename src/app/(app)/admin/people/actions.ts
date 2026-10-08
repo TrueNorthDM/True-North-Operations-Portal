@@ -2,156 +2,84 @@
 
 /**
  * People directory mutations. Each is allowed by its own access item (Add and
- * edit people, Invite, Reset two-step), decided by the access rule. Writes go
- * through the signed-in person's session; RLS (people_admin_write) permits
- * is_admin(auth.uid()), which Super Admins and Admins hold. Every change
- * revalidates the Directory AND the home org chart, which reads the same
- * directory.
+ * remove people, Invite, Reset two-step), decided by the access rule, and then
+ * written with the privileged client: the access item decides, not the
+ * database role (audit, 8 October 2026: with the session client, someone given
+ * the item but not the database's admin role got "done" while nothing was
+ * written). Every action returns its result, since a thrown message never
+ * reaches the screen in production. Every change revalidates the Directory and
+ * the home org chart, which reads the same directory.
  *
  * A person's level is not set here (since 7 October 2026): Super Admin and
  * Admin are given on Admin > Access levels; Team Leader follows team
- * positions, so a change of teams here can move it, and that is logged.
+ * positions, which only a Super Admin changes (d-positions).
  */
 
-import { createClient } from '@/lib/supabase/server'
-import type { TablesInsert } from '@/lib/types/database.types'
-import { allowedTo } from '@/lib/access/resolve'
 import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import type { Json, TablesInsert } from '@/lib/types/database.types'
+import { allowedTo } from '@/lib/access/resolve'
 import { endSessions } from '@/lib/auth/portal-access'
 import { requestOrigin } from '@/lib/auth/origin'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { getRealPerson } from '@/lib/auth/session'
-import { mapPersonError, setPersonTeams } from '@/lib/directory/person-writes'
+import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { mapPersonError, setPersonTeams, takenMailbox } from '@/lib/directory/person-writes'
+import { cleanWork, UUID, type WorkInput } from '@/lib/directory/person-validate'
 import { renderInvite } from '@/lib/email/invite'
 import { sendEmail } from '@/lib/email/resend'
-import { createAdminClient } from '@/lib/supabase/admin'
-import type { PersonRow } from '@/lib/types/database.types'
-import type { PersonAddress } from '@/lib/address'
-import type { PersonMilestone } from '@/lib/milestones'
 
-type PersonCols = Partial<Omit<PersonRow, 'id' | 'created_at' | 'updated_at'>>
-
-async function requireAllowed(key: string) {
-  if (!(await allowedTo(key))) throw new Error('Not authorized')
-}
+type Result<T extends object = object> = ({ ok: true } & T) | { ok: false; error: string }
+const fail = (error: string) => ({ ok: false as const, error })
+const NOT_ALLOWED = 'That is not open to your access.'
 
 /** Done to yourself these would only lock you out: refused, whatever the page shows. */
-async function refuseSelf(personId: string, message: string) {
-  const me = await getRealPerson()
-  if (me?.id === personId) throw new Error(message)
+async function isSelf(personId: string): Promise<boolean> {
+  return (await getRealPerson())?.id === personId
 }
 
 function revalidate() {
-  revalidatePath('/directory')
-  revalidatePath('/admin/people')
-  revalidatePath('/admin/access-levels') // the access-levels board lists role_type
+  revalidatePath('/directory', 'layout')
+  revalidatePath('/admin/access-levels') // the access-levels board lists everyone's level
   revalidatePath('/') // home org chart reads the same directory
 }
 
-export interface PersonInput {
-  full_name: string
-  title?: string | null
-  manager_id?: string | null
-  status?: 'active' | 'inactive'
-  /** Portal account (profiles.id) to link, or null to unlink. Omit to leave as-is. */
-  profile_id?: string | null
+/**
+ * Add someone with their name and Work (decided 8 October 2026). Personal and
+ * HR are filled in on their own page, each under its own access item, so
+ * "Add people" never writes a birth date or an onboarding status. Teams and
+ * positions only with d-positions (Super Admin).
+ */
+export async function createPerson(input: WorkInput): Promise<Result<{ id: string }>> {
+  if (!(await allowedTo('d-edit'))) return fail(NOT_ALLOWED)
+  const clean = cleanWork(input, null)
+  if (!clean.ok) return fail(clean.error)
+  const { cols } = clean
+  const db = createAdminClient()
 
-  // Directory fields (migration 029)
-  employment_type?: string | null
-  schedule?: string | null
-  weekly_hours?: number | null
-  internal_rate?: number | null
-  reports_to_manager?: string | null
-  also_reports_to_id?: string | null
-  email_true_north?: string | null
-  email_goodnews?: string | null
-  email_coe?: string | null
-  email_personal?: string | null
-  phone?: string | null
-  location?: string | null
-  address?: PersonAddress | null
-  onboarding_status?: string | null
-  offboarding_status?: string | null
-  date_of_birth?: string | null
-  hire_date?: string | null
-  left_on?: string | null
-  employment_history?: string | null
-
-  // HR fields brought over from the True North Team board (migration 033/034)
-  last_name?: string | null
-  manager_name_text?: string | null
-  whatsapp_same_number?: string | null
-  monday_docs?: string | null
-  milestones?: PersonMilestone[] | null
-
-  /**
-   * The person's team memberships + POSITION in each (Team Leader / Collaborator,
-   * migration 040). When passed, memberships are reconciled to exactly this list
-   * (a person can belong to several teams with a different position in each).
-   * Omit to leave as-is.
-   */
-  teams?: { teamId: string; position: string; primary?: boolean }[]
-  /** When false, unlink any TSheets user. Omit / true leaves the link as-is. */
-  tsheets?: boolean
-}
-
-const trimOrNull = (v: string | null | undefined) => (v == null ? null : v.trim() || null)
-
-/** Build the `people` column patch from an input (excludes team membership). */
-function personColumns(input: PersonInput): PersonCols {
-  const cols: PersonCols = {
-    title: trimOrNull(input.title),
-    manager_id: input.manager_id || null,
-    status: input.status || 'active',
-    employment_type: input.employment_type || null,
-    schedule: input.schedule || null,
-    weekly_hours: input.weekly_hours ?? null,
-    internal_rate: input.internal_rate ?? null,
-    reports_to_manager: input.reports_to_manager || null,
-    also_reports_to_id: input.also_reports_to_id || null,
-    email_true_north: trimOrNull(input.email_true_north),
-    email_goodnews: trimOrNull(input.email_goodnews),
-    email_coe: trimOrNull(input.email_coe),
-    email_personal: trimOrNull(input.email_personal),
-    phone: trimOrNull(input.phone),
-    location: trimOrNull(input.location),
-    address: input.address ?? null,
-    onboarding_status: input.onboarding_status || null,
-    offboarding_status: input.offboarding_status || null,
-    date_of_birth: input.date_of_birth || null,
-    hire_date: input.hire_date || null,
-    left_on: input.left_on || null,
-    employment_history: trimOrNull(input.employment_history),
-    last_name: trimOrNull(input.last_name),
-    manager_name_text: trimOrNull(input.manager_name_text),
-    whatsapp_same_number: input.whatsapp_same_number || null,
-    monday_docs: trimOrNull(input.monday_docs),
-    milestones: input.milestones ?? null,
+  const taken = await takenMailbox(db, [cols.email_goodnews, cols.email_true_north, cols.email_coe], null)
+  if (taken) return fail(`${taken} already belongs to someone else in the Directory.`)
+  for (const id of [cols.manager_id, cols.also_reports_to_id]) {
+    if (!id) continue
+    const { data } = await db.from('people').select('id').eq('id', id).maybeSingle()
+    if (!data) return fail('That manager is not in the Directory any more. Choose again.')
   }
-  return cols
-}
 
-export async function createPerson(input: PersonInput): Promise<{ id: string }> {
-  await requireAllowed('d-edit')
-  const name = input.full_name.trim()
-  if (!name) throw new Error('Name is required')
-  // Privileged after the check above: "Add people" decides, not the database role.
-  const supabase = createAdminClient()
+  const { data, error } = await db.from('people')
+    .insert({ ...cols, milestones: cols.milestones as unknown as Json } as TablesInsert<'people'>)
+    .select('id').single()
+  if (error || !data) return fail(mapPersonError(error?.message ?? 'The person could not be added.'))
+  const id = (data as { id: string }).id
 
-  const row: PersonCols & { full_name: string } = { full_name: name, ...personColumns(input) }
-  // The rate is Rates & Costs (d-rates): without it, a new person starts with none.
-  if (!(await allowedTo('d-rates'))) row.internal_rate = null
-  if (input.profile_id !== undefined) row.profile_id = input.profile_id || null
-  if (input.tsheets === false) row.tsheets_user_id = null
-
-  // JSON columns (address, milestones) are typed by their own shapes here.
-  const { data, error } = await supabase.from('people').insert(row as TablesInsert<'people'>).select('id').single()
-  if (error) throw new Error(mapPersonError(error.message))
-  // Teams and positions are Super Admin only (d-positions): without it the
-  // new person starts on no team, whatever the form sent.
-  if (input.teams !== undefined && data?.id && (await allowedTo('d-positions'))) await setPersonTeams(supabase, data.id, input.teams)
+  if (clean.teams.length && (await allowedTo('d-positions'))) {
+    const ids = [...new Set(clean.teams.map(t => t.teamId))]
+    const { data: found } = await db.from('teams').select('id').in('id', ids)
+    if ((found ?? []).length === ids.length) {
+      try { await setPersonTeams(db, id, clean.teams) } catch { /* added without teams: they can be set on the page */ }
+    }
+  }
   revalidate()
-  return { id: (data as { id: string }).id }
+  return { ok: true, id }
 }
 
 /** What inviting someone did, for the Directory to say. */
@@ -173,31 +101,31 @@ export interface InviteResult {
  * address filled in. If the email cannot go out, the access is still granted and
  * the Directory says so, so the admin can tell the person another way.
  */
-export async function invitePerson(id: string): Promise<InviteResult> {
-  await requireAllowed('d-invite')
-  const supabase = await createClient()
-  const { data: person, error: readErr } = await supabase
+export async function invitePerson(id: string): Promise<Result<InviteResult>> {
+  if (!(await allowedTo('d-invite'))) return fail(NOT_ALLOWED)
+  if (!UUID.test(id)) return fail('That person is not in the Directory.')
+  const db = createAdminClient()
+  const { data: person, error: readErr } = await db
     .from('people').select('full_name, status, email_goodnews, portal_invited_at').eq('id', id).maybeSingle()
-  if (readErr) throw new Error(readErr.message)
+  if (readErr) return fail('The person could not be read. Try again.')
   const p = person as { full_name: string; status: string | null; email_goodnews: string | null; portal_invited_at: string | null } | null
-  if (!p) throw new Error('Person not found')
-  if (p.status === 'inactive') throw new Error(`${p.full_name} is inactive. Make them active before inviting them.`)
+  if (!p) return fail('That person is not in the Directory.')
+  if (p.status === 'inactive') return fail(`${p.full_name} is inactive. Make them active before inviting them.`)
   const loginEmail = p.email_goodnews?.trim().toLowerCase() ?? ''
   if (!loginEmail.endsWith('@goodnewsadvocates.org')) {
-    throw new Error(`${p.full_name} has no @goodnewsadvocates.org address in the Directory. Add it first: it is the address they sign in with.`)
+    return fail(`${p.full_name} has no @goodnewsadvocates.org address in the Directory. Add it first: it is the address they sign in with.`)
   }
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await (await createClient()).auth.getUser()
   // Sending again keeps the date of the first invitation.
   if (!p.portal_invited_at) {
-    const { error } = await supabase
-      .from('people')
-      .update({ portal_invited_at: new Date().toISOString(), portal_invited_by: user?.id ?? null })
+    const { error, count } = await db.from('people')
+      .update({ portal_invited_at: new Date().toISOString(), portal_invited_by: user?.id ?? null }, { count: 'exact' })
       .eq('id', id)
-    if (error) throw new Error(mapPersonError(error.message))
+    if (error || !count) return fail('The invitation could not be saved, so no email was sent. Try again.')
   }
   revalidate()
 
-  const inviter = user ? await loadCurrentPerson(supabase, user, { real: true }) : null
+  const inviter = user ? await loadCurrentPerson(db, user, { real: true }) : null
   const origin = await requestOrigin()
   const mail = renderInvite({
     firstName: p.full_name.trim().split(/\s+/)[0] || p.full_name,
@@ -207,34 +135,62 @@ export async function invitePerson(id: string): Promise<InviteResult> {
     origin,
   })
   const sent = await sendEmail({ to: loginEmail, ...mail })
-  return sent.sent ? { loginEmail, emailed: true } : { loginEmail, emailed: false, reason: sent.reason }
+  return sent.sent ? { ok: true, loginEmail, emailed: true } : { ok: true, loginEmail, emailed: false, reason: sent.reason }
 }
 
 /** Withdraw a person's invitation: they cannot sign in, and their sessions end now. */
-export async function revokeInvite(id: string): Promise<void> {
-  await requireAllowed('d-invite')
-  await refuseSelf(id, 'You cannot revoke your own access.')
-  const supabase = await createClient()
-  const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
-  const { error } = await supabase
-    .from('people')
-    .update({ portal_invited_at: null, portal_invited_by: null })
+export async function revokeInvite(id: string): Promise<Result> {
+  if (!(await allowedTo('d-invite'))) return fail(NOT_ALLOWED)
+  if (!UUID.test(id)) return fail('That person is not in the Directory.')
+  if (await isSelf(id)) return fail('You cannot revoke your own access.')
+  const db = createAdminClient()
+  const { data: before } = await db.from('people').select('profile_id').eq('id', id).maybeSingle()
+  const { error, count } = await db.from('people')
+    .update({ portal_invited_at: null, portal_invited_by: null }, { count: 'exact' })
     .eq('id', id)
-  if (error) throw new Error(mapPersonError(error.message))
+  if (error || !count) return fail('The access could not be revoked. Nothing changed; try again.')
   await endSessions((before as { profile_id?: string | null } | null)?.profile_id)
   revalidate()
+  return { ok: true }
 }
 
-export async function deletePerson(id: string) {
-  await requireAllowed('d-edit')
-  await refuseSelf(id, 'You cannot remove yourself from the Directory.')
-  const supabase = await createClient()
-  const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
-  const { error } = await supabase.from('people').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-  // Removed from the Directory: no person, no access.
-  await endSessions((before as { profile_id?: string | null } | null)?.profile_id)
+/**
+ * Remove someone from the Directory. Someone with hours or rates on record is
+ * made inactive instead (decided 8 October 2026): their hours and costs stay
+ * true in every report, their access ends, and they leave the lists. Only a
+ * person with no history is deleted, with their photo and documents.
+ */
+export async function deletePerson(id: string): Promise<Result<{ outcome: 'removed' | 'inactive' }>> {
+  if (!(await allowedTo('d-edit'))) return fail(NOT_ALLOWED)
+  if (!UUID.test(id)) return fail('That person is not in the Directory.')
+  if (await isSelf(id)) return fail('You cannot remove yourself from the Directory.')
+  const db = createAdminClient()
+  const { data: before } = await db.from('people').select('profile_id, status').eq('id', id).maybeSingle()
+  const row = before as { profile_id: string | null; status: string | null } | null
+  if (!row) return fail('That person is not in the Directory.')
+
+  const [{ count: hours }, { count: rates }] = await Promise.all([
+    db.from('tc_entries').select('id', { count: 'exact', head: true }).eq('person_id', id),
+    db.from('tr_assignments').select('id', { count: 'exact', head: true }).eq('person_id', id),
+  ])
+  if ((hours ?? 0) > 0 || (rates ?? 0) > 0) {
+    const { error } = await db.from('people').update({ status: 'inactive' }).eq('id', id)
+    if (error) return fail('They could not be made inactive. Nothing changed; try again.')
+    await endSessions(row.profile_id)
+    revalidate()
+    return { ok: true, outcome: 'inactive' }
+  }
+
+  const { data: files } = await db.from('person_attachments').select('storage_path').eq('person_id', id)
+  const { error } = await db.from('people').delete().eq('id', id)
+  if (error) return fail(mapPersonError(error.message))
+  // Removed from the Directory: no person, no access, and nothing of theirs left behind.
+  await endSessions(row.profile_id)
+  await db.storage.from('avatars').remove([`${id}.jpg`])
+  const paths = ((files ?? []) as { storage_path: string }[]).map(f => f.storage_path)
+  if (paths.length) await db.storage.from('person-files').remove(paths)
   revalidate()
+  return { ok: true, outcome: 'removed' }
 }
 
 /**
@@ -242,20 +198,21 @@ export async function deletePerson(id: string) {
  * phone. Their authenticator app is removed and their sessions end; at their next
  * sign-in they set it up again with a new QR code.
  */
-export async function resetTwoStep(id: string): Promise<void> {
-  await requireAllowed('d-2fa')
-  await refuseSelf(id, 'You cannot reset your own two-step sign-in. Ask another Super Admin.')
-  const supabase = await createClient()
-  const { data: row } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
-  const profileId = (row as { profile_id?: string | null } | null)?.profile_id
-  if (!profileId) throw new Error('This person has no account yet.')
+export async function resetTwoStep(id: string): Promise<Result> {
+  if (!(await allowedTo('d-2fa'))) return fail(NOT_ALLOWED)
+  if (!UUID.test(id)) return fail('That person is not in the Directory.')
+  if (await isSelf(id)) return fail('You cannot reset your own two-step sign-in. Ask another Super Admin.')
   const admin = createAdminClient()
+  const { data: row } = await admin.from('people').select('profile_id').eq('id', id).maybeSingle()
+  const profileId = (row as { profile_id?: string | null } | null)?.profile_id
+  if (!profileId) return fail('This person has no account yet.')
   const { data, error } = await admin.auth.admin.mfa.listFactors({ userId: profileId })
-  if (error) throw new Error(error.message)
+  if (error) return fail('Their two-step sign-in could not be read. Try again.')
   for (const f of data?.factors ?? []) {
     const { error: delErr } = await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId: profileId })
-    if (delErr) throw new Error(delErr.message)
+    if (delErr) return fail('Their two-step sign-in could not be reset. Try again.')
   }
   await endSessions(profileId)
   revalidate()
+  return { ok: true }
 }

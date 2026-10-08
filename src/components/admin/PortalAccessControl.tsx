@@ -10,6 +10,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import { invitePerson, revokeInvite } from '@/app/(app)/admin/people/actions'
 import { portalAccessState, type PortalAccessState } from '@/lib/auth/portal-rule'
@@ -34,6 +35,7 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [confirmDialog, confirm] = useConfirm()
 
   // Kept here and not read from `p` alone: the Directory card is a snapshot of
   // the person taken when it opened, so after Invite or Revoke the pill has to
@@ -64,16 +66,18 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
   const invite = () =>
     act(async () => {
       const r = await invitePerson(p.id)
+      if (!r.ok) throw new Error(r.error)
       setInvitedAt(prev => prev ?? new Date().toISOString())
       return r.emailed
         ? `Invitation sent to ${r.loginEmail}.`
         : `Invited, but the email did not go out (${r.reason}). Let ${first} know to sign in with ${r.loginEmail}.`
     })
 
-  const revoke = () => {
-    if (!window.confirm(`Revoke ${p.full_name}'s access? They are signed out now and cannot sign in until invited again.`)) return
+  const revoke = async () => {
+    if (!(await confirm({ title: `Revoke ${p.full_name}'s access?`, body: 'They are signed out now and cannot sign in until invited again.', action: 'Revoke access', danger: true }))) return
     act(async () => {
-      await revokeInvite(p.id)
+      const r = await revokeInvite(p.id)
+      if (!r.ok) throw new Error(r.error)
       setInvitedAt(null)
       return null
     })
@@ -84,6 +88,7 @@ export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvi
 
   return (
     <span className="inline-flex flex-col items-end gap-1.5">
+      {confirmDialog}
       <span className="inline-flex items-center gap-2">
         <span
           className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}

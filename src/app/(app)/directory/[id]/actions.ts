@@ -16,13 +16,12 @@ import { createClient } from '@/lib/supabase/server'
 import { writerAccess } from '@/lib/access/resolve'
 import { levelsOf, noteLevelShifts } from '@/lib/access/log'
 import { endSessions } from '@/lib/auth/portal-access'
-import { mailboxFilter } from '@/lib/auth/mailbox-filter'
 import { normalizeAddress, type AddressForm } from '@/lib/address'
-import { normalizeMilestones, type MilestoneForm } from '@/lib/milestones'
 import { LIFECYCLE_OPTIONS } from '@/lib/directory/people-types'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
 import { pageRights, relationTo, type PageRights } from '@/lib/directory/page-rights'
-import { mapPersonError, setPersonTeams, wouldCreateCycle } from '@/lib/directory/person-writes'
+import { mapPersonError, setPersonTeams, takenMailbox, wouldCreateCycle } from '@/lib/directory/person-writes'
+import { cleanWork, type WorkInput } from '@/lib/directory/person-validate'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -88,11 +87,7 @@ export async function savePersonal(personId: string, input: PersonalInput): Prom
   // A sign-in without a linked account is matched to a person by any of their
   // mailboxes (lib/directory/current-person.ts), so one address must never
   // belong to two people: anyone can set their own personal email here.
-  const sameMailbox = mailboxFilter(personalEmail)
-  if (sameMailbox) {
-    const { data: taken } = await db.from('people').select('id').or(sameMailbox).neq('id', personId).limit(1)
-    if (taken?.length) return fail('That email belongs to someone else in the Directory.')
-  }
+  if (await takenMailbox(db, [personalEmail], personId)) return fail('That email belongs to someone else in the Directory.')
 
   const { error } = await db.from('people').update({
     last_name: text(input.lastName),
@@ -110,53 +105,25 @@ export async function savePersonal(personId: string, input: PersonalInput): Prom
 
 // ── Work ────────────────────────────────────────────────────────────────────
 
-export interface WorkInput {
-  fullName: string
-  title: string
-  employmentType: string
-  schedule: string
-  weeklyHours: string
-  status: 'active' | 'inactive'
-  emails: { trueNorth: string; goodnews: string; coe: string }
-  teams: { teamId: string; position: string; primary: boolean }[]
-  managerId: string
-  alsoReportsToId: string
-  hireDate: string
-  leftOn: string
-  milestones: MilestoneForm[]
-  history: string
-}
+export type { WorkInput } from '@/lib/directory/person-validate'
 
 export async function saveWork(personId: string, input: WorkInput): Promise<Result> {
   const who = await rightsOver(personId)
   if ('error' in who) return fail(who.error)
   if (!who.rights.workEdit) return fail('Work is kept by the company: you cannot change it here.')
 
-  const fullName = text(input.fullName)
-  if (!fullName) return fail('The name is required.')
-  const employmentType = text(input.employmentType)
-  if (employmentType && employmentType !== 'us' && employmentType !== 'contractor') return fail('Choose US Employee or Contractor.')
-  const schedule = text(input.schedule)
-  if (schedule && schedule !== 'full' && schedule !== 'part') return fail('Choose Full-Time or Part-Time.')
-  const hoursText = text(input.weeklyHours)
-  const weeklyHours = hoursText == null ? null : Number(hoursText)
-  if (weeklyHours != null && (!Number.isFinite(weeklyHours) || weeklyHours < 0 || weeklyHours > 168)) return fail('Weekly hours must be between 0 and 168.')
-  if (input.status !== 'active' && input.status !== 'inactive') return fail('Choose Active or Inactive.')
-  const emails = { trueNorth: email(input.emails?.trueNorth), goodnews: email(input.emails?.goodnews), coe: email(input.emails?.coe) }
-  if (emails.trueNorth === false || emails.goodnews === false || emails.coe === false) return fail('One of the company emails does not look right.')
-  const hireDate = date(input.hireDate)
-  const leftOn = date(input.leftOn)
-  if (hireDate === false || leftOn === false) return fail('A date could not be read.')
-  const managerId = text(input.managerId)
-  const alsoId = text(input.alsoReportsToId)
-  for (const id of [managerId, alsoId]) if (id && !UUID.test(id)) return fail('That manager does not exist.')
-  if (managerId === personId || alsoId === personId) return fail('A person cannot report to themselves.')
+  // The same checks as Add person (lib/directory/person-validate.ts).
+  const clean = cleanWork(input, personId)
+  if (!clean.ok) return fail(clean.error)
+  const { cols } = clean
+  const managerId = cols.manager_id
+  const fullName = cols.full_name
   const db = createAdminClient()
   // Teams and positions only with teamsEdit (page-rights.ts): without it the
   // teams sent are ignored and the person's teams stay as they are.
   let teams: WorkInput['teams'] | null = null
   if (who.rights.teamsEdit) {
-    teams = Array.isArray(input.teams) ? input.teams.filter(t => t && typeof t.teamId === 'string' && UUID.test(t.teamId)) : []
+    teams = clean.teams
     // Every team must exist before the old memberships are replaced.
     const ids = [...new Set(teams.map(t => t.teamId))]
     if (ids.length) {
@@ -168,26 +135,14 @@ export async function saveWork(personId: string, input: WorkInput): Promise<Resu
   if (managerId && await wouldCreateCycle(db, personId, managerId)) {
     return fail('That reporting line would make a loop: the chosen manager already reports up to this person.')
   }
+  // One address, one person: a sign-in is matched by its mailbox.
+  const taken = await takenMailbox(db, [cols.email_goodnews, cols.email_true_north, cols.email_coe], personId)
+  if (taken) return fail(`${taken} already belongs to someone else in the Directory.`)
 
   const { data: before } = await db.from('people').select('status, profile_id').eq('id', personId).maybeSingle()
   const levelsBefore = await levelsOf(db, [personId])
-  const { error } = await db.from('people').update({
-    full_name: fullName,
-    title: text(input.title),
-    employment_type: employmentType,
-    schedule,
-    weekly_hours: weeklyHours,
-    status: input.status,
-    email_true_north: emails.trueNorth,
-    email_goodnews: emails.goodnews,
-    email_coe: emails.coe,
-    manager_id: managerId,
-    also_reports_to_id: alsoId,
-    hire_date: hireDate,
-    left_on: leftOn,
-    milestones: normalizeMilestones(Array.isArray(input.milestones) ? input.milestones : []) as unknown as Json,
-    employment_history: text(input.history),
-  }).eq('id', personId)
+  const { error } = await db.from('people').update({ ...cols, milestones: cols.milestones as unknown as Json })
+    .eq('id', personId)
   if (error) return fail(mapPersonError(error.message))
   if (teams) {
     try { await setPersonTeams(db, personId, teams) } catch (e) { return fail(e instanceof Error ? e.message : 'The teams could not be saved.') }
@@ -197,7 +152,7 @@ export async function saveWork(personId: string, input: WorkInput): Promise<Resu
   }
   // Made inactive: their sessions end now, not when the token runs out.
   const was = before as { status?: string | null; profile_id?: string | null } | null
-  if (input.status === 'inactive' && was?.status !== 'inactive') await endSessions(was?.profile_id)
+  if (cols.status === 'inactive' && was?.status !== 'inactive') await endSessions(was?.profile_id)
   refresh(personId)
   return { ok: true }
 }

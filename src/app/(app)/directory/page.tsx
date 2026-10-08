@@ -14,6 +14,8 @@ import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
+import { primaryTeamByPerson } from '@/lib/directory/primary-team'
+import { LIST_COLUMNS, LIST_COLUMNS_BASE, listGates } from '@/lib/directory/list-gates'
 import { pageHrefs, personHref } from '@/lib/directory/page-rights'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { TOOLS } from '@/lib/access/tools'
@@ -24,17 +26,8 @@ import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadInvitesByPerson } from '@/lib/directory/invites'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
 
-// Full people select (needs migration 029). Falls back to base columns if the
-// migration hasn't run yet, so the page never 500s on a pre-migration deploy.
-// Only what the lists and tabs here show. Everything else about a person is on
-// their own page (/directory/<id>, 8 October 2026), which reads it per tab by
-// Access levels: personal data, HR, history and milestones are not read here,
-// so they never reach this page's browser payload.
-const PEOPLE_FULL =
-  'id, full_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
-  'employment_type, schedule, weekly_hours, also_reports_to_id, ' +
-  'email_true_north, email_goodnews, email_coe, hire_date'
-const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
+// The columns the list reads, and what each row carries by access, live in
+// lib/directory/list-gates.ts, where a test holds them.
 
 const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
 
@@ -74,17 +67,23 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // different shapes, and everything downstream reads through PRow anyway.
   let pRows: unknown[] | null = null
   if (level >= 3) {
-    const full = await supabase.from('people').select(PEOPLE_FULL)
+    const full = await supabase.from('people').select(LIST_COLUMNS)
     if (!full.error) pRows = full.data
   }
   if (!pRows) {
-    const base = await supabase.from('people').select(PEOPLE_BASE)
+    const base = await supabase.from('people').select(LIST_COLUMNS_BASE)
     pRows = base.data ?? []
   }
 
   // Whose page each row opens (lib/directory/page-rights.ts): their own, the
   // people of the teams they lead, or anyone's, as Access levels says.
-  const hrefFor = pageHrefs(access.can, access.personId, await loadLedMemberIds(createAdminClient(), access.personId))
+  const led = await loadLedMemberIds(createAdminClient(), access.personId)
+  const hrefFor = pageHrefs(access.can, access.personId, led)
+  // The full list carries no more than the items open (audit, 8 October 2026).
+  const gates = listGates(access.can, led)
+  const seesEmails = gates.emails
+  const seesLogin = gates.login
+  const seesWork = gates.work
 
   const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, dRes, alRes, accessRules] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
@@ -92,7 +91,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     supabase.from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
     // Separate + graceful: role_type (035) / avatar_url (036) may not exist
-    // yet, a failed query here must NOT drop the PEOPLE_FULL select.
+    // yet, a failed query here must NOT drop the LIST_COLUMNS select.
     supabase.from('people').select('id, role_type, avatar_url'),
     // Access log (045), admin-readable; graceful if the table isn't there yet.
     // Only for the Access log tab and the cards' last access (d-log).
@@ -157,25 +156,12 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const teamById = new Map(teams.map(t => [t.id, t]))
   const siteById = new Map(sites.map(s => [s.id, s]))
 
-  // ── Primary team per person (first membership, name-sorted for determinism) ──
-  const teamIdsByPerson = new Map<string, string[]>()
-  for (const m of members) {
-    const arr = teamIdsByPerson.get(m.person_id) ?? []
-    arr.push(m.team_id)
-    teamIdsByPerson.set(m.person_id, arr)
-  }
-  // Explicit primary (migration 048) wins; otherwise fall back to the
-  // alphabetical-first membership so this stays deterministic pre-backfill.
-  const primaryTeamIdByPerson = new Map<string, string>()
-  for (const m of members) if (m.is_primary) primaryTeamIdByPerson.set(m.person_id, m.team_id)
-  function primaryTeam(personId: string): { id: string; name: string } | null {
-    const pid = primaryTeamIdByPerson.get(personId)
-    if (pid) { const t = teamById.get(pid); if (t) return { id: t.id, name: t.name } }
-    const ids = teamIdsByPerson.get(personId) ?? []
-    const named = ids.map(id => teamById.get(id)).filter((t): t is NonNullable<typeof t> => !!t)
-    named.sort((a, b) => a.name.localeCompare(b.name))
-    return named[0] ? { id: named[0].id, name: named[0].name } : null
-  }
+  // ── Primary team per person: the portal's one rule (lib/directory/primary-team) ──
+  const primaryByPerson = primaryTeamByPerson(members.flatMap(m => {
+    const t = teamById.get(m.team_id)
+    return t ? [{ personId: m.person_id, team: { id: t.id, name: t.name }, isPrimary: m.is_primary }] : []
+  }))
+  const primaryTeam = (personId: string): { id: string; name: string } | null => primaryByPerson.get(personId) ?? null
   const teamKeyByPerson = new Map<string, TeamKey>()
   for (const p of people) teamKeyByPerson.set(p.id, teamKeyFromName(primaryTeam(p.id)?.name))
 
@@ -223,7 +209,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       const accEmail = emailByProfile.get(prof)
       if (accEmail && accEmail !== '(no email)') personIdByEmail.set(accEmail.toLowerCase(), pid)
     }
-    for (const e of [p.email_true_north, p.email_goodnews, p.email_coe, p.email_personal]) {
+    for (const e of [p.email_true_north, p.email_goodnews, p.email_coe]) {
       if (typeof e === 'string' && e) personIdByEmail.set(e.toLowerCase(), pid)
     }
   }
@@ -242,10 +228,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       const pt = primaryTeam(p.id)
       const mgrId = str(p.manager_id)
       const alsoId = str(p.also_reports_to_id)
+      const work = seesWork(p.id)
       return {
         id: p.id,
         full_name: p.full_name,
-        lastName: null,
         avatarUrl: avatarById.get(p.id) ?? null,
         title: str(p.title),
         teamId: pt?.id ?? null,
@@ -255,45 +241,25 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         teams: teamsByPerson.get(p.id) ?? [],
         manager_id: mgrId,
         managerName: mgrId ? nameById.get(mgrId) ?? null : null,
-        managerTeamKey: mgrId ? teamKeyByPerson.get(mgrId) ?? 'other' : null,
         alsoReportsToId: alsoId,
         alsoReportsToName: alsoId ? nameById.get(alsoId) ?? null : null,
-        alsoReportsToTeamKey: alsoId ? teamKeyByPerson.get(alsoId) ?? 'other' : null,
-        reportsToManager: null,
-        managerNameText: null,
-        employmentType: str(p.employment_type),
-        schedule: str(p.schedule),
-        weeklyHours: num(p.weekly_hours),
-        internalRate: null,
+        employmentType: work ? str(p.employment_type) : null,
+        schedule: work ? str(p.schedule) : null,
+        weeklyHours: work ? num(p.weekly_hours) : null,
         roleType: roleTypeById.get(p.id) ?? 'user',
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
-        // Personal and HR: on the person's own page, by its tabs, not here.
-        phone: null,
-        location: null,
-        address: null,
-        whatsappSameNumber: null,
-        onboardingStatus: null,
-        offboardingStatus: null,
-        dateOfBirth: null,
-        hireDate: str(p.hire_date),
-        leftOn: null,
+        hireDate: work ? str(p.hire_date) : null,
         emails: {
-          trueNorth: str(p.email_true_north),
-          goodnews: str(p.email_goodnews),
-          coe: str(p.email_coe),
-          personal: null,
+          trueNorth: seesEmails ? str(p.email_true_north) : null,
+          goodnews: seesLogin ? str(p.email_goodnews) : null,
+          coe: seesEmails ? str(p.email_coe) : null,
         },
         accountId: str(p.profile_id),
-        accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
+        accountEmail: seesLogin && str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
         lastAccessAt: lastAccessByPersonId.get(p.id as string)?.at ?? null,
-        lastAccessAgent: null,
         portalInvitedAt: invites.get(p.id) ?? null,
         twoStepSince: twoStepByAccount ? (p.profile_id ? twoStepByAccount.get(p.profile_id as string) ?? null : null) : undefined,
-        history: null,
-        milestones: [],
-        mondayDocs: null,
-        attachments: [],
       }
     })
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
@@ -405,8 +371,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         name: t.name,
         teamKey: teamKeyFromName(t.name),
         color: colourOf(teamPalette, t.name),
+        // Inactive people are on no team card (decided 8 October 2026).
         members: members
-          .filter(m => m.team_id === t.id)
+          .filter(m => m.team_id === t.id && people.find(p => p.id === m.person_id)?.status !== 'inactive')
           .map(m => ({
             id: m.person_id,
             name: nameById.get(m.person_id) ?? 'Unknown',
@@ -447,21 +414,17 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // here, where the page reads as admin and sees everyone.
   const pvById = new Map(peopleView.map(pv => [pv.id, pv]))
   const pvByProfile = new Map(peopleView.filter(pv => pv.accountId).map(pv => [pv.accountId as string, pv]))
-  const pvByEmail = new Map<string, PersonView>()
-  for (const pv of peopleView) {
-    for (const e of [pv.accountEmail, pv.emails.trueNorth, pv.emails.goodnews, pv.emails.coe, pv.emails.personal]) {
-      if (e) pvByEmail.set(e.toLowerCase(), pv)
-    }
-  }
   const accessLog: AccessLogEntry[] = accessRows.map(r => {
     const pv = (r.person_id ? pvById.get(r.person_id) : undefined)
       ?? (r.profile_id ? pvByProfile.get(r.profile_id) : undefined)
-      ?? (r.email ? pvByEmail.get(r.email.toLowerCase()) : undefined)
+      // By email through the rows read above, not the list: the list carries
+      // emails only with the Emails item.
+      ?? (r.email ? pvById.get(personIdByEmail.get(r.email.toLowerCase()) ?? '') : undefined)
     return {
       id: r.id,
       personId: pv?.id ?? r.person_id,
       name: pv?.full_name ?? r.name ?? r.email ?? '(unknown)',
-      email: r.email ?? pv?.accountEmail ?? '',
+      email: r.email ?? (pv?.accountId ? emailByProfile.get(pv.accountId) : null) ?? '',
       userAgent: r.user_agent,
       accessedAt: r.accessed_at,
       color: pv?.color ?? colourOf(teamPalette, null),

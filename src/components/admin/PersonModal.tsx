@@ -1,100 +1,45 @@
 'use client'
 
 /**
- * PersonModal: adding someone to the Directory. Since 8 October 2026 everything
- * else about a person, reading and changing it, is on their own page
- * (/directory/<id>, components/person/PersonPage); this opens there once saved.
+ * PersonModal: adding someone to the Directory, with their name and Work only
+ * (decided 8 October 2026). Their personal details and HR are filled in on
+ * their own page (/directory/<id>, components/person/PersonPage), each under
+ * its own access item, which is where this opens once they are saved.
+ *
+ * The draft is the WorkInput the server checks (lib/directory/person-validate),
+ * so the form holds no field the server would quietly drop.
  */
 
-import { useMemo, useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { personHref } from '@/lib/directory/page-rights'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { createPerson, type PersonInput } from '@/app/(app)/admin/people/actions'
+import { createPerson } from '@/app/(app)/admin/people/actions'
+import type { WorkInput } from '@/lib/directory/person-validate'
+import { teamColour } from '@/lib/directory/team-colour'
 import { Avatar } from '@/components/Avatar'
 import { Select } from '@/components/ui/Select'
-import { toAddressForm, normalizeAddress, type AddressForm } from '@/lib/address'
-import { allCountries } from '@/lib/countries'
-import { toMilestoneForms, normalizeMilestones, MILESTONE_KINDS, MILESTONE_LABEL, type MilestoneForm } from '@/lib/milestones'
+import { MILESTONE_KINDS, MILESTONE_LABEL } from '@/lib/milestones'
 import {
-  TEAM_COLOR,
   PILL_CLASS,
   roleTypePill,
   ROLE_TYPE_LABEL,
   TEAM_POSITION_OPTIONS,
-  normalPosition,
   TEAM_POSITION_LABEL,
-  LIFECYCLE_OPTIONS,
-  LIFECYCLE_LABEL,
-  teamKeyFromName,
   type PersonView,
   type Pill,
 } from '@/lib/directory/people-types'
 import type { TeamOption } from './DirectoryTabs'
 
-export type ModalState = null | { mode: 'view' | 'edit'; person: PersonView | null }
+export type ModalState = null | { mode: 'add' }
 
-interface EmailDraft { has: boolean; addr: string }
-interface Draft {
-  full_name: string
-  lastName: string
-  title: string
-  teams: { teamId: string; position: string; primary: boolean }[]
-  manager_id: string
-  alsoReportsToId: string
-  reportsToManager: string
-  managerNameText: string
-  employmentType: string
-  schedule: string
-  weeklyHours: string
-  internalRate: string
-  roleType: string
-  status: 'active' | 'inactive'
-  phone: string
-  location: string
-  address: AddressForm
-  whatsappSameNumber: string
-  onboardingStatus: string
-  offboardingStatus: string
-  dateOfBirth: string
-  hireDate: string
-  leftOn: string
-  emails: { trueNorth: EmailDraft; goodnews: EmailDraft; coe: EmailDraft; personal: EmailDraft }
-  hasTsheets: boolean
-  history: string
-  milestones: MilestoneForm[]
-  mondayDocs: string
+type Draft = WorkInput
+
+const EMPTY: Draft = {
+  fullName: '', title: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', status: 'active',
+  emails: { trueNorth: '', goodnews: '', coe: '' },
+  teams: [], managerId: '', alsoReportsToId: '', hireDate: '', leftOn: '', milestones: [], history: '',
 }
-
-function emailDraft(addr: string | null): EmailDraft { return { has: !!addr, addr: addr ?? '' } }
-
-function toDraft(p: PersonView | null): Draft {
-  if (!p) {
-    return {
-      full_name: '', lastName: '', title: '', teams: [], manager_id: '', alsoReportsToId: '',
-      reportsToManager: 'no', managerNameText: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', internalRate: '',
-      roleType: 'user', status: 'active', phone: '', location: '', address: toAddressForm(null), whatsappSameNumber: '', onboardingStatus: 'not_started', offboardingStatus: 'not_started',
-      dateOfBirth: '', hireDate: '', leftOn: '',
-      emails: { trueNorth: { has: false, addr: '' }, goodnews: { has: false, addr: '' }, coe: { has: false, addr: '' }, personal: { has: false, addr: '' } },
-      hasTsheets: true, history: '', milestones: [], mondayDocs: '',
-    }
-  }
-  return {
-    full_name: p.full_name, lastName: p.lastName ?? '', title: p.title ?? '', teams: p.teams.map(t => ({ teamId: t.teamId, position: normalPosition(t.position), primary: t.primary })), manager_id: p.manager_id ?? '',
-    alsoReportsToId: p.alsoReportsToId ?? '', reportsToManager: p.reportsToManager ?? '', managerNameText: p.managerNameText ?? '',
-    employmentType: p.employmentType ?? '', schedule: p.schedule ?? '',
-    weeklyHours: p.weeklyHours != null ? String(p.weeklyHours) : '', internalRate: p.internalRate != null ? String(p.internalRate) : '',
-    roleType: p.roleType, status: p.status, phone: p.phone ?? '', location: p.location ?? '', address: toAddressForm(p.address), whatsappSameNumber: p.whatsappSameNumber ?? '',
-    onboardingStatus: p.onboardingStatus ?? '', offboardingStatus: p.offboardingStatus ?? '',
-    dateOfBirth: p.dateOfBirth ?? '', hireDate: p.hireDate ?? '', leftOn: p.leftOn ?? '',
-    emails: { trueNorth: emailDraft(p.emails.trueNorth), goodnews: emailDraft(p.emails.goodnews), coe: emailDraft(p.emails.coe), personal: emailDraft(p.emails.personal) },
-    hasTsheets: p.hasTsheets, history: p.history ?? '', milestones: toMilestoneForms(p.milestones), mondayDocs: p.mondayDocs ?? '',
-  }
-}
-
-const parseNum = (s: string): number | null => { const t = s.trim(); if (!t) return null; const n = Number(t); return Number.isNaN(n) ? null : n }
-const emailVal = (e: EmailDraft): string | null => (e.has && e.addr.trim() ? e.addr.trim() : null)
-
 
 export function PersonModal({
   setState,
@@ -102,7 +47,6 @@ export function PersonModal({
   teamOptions,
   canTeams,
 }: {
-  state: NonNullable<ModalState>
   setState: (s: ModalState) => void
   people: PersonView[]
   teamOptions: TeamOption[]
@@ -112,72 +56,53 @@ export function PersonModal({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft>(() => toDraft(null))
-
-  const teamNameById = useMemo(() => new Map(teamOptions.map(t => [t.id, t.name])), [teamOptions])
-  const draftTeamKey = teamKeyFromName(teamNameById.get(draft.teams[0]?.teamId ?? ''))
+  const [draft, setDraft] = useState<Draft>(EMPTY)
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft(d => ({ ...d, [k]: v }))
 
+  // A dialog: Escape closes it, and focus goes back to where it was.
+  const close = useRef(setState)
+  useEffect(() => { close.current = setState })
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) close.current(null) }
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('keydown', onKey); before?.focus?.() }
+  }, [])
+
+  // The team's own colour (teams.color), the one an admin sets.
+  const firstTeam = useMemo(() => teamOptions.find(t => t.id === draft.teams[0]?.teamId) ?? null, [teamOptions, draft.teams])
+  const colour = teamColour(firstTeam?.color, firstTeam?.name)
+
   function save() {
-    const input: PersonInput = {
-      full_name: draft.full_name,
-      last_name: draft.lastName || null,
-      title: draft.title || null,
-      teams: draft.teams.filter(t => t.teamId),
-      manager_id: draft.manager_id || null,
-      also_reports_to_id: draft.alsoReportsToId || null,
-      reports_to_manager: draft.reportsToManager || null,
-      manager_name_text: draft.managerNameText || null,
-      employment_type: draft.employmentType || null,
-      schedule: draft.schedule || null,
-      weekly_hours: parseNum(draft.weeklyHours),
-      status: draft.status,
-      phone: draft.phone || null,
-      location: draft.location || null,
-      address: normalizeAddress(draft.address),
-      whatsapp_same_number: draft.whatsappSameNumber || null,
-      onboarding_status: draft.onboardingStatus || null,
-      offboarding_status: draft.offboardingStatus || null,
-      date_of_birth: draft.dateOfBirth || null,
-      hire_date: draft.hireDate || null,
-      left_on: draft.leftOn || null,
-      email_true_north: emailVal(draft.emails.trueNorth),
-      email_goodnews: emailVal(draft.emails.goodnews),
-      email_coe: emailVal(draft.emails.coe),
-      email_personal: emailVal(draft.emails.personal),
-      employment_history: draft.history || null,
-      milestones: normalizeMilestones(draft.milestones),
-      tsheets: draft.hasTsheets ? undefined : false,
-    }
     setError(null)
+    const input: WorkInput = { ...draft, teams: draft.teams.filter(t => t.teamId) }
     startTransition(async () => {
-      try {
-        // Their page is where everything else about them is seen and changed.
-        const { id } = await createPerson(input)
-        setState(null)
-        router.push(withViewAs(personHref(id)))
-      } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong') }
+      const res = await createPerson(input)
+      if (!res.ok) { setError(res.error); return }
+      // Their page is where everything else about them is seen and changed.
+      setState(null)
+      router.push(withViewAs(personHref(res.id)))
     })
   }
 
-  const headName = draft.full_name || 'New person'
+  const headName = draft.fullName || 'New person'
   const headJob = draft.title || '-'
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center px-6 py-10 overflow-y-auto">
       <div onClick={() => setState(null)} className="fixed inset-0 bg-[rgba(1,20,45,.44)] backdrop-blur-[2px]" />
-      <div className="relative w-[920px] max-w-full bg-white border border-slate-200 rounded-[18px] shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] overflow-hidden flex flex-col max-h-[calc(100vh-80px)] tn-modal animate-[tn-modal-in_.2s_ease]">
+      <div role="dialog" aria-modal="true" aria-labelledby="add-person-title" className="relative w-[920px] max-w-full bg-white border border-slate-200 rounded-[18px] shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] overflow-hidden flex flex-col max-h-[calc(100vh-80px)] tn-modal animate-[tn-modal-in_.2s_ease]">
 
         {/* header */}
         <div className="px-8 pt-6 pb-5 border-b border-slate-200 shrink-0">
           <div className="flex items-start justify-between gap-3.5">
             <div className="flex items-center gap-4 min-w-0">
-              <Avatar name={headName} avatarUrl={null} size={60} color={TEAM_COLOR[draftTeamKey]} />
+              <Avatar name={headName} avatarUrl={null} size={60} color={colour} />
               <div className="min-w-0">
-                <h2 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink leading-tight m-0">{headName}</h2>
+                <h2 id="add-person-title" className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink leading-tight m-0">{headName}</h2>
                 <p className="text-sm text-muted mt-1 font-semibold">{headJob}</p>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[draftTeamKey], background: `${TEAM_COLOR[draftTeamKey]}1a` }}>{teamNameById.get(draft.teams[0]?.teamId ?? '') ?? 'No team'}</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: colour, background: `${colour}1a` }}>{firstTeam?.name ?? 'No team'}</span>
                   <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">New</span>
                 </div>
               </div>
@@ -191,13 +116,14 @@ export function PersonModal({
         {/* body */}
         <div className="flex-1 overflow-y-auto px-8 pt-6 pb-2">
           <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={people} teamOptions={teamOptions} canTeams={canTeams} />
-          {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+          <p className="text-[12.5px] text-muted mt-4">Personal details and HR are filled in on their page, which opens once they are added.</p>
+          {error && <p role="alert" className="text-sm text-red-600 mt-2">{error}</p>}
         </div>
 
         {/* footer */}
         <div className="shrink-0 flex items-center gap-2.5 px-8 py-4 border-t border-slate-200 bg-subtle">
           <button type="button" onClick={() => setState(null)} className="ml-auto font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink">Cancel</button>
-          <button type="button" disabled={pending || !draft.full_name.trim()} onClick={save} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-50">
+          <button type="button" disabled={pending || !draft.fullName.trim()} onClick={save} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-50">
             <span className="text-[#ffffff]">{pending ? 'Saving…' : 'Add person'}</span>
           </button>
         </div>
@@ -248,8 +174,6 @@ function EditBody({
 }) {
   const label = (t: string) => <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">{t}</span>
 
-  const countryOptions = useMemo(() => allCountries().map(c => ({ value: c.code, label: `${c.flag ? `${c.flag}  ` : ''}${c.name}` })), [])
-  const setAddr = (k: keyof AddressForm, v: string) => setDraft(d => ({ ...d, address: { ...d.address, [k]: v } }))
 
   const seg = (value: string, opts: { v: string; l: string }[], onPick: (v: string) => void) => (
     <div className="flex gap-1.5">
@@ -271,66 +195,40 @@ function EditBody({
   )
 
   const field = (l: string, control: ReactNode) => <div className="flex flex-col gap-1.5">{label(l)}{control}</div>
-  const setEmail = (key: keyof Draft['emails'], v: string) => setDraft(d => ({ ...d, emails: { ...d.emails, [key]: { has: !!v.trim(), addr: v } } }))
-  const emailInput = (key: keyof Draft['emails'], l: string) => field(l, <input type="email" value={draft.emails[key].addr} onChange={e => setEmail(key, e.target.value)} className={fieldCls} placeholder="name@domain.com" />)
+  const setEmail = (key: keyof Draft['emails'], v: string) => setDraft(d => ({ ...d, emails: { ...d.emails, [key]: v } }))
+  const emailInput = (key: keyof Draft['emails'], l: string) => field(l, <input type="email" value={draft.emails[key]} onChange={e => setEmail(key, e.target.value)} className={fieldCls} placeholder="name@domain.com" />)
 
   return (
     <>
-      {/* Group 1: Personal Data and Login */}
-      <GroupTitle>Personal Data and Login</GroupTitle>
-      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start">
+      {/* Company addresses. Personal details and HR are filled in on their
+          own page once they are added, each under its own access. */}
+      <GroupTitle>Work</GroupTitle>
+      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start mb-8">
         <div>
-          <SectionTitle>Personal data</SectionTitle>
+          <SectionTitle>Name</SectionTitle>
           <div className="flex flex-col gap-3.5">
-            {field('Full name', <input type="text" value={draft.full_name} onChange={e => set('full_name', e.target.value)} className={fieldCls} placeholder="Jane Doe" />)}
-            {field('Last name', <input type="text" value={draft.lastName} onChange={e => set('lastName', e.target.value)} className={fieldCls} placeholder="Doe" />)}
-            {emailInput('personal', 'Email')}
-            {field('Phone / WhatsApp', (
-              <>
-                <input type="text" value={draft.phone} onChange={e => set('phone', e.target.value)} className={fieldCls} placeholder="+55 85 98683 9825" />
-                <span className="text-[11px] text-muted normal-case font-normal tracking-normal mt-1">Include the country code so we can show the flag.</span>
-              </>
-            ))}
-            {field('WhatsApp, same number?', seg(draft.whatsappSameNumber, [{ v: 'yes', l: 'Yes' }, { v: 'no', l: 'No' }], v => set('whatsappSameNumber', v)))}
-            {field('Date of birth', <input type="date" value={draft.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={fieldCls} />)}
-            {field('Location', <input type="text" value={draft.location} onChange={e => set('location', e.target.value)} className={fieldCls} placeholder="City, Country" />)}
-            {field('Full address', (
-              <div className="space-y-2.5">
-                {/* Country first; the rest of the form only appears once a country is chosen. */}
-                <Select fullWidth searchable value={draft.address.country} onChange={v => setAddr('country', v)} options={countryOptions} placeholder="Select a country…" className={fieldCls} ariaLabel="Country" />
-                {draft.address.country && (
-                  <>
-                    <input type="text" value={draft.address.zip} onChange={e => setAddr('zip', e.target.value)} className={fieldCls} placeholder="ZIP / Postal code" />
-                    <input type="text" value={draft.address.city} onChange={e => setAddr('city', e.target.value)} className={fieldCls} placeholder="City" />
-                    <input type="text" value={draft.address.line1} onChange={e => setAddr('line1', e.target.value)} className={fieldCls} placeholder="Address line 1 (street, number)" />
-                    <input type="text" value={draft.address.line2} onChange={e => setAddr('line2', e.target.value)} className={fieldCls} placeholder="Address line 2 (apt, suite, complement)" />
-                    <input type="text" value={draft.address.state} onChange={e => setAddr('state', e.target.value)} className={fieldCls} placeholder="State / Province / Region" />
-                  </>
-                )}
+            {field('Full name', <input type="text" value={draft.fullName} onChange={e => set('fullName', e.target.value)} className={fieldCls} placeholder="Jane Doe" autoFocus />)}
+            {field('Access level', (
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <PillBadge pill={roleTypePill('user')} />
+                <span className="text-[12px] text-muted leading-snug">{`Super Admin and Admin are given on Admin, Access levels. Team Leader comes from being Lead of a team; everyone else is a ${ROLE_TYPE_LABEL.user}.`}</span>
               </div>
             ))}
           </div>
         </div>
         <div>
-          <SectionTitle>Login &amp; access</SectionTitle>
+          <SectionTitle>Company emails</SectionTitle>
           <div className="flex flex-col gap-3.5">
-            {field('Access level', (
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <PillBadge pill={roleTypePill(draft.roleType)} />
-                <span className="text-[12px] text-muted leading-snug">{`Super Admin and Admin are given on Admin, Access levels. Team Leader comes from being Lead of a team; everyone else is a ${ROLE_TYPE_LABEL.user}.`}</span>
-              </div>
-            ))}
+            {emailInput('goodnews', 'GoodNews (signs in with it)')}
             {emailInput('trueNorth', 'True North')}
-            {emailInput('goodnews', 'GoodNews')}
             {emailInput('coe', 'COE')}
-            <ToggleCard title="QuickBooks Time" desc="Linked for logging hours (TSheets)." on={draft.hasTsheets} onToggle={() => set('hasTsheets', !draft.hasTsheets)} />
           </div>
         </div>
       </div>
 
       {/* Group 2: Employment. Multi-column flow so the four blocks pack to fit
           however much each one holds, matching the read view. */}
-      <GroupTitle className="mt-8">Employment</GroupTitle>
+      <GroupTitle>Employment</GroupTitle>
       <div className="columns-2 gap-x-10">
         <div className="break-inside-avoid mb-6">
           <SectionTitle>Employment</SectionTitle>
@@ -339,7 +237,6 @@ function EditBody({
             {field('Type', seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v)))}
             {field('Time', seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v)))}
             {field('Weekly hours', <input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" />)}
-            {field('Status', seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive')))}
           </div>
         </div>
         {canTeams && <div className="break-inside-avoid mb-6">
@@ -374,7 +271,7 @@ function EditBody({
         <div className="break-inside-avoid mb-6">
           <SectionTitle>Reporting</SectionTitle>
           <div className="flex flex-col gap-3.5">
-            {field('Reports to', managerSelect(draft.manager_id, v => set('manager_id', v)))}
+            {field('Reports to', managerSelect(draft.managerId, v => set('managerId', v)))}
             {field('Also reports to', managerSelect(draft.alsoReportsToId, v => set('alsoReportsToId', v)))}
           </div>
         </div>
@@ -419,37 +316,7 @@ function EditBody({
         <textarea value={draft.history} onChange={e => set('history', e.target.value)} placeholder="Free-text summary (the timeline above is the structured version)…" className={`${fieldCls} min-h-[80px] resize-y leading-relaxed`} />
       </div>
 
-      {/* Group 3: Hiring. Onboarding + Offboarding side by side, matched height. */}
-      <GroupTitle className="mt-2">Hiring</GroupTitle>
-      <div className="grid grid-cols-2 gap-x-10 items-start">
-        <div>
-          <SectionTitle>Onboarding</SectionTitle>
-          <div className="flex flex-col gap-3.5">
-            {field('Status', seg(draft.onboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('onboardingStatus', v)))}
-          </div>
-        </div>
-        <div>
-          <SectionTitle>Offboarding</SectionTitle>
-          <div className="flex flex-col gap-3.5">
-            {field('Status', seg(draft.offboardingStatus, LIFECYCLE_OPTIONS.map(v => ({ v, l: LIFECYCLE_LABEL[v] })), v => set('offboardingStatus', v)))}
-          </div>
-        </div>
-      </div>
-
     </>
   )
 }
 
-function ToggleCard({ title, desc, on, onToggle }: { title: string; desc: string; on: boolean; onToggle: () => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border border-slate-200 rounded-[12px] px-4 py-[13px]">
-      <div>
-        <div className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink">{title}</div>
-        <div className="text-xs text-muted mt-0.5">{desc}</div>
-      </div>
-      <button type="button" onClick={onToggle} role="switch" aria-checked={on} className="relative w-11 h-[25px] rounded-full shrink-0 transition-colors" style={{ background: on ? '#1E7D7F' : '#c9cfd8' }}>
-        <span className="absolute top-[3px] left-[3px] w-[19px] h-[19px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.3)] transition-transform" style={{ transform: on ? 'translateX(19px)' : 'translateX(0)' }} />
-      </button>
-    </div>
-  )
-}

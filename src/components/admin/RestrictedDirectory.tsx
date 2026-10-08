@@ -17,6 +17,7 @@
 
 import Link from 'next/link'
 import { SearchField } from '@/components/ui/SearchField'
+import { tabKeys } from '@/components/ui/tab-keys'
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { roleTypePill, statusPill, PILL_CLASS, type TeamKey } from '@/lib/directory/people-types'
@@ -99,13 +100,17 @@ export function RestrictedDirectory({
       </div>
 
       {showTeams && (
-        <div className="border-b border-slate-200 flex items-center gap-1">
+        <div role="tablist" aria-label="Directory" onKeyDown={tabKeys(['people', 'teams'] as const, tab, setTab)} className="border-b border-slate-200 flex items-center gap-1">
           {([['people', 'People'], ['teams', 'Teams']] as const).map(([key, label]) => (
             <button
               key={key}
               type="button"
+              role="tab"
+              id={`rdir-tab-${key}`}
+              data-tab={key}
+              aria-selected={tab === key}
+              tabIndex={tab === key ? 0 : -1}
               onClick={() => setTab(key)}
-              aria-current={tab === key ? 'page' : undefined}
               className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
                 tab === key ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink hover:border-slate-300'
               }`}

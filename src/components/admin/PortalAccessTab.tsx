@@ -11,6 +11,7 @@
  */
 
 import { useMemo, useState, useTransition } from 'react'
+import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
 import { invitePerson } from '@/app/(app)/admin/people/actions'
@@ -30,9 +31,15 @@ const ACCESS_PILL: Record<PortalAccessState, Pill> = {
   inactive: { kind: 'grey', label: 'Inactive' },
 }
 
-// The Two-step column only once two-step sign-in is live (twoStep not null).
-const GRID_2FA = 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1.1fr_1fr] gap-3.5 items-center'
-const GRID_NO_2FA = 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1.1fr] gap-3.5 items-center'
+// The Two-step column only once two-step sign-in is live (twoStep not null);
+// Last sign-in only with the Access log item (d-log), which is what reads it.
+// Written out whole: Tailwind only builds classes it finds as literal text.
+const GRIDS = {
+  both: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1.1fr_1fr] gap-3.5 items-center',
+  log: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1.1fr] gap-3.5 items-center',
+  twoStep: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1fr] gap-3.5 items-center',
+  neither: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr] gap-3.5 items-center',
+}
 
 function pill(p: Pill, title?: string) {
   return (
@@ -51,7 +58,7 @@ function ago(iso: string | null): string {
   return formatDate(iso) ?? 'Never'
 }
 
-export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: {
+export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, showLastSignIn = false }: {
   /** Active people only. */
   people: PersonView[]
   /** Second step by person id, for people with an account. Null until two-step sign-in ships. */
@@ -60,10 +67,12 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: 
   onOpen?: (id: string) => void
   /** d-invite: the checkboxes and "Invite selected". */
   canInvite?: boolean
+  /** d-log: the Last sign-in column. Without it the column would only ever say "Never". */
+  showLastSignIn?: boolean
 }) {
   const router = useRouter()
   const withTwoStep = twoStep !== null
-  const GRID = withTwoStep ? GRID_2FA : GRID_NO_2FA
+  const GRID = GRIDS[withTwoStep ? (showLastSignIn ? 'both' : 'twoStep') : (showLastSignIn ? 'log' : 'neither')]
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -105,13 +114,15 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: 
   const allShownPickable = shown.filter(r => pickable(r.state))
   const allPicked = allShownPickable.length > 0 && allShownPickable.every(r => picked.has(r.p.id))
 
-  function inviteAll() {
+  const [confirmDialog, confirm] = useConfirm()
+
+  async function inviteAll() {
     const list = pickedRows
     if (list.length === 0) return
     const fresh = list.filter(r => r.state === 'not-invited').length
     const again = list.length - fresh
     const what = [fresh && `invite ${fresh} ${fresh === 1 ? 'person' : 'people'}`, again && `send ${again} ${again === 1 ? 'invitation' : 'invitations'} again`].filter(Boolean).join(' and ')
-    if (!window.confirm(`This will ${what}. Each gets an email from the portal. Continue?`)) return
+    if (!(await confirm({ title: `${what[0].toUpperCase()}${what.slice(1)}?`, body: 'Each gets an email from the portal.', action: 'Send' }))) return
     setReport(null)
     start(async () => {
       let sent = 0
@@ -120,6 +131,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: 
         setProgress(`Sending ${i + 1} of ${list.length}…`)
         try {
           const res = await invitePerson(r.p.id)
+          if (!res.ok) { failed.push(`${r.p.full_name} (${res.error})`); continue }
           setJustInvited(prev => ({ ...prev, [r.p.id]: prev[r.p.id] ?? r.invitedAt ?? new Date().toISOString() }))
           if (res.emailed) sent++
           else failed.push(`${r.p.full_name} (${res.reason})`)
@@ -145,6 +157,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: 
 
   return (
     <div>
+      {confirmDialog}
       <p className="text-[13.5px] text-muted mb-[18px] leading-relaxed">
         Who can get into the portal. People sign in with their GoodNews address after an admin invites them; the chips count each group and filter the list. Tick people to invite them, or send the invitation again, in one go.
       </p>
@@ -201,15 +214,19 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: 
           <span>Person</span>
           <span>Signs in with</span>
           <span>Portal access</span>
-          <span>Last sign-in</span>
+          {showLastSignIn && <span>Last sign-in</span>}
           {withTwoStep && <span>Two-step</span>}
         </div>
 
         {shown.map((r, i) => (
           <div
             key={r.p.id}
+            role={onOpen ? 'link' : undefined}
+            tabIndex={onOpen ? 0 : undefined}
+            aria-label={onOpen ? `Open ${r.p.full_name}` : undefined}
             onClick={() => onOpen?.(r.p.id)}
-            className={`${GRID} px-[22px] py-[12px] cursor-pointer transition-colors hover:bg-subtle ${i === 0 ? '' : 'border-t border-slate-200'}`}
+            onKeyDown={e => { if (onOpen && e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); onOpen(r.p.id) } }}
+            className={`${GRID} px-[22px] py-[12px] cursor-pointer transition-colors hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2 ${i === 0 ? '' : 'border-t border-slate-200'}`}
           >
             <span onClick={e => e.stopPropagation()}>
               {pickable(r.state) && (
@@ -228,7 +245,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false }: 
               {pill(ACCESS_PILL[r.state])}
               {r.invitedAt && r.state !== 'no-address' && <span className="text-[11px] text-muted">Invited {formatDate(r.invitedAt)}</span>}
             </span>
-            <span className="text-[12.5px] text-foreground">{r.p.accountId ? ago(r.p.lastAccessAt) : <span className="text-slate-300">-</span>}</span>
+            {showLastSignIn && <span className="text-[12.5px] text-foreground">{r.p.accountId ? ago(r.p.lastAccessAt) : <span className="text-slate-300">-</span>}</span>}
             {withTwoStep && <span>
               {r.second === 'on' && pill({ kind: 'green', label: 'On' })}
               {r.second === 'none' && pill({ kind: 'amber', label: 'Not set up' })}

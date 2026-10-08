@@ -3,7 +3,8 @@
 // last / this / next month window.
 
 import { createClient } from '@/lib/supabase/server'
-import { loadContactByPerson } from '@/lib/hr/contact'
+import { loadBirthDates } from '@/lib/hr/contact'
+import { primaryTeamByPerson } from '@/lib/directory/primary-team'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCelebrationOptOuts } from '@/lib/settings/person'
 import { teamKeyFromName, type TeamKey } from '@/lib/directory/people-types'
@@ -57,8 +58,8 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
   // Privacy, 7 October 2026): the date is left out, so the card skips them.
   const [{ data: tData }, { data: mData }, birthdays, optOut] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
-    supabase.from('team_members').select('team_id, person_id'),
-    loadContactByPerson(),
+    supabase.from('team_members').select('team_id, person_id, is_primary'),
+    loadBirthDates(),
     loadCelebrationOptOuts(createAdminClient()),
   ])
 
@@ -67,17 +68,12 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
   // page is the colour that person is everywhere else.
   const colours = teamColoursFrom((tData ?? []) as { name: string; color: string | null }[])
 
-  const teamsByPerson = new Map<string, string[]>()
-  for (const m of mData ?? []) {
-    const arr = teamsByPerson.get(m.person_id) ?? []
-    arr.push(m.team_id)
-    teamsByPerson.set(m.person_id, arr)
-  }
-  // Primary team = first membership, name-sorted for determinism.
-  const primaryTeam = (pid: string): string | null => {
-    const names = (teamsByPerson.get(pid) ?? []).map(id => teamById.get(id)).filter((n): n is string => !!n).sort()
-    return names[0] ?? null
-  }
+  // The portal's one rule for a main team (lib/directory/primary-team).
+  const primary = primaryTeamByPerson((mData ?? []).flatMap(m => {
+    const name = teamById.get(m.team_id)
+    return name ? [{ personId: m.person_id, team: { name }, isPrimary: m.is_primary === true }] : []
+  }))
+  const primaryTeam = (pid: string): string | null => primary.get(pid)?.name ?? null
 
   return (pRes.data ?? [])
     .filter(p => p.status === 'active')
@@ -88,7 +84,7 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
         name: p.full_name,
         avatarUrl: p.avatar_url ?? null,
         hireDate: optOut.anniversary.has(p.id) ? null : p.hire_date,
-        dob: optOut.birthday.has(p.id) ? null : birthdays.get(p.id)?.dateOfBirth ?? null,
+        dob: optOut.birthday.has(p.id) ? null : birthdays.get(p.id) ?? null,
         teamName: tn,
         teamKey: teamKeyFromName(tn),
         color: colourOf(colours, tn),

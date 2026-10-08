@@ -9,7 +9,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
 import {
-  TEAM_COLOR,
   PILL_CLASS,
   initialsOf,
   formatDate,
@@ -22,6 +21,7 @@ import {
   type Pill,
 } from '@/lib/directory/people-types'
 import { Avatar } from '@/components/Avatar'
+import { teamColour } from '@/lib/directory/team-colour'
 import type { TeamOption } from './DirectoryTabs'
 import { FilterBar } from './grid/FilterBar'
 import { SortHeader } from './grid/SortHeader'
@@ -54,10 +54,12 @@ const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'joined', label: 'Joined', fr: '1fr' },
   { id: 'tsheets', label: 'TSheets', fr: '1fr' },
 ]
+/** Read from the Work tab: without that item they are not on the list at all. */
+const WORK_COLS = new Set<ColId>(['type', 'time', 'joined'])
 const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'status', 'tsheets']
 const LS_COLS = 'tn-directory-cols-v2'
 
-const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews || p.emails.coe || p.emails.personal || ''
+const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews || p.emails.coe || ''
 
 function PillBadge({ pill }: { pill: Pill }) {
   return (
@@ -65,9 +67,14 @@ function PillBadge({ pill }: { pill: Pill }) {
   )
 }
 
-export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void }) {
+export function PeopleManager({ people, teamOptions, workColumns, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; workColumns: boolean; onOpen: (id: string) => void }) {
   // The internal rate lives in Rates & Costs alone (8 October 2026), not on this list.
-  const columns = COLUMNS
+  const columns = useMemo(() => (workColumns ? COLUMNS : COLUMNS.filter(c => !WORK_COLS.has(c.id))), [workColumns])
+  // The manager's avatar takes the manager's own colour, the one on their row.
+  const colourOf = useMemo(() => {
+    const byId = new Map(people.map(p => [p.id, p.color]))
+    return (id: string | null) => (id && byId.get(id)) || teamColour(null, null)
+  }, [people])
   const [q, setQ] = useState('')
   const [conds, setConds] = useState<FilterCond[]>([])
   const [sort, setSort] = useState<SortState | null>(null)
@@ -76,7 +83,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
 
   // Filterable/sortable columns, a superset of the visible table columns, so you
   // can filter or sort by anything even when the column is hidden. Person = name.
-  const filterColumns = useMemo<GridColumn<PersonView>[]>(() => [
+  const filterColumns = useMemo<GridColumn<PersonView>[]>(() => ([
     { id: 'name', label: 'Name', type: 'text', get: p => p.full_name },
     { id: 'team', label: 'Team', type: 'enum', get: p => p.teamName, options: teamOptions.map(t => ({ value: t.name, label: t.name })) },
     { id: 'role', label: 'Access level', type: 'enum', get: p => p.roleType, options: ROLE_TYPE_OPTIONS.map(v => ({ value: v, label: ROLE_TYPE_LABEL[v] })) },
@@ -87,7 +94,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
     { id: 'joined', label: 'Joined', type: 'date', get: p => p.hireDate },
     { id: 'status', label: 'Status', type: 'enum', get: p => p.status, options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
     { id: 'tsheets', label: 'TSheets', type: 'enum', get: p => (p.hasTsheets ? 'linked' : 'unlinked'), options: [{ value: 'linked', label: 'Linked' }, { value: 'unlinked', label: 'Not linked' }] },
-  ], [teamOptions])
+  ] satisfies GridColumn<PersonView>[]).filter(c => workColumns || !WORK_COLS.has(c.id as ColId)), [teamOptions, workColumns])
 
   // Hydrate saved column choices once on mount. Deliberately a post-mount effect
   // (not a lazy initializer) so the server and first client render agree, then we
@@ -212,8 +219,12 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
             {g.rows.map((p, i) => (
               <div
                 key={p.id}
+                role="link"
+                tabIndex={0}
+                aria-label={`Open ${p.full_name}`}
                 onClick={() => onOpen(p.id)}
-                className={`grid gap-3.5 items-center px-[22px] py-[13px] cursor-pointer transition-colors hover:bg-subtle ${i === 0 ? '' : 'border-t border-slate-200'}`}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onOpen(p.id) } }}
+                className={`grid gap-3.5 items-center px-[22px] py-[13px] cursor-pointer transition-colors hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2 ${i === 0 ? '' : 'border-t border-slate-200'}`}
                 style={{ gridTemplateColumns: gridTemplate }}
               >
                 <span className="inline-flex items-center gap-3 min-w-0">
@@ -224,7 +235,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
                   </span>
                 </span>
                 {visCols.map(c => (
-                  <Cell key={c.id} col={c} p={p} />
+                  <Cell key={c.id} col={c} p={p} colourOf={colourOf} />
                 ))}
               </div>
             ))}
@@ -243,7 +254,7 @@ export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonV
   )
 }
 
-function Cell({ col, p }: { col: { id: ColId; align?: 'right' }; p: PersonView }) {
+function Cell({ col, p, colourOf }: { col: { id: ColId; align?: 'right' }; p: PersonView; colourOf: (id: string | null) => string }) {
   const wrap = `inline-flex items-center gap-2 min-w-0 ${col.align === 'right' ? 'justify-end' : ''}`
 
   if (col.id === 'team') return <span className={wrap}><span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: p.color, background: `${p.color}1a` }}>{p.teamName ?? '-'}</span></span>
@@ -256,7 +267,7 @@ function Cell({ col, p }: { col: { id: ColId; align?: 'right' }; p: PersonView }
     if (!p.managerName) return <span className={wrap}><span className="text-[12.5px] text-muted italic">-</span></span>
     return (
       <span className={wrap}>
-        <span className="shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[10px]" style={{ width: 26, height: 26, background: TEAM_COLOR[p.managerTeamKey ?? 'other'] }}>{initialsOf(p.managerName)}</span>
+        <span className="shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[10px]" style={{ width: 26, height: 26, background: colourOf(p.manager_id) }}>{initialsOf(p.managerName)}</span>
         <span className="text-[13px] text-foreground truncate">{p.managerName}</span>
       </span>
     )

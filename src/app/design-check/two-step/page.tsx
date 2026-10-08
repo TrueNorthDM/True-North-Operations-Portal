@@ -50,7 +50,7 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
     const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString()
     const mk = (name: string, title: string, color: string, over: Partial<PersonView>) => ({
       id: name, full_name: name, title, color, status: 'active', accountId: null, portalInvitedAt: null, lastAccessAt: null,
-      emails: { trueNorth: null, goodnews: `${name.split(' ')[0].toLowerCase()}@goodnewsadvocates.org`, coe: null, personal: null },
+      emails: { trueNorth: null, goodnews: `${name.split(' ')[0].toLowerCase()}@goodnewsadvocates.org`, coe: null },
       ...over,
     }) as unknown as PersonView
     const people = [
@@ -60,7 +60,7 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
       mk('Joy Deche', 'Editor', '#7A5AF8', { accountId: 'c', portalInvitedAt: days(20), lastAccessAt: days(12) }),
       mk('Ana Silva', 'Translator', '#D38B35', {}),
       mk('Bruno Costa', 'Designer', '#1E9E6A', {}),
-      mk('Devon Smith', 'Developer', '#012358', { emails: { trueNorth: 'devon@truenorthdigitalmarketing.com', goodnews: null, coe: null, personal: null } }),
+      mk('Devon Smith', 'Developer', '#012358', { emails: { trueNorth: 'devon@truenorthdigitalmarketing.com', goodnews: null, coe: null } }),
       mk('Stephanie Aguirre', 'Writer', '#D38B35', { accountId: 'd', portalInvitedAt: days(20), lastAccessAt: days(1) }),
     ]
     return (
@@ -81,7 +81,7 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
   if (screen === 'invite') {
     const person = (name: string, over: Partial<PersonView>) => ({
       id: name, full_name: name, status: 'active', accountId: null, portalInvitedAt: null,
-      emails: { trueNorth: null, goodnews: `${name.split(' ')[0].toLowerCase()}@goodnewsadvocates.org`, coe: null, personal: null },
+      emails: { trueNorth: null, goodnews: `${name.split(' ')[0].toLowerCase()}@goodnewsadvocates.org`, coe: null },
       ...over,
     }) as unknown as PersonView
     const card = (title: string, caption: string, node: React.ReactNode) => (
@@ -111,7 +111,7 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
           {card('2 · Right after Invite', 'The invitation email went out.', sent)}
           {card('3 · Invited, not signed in yet', 'Send again resends the email; Revoke withdraws it.', <PortalAccessControl p={person('Ana Silva', { portalInvitedAt: '2026-09-28' })} canInvite />)}
           {card('4 · Signed in', 'Revoke signs them out at once.', <PortalAccessControl p={person('Tina Gennette', { portalInvitedAt: '2026-09-28', accountId: 'x' })} canInvite />)}
-          {card('5 · No GoodNews address', 'The address comes first: it is the one they sign in with.', <PortalAccessControl p={person('Devon Smith', { emails: { trueNorth: 'devon@truenorthdigitalmarketing.com', goodnews: null, coe: null, personal: null } })} canInvite />)}
+          {card('5 · No GoodNews address', 'The address comes first: it is the one they sign in with.', <PortalAccessControl p={person('Devon Smith', { emails: { trueNorth: 'devon@truenorthdigitalmarketing.com', goodnews: null, coe: null } })} canInvite />)}
           {card('6 · Inactive', 'No access, and no Invite, while inactive.', <PortalAccessControl p={person('Former Person', { status: 'inactive' })} canInvite />)}
         </div>
       </div>

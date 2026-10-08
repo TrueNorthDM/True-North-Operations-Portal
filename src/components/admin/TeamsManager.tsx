@@ -10,9 +10,10 @@
  */
 
 import { useEffect, useState, useTransition } from 'react'
+import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition } from '@/app/(app)/admin/teams/actions'
+import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition, type TeamResult } from '@/app/(app)/admin/teams/actions'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
 import { normalPosition, roleTypePill, teamPositionPill, PILL_CLASS, type PersonView, type TeamKey } from '@/lib/directory/people-types'
@@ -45,11 +46,16 @@ export function TeamsManager({ cards, people, canEdit }: { cards: TeamCard[]; pe
   // The create/rename dialog (styled, replaces the native window.prompt).
   const [dialog, setDialog] = useState<DialogState>(null)
 
-  function run(fn: () => Promise<void>) {
+  const [confirmDialog, confirm] = useConfirm()
+
+  function run(fn: () => Promise<TeamResult>) {
     setError(null)
     startTransition(async () => {
-      try { await fn(); router.refresh() }
-      catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong'); router.refresh() }
+      try {
+        const r = await fn()
+        if (!r.ok) setError(r.error)
+      } catch { setError('Something went wrong. Check your connection and try again.') }
+      router.refresh()
     })
   }
 
@@ -67,12 +73,13 @@ export function TeamsManager({ cards, people, canEdit }: { cards: TeamCard[]; pe
     }
     setDialog(null)
   }
-  function onDelete(t: TeamCard) {
-    if (window.confirm(`Delete the team “${t.name}”? Members stay in the directory; only the team and its access are removed.`)) run(() => deleteTeam(t.id))
+  async function onDelete(t: TeamCard) {
+    if (await confirm({ title: `Delete the team “${t.name}”?`, body: 'Members stay in the Directory; only the team and its place on the tools’ team lists are removed.', action: 'Delete team', danger: true })) run(() => deleteTeam(t.id))
   }
 
   return (
     <div>
+      {confirmDialog}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-[18px]">
         <p className="text-[13.5px] text-muted leading-relaxed">
           Each member is the team&apos;s <b className="text-foreground font-semibold">Lead</b> or a <b className="text-foreground font-semibold">Member</b>, and can be in several teams with a different position in each. Being Lead of any team makes someone a <b className="text-foreground font-semibold">Team Leader</b> in the portal (unless they are an Admin or Super Admin).
@@ -131,7 +138,7 @@ function TeamCardView({ team, people, pending, run, canEdit, onEdit, onDelete }:
   team: TeamCard
   people: PersonView[]
   pending: boolean
-  run: (fn: () => Promise<void>) => void
+  run: (fn: () => Promise<TeamResult>) => void
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -173,21 +180,23 @@ function TeamCardView({ team, people, pending, run, canEdit, onEdit, onDelete }:
                 <span className="text-[13.5px] text-foreground font-semibold truncate min-w-0">{m.name}</span>
                 {/* Right cluster: the ACCESS LEVEL shown discreetly only when
                     it's elevated, then the TEAM POSITION prominently. On hover both
-                    give way to the row actions (toggle position / remove). */}
+                    give way to the row actions (toggle position / remove), and on
+                    keyboard focus too: the actions stay in the tab order while
+                    hidden (sr-only, not display:none), so Tab reaches them. */}
                 <span className="ml-auto shrink-0 flex items-center gap-1.5 justify-end">
                   {m.roleType !== 'user' && (
-                    <span title={`Access: ${access.label}`} className={`${canEdit ? 'group-hover/mem:hidden ' : ''}inline-flex items-center gap-1 font-(family-name:--font-display) font-bold text-[8.5px] tracking-wide uppercase text-muted`}>
+                    <span title={`Access: ${access.label}`} className={`${canEdit ? 'group-hover/mem:hidden group-focus-within/mem:hidden ' : ''}inline-flex items-center gap-1 font-(family-name:--font-display) font-bold text-[8.5px] tracking-wide uppercase text-muted`}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                       {access.label}
                     </span>
                   )}
-                  <span className={`${canEdit ? 'group-hover/mem:hidden ' : ''}font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
-                  {canEdit && <span className="hidden group-hover/mem:flex items-center gap-1">
+                  <span className={`${canEdit ? 'group-hover/mem:hidden group-focus-within/mem:hidden ' : ''}font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
+                  {canEdit && <span className="sr-only group-hover/mem:not-sr-only group-focus-within/mem:not-sr-only group-hover/mem:flex group-focus-within/mem:flex items-center gap-1">
                     {/* Quick switch between Lead and Member. */}
-                    <button type="button" title={isLeader ? 'Make Member' : 'Make Lead'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'member' : 'lead'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
+                    <button type="button" title={isLeader ? 'Make Member' : 'Make Lead'} aria-label={`${isLeader ? 'Make Member' : 'Make Lead'}: ${m.name}`} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'member' : 'lead'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                     </button>
-                    <button type="button" title="Remove from team" disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+                    <button type="button" title="Remove from team" aria-label={`Remove ${m.name} from ${team.name}`} disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>
                   </span>}

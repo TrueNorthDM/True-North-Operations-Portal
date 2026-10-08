@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { type PriorityAccessData, type PriorityPerson } from '@/components/admin/TeamPriorityAccess'
 import { CATALOGUE, CHILDREN, type AccessLevel, type CatalogueItem, type ItemKind } from '@/lib/access/catalogue'
 import { type Audience, type Exception, type Subject, type ToolScope } from '@/lib/access/decide'
+import { initialsOf } from '@/lib/directory/people-types'
 
 // ── Data from the server ───────────────────────────────────────────────────
 
@@ -94,13 +95,12 @@ export function Modal({ title, kicker, wide, onClose, children, foot }: { title:
   )
 }
 
-const initials = (n: string) => n.split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase()
 export function Face({ p, size = 28 }: { p: { name: string; avatarUrl: string | null }; size?: number }) {
   if (p.avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={p.avatarUrl} alt="" width={size} height={size} className="rounded-full object-cover shrink-0" style={{ width: size, height: size }} />
   }
-  return <span className="rounded-full bg-tn-primary text-[#ffffff] inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold shrink-0" style={{ width: size, height: size, fontSize: size * 0.36 }}>{initials(p.name)}</span>
+  return <span className="rounded-full bg-tn-primary text-[#ffffff] inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold shrink-0" style={{ width: size, height: size, fontSize: size * 0.36 }}>{initialsOf(p.name)}</span>
 }
 
 export const when = (iso: string) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })

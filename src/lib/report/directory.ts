@@ -6,6 +6,7 @@
 // reports as a bug and everybody quietly distrusts.
 
 import type { Db } from '@/lib/supabase/types'
+import { primaryTeamByPerson } from '@/lib/directory/primary-team'
 import { peopleInFilter, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { teamColoursFrom, type TeamColours } from '@/lib/directory/team-colour'
 
@@ -52,11 +53,10 @@ export async function primaryTeams(supabase: Client, personIds: string[]): Promi
   type Membership = { person_id: string; is_primary: boolean; teams: { name: string } | { name: string }[] | null }
   const nameOf = (t: Membership['teams']) => (Array.isArray(t) ? t[0]?.name : t?.name) ?? null
 
-  const out = new Map<string, string>()
-  for (const m of (data ?? []) as unknown as Membership[]) {
+  const rows = ((data ?? []) as unknown as Membership[]).flatMap(m => {
     const name = nameOf(m.teams)
-    if (!name) continue
-    if (m.is_primary || !out.has(m.person_id)) out.set(m.person_id, name)
-  }
-  return out
+    return name ? [{ personId: m.person_id, team: { name }, isPrimary: m.is_primary === true }] : []
+  })
+  // The portal's one rule for a main team (lib/directory/primary-team).
+  return new Map([...primaryTeamByPerson(rows)].map(([id, t]) => [id, t.name]))
 }
