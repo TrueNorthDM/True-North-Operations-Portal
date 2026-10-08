@@ -4,7 +4,8 @@
  *
  *   Personal       the person keeps it: they see and edit their own
  *   Work           the company keeps it: the person sees their own
- *   HR and access  never shown to the person themselves
+ *   HR and access  never shown to the person themselves, unless their access
+ *                  opens it on everyone's page (Admin, Super Admin)
  *   Reports        who reports to the person
  *
  * Someone else's page opens with "Open anyone's page" (p-any), or with "Open
@@ -51,6 +52,10 @@ export const PAGE_TABS: readonly { key: PageTab; label: string }[] = [
 export function pageRights(can: (key: string) => boolean, rel: Relation): PageRights | null {
   if (rel === 'own') {
     const workEdit = can('p-work') && can('p-work-edit')
+    // Whoever keeps HR and access for everyone keeps their own too: their own
+    // page shows it as anyone's does. Invite, revoke and the two-step reset
+    // stay off here: done to yourself they would only lock you out.
+    const hr = can('p-any') && can('p-hr')
     return {
       own: true,
       personal: true,
@@ -60,8 +65,8 @@ export function pageRights(can: (key: string) => boolean, rel: Relation): PageRi
       // that change anyone's.
       workEdit,
       teamsEdit: workEdit && can('d-edit'),
-      hr: false,
-      hrEdit: false,
+      hr,
+      hrEdit: hr && can('p-hr-edit'),
       reports: true,
       invite: false,
       resetTwoStep: false,

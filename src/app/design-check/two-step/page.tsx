@@ -143,10 +143,10 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
     return (
       <div className="min-h-screen bg-background p-10">
         <div className="flex flex-wrap gap-6">
-          {card('Tina Gennette', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Tina Gennette" state="on" since="2026-10-02" reset={null} />)}
+          {card('Tina Gennette', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Tina Gennette" state="on" since="2026-10-02" reset={async () => {}} />)}
           {card('Kevin Ames', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Kevin Ames" state="not-set-up" reset={null} />)}
           {card('Ana Silva', pill(PILL_CLASS.teal, 'Invited'), <TwoStepControl name="Ana Silva" state="no-account" reset={null} />)}
-          {card('Joy Deche', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Joy Deche" state="on" since="2026-10-02" reset={null} />)}
+          {card('Joy Deche', pill(PILL_CLASS.green, 'Has access'), <TwoStepControl name="Joy Deche" state="on" since="2026-10-02" reset={async () => {}} />)}
         </div>
       </div>
     )

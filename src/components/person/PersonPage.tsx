@@ -173,10 +173,16 @@ function TabPanel({ data, tab, canRemove }: { data: PersonPageData; tab: PageTab
   } else if (tab === 'work') {
     const edit = r.workEdit ? { label: 'Edit work', on: 'work' as const } : undefined
     rule = r.own
-      ? { kind: 'view', text: 'Kept by the company. If something here is wrong, tell an Admin.', edit }
+      ? { kind: 'view', text: r.workEdit ? 'Kept by the company. Your access lets you change it.' : 'Kept by the company. If something here is wrong, tell an Admin.', edit }
       : { kind: 'view', text: r.workEdit ? `${who} can see this tab but not change it.` : `Kept by the company. ${who} sees this tab too.`, edit }
   } else if (tab === 'hr') {
-    rule = { kind: 'hidden', text: `Not shown to ${who}. Each part follows its own item on Access levels.`, edit: r.hrEdit ? { label: 'Edit statuses', on: 'hr' } : undefined }
+    rule = {
+      kind: 'hidden',
+      text: r.own
+        ? 'Your access opens this tab on everyone\'s page, yours included. Inviting, revoking and resetting two-step are not done on your own page.'
+        : `Not shown to ${who}. Each part follows its own item on Access levels.`,
+      edit: r.hrEdit ? { label: 'Edit statuses', on: 'hr' } : undefined,
+    }
   } else {
     rule = { kind: 'view', text: `Who reports to ${who}, by reporting line or by a team ${who} leads. A name opens that person's page when your access allows it.` }
   }

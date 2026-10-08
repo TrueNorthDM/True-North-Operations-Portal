@@ -1,5 +1,6 @@
 // Design check: a person's page (8 October 2026), the real component with an
-// invented person. ?as=admin | self | lead, ?tab=personal | work | hr | reports.
+// invented person. ?as=admin | self | me (a Super Admin on their own page) | lead,
+// ?tab=personal | work | hr | reports.
 // Nothing saves (the actions refuse: nobody is signed in). Development only.
 
 import { notFound } from 'next/navigation'
@@ -20,8 +21,8 @@ const TEAMS = [
 export default async function PersonCheck({ searchParams }: { searchParams: Promise<{ as?: string; tab?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
   const { as = 'admin', tab } = await searchParams
-  const rights = as === 'self'
-    ? pageRights(canAs('user'), 'own')!
+  const rights = as === 'self' || as === 'me'
+    ? pageRights(canAs(as === 'me' ? 'super_admin' : 'user'), 'own')!
     : as === 'lead' ? pageRights(canAs('team_leader'), 'led')! : pageRights(canAs('admin'), 'other')!
   const hire = '2026-02-09'
   const t = tenureSince(hire, new Date('2026-10-08T12:00:00Z'))

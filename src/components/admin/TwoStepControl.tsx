@@ -59,7 +59,8 @@ export function TwoStepControl({ name, state, since, reset }: {
         >
           {pill.label}
         </span>
-        {current === 'on' && (
+        {/* No reset handed in, no button: whoever cannot reset never sees one. */}
+        {current === 'on' && reset && (
           <button type="button" disabled={pending} onClick={onReset} className={`${btn} text-tn-ink border border-slate-200 hover:border-tn-ink`}>
             {pending ? 'Resetting…' : 'Reset'}
           </button>

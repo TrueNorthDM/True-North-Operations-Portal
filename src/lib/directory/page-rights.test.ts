@@ -12,12 +12,31 @@ import { ruleKey } from '@/lib/access/decide'
  */
 
 describe('their own page', () => {
-  it('edits Personal, sees Work and Reports, never HR and access, at every level', () => {
+  it('edits Personal, sees Work and Reports, at every level', () => {
     for (const level of ['super_admin', 'admin', 'team_leader', 'user'] as const) {
       const r = pageRights(canAs(level), 'own')!
       expect(r.personal && r.personalEdit && r.work && r.reports, level).toBe(true)
+    }
+  })
+
+  it('never shows HR and access to a User or a Team Leader', () => {
+    for (const level of ['team_leader', 'user'] as const) {
+      const r = pageRights(canAs(level), 'own')!
       expect(r.hr || r.hrEdit || r.invite || r.resetTwoStep, level).toBe(false)
     }
+  })
+
+  it('shows and edits HR and access for whoever keeps it for everyone, without the lock-out actions', () => {
+    for (const level of ['super_admin', 'admin'] as const) {
+      const r = pageRights(canAs(level), 'own')!
+      expect(r.hr && r.hrEdit, level).toBe(true)
+      expect(r.invite || r.resetTwoStep, level).toBe(false)
+    }
+  })
+
+  it('opens their own HR only with the same items that open anyone\'s', () => {
+    expect(pageRights((k: string) => k === 'p-hr', 'own')!.hr).toBe(false)
+    expect(pageRights((k: string) => k === 'p-any' || k === 'p-hr', 'own')!.hr).toBe(true)
   })
 
   it('changes their own Work only with the items that change anyone\'s', () => {

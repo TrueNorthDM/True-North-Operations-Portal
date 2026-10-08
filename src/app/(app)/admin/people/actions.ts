@@ -19,6 +19,7 @@ import { revalidatePath } from 'next/cache'
 import { endSessions } from '@/lib/auth/portal-access'
 import { requestOrigin } from '@/lib/auth/origin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
+import { getRealPerson } from '@/lib/auth/session'
 import { mapPersonError, setPersonTeams } from '@/lib/directory/person-writes'
 import { renderInvite } from '@/lib/email/invite'
 import { sendEmail } from '@/lib/email/resend'
@@ -31,6 +32,12 @@ type PersonCols = Partial<Omit<PersonRow, 'id' | 'created_at' | 'updated_at'>>
 
 async function requireAllowed(key: string) {
   if (!(await allowedTo(key))) throw new Error('Not authorized')
+}
+
+/** Done to yourself these would only lock you out: refused, whatever the page shows. */
+async function refuseSelf(personId: string, message: string) {
+  const me = await getRealPerson()
+  if (me?.id === personId) throw new Error(message)
 }
 
 function revalidate() {
@@ -202,6 +209,7 @@ export async function invitePerson(id: string): Promise<InviteResult> {
 /** Withdraw a person's invitation: they cannot sign in, and their sessions end now. */
 export async function revokeInvite(id: string): Promise<void> {
   await requireAllowed('d-invite')
+  await refuseSelf(id, 'You cannot revoke your own access.')
   const supabase = await createClient()
   const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const { error } = await supabase
@@ -215,6 +223,7 @@ export async function revokeInvite(id: string): Promise<void> {
 
 export async function deletePerson(id: string) {
   await requireAllowed('d-edit')
+  await refuseSelf(id, 'You cannot remove yourself from the Directory.')
   const supabase = await createClient()
   const { data: before } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const { error } = await supabase.from('people').delete().eq('id', id)
@@ -231,6 +240,7 @@ export async function deletePerson(id: string) {
  */
 export async function resetTwoStep(id: string): Promise<void> {
   await requireAllowed('d-2fa')
+  await refuseSelf(id, 'You cannot reset your own two-step sign-in. Ask another Super Admin.')
   const supabase = await createClient()
   const { data: row } = await supabase.from('people').select('profile_id').eq('id', id).maybeSingle()
   const profileId = (row as { profile_id?: string | null } | null)?.profile_id
