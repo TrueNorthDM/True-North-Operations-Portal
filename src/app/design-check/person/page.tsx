@@ -64,7 +64,7 @@ export default async function PersonCheck({ searchParams }: { searchParams: Prom
   }
   return (
     <div className="min-h-screen bg-background p-6 sm:p-8 space-y-4">
-      {rights.own ? <Breadcrumb now="My profile" /> : <Breadcrumb parents={['/directory']} now={data.name} />}
+      <Breadcrumb parents={['/directory']} now={data.name} />
       <PersonPage data={data} tab={resolvePageTab(tab, rights)} canRemove={as === 'admin'} />
     </div>
   )

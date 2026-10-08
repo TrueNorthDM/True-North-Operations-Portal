@@ -36,9 +36,8 @@ export default async function PersonRoute({
 
   return (
     <div className="space-y-4">
-      {data.rights.own
-        ? <Breadcrumb now="My profile" />
-        : <Breadcrumb parents={access.can('directory') ? ['/directory'] : []} now={data.name} />}
+      {/* One page, one trail: the same from the Directory and from My profile. */}
+      <Breadcrumb parents={access.can('directory') ? ['/directory'] : []} now={data.name} />
       <PersonPage
         data={data}
         tab={resolvePageTab(tab, data.rights)}
