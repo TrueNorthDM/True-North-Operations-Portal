@@ -32,9 +32,11 @@ export async function loadLedMemberIds(db: Client, personId: string | null): Pro
   const { data: mine } = await db.from('team_members').select('team_id, position').eq('person_id', personId)
   const led = ((mine ?? []) as { team_id: string; position: string | null }[]).filter(m => isLeadPosition(m.position)).map(m => m.team_id)
   if (!led.length) return new Set()
-  const { data: members } = await db.from('team_members').select('person_id, people!inner(status)').in('team_id', led)
+  // A plain embed, never an "!inner" one: the server in front of the
+  // database refuses a request with "!" in it (403, found 8 October 2026).
+  const { data: members } = await db.from('team_members').select('person_id, people(status)').in('team_id', led)
   const ids = ((members ?? []) as unknown as { person_id: string; people: { status: string | null } | null }[])
-    .filter(m => m.people?.status !== 'inactive')
+    .filter(m => m.people && m.people.status !== 'inactive')
     .map(m => m.person_id)
   return new Set([personId, ...ids])
 }

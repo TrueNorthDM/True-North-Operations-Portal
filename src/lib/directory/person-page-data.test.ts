@@ -109,3 +109,14 @@ describe('the people a Team Leader leads (P5: active people only)', () => {
     expect((await loadLedMemberIds(db, null)).size).toBe(0)
   })
 })
+
+describe('queries the server in front of the database lets through', () => {
+  // LiteSpeed answers 403 to a request with "!" in it, so `table!inner(...)`
+  // embeds fail in production while passing everywhere else (8 October 2026).
+  it('the People loaders use no "!" embed', async () => {
+    const { readFileSync } = await import('node:fs')
+    for (const f of ['person-page-data.ts', 'my-team.ts', 'person-writes.ts', 'list-gates.ts']) {
+      expect(readFileSync(`${process.cwd()}/src/lib/directory/${f}`, 'utf8')).not.toMatch(/\w!\w+\(/)
+    }
+  })
+})
