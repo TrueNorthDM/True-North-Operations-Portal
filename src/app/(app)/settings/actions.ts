@@ -16,7 +16,6 @@ import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { loadAccess, verifiedSession } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
-import { directoryLevel } from '@/lib/access/surfaces'
 import { pinnable } from '@/lib/settings/pages'
 import { cleanSettings, type SettingsPatch } from '@/lib/settings/person'
 
@@ -36,7 +35,7 @@ export async function saveSettings(patch: SettingsPatch): Promise<Result> {
 
   if (Array.isArray(clean.favourites)) {
     const access = await loadAccess()
-    const rail = buildRail({ can: access.can, canTool: access.canTool, level: directoryLevel(access.can) })
+    const rail = buildRail({ can: access.can, canTool: access.canTool })
     const allowed = new Set(pinnable(rail).flatMap(g => g.rows.map(r => r.key)))
     clean.favourites = (clean.favourites as string[]).filter(k => allowed.has(k))
   }

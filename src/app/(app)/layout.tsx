@@ -7,11 +7,9 @@ import Image from 'next/image'
 import { Sidebar } from '@/components/Sidebar'
 import { MainContent } from '@/components/MainContent'
 import { UserMenu } from '@/components/UserMenu'
-import { NotificationBell } from '@/components/NotificationBell'
 import { NotificationButton } from '@/components/NotificationButton'
 import { Launcher } from '@/components/Launcher'
 import { AccessPing } from '@/components/AccessPing'
-import { ViewAsKeeper } from '@/components/ViewAsKeeper'
 import { redirect } from 'next/navigation'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { checkPortalAccess } from '@/lib/auth/portal-access'
@@ -20,7 +18,6 @@ import { daysLeft } from '@/lib/auth/two-step-rule'
 import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 import { loadAccess } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
-import { directoryLevel } from '@/lib/access/surfaces'
 import { loadInbox } from '@/lib/notifications/inbox'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +28,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Identity and person come from auth/session.ts, shared with loadAccess and
   // the page underneath, so this layout no longer asks Supabase who is signed in
   // a second time or loads the person a third.
-  const [user, access, me, portal, twoStep] = await Promise.all([getSessionUser(), loadAccess(), getCurrentPerson(), checkPortalAccess(), checkTwoStep()])
+  // The bell's notifications start as soon as the person is known, beside the
+  // checks rather than after them; nothing is rendered before the checks pass.
+  const mePromise = getCurrentPerson()
+  const inboxPromise = mePromise.then(m => (m ? loadInbox(m.id) : {}))
+  const [user, access, me, portal, twoStep, inbox] = await Promise.all([getSessionUser(), loadAccess(), mePromise, checkPortalAccess(), checkTwoStep(), inboxPromise])
   // Sign-in by invitation (migration 089): a session whose person was
   // deactivated or had the invitation revoked is signed out here, on the next
   // page it opens. The route handler does the sign-out, since a layout cannot
@@ -47,22 +48,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // The rail, its panels and the launcher all come from one resolved model
   // (lib/access/nav.ts), built here for this person: what each of them offers
   // is exactly what the page guards let through.
-  const rail = buildRail({ can: access.can, canTool: access.canTool, level: directoryLevel(access.can) })
-  // The bell's notifications, for the person this page renders as. One
-  // indexed read; empty while migration 088 has not been run.
-  const inbox = me ? await loadInbox(me.id) : {}
+  const rail = buildRail({ can: access.can, canTool: access.canTool })
 
   return (
     <>
       {user && <AccessPing accountId={user.id} />}
       {/* Keeps a View Stage preview impersonating across navigation. */}
-      <ViewAsKeeper />
       {/* Top bar, brand on the left. On the right, since the navigation
           redesign of 22 September 2026: search (the Cmd+K launcher), Messages
           (Chat and Email) and Notifications (Tools and System). The avatar
           lives at the foot of the rail, and only comes up here on a phone,
           where the rail is hidden. */}
-      <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">
+      <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-[var(--banner-h)] z-20">
         {/* True North lockup. On dark the navy wordmark sits on a white chip so
             it stays legible; on the white light bar the chip is invisible. */}
         <Link href="/" className="flex items-end gap-2.5 group" aria-label="Go to dashboard">
@@ -84,11 +81,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="flex items-center gap-2">
           <Launcher rail={rail} canPeople={access.can('directory')} />
           <NotificationButton kind="inbox" />
-          <NotificationBell items={inbox} />
+          <NotificationButton kind="bell" items={inbox} />
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}
           <div className="md:hidden">
-            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} twoStepDaysLeft={twoStepDays} />
+            <UserMenu userEmail={me?.email ?? user?.email ?? null} userName={me?.full_name ?? null} avatarUrl={me?.avatar_url ?? null} twoStepDaysLeft={twoStepDays} canMyTeam={access.can('my-team')} />
           </div>
         </div>
       </header>
@@ -98,6 +95,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Sidebar
           rail={rail}
           twoStepDaysLeft={twoStepDays}
+          canMyTeam={access.can('my-team')}
           user={{ email: me?.email ?? user?.email ?? null, name: me?.full_name ?? null, avatarUrl: me?.avatar_url ?? null }}
         />
         {/* The reminder while someone's week to set up two-step sign-in runs. */}

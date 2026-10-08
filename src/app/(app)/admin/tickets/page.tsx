@@ -5,6 +5,6 @@ import { requireSurface } from '@/lib/access/resolve'
 import { TicketsClient } from '@/components/TicketsClient'
 
 export default async function TicketsPage() {
-  await requireSurface('tickets')
-  return <TicketsClient />
+  const access = await requireSurface('tickets')
+  return <TicketsClient canOpenAdmin={access.can('admin')} />
 }

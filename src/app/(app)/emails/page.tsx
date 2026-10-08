@@ -15,7 +15,7 @@ export default async function Page() {
       title="Emails"
       description="The team's email, inside the portal."
       self="/emails"
-      canSuggest={access.isAdmin}
+      canSuggest={access.can('tickets')}
     />
   )
 }

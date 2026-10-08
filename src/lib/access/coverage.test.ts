@@ -49,7 +49,7 @@ describe('every page asks the access rule', () => {
     'app/maintenance/page.tsx': 'the maintenance notice',
     'app/(app)/profile/page.tsx': "sends the person to their own page in the Directory, which checks",
   }
-  const redirectsOnly = (s: string) => /export default function \w+\(\)\s*\{\s*redirect\(/.test(s)
+  const redirectsOnly = (s: string) => /export default (async )?function \w+\(\)\s*\{\s*redirect\((await previewHref\()?/.test(s)
 
   it('has a guard, redirects only, or is listed as open', () => {
     const missing = files

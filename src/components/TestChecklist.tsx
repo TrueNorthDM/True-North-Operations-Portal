@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { TEST_AREAS } from '@/lib/tests/data'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { BTN_ICON } from '@/lib/ui/buttons'
 
 type Result = 'pass' | 'fail' | 'skip'
@@ -36,7 +36,7 @@ const AREA_ICON: Record<string, string> = {
   'Dashboards': '📊',
 }
 
-export function TestChecklist() {
+export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean }) {
   const total = useMemo(() => TEST_AREAS.reduce((n, a) => n + a.cases.length, 0), [])
   const [results, setResults] = useState<Record<string, Result>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -126,7 +126,7 @@ export function TestChecklist() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div>
-          <Breadcrumb parents={['/admin']} now="Tests" />
+          <Breadcrumb parents={[adminCrumb(canOpenAdmin)]} now="Tests" />
           <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Tests</h1>
           <p className="mt-1.5 max-w-2xl text-muted">A pre-launch checklist to verify the whole system end-to-end. Walk each area, tick off what works, flag what doesn’t.</p>
         </div>

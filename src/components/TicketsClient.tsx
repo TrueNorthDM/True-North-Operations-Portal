@@ -10,7 +10,7 @@
 import { SearchField } from '@/components/ui/SearchField'
 import { useMemo, useState } from 'react'
 import { Select } from '@/components/ui/Select'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import {
   TICKETS,
   TYPE_META,
@@ -79,7 +79,7 @@ function StatusPill({ status }: { status: TicketStatus }) {
   )
 }
 
-export function TicketsClient() {
+export function TicketsClient({ canOpenAdmin = true }: { canOpenAdmin?: boolean }) {
   const [search, setSearch] = useState('')
   const [filType, setFilType] = useState<TicketType | ''>('')
   const [filStatus, setFilStatus] = useState<TicketStatus | ''>('')
@@ -115,7 +115,7 @@ export function TicketsClient() {
   return (
     <div className="space-y-6">
       <div>
-        <Breadcrumb parents={['/admin']} now="Tickets" />
+        <Breadcrumb parents={[adminCrumb(canOpenAdmin)]} now="Tickets" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Tickets</h1>
         <p className="mt-1.5 text-muted">Everything we need to resolve, so nothing gets lost.</p>
       </div>

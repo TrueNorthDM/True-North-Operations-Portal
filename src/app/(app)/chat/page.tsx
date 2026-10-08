@@ -15,7 +15,7 @@ export default async function Page() {
       title="Chat"
       description="Internal chat for the company. Where the team talks without leaving the portal."
       self="/chat"
-      canSuggest={access.isAdmin}
+      canSuggest={access.can('tickets')}
     />
   )
 }

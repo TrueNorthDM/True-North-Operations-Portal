@@ -8,13 +8,13 @@ import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLinkBoard } from '@/lib/monday/worklist/links'
 import { MondayLinksClient } from '@/components/monday/MondayLinksClient'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 
 export const metadata = { title: 'Monday accounts' }
 export const dynamic = 'force-dynamic'
 
 export default async function MondayLinksPage() {
-  await requireSurface('monday-accounts')
+  const access = await requireSurface('monday-accounts')
 
   const supabase = createAdminClient()
   const [board, { data: peopleRows }] = await Promise.all([
@@ -28,7 +28,7 @@ export default async function MondayLinksPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Breadcrumb parents={['/admin']} now="Monday accounts" />
+        <Breadcrumb parents={[adminCrumb(access.can('admin'))]} now="Monday accounts" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Monday accounts</h1>
         <p className="text-muted mt-1.5 leading-relaxed">
           Every assignment in My Work carries a Monday account. Until that account is attached to somebody in

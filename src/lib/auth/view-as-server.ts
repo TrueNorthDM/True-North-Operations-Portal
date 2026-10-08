@@ -46,3 +46,22 @@ export const getViewAs = cache(async function getViewAs(): Promise<ViewAs | null
 
   return { role: payload.role }
 })
+
+/**
+ * A redirect's destination, keeping a View Stage preview (?_vs) when the
+ * request carries one: a page that sends a previewed level elsewhere (no
+ * access, an old address) must land on the preview of the next page, not on
+ * the Super Admin's own (audit, 8 October 2026). Only the token is passed
+ * along; the page it lands on verifies it again.
+ *
+ * Use as redirect(await previewHref('/')). It returns a promise on purpose:
+ * redirect() takes a string, so forgetting the await is a type error, never a
+ * guard that silently does not redirect.
+ */
+export async function previewHref(href: string): Promise<string> {
+  const token = (await headers()).get(VS_HEADER)
+  if (!token) return href
+  const [path, hash = ''] = href.split('#')
+  const sep = path.includes('?') ? '&' : '?'
+  return `${path}${sep}_vs=${encodeURIComponent(token)}${hash ? `#${hash}` : ''}`
+}

@@ -15,7 +15,7 @@ export default async function Page() {
       title="Approvals and Invoices"
       description="What you sent for approval, what came back, and the invoices that followed."
       parents={['/hours']}
-      canSuggest={access.isAdmin}
+      canSuggest={access.can('tickets')}
     />
   )
 }

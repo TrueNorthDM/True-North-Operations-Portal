@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
 import { TOOLS, TOOL_KEYS, AUDIENCE_LABEL } from './tools'
-import { surfaceForPath } from './nav'
 
 // The catalogue is the single list behind two screens: the cards on Work
 // Tools and the grant rows on the Directory's Teams tab. Its integrity is
@@ -44,11 +43,10 @@ describe('tool catalogue', () => {
     for (const k of ['publishing', 'href-links', 'i7-budget', 'grant-pass-report']) expect(TOOL_KEYS.has(k), k).toBe(true)
   })
 
-  it('points every tool at a route the Tools area guards', () => {
-    // A tool whose href fell outside the Tools surface would be granted per
-    // team but gated by an unrelated rule.
+  it('points every tool at an address under the Tools area (/ops or /seo)', () => {
+    // A tool outside them would sit among pages its own access rule does not guard.
     for (const t of TOOLS) {
-      expect(surfaceForPath(t.href), `${t.key} -> ${t.href}`).toBe('tools')
+      expect(/^\/(ops|seo)\//.test(t.href), `${t.key} -> ${t.href}`).toBe(true)
     }
   })
 

@@ -85,7 +85,7 @@ export function NotificationButton({ kind, items = {}, startOpen = false }: {
         aria-expanded={open}
         aria-label={unread ? `${d.title}, ${unread} unread` : d.title}
         title={kind === 'bell' ? 'Tools and system' : 'Chat and email'}
-        className={`relative inline-flex items-center justify-center w-10 h-10 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${open ? 'bg-tn-teal/10 text-tn-teal' : 'text-slate-400 hover:bg-slate-100 hover:text-tn-primary'}`}
+        className={`relative inline-flex items-center justify-center w-10 h-10 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${open ? 'bg-tn-teal/10 text-tn-teal' : 'text-slate-500 hover:bg-slate-100 hover:text-tn-primary'}`}
       >
         <NavIcon name={d.icon} />
         {unread > 0 && (

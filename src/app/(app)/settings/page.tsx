@@ -11,7 +11,6 @@ import { PersonalSettings } from '@/components/settings/PersonalSettings'
 import { TwoStepSelf } from '@/components/mfa/TwoStepSelf'
 import { requireSurface } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
-import { directoryLevel } from '@/lib/access/surfaces'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { checkTwoStep } from '@/lib/auth/two-step'
@@ -42,7 +41,7 @@ export default async function SettingsPage() {
 
   const leads = ((memberships ?? []) as { position: string | null }[]).some(m => teamPositionLeads(m.position ?? 'collaborator'))
   const mine = NOTIFICATION_TYPES.filter(t => !t.available || reaches(t, { isAdmin: access.isAdmin, leads, canTool: access.can })).map(t => t.key)
-  const rail = buildRail({ can: access.can, canTool: access.canTool, level: directoryLevel(access.can) })
+  const rail = buildRail({ can: access.can, canTool: access.canTool })
   const twoStepDays = !twoStep.hasFactor && twoStep.deadline ? twoStepDaysLeft(twoStep.deadline, new Date()) : null
   const blocked = viewAs ? 'View Stage is only a preview. Close it to change settings.' : !me ? 'Your login is not linked to anyone in the Directory.' : undefined
 

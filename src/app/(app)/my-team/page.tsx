@@ -3,7 +3,8 @@
 // This address stays for old links and bookmarks.
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 
-export default function MyTeamMoved() {
-  redirect('/my-work?tab=team')
+export default async function MyTeamMoved() {
+  redirect(await previewHref('/my-work?tab=team'))
 }

@@ -20,8 +20,19 @@
 import Link from 'next/link'
 import { NAV_LABEL, type NavHref } from '@/lib/nav/labels'
 
-/** An ancestor that no table can name in advance, like the site a page belongs to. */
-interface DynamicParent { href: string; label: string }
+/**
+ * An ancestor that no table can name in advance, like the site a page belongs
+ * to. link: false shows it as words only, for a place this viewer cannot open
+ * (a trail must never lead to a page that refuses).
+ */
+interface DynamicParent { href: string; label: string; link?: boolean }
+
+/**
+ * The Admin step of a trail: a link for whoever opens Admin's landing page,
+ * words only for someone who holds just this one admin page.
+ */
+export const adminCrumb = (canOpenAdmin: boolean): NavHref | DynamicParent =>
+  canOpenAdmin ? '/admin' : { href: '/admin', label: NAV_LABEL['/admin'], link: false }
 
 type Props = {
   /**
@@ -45,14 +56,14 @@ export function Breadcrumb({ parents = [], now, self }: Props) {
   ]
 
   return (
-    <div className="flex items-center gap-2 text-sm text-muted mb-1">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted mb-1">
       {trail.map(c => (
         <span key={c.href} className="flex items-center gap-2">
-          <Link href={c.href} className="hover:text-tn-ink transition-colors">{c.label}</Link>
+          {c.link === false ? <span>{c.label}</span> : <Link href={c.href} className="hover:text-tn-ink transition-colors">{c.label}</Link>}
           <span className="text-slate-300">/</span>
         </span>
       ))}
-      <span className="text-foreground font-semibold">{here}</span>
-    </div>
+      <span aria-current="page" className="text-foreground font-semibold">{here}</span>
+    </nav>
   )
 }

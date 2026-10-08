@@ -10,6 +10,7 @@
 // for the same reason the i7 one does.
 
 import type { Metadata } from 'next'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { projectsExportKeys } from '@/lib/tsheets/export-keys'
@@ -48,10 +49,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default async function ProjectHoursPrintPage({ searchParams }: Props) {
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/')
+  if (!access.canTool('grant-pass-report')) redirect(await previewHref('/'))
   const { month, type } = await searchParams
   // An export: the Export tick, and the items whose figures this file carries.
-  if (!projectsExportKeys(type === 'internal' ? 'internal' : type === 'history' ? 'history' : 'client').every(k => access.can(k))) redirect('/')
+  if (!projectsExportKeys(type === 'internal' ? 'internal' : type === 'history' ? 'history' : 'client').every(k => access.can(k))) redirect(await previewHref('/'))
 
   const selected = resolveMonth(month)
   const kind = type === 'internal' ? 'internal' : 'client'

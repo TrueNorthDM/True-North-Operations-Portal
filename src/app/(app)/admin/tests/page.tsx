@@ -5,6 +5,6 @@ import { requireSurface } from '@/lib/access/resolve'
 import { TestChecklist } from '@/components/TestChecklist'
 
 export default async function TestsPage() {
-  await requireSurface('tests')
-  return <TestChecklist />
+  const access = await requireSurface('tests')
+  return <TestChecklist canOpenAdmin={access.can('admin')} />
 }

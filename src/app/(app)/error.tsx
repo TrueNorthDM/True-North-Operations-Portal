@@ -10,7 +10,10 @@
 import Link from 'next/link'
 import { useEffect } from 'react'
 
-export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function AppError({ error, reset, unstable_retry }: { error: Error & { digest?: string }; reset: () => void; unstable_retry?: () => void }) {
+  // unstable_retry fetches the page again (what a server error needs); reset()
+  // only clears the error and re-renders the same failed result (Next 16).
+  const retry = unstable_retry ?? reset
   useEffect(() => {
     console.error('[app] route error:', error)
   }, [error])
@@ -30,7 +33,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         {error.digest && <p className="mt-2 text-xs text-slate-400">Reference: {error.digest}</p>}
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
-            onClick={reset}
+            onClick={() => retry()}
             className="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-semibold hover:bg-slate-900 transition-colors"
           >
             Try again

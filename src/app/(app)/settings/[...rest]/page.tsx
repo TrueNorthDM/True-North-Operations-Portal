@@ -2,7 +2,8 @@
 // /settings/monday) land on Company settings.
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 
-export default function SettingsMovedDeep() {
-  redirect('/admin/settings')
+export default async function SettingsMovedDeep() {
+  redirect(await previewHref('/admin/settings'))
 }

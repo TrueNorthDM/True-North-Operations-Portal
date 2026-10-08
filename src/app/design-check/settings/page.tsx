@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
 
 export default function SettingsCheck() {
   if (process.env.NODE_ENV === 'production') notFound()
-  const rail = buildRail({ can: () => true, canTool: () => true, level: 3 })
+  const rail = buildRail({ can: () => true, canTool: () => true })
   const settings = { ...DEFAULT_SETTINGS, timeZone: 'America/Sao_Paulo', ownZone: true, summaryHour: 7, favourites: ['i7', 'publishing', 'my-team'] }
   const keys = pinnable(rail).flatMap(g => g.rows).map(r => r.key)
   const favourites = resolveFavourites(rail, settings.favourites.filter(k => keys.includes(k)).length ? settings.favourites : keys.slice(0, 3))

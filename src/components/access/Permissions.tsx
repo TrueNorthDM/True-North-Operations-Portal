@@ -54,7 +54,7 @@ export function Permissions({
   const depth = (i: CatalogueItem) => { let d = 0; for (let x = i; x.parent; x = ITEM.get(x.parent)!) d++; return d }
 
   const cell = (item: CatalogueItem, level: AccessLevel) => {
-    if (level === 'super_admin') return <span className="inline-flex w-[26px] h-[26px] items-center justify-center text-[#a67c04]" title="Super Admin always has everything">{Glyph.lock}</span>
+    if (level === 'super_admin') return <span className="inline-flex w-[26px] h-[26px] items-center justify-center text-[#8a6703]" title="Super Admin always has everything">{Glyph.lock}</span>
     if (item.always) return <span className="text-[10.5px] font-bold text-muted">Everyone</span>
     if (item.superOnly) return <span className="inline-flex w-[26px] h-[26px] items-center justify-center text-[#b3bcc8]" title="Super Admin only, cannot be given">{Glyph.dash}</span>
     const lv = level as ConfigurableLevel
@@ -75,7 +75,7 @@ export function Permissions({
   }
 
   const moduleCell = (mod: CatalogueItem, level: AccessLevel) => {
-    if (level === 'super_admin') return <span className="inline-flex w-[26px] h-[26px] items-center justify-center text-[#a67c04]">{Glyph.lock}</span>
+    if (level === 'super_admin') return <span className="inline-flex w-[26px] h-[26px] items-center justify-center text-[#8a6703]">{Glyph.lock}</span>
     const lv = level as ConfigurableLevel
     const leaves = descendants(mod.key).filter(isConfigurable)
     if (!leaves.length) return <span className="text-[10.5px] font-bold text-muted">Everyone</span>
@@ -138,7 +138,7 @@ export function Permissions({
             <button type="button" onClick={() => setClosed(s => { const n = new Set(s); if (n.has(item.key)) n.delete(item.key); else n.add(item.key); return n })}
               className="inline-flex items-center gap-2 font-(family-name:--font-display) font-black text-[14px] text-tn-ink">
               <span className={`text-muted transition-transform ${isClosed ? '-rotate-90' : ''}`}>{Glyph.chev}</span>{item.label}
-              {item.building && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">BEING BUILT</span>}
+              {item.building && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">BEING BUILT</span>}
             </button>
           </td>
           <td className="border-t border-[var(--panel-border)]" />
@@ -155,7 +155,7 @@ export function Permissions({
         <td className="py-2 pr-3 border-t border-[var(--row-rule)]" style={{ paddingLeft: d === 1 ? 30 : 54 }}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className={d === 1 ? 'text-[13.5px] font-semibold text-tn-ink' : 'text-[13px] text-foreground'}>{item.label}</span>
-            {item.soon && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">SOON</span>}
+            {item.soon && <span className="rounded bg-[#fbf1cf] px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
             {item.superOnly && <span className="rounded bg-tn-primary px-1.5 py-px text-[9.5px] font-bold tracking-[.06em] text-[#F2C40A]">SUPER ADMIN ONLY</span>}
             {item.group && <span className="text-[11.5px] text-muted">{item.group}</span>}
           </div>
@@ -207,17 +207,17 @@ export function Permissions({
         <button type="button" className={btnNavy} onClick={() => setEditing(e => !e)}>{editing ? 'Done editing' : 'Edit'}</button>
       </div>
 
-      {/* The header row sticks under the portal's top bar (65px) while the list
+      {/* The header row sticks under the portal's top bar (--chrome-top) while the list
           scrolls. A box that scrolls sideways would hold it in place instead, so
           it only scrolls sideways on screens too narrow for the table. */}
       <div className={`${card} max-[1239px]:overflow-x-auto`}>
         <table className="w-full border-separate border-spacing-0 min-w-[1060px]">
           <thead>
             <tr>
-              <th className="sticky top-[65px] z-10 rounded-tl-[14px] text-left bg-subtle px-4 py-2.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted align-bottom">Module, page, tool, tab or action</th>
-              <th className="sticky top-[65px] z-10 w-[78px] bg-subtle border-b border-[var(--panel-border)]" aria-label="Kind" />
+              <th className="sticky top-[var(--chrome-top)] z-10 rounded-tl-[14px] text-left bg-subtle px-4 py-2.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted align-bottom">Module, page, tool, tab or action</th>
+              <th className="sticky top-[var(--chrome-top)] z-10 w-[78px] bg-subtle border-b border-[var(--panel-border)]" aria-label="Kind" />
               {LEVELS.map(l => (
-                <th key={l.key} className="sticky top-[65px] z-10 w-[128px] min-w-[128px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom">
+                <th key={l.key} className="sticky top-[var(--chrome-top)] z-10 w-[128px] min-w-[128px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom">
                   <div className="grid justify-items-center gap-1.5">
                     <span className="font-(family-name:--font-display) font-black text-[12.5px] text-tn-ink">{l.label}</span>
                     <span className="inline-flex items-center gap-1.5">
@@ -233,7 +233,7 @@ export function Permissions({
                   </div>
                 </th>
               ))}
-              <th className="sticky top-[65px] z-10 rounded-tr-[14px] w-[230px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">Teams<div className="normal-case tracking-normal font-sans font-semibold text-[11px]">tools only</div></th>
+              <th className="sticky top-[var(--chrome-top)] z-10 rounded-tr-[14px] w-[230px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">Teams<div className="normal-case tracking-normal font-sans font-semibold text-[11px]">tools only</div></th>
             </tr>
           </thead>
           <tbody>{rows.length ? rows : <tr><td colSpan={7} className="px-4 py-6 text-muted text-[13px]">Nothing matches.</td></tr>}</tbody>

@@ -4,7 +4,7 @@
 // Check a person, Exceptions, and the Change log. The rule behind every tick is
 // lib/access/decide.ts; the design is docs/access/01-design.md.
 
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { AccessLevels, type AccessPageData } from '@/components/access/AccessLevels'
 import { requireSurface } from '@/lib/access/resolve'
 import { getRealPerson } from '@/lib/auth/session'
@@ -22,7 +22,7 @@ type Tab = AccessPageData['initialTab']
 const TABS: readonly Tab[] = ['permissions', 'people', 'why', 'exceptions', 'log']
 
 export default async function AccessLevelsPage({ searchParams }: { searchParams: Promise<{ tab?: string; who?: string }> }) {
-  await requireSurface('access-levels')
+  const access = await requireSurface('access-levels')
   const { tab, who } = await searchParams
   const db = createAdminClient()
   const today = zoneDate(new Date())
@@ -90,7 +90,7 @@ export default async function AccessLevelsPage({ searchParams }: { searchParams:
   return (
     <div className="space-y-5">
       <div>
-        <Breadcrumb parents={['/admin']} now="Access levels" />
+        <Breadcrumb parents={[adminCrumb(access.can('admin'))]} now="Access levels" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Access levels</h1>
         <p className="mt-1.5 text-muted leading-relaxed m-0">
           Who can open what, in one place. Four levels, one list of every module, page, tool, tab and action, and for tools, which teams may use them. Only Super Admins see this page.

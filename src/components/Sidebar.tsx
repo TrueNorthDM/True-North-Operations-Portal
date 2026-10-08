@@ -4,7 +4,7 @@
  * Sidebar: the navy rail, and the panel a hub opens beside it.
  *
  * The navigation redesign of 22 September 2026 (Design/Redesign Handoff,
- * "Direction B"): a solid navy band, icon only, with a gold active state. Four
+ * "Direction B"): a solid navy band, icon only, with a gold active state. Six
  * places are hubs (My Work, My Hours, Tools, People, and for admins Admin and
  * Clocky): clicking one opens a white panel of its pages beside the rail, and
  * the hub stays lit while any of its pages is open. Plain places (Home, Chat,
@@ -26,7 +26,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { UserMenu } from '@/components/UserMenu'
 import { NavIcon } from '@/components/NavIcon'
-import { onPath, pathOf, type NavItem, type ResolvedEntry } from '@/lib/access/nav'
+import type { NavItem, ResolvedEntry } from '@/lib/access/nav'
+import { onPath, pathOf } from '@/lib/nav/path'
 
 type Hub = Extract<ResolvedEntry, { kind: 'hub' }>
 
@@ -41,7 +42,7 @@ const RAIL_BUTTON = 'group relative flex w-11 h-11 items-center justify-center r
  */
 const railTone = (on: boolean, faded = false) => (on
   ? 'bg-white/[.14] text-[#F2C40A]'
-  : faded ? 'bg-transparent text-white/[.28] hover:bg-white/10 hover:text-white/50' : 'bg-transparent text-white/[.62] hover:bg-white/10')
+  : faded ? 'bg-transparent text-white/[.40] hover:bg-white/10 hover:text-white/60' : 'bg-transparent text-white/[.62] hover:bg-white/10')
 const READINESS_NOTE = { soon: 'Coming soon', building: 'In progress' } as const
 
 function Tooltip({ label }: { label: string }) {
@@ -66,7 +67,7 @@ function PendingBar({ pending }: { pending: boolean }) {
 }
 
 export function Sidebar({
-  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null,
+  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null, canMyTeam = true,
 }: {
   rail: ResolvedEntry[]
   /** The person signed in (or previewed), for the avatar at the foot of the rail. */
@@ -77,6 +78,7 @@ export function Sidebar({
   startHub?: string | null
   /** Days left to set up two-step sign-in, while that week runs: the avatar menu offers it. */
   twoStepDaysLeft?: number | null
+  canMyTeam?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -95,13 +97,29 @@ export function Sidebar({
     start(() => router.push(withViewAs(href)))
   }
 
-  // Outside click and Escape close the panel.
+  // Outside click and Escape close the panel. Keyboard (audit, 8 October 2026):
+  // focus moves into the panel when it opens, the arrow keys move between its
+  // rows, and Escape gives focus back to the rail button that opened it.
+  const panel = useRef<HTMLElement>(null)
   useEffect(() => {
     if (!openKey) return
+    panel.current?.querySelector<HTMLElement>('[data-row]')?.focus({ preventScroll: true })
     const onDown = (e: MouseEvent) => {
       if (aside.current && !aside.current.contains(e.target as Node)) setOpen(null)
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(null)
+        aside.current?.querySelector<HTMLElement>(`[data-hub="${openKey}"]`)?.focus()
+        return
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+      const rows = [...(panel.current?.querySelectorAll<HTMLElement>('[data-row]') ?? [])]
+      const at = rows.indexOf(document.activeElement as HTMLElement)
+      if (at < 0) return
+      e.preventDefault()
+      rows[(at + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length]?.focus()
+    }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
     return () => {
@@ -136,7 +154,7 @@ export function Sidebar({
         key={item.key}
         type="button"
         onClick={() => go(item.key, item.href)}
-        aria-label={item.label}
+        aria-label={readiness ? `${item.label}, ${READINESS_NOTE[readiness].toLowerCase()}` : item.label}
         aria-current={on ? 'page' : undefined}
         aria-busy={(pending && pendingKey === item.key) || undefined}
         className={`${RAIL_BUTTON} ${railTone(on, !!readiness)}`}
@@ -159,9 +177,10 @@ export function Sidebar({
           if (h.direct) { go(h.key, h.direct); return }
           setOpen(isOpen ? null : { key: h.key, path: pathname })
         }}
-        aria-label={h.label}
-        aria-haspopup={h.direct ? undefined : 'menu'}
+        data-hub={h.key}
+        aria-label={h.readiness ? `${h.label}, ${READINESS_NOTE[h.readiness].toLowerCase()}` : h.label}
         aria-expanded={h.direct ? undefined : isOpen}
+        aria-controls={h.direct || !isOpen ? undefined : 'rail-panel'}
         aria-busy={(pending && pendingKey === h.key) || undefined}
         className={`${RAIL_BUTTON} ${railTone(on, !!h.readiness)}`}
       >
@@ -173,7 +192,7 @@ export function Sidebar({
   }
 
   return (
-    <aside ref={aside} className="hidden md:flex shrink-0 sticky top-[65px] h-[calc(100vh-65px)] z-30">
+    <aside ref={aside} className="hidden md:flex shrink-0 sticky top-[var(--chrome-top)] h-[calc(100vh-var(--chrome-top))] z-30">
       <div className="w-16 flex flex-col items-center bg-[#012358] py-2.5">
         <nav aria-label="Main" className="flex flex-col items-center gap-0.5">
           {rail.map((e, i) =>
@@ -183,13 +202,14 @@ export function Sidebar({
           )}
         </nav>
         <div className="mt-auto pb-1.5 flex justify-center">
-          <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} twoStepDaysLeft={twoStepDaysLeft} />
+          <UserMenu userEmail={user.email} userName={user.name} avatarUrl={user.avatarUrl} placement="rail" startOpen={menuOpen} twoStepDaysLeft={twoStepDaysLeft} canMyTeam={canMyTeam} />
         </div>
       </div>
 
       {hub && (
-        <div
-          role="menu"
+        <nav
+          ref={panel}
+          id="rail-panel"
           aria-label={hub.label}
           className="w-[244px] shrink-0 bg-white border-r border-[var(--panel-border)] px-2.5 py-4 flex flex-col gap-1.5 overflow-y-auto shadow-[10px_0_24px_rgba(1,35,88,.10)]"
         >
@@ -218,20 +238,21 @@ export function Sidebar({
                   <button
                     key={item.key}
                     type="button"
-                    role="menuitem"
+                    data-row
                     onClick={() => go(item.key, item.href)}
+                    aria-label={item.soon ? `${item.label}, coming soon` : undefined}
                     aria-current={on ? 'page' : undefined}
                     className={`flex items-center gap-2.5 rounded-lg p-2 text-left text-[13.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${on ? 'bg-tn-teal/10 text-tn-teal' : 'text-foreground hover:bg-subtle'}`}
                   >
                     <NavIcon name={item.icon} size={17} className="shrink-0" />
                     <span className="flex-1 min-w-0 leading-snug">{item.label}</span>
-                    {item.soon && <span className="shrink-0 rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">SOON</span>}
+                    {item.soon && <span className="shrink-0 rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
                   </button>
                 )
               })}
             </div>
           ))}
-        </div>
+        </nav>
       )}
     </aside>
   )

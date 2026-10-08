@@ -4,6 +4,7 @@
 // the browser's print dialog so the user can Save as PDF.
 
 import type { Metadata } from 'next'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import { loadAccess } from '@/lib/access/resolve'
 import { loadI7ReportData } from '@/lib/tsheets/report-data'
@@ -39,7 +40,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function ReportPrintPage({ searchParams }: Props) {
   // Same gate as the Export buttons that lead here: this layout carries the
   // full budget and (for `internal`) per-person cost detail.
-  if (!(await loadAccess()).can('i7-export')) redirect(ROUTES.i7)
+  if (!(await loadAccess()).can('i7-export')) redirect(await previewHref(ROUTES.i7))
 
   const { month, type } = await searchParams
   const selectedMonth = resolveMonth(month)

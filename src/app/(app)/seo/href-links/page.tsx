@@ -2,6 +2,7 @@
 // This is a Server Component, data is fetched at request time.
 
 import Link from 'next/link'
+import { previewHref } from '@/lib/auth/view-as-server'
 import Image from 'next/image'
 import { languagePalette } from '@/lib/language-colors'
 import { getProjectsOverview } from '@/lib/projects-data'
@@ -62,7 +63,7 @@ export default async function ProjectsPage() {
   // Href Links is a tool in the rail's Tools panel (SEO Tools), not a rail
   // item, so it needs the area plus its own team grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('href-links')) redirect('/')
+  if (!access.canTool('href-links')) redirect(await previewHref('/'))
 
   const { accessibleCodes, readyBySite, totalReady, statsBySite } = await getProjectsOverview()
   const visibleSites = SITES.filter(s => accessibleCodes.has(s.code))

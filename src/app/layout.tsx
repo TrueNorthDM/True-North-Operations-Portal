@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Nunito, Open_Sans, Bebas_Neue, Raleway } from 'next/font/google'
+import { ViewAsKeeper } from '@/components/ViewAsKeeper'
 import './globals.css'
 import { IS_STAGING } from '@/lib/environment'
 import { StagingBanner } from '@/components/StagingBanner'
@@ -38,7 +39,7 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} ${openSans.variable} ${bebas.variable} ${raleway.variable} h-full antialiased`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} ${openSans.variable} ${bebas.variable} ${raleway.variable} h-full antialiased${IS_STAGING ? ' staging' : ''}`}>
       {/* suppressHydrationWarning on <body>: browser extensions (e.g. Grammarly)
           inject attributes like data-gr-ext-installed into <body> before React
           hydrates, causing a harmless attribute mismatch. This suppresses the
@@ -47,6 +48,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           portal is light, and no script touches <html> before paint. */}
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {IS_STAGING && <StagingBanner />}
+        {/* Keeps a View Stage preview across every navigation, the 404 page's
+            included: mounted here, at the root, not only inside the portal. */}
+        <ViewAsKeeper />
         {children}
       </body>
     </html>

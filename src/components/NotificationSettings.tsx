@@ -108,7 +108,7 @@ function WhenFixed({ timing, only, locked, faded }: { timing: Timing; only?: boo
     <span className={`inline-flex items-center gap-1.5 rounded-[9px] px-2.5 py-[6px] text-[12px] font-bold whitespace-nowrap ${faded ? 'text-muted' : 'bg-subtle text-tn-ink'}`}>
       {TIMING[timing].glyph}{TIMING[timing].label}
       {only && <span className="font-semibold text-muted">only</span>}
-      {locked && <span className="text-[#a67c04]" title="Set by an admin"><LockGlyph /></span>}
+      {locked && <span className="text-[#8a6703]" title="Set by an admin"><LockGlyph /></span>}
     </span>
   )
 }
@@ -166,7 +166,7 @@ function NameCell({ t, faded, below }: { t: NotificationType; faded: boolean; be
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">{t.title}</span>
-            {faded && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">NOT YET</span>}
+            {faded && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">NOT YET</span>}
           </div>
           <p className="text-[12px] text-muted m-0 mt-0.5 leading-snug">{faded ? t.blockedBy : `${t.description} Goes to: ${t.who}.`}</p>
           {below}
@@ -441,7 +441,7 @@ export function NotificationSettings({
                   <NameCell t={t} faded={faded} below={<>
                     {sentence && (
                       <p className="text-[11.5px] font-semibold text-tn-primary m-0 mt-1 inline-flex items-center gap-1.5">
-                        <span className="text-[#a67c04]"><LockGlyph /></span>{sentence}
+                        <span className="text-[#8a6703]"><LockGlyph /></span>{sentence}
                       </p>
                     )}
                     {statusFor(`mine:${t.key}`)}
@@ -449,7 +449,7 @@ export function NotificationSettings({
                   <td className={TD}><CategoryPill block={t.block} /></td>
                   <td className={TD}>
                     {!faded && rule.fixEnabled
-                      ? <span className="inline-flex items-center gap-1.5 text-[#a67c04]" title="Set by an admin"><LockGlyph size={14} /><span className="text-[12px] font-bold text-tn-ink">{rule.enabled ? 'On' : 'Off'}</span></span>
+                      ? <span className="inline-flex items-center gap-1.5 text-[#8a6703]" title="Set by an admin"><LockGlyph size={14} /><span className="text-[12px] font-bold text-tn-ink">{rule.enabled ? 'On' : 'Off'}</span></span>
                       : <Switch on={!faded && eff.enabled} disabled={faded} label={`${t.title}: ${eff.enabled ? 'on' : 'off'}`} onChange={v => changePref(t.key, { enabled: v })} />}
                   </td>
                   <td className={TD}>

@@ -6,7 +6,8 @@
 // there. The catalogue is src/lib/notifications/catalogue.ts.
 
 import { redirect } from 'next/navigation'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { previewHref } from '@/lib/auth/view-as-server'
+import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { NotificationSettings } from '@/components/NotificationSettings'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -34,14 +35,14 @@ async function offCountsFor(db: Db): Promise<Record<string, { off: number; reach
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams
   const access = await requireSurface('home')
-  if (!access.can('notification-rules') || tab !== 'rules') redirect('/settings#notifications')
+  if (!access.can('notification-rules') || tab !== 'rules') redirect(await previewHref('/settings#notifications'))
   const db = createAdminClient()
   const [{ rules, ready }, offCounts] = await Promise.all([loadRules(db), offCountsFor(db)])
 
   return (
     <div className="space-y-5">
       <div>
-        <Breadcrumb parents={['/admin']} now="Notification rules" />
+        <Breadcrumb parents={[adminCrumb(access.can('admin'))]} now="Notification rules" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Notification rules</h1>
         <p className="mt-1.5 text-muted leading-relaxed m-0">The default for everyone, and which choices people may change. Your own notifications are in Settings.</p>
       </div>

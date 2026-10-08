@@ -23,17 +23,21 @@ export function ProfileAvatar({ name, avatarUrl, color, size = 60 }: { name: str
     try {
       const fd = new FormData()
       fd.set('file', new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
-      await uploadMyAvatar(fd)
+      const res = await uploadMyAvatar(fd)
+      if (!res.ok) { setErr(res.error); return }
       setOpen(false)
       startTransition(() => router.refresh())
-    } catch (e) { setErr(e instanceof Error ? e.message : 'Upload failed') }
+    } catch { setErr('Upload failed. Check your connection and try again.') }
     finally { setBusy(false) }
   }
 
   async function remove() {
     setBusy(true); setErr(null)
-    try { await removeMyAvatar(); startTransition(() => router.refresh()) }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Could not remove') }
+    try {
+      const res = await removeMyAvatar()
+      if (!res.ok) { setErr(res.error); return }
+      startTransition(() => router.refresh())
+    } catch { setErr('Could not remove. Check your connection and try again.') }
     finally { setBusy(false) }
   }
 

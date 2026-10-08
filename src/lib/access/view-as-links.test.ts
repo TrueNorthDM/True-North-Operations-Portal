@@ -28,10 +28,35 @@ describe('navigations in code keep a View Stage preview', () => {
     expect(bare).toEqual([])
   })
 
+  it('keep it in server redirects too: redirect(await previewHref(...))', () => {
+    // Sign-in and two-step redirects leave the portal, where no preview applies.
+    const OUT = /redirect\('\/(auth|login)|redirect\(personHref/
+    const bare = files(SRC)
+      .filter(f => /app\/\(app\)\/|lib\//.test(relative(SRC, f)))
+      .flatMap(f => readFileSync(f, 'utf8').split('\n')
+        .map((line, i) => ({ line, at: `${relative(SRC, f)}:${i + 1}` }))
+        .filter(({ line }) => /(?<![.\w])redirect\(/.test(line) && !/^\s*(import|\*|\/\/)/.test(line)
+          && !/NextResponse/.test(line) && !OUT.test(line) && !/redirect\(await previewHref\(/.test(line)))
+      .map(x => x.at)
+    expect(bare).toEqual([])
+  })
+
   it('never send the browser elsewhere by assigning window.location', () => {
     const assigned = files(SRC)
       .filter(f => /window\.location\.(href|assign|replace)\s*[=(]/.test(readFileSync(f, 'utf8')))
       .map(f => relative(SRC, f))
     expect(assigned).toEqual([])
+  })
+
+  it('never ship the whole rail to the browser: client code imports lib/access/nav for types only', () => {
+    // nav.ts lists every page and tool, Super Admin ones included; the server
+    // builds each person's own rail from it (audit, 8 October 2026).
+    const leaks = files(SRC)
+      .filter(f => /^\s*['"]use client['"]/.test(readFileSync(f, 'utf8')))
+      .filter(f => /^import\s+(?!type\b)[^\n]*from\s+['"]@\/lib\/access\/(nav|catalogue)['"]/m.test(readFileSync(f, 'utf8')))
+      .map(f => relative(SRC, f))
+      // The Access levels page shows the whole catalogue on purpose, to Super Admins only.
+      .filter(f => !/^components\/access\//.test(f))
+    expect(leaks).toEqual([])
   })
 })

@@ -1,6 +1,7 @@
 // AAAF: page list (Server Component)
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { getSitePageData } from '@/lib/pages-data'
 import { PageList } from '@/components/PageList'
 import { WpLinks } from '@/components/WpLinks'
@@ -13,12 +14,12 @@ export default async function AaafPagesPage() {
   // Href Links is a tool in the rail's Tools panel (SEO Tools), not a rail
   // item, so it needs the area plus its own team grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('href-links')) redirect('/')
+  if (!access.canTool('href-links')) redirect(await previewHref('/'))
 
   const { site, siteLanguages, rows, done } = await getSitePageData('aaaf')
 
   // Access enforcement, admins & unrestricted sites pass; otherwise needs a grant.
-  if (site && !(await canAccessSite(site.id))) redirect('/')
+  if (site && !(await canAccessSite(site.id))) redirect(await previewHref('/'))
 
   return (
     <div className="space-y-6">

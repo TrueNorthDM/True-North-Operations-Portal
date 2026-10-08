@@ -15,7 +15,7 @@ export default async function Page() {
       title="Reports"
       description="Hours across the company, by team, person, project and period."
       parents={['/clocky-hours']}
-      canSuggest={access.isAdmin}
+      canSuggest={access.can('tickets')}
     />
   )
 }

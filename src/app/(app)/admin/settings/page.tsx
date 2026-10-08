@@ -5,7 +5,7 @@
 // address now redirects here until the personal Settings takes it.
 
 import Link from 'next/link'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { WorklistSources } from '@/components/monday/WorklistSources'
 import { loadWorklistSources } from '@/lib/monday/worklist/sources'
 import { StepReview } from '@/components/monday/StepReview'
@@ -340,7 +340,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Breadcrumb parents={['/admin']} self="/admin/settings" />
+        <Breadcrumb parents={[adminCrumb(access.can('admin'))]} self="/admin/settings" />
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Company settings</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
           Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens, the shared settings the whole portal runs on. Changes apply everywhere.

@@ -10,7 +10,7 @@ import { loadAudience } from '@/lib/notifications/audience'
 import { notifyAfterSync } from '@/lib/notifications/run'
 import { TYPE_BY_KEY } from '@/lib/notifications/catalogue'
 import { toItems } from '@/lib/notifications/inbox'
-import { NotificationBell } from '@/components/NotificationBell'
+import { NotificationButton } from '@/components/NotificationButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +37,7 @@ export default async function DryRun({ searchParams }: { searchParams: Promise<{
       <div className="min-h-screen bg-background">
         <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between h-[65px]">
           <span className="text-sm font-semibold text-slate-500">{`Dry run: the bell for ${person?.name ?? as}`}</span>
-          <NotificationBell items={toItems(mine, morning)} startOpen />
+          <NotificationButton kind="bell" items={toItems(mine, morning)} startOpen />
         </header>
       </div>
     )

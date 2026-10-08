@@ -27,7 +27,7 @@ import { signOut } from '@/app/auth/actions'
 import { Avatar } from '@/components/Avatar'
 import { ShieldIcon, SETUP_HREF } from '@/components/mfa/TwoStepBanner'
 
-export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false, twoStepDaysLeft = null }: {
+export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false, twoStepDaysLeft = null, canMyTeam = true }: {
   userEmail: string | null
   userName?: string | null
   avatarUrl?: string | null
@@ -37,6 +37,8 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
   startOpen?: boolean
   /** Days left to set up two-step sign-in, while that week runs; null otherwise. */
   twoStepDaysLeft?: number | null
+  /** My Team (my-team): the item shows only for whoever opens it. */
+  canMyTeam?: boolean
 }) {
   // Name for the avatar initials, the person's name, else the email local part.
   const initialsName = userName ?? (userEmail ? userEmail.split('@')[0].replace(/[._-]+/g, ' ') : null)
@@ -135,7 +137,7 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
               </span>
             </Link>
           )}
-          <Link
+          {canMyTeam && <Link
             href="/my-work?tab=team"
             role="menuitem"
             onClick={() => setOpen(false)}
@@ -143,7 +145,7 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
             My Team
-          </Link>
+          </Link>}
           <Link
             href="/settings"
             role="menuitem"

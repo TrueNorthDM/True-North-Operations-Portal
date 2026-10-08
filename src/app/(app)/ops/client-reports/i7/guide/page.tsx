@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -46,8 +47,8 @@ const PROOF = [
 export default async function ReportGuidePage() {
   // Explains the Clients Reports figures, so it follows the report itself.
   const access = await requireSurface('tools')
-  if (!access.canTool('i7-budget')) redirect('/')
-  if (!access.can('i7-guide')) redirect(ROUTES.i7)
+  if (!access.canTool('i7-budget')) redirect(await previewHref('/'))
+  if (!access.can('i7-guide')) redirect(await previewHref(ROUTES.i7))
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">

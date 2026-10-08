@@ -4,6 +4,7 @@
 // when there is more than one (ClientReportTabs).
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { clientReportTabs } from '@/components/ClientReportTabs'
 
@@ -12,8 +13,8 @@ export const dynamic = 'force-dynamic'
 export default async function ClientReportsIndex({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const access = await requireSurface('tools')
   const [first] = clientReportTabs(access.canTool)
-  if (!first) redirect('/')
+  if (!first) redirect(await previewHref('/'))
   // The query rides along, so a pasted ?month= still lands on its month.
   const q = new URLSearchParams(await searchParams).toString()
-  redirect(q ? `${first.href}?${q}` : first.href)
+  redirect(await previewHref(q ? `${first.href}?${q}` : first.href))
 }

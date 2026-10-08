@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { buildRail, type ResolvedEntry } from './nav'
-import { directoryLevel } from './surfaces'
 import { canAs, rulesWithTools } from './simulate'
 import type { AccessLevel } from './catalogue'
 
@@ -10,7 +9,7 @@ import type { AccessLevel } from './catalogue'
 
 const railFor = (level: AccessLevel, tools: string[] = []) => {
   const can = canAs(level, { teams: [['t1', level === 'team_leader']], rules: rulesWithTools(tools) })
-  return buildRail({ can, canTool: can, level: directoryLevel(can) })
+  return buildRail({ can, canTool: can })
 }
 const keys = (rail: ResolvedEntry[]) => rail.map(e => (e.kind === 'page' ? e.item.key : e.kind === 'hub' ? e.key : '|'))
 const hub = (rail: ResolvedEntry[], key: string) =>

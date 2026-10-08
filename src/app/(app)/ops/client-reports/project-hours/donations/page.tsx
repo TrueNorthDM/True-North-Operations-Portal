@@ -13,6 +13,7 @@
  */
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { loadDonationLedger } from '@/lib/timeclock/donations-ledger'
 import { DonationRecords } from '@/components/tsheets/DonationRecords'
@@ -28,8 +29,8 @@ export default async function DonationRecordsPage(
   { searchParams }: { searchParams: Promise<{ year?: string }> },
 ) {
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/')
-  if (!access.can('ph-money')) redirect(ROUTES.projectHours)
+  if (!access.canTool('grant-pass-report')) redirect(await previewHref('/'))
+  if (!access.can('ph-money')) redirect(await previewHref(ROUTES.projectHours))
 
   const { year: raw } = await searchParams
   // Four digits or nothing: a junk parameter shows everything rather than an

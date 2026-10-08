@@ -4,7 +4,9 @@
  */
 export function StagingBanner() {
   return (
-    <div className="w-full bg-[#F2C40A] px-4 py-1.5 text-center text-[12.5px] font-semibold text-[#012358]">
+    // Fixed height and on screen while scrolling: the rail and the drawers sit
+    // below it through --banner-h (app/globals.css).
+    <div className="sticky top-0 z-50 w-full h-[var(--banner-h)] leading-[var(--banner-h)] overflow-hidden whitespace-nowrap text-ellipsis bg-[#F2C40A] px-4 text-center text-[12.5px] font-semibold text-[#012358]">
       Staging: a test copy of the portal. Changes here never reach the real portal.{' '}
       <a href="https://truenorthportal.online" className="underline underline-offset-2">Open the real portal</a>
     </div>

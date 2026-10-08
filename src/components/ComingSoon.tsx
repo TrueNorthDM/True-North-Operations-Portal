@@ -32,7 +32,7 @@ export function ComingSoon({ icon, title, description, parents, self, canSuggest
         <span className="w-[68px] h-[68px] rounded-[18px] bg-[rgba(30,125,127,.1)] text-tn-teal inline-flex items-center justify-center">
           <NavIcon name={icon} size={32} strokeWidth={1.8} />
         </span>
-        <span className="rounded-[5px] bg-[#fbf1cf] px-[9px] py-1 text-[10.5px] font-bold tracking-[.1em] text-[#a67c04]">COMING SOON</span>
+        <span className="rounded-[5px] bg-[#fbf1cf] px-[9px] py-1 text-[10.5px] font-bold tracking-[.1em] text-[#8a6703]">COMING SOON</span>
         <h1 className="font-(family-name:--font-display) font-black text-[26px] tracking-[-.01em] text-tn-ink m-0">{title}</h1>
         <p className="text-[14px] leading-relaxed text-foreground max-w-[440px] m-0">{description}</p>
         <div className="flex gap-2.5 mt-2 flex-wrap justify-center">

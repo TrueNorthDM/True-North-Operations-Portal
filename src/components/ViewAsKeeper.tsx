@@ -36,7 +36,10 @@ export function ViewAsKeeper() {
 
       const href = anchor.getAttribute('href')
       if (!href || anchor.target === '_blank') return
-      if (/^(https?:|mailto:|tel:|#)/i.test(href)) return
+      // A download (the PDF preview's blob: link, for one) is not a navigation:
+      // taking it over would send the column to a page that does not exist.
+      if (anchor.hasAttribute('download')) return
+      if (/^(https?:|mailto:|tel:|#|blob:|data:)/i.test(href)) return
 
       // Against the page, not the origin: "?tab=work" stays on this page.
       const url = new URL(href, window.location.href)

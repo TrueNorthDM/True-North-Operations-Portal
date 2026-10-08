@@ -102,7 +102,7 @@ export default function ViewStageClient({ myName }: { myName: string }) {
   const swap = (i: number, t: Tier) => setCols(cs => cs.map((c, j) => (j === i ? t : c)))
 
   return (
-    <div className="-mx-6 -my-8 flex flex-col h-[calc(100vh-65px)] bg-background text-foreground overflow-hidden">
+    <div className="-mx-6 -my-8 flex flex-col h-[calc(100vh-var(--chrome-top))] bg-background text-foreground overflow-hidden">
       {/* topbar */}
       <div className="flex items-center gap-3 px-5 h-14 shrink-0 bg-white border-b border-slate-200">
         <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">View Stage</span>

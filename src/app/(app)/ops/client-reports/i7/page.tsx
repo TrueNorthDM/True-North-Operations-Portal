@@ -13,6 +13,7 @@
 // now lives at ./grant-pass with its own key.
 
 import Link from 'next/link'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -84,7 +85,7 @@ const MANUAL_BLURB =
 export default async function ClientsReportsPage({ searchParams }: Props) {
   // The area comes from the level, the report itself from the team tool grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('i7-budget')) redirect('/')
+  if (!access.canTool('i7-budget')) redirect(await previewHref('/'))
   const { month, from, to, team } = await searchParams
 
   return (

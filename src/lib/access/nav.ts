@@ -14,6 +14,7 @@
  */
 
 import { NAV_LABEL, type NavHref } from '@/lib/nav/labels'
+import { onPath, pathOf } from '@/lib/nav/path'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
 import { ROUTES } from '@/lib/nav/routes'
 import { CLIENT_REPORT_TOOLS, TOOLS, type ToolGroup } from '@/lib/access/tools'
@@ -30,7 +31,6 @@ export interface PanelItem {
   surface?: string
   /** Or when any of these tools is open to them (level and team list, Access levels). */
   tools?: readonly string[]
-  minLevel?: Level
   soon?: boolean
 }
 
@@ -43,7 +43,7 @@ export interface PanelItem {
 export type Readiness = 'soon' | 'building'
 
 export type RailEntry =
-  | { kind: 'page'; key: string; href: NavHref; icon: NavIconKey; surface?: string; minLevel?: Level; soon?: boolean }
+  | { kind: 'page'; key: string; href: NavHref; icon: NavIconKey; surface?: string; soon?: boolean }
   | {
       kind: 'hub'
       key: string
@@ -52,9 +52,10 @@ export type RailEntry =
       hint: string
       /** The hub needs this surface as well as a visible row. */
       surface?: string
-      minLevel?: Level
       /** A landing page of its own, reached from the panel's title. */
       landing?: string
+      /** The surface the landing page itself needs; without it the title is not a link. */
+      landingSurface?: string
       /** With a single visible row, go straight there instead of opening the panel. */
       skipWhenSingle?: boolean
       /** Pages outside its rows that still belong to it, for the highlight. */
@@ -135,7 +136,6 @@ export const RAIL: readonly RailEntry[] = [
     label: 'People',
     icon: 'people',
     hint: 'Everyone in the company. How much of each card opens depends on your level.',
-    alsoMatches: ['/my-team'],
     groups: [{
       label: null,
       items: [
@@ -155,6 +155,7 @@ export const RAIL: readonly RailEntry[] = [
     icon: 'admin',
     hint: 'People, teams, and who can access what.',
     landing: '/admin',
+    landingSurface: 'admin',
     groups: [
       {
         label: 'Access',
@@ -250,16 +251,10 @@ export type ResolvedEntry =
 export interface NavContext {
   can: (surfaceKey: string) => boolean
   canTool: (toolKey: string) => boolean
-  level: Level
 }
 
-/** The address without its query or section, for matching the current page. */
-export function pathOf(href: string): string {
-  return href.split(/[?#]/)[0]
-}
 
 function rowVisible(i: PanelItem, ctx: NavContext): boolean {
-  if ((i.minLevel ?? 1) > ctx.level) return false
   if (i.tools) return i.tools.some(t => ctx.canTool(t))
   return !i.surface || ctx.can(i.surface)
 }
@@ -278,7 +273,6 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
   const out: ResolvedEntry[] = []
   for (const e of RAIL) {
     if (e.kind === 'rule') { out.push(e); continue }
-    if ((e.minLevel ?? 1) > ctx.level) continue
     if (e.kind === 'page') {
       if (e.surface && !ctx.can(e.surface)) continue
       out.push({ kind: 'page', item: toItem({ key: e.key, label: NAV_LABEL[e.href], href: e.href, icon: e.icon, soon: e.soon }), ...(e.soon ? { readiness: 'soon' as const } : {}) })
@@ -290,14 +284,16 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
       .filter(g => g.items.length > 0)
     const rows = groups.flatMap(g => g.items)
     if (!rows.length) continue
-    const matches = [...new Set([...rows.map(r => pathOf(r.href)), ...(e.landing ? [e.landing] : []), ...(e.alsoMatches ?? [])])]
+    // The landing only for whoever opens it: holding one row of a hub does not open its landing page.
+    const landing = e.landing && (!e.landingSurface || ctx.can(e.landingSurface)) ? e.landing : undefined
+    const matches = [...new Set([...rows.map(r => pathOf(r.href)), ...(landing ? [landing] : []), ...(e.alsoMatches ?? [])])]
     out.push({
       kind: 'hub',
       key: e.key,
       label: e.label,
       icon: e.icon,
       hint: e.hint,
-      ...(e.landing ? { landing: e.landing } : {}),
+      ...(landing ? { landing } : {}),
       ...(e.skipWhenSingle && rows.length === 1 ? { direct: rows[0].href } : {}),
       ...(e.readiness ? { readiness: e.readiness } : {}),
       matches,
@@ -310,42 +306,5 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
     || (i > 0 && all[i - 1].kind !== 'rule' && all.slice(i + 1).some(x => x.kind !== 'rule')))
 }
 
-/** Is `pathname` this address or somewhere under it? */
-export function onPath(pathname: string, prefix: string): boolean {
-  return prefix === '/' ? pathname === '/' : pathname === prefix || pathname.startsWith(prefix + '/')
-}
-
-/**
- * Which surface guards a given pathname. First match wins, so list the more
- * specific prefixes first. Routes with no entry are ungated by surface (they
- * carry their own checks, e.g. /profile is always your own).
- */
-const ROUTE_SURFACES: readonly { prefix: string; surface: string }[] = [
-  { prefix: '/admin/settings', surface: 'settings' },
-  { prefix: '/admin', surface: 'admin' },
-  { prefix: '/clocky-hours', surface: 'clocky-hours' },
-  { prefix: '/hours', surface: 'my-hours' },
-  // Each person's own Settings (7 October 2026): everyone signed in. Its old
-  // sub-pages redirect to Company settings, which /admin/settings guards.
-  { prefix: '/settings', surface: 'home' },
-  { prefix: '/human-resources', surface: 'human-resources' },
-  { prefix: '/directory', surface: 'directory' },
-  { prefix: '/my-work', surface: 'my-work' },
-  // Its own grant now. The My Team TAB inside /my-work carries the 'my-team'
-  // surface and is checked in the page, because a prefix cannot see a query
-  // parameter and the tab is ?tab=team.
-  { prefix: '/report', surface: 'report' },
-  // The Tools panel's pages. Each is also gated in the page itself by its own
-  // tool (its level tick and its team list, on Access levels).
-  { prefix: '/ops', surface: 'tools' },
-  { prefix: '/seo', surface: 'tools' },
-  { prefix: '/organization', surface: 'organization' },
-  { prefix: '/history', surface: 'history' },
-  { prefix: '/chat', surface: 'chat' },
-  { prefix: '/emails', surface: 'emails' },
-]
-
-export function surfaceForPath(pathname: string): string | null {
-  const hit = ROUTE_SURFACES.find(r => pathname === r.prefix || pathname.startsWith(r.prefix + '/'))
-  return hit?.surface ?? null
-}
+// Re-exported for the server code that already reads them from here.
+export { onPath, pathOf }

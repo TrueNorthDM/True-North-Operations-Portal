@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AUTOMATIONS, type AutomationKind } from '@/lib/automations/registry'
 import { latestHealth, HEALTH_LABEL, type HealthResult, type HealthStatus } from '@/lib/health/checks'
 import { runChecksNow } from './actions'
-import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { BTN_ICON } from '@/lib/ui/buttons'
 
 export const dynamic = 'force-dynamic'
@@ -41,7 +41,7 @@ function fmt(iso: string | undefined): string {
 }
 
 export default async function AutomationsPage() {
-  await requireSurface('automations')
+  const access = await requireSurface('automations')
 
   const admin = createAdminClient()
   const health = await latestHealth(admin)
@@ -60,7 +60,7 @@ export default async function AutomationsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <Breadcrumb parents={['/admin']} now="Automations" />
+        <Breadcrumb parents={[adminCrumb(access.can('admin'))]} now="Automations" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Automations</h1>
         <p className="mt-1.5 text-muted max-w-[760px]">
           Every automated moving part in the portal, and whether it is working. This list is the source of truth: it is defined in code and updated whenever an automation is added or changed.

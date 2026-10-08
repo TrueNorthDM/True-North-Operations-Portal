@@ -19,7 +19,7 @@
 
 import Link from 'next/link'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
@@ -81,12 +81,27 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
   const isUnread = (i: NotificationItem) => i.unread && !read.has(i.id)
   const rows = (items[tab] ?? []).filter(i => !onlyUnread || isUnread(i))
   const current = d.tabs.find(t => t.key === tab) ?? d.tabs[0]
+  // Focus moves into the drawer when it opens (onto the open tab), and the
+  // arrow keys move between tabs (audit, 8 October 2026). Escape and giving
+  // focus back are the button's (NotificationButton.tsx).
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    box.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({ preventScroll: true })
+  }, [kind])
+  const onTabKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+    e.preventDefault()
+    const at = d.tabs.findIndex(t => t.key === current.key)
+    const next = d.tabs[(at + (e.key === 'ArrowRight' ? 1 : -1) + d.tabs.length) % d.tabs.length]
+    onTab(next.key)
+    requestAnimationFrame(() => box.current?.querySelector<HTMLElement>(`#drawer-tab-${next.key}`)?.focus())
+  }
   const pill = (on: boolean) => `rounded-full px-[11px] py-1 text-[12px] font-semibold transition-colors ${on ? 'bg-subtle text-tn-ink' : 'text-muted hover:text-tn-ink'}`
 
   return (
     <>
-      <div aria-hidden="true" onClick={onClose} className="fixed inset-x-0 bottom-0 top-[65px] z-40 bg-[rgba(1,35,88,.16)]" />
-      <div role="dialog" aria-label={d.title} className="fixed right-0 bottom-0 top-[65px] z-40 w-[416px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-14px_0_40px_rgba(1,35,88,.14)] flex flex-col">
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-x-0 bottom-0 top-[var(--chrome-top)] z-40 bg-[rgba(1,35,88,.16)]" />
+      <div ref={box} role="dialog" aria-label={d.title} className="fixed right-0 bottom-0 top-[var(--chrome-top)] z-40 w-[416px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-14px_0_40px_rgba(1,35,88,.14)] flex flex-col">
         <div className="px-5 pt-[18px] pb-3.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-[9px] bg-[rgba(30,125,127,.1)] text-tn-teal inline-flex items-center justify-center"><NavIcon name={d.icon} size={17} /></span>
@@ -95,7 +110,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
           <button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg text-muted hover:bg-subtle text-[19px] leading-none">×</button>
         </div>
 
-        <div role="tablist" className="flex gap-0.5 px-4 border-b border-[var(--panel-border)]">
+        <div role="tablist" aria-label={d.title} onKeyDown={onTabKey} className="flex gap-0.5 px-4 border-b border-[var(--panel-border)]">
           {d.tabs.map(t => {
             const on = t.key === current.key
             const count = (items[t.key] ?? []).filter(isUnread).length
@@ -104,7 +119,10 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
                 key={t.key}
                 type="button"
                 role="tab"
+                id={`drawer-tab-${t.key}`}
                 aria-selected={on}
+                aria-controls="drawer-panel"
+                tabIndex={on ? 0 : -1}
                 onClick={() => onTab(t.key)}
                 className={`flex items-center gap-[7px] px-3 py-2.5 -mb-px border-b-2 text-[13.5px] font-bold whitespace-nowrap transition-colors ${on ? 'text-tn-ink border-tn-primary' : 'text-muted border-transparent hover:text-tn-ink'}`}
               >
@@ -134,7 +152,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div id="drawer-panel" role="tabpanel" aria-labelledby={`drawer-tab-${current.key}`} className="flex-1 overflow-y-auto">
           {rows.length === 0 ? (
             <div className="px-8 py-14 text-center flex flex-col items-center gap-2">
               <span className="w-11 h-11 rounded-xl bg-subtle text-muted inline-flex items-center justify-center"><NavIcon name={d.icon} size={20} /></span>

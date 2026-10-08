@@ -66,7 +66,7 @@ describe('breadcrumbs', () => {
   // rail page takes its name from here by construction (lib/access/nav.ts), and
   // a panel row that is one of the named places must say the same name.
   it('leave the rail no name of its own to disagree with', () => {
-    const rail = buildRail({ can: () => true, canTool: () => true, level: 3 })
+    const rail = buildRail({ can: () => true, canTool: () => true })
     const named = new Map<string, string>(Object.entries(NAV_LABEL))
     const items = rail.flatMap(e => (e.kind === 'page' ? [e.item] : e.kind === 'hub' ? e.groups.flatMap(g => g.items) : []))
     expect(items.length, 'no rail items found, this test has stopped reading the rail').toBeGreaterThan(5)

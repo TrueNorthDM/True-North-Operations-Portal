@@ -2,6 +2,10 @@
 
 
 :root {
+  /* The fixed chrome above the page: the staging strip (0 on the real portal)
+     and the top bar. The rail and the drawers start below it. */
+  --banner-h: 0px;
+  --chrome-top: calc(var(--banner-h) + 65px);
   /* Single system-wide page background, the warm off-white from the COE
      dashboard, applied everywhere for consistency (no per-brand tint). */
   /* True North Digital Marketing brand, warm off-white canvas, navy ink. */
@@ -286,3 +290,7 @@ h1, h2, h3 {
 /* Applies the hairline to the divider utilities. Kept out of the palette block
    above because it overrides a utility rather than a colour token: the same
    class must stay a fill when used as a background. */
+
+/* The staging copy's strip stays on screen, at a fixed height, so everything
+   below it can count on it (components/StagingBanner.tsx). */
+html.staging { --banner-h: 30px; }

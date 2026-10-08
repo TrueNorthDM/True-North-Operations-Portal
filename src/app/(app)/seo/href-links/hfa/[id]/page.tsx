@@ -2,6 +2,7 @@
 // Fetches one page with its URLs + confirmations, renders the shared editor.
 
 import { notFound, redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
 import { PageDetail } from '@/components/PageDetail'
@@ -10,7 +11,7 @@ export default async function HfaPageDetail({ params }: { params: Promise<{ id: 
   // Href Links, so the area plus its team grant. /hfa was guarded
   // but this detail page was not.
   const access = await requireSurface('tools')
-  if (!access.canTool('href-links')) redirect('/')
+  if (!access.canTool('href-links')) redirect(await previewHref('/'))
 
   const { id } = await params
   const supabase = await createClient()

@@ -22,7 +22,7 @@ vi.mock('@/lib/auth/session', () => ({
 }))
 
 let preview: { role: 'admin' | 'team_leader' | 'user' } | null = null
-vi.mock('@/lib/auth/view-as-server', () => ({ getViewAs: async () => preview }))
+vi.mock('@/lib/auth/view-as-server', () => ({ getViewAs: async () => preview, previewHref: async (h: string) => h }))
 
 let aalPending = false
 vi.mock('@/lib/supabase/server', () => ({

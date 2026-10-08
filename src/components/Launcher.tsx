@@ -20,7 +20,8 @@ import type { ResolvedEntry } from '@/lib/access/nav'
 import { pageGroups } from '@/lib/settings/pages'
 import { launcherPeople } from '@/app/(app)/launcher-actions'
 
-interface Row { key: string; label: string; href: string; icon: NavIconKey; soon?: boolean }
+/** href null: a person listed without a link, whose page does not open to the viewer. */
+interface Row { key: string; label: string; href: string | null; icon: NavIconKey; soon?: boolean }
 interface Group { label: string; rows: Row[] }
 
 /** The rail, regrouped the way a person thinks of it (lib/settings/pages.ts), plus Settings, which everyone has. */
@@ -40,17 +41,20 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
   const [open, setOpen] = useState(startOpen)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
-  const [people, setPeople] = useState<{ id: string; name: string }[] | null>(null)
+  const [people, setPeople] = useState<{ id: string; name: string; href: string | null }[] | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLDivElement>(null)
+  // Where focus was before the search opened, to give it back on close.
+  const trigger = useRef<HTMLElement | null>(null)
 
   const show = () => {
+    trigger.current = document.activeElement as HTMLElement | null
     setOpen(true)
     setQuery('')
     setActive(0)
     if (canPeople && people === null) launcherPeople().then(setPeople).catch(() => setPeople([]))
   }
-  const close = () => setOpen(false)
+  const close = () => { setOpen(false); trigger.current?.focus?.() }
 
   // Cmd+K / Ctrl+K from anywhere.
   useEffect(() => {
@@ -63,7 +67,9 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  })
+    // show and close read only open, canPeople and people: subscribe again when they change, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, canPeople, people])
 
   useEffect(() => { if (open) input.current?.focus({ preventScroll: true }) }, [open])
 
@@ -71,7 +77,7 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
   const groups = useMemo(() => {
     const all = groupsFrom(rail)
     if (q && people?.length) {
-      all.push({ label: 'Colleagues', rows: people.map(p => ({ key: `person-${p.id}`, label: p.name, href: `/directory?open=${p.id}`, icon: 'directory' as const })) })
+      all.push({ label: 'Colleagues', rows: people.map(p => ({ key: `person-${p.id}`, label: p.name, href: p.href, icon: 'directory' as const })) })
     }
     // Each row carries its place in the whole list, for the arrow keys.
     let i = 0
@@ -84,6 +90,7 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
   const at = Math.min(active, Math.max(0, flat.length - 1))
 
   const openRow = (r: Row) => {
+    if (!r.href) return // listed without a link: their page does not open to this viewer
     close()
     router.push(withViewAs(r.href))
   }
@@ -107,14 +114,14 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
         onClick={show}
         aria-label="Search the portal"
         title="Go to a tool, page or person (⌘K)"
-        className="inline-flex items-center justify-center w-10 h-10 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 text-slate-400 hover:bg-slate-100 hover:text-tn-primary"
+        className="inline-flex items-center justify-center w-10 h-10 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 text-slate-500 hover:bg-slate-100 hover:text-tn-primary"
       >
         <NavIcon name="launcher" />
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 bg-[rgba(1,35,88,.28)] flex items-start justify-center px-4 pt-[90px]" onMouseDown={e => { if (e.target === e.currentTarget) close() }}>
-          <div role="dialog" aria-label="Search the portal" className="w-[560px] max-w-full bg-white rounded-[14px] shadow-[0_24px_60px_rgba(1,35,88,.25)] overflow-hidden">
+          <div role="dialog" aria-modal="true" aria-label="Search the portal" onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); close() } }} className="w-[560px] max-w-full bg-white rounded-[14px] shadow-[0_24px_60px_rgba(1,35,88,.25)] overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-[var(--panel-border)]">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8593a4" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
               <input
@@ -122,13 +129,17 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
                 value={query}
                 onChange={e => { setQuery(e.target.value); setActive(0) }}
                 onKeyDown={onKeyDown}
+                role="combobox"
+                aria-expanded="true"
+                aria-controls="launcher-results"
+                aria-activedescendant={flat[at] ? `launcher-${flat[at].key}` : undefined}
                 placeholder={canPeople ? 'Tool, page or person…' : 'Tool or page…'}
                 aria-label="Search"
                 className="flex-1 border-0 outline-none bg-transparent text-[15px] text-tn-ink placeholder:text-muted"
               />
               <kbd className="text-[11px] border border-[var(--panel-border)] rounded-[5px] px-1.5 py-px text-muted font-sans">esc</kbd>
             </div>
-            <div ref={list} className="max-h-[400px] overflow-y-auto p-2">
+            <div ref={list} id="launcher-results" role="listbox" aria-label="Results" className="max-h-[400px] overflow-y-auto p-2">
               {groups.length === 0 && <p className="px-3 py-6 text-center text-[13.5px] text-muted m-0">{`Nothing matches “${query.trim()}”.`}</p>}
               {groups.map(g => (
                 <div key={g.label} className="pt-1 pb-1.5">
@@ -138,15 +149,21 @@ export function Launcher({ rail, canPeople = false, startOpen = false }: {
                     return (
                       <button
                         key={r.key}
+                        id={`launcher-${r.key}`}
                         type="button"
+                        role="option"
+                        aria-selected={on}
+                        aria-disabled={!r.href || undefined}
+                        tabIndex={-1}
                         data-active={on}
                         onMouseEnter={() => setActive(r.i)}
                         onClick={() => openRow(r)}
-                        className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] text-tn-ink ${on ? 'bg-subtle' : ''}`}
+                        title={r.href ? undefined : 'Their page does not open with your access'}
+                        className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] ${r.href ? 'text-tn-ink' : 'text-muted cursor-default'} ${on ? 'bg-subtle' : ''}`}
                       >
                         <NavIcon name={r.icon} size={16} className="text-slate-500 shrink-0" />
                         <span className="flex-1">{r.label}</span>
-                        {r.soon && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#a67c04]">SOON</span>}
+                        {r.soon && <span className="rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
                       </button>
                     )
                   })}

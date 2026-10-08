@@ -27,8 +27,8 @@ describe('what a browser may send to Settings', () => {
 })
 
 describe('the pages someone can pin', () => {
-  const everything = buildRail({ can: () => true, canTool: () => true, level: 3 })
-  const little = buildRail({ can: k => k === 'home' || k === 'my-work', canTool: () => false, level: 1 })
+  const everything = buildRail({ can: () => true, canTool: () => true })
+  const little = buildRail({ can: k => k === 'home' || k === 'my-work', canTool: () => false })
 
   it('never offers Home itself, or a page not built yet', () => {
     const rows = pinnable(everything).flatMap(g => g.rows)

@@ -20,6 +20,7 @@
  */
 
 import { cache } from 'react'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { isFounding } from '@/lib/auth/portal-rule'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -148,7 +149,7 @@ export async function isSuperAdmin(): Promise<boolean> {
  */
 export async function requireSurface(key: string): Promise<Access> {
   const access = await loadAccess()
-  if (!access.can(key)) redirect('/')
+  if (!access.can(key)) redirect(await previewHref('/'))
   return access
 }
 

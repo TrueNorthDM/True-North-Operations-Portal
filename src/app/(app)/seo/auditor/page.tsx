@@ -2,6 +2,7 @@
 // the rail can show it and a link can be shared ahead of launch.
 
 import { ComingSoon } from '@/components/ComingSoon'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 
@@ -11,13 +12,13 @@ export const metadata = { title: 'Page Auditor' }
 export default async function Page() {
   const access = await requireSurface('tools')
   // Granted per team like every tool (Directory → Teams), from today.
-  if (!access.canTool('page-auditor')) redirect('/')
+  if (!access.canTool('page-auditor')) redirect(await previewHref('/'))
   return (
     <ComingSoon
       icon="page-auditor"
       title="Page Auditor"
       description="Technical checks on a page: titles, headings, links, speed."
-      canSuggest={access.isAdmin}
+      canSuggest={access.can('tickets')}
     />
   )
 }

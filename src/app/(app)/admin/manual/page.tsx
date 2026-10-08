@@ -3,6 +3,7 @@
 // "The portal" (SystemManual) and "How it runs" (HowItRuns).
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { SystemManual } from '@/components/SystemManual'
 import { HowItRuns } from '@/components/manual/HowItRuns'
@@ -12,13 +13,13 @@ export default async function ManualPage({ searchParams }: { searchParams: Promi
   const access = await requireSurface('manual')
   // Each tab is an item of its own (man-portal, man-runs).
   const open: ManualTab[] = (['portal', 'runs'] as const).filter(t => access.can(t === 'portal' ? 'man-portal' : 'man-runs'))
-  if (!open.length) redirect('/admin')
+  if (!open.length) redirect(await previewHref(access.can('admin') ? '/admin' : '/'))
   const { tab } = await searchParams
   const asked: ManualTab = tab === 'runs' ? 'runs' : 'portal'
   const active: ManualTab = open.includes(asked) ? asked : open[0]
   return (
     <div className="space-y-6">
-      <ManualHeader active={active} tabs={open} />
+      <ManualHeader active={active} tabs={open} canOpenAdmin={access.can('admin')} />
       {active === 'runs' ? <HowItRuns /> : <SystemManual />}
     </div>
   )

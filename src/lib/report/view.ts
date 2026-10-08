@@ -6,6 +6,7 @@
 // parts (scope.ts, ReportTabs) stay testable on their own.
 
 import type { Db } from '@/lib/supabase/types'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import type { DirectoryLevel } from '@/lib/access/surfaces'
 import { resolveTab, tabRights, type ReportTabKey, type TabRights } from '@/components/report/ReportTabs'
@@ -61,7 +62,7 @@ export async function resolveReportView(
   // come through here, so a tab that is off is off for all four; with none open
   // there is nothing to show.
   const tab = resolveTab(asked.tab ?? undefined, rights)
-  if (!tab) redirect('/')
+  if (!tab) redirect(await previewHref('/'))
 
   const leadsATeam = led.length > 0
   const scope = resolveScope(asked.scope ?? undefined, level, leadsATeam)

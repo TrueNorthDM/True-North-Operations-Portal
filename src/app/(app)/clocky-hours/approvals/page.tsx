@@ -15,7 +15,7 @@ export default async function Page() {
       title="Approvals and Invoices"
       description="The approval queue and the invoices raised from approved hours."
       parents={['/clocky-hours']}
-      canSuggest={access.isAdmin}
+      canSuggest={access.can('tickets')}
     />
   )
 }

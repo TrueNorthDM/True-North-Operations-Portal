@@ -15,7 +15,6 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { Sidebar } from '@/components/Sidebar'
-import { NotificationBell } from '@/components/NotificationBell'
 import { NotificationButton } from '@/components/NotificationButton'
 import { Launcher } from '@/components/Launcher'
 import { ComingSoon } from '@/components/ComingSoon'
@@ -23,7 +22,6 @@ import { UserMenu } from '@/components/UserMenu'
 import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 import { HomeBody } from '../home-widgets/HomeBody'
 import { buildRail } from '@/lib/access/nav'
-import { directoryLevel } from '@/lib/access/surfaces'
 import { canAs, rulesWithTools } from '@/lib/access/simulate'
 import type { AccessLevel } from '@/lib/access/catalogue'
 
@@ -39,7 +37,7 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
   const role = ROLE[level] ?? 'super_admin'
   const can = canAs(role, { teams: [['team', role === 'team_leader']], rules: rulesWithTools(GRANTS) })
   const canTool = can
-  const rail = buildRail({ can, canTool, level: directoryLevel(can) })
+  const rail = buildRail({ can, canTool })
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -53,7 +51,7 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
         <div className="flex items-center gap-2">
           <Launcher rail={rail} canPeople={can('directory')} startOpen={open === 'launcher'} />
           <NotificationButton kind="inbox" startOpen={open === 'inbox'} />
-          <NotificationBell startOpen={open === 'bell'} />
+          <NotificationButton kind="bell" startOpen={open === 'bell'} />
           <div className="md:hidden">
             <UserMenu userEmail="arnaldo@leveluponline.org" userName="Arnaldo Oliveira" avatarUrl={null} startOpen={open === 'menu'} twoStepDaysLeft={twoStepDaysLeft} />
           </div>

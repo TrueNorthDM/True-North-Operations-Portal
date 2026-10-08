@@ -10,6 +10,7 @@
  */
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 
 export default async function PublishingDashboardPage() {
@@ -17,7 +18,7 @@ export default async function PublishingDashboardPage() {
   // tool from the team. The old /dashboards landing was guarded but this child was not, so the
   // parent's guard was bypassed by typing the URL.
   const access = await requireSurface('tools')
-  if (!access.canTool('publishing')) redirect('/')
+  if (!access.canTool('publishing')) redirect(await previewHref('/'))
 
   // MainContent gives this route a full-height, edge-to-edge wrapper, so the
   // iframe fills the entire content area, no padding, border, or viewport math.

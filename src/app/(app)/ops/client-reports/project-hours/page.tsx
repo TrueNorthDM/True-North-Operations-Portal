@@ -10,6 +10,7 @@
 // it today.
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -47,7 +48,7 @@ export default async function ProjectHoursPage({
 }: { searchParams: Promise<{ month?: string; from?: string; to?: string; team?: string }> }) {
   // The area comes from the level, the report from its own team tool grant.
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/')
+  if (!access.canTool('grant-pass-report')) redirect(await previewHref('/'))
 
   const months = availableMonths(new Date())
   const { month, from, to, team } = await searchParams

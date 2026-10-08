@@ -19,6 +19,7 @@
  */
 
 import { redirect } from 'next/navigation'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
 import { projectsExportKeys } from '@/lib/tsheets/export-keys'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -44,10 +45,10 @@ const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 
 export async function GET(request: Request) {
   const access = await requireSurface('tools')
-  if (!access.canTool('grant-pass-report')) redirect('/')
+  if (!access.canTool('grant-pass-report')) redirect(await previewHref('/'))
   const q = new URL(request.url).searchParams
   // An export: the Export tick, and the items whose figures this file carries.
-  if (!projectsExportKeys(q.get('type') === 'internal' ? 'internal' : 'client').every(k => access.can(k))) redirect('/')
+  if (!projectsExportKeys(q.get('type') === 'internal' ? 'internal' : 'client').every(k => access.can(k))) redirect(await previewHref('/'))
   const legacy = q.get('month') ?? undefined
   const months = availableMonths(new Date())
   const newest = months.includes(currentYearMonth()) ? currentYearMonth() : months[0]

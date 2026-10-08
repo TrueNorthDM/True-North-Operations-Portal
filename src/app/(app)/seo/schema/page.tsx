@@ -2,6 +2,7 @@
 // the rail can show it and a link can be shared ahead of launch.
 
 import { ComingSoon } from '@/components/ComingSoon'
+import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'
 
@@ -11,13 +12,13 @@ export const metadata = { title: 'Schema App' }
 export default async function Page() {
   const access = await requireSurface('tools')
   // Granted per team like every tool (Directory → Teams), from today.
-  if (!access.canTool('schema-app')) redirect('/')
+  if (!access.canTool('schema-app')) redirect(await previewHref('/'))
   return (
     <ComingSoon
       icon="schema-app"
       title="Schema App"
       description="Write and publish schema markup for the sites' pages."
-      canSuggest={access.isAdmin}
+      canSuggest={access.can('tickets')}
     />
   )
 }

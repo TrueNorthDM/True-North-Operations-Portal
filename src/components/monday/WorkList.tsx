@@ -1271,7 +1271,9 @@ export function WorkList({
         <div
           ref={headScroll}
           className="sticky z-10 overflow-hidden rounded-[12px] border border-[var(--panel-border)] bg-subtle shadow-[0_8px_16px_-14px_rgba(1,35,88,.45)]"
-          style={{ top: stickyTop }}
+          // Under the portal's chrome (top bar, and the staging strip there):
+          // the default follows --chrome-top; a design check passes its own.
+          style={{ top: stickyTop === 65 ? 'var(--chrome-top)' : stickyTop }}
         >
           <div className="grid" style={{ gridTemplateColumns: grid.template, minWidth: grid.minWidth - 2 }}>
             {grid.columns.map(c => <HeadCell key={c.key} col={c} sort={sort} onSort={onSort} />)}
