@@ -147,10 +147,16 @@ export function AccessLevels({ data }: { data: AccessPageData }) {
   const teamName = useMemo(() => new Map(data.teams.map(t => [t.id, t.name])), [data.teams])
   const counts = useMemo(() => Object.fromEntries(LEVELS.map(l => [l.key, people.filter(p => p.level === l.key).length])) as Record<AccessLevel, number>, [people])
 
-  const [preview, setPreview] = useState<{ level: ConfigurableLevel; team: string; lead: boolean } | null>(null)
+  const [preview, setPreview] = useState<PreviewState | null>(null)
   const openPreview = (level: ConfigurableLevel, team?: string, lead?: boolean) => {
     const firstTeam: string = team ?? [...(people.find(p => p.level === level && p.teams.size)?.teams.keys() ?? [])][0] ?? data.teams[0]?.id ?? ''
     setPreview({ level, team: firstTeam, lead: lead ?? level === 'team_leader' })
+  }
+  // A real person's portal: all their teams and their exceptions, so it agrees
+  // with Check a person and with View Stage (decided 8 October 2026).
+  const openPersonPreview = (p: Person) => {
+    const [team, lead] = [...p.teams][0] ?? ['', false]
+    setPreview({ level: p.level as ConfigurableLevel, team, lead, person: { name: p.name, teams: p.teams, exceptions: p.exceptions ?? [] } })
   }
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
@@ -183,7 +189,7 @@ export function AccessLevels({ data }: { data: AccessPageData }) {
         />
       )}
       {tab === 'people' && <PeopleLevels people={people} teams={data.teams} base={base} today={data.today} meId={data.meId} priority={data.priority} staged={staged > 0} onDone={() => router.refresh()} />}
-      {tab === 'why' && <CheckPerson people={people} rules={base} teamName={teamName} today={data.today} initialWho={data.initialWho} onPreview={(level, team, lead) => openPreview(level, team, lead)} />}
+      {tab === 'why' && <CheckPerson people={people} rules={base} teamName={teamName} today={data.today} initialWho={data.initialWho} onPreview={openPersonPreview} />}
       {tab === 'exceptions' && <Exceptions data={data} people={people} onDone={() => router.refresh()} />}
       {tab === 'log' && <ChangeLog log={data.log} teamName={teamName} onDone={() => router.refresh()} />}
 
@@ -582,12 +588,21 @@ function Review({ base, current, stagedLevels, stagedTools, people, teams, today
 
 // ── The level preview ──────────────────────────────────────────────────────
 
+/** What the preview shows: a level on one team, or one real person as they are. */
+type PreviewState = {
+  level: ConfigurableLevel; team: string; lead: boolean
+  /** Set by "See their portal": the person's own teams and exceptions win over level and team. */
+  person?: { name: string; teams: Subject['teams']; exceptions: NonNullable<Subject['exceptions']> }
+}
+
 function LevelPreview({ state, setState, rules, teams, teamName, today, staged, onClose }: {
-  state: { level: ConfigurableLevel; team: string; lead: boolean }
-  setState: (s: { level: ConfigurableLevel; team: string; lead: boolean }) => void
+  state: PreviewState
+  setState: (s: PreviewState) => void
   rules: Rules; teams: AccessPageData['teams']; teamName: Map<string, string>; today: string; staged: number; onClose: () => void
 }) {
-  const subject: Subject = { level: state.level, teams: state.team ? new Map([[state.team, state.lead]]) : new Map() }
+  const subject: Subject = state.person
+    ? { level: state.level, teams: state.person.teams, exceptions: state.person.exceptions }
+    : { level: state.level, teams: state.team ? new Map([[state.team, state.lead]]) : new Map() }
   const memo = new Map<string, Decision>()
   const d = (k: string) => decide(subject, k, rules, { today, teamNames: teamName, memo })
   const pages = CATALOGUE.filter(i => (i.kind === 'page' || i.kind === 'tool') && !i.soon)
@@ -597,7 +612,9 @@ function LevelPreview({ state, setState, rules, teams, teamName, today, staged, 
   const [pageKey, setPageKey] = useState<string | null>(null)
   const page = (pageKey && open.find(p => p.key === pageKey)) || open.find(p => (CHILDREN.get(p.key) ?? []).some(c => c.kind === 'tab')) || open[0]
   const kids = page ? CHILDREN.get(page.key) ?? [] : []
-  const teamLabel = state.team ? `${state.lead ? 'Lead' : 'Member'} of ${teamName.get(state.team) ?? 'a team'}` : 'In no team'
+  const teamLabel = state.person
+    ? `${state.person.name}, as they are: ${[...state.person.teams].map(([t, lead]) => `${lead ? 'Lead' : 'Member'} of ${teamName.get(t) ?? 'a team'}`).join(', ') || 'in no team'}${state.person.exceptions.length ? `, with ${state.person.exceptions.length} exception${state.person.exceptions.length === 1 ? '' : 's'}` : ''}`
+    : state.team ? `${state.lead ? 'Lead' : 'Member'} of ${teamName.get(state.team) ?? 'a team'}` : 'In no team'
 
   return (
     <Modal wide kicker="Preview" title={`The portal for ${state.level === 'admin' ? 'an Admin' : state.level === 'team_leader' ? 'a Team Leader' : 'a User'}`} onClose={onClose}
@@ -605,15 +622,15 @@ function LevelPreview({ state, setState, rules, teams, teamName, today, staged, 
       <div className="flex flex-wrap items-end gap-4">
         <div><div className="text-[11.5px] font-bold text-muted mb-1">Level</div>
           <div className="inline-flex rounded-[10px] border border-[var(--panel-border)] p-[3px] gap-0.5">
-            {CONFIGURABLE.map(l => <button key={l} type="button" onClick={() => setState({ ...state, level: l, lead: l === 'team_leader' ? true : l === 'user' ? false : state.lead })} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${state.level === l ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{LEVEL_LABEL[l]}</button>)}
+            {CONFIGURABLE.map(l => <button key={l} type="button" onClick={() => setState({ ...state, person: undefined, level: l, lead: l === 'team_leader' ? true : l === 'user' ? false : state.lead })} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold ${state.level === l ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{LEVEL_LABEL[l]}</button>)}
           </div></div>
         <div className="min-w-[220px]"><div className="text-[11.5px] font-bold text-muted mb-1">Team</div>
-          <Select value={state.team} onChange={v => setState({ ...state, team: v })} options={[...teams.map(t => ({ value: t.id, label: t.name })), { value: '', label: 'No team' }]} searchable ariaLabel="Team" fullWidth /></div>
+          <Select value={state.team} onChange={v => setState({ ...state, person: undefined, team: v })} options={[...teams.map(t => ({ value: t.id, label: t.name })), { value: '', label: 'No team' }]} searchable ariaLabel="Team" fullWidth /></div>
         <div><div className="text-[11.5px] font-bold text-muted mb-1">Position</div>
           <div className="inline-flex rounded-[10px] border border-[var(--panel-border)] p-[3px] gap-0.5">
             {([true, false] as const).map(lead => {
               const disabled = (state.level === 'team_leader' && !lead) || (state.level === 'user' && lead)
-              return <button key={String(lead)} type="button" disabled={disabled} title={disabled ? 'A Team Leader is Lead of a team; a User is a Member' : undefined} onClick={() => setState({ ...state, lead })} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold disabled:opacity-35 ${state.lead === lead ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{lead ? 'Lead' : 'Member'}</button>
+              return <button key={String(lead)} type="button" disabled={disabled} title={disabled ? 'A Team Leader is Lead of a team; a User is a Member' : undefined} onClick={() => setState({ ...state, person: undefined, lead })} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-bold disabled:opacity-35 ${state.lead === lead ? 'bg-tn-primary text-[#ffffff]' : 'text-muted'}`}>{lead ? 'Lead' : 'Member'}</button>
             })}
           </div></div>
       </div>
@@ -788,7 +805,7 @@ function LevelChange({ people, base, today, initial, onClose, onDone }: {
 
 function CheckPerson({ people, rules, teamName, today, initialWho, onPreview }: {
   people: Person[]; rules: Rules; teamName: Map<string, string>; today: string; initialWho: string | null
-  onPreview: (level: ConfigurableLevel, team?: string, lead?: boolean) => void
+  onPreview: (p: Person) => void
 }) {
   const [who, setWho] = useState(initialWho && people.some(p => p.id === initialWho) ? initialWho : people[0]?.id ?? '')
   const p = people.find(x => x.id === who)
@@ -813,7 +830,7 @@ function CheckPerson({ people, rules, teamName, today, initialWho, onPreview }: 
               </div>
             </div>
             {p.level !== 'super_admin' && (
-              <button type="button" className={`${btn} ml-auto`} onClick={() => { const [t, lead] = [...p.teams][0] ?? ['', false]; onPreview(p.level as ConfigurableLevel, t, lead) }}>{Glyph.eye} See their portal</button>
+              <button type="button" className={`${btn} ml-auto`} onClick={() => onPreview(p)}>{Glyph.eye} See their portal</button>
             )}
           </div>
           {CATALOGUE.filter(m => m.kind === 'module').map(m => {

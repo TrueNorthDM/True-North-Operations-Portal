@@ -147,7 +147,9 @@ export async function createPerson(input: PersonInput): Promise<{ id: string }> 
   // JSON columns (address, milestones) are typed by their own shapes here.
   const { data, error } = await supabase.from('people').insert(row as TablesInsert<'people'>).select('id').single()
   if (error) throw new Error(mapPersonError(error.message))
-  if (input.teams !== undefined && data?.id) await setPersonTeams(supabase, data.id, input.teams)
+  // Teams and positions are Super Admin only (d-positions): without it the
+  // new person starts on no team, whatever the form sent.
+  if (input.teams !== undefined && data?.id && (await allowedTo('d-positions'))) await setPersonTeams(supabase, data.id, input.teams)
   revalidate()
   return { id: (data as { id: string }).id }
 }

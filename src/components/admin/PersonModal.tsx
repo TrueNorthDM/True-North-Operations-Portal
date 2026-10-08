@@ -100,11 +100,14 @@ export function PersonModal({
   setState,
   people,
   teamOptions,
+  canTeams,
 }: {
   state: NonNullable<ModalState>
   setState: (s: ModalState) => void
   people: PersonView[]
   teamOptions: TeamOption[]
+  /** d-positions (Super Admin only): without it a new person starts on no team. */
+  canTeams: boolean
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -187,7 +190,7 @@ export function PersonModal({
 
         {/* body */}
         <div className="flex-1 overflow-y-auto px-8 pt-6 pb-2">
-          <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={people} teamOptions={teamOptions} />
+          <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={people} teamOptions={teamOptions} canTeams={canTeams} />
           {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         </div>
 
@@ -234,8 +237,9 @@ function GroupTitle({ children, right, className = '' }: { children: ReactNode; 
 const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[11px] w-full transition-all focus:outline-none focus:border-tn-teal'
 
 function EditBody({
-  draft, set, setDraft, managerOptions, teamOptions,
+  draft, set, setDraft, managerOptions, teamOptions, canTeams,
 }: {
+  canTeams: boolean
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
   setDraft: (fn: (d: Draft) => Draft) => void
@@ -338,7 +342,7 @@ function EditBody({
             {field('Status', seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive')))}
           </div>
         </div>
-        <div className="break-inside-avoid mb-6">
+        {canTeams && <div className="break-inside-avoid mb-6">
           <div className="flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">
             <span>Team position</span>
             <span className="text-[10px] text-muted normal-case font-normal tracking-normal">(several teams, a different position in each. The star marks the primary department)</span>
@@ -366,7 +370,7 @@ function EditBody({
               Add team
             </button>
           </div>
-        </div>
+        </div>}
         <div className="break-inside-avoid mb-6">
           <SectionTitle>Reporting</SectionTitle>
           <div className="flex flex-col gap-3.5">

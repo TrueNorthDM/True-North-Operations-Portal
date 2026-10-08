@@ -249,7 +249,8 @@ export async function endException(exceptionId: string, reasonIn: string, opts: 
   const { data: ex } = await db.from('access_exceptions').select('id, person_id, item_key, effect, ended_at').eq('id', exceptionId).maybeSingle()
   const row = ex as { id: string; person_id: string; item_key: string; effect: string; ended_at: string | null } | null
   if (!row || row.ended_at) return { ok: false, error: 'That exception has already ended.' }
-  await db.from('access_exceptions').update({ ended_at: new Date().toISOString(), ended_by: who.personId }).eq('id', exceptionId)
+  const { error: endError } = await db.from('access_exceptions').update({ ended_at: new Date().toISOString(), ended_by: who.personId }).eq('id', exceptionId)
+  if (endError) return { ok: false, error: 'The exception could not be ended. Nothing changed; try again.' }
   const { data: p } = await db.from('people').select('full_name').eq('id', row.person_id).maybeSingle()
   const name = (p as { full_name: string } | null)?.full_name ?? 'Someone'
   const summary = `Exception ended for ${name}: ${ITEM.get(row.item_key)?.label ?? row.item_key}`
@@ -257,12 +258,29 @@ export async function endException(exceptionId: string, reasonIn: string, opts: 
     actorId: who.personId, kind: opts.undoes ? 'undo' : 'exception', summary, reason, undoes: opts.undoes ?? null,
     changes: [{ kind: 'exception-end', exceptionId, person: name, key: row.item_key, label: ITEM.get(row.item_key)?.label ?? row.item_key }],
   })
-  if (opts.undoes && id) await db.from('access_changes').update({ undone_by: id }).eq('id', opts.undoes)
+  if (opts.undoes && id) await db.from('access_changes').update({ undone_by: id }).eq('id', opts.undoes).is('undone_by', null)
+  // Ending one is told to the Super Admins, as adding one is (decided 8 October 2026).
+  tellSuperAdmins(id, summary, reason, who.personId)
   refresh()
   return { ok: true, id }
 }
 
 // ── Undo ────────────────────────────────────────────────────────────────────
+
+/**
+ * What a logged change touched, as comparable keys: a level's tick on an item,
+ * a tool's team list, a person's level, one exception. Two log entries that
+ * share a key changed the same thing.
+ */
+function touchKeys(c: unknown): string[] {
+  const x = c as { kind?: string; level?: string; key?: string; personId?: string; exceptionId?: string } | null
+  if (!x?.kind) return []
+  if (x.kind === 'rule' && x.level && x.key) return [`rule:${x.level}|${x.key}`]
+  if (x.kind === 'tool' && x.key) return [`tool:${x.key}`]
+  if (x.kind === 'level' && x.personId) return [`level:${x.personId}`]
+  if (x.exceptionId) return [`exception:${x.exceptionId}`]
+  return []
+}
 
 type Logged =
   | { kind: 'rule'; level: ConfigurableLevel; key: string; before: boolean | null; after: boolean }
@@ -281,7 +299,16 @@ export async function undoChange(changeId: number, reasonIn: string): Promise<Re
   const entry = data as { id: number; kind: string; summary: string; changes: Logged[]; undone_by: number | null } | null
   if (!entry) return { ok: false, error: 'That change is not in the log.' }
   if (entry.undone_by) return { ok: false, error: 'That change was already undone.' }
+  if (entry.kind === 'undo') return { ok: false, error: 'An undo is not undone. Make the change again instead.' }
   const items = Array.isArray(entry.changes) ? entry.changes : []
+
+  // Refused when anything it touched has changed again since (decided 8 October
+  // 2026): undoing it would silently override the later change.
+  const touched = new Set(items.flatMap(touchKeys))
+  const { data: laterRows } = await db.from('access_changes').select('id, changes').gt('id', changeId).order('id')
+  const later = ((laterRows ?? []) as { id: number; changes: unknown }[])
+    .find(r => (Array.isArray(r.changes) ? r.changes : []).some(c => touchKeys(c).some(k => touched.has(k))))
+  if (later) return { ok: false, error: `This was changed again since (change #${later.id}). Undo that one first, or make the change you want directly.` }
 
   const level = items.find(c => c.kind === 'level') as Extract<Logged, { kind: 'level' }> | undefined
   if (level) return setPersonLevel(level.personId, level.before, `Undo: ${reason}`, { undoes: changeId })
@@ -289,9 +316,11 @@ export async function undoChange(changeId: number, reasonIn: string): Promise<Re
   if (added) return endException(added.exceptionId, `Undo: ${reason}`, { undoes: changeId })
   const ended = items.find(c => c.kind === 'exception-end') as Extract<Logged, { kind: 'exception-end' }> | undefined
   if (ended) {
-    await db.from('access_exceptions').update({ ended_at: null, ended_by: null }).eq('id', ended.exceptionId)
+    const { error: reopenError } = await db.from('access_exceptions').update({ ended_at: null, ended_by: null }).eq('id', ended.exceptionId)
+    if (reopenError) return { ok: false, error: 'The exception could not be reopened. Nothing changed; try again.' }
     const id = await logChange(db, { actorId: who.personId, kind: 'undo', summary: `Undo: ${entry.summary}`, reason, undoes: changeId, changes: [{ kind: 'exception-reopen', exceptionId: ended.exceptionId }] })
-    if (id) await db.from('access_changes').update({ undone_by: id }).eq('id', changeId)
+    if (id) await db.from('access_changes').update({ undone_by: id }).eq('id', changeId).is('undone_by', null)
+    tellSuperAdmins(id, `Undo: ${entry.summary}`, reason, who.personId)
     refresh()
     return { ok: true, id }
   }
@@ -321,7 +350,7 @@ export async function undoChange(changeId: number, reasonIn: string): Promise<Re
     ],
     impact: rows.map(r => ({ person: nameOf.get(r.personId) ?? 'Someone', gained: r.gained, lost: r.lost })),
   })
-  if (id) await db.from('access_changes').update({ undone_by: id }).eq('id', changeId)
+  if (id) await db.from('access_changes').update({ undone_by: id }).eq('id', changeId).is('undone_by', null)
   tellSuperAdmins(id, `Undo: ${entry.summary}`, reason, who.personId)
   refresh()
   return { ok: true, id }

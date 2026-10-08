@@ -177,7 +177,7 @@ export function DirectoryTabs({
       {tab === 'emails' && (
         <EmailsTab people={activePeople} onOpen={id => router.push(withViewAs(personHref(id, 'work')))} />
       )}
-      {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} />}
+      {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} canEdit={rights.positions} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
       {tab === 'portal' && (
@@ -190,6 +190,7 @@ export function DirectoryTabs({
           setState={setModal}
           people={activePeople}
           teamOptions={teamOptions}
+          canTeams={rights.positions}
         />
       )}
     </div>

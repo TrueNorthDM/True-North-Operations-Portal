@@ -27,9 +27,9 @@ export interface PageRights {
   workEdit: boolean
   /**
    * Inside the Work editor: teams and positions. Lead of a team makes a Team
-   * Leader, and a Team Leader opens their team's pages, so this asks for the
-   * same item that changes teams on the Directory's Teams tab (d-edit) on top
-   * of editing Work: editing Work alone never lets anyone make themselves Lead.
+   * Leader and opens the team's tools, so this asks for the same item as the
+   * Directory's Teams tab, d-positions, which is Super Admin only (8 October
+   * 2026), on top of editing Work: nobody else changes teams, their own included.
    */
   teamsEdit: boolean
   hr: boolean
@@ -64,7 +64,7 @@ export function pageRights(can: (key: string) => boolean, rel: Relation): PageRi
       // Their own Work is the company's to change: only with the same items
       // that change anyone's.
       workEdit,
-      teamsEdit: workEdit && can('d-edit'),
+      teamsEdit: workEdit && can('d-positions'),
       hr,
       hrEdit: hr && can('p-hr-edit'),
       reports: true,
@@ -86,7 +86,7 @@ export function pageRights(can: (key: string) => boolean, rel: Relation): PageRi
     personalEdit: personal && can('p-personal-edit'),
     work,
     workEdit,
-    teamsEdit: workEdit && can('d-edit'),
+    teamsEdit: workEdit && can('d-positions'),
     hr,
     hrEdit: hr && can('p-hr-edit'),
     reports,

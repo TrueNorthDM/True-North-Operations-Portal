@@ -11,7 +11,8 @@
  *                      server, its two-step code given if it has one, and the
  *                      person still active and invited. Null otherwise.
  *   allowedTo(key)     the gate for a WRITE: a verified session whose real
- *                      person is allowed; a preview may only take powers away.
+ *                      person is allowed, and never during a View Stage
+ *                      preview: a preview shows, it does not save.
  *   requireSurface(k)  page guard: anyone without the item goes back Home.
  *
  * Keys are catalogue item keys (access/catalogue.ts). A few older keys still
@@ -124,15 +125,14 @@ export async function verifiedSession() {
 }
 
 /**
- * The gate for a write. The real person must be allowed; during a View Stage
- * preview the previewed level must be too (a preview only takes powers away).
+ * The gate for a write. The real person must be allowed, and nothing is saved
+ * during a View Stage preview (decided 8 October 2026): a preview shows a
+ * level, it never acts as the Super Admin behind it.
  */
 export async function allowedTo(key: string): Promise<boolean> {
   if (!(await verifiedSession())) return false
-  const [real, vs] = await Promise.all([loadRealAccess(), getViewAs()])
-  if (!real.can(key)) return false
-  if (!vs) return true
-  return (await loadAccess()).can(key)
+  if (await getViewAs()) return false
+  return (await loadRealAccess()).can(key)
 }
 
 /**

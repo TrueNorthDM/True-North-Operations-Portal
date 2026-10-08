@@ -122,6 +122,13 @@ describe('allowedTo, the gate for writes', () => {
     expect(await allowedTo('d-edit')).toBe(false)
   })
 
+  it('saves nothing during a View Stage preview, whatever either level allows', async () => {
+    subjects[0] = person('p-real', 'super_admin')
+    preview = { role: 'admin' }
+    expect(await allowedTo('d-edit')).toBe(false)
+    expect(await allowedTo('home')).toBe(false)
+  })
+
   it('lets a preview take powers away, never add them', async () => {
     subjects[0] = person('p-real', 'super_admin')
     preview = { role: 'user' }

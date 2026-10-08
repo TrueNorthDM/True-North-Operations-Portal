@@ -102,25 +102,26 @@ describe('the tab and the relation', () => {
 })
 
 describe('teams and positions on the page', () => {
-  // Lead of a team makes a Team Leader, who then opens that team's pages: so
-  // editing Work alone must never let anyone put themselves on a team as Lead.
+  // Lead of a team makes a Team Leader and opens the team's tools, so only a
+  // Super Admin changes teams (d-positions, decided 8 October 2026).
   const only = (keys: string[]) => (key: string) => keys.includes(key)
 
-  it('follow the Teams-tab item on top of editing Work', () => {
-    expect(pageRights(canAs('admin'), 'other')!.teamsEdit).toBe(true)
-    expect(pageRights(canAs('admin'), 'own')!.teamsEdit).toBe(true)
+  it('are a Super Admin\'s alone, on anyone\'s page and their own', () => {
+    expect(pageRights(canAs('super_admin'), 'other')!.teamsEdit).toBe(true)
+    expect(pageRights(canAs('super_admin'), 'own')!.teamsEdit).toBe(true)
+    expect(pageRights(canAs('admin'), 'other')!.teamsEdit).toBe(false)
+    expect(pageRights(canAs('admin'), 'own')!.teamsEdit).toBe(false)
     expect(pageRights(canAs('team_leader'), 'led')!.teamsEdit).toBe(false)
   })
 
-  it('stay closed to someone given Work editing without the Teams-tab item, on their own page too', () => {
-    const can = only(['p-any', 'p-led', 'p-work', 'p-work-edit'])
+  it('stay closed to someone given Work editing without d-positions, on their own page too', () => {
+    const can = only(['p-any', 'p-led', 'p-work', 'p-work-edit', 'd-edit'])
     expect(pageRights(can, 'own')!.workEdit).toBe(true)
     expect(pageRights(can, 'own')!.teamsEdit).toBe(false)
-    expect(pageRights(can, 'other')!.workEdit).toBe(true)
     expect(pageRights(can, 'other')!.teamsEdit).toBe(false)
   })
 
   it('never come without Work editing, whatever else is ticked', () => {
-    expect(pageRights(only(['p-any', 'p-work', 'd-edit']), 'other')!.teamsEdit).toBe(false)
+    expect(pageRights(only(['p-any', 'p-work', 'd-positions']), 'other')!.teamsEdit).toBe(false)
   })
 })

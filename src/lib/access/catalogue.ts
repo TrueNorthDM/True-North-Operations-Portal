@@ -87,9 +87,9 @@ const TREE: Node[] = [
     { key: 'my-hours', label: 'Hours', kind: 'page', v: [1, 0, 0], note: 'Being built; QuickBooks Time is still the official record.', ch: [
       { key: 'h-week', label: 'Week', kind: 'tab', v: [1, 1, 1] },
       { key: 'h-month', label: 'Month submission', kind: 'tab', v: [1, 1, 1] },
-      { key: 'h-waiting', label: 'Waiting for you (approvals)', kind: 'tab', v: [0, 0, 0], note: 'Approving hours and time off: Super Admins only, for now (8 October 2026).' },
+      { key: 'h-waiting', label: 'Waiting for you (approvals)', kind: 'tab', superOnly: true, note: 'Approving hours and time off: Super Admins only, for now (8 October 2026).' },
       { key: 'h-timeoff', label: 'Time off', kind: 'tab', v: [1, 1, 1] },
-      { key: 'h-reopen', label: 'Reopen a submitted month', kind: 'action', v: [0, 0, 0] },
+      { key: 'h-reopen', label: 'Reopen a submitted month', kind: 'action', superOnly: true },
     ] },
     { key: 'my-hours-reports', label: 'Reports', kind: 'page', soon: true, v: [1, 0, 0] },
     { key: 'my-hours-approvals', label: 'Approvals and invoices', kind: 'page', soon: true, v: [1, 0, 0] },
@@ -134,7 +134,10 @@ const TREE: Node[] = [
       { key: 'd-rates', label: 'Rates & Costs', kind: 'tab', v: [1, 0, 0] },
       { key: 'd-log', label: 'Access log', kind: 'tab', v: [1, 0, 0] },
       { key: 'd-portal', label: 'Portal access', kind: 'tab', v: [1, 0, 0] },
-      { key: 'd-edit', label: 'Add people, and change teams and positions on the Teams tab', kind: 'action', v: [1, 0, 0] },
+      { key: 'd-edit', label: 'Add and remove people', kind: 'action', v: [1, 0, 0] },
+      // Being on a team, and leading it, opens that team's tools: only a Super
+      // Admin changes it (audit, 8 October 2026), so nobody gives themselves a tool.
+      { key: 'd-positions', label: 'Teams and positions: create teams, who is on them, and who leads them', kind: 'action', superOnly: true },
       { key: 'd-invite', label: 'Invite, resend and revoke portal access', kind: 'action', v: [1, 0, 0] },
     ] },
     // A person's page (8 October 2026): one tab per who keeps the information.
@@ -150,7 +153,7 @@ const TREE: Node[] = [
       { key: 'p-work-edit', label: "Edit someone else's Work", kind: 'action', v: [1, 0, 0] },
       { key: 'p-hr', label: 'HR and access: onboarding, offboarding, invitation, last access', kind: 'tab', v: [1, 0, 0] },
       { key: 'p-hr-edit', label: 'Change onboarding, offboarding and the QuickBooks Time link', kind: 'action', v: [1, 0, 0] },
-      { key: 'd-2fa', label: "Reset someone's two-step sign-in", kind: 'action', v: [0, 0, 0] },
+      { key: 'd-2fa', label: "Reset someone's two-step sign-in", kind: 'action', superOnly: true },
       { key: 'p-reports', label: 'Reports: who reports to the person', kind: 'tab', v: [1, 0, 0] },
     ] },
     { key: 'organization', label: 'Organization', kind: 'page', always: true },

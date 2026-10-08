@@ -162,6 +162,27 @@ describe('exceptions', () => {
     expect(decide(deny, 'report-people', NO_RULES, { today: T }).ok).toBe(true)
   })
 
+  it('lets a deny win when a grant and a deny are both open, in either order', () => {
+    const a = who('user', [], [{ key: 'report', effect: 'grant', until: null }, { key: 'report', effect: 'deny', until: null }])
+    const b = who('user', [], [{ key: 'report', effect: 'deny', until: null }, { key: 'report', effect: 'grant', until: null }])
+    expect(decide(a, 'report', NO_RULES, { today: T }).ok).toBe(false)
+    expect(decide(b, 'report', NO_RULES, { today: T }).ok).toBe(false)
+  })
+
+  it('counts an exception ending today as open all day, and the grant once the deny has expired', () => {
+    const p = who('user', [], [{ key: 'report', effect: 'deny', until: '2026-10-08' }, { key: 'report', effect: 'grant', until: null }])
+    expect(decide(p, 'report', NO_RULES, { today: '2026-10-08' }).ok).toBe(false)
+    expect(decide(p, 'report', NO_RULES, { today: '2026-10-09' }).ok).toBe(true)
+  })
+
+  it('keeps the Super-Admin-only items closed to an Admin, whatever is ticked', () => {
+    for (const key of ['d-positions', 'd-2fa', 'h-waiting', 'h-reopen']) {
+      expect(ITEM.get(key)?.superOnly, key).toBe(true)
+      const ticked = { ...NO_RULES, levels: new Map([[ruleKey('admin', key), true]]) }
+      expect(decide(who('admin'), key, ticked, { today: T }).ok, key).toBe(false)
+    }
+  })
+
   it('never opens a Super Admin only page, or a key the catalogue lost', () => {
     const p = who('admin', [], [
       { key: 'access-levels', effect: 'grant', until: null },

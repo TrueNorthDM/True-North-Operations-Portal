@@ -32,8 +32,9 @@ async function afterMembership(before: Awaited<ReturnType<typeof levelsOf>>, wha
 const teamName = async (teamId: string) =>
   ((await createAdminClient().from('teams').select('name').eq('id', teamId).maybeSingle()).data as { name: string } | null)?.name ?? 'a team'
 
+/** Teams and positions are Super Admin only (d-positions): leading a team opens its tools. */
 async function requireAdmin() {
-  if (!(await allowedTo('d-edit'))) throw new Error('Not authorized')
+  if (!(await allowedTo('d-positions'))) throw new Error('Only a Super Admin changes teams and positions.')
 }
 
 // ── Teams ─────────────────────────────────────────────────────────────────

@@ -54,8 +54,10 @@ export interface CardRights {
   invite: boolean
   /** d-2fa: reset someone's two-step sign-in. */
   resetTwoStep: boolean
-  /** d-edit: add and edit people. */
+  /** d-edit: add and remove people. */
   edit: boolean
+  /** d-positions: teams and who is on them, who leads them (Super Admin only). */
+  positions: boolean
 }
 
 /** The card rights a person's access gives them (the Directory and Human Resources). */
@@ -67,6 +69,7 @@ export function cardRights(can: (key: string) => boolean): CardRights {
     invite: can('d-invite'),
     resetTwoStep: can('d-2fa'),
     edit: can('d-edit'),
+    positions: can('d-positions'),
   }
 }
 

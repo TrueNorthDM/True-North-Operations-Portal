@@ -38,7 +38,7 @@ export interface TeamCard {
 // one (name + colour). null = closed.
 type DialogState = { mode: 'new' } | { mode: 'edit'; team: TeamCard } | null
 
-export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: PersonView[] }) {
+export function TeamsManager({ cards, people, canEdit }: { cards: TeamCard[]; people: PersonView[]; canEdit: boolean }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -77,11 +77,12 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
         <p className="text-[13.5px] text-muted leading-relaxed">
           Each member is the team&apos;s <b className="text-foreground font-semibold">Lead</b> or a <b className="text-foreground font-semibold">Member</b>, and can be in several teams with a different position in each. Being Lead of any team makes someone a <b className="text-foreground font-semibold">Team Leader</b> in the portal (unless they are an Admin or Super Admin).
         </p>
-        <button type="button" onClick={() => setDialog({ mode: 'new' })} disabled={pending}
+        {/* Teams and positions are Super Admin only (d-positions); everyone else reads. */}
+        {canEdit && <button type="button" onClick={() => setDialog({ mode: 'new' })} disabled={pending}
           className="inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[15px] py-[9px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 disabled:opacity-50">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           <span className="text-[#ffffff]">New team</span>
-        </button>
+        </button>}
       </div>
 
       {/* Tool access moved to the tools themselves (7 October 2026). */}
@@ -107,7 +108,7 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
         // 1 col on phones, 2 on tablets, 3 on desktops, 4 only on wide screens.
         <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {cards.map(t => (
-            <TeamCardView key={t.id} team={t} people={people} pending={pending} run={run} onEdit={() => setDialog({ mode: 'edit', team: t })} onDelete={() => onDelete(t)} />
+            <TeamCardView key={t.id} team={t} people={people} pending={pending} run={run} canEdit={canEdit} onEdit={() => setDialog({ mode: 'edit', team: t })} onDelete={() => onDelete(t)} />
           ))}
         </div>
       )}
@@ -125,7 +126,8 @@ export function TeamsManager({ cards, people }: { cards: TeamCard[]; people: Per
   )
 }
 
-function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
+function TeamCardView({ team, people, pending, run, canEdit, onEdit, onDelete }: {
+  canEdit: boolean
   team: TeamCard
   people: PersonView[]
   pending: boolean
@@ -145,14 +147,14 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
             <span className="w-[11px] h-[11px] rounded-[3px] shrink-0" style={{ background: team.color }} />
             <h3 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0 truncate">{team.name}</h3>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          {canEdit && <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={onEdit} disabled={pending} aria-label="Rename team" className="inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted transition-colors hover:bg-subtle hover:text-tn-ink disabled:opacity-50">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
             </button>
             <button type="button" onClick={onDelete} disabled={pending} aria-label="Delete team" className="inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
             </button>
-          </div>
+          </div>}
         </div>
 
         <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wider uppercase text-muted mt-[18px] mb-2 shrink-0">Members · {team.memberCount}</div>
@@ -174,13 +176,13 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
                     give way to the row actions (toggle position / remove). */}
                 <span className="ml-auto shrink-0 flex items-center gap-1.5 justify-end">
                   {m.roleType !== 'user' && (
-                    <span title={`Access: ${access.label}`} className="group-hover/mem:hidden inline-flex items-center gap-1 font-(family-name:--font-display) font-bold text-[8.5px] tracking-wide uppercase text-muted">
+                    <span title={`Access: ${access.label}`} className={`${canEdit ? 'group-hover/mem:hidden ' : ''}inline-flex items-center gap-1 font-(family-name:--font-display) font-bold text-[8.5px] tracking-wide uppercase text-muted`}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                       {access.label}
                     </span>
                   )}
-                  <span className={`group-hover/mem:hidden font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
-                  <span className="hidden group-hover/mem:flex items-center gap-1">
+                  <span className={`${canEdit ? 'group-hover/mem:hidden ' : ''}font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 ${PILL_CLASS[posPill.kind]}`}>{posPill.label}</span>
+                  {canEdit && <span className="hidden group-hover/mem:flex items-center gap-1">
                     {/* Quick switch between Lead and Member. */}
                     <button type="button" title={isLeader ? 'Make Member' : 'Make Lead'} disabled={pending} onClick={() => run(() => setTeamMemberPosition(team.id, m.id, isLeader ? 'member' : 'lead'))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-tn-teal-soft hover:text-tn-teal disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill={isLeader ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
@@ -188,14 +190,14 @@ function TeamCardView({ team, people, pending, run, onEdit, onDelete }: {
                     <button type="button" title="Remove from team" disabled={pending} onClick={() => run(() => removeTeamMember(team.id, m.id))} className="inline-flex w-7 h-7 items-center justify-center rounded-[8px] text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
                     </button>
-                  </span>
+                  </span>}
                 </span>
               </div>
             )
           })}
         </div>
 
-        {addable.length > 0 && (
+        {canEdit && addable.length > 0 && (
           <div className="shrink-0 mt-3">
             <Select
               fullWidth

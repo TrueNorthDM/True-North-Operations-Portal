@@ -102,7 +102,10 @@ function decideOnce(subject: Subject, key: string, rules: Rules, opts: DecideOpt
 
   // After the parent: an exception opens or closes one item, never a tab whose
   // page the person cannot open (grant the page too).
-  const ex = subject.exceptions?.find(e => e.key === key && (!e.until || e.until >= opts.today))
+  // When a grant and a deny are both open for the same item, the deny wins
+  // (decided 8 October 2026): closing is the safe answer to a contradiction.
+  const live = subject.exceptions?.filter(e => e.key === key && (!e.until || e.until >= opts.today)) ?? []
+  const ex = live.find(e => e.effect !== 'grant') ?? live[0]
   if (ex) return { ok: ex.effect === 'grant', reasons: [{ kind: 'exception', text: ex.until ? `Exception until ${ex.until}` : 'Exception' }] }
 
   if (item.always) return { ok: true, reasons: [{ kind: 'always', text: 'Everyone' }] }
