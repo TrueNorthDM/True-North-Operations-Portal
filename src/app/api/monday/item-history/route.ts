@@ -14,9 +14,8 @@
  * and item id would be read on the caller's behalf.
  */
 
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { loadAccess } from '@/lib/access/resolve'
+import { loadAccess, verifiedSession } from '@/lib/access/resolve'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { loadItemHistory } from '@/lib/monday/worklist/history-data'
@@ -25,9 +24,10 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const supabase = await createClient()
-  const { data: auth } = await supabase.auth.getUser()
-  if (!auth?.user) return new Response('Sign in.', { status: 401 })
+  // Verified, two-step given, still active and invited (lib/access/resolve.ts).
+  const session = await verifiedSession()
+  if (!session) return Response.json({ error: 'Sign in again.' }, { status: 401 })
+  const { supabase, user } = session
 
   const access = await loadAccess()
   if (!access.can('my-work')) return Response.json({ error: 'My Work is not open to your access.' }, { status: 403 })
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
   try {
     // The reader as View Stage shows them, so a preview highlights the
     // previewed person's steps. Nothing is written here.
-    const me = await loadCurrentPerson(supabase, auth.user)
+    const me = await loadCurrentPerson(supabase, user)
     return Response.json(await loadItemHistory(supabase, token, board, item, me))
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 502 })

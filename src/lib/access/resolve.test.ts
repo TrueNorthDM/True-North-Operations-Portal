@@ -35,6 +35,10 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({}) }))
 
+// Active and invited in the Directory (lib/auth/portal-access.ts, tested on its own).
+let mayUsePortal = true
+vi.mock('@/lib/auth/portal-access', () => ({ portalAllowsWrites: async () => mayUsePortal }))
+
 type Subj = { id: string; name: string; level: string; given: string | null; teams: Map<string, boolean>; exceptions: never[]; profileId: null; status: string }
 let subjects: Subj[] = []
 vi.mock('@/lib/access/store', () => ({
@@ -46,7 +50,7 @@ vi.mock('@/lib/access/store', () => ({
 const person = (id: string, level: string, teams: [string, boolean][] = []): Subj =>
   ({ id, name: id, level, given: level === 'super_admin' || level === 'admin' ? level : null, teams: new Map(teams), exceptions: [], profileId: null, status: 'active' })
 
-import { allowedTo, loadAccess, requireSurface } from './resolve'
+import { allowedTo, loadAccess, requireSurface, verifiedSession, writerAccess } from './resolve'
 
 beforeEach(() => {
   redirected.mockClear()
@@ -54,6 +58,7 @@ beforeEach(() => {
   realPerson = { id: 'p-real' }
   preview = null
   aalPending = false
+  mayUsePortal = true
   subjects = [person('p-real', 'team_leader', [['seo', true]]), person('p-admin', 'admin'), person('p-user', 'user')]
 })
 
@@ -129,5 +134,33 @@ describe('allowedTo, the gate for writes', () => {
   it('refuses a signed-out caller', async () => {
     signedIn = null
     expect(await allowedTo('home')).toBe(false)
+  })
+
+  it('refuses someone deactivated or uninvited since they signed in, whatever their level', async () => {
+    subjects[0] = person('p-real', 'super_admin')
+    mayUsePortal = false
+    expect(await allowedTo('d-edit')).toBe(false)
+    expect(await writerAccess()).toBeNull()
+  })
+})
+
+describe('verifiedSession, behind every write (own rows included)', () => {
+  it('answers for a verified, active session', async () => {
+    expect((await verifiedSession())?.user.id).toBe('user-1')
+  })
+
+  it('is null while the two-step code is owed', async () => {
+    aalPending = true
+    expect(await verifiedSession()).toBeNull()
+  })
+
+  it('is null once the person may no longer use the portal', async () => {
+    mayUsePortal = false
+    expect(await verifiedSession()).toBeNull()
+  })
+
+  it('is null when signed out', async () => {
+    signedIn = null
+    expect(await verifiedSession()).toBeNull()
   })
 })

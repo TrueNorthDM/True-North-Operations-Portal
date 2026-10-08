@@ -95,7 +95,8 @@ export function TwoStepEnroll({ qr, secret, uri, email, verify, signOut, skip }:
           <p className="mt-2 text-[12px] text-muted">Can&apos;t scan? Type this key in the app instead:</p>
           <div className="mt-1 flex items-center gap-2">
             <code className="rounded-lg bg-subtle px-2.5 py-1.5 font-mono text-[12.5px] tracking-wide text-tn-ink">{grouped}</code>
-            <button type="button" onClick={copy} className="text-[12px] font-semibold text-tn-teal hover:text-tn-primary">{copied ? 'Copied' : 'Copy'}</button>
+            <button type="button" onClick={copy} aria-label="Copy the key" className="text-[12px] font-semibold text-tn-teal hover:text-tn-primary">{copied ? 'Copied' : 'Copy'}</button>
+            <span role="status" className="sr-only">{copied ? 'Key copied' : ''}</span>
           </div>
         </div>
       </div>
@@ -123,7 +124,7 @@ export function TwoStepEnroll({ qr, secret, uri, email, verify, signOut, skip }:
         type="submit"
         disabled={digits.length !== 6 || pending}
         style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
-        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-50 disabled:active:translate-y-0"
       >
         {pending ? 'Checking…' : 'Turn on two-step sign-in'}
       </button>

@@ -12,6 +12,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { isCronRequest } from '@/lib/auth/cron-auth'
 import type { Json } from '@/lib/types/database.types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { processBoard, getMondayToken } from '@/lib/monday/snapshot'
@@ -27,11 +28,8 @@ export const dynamic = 'force-dynamic'
 const INGEST_DAYS = 1095 // 3 years (rolling)
 
 export async function GET(request: Request) {
-  // The crontab (deploy/cron/run.sh) sends `Authorization: Bearer ${CRON_SECRET}` when CRON_SECRET is
-  // set. Enforce it so the endpoint can't be triggered by random callers.
-  const secret = process.env.CRON_SECRET
-  // Closed when the secret is missing too: an unset variable must not open it.
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+  // The crontab's bearer secret, compared in constant time (lib/auth/cron-auth.ts).
+  if (!isCronRequest(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

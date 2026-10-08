@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/server'
 import { safeNext } from '@/lib/auth/safe-next'
 import { withStartPage } from '@/lib/auth/start-page'
 import { SKIP_COOKIE, checkTwoStep } from '@/lib/auth/two-step'
+import { getSessionUser } from '@/lib/auth/session'
 
 // Short on purpose: it is written into the QR code twice (label and issuer), and a
 // longer name makes a denser code that phone cameras struggle to read. It is also
@@ -63,7 +64,11 @@ export async function startEnroll(): Promise<EnrollStart | { error: string }> {
     issuer: ISSUER,
     friendlyName: 'Authenticator app',
   })
-  if (error || !data) return { error: error?.message ?? 'Could not start the setup. Try again.' }
+  if (error || !data) {
+    // The sign-in service's own wording stays in the log, not on the screen.
+    if (error) console.error('[two-step] enroll:', error.message)
+    return { error: 'Could not start the setup. Try again in a moment.' }
+  }
   return { factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri }
 }
 
@@ -93,7 +98,9 @@ export async function verifyTwoStep(code: string): Promise<{ ok: false; error: s
 export async function skipTwoStep(): Promise<void> {
   const status = await checkTwoStep()
   if (status.need === 'enroll-required') redirect('/auth/two-step/setup')
-  ;(await cookies()).set(SKIP_COOKIE, '1', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' })
+  const user = await getSessionUser()
+  if (!user) redirect('/login')
+  ;(await cookies()).set(SKIP_COOKIE, user.id, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' })
   redirect(await landing())
 }
 
@@ -110,7 +117,10 @@ export async function moveTwoStep(): Promise<{ ok: false; error: string } | neve
   const { data } = await supabase.auth.mfa.listFactors()
   for (const f of data?.all ?? []) {
     const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id })
-    if (error) return { ok: false, error: error.message }
+    if (error) {
+      console.error('[two-step] move:', error.message)
+      return { ok: false, error: 'Could not remove the old app. Try again in a moment.' }
+    }
   }
   redirect('/auth/two-step/setup')
 }

@@ -6,11 +6,14 @@
 // person's directory level there. Loaded when the launcher first opens, not on
 // every page, so the top bar never waits for it.
 
-import { loadAccess } from '@/lib/access/resolve'
+import { loadAccess, verifiedSession } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
 import { activePeople } from '@/lib/report/directory'
 
 export async function launcherPeople(): Promise<{ id: string; name: string }[]> {
+  // A list of people is a read that only a verified session gets, called
+  // directly or not (lib/access/resolve.ts).
+  if (!(await verifiedSession())) return []
   const access = await loadAccess()
   if (!access.can('directory')) return []
   const supabase = await createClient()

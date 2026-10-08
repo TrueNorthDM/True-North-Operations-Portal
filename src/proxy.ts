@@ -12,6 +12,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { gateHeaders } from '@/lib/supabase/gate'
+import { SESSION_COOKIE_OPTIONS } from '@/lib/supabase/cookie-options'
 import { NextResponse, type NextRequest } from 'next/server'
 import { skipsSession } from '@/lib/auth/no-session-paths'
 import { switchOverAction } from '@/lib/switch-over'
@@ -79,16 +80,21 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: { headers: gateHeaders() },
+      cookieOptions: SESSION_COOKIE_OPTIONS,
       cookies: {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet, headers) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           )
+          // The library's no-store headers ride with a refreshed session, so no
+          // cache between here and the browser keeps one person's new cookie
+          // and hands it to the next (audit, 8 October 2026).
+          Object.entries(headers ?? {}).forEach(([key, value]) => response.headers.set(key, value))
         },
       },
     },
@@ -119,6 +125,22 @@ export async function proxy(request: NextRequest) {
 
   // Protected routes, require a session
   if (!user) {
+    // A server action whose session has ended: the redirect below would hand
+    // it the sign-in page's HTML, which it cannot read ("An unexpected response
+    // was received from the server"). Next's action client follows an
+    // x-action-redirect header with no page data as a full navigation, so the
+    // person lands on sign-in and comes back to this page afterwards.
+    // An API call gets a 401 it can act on. (Audit, 8 October 2026.)
+    const back = pathname + request.nextUrl.search
+    if (request.headers.has('next-action')) {
+      return new NextResponse(null, {
+        status: 303,
+        headers: { 'x-action-redirect': `/login?next=${encodeURIComponent(back)};replace`, 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' },
+      })
+    }
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Your session has ended. Sign in again.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
+    }
     const loginUrl = new URL('/login', request.url)
     // Path AND query. The Report keeps its tab, scope and period in the query
     // string precisely so a link can be pasted to somebody else, and dropping

@@ -9,6 +9,7 @@
 // is Super Admin only (access catalogue, 7 October 2026).
 
 import { cache } from 'react'
+import { isFounding } from '@/lib/auth/portal-rule'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -32,7 +33,7 @@ export const getViewAs = cache(async function getViewAs(): Promise<ViewAs | null
 
   // Queried directly rather than through the access resolver, which calls this.
   // The founding account is a Super Admin even before it is linked to a person.
-  if (user.email?.toLowerCase() !== 'arnaldo.oliveira@me.com') {
+  if (!isFounding(user.email)) {
     const { data: byLink } = await supabase.from('people').select('access_level').eq('profile_id', user.id).limit(1)
     let level = (byLink?.[0] as { access_level: string | null } | undefined)?.access_level ?? null
     const mailbox = level ? null : mailboxFilter(user.email)

@@ -16,6 +16,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { isCronRequest } from '@/lib/auth/cron-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { allowedTo } from '@/lib/access/resolve'
@@ -40,8 +41,7 @@ export async function GET(request: Request) {
 
   // Hop 0 is a person clicking; later hops are this route calling itself and
   // carry the cron secret instead of a session.
-  const secret = process.env.CRON_SECRET
-  const chained = secret && request.headers.get('authorization') === `Bearer ${secret}`
+  const chained = isCronRequest(request.headers.get('authorization'))
   if (!chained && !(await allowedTo('cs-my-work'))) {
     return NextResponse.json({ error: 'Admins only.' }, { status: 403 })
   }
@@ -134,6 +134,7 @@ export async function GET(request: Request) {
     // set gets a first pass that works and a second that 403s, which looks
     // like the backfill silently stopping halfway.
     const forward: Record<string, string> = {}
+    const secret = process.env.CRON_SECRET
     if (secret) forward.authorization = `Bearer ${secret}`
     const cookie = request.headers.get('cookie')
     if (cookie) forward.cookie = cookie

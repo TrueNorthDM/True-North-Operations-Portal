@@ -65,9 +65,15 @@ describe('every file route asks the access rule', () => {
   it('has a guard, the cron secret, or is listed as open', () => {
     const missing = files
       .filter(f => f.endsWith('route.ts'))
-      .filter(f => { const s = read(f); return !GUARD.test(s) && !/CRON_SECRET/.test(s) && !(rel(f) in OPEN) })
+      .filter(f => { const s = read(f); return !GUARD.test(s) && !/isCronRequest\(/.test(s) && !(rel(f) in OPEN) })
       .map(rel)
     expect(missing).toEqual([])
+  })
+
+  it('checks every cron call with the one constant-time check (lib/auth/cron-auth.ts)', () => {
+    const unchecked = files.filter(f => /app\/api\/cron\//.test(f) && f.endsWith('route.ts'))
+      .filter(f => !/isCronRequest\(request\.headers\.get\('authorization'\)\)/.test(read(f))).map(rel)
+    expect(unchecked).toEqual([])
   })
 
   it('refuses a cron call when the secret is not set, instead of letting it in', () => {

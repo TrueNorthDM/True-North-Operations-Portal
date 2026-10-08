@@ -13,7 +13,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessionUser } from '@/lib/auth/session'
 import { twoStepDeadline, twoStepNeed, type TwoStepNeed } from '@/lib/auth/two-step-rule'
 
-/** Set when someone presses "Skip for now"; lasts the browser session. */
+/**
+ * Set when someone presses "Skip for now"; lasts the browser session. Its value
+ * is the account that skipped, so on a shared computer the next person to sign
+ * in is still asked (audit, 8 October 2026).
+ */
 export const SKIP_COOKIE = 'tn_2fa_later'
 
 export interface TwoStepStatus {
@@ -26,14 +30,13 @@ export interface TwoStepStatus {
   since: string | null
 }
 
-type Row = { user_id: string; account_created: string; factor_since: string | null; launch: string | null; cutoff: string | null }
 
 /** Every account's second step, by account id: since when it is set up, or null. */
 export async function loadTwoStepByAccount(): Promise<Map<string, string | null> | null> {
   const db = createAdminClient()
   const { data, error } = await db.rpc('portal_two_step_status', {}) // no p_user: every account
   if (error) return null // migration 090 not run yet: the Directory hides the column
-  return new Map((data as Row[]).map(r => [r.user_id, r.factor_since]))
+  return new Map(data.map(r => [r.user_id, r.factor_since]))
 }
 
 /** The signed-in session's two-step status. Asked once per request by the app layout. */
@@ -44,13 +47,13 @@ export const checkTwoStep = cache(async function checkTwoStep(): Promise<TwoStep
   const db = createAdminClient()
   const { data, error } = await db.rpc('portal_two_step_status', { p_user: user.id })
   if (error || !data?.length) return none // before migration 090, or a passing error: never lock people out
-  const r = (data as Row[])[0]
+  const r = data[0]
   const hasFactor = !!r.factor_since
   const deadline = twoStepDeadline({
     accountCreated: new Date(r.account_created),
     launch: r.launch ? new Date(r.launch) : null,
     cutoff: r.cutoff ? new Date(r.cutoff) : null,
   })
-  const skipped = (await cookies()).get(SKIP_COOKIE)?.value === '1'
+  const skipped = (await cookies()).get(SKIP_COOKIE)?.value === user.id
   return { need: twoStepNeed({ hasFactor, aal: user.aal, deadline, now: new Date() }), hasFactor, deadline, skipped, since: r.factor_since }
 })

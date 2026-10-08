@@ -8,7 +8,7 @@
  * the public `avatars` bucket (migration 036).
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { verifiedSession } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { revalidatePath } from 'next/cache'
@@ -16,9 +16,10 @@ import { revalidatePath } from 'next/cache'
 const BUCKET = 'avatars'
 
 async function myPersonId(): Promise<string> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not signed in')
+  // Verified, two-step given, still active and invited (lib/access/resolve.ts).
+  const session = await verifiedSession()
+  if (!session) throw new Error('Sign in again to change your photo.')
+  const { supabase, user } = session
   // The person really signed in, never a View Stage preview: these write.
   const me = await loadCurrentPerson(supabase, user, { real: true })
   if (!me) throw new Error('Your account isn’t linked to a directory record.')

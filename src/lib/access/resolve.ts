@@ -5,10 +5,13 @@
  *   loadAccess()       what to RENDER. In a View Stage preview, the previewed
  *                      level's answers (its first person alphabetically, with
  *                      their teams), so the preview shows that level honestly.
- *   loadRealAccess()   the person actually signed in, never a preview; null
- *                      answers while their two-step code is still owed.
- *   allowedTo(key)     the gate for a WRITE: the real person must be allowed,
- *                      and a preview may only take powers away, never add.
+ *   loadRealAccess()   the person actually signed in, never a preview (what
+ *                      they may RENDER; writes go through verifiedSession).
+ *   verifiedSession()  the session behind any WRITE: confirmed with the Auth
+ *                      server, its two-step code given if it has one, and the
+ *                      person still active and invited. Null otherwise.
+ *   allowedTo(key)     the gate for a WRITE: a verified session whose real
+ *                      person is allowed; a preview may only take powers away.
  *   requireSurface(k)  page guard: anyone without the item goes back Home.
  *
  * Keys are catalogue item keys (access/catalogue.ts). A few older keys still
@@ -16,10 +19,12 @@
  */
 
 import { cache } from 'react'
+import { isFounding } from '@/lib/auth/portal-rule'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getRealPerson, getSessionUser } from '@/lib/auth/session'
+import { portalAllowsWrites } from '@/lib/auth/portal-access'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { zoneDate } from '@/lib/notifications/schedule'
 import { ALIAS, ITEM, TOOL_ITEMS, type AccessLevel } from './catalogue'
@@ -76,7 +81,7 @@ export const loadRealAccess = cache(async function loadRealAccess(): Promise<Acc
   if (!user) return accessFrom(NOBODY, new Set(), null)
   const subject = (me ? await loadSubject(createAdminClient(), me.id) : null) ?? NOBODY
   // The founding account keeps everything even before it is linked to a person.
-  const founding = user.email?.toLowerCase() === 'arnaldo.oliveira@me.com'
+  const founding = isFounding(user.email)
   const s: Subject = founding ? { ...subject, level: 'super_admin' } : subject
   return accessFrom(s, allowedKeys(s, rules, { today: today() }), me?.id ?? null)
 })
@@ -101,17 +106,29 @@ export async function whyFor(key: string): Promise<Decision | null> {
 }
 
 /**
+ * The session behind a write, or null. Every server action that changes
+ * anything starts here (directly or through allowedTo / writerAccess), even
+ * one that only changes the caller's own rows: a session that has not given
+ * its two-step code, or whose person was deactivated or uninvited since it
+ * signed in, writes nothing.
+ */
+export async function verifiedSession() {
+  // The Auth server, not the cached token: a revoked session fails here.
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') return null
+  if (!(await portalAllowsWrites(user))) return null
+  return { supabase, user }
+}
+
+/**
  * The gate for a write. The real person must be allowed; during a View Stage
  * preview the previewed level must be too (a preview only takes powers away).
  */
 export async function allowedTo(key: string): Promise<boolean> {
-  // A write is authorised against the Auth server, not the cached token, and
-  // not before the second step of two-step sign-in was given this session.
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  if (aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') return false
+  if (!(await verifiedSession())) return false
   const [real, vs] = await Promise.all([loadRealAccess(), getViewAs()])
   if (!real.can(key)) return false
   if (!vs) return true
@@ -125,11 +142,7 @@ export async function allowedTo(key: string): Promise<boolean> {
  * preview never writes, or when the checks fail.
  */
 export async function writerAccess(): Promise<Access | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  if (aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') return null
+  if (!(await verifiedSession())) return null
   if (await getViewAs()) return null
   return loadRealAccess()
 }

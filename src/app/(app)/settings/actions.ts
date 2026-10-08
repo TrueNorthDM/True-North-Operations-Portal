@@ -11,11 +11,10 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { loadAccess } from '@/lib/access/resolve'
+import { loadAccess, verifiedSession } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { pinnable } from '@/lib/settings/pages'
@@ -28,9 +27,10 @@ export async function saveSettings(patch: SettingsPatch): Promise<Result> {
   const clean = cleanSettings(patch)
   if (!clean) return { ok: false, error: 'That choice could not be read. Reload the page and try again.' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { ok: false, error: 'You are signed out. Sign in again to save.' }
+  // Verified, two-step given, still active and invited (lib/access/resolve.ts).
+  const session = await verifiedSession()
+  if (!session) return { ok: false, error: 'Sign in again to save.' }
+  const { supabase, user } = session
   const me = await loadCurrentPerson(supabase, user, { real: true })
   if (!me) return { ok: false, error: 'Your login is not linked to anyone in the Directory.' }
 

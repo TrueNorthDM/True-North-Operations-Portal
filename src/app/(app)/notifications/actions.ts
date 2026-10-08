@@ -14,10 +14,9 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { allowedTo } from '@/lib/access/resolve'
+import { allowedTo, verifiedSession } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { headers } from 'next/headers'
 import { NOTIFICATION_TYPES, TYPE_BY_KEY, cleanPref, cleanRule, tabOf, type Pref, type Rule } from '@/lib/notifications/catalogue'
@@ -35,9 +34,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 async function signedInPerson(): Promise<{ personId: string; name: string; email: string | null } | { error: string }> {
   if (await getViewAs()) return { error: 'View Stage is only a preview. Close it to change notifications.' }
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'You are signed out. Sign in again to save.' }
+  // Verified, two-step given, still active and invited (lib/access/resolve.ts).
+  const session = await verifiedSession()
+  if (!session) return { error: 'Sign in again to save.' }
+  const { supabase, user } = session
   const me = await loadCurrentPerson(supabase, user, { real: true })
   if (!me) return { error: 'Your login is not linked to anyone in the Directory.' }
   return { personId: me.id, name: me.full_name ?? '', email: user.email ?? null }

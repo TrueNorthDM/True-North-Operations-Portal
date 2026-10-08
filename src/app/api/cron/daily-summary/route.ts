@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { isCronRequest } from '@/lib/auth/cron-auth'
 import { publicOrigin } from '@/lib/auth/public-origin'
 import { sendDailySummaries } from '@/lib/notifications/summary'
 
@@ -14,9 +15,8 @@ export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET
-  // Closed when the secret is missing too: an unset variable must not open it.
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+  // The crontab's bearer secret, compared in constant time (lib/auth/cron-auth.ts).
+  if (!isCronRequest(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const report = await sendDailySummaries({ origin: publicOrigin(request.url) })

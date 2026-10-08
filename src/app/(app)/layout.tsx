@@ -54,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {user && <AccessPing />}
+      {user && <AccessPing accountId={user.id} />}
       {/* Keeps a View Stage preview impersonating across navigation. */}
       <ViewAsKeeper />
       {/* Top bar, brand on the left. On the right, since the navigation

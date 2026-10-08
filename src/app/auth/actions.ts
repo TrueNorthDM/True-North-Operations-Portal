@@ -26,7 +26,8 @@ import { withStartPage } from '@/lib/auth/start-page'
 import type { SignedInIdentity } from '@/lib/directory/current-person'
 import { requestOrigin } from '@/lib/auth/origin'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
+import { SEND_PER_ADDRESS, SEND_PER_VISITOR, TRY_PER_ADDRESS, sendLimiter, visitorOf } from '@/lib/auth/send-limit'
 
 /**
  * Where the person was going when the sign-in started, kept for an hour. The code
@@ -44,6 +45,14 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
   // active, invited person (or the founding account). Layer 1 is the shape check
   // in the client UI; layer 3 is the DB trigger on auth.users (migration 089).
   if (!isAllowedEmail(email)) return { ok: false, error: SHAPE_MESSAGE }
+  // Before anything is looked up or sent (lib/auth/send-limit.ts).
+  const visitor = visitorOf((await headers()).get('x-forwarded-for'))
+  // Per visitor only when we know who they are: an unknown address shared by
+  // everybody would turn the per-visitor limit into one for the whole company.
+  const visitorOk = visitor === 'unknown' || sendLimiter.take(`visitor:${visitor}`, SEND_PER_VISITOR)
+  if (!sendLimiter.take(`send:${email}`, SEND_PER_ADDRESS) || !visitorOk) {
+    return { ok: false, error: 'Too many codes asked for. Wait a few minutes, then try again.' }
+  }
   if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }
 
   const next = safeNext(input.next)
@@ -64,15 +73,31 @@ export async function sendMagicLink(input: { email: string; next?: string }): Pr
     },
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    // The sign-in service's own wording stays in the log. Its one message a
+    // person can act on is the wait between two codes, said here in ours.
+    console.error('[auth] send code:', error.status, error.message)
+    if (error.status === 429 || /security purposes|rate limit/i.test(error.message)) {
+      return { ok: false, error: 'A code was sent a moment ago. Wait a minute, then ask again.' }
+    }
+    return { ok: false, error: 'The code could not be sent. Try again in a moment.' }
+  }
   return { ok: true }
 }
 
-/** Where they were going, else the start page they chose in Settings (Home by default). */
+/**
+ * Where they were going, else the start page they chose in Settings (Home by default).
+ *
+ * The cookie is NOT cleared here: when the account owes its two-step code (or
+ * has to set it up), the app sends them through /auth/two-step first, and that
+ * step's own landing reads the cookie and clears it. Clearing it here sent
+ * everyone with two-step on to Home instead of the link they opened. Without a
+ * second step it simply expires within the hour, and the next sign-in writes
+ * it again.
+ */
 async function landing(user: SignedInIdentity | null | undefined): Promise<string> {
   const store = await cookies()
   const next = safeNext(store.get(NEXT_COOKIE)?.value)
-  store.delete(NEXT_COOKIE)
   return withStartPage(next, user)
 }
 
@@ -81,6 +106,9 @@ export async function verifyCode(input: { email: string; code: string }): Promis
   const email = input.email.trim().toLowerCase()
   const token = input.code.replace(/\D/g, '')
   if (token.length < 6) return { ok: false, error: 'Enter the 6‑digit code from the email.' }
+  if (!sendLimiter.take(`try:${email}`, TRY_PER_ADDRESS)) {
+    return { ok: false, error: 'Too many tries. Ask for a new code in a few minutes.' }
+  }
   // The invitation check again: the code was sent while they were invited, and
   // this closes the window if an admin revoked them in between.
   if (!(await canSignIn(email))) return { ok: false, error: NOT_INVITED_MESSAGE }

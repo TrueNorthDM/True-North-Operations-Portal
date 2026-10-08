@@ -29,6 +29,7 @@
  */
 
 import { NextResponse, after } from 'next/server'
+import { isCronRequest } from '@/lib/auth/cron-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
@@ -74,9 +75,10 @@ const NOTIFY_BEFORE_MS = 250_000
  * read once, not when it reaches LINKS.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET
-  // Closed when the secret is missing too: an unset variable must not open it.
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+  // Passed on to the next hop of the chain, which checks it the same way.
+  const secret = process.env.CRON_SECRET as string
+  // The crontab's bearer secret, compared in constant time (lib/auth/cron-auth.ts).
+  if (!isCronRequest(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

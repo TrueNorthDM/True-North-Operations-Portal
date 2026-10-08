@@ -53,8 +53,22 @@ export async function canSignIn(email: string): Promise<boolean> {
  */
 export const checkPortalAccess = cache(async function checkPortalAccess(): Promise<'ok' | 'denied'> {
   const user = await getSessionUser()
-  if (!user || isFounding(user.email)) return 'ok'
+  if (!user) return 'ok'
+  return portalAnswer(user, 'ok')
+})
 
+/**
+ * The same rule for a WRITE, on a session already verified with the Auth
+ * server: active and invited, or no write. Unlike the page check it fails
+ * closed, since refusing one save on a database hiccup costs little and a
+ * deactivated person's write is exactly what must not slip through.
+ */
+export async function portalAllowsWrites(user: { id: string; email?: string | null }): Promise<boolean> {
+  return (await portalAnswer(user, 'denied')) === 'ok'
+}
+
+async function portalAnswer(user: { id: string; email?: string | null }, onError: 'ok' | 'denied'): Promise<'ok' | 'denied'> {
+  if (isFounding(user.email)) return 'ok'
   const db = createAdminClient()
   const cols = 'status, email_goodnews, portal_invited_at'
   let res = await db.from('people').select(cols).eq('profile_id', user.id).limit(1)
@@ -65,12 +79,13 @@ export const checkPortalAccess = cache(async function checkPortalAccess(): Promi
     res = await db.from('people').select(cols).ilike('email_goodnews', exact).limit(1)
   }
   if (res.error) {
-    if (!isMissingMigration(res.error)) console.error('[portal-access] check failed:', res.error.message)
-    return 'ok'
+    if (isMissingMigration(res.error)) return 'ok'
+    console.error('[portal-access] check failed:', res.error.message)
+    return onError
   }
   const person = (res.data?.[0] ?? null) as PortalPerson | null
   return mayUsePortal(user.email, person) ? 'ok' : 'denied'
-})
+}
 
 /**
  * End every session of an account: on deactivation, removal or a revoked

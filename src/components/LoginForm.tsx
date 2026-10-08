@@ -13,11 +13,12 @@
 import { useState, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { sendMagicLink, verifyCode } from '@/app/auth/actions'
-import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS, SHAPE_MESSAGE } from '@/lib/auth-constants'
+import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-constants'
 
 const LOGIN_ERRORS: Record<string, string> = {
   link: 'That sign-in link has expired or was already used. Ask for a new one below.',
   missing: 'That sign-in link is incomplete. Ask for a new one below.',
+  'not-invited': NOT_INVITED_MESSAGE,
 }
 
 export function LoginForm() {
@@ -66,7 +67,7 @@ export function LoginForm() {
 
   if (sent) {
     return (
-      <form onSubmit={handleCode} role="status" className="space-y-4 text-center">
+      <form onSubmit={handleCode} className="space-y-4 text-center">
         {/* Custom line-icon (system style) in a teal-soft chip; floats gently,
             the animation is disabled under prefers-reduced-motion. */}
         <div className="flex justify-center">
@@ -78,7 +79,7 @@ export function LoginForm() {
           </span>
         </div>
         <h2 style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }} className="text-xl text-tn-ink">Check your inbox</h2>
-        <p className="text-sm text-foreground">
+        <p role="status" className="text-sm text-foreground">
           We sent a code to <strong className="text-tn-ink">{trimmed}</strong>. Type it here, or press the button in the email.
         </p>
         <div className="pt-1 text-left">
@@ -105,7 +106,7 @@ export function LoginForm() {
           type="submit"
           disabled={code.replace(/\D/g, '').length < 6 || checking}
           style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
-          className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed"
+          className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-50 disabled:active:translate-y-0"
         >
           {checking ? 'Signing in…' : 'Sign in'}
         </button>
@@ -140,10 +141,12 @@ export function LoginForm() {
           placeholder={`you@${ALLOWED_EMAIL_DOMAINS[0]}`}
           autoComplete="email"
           autoFocus
+          aria-invalid={looksLikeEmail && !domainOk ? true : undefined}
+          aria-describedby={looksLikeEmail && !domainOk ? 'email-hint' : undefined}
           className="w-full rounded-xl border-[1.5px] border-slate-300 bg-card px-4 py-3 text-center text-[15px] text-tn-ink transition-colors focus:border-tn-teal focus:outline-none focus:ring-[3px] focus:ring-tn-teal/20"
         />
         {looksLikeEmail && !domainOk && (
-          <p className="mt-2 text-center text-xs text-amber-700">
+          <p id="email-hint" className="mt-2 text-center text-xs text-amber-700">
             {SHAPE_MESSAGE}
           </p>
         )}
@@ -159,7 +162,7 @@ export function LoginForm() {
         type="submit"
         disabled={!canSubmit}
         style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
-        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-50 disabled:active:translate-y-0"
       >
         {sending ? 'Sending…' : 'Email me a sign-in code'}
       </button>

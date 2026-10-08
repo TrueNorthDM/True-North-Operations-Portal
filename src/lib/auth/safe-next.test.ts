@@ -31,6 +31,28 @@ describe('safeNext', () => {
     expect(safeNext('/\\evil.com')).toBe('/')
   })
 
+  it('rejects control characters that URL parsing strips (/\t/host becomes //host)', () => {
+    expect(safeNext('/\t/evil.com')).toBe('/')
+    expect(safeNext('/\n/evil.com')).toBe('/')
+    expect(safeNext('/\r/evil.com')).toBe('/')
+    expect(safeNext('/\u0000evil')).toBe('/')
+  })
+
+  it('rejects a backslash anywhere, not only after the first slash', () => {
+    expect(safeNext('/a/..\\..\\evil.com')).toBe('/')
+  })
+
+  it('never lets the result resolve to another origin', () => {
+    for (const raw of ['/\t/evil.com', '/\\evil.com', '//evil.com', '/%09/evil.com', '/directory?next=//evil.com']) {
+      const out = safeNext(raw)
+      expect(new URL(out, 'https://truenorthportal.online').origin).toBe('https://truenorthportal.online')
+    }
+  })
+
+  it('keeps an encoded tab as text: it stays a path on this site', () => {
+    expect(safeNext('/%09/evil.com')).toBe('/%09/evil.com')
+  })
+
   it('rejects paths not rooted at "/"', () => {
     expect(safeNext('evil.com')).toBe('/')
     expect(safeNext('admin/tickets')).toBe('/')

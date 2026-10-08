@@ -64,7 +64,7 @@ export function TwoStepChallenge({ email, verify, signOut }: TwoStepChallengePro
         type="submit"
         disabled={digits.length !== 6 || pending}
         style={{ fontFamily: 'var(--font-raleway)', fontWeight: 800 }}
-        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] text-[#ffffff] transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-50 disabled:active:translate-y-0"
       >
         {pending ? 'Checking…' : 'Continue'}
       </button>
