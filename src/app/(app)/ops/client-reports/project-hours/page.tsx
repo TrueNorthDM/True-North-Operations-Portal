@@ -83,9 +83,16 @@ export default async function ProjectHoursPage({
 
   // Donations and prepaid hours, for whoever may edit them (the access item
   // "Money in and donation records").
-  const moneyIn = access.can('ph-money')
-    ? await loadMoneyIn(createAdminClient(), selected)
-    : null
+  // When they cannot be read, the editor is not offered at all: it would open
+  // blank and saving it would erase the month's figures.
+  let moneyIn: Awaited<ReturnType<typeof loadMoneyIn>> | null = null
+  let moneyInFailed = false
+  if (access.can('ph-money')) {
+    try { moneyIn = await loadMoneyIn(createAdminClient(), selected) } catch (e) {
+      moneyInFailed = true
+      console.error('[project-hours] money in', e)
+    }
+  }
 
   // Admins only: these hours reach a client report.
   const manual = access.can('ph-manual')
@@ -129,6 +136,7 @@ export default async function ProjectHoursPage({
               and pushed the whole page sideways. */}
           <div className="ml-auto flex items-center gap-2.5 flex-wrap">
             {moneyIn && <MoneyInDialog data={moneyIn} projects={TRACKED_PROJECTS} />}
+            {moneyInFailed && <span className="text-[12.5px] text-[var(--warn-fg)]">Money in could not be read. Reload to try again.</span>}
             {/* Beside the button that enters them, because "where did that
                 figure come from" is asked in the same breath as entering one.
                 Same tier as the dialog: the page redirects anyone else. */}

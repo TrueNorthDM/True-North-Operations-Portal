@@ -1,6 +1,6 @@
 // Admin → System manual. Security admins only: the "How it runs" tab names the
 // server, its accounts and where the keys live. Two tabs (ManualHeader):
-// "The portal" (lib/manual/data.ts, SystemManual) and "How it runs" (HowItRuns).
+// "The portal" (SystemManual) and "How it runs" (HowItRuns).
 
 import { redirect } from 'next/navigation'
 import { requireSurface } from '@/lib/access/resolve'

@@ -54,9 +54,9 @@ const PUBLISHING: PublishingBoardWeeks[] = [
 ]
 
 const PEOPLE: CelebrationPerson[] = [
-  { id: '1', name: 'Cheyenne Wilson', avatarUrl: null, hireDate: '2021-09-14', dob: '1990-09-06', teamName: 'Writing', teamKey: 'writing', color: '#e08a1e' },
-  { id: '2', name: 'Kevin Ames', avatarUrl: null, hireDate: '2019-09-02', dob: '1985-09-21', teamName: 'SEO', teamKey: 'seo', color: '#1E7D7F' },
-  { id: '3', name: 'Wendy Cacka', avatarUrl: null, hireDate: '2023-09-25', dob: '1988-09-30', teamName: 'Web', teamKey: 'web', color: '#6d5ae0' },
+  { id: '1', name: 'Avery Stone', avatarUrl: null, hireDate: '2021-09-14', dob: '1990-09-06', teamName: 'Writing', teamKey: 'writing', color: '#e08a1e' },
+  { id: '2', name: 'Blake Rivers', avatarUrl: null, hireDate: '2019-09-02', dob: '1985-09-21', teamName: 'SEO', teamKey: 'seo', color: '#1E7D7F' },
+  { id: '3', name: 'Casey Moore', avatarUrl: null, hireDate: '2023-09-25', dob: '1988-09-30', teamName: 'Web', teamKey: 'web', color: '#6d5ae0' },
 ]
 
 /** A founder and two leads. Enough for the chart to draw itself and be measured. */
@@ -66,9 +66,9 @@ const person = (id: string, name: string, title: string, color: string, children
 })
 
 const ORG: OrgPerson[] = [
-  person('1', 'Arnaldo Oliveira', 'Founder', '#012358', [
-    person('2', 'Jeannette Owens', 'SEO lead', '#1E7D7F'),
-    person('3', 'Wendy Cacka', 'Web lead', '#6d5ae0'),
+  person('1', 'Jordan Ellis', 'Founder', '#012358', [
+    person('2', 'Dana Price', 'SEO lead', '#1E7D7F'),
+    person('3', 'Casey Moore', 'Web lead', '#6d5ae0'),
   ]),
 ]
 

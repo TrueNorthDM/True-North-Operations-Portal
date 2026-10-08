@@ -11,3 +11,7 @@ scratchpad
 coverage
 *.log
 Monthly i7 pdfs
+
+# Design checks are development pages (sample data, no login in dev):
+# they never go into a production build.
+src/app/design-check

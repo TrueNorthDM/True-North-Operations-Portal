@@ -118,30 +118,3 @@ export async function removeTeamMember(teamId: string, personId: string) {
   revalidatePath('/directory')
   revalidatePath('/')
 }
-
-// ── Access grants (subject = team) ──────────────────────────────────────────
-export async function setTeamGrant(teamId: string, projectId: string, role: GrantRole) {
-  await requireAdmin()
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('grants')
-    .upsert(
-      { subject_type: 'team', subject_id: teamId, project_id: projectId, role },
-      { onConflict: 'subject_type,subject_id,project_id' },
-    )
-  if (error) throw new Error(error.message)
-  revalidatePath('/directory')
-}
-
-export async function removeTeamGrant(teamId: string, projectId: string) {
-  await requireAdmin()
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('grants')
-    .delete()
-    .eq('subject_type', 'team')
-    .eq('subject_id', teamId)
-    .eq('project_id', projectId)
-  if (error) throw new Error(error.message)
-  revalidatePath('/directory')
-}

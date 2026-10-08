@@ -127,7 +127,7 @@ export async function loadMyTeam(
       supabase.from('team_members').select('team_id, person_id, position').in('team_id', teamIds),
       // Level 1 never sees tool access, so it is never even asked for.
       level >= 2
-        ? supabase.from('team_tools').select('team_id, tool_key, audience').in('team_id', teamIds)
+        ? supabase.from('team_tool_grants').select('team_id, tool_key, audience').in('team_id', teamIds)
         : Promise.resolve({ data: [] as { team_id: string; tool_key: string; audience: string }[] }),
     ])
 
@@ -141,6 +141,8 @@ export async function loadMyTeam(
     }
     const toolsByTeam = new Map<string, { label: string; audience: 'lead' | 'all' }[]>()
     for (const t of (tools.data ?? []) as { team_id: string; tool_key: string; audience: string }[]) {
+      // A grant for a tool that left the catalogue grants nothing, so it is not listed.
+      if (!toolLabel.has(t.tool_key)) continue
       toolsByTeam.set(t.team_id, [...(toolsByTeam.get(t.team_id) ?? []), {
         label: toolLabel.get(t.tool_key) ?? t.tool_key,
         audience: t.audience === 'lead' ? 'lead' : 'all',

@@ -14,12 +14,12 @@ const IMPORT = 'Imported from the tracking sheet'
 const ENTRIES: DonationEntry[] = [
   {
     id: 7, project: 'AAAF', projectName: 'AskAnAdventistFriend.com', month: '2026-07',
-    amount: 630, note: 'Ed & other donations, from the tracking sheet',
+    amount: 600, note: 'Donations, from the tracking sheet',
     lastChangedAt: '2026-09-09T18:12:00Z', lastChangedBy: IMPORT, changes: 0,
   },
   {
     id: 6, project: 'AAAF', projectName: 'AskAnAdventistFriend.com', month: '2026-06',
-    amount: 22482, note: 'Ed & other donations, from the tracking sheet',
+    amount: 20000, note: 'Donations, from the tracking sheet',
     lastChangedAt: '2026-09-09T18:12:00Z', lastChangedBy: IMPORT, changes: 0,
   },
   {
@@ -29,7 +29,7 @@ const ENTRIES: DonationEntry[] = [
   },
   {
     id: 3, project: 'AAAF', projectName: 'AskAnAdventistFriend.com', month: '2026-03',
-    amount: 467, note: 'Ed & other donations, from the tracking sheet',
+    amount: 450, note: 'Donations, from the tracking sheet',
     lastChangedAt: null, lastChangedBy: null, changes: 0,
   },
 ]
@@ -52,8 +52,8 @@ const LOG: DonationLogEntry[] = [
   },
   {
     id: 6, month: '2026-07', projectName: 'AskAnAdventistFriend.com', action: 'created',
-    amountBefore: null, amountAfter: 630, noteBefore: null,
-    noteAfter: 'Ed & other donations, from the tracking sheet',
+    amountBefore: null, amountAfter: 600, noteBefore: null,
+    noteAfter: 'Donations, from the tracking sheet',
     actor: IMPORT, at: '2026-09-09T18:12:00Z',
   },
 ]

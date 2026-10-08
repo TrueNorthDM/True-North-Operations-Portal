@@ -21,36 +21,6 @@ import { ROUTES } from '@/lib/nav/routes'
 
 // ─── Manually link a TSheets-only import to an existing directory person ─────
 
-export async function linkTsheetsPersonToDirectory(input: {
-  tsheetsOnlyPersonId: string   // people.id of the imported (tsheets_only) row
-  directoryPersonId: string     // people.id of the real directory person
-}): Promise<{ ok: boolean; error?: string }> {
-  const notAdmin = await requireAdmin()
-  if (notAdmin) return { ok: false, error: notAdmin }
-
-  const supabase = await createClient()
-
-  // Hands the whole thing to merge_people (migration 063). What this used to do
-  // was delete the imported row and then move its TSheets id across, in two
-  // statements with no transaction between them. That cannot work any more and
-  // should not have worked before: the delete is refused outright once the
-  // person has hours, ON DELETE RESTRICT; and when it did go through, anything
-  // hanging off the imported row (team membership, submissions, absences) was
-  // cascaded away in silence while grants, which have no foreign key, were left
-  // pointing at somebody who no longer existed. The function moves all of it,
-  // records what it moved, and keeps every TSheets account the two rows had.
-  const { error } = await supabase.rpc('merge_people', {
-    winner: input.directoryPersonId,
-    loser: input.tsheetsOnlyPersonId,
-  })
-  if (error) return { ok: false, error: error.message }
-
-  revalidatePath('/admin/settings')
-  revalidatePath('/admin/people')
-  revalidatePath('/')
-  return { ok: true }
-}
-
 // ─── Manual "sync now", clients + people + timesheets, then stamp the time ──
 
 export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: string }> {

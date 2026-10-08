@@ -79,9 +79,9 @@ const MONTHS = ['2026-09', '2026-08', '2026-07', '2026-06', '2026-05', '2026-04'
 // takes columns away here, as it does on the real page. Empty member lists made
 // every team hide every person, which is not a thing the real roster does.
 const TEAMS = [
-  { id: 't-seo', name: 'SEO', members: ['Alyssa', 'Cheyenne', 'Kevin'] },
-  { id: 't-writing', name: 'Writing', members: ['Jeannette', 'Lana', 'Olivia', 'Wendy'] },
-  { id: 't-web', name: 'Web', members: ['Barack', 'Benjamin', 'Hosea', 'Justus'] },
+  { id: 't-seo', name: 'SEO', members: ['Avery', 'Blake', 'Dana'] },
+  { id: 't-writing', name: 'Writing', members: ['Casey', 'Eden', 'Finley', 'Gray'] },
+  { id: 't-web', name: 'Web', members: ['Jules', 'Kai', 'Indigo', 'Logan'] },
 ]
 
 // Enough for the closed button. Opening the hand-entry form is checked elsewhere.

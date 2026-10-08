@@ -8,28 +8,29 @@
 // auth. This renders the same component from a fixture, which is what
 // design-check is for.
 //
-// The hours are September 2026's real ones. The costs are computed here from
-// the break-even rates rather than typed in, so the columns add up and the
-// unrated warning fires for somebody who genuinely has no rate.
+// Every name and figure here is invented: this file lives in the repository,
+// so it never carries real people, hours or rates. The costs are computed from
+// the invented rates rather than typed in, so the columns add up and the
+// unrated warning fires for somebody who has no rate.
 
 import type { ProjectTracking, ProjectRow } from '@/lib/timeclock/projects'
 
-/** Break-even rate and whether they are on the payroll. Joy has no rate. */
+/** Break-even rate and whether they are on the payroll. Harper has no rate. */
 const WHO: Record<string, { rate: number | null; employee: boolean }> = {
-  Alyssa: { rate: 57.40, employee: true },
-  Cheyenne: { rate: 60.39, employee: true },
-  Jeannette: { rate: 73.81, employee: true },
-  Kevin: { rate: 77.77, employee: true },
-  Lana: { rate: 59.12, employee: true },
-  Olivia: { rate: 62.60, employee: true },
-  Wendy: { rate: 69.14, employee: true },
-  Joy: { rate: null, employee: true },
-  Barack: { rate: 32.16, employee: false },
-  Benjamin: { rate: 31.79, employee: false },
-  Hosea: { rate: 30.36, employee: false },
-  Justus: { rate: 31.53, employee: false },
-  Samuel: { rate: 32.00, employee: false },
-  Stephanie: { rate: 56.90, employee: false },
+  Avery: { rate: 55, employee: true },
+  Blake: { rate: 60, employee: true },
+  Casey: { rate: 70, employee: true },
+  Dana: { rate: 75, employee: true },
+  Eden: { rate: 58, employee: true },
+  Finley: { rate: 62, employee: true },
+  Gray: { rate: 68, employee: true },
+  Harper: { rate: null, employee: true },
+  Indigo: { rate: 30, employee: false },
+  Jules: { rate: 30, employee: false },
+  Kai: { rate: 30, employee: false },
+  Logan: { rate: 30, employee: false },
+  Morgan: { rate: 30, employee: false },
+  Noel: { rate: 55, employee: false },
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100
@@ -47,10 +48,10 @@ function costs(byPerson: Record<string, number>) {
 }
 
 const AAAF_PEOPLE = {
-  Alyssa: 9.95, Cheyenne: 6.00, Hosea: 12.50, Jeannette: 6.25, Kevin: 0.75,
-  Lana: 4.50, Olivia: 10.75, Samuel: 12.50, Stephanie: 3.75, Wendy: 1.00,
+  Avery: 10.00, Blake: 6.00, Indigo: 12.50, Casey: 6.25, Dana: 0.75,
+  Eden: 4.50, Finley: 10.75, Morgan: 12.50, Noel: 3.75, Gray: 1.00,
 }
-const HFA_PEOPLE = { Barack: 14.25, Benjamin: 2.00, Joy: 8.75, Justus: 10.00 }
+const HFA_PEOPLE = { Jules: 14.25, Kai: 2.00, Harper: 8.75, Logan: 10.00 }
 
 function build(
   label: string, name: string, prepaid: boolean,
@@ -78,10 +79,10 @@ function build(
 const NONE = { carriedIn: null, bought: null, remaining: null }
 
 const rows: ProjectRow[] = [
-  build('AAAF', 'AskAnAdventistFriend.com', false, AAAF_PEOPLE, NONE, 7702.28, 997.63, 392_441.18),
+  build('AAAF', 'AskAnAdventistFriend.com', false, AAAF_PEOPLE, NONE, 7400, 950, 380_000),
   build('GP church', 'Grants Pass Church', true, {}, { carriedIn: 5.25, bought: null, remaining: 5.25 }, 3.25, 0, 168.42),
   build('GP School', 'Grants Pass School', true, {}, { carriedIn: 10.81, bought: null, remaining: 10.81 }, 3.00, 1.00, 155.47),
-  build('Africa', 'Hope for Africa', false, HFA_PEOPLE, NONE, 5485.30, 650.58, 176_203.90),
+  build('Africa', 'Hope for Africa', false, HFA_PEOPLE, NONE, 5200, 600, 170_000),
 ]
 
 const people = [...new Set(rows.flatMap(r => Object.keys(r.byPerson)))].sort((a, b) => a.localeCompare(b))

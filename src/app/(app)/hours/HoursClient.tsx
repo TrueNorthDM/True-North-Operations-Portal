@@ -113,7 +113,7 @@ export function HoursClient(props: Props) {
   }, [entries])
 
   const weekSeconds = entries.reduce((s, e) => s + e.durationSeconds, 0)
-  const jobcodeName = (id: number | null) => jobcodes.find(j => j.id === id)?.label ?? '—'
+  const jobcodeName = (id: number | null) => jobcodes.find(j => j.id === id)?.label ?? '-'
 
   function resetDraft() {
     setJobcodeId('')
@@ -159,7 +159,7 @@ export function HoursClient(props: Props) {
             id={`f-${f.id}`}
             value={fieldValues[String(f.id)] ?? ''}
             onChange={v => setFieldValues(s => ({ ...s, [String(f.id)]: v }))}
-            options={[{ value: '', label: '—' }, ...f.options.map(o => ({ value: o, label: o }))]}
+            options={[{ value: '', label: '-' }, ...f.options.map(o => ({ value: o, label: o }))]}
             ariaLabel={f.name}
             className={inputCls}
           />
@@ -316,7 +316,7 @@ export function HoursClient(props: Props) {
                   id="off-kind"
                   value={kindId}
                   onChange={setKindId}
-                  options={[{ value: '', label: '—' }, ...timeOffKinds.map(k => ({ value: String(k.id), label: k.label }))]}
+                  options={[{ value: '', label: '-' }, ...timeOffKinds.map(k => ({ value: String(k.id), label: k.label }))]}
                   ariaLabel="Kind of time off"
                   className={inputCls}
                 />
@@ -480,7 +480,7 @@ export function HoursClient(props: Props) {
                   id="jobcode"
                   value={jobcodeId}
                   onChange={setJobcodeId}
-                  options={[{ value: '', label: '—' }, ...jobcodes.map(j => ({ value: String(j.id), label: j.label }))]}
+                  options={[{ value: '', label: '-' }, ...jobcodes.map(j => ({ value: String(j.id), label: j.label }))]}
                   ariaLabel="Job code"
                   className={inputCls}
                 />
@@ -538,7 +538,7 @@ export function HoursClient(props: Props) {
                   id="jc2"
                   value={jobcodeId}
                   onChange={setJobcodeId}
-                  options={[{ value: '', label: '—' }, ...jobcodes.map(j => ({ value: String(j.id), label: j.label }))]}
+                  options={[{ value: '', label: '-' }, ...jobcodes.map(j => ({ value: String(j.id), label: j.label }))]}
                   ariaLabel="Job code"
                   className={inputCls}
                 />
@@ -601,7 +601,7 @@ export function HoursClient(props: Props) {
                 <div className={`flex items-center gap-3 px-4 py-2.5 ${day === today ? 'bg-tn-teal-soft' : 'bg-subtle'} border-b border-slate-200`}>
                   <span className="font-(family-name:--font-display) font-bold text-tn-ink text-sm">{dayLabel(day)}</span>
                   {day === today && <span className="text-[10px] font-bold uppercase tracking-wide text-tn-teal">Today</span>}
-                  <span className="ml-auto text-sm tabular-nums text-muted">{total ? formatHM(total) : '—'}</span>
+                  <span className="ml-auto text-sm tabular-nums text-muted">{total ? formatHM(total) : '-'}</span>
                 </div>
                 {list.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-slate-400">Nothing logged.</div>

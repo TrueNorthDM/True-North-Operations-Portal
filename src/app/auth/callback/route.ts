@@ -26,12 +26,14 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
-      // Surface the error in the login page
-      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, base))
+      // A code, never the message itself: the login page shows only its own
+      // fixed wording, so nobody can craft a link that puts their text there.
+      console.error('[auth/callback]', error.message)
+      return NextResponse.redirect(new URL('/login?error=link', base))
     }
     // No page asked for: the start page they chose in Settings (Home by default).
     return NextResponse.redirect(new URL(await withStartPage(next, data.user), base))
   }
 
-  return NextResponse.redirect(new URL('/login?error=Missing+code', base))
+  return NextResponse.redirect(new URL('/login?error=missing', base))
 }

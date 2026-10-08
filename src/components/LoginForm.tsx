@@ -15,6 +15,11 @@ import { useSearchParams } from 'next/navigation'
 import { sendMagicLink, verifyCode } from '@/app/auth/actions'
 import { isAllowedEmail, ALLOWED_EMAIL_DOMAINS, SHAPE_MESSAGE } from '@/lib/auth-constants'
 
+const LOGIN_ERRORS: Record<string, string> = {
+  link: 'That sign-in link has expired or was already used. Ask for a new one below.',
+  missing: 'That sign-in link is incomplete. Ask for a new one below.',
+}
+
 export function LoginForm() {
   const searchParams = useSearchParams()
   // ?email= comes from the invitation email's button, so the address is filled in.
@@ -23,8 +28,9 @@ export function LoginForm() {
   const [sending, startSend] = useTransition()
   const [code, setCode] = useState('')
   const [checking, startCheck] = useTransition()
-  // Pre-populate with any ?error= the auth callback may have set.
-  const [error, setError] = useState<string | null>(searchParams.get('error'))
+  // The auth callback sends a code in ?error=, and only these codes show
+  // anything: the address is anybody's to write, so its text never reaches the page.
+  const [error, setError] = useState<string | null>(LOGIN_ERRORS[searchParams.get('error') ?? ''] ?? null)
   // Where to land after login, captured by the proxy as ?next=… (validated
   // server-side and again in the callback before it's used for a redirect).
   const next = searchParams.get('next') ?? undefined

@@ -49,7 +49,7 @@ function stackColumns(children: OrgPerson[], ghosts: OrgGhost[]): StackItem[][] 
     arr.push(item)
     groups.set(key, arr)
   }
-  for (const c of children) push(c.primaryTeamName ?? '—', { kind: 'solid', person: c })
+  for (const c of children) push(c.primaryTeamName ?? '-', { kind: 'solid', person: c })
   for (const g of ghosts) push(g.onTeamName, { kind: 'ghost', ghost: g })
   return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, g]) => g)
 }

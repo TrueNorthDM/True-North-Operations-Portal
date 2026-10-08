@@ -23,10 +23,13 @@ export interface MoneyInMonth {
 }
 
 export async function loadMoneyIn(supabase: Client, month: string): Promise<MoneyInMonth> {
-  const [{ data: giftRows }, { data: buyRows }] = await Promise.all([
+  const [{ data: giftRows, error: giftError }, { data: buyRows, error: buyError }] = await Promise.all([
     supabase.from('tc_project_donations').select('project_label, amount_usd').eq('month', month),
     supabase.from('tc_project_purchases').select('project_label, hours, amount_usd').eq('month', month),
   ])
+  // A failed read must never come back as empty fields: the form saves every
+  // field, and saving a blank one takes that month's figure out.
+  if (giftError || buyError) throw new Error(`Money in could not be read: ${(giftError ?? buyError)!.message}`)
 
   const donations: Record<string, string> = {}
   for (const g of (giftRows ?? []) as { project_label: string | null; amount_usd: number }[]) {

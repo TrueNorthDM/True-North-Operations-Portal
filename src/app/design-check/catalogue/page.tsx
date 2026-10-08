@@ -61,7 +61,7 @@ export default function Catalogue() {
             <div className="flex gap-3 mt-1 text-[12px]">
               <span className={DUE_TIME.late}>8m 26d</span>
               <span className={DUE_TIME.upcoming}>in 4d</span>
-              <span className={DUE_TIME.odd}>—</span>
+              <span className={DUE_TIME.odd}>-</span>
             </div>
           </Column>
 

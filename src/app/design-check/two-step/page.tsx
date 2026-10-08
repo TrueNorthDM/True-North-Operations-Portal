@@ -19,7 +19,6 @@ import { PortalAccessControl } from '@/components/admin/PortalAccessControl'
 import { PortalAccessTab } from '@/components/admin/PortalAccessTab'
 import { TwoStepSelf } from '@/components/mfa/TwoStepSelf'
 import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
-import { Row, txt } from '@/components/profile/profile-parts'
 
 export const dynamic = 'force-dynamic'
 
@@ -164,14 +163,14 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
   }
 
   if (screen === 'profile') {
-    // My profile's Sign-in & security (see (app)/profile/page.tsx), in its three states.
+    // Settings' Sign-in and security (components/settings/PersonalSettings.tsx), in its three states.
     const section = (caption: string, node: React.ReactNode) => (
       <div className="max-w-[920px] rounded-[18px] border border-slate-200 bg-white overflow-hidden">
         <p className="m-0 px-8 pt-4 text-[11px] font-extrabold uppercase tracking-wide text-muted">{caption}</p>
         <div className="px-8 pt-3 pb-6">
           <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-tn-teal mb-3 pb-2 border-b border-slate-200">Sign-in &amp; security</div>
           <div className="flex flex-col gap-4">
-            <Row label="Signs in with">{txt('ana@goodnewsadvocates.org')}</Row>
+            <div className="flex items-center justify-between text-[13.5px]"><span className="text-muted">Signs in with</span><span className="text-foreground">ana@goodnewsadvocates.org</span></div>
             <div className="flex flex-col gap-2">
               <span className="text-[12.5px] text-muted font-semibold">Two-step sign-in</span>
               {node}
