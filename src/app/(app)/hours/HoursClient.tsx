@@ -9,6 +9,7 @@
 // same form in step.
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { formatHM, decimalHours, daysOfWeek, shiftWeek, durationSeconds } from '@/lib/timeclock/clock'
@@ -508,8 +509,8 @@ export function HoursClient(props: Props) {
           <h2 className="font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">
             {dayLabel(weekStartDate)} to {dayLabel(weekEndDate)}
           </h2>
-          <button onClick={() => router.push(`/hours?week=${shiftWeek(weekStartDate, -1)}`)} className="text-sm text-tn-teal hover:underline underline-offset-2">Previous</button>
-          <button onClick={() => router.push(`/hours?week=${shiftWeek(weekStartDate, 1)}`)} className="text-sm text-tn-teal hover:underline underline-offset-2">Next</button>
+          <button onClick={() => router.push(withViewAs(`/hours?week=${shiftWeek(weekStartDate, -1)}`))} className="text-sm text-tn-teal hover:underline underline-offset-2">Previous</button>
+          <button onClick={() => router.push(withViewAs(`/hours?week=${shiftWeek(weekStartDate, 1)}`))} className="text-sm text-tn-teal hover:underline underline-offset-2">Next</button>
           <span className="ml-auto text-sm">
             <span className="text-muted">Week total:</span>{' '}
             <strong className="tabular-nums text-tn-ink">{formatHM(weekSeconds)}</strong>

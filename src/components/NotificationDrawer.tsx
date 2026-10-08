@@ -18,6 +18,7 @@
  */
 
 import Link from 'next/link'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
@@ -149,7 +150,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
                 onClick={() => {
                   if (unread) { onRead([i.id]); void markNotificationsRead([i.id]) }
                   onClose()
-                  router.push(i.href)
+                  router.push(withViewAs(i.href))
                 }}
                 className={`w-full flex gap-3 px-5 py-3.5 border-b border-[var(--row-rule)] text-left transition-colors hover:bg-subtle ${unread ? 'bg-[#f8fbfb]' : 'bg-white'}`}
               >

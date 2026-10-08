@@ -8,6 +8,7 @@
 // one control a pasted link could not carry.
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { Select } from '@/components/ui/Select'
 import { applyFilter, clearFilters, toQuery, type FilterKey } from '@/lib/report/filters'
 
@@ -30,7 +31,7 @@ export function WorkloadFilters({
   const current = Object.fromEntries(params.entries())
   const go = (next: Record<string, string>) => {
     const q = toQuery(next)
-    router.push(q ? `/report?${q}` : '/report')
+    router.push(withViewAs(q ? `/report?${q}` : '/report'))
   }
 
   const setParam = (key: FilterKey, value: string) => go(applyFilter(current, key, value))

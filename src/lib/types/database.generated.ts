@@ -2810,6 +2810,10 @@ export type Database = {
       }
     }
     Functions: {
+      access_commit: {
+        Args: { p_expected: Json; p_log: Json; p_ops: Json }
+        Returns: number
+      }
       access_level_of: { Args: { p_person: string }; Returns: string }
       access_sync_role_type: { Args: { p_person: string }; Returns: undefined }
       accessible_site_ids: {
@@ -2842,6 +2846,7 @@ export type Database = {
         }[]
       }
       tc_approves_for: { Args: { target: string }; Returns: boolean }
+      tc_i_approve_hours: { Args: never; Returns: boolean }
       tc_people_i_approve: { Args: never; Returns: string[] }
     }
     Enums: {

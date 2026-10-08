@@ -3,7 +3,6 @@ import { NOTIFICATION_TYPES, TYPE_BY_KEY, channelFor, cleanPref, cleanRule, defa
 import { addDays, deliverAt, weekOf, zoneDate, zoneTime } from './schedule'
 import { plan, type Draft } from './deliver'
 import { crossed, expectedSoFar, listOf } from './generators'
-import { grantedTools } from '@/lib/access/tool-grants'
 
 const rule = (key: string, patch: Partial<Rule> = {}): Rule => ({ ...defaultRule(TYPE_BY_KEY.get(key)!), ...patch })
 const allRules = (patch: Record<string, Partial<Rule>> = {}) =>
@@ -194,18 +193,3 @@ describe('the generators', () => {
   })
 })
 
-describe('grantedTools', () => {
-  it('opens a team grant, and a lead grant only for a leader', () => {
-    const grants = [
-      { team_id: 't1', tool_key: 'publishing', audience: 'all' },
-      { team_id: 't1', tool_key: 'i7-budget', audience: 'lead' },
-      { team_id: 't2', tool_key: 'workload', audience: 'all' },
-    ]
-    expect([...grantedTools([{ team_id: 't1', position: 'collaborator' }], grants)]).toEqual(['publishing'])
-    expect([...grantedTools([{ team_id: 't1', position: 'team_leader' }], grants)].sort()).toEqual(['i7-budget', 'publishing'])
-  })
-
-  it('ignores keys no longer in the catalogue', () => {
-    expect(grantedTools([{ team_id: 't1' }], [{ team_id: 't1', tool_key: 'gone', audience: 'all' }]).size).toBe(0)
-  })
-})

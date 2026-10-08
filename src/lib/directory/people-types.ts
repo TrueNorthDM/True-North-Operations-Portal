@@ -7,6 +7,7 @@
 // components both import it.
 
 import type { PersonAddress } from '@/lib/address'
+import { isLeadPosition } from '@/lib/access/catalogue'
 import type { PersonMilestone } from '@/lib/milestones'
 
 export interface PersonEmails {
@@ -264,11 +265,11 @@ export const roleTypePill = (v: string): Pill => {
 }
 
 // Team position (7 October 2026): Lead or Member of a team. Being Lead of any
-// team makes someone a Team Leader. The older words (Founder, Manager, Team
-// Leader, Collaborator) read as Lead and Member until migration 095 has run.
+// team makes someone a Team Leader. Whether a position leads is answered in
+// one place, isLeadPosition (access/catalogue.ts); everything here reads it.
 export const TEAM_POSITION_OPTIONS = ['lead', 'member'] as const
 export const normalPosition = (v: string | null | undefined): 'lead' | 'member' =>
-  v === 'lead' || v === 'founder' || v === 'manager' || v === 'team_leader' ? 'lead' : 'member'
+  isLeadPosition(v) ? 'lead' : 'member'
 export const TEAM_POSITION_LABEL: Record<string, string> = {
   lead: 'Lead', member: 'Member', founder: 'Lead', manager: 'Lead', team_leader: 'Lead', collaborator: 'Member',
 }
@@ -277,7 +278,7 @@ export const teamPositionPill = (v: string): Pill =>
 // Order within a team's member list: Leads first.
 export const teamPositionRank = (v: string): number => (normalPosition(v) === 'lead' ? 0 : 1)
 // Whether the position leads the team (Team Leader level, org-chart colour, "Leads only" tools).
-export const teamPositionLeads = (v: string): boolean => normalPosition(v) === 'lead'
+export const teamPositionLeads = (v: string): boolean => isLeadPosition(v)
 
 // Access-grant roles, the product vocabulary from the design (migration 030).
 // Legacy keys (admin/member) are mapped too, so grants still read correctly in

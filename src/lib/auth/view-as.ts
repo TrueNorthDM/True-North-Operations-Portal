@@ -1,5 +1,5 @@
-// view-as.ts: signed impersonation tokens for the View Stage (admin preview of
-// each permission tier).
+// view-as.ts: signed impersonation tokens for View Stage (a Super Admin's
+// preview of each level, as a real person of that level).
 //
 // A token carries WHICH LEVEL to preview and the admin who signed it, and
 // deliberately NOT which person: the representative is resolved live on every
@@ -22,7 +22,7 @@ export const VS_PARAM = '_vs'
 export const VS_HEADER = 'x-vs'
 
 export interface ViewAsPayload {
-  sadmin: string   // the real admin who signed this (only they may use it)
+  sadmin: string   // the Super Admin who signed this (only they may use it)
   role: ViewAsRole // the level being previewed; the person is resolved live
   exp: number      // epoch ms expiry
 }

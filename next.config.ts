@@ -20,6 +20,19 @@ const nextConfig: NextConfig = {
   //     reports, Publishing Goals and Boards moved under /ops, Href Links
   //     under /seo. PDFs already sent link to /work-tools/time-report and
   //     /tools/time-report; both are covered.
+  // Only the portal itself may show the portal in a frame: View Stage's
+  // columns are same-origin iframes, and nothing else should ever embed a
+  // signed-in page (clickjacking). CSP for current browsers, X-Frame-Options
+  // for older ones. (Audit, 8 October 2026.)
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [
+        { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+        { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      ],
+    }]
+  },
   async redirects() {
     const r = (source: string, destination: string) => ({ source, destination, permanent: false })
     return [

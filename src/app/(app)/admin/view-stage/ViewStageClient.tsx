@@ -1,9 +1,9 @@
 'use client'
 
 // View Stage, the portal through each permission tier, side by side, on a
-// pan/zoom canvas. Each column is a TIER rendered in an iframe. The Admin column
-// is your real session; the others impersonate a real person of that tier via a
-// signed token on the iframe URL (?_vs=). Desktop-only. Theme-aware chrome
+// pan/zoom canvas. Each column is a level rendered in an iframe, as a real
+// person of that level, through a signed token on the iframe URL (?_vs=).
+// Nothing is saved from inside a preview (lib/access/resolve.ts). Desktop-only. Theme-aware chrome
 // (portal identity), the iframes themselves render the portal in the theme.
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'

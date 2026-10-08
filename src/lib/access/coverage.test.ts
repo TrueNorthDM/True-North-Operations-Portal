@@ -25,10 +25,18 @@ const walk = (d: string) => {
 }
 walk(SRC)
 const rel = (p: string) => relative(SRC, p)
+/** The file without its comments: a guard named in a comment guards nothing. */
 const read = (p: string) => readFileSync(p, 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
 
-/** What counts as asking the access rule. */
-const GUARD = /requireSurface\(|loadAccess\(|allowedTo\(|writerAccess\(|isSuperAdmin\(|requirePrivileged\(|requireAllowed\(|requireAdmin\(/
+/**
+ * What counts as asking the access rule. loadAccess() on its own only loads
+ * the answers, so it counts when the file then asks them (.can, canTool, or a
+ * person's page rights); the others are checks in themselves.
+ */
+const CHECKS = /requireSurface\(|allowedTo\(|writerAccess\(|verifiedSession\(|isSuperAdmin\(|requirePrivileged\(|requireAllowed\(|requireAdmin\(/
+const GUARD = { test: (s: string) => CHECKS.test(s) || (/loadAccess\(/.test(s) && /\.can\(|\.canTool\(|pageRights\(|pageHrefs\(/.test(s)) }
 
 describe('every page asks the access rule', () => {
   // Pages anyone signed in (or nobody) may open, and why.
@@ -39,6 +47,7 @@ describe('every page asks the access rule', () => {
     'app/auth/two-step/setup/page.tsx': 'sign-in flow',
     'app/login/page.tsx': 'sign-in flow',
     'app/maintenance/page.tsx': 'the maintenance notice',
+    'app/(app)/profile/page.tsx': "sends the person to their own page in the Directory, which checks",
   }
   const redirectsOnly = (s: string) => /export default function \w+\(\)\s*\{\s*redirect\(/.test(s)
 
@@ -117,8 +126,17 @@ describe('every server action asks the access rule', () => {
       if (!/^\s*['"]use server['"]/.test(s) || rel(f) in SELF) continue
       const ok = guardedHelpers(s)
       for (const m of s.matchAll(/export\s+async\s+function\s+(\w+)\s*\(/g)) if (!ok.has(m[1])) missing.push(`${rel(f)}: ${m[1]}`)
+      // The other way to write one: export const name = async (...) => ...
+      for (const m of s.matchAll(/export\s+const\s+(\w+)\s*=\s*async\b/g)) missing.push(`${rel(f)}: ${m[1]} (write it as an export async function, so it is checked)`)
     }
     expect(missing).toEqual([])
+  })
+
+  it('verifies the session behind every own-record action (two-step given, still active and invited)', () => {
+    const unverified = Object.keys(SELF)
+      .filter(f => !/^app\/auth\//.test(f))
+      .filter(f => !/verifiedSession\(/.test(read(join(SRC, f))))
+    expect(unverified).toEqual([])
   })
 })
 

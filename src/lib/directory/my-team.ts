@@ -9,6 +9,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { loadRules } from '@/lib/access/store'
+import { toolsByTeam, type TeamTool } from '@/lib/access/team-tools'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { SignedInIdentity } from './current-person'
 import type { Database } from '@/lib/types/database.types'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
@@ -125,10 +128,9 @@ export async function loadMyTeam(
     const [{ data: teamRows }, { data: memberRows }, tools] = await Promise.all([
       supabase.from('teams').select('id, name').in('id', teamIds),
       supabase.from('team_members').select('team_id, person_id, position').in('team_id', teamIds),
-      // Level 1 never sees tool access, so it is never even asked for.
-      level >= 2
-        ? supabase.from('team_tool_grants').select('team_id, tool_key, audience').in('team_id', teamIds)
-        : Promise.resolve({ data: [] as { team_id: string; tool_key: string; audience: string }[] }),
+      // Level 1 never sees tool access, so it is never even asked for. Each
+      // tool's team list as Access levels sets it (lib/access/team-tools.ts).
+      level >= 2 ? loadRules(createAdminClient()) : Promise.resolve(null),
     ])
 
     const titleById = new Map((rows ?? []).map(r => [r.id, str(r.title)]))
@@ -139,15 +141,9 @@ export async function loadMyTeam(
     for (const m of (memberRows ?? []) as { team_id: string; person_id: string; position?: string }[]) {
       byTeam.set(m.team_id, [...(byTeam.get(m.team_id) ?? []), m])
     }
-    const toolsByTeam = new Map<string, { label: string; audience: 'lead' | 'all' }[]>()
-    for (const t of (tools.data ?? []) as { team_id: string; tool_key: string; audience: string }[]) {
-      // A grant for a tool that left the catalogue grants nothing, so it is not listed.
-      if (!toolLabel.has(t.tool_key)) continue
-      toolsByTeam.set(t.team_id, [...(toolsByTeam.get(t.team_id) ?? []), {
-        label: toolLabel.get(t.tool_key) ?? t.tool_key,
-        audience: t.audience === 'lead' ? 'lead' : 'all',
-      }])
-    }
+    const lists = tools ? toolsByTeam(tools, teamIds) : new Map<string, TeamTool[]>()
+    const toolsFor = (teamId: string) => (lists.get(teamId) ?? [])
+      .map(t => ({ label: toolLabel.get(t.toolKey) ?? t.toolKey, audience: t.audience }))
 
     for (const t of (teamRows ?? []) as { id: string; name: string }[]) {
       teamCards.push({
@@ -164,7 +160,7 @@ export async function loadMyTeam(
             positionLabel: TEAM_POSITION_LABEL[normalPosition(m.position)],
           }))
           .sort((a, b) => a.name.localeCompare(b.name)),
-        tools: level >= 2 ? (toolsByTeam.get(t.id) ?? []) : null,
+        tools: level >= 2 ? toolsFor(t.id) : null,
       })
     }
     teamCards.sort((a, b) => a.name.localeCompare(b.name))

@@ -9,6 +9,7 @@
  */
 
 import Link from 'next/link'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { SearchField } from '@/components/ui/SearchField'
 import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
@@ -155,7 +156,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
       else params.set(k, v)
     }
     const qs = params.toString()
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    router.replace(withViewAs(qs ? `${pathname}?${qs}` : pathname), { scroll: false })
   }
 
   function toggleSort(key: SortKey) {

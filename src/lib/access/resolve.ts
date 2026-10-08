@@ -29,7 +29,7 @@ import { portalAllowsWrites } from '@/lib/auth/portal-access'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { zoneDate } from '@/lib/notifications/schedule'
 import { ALIAS, ITEM, TOOL_ITEMS, type AccessLevel } from './catalogue'
-import { allowedKeys, type Decision, type Subject } from './decide'
+import { allowedKeys, type Subject } from './decide'
 import { loadRules, loadSubject, loadSubjects } from './store'
 
 export interface Access {
@@ -95,16 +95,6 @@ export const loadAccess = cache(async function loadAccess(): Promise<Access> {
   const [rules, { subject, personId }] = await Promise.all([loadRulesCached(), previewSubject(vs.role)])
   return accessFrom(subject, allowedKeys(subject, rules, { today: today() }), personId)
 })
-
-/** Why the signed-in person can or cannot open an item (for the pages that explain themselves). */
-export async function whyFor(key: string): Promise<Decision | null> {
-  const [me, rules] = await Promise.all([getRealPerson(), loadRulesCached()])
-  if (!me) return null
-  const subject = await loadSubject(createAdminClient(), me.id)
-  if (!subject) return null
-  const { decide } = await import('./decide')
-  return decide(subject, ALIAS[key] ?? key, rules, { today: today() })
-}
 
 /**
  * The session behind a write, or null. Every server action that changes

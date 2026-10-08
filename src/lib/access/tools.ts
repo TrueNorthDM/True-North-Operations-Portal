@@ -1,18 +1,19 @@
 /**
- * access/tools.ts: the rows of the rail's Tools panel, which are exactly the
- * rows a team can be granted (Directory → Teams → "Tool access").
+ * access/tools.ts: the rows of the rail's Tools panel. Which teams may open
+ * each tool is set on Admin > Access levels (each tool's team list, decided by
+ * access/decide.ts), not here.
  *
- * ONE list, on purpose. The Tools panel renders from it and the Teams tab
- * grants from it, so a tool cannot exist in one place and be missing from the
- * other: add an entry here and it appears in both.
+ * ONE list, on purpose: a tool's key here is its item in the access catalogue
+ * (access/catalogue.ts), so a tool cannot exist in one place and be missing
+ * from the other.
  *
  * The corollary matters just as much: anything NOT in this list is not a tool,
  * and is governed solely by the access-level matrix (access/surfaces.ts). My
  * Work used to sit here despite never being a card, which meant it needed a
  * team grant nobody had thought to give.
  *
- * `key` is stored in team_tool_grants.tool_key, so it must never change once
- * shipped, rename the label freely but keep the key. `sensitive` flags tools
+ * `key` is stored in the access tables (access_rules, access_tool_teams), so
+ * it must never change once shipped: rename the label freely but keep the key. `sensitive` flags tools
  * that expose money or PII so the UI can mark them.
  *
  * Since 22 September 2026 (the navigation redesign) the tools sit in two
@@ -128,17 +129,17 @@ export const TOOLS: ToolDef[] = [
   },
   // Boards (key 'workload', the native rewrite of the boards review) was
   // removed on 23 September 2026: Publishing Goals is the boards review, and
-  // publishing targets are edited in Settings. Its team grants stay in the
-  // table and grant nothing, because the resolver drops unknown keys.
+  // publishing targets are edited in Settings. Anything still stored under
+  // its key grants nothing: the access rule closes keys not in the catalogue.
   // One entry per client, not one entry for "reports". Each client's numbers
-  // are a separate thing to trust someone with, so each is a separate grant on
-  // the Directory's Teams tab. In the Tools panel the two share one row,
+  // are a separate thing to trust someone with, so each has its own team list
+  // on Access levels. In the Tools panel the two share one row,
   // Client Reports, shown when either is granted (lib/access/nav.ts).
   //
-  // The i7 key stays 'i7-budget'. It is internal, nobody sees it, and every
-  // existing team grant is stored under it: renaming it would silently revoke
-  // access for whoever already has it, because the resolver drops grants whose
-  // key has left this catalogue.
+  // The i7 key stays 'i7-budget'. It is internal, nobody sees it, and its
+  // ticks and team list are stored under it: renaming it would silently revoke
+  // access for whoever already has it, because the access rule closes keys
+  // that have left the catalogue.
   {
     key: 'i7-budget',
     label: 'Client Report - i7',

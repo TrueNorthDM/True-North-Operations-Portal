@@ -9,6 +9,7 @@
 // at 60% says "these are about to change" without moving anything.
 
 import { createContext, useContext, useTransition } from 'react'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter } from 'next/navigation'
 
 type Nav = { pending: boolean; go: (href: string) => void }
@@ -24,7 +25,7 @@ export function ReportNav({ children }: { children: React.ReactNode }) {
   const [pending, startTransition] = useTransition()
 
   return (
-    <NavContext.Provider value={{ pending, go: href => startTransition(() => router.push(href)) }}>
+    <NavContext.Provider value={{ pending, go: href => startTransition(() => router.push(withViewAs(href))) }}>
       {children}
     </NavContext.Provider>
   )

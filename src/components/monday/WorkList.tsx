@@ -29,6 +29,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, useTransition, type ReactNode, type UIEvent } from 'react'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
@@ -887,7 +888,7 @@ export function WorkList({
   const grid = gridFor(teamOrder ? visible : visible.filter(k => k !== 'team'))
   const isClient = useIsClient()
   const priorityHref = `/my-work?tab=work&view=priority${teamOrder?.canEdit ? `&pteam=${teamOrder.teamId}` : ''}`
-  const openEditor = () => startTransition(() => router.push(priorityHref))
+  const openEditor = () => startTransition(() => router.push(withViewAs(priorityHref)))
 
   // The heading sits outside the scrolling area so it can pin to the top of the
   // page; it follows the table sideways by copying its scroll position.
@@ -938,7 +939,7 @@ export function WorkList({
     // The narrowing the reader chose rides along: changing whose work is shown
     // should not quietly undo the filters on it.
     const withList = writeListParams(next, filters, sort)
-    startTransition(() => router.push(`/my-work?${withList.toString()}`))
+    startTransition(() => router.push(withViewAs(`/my-work?${withList.toString()}`)))
   }
 
   /**
@@ -1217,7 +1218,7 @@ export function WorkList({
             {teamOrder.canEdit ? (
               <a
                 href={`/my-work?tab=work&view=priority&pteam=${teamOrder.teamId}`}
-                onClick={e => { e.preventDefault(); startTransition(() => router.push(`/my-work?tab=work&view=priority&pteam=${teamOrder.teamId}`)) }}
+                onClick={e => { e.preventDefault(); startTransition(() => router.push(withViewAs(`/my-work?tab=work&view=priority&pteam=${teamOrder.teamId}`))) }}
                 className="inline-flex items-center gap-2 rounded-full px-[17px] py-2 font-(family-name:--font-display) font-extrabold text-[12.5px] bg-tn-primary border border-tn-primary shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px"
               >
                 {/* Styled as the editor's Save and close, so the way in and the way out read as one pair. */}

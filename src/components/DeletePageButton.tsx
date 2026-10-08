@@ -16,6 +16,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter } from 'next/navigation'
 import { deletePage } from '@/app/actions'
 import { hrefLinksSite } from '@/lib/nav/routes'
@@ -40,7 +41,7 @@ export function DeletePageButton({ pageId, pageName, siteCode }: Props) {
         setError(res.error ?? 'Could not delete page.')
         return
       }
-      router.push(hrefLinksSite(siteCode))
+      router.push(withViewAs(hrefLinksSite(siteCode)))
     })
   }
 

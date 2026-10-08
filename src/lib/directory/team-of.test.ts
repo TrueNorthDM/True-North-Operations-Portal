@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { teamTie, leadsTeam, TIE_RANK } from './team-of'
+import { teamTie, TIE_RANK } from './team-of'
+import { isLeadPosition as leadsTeam } from '@/lib/access/catalogue'
 
 const person = (over: Partial<Parameters<typeof teamTie>[0]> = {}) => ({
   id: 'x', managerId: null, alsoReportsToId: null, teamIds: [] as string[], ...over,

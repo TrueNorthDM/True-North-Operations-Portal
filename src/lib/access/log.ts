@@ -73,3 +73,57 @@ export async function noteLevelShifts(
     })
   }
 }
+
+// ── All-or-nothing changes (migration 097) ──────────────────────────────────
+
+/** One write of an access change, applied by access_commit() in the database. */
+export type AccessOp =
+  | { op: 'rule_set'; level: string; key: string; allowed: boolean }
+  | { op: 'rule_clear'; level: string; key: string }
+  | { op: 'tool_set'; key: string; every: boolean; teams: Record<string, 'team' | 'lead'> }
+  | { op: 'exception_add'; id: string; person_id: string; key: string; effect: 'grant' | 'deny'; until: string | null; reason: string; by: string | null }
+  | { op: 'exception_end'; id: string; by: string | null }
+  | { op: 'exception_reopen'; id: string }
+  | { op: 'person_level'; person_id: string; level: 'super_admin' | 'admin' | null; profile_id: string | null }
+
+/** What the change was based on; refused when any of it is no longer so. */
+export interface AccessExpected {
+  rules?: { level: string; key: string; allowed: boolean | null }[]
+  tools?: { key: string; scope: { every: boolean; teams: Record<string, string> } | null }[]
+  levels?: { person_id: string; level: 'super_admin' | 'admin' | null }[]
+  exceptions?: { id: string; ended: boolean }[]
+}
+
+const COMMIT_ERRORS: Record<string, string> = {
+  access_changed_since: 'Someone changed this since you opened the page. Reload to see the latest, then make your change again.',
+  access_already_undone: 'That change was already undone.',
+  at_least_two_super_admins: 'There must always be at least two Super Admins. Make someone else a Super Admin first.',
+  access_unknown_person: 'That person is not in the Directory.',
+}
+
+/**
+ * Apply an access change and write its log row in one transaction: both or
+ * neither, one change at a time, and only if what it was based on still holds
+ * (supabase/migrations/097_access_commit.sql). Returns the log row's id.
+ */
+export async function commitAccess(
+  db: Client,
+  ops: AccessOp[],
+  expected: AccessExpected,
+  log: Omit<LogEntry, 'actorId'> & { actorId: string | null },
+): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
+  const { data, error } = await db.rpc('access_commit', {
+    p_ops: ops as unknown as Json,
+    p_expected: expected as unknown as Json,
+    p_log: {
+      actor_id: log.actorId, kind: log.kind, summary: log.summary, reason: log.reason,
+      changes: log.changes as Json, impact: (log.impact ?? null) as Json, undoes: log.undoes ?? null,
+    },
+  })
+  if (error) {
+    const known = Object.keys(COMMIT_ERRORS).find(k => error.message.includes(k))
+    if (!known) console.error('[access] commit:', error.message)
+    return { ok: false, error: known ? COMMIT_ERRORS[known] : 'The change could not be saved. Nothing was changed; try again.' }
+  }
+  return { ok: true, id: data as number }
+}

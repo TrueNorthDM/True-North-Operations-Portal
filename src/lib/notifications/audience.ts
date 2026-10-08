@@ -16,13 +16,15 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
-import type { Membership } from '@/lib/access/tool-grants'
 import { teamPositionLeads } from '@/lib/directory/people-types'
 import type { RoleType } from '@/lib/auth/tier'
 import { allowedKeys } from '@/lib/access/decide'
 import { loadRules, loadSubjects } from '@/lib/access/store'
 import { zoneDate } from './schedule'
 import { reaches, type NotificationType } from './catalogue'
+
+/** One team membership: the team and the position held in it. */
+interface Membership { team_id: string; position?: string | null }
 
 type Client = Db
 

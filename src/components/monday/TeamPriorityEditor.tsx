@@ -22,6 +22,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type DragEvent } from 'react'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
@@ -232,7 +233,7 @@ export function TeamPriorityEditor({
       await send()
       if (queued.current) return
     }
-    startTransition(() => router.push(href))
+    startTransition(() => router.push(withViewAs(href)))
   }
 
   // ── Moving ────────────────────────────────────────────────────────────────

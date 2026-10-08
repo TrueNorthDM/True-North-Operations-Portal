@@ -28,10 +28,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { isSuperAdmin } from '@/lib/access/resolve'
-import { CONFIGURABLE, ITEM, LEVEL_LABEL, isConfigurable, type ConfigurableLevel } from '@/lib/access/catalogue'
+import { CONFIGURABLE, ITEM, LEVEL_LABEL, isConfigurable, type AccessLevel, type ConfigurableLevel } from '@/lib/access/catalogue'
 import { allowedKeys, impact, overlay, ruleKey, type Audience, type ToolScope } from '@/lib/access/decide'
 import { loadRules, loadSubjects, loadTeamNames } from '@/lib/access/store'
-import { logChange } from '@/lib/access/log'
+import { commitAccess, type AccessExpected, type AccessOp } from '@/lib/access/log'
 import { zoneDate } from '@/lib/notifications/schedule'
 import { isGrantScope } from '@/lib/monday/worklist/team-priority'
 
@@ -77,30 +77,22 @@ export interface ToolChange { key: string; every: boolean; teams: { teamId: stri
 
 const scopeJson = (s: ToolScope | undefined) => (s ? { every: s.every, teams: Object.fromEntries(s.teams) } : null)
 
-async function applyRules(db: ReturnType<typeof createAdminClient>, levels: readonly LevelChange[], tools: readonly ToolChange[], defaults: { level: ConfigurableLevel; key: string }[] = []) {
-  if (levels.length) {
-    const { error } = await db.from('access_rules').upsert(
-      levels.map(c => ({ level: c.level, item_key: c.key, allowed: c.allowed, updated_at: new Date().toISOString() })),
-      { onConflict: 'level,item_key' },
-    )
-    if (error) throw new Error(error.message)
-  }
-  for (const d of defaults) {
-    await db.from('access_rules').delete().eq('level', d.level).eq('item_key', d.key)
-  }
-  for (const t of tools) {
-    const { error: e1 } = await db.from('access_tool_scope').upsert({ item_key: t.key, every_team: t.every, updated_at: new Date().toISOString() }, { onConflict: 'item_key' })
-    if (e1) throw new Error(e1.message)
-    const { error: e2 } = await db.from('access_tool_teams').delete().eq('item_key', t.key)
-    if (e2) throw new Error(e2.message)
-    if (!t.every && t.teams.length) {
-      const { error: e3 } = await db.from('access_tool_teams').insert(t.teams.map(x => ({ item_key: t.key, team_id: x.teamId, audience: x.audience })))
-      if (e3) throw new Error(e3.message)
-    }
-  }
+/** The writes of a set of ticks and team lists, for access_commit (migration 097). */
+function ruleOps(levels: readonly LevelChange[], tools: readonly ToolChange[], defaults: { level: ConfigurableLevel; key: string }[] = []): AccessOp[] {
+  return [
+    ...levels.map((c): AccessOp => ({ op: 'rule_set', level: c.level, key: c.key, allowed: c.allowed })),
+    ...defaults.map((d): AccessOp => ({ op: 'rule_clear', level: d.level, key: d.key })),
+    ...tools.map((t): AccessOp => ({ op: 'tool_set', key: t.key, every: t.every, teams: Object.fromEntries(t.every ? [] : t.teams.map(x => [x.teamId, x.audience])) })),
+  ]
 }
 
-export async function saveAccessChanges(input: { levels: LevelChange[]; tools: ToolChange[]; reason: string }): Promise<Result> {
+/** What the page was showing for these items, as sent with a save. */
+export interface SaveBase {
+  levels: { level: ConfigurableLevel; key: string; allowed: boolean | null }[]
+  tools: { key: string; scope: { every: boolean; teams: Record<string, Audience> } | null }[]
+}
+
+export async function saveAccessChanges(input: { levels: LevelChange[]; tools: ToolChange[]; reason: string; base?: SaveBase }): Promise<Result> {
   const who = await actor()
   if ('error' in who) return { ok: false, error: who.error }
   const reason = cleanReason(input.reason)
@@ -121,12 +113,6 @@ export async function saveAccessChanges(input: { levels: LevelChange[]; tools: T
   const rows = impact(people, before, after_, { today: today() })
   const nameOf = new Map(people.map(p => [p.id, p.name]))
 
-  try {
-    await applyRules(db, levels, tools)
-  } catch (e) {
-    return { ok: false, error: (e as Error).message }
-  }
-
   const changes = [
     ...levels.map(c => ({ kind: 'rule', level: c.level, key: c.key, label: ITEM.get(c.key)!.label, before: before.levels.get(ruleKey(c.level, c.key)) ?? null, beforeEffective: before.levels.get(ruleKey(c.level, c.key)) ?? ITEM.get(c.key)!.defaults?.[c.level] ?? false, after: c.allowed })),
     ...tools.map(t => ({ kind: 'tool', key: t.key, label: ITEM.get(t.key)!.label, before: scopeJson(before.tools.get(t.key)), after: { every: t.every, teams: Object.fromEntries(t.teams.map(x => [x.teamId, x.audience])) }, teamNames: Object.fromEntries(t.teams.map(x => [x.teamId, teamNames.get(x.teamId) ?? 'Team'])) })),
@@ -135,13 +121,22 @@ export async function saveAccessChanges(input: { levels: LevelChange[]; tools: T
   const summary = n === 1
     ? (levels[0] ? `${LEVEL_LABEL[levels[0].level]}: ${ITEM.get(levels[0].key)!.label} ${levels[0].allowed ? 'on' : 'off'}` : `Teams for ${ITEM.get(tools[0].key)!.label}`)
     : `${n} changes to permissions`
-  const id = await logChange(db, {
+  // What the page was showing, so a change saved from a stale page (someone
+  // else saved in between) is refused instead of overwriting theirs. Without
+  // it (a page opened before this shipped), what is stored now.
+  const base = input.base
+  const expected: AccessExpected = {
+    rules: levels.map(c => ({ level: c.level, key: c.key, allowed: base?.levels.find(b => b.level === c.level && b.key === c.key)?.allowed ?? (before.levels.get(ruleKey(c.level, c.key)) ?? null) })),
+    tools: tools.map(t => ({ key: t.key, scope: base?.tools.find(b => b.key === t.key)?.scope ?? scopeJson(before.tools.get(t.key)) })),
+  }
+  const res = await commitAccess(db, ruleOps(levels, tools), expected, {
     actorId: who.personId, kind: tools.length && !levels.length ? 'tool-teams' : 'rules', summary, reason, changes,
     impact: rows.map(r => ({ person: nameOf.get(r.personId) ?? 'Someone', gained: r.gained, lost: r.lost })),
   })
-  tellSuperAdmins(id, summary, reason, who.personId)
+  if (!res.ok) return res
+  tellSuperAdmins(res.id, summary, reason, who.personId)
   refresh()
-  return { ok: true, id }
+  return { ok: true, id: res.id }
 }
 
 // ── Levels ──────────────────────────────────────────────────────────────────
@@ -176,27 +171,31 @@ export async function setPersonLevel(personId: string, level: 'super_admin' | 'a
     return { ok: false, error: 'There must always be at least two Super Admins. Make someone else a Super Admin first.' }
   }
 
-  const { error } = await db.from('people').update({ access_level: level }).eq('id', personId)
-  if (error) return { ok: false, error: error.message }
   const profileId = await profileOf(db, personId)
-  if (profileId) await db.from('profiles').update({ role: level ? 'admin' : 'viewer' }).eq('id', profileId)
 
+  // Worked out before the write, so the log row can go in with it: a given
+  // level is itself; automatic is Team Leader when they lead a team.
   const fromLevel = person.level
-  const now = (await loadSubjects(db)).find(p => p.id === personId)
-  const toLevel = now?.level ?? fromLevel
+  const toLevel: AccessLevel = level ?? ([...person.teams.values()].some(Boolean) ? 'team_leader' : 'user')
   // What the move opens and closes for them, under the same rules.
   const o = { today: today() }
   const was = allowedKeys(person, before, o)
-  const is = now ? allowedKeys(now, before, o) : was
+  const is = allowedKeys({ ...person, level: toLevel }, before, o)
   const gained = [...is].filter(k => !was.has(k) && ITEM.get(k)?.kind !== 'module')
   const lost = [...was].filter(k => !is.has(k) && ITEM.get(k)?.kind !== 'module')
   const summary = `${person.name}: ${LEVEL_LABEL[fromLevel]} → ${LEVEL_LABEL[toLevel]}`
-  const id = await logChange(db, {
-    actorId: who.personId, kind: opts.undoes ? 'undo' : 'level', summary, reason, undoes: opts.undoes ?? null,
-    changes: [{ kind: 'level', personId, person: person.name, before: person.given, after: level, from: fromLevel, to: toLevel }],
-    impact: gained.length || lost.length ? [{ person: person.name, gained, lost }] : [],
-  })
-  if (opts.undoes && id) await db.from('access_changes').update({ undone_by: id }).eq('id', opts.undoes)
+  // Level, the database role and the log row together; the database keeps at
+  // least two Super Admins itself (migration 097).
+  const res = await commitAccess(db,
+    [{ op: 'person_level', person_id: personId, level, profile_id: profileId }],
+    { levels: [{ person_id: personId, level: person.given }] },
+    {
+      actorId: who.personId, kind: opts.undoes ? 'undo' : 'level', summary, reason, undoes: opts.undoes ?? null,
+      changes: [{ kind: 'level', personId, person: person.name, before: person.given, after: level, from: fromLevel, to: toLevel }],
+      impact: gained.length || lost.length ? [{ person: person.name, gained, lost }] : [],
+    })
+  if (!res.ok) return res
+  const id = res.id
   after(async () => {
     const { notifyLevelChange } = await import('@/lib/notifications/run')
     await notifyLevelChange({ personId, name: person.name, from: fromLevel, to: toLevel, actorProfileId: who.profileId })
@@ -225,15 +224,17 @@ export async function addException(input: { personId: string; key: string; effec
   const { data: p } = await db.from('people').select('full_name').eq('id', input.personId).maybeSingle()
   if (!p) return { ok: false, error: 'Unknown person.' }
   const name = (p as { full_name: string }).full_name
-  const { data, error } = await db.from('access_exceptions').insert({
-    person_id: input.personId, item_key: input.key, effect: input.effect, until: input.until, reason, created_by: who.personId,
-  }).select('id').single()
-  if (error) return { ok: false, error: error.message }
+  const exceptionId = crypto.randomUUID()
   const summary = `Exception for ${name}: ${item.label} ${input.effect === 'grant' ? 'open' : 'closed'}${input.until ? ` until ${input.until}` : ''}`
-  const id = await logChange(db, {
-    actorId: who.personId, kind: 'exception', summary, reason,
-    changes: [{ kind: 'exception-add', exceptionId: (data as { id: string }).id, person: name, key: input.key, label: item.label, effect: input.effect, until: input.until }],
-  })
+  const res = await commitAccess(db,
+    [{ op: 'exception_add', id: exceptionId, person_id: input.personId, key: input.key, effect: input.effect, until: input.until, reason, by: who.personId }],
+    {},
+    {
+      actorId: who.personId, kind: 'exception', summary, reason,
+      changes: [{ kind: 'exception-add', exceptionId, person: name, key: input.key, label: item.label, effect: input.effect, until: input.until }],
+    })
+  if (!res.ok) return res
+  const id = res.id
   tellSuperAdmins(id, summary, reason, who.personId)
   refresh()
   return { ok: true, id }
@@ -249,16 +250,18 @@ export async function endException(exceptionId: string, reasonIn: string, opts: 
   const { data: ex } = await db.from('access_exceptions').select('id, person_id, item_key, effect, ended_at').eq('id', exceptionId).maybeSingle()
   const row = ex as { id: string; person_id: string; item_key: string; effect: string; ended_at: string | null } | null
   if (!row || row.ended_at) return { ok: false, error: 'That exception has already ended.' }
-  const { error: endError } = await db.from('access_exceptions').update({ ended_at: new Date().toISOString(), ended_by: who.personId }).eq('id', exceptionId)
-  if (endError) return { ok: false, error: 'The exception could not be ended. Nothing changed; try again.' }
   const { data: p } = await db.from('people').select('full_name').eq('id', row.person_id).maybeSingle()
   const name = (p as { full_name: string } | null)?.full_name ?? 'Someone'
   const summary = `Exception ended for ${name}: ${ITEM.get(row.item_key)?.label ?? row.item_key}`
-  const id = await logChange(db, {
-    actorId: who.personId, kind: opts.undoes ? 'undo' : 'exception', summary, reason, undoes: opts.undoes ?? null,
-    changes: [{ kind: 'exception-end', exceptionId, person: name, key: row.item_key, label: ITEM.get(row.item_key)?.label ?? row.item_key }],
-  })
-  if (opts.undoes && id) await db.from('access_changes').update({ undone_by: id }).eq('id', opts.undoes).is('undone_by', null)
+  const res = await commitAccess(db,
+    [{ op: 'exception_end', id: exceptionId, by: who.personId }],
+    { exceptions: [{ id: exceptionId, ended: false }] },
+    {
+      actorId: who.personId, kind: opts.undoes ? 'undo' : 'exception', summary, reason, undoes: opts.undoes ?? null,
+      changes: [{ kind: 'exception-end', exceptionId, person: name, key: row.item_key, label: ITEM.get(row.item_key)?.label ?? row.item_key }],
+    })
+  if (!res.ok) return res
+  const id = res.id
   // Ending one is told to the Super Admins, as adding one is (decided 8 October 2026).
   tellSuperAdmins(id, summary, reason, who.personId)
   refresh()
@@ -316,10 +319,12 @@ export async function undoChange(changeId: number, reasonIn: string): Promise<Re
   if (added) return endException(added.exceptionId, `Undo: ${reason}`, { undoes: changeId })
   const ended = items.find(c => c.kind === 'exception-end') as Extract<Logged, { kind: 'exception-end' }> | undefined
   if (ended) {
-    const { error: reopenError } = await db.from('access_exceptions').update({ ended_at: null, ended_by: null }).eq('id', ended.exceptionId)
-    if (reopenError) return { ok: false, error: 'The exception could not be reopened. Nothing changed; try again.' }
-    const id = await logChange(db, { actorId: who.personId, kind: 'undo', summary: `Undo: ${entry.summary}`, reason, undoes: changeId, changes: [{ kind: 'exception-reopen', exceptionId: ended.exceptionId }] })
-    if (id) await db.from('access_changes').update({ undone_by: id }).eq('id', changeId).is('undone_by', null)
+    const res = await commitAccess(db,
+      [{ op: 'exception_reopen', id: ended.exceptionId }],
+      { exceptions: [{ id: ended.exceptionId, ended: true }] },
+      { actorId: who.personId, kind: 'undo', summary: `Undo: ${entry.summary}`, reason, undoes: changeId, changes: [{ kind: 'exception-reopen', exceptionId: ended.exceptionId }] })
+    if (!res.ok) return res
+    const id = res.id
     tellSuperAdmins(id, `Undo: ${entry.summary}`, reason, who.personId)
     refresh()
     return { ok: true, id }
@@ -328,29 +333,31 @@ export async function undoChange(changeId: number, reasonIn: string): Promise<Re
   const rules = items.filter((c): c is Extract<Logged, { kind: 'rule' }> => c.kind === 'rule')
   const tools = items.filter((c): c is Extract<Logged, { kind: 'tool' }> => c.kind === 'tool')
   if (!rules.length && !tools.length) return { ok: false, error: 'This change cannot be undone from here.' }
-  const before = await loadRules(db)
-  try {
-    await applyRules(db,
-      rules.filter(r => r.before !== null).map(r => ({ level: r.level, key: r.key, allowed: r.before as boolean })),
-      tools.map(t => ({ key: t.key, every: t.before?.every ?? false, teams: Object.entries(t.before?.teams ?? {}).map(([teamId, audience]) => ({ teamId, audience })) })),
-      rules.filter(r => r.before === null).map(r => ({ level: r.level, key: r.key })),
-    )
-  } catch (e) {
-    return { ok: false, error: (e as Error).message }
-  }
-  const people = await loadSubjects(db)
-  const afterRules = await loadRules(db)
+  const restoreLevels = rules.filter(r => r.before !== null).map(r => ({ level: r.level, key: r.key, allowed: r.before as boolean }))
+  const restoreTools = tools.map(t => ({ key: t.key, every: t.before?.every ?? false, teams: Object.entries(t.before?.teams ?? {}).map(([teamId, audience]) => ({ teamId, audience })) }))
+  const restoreDefaults = rules.filter(r => r.before === null).map(r => ({ level: r.level, key: r.key }))
+  const [before, people] = await Promise.all([loadRules(db), loadSubjects(db)])
+  const afterRules = overlay(before,
+    new Map(rules.map(r => [ruleKey(r.level, r.key), r.before ?? ITEM.get(r.key)?.defaults?.[r.level] ?? false])),
+    new Map(restoreTools.map(t => [t.key, { every: t.every, teams: new Map(t.teams.map(x => [x.teamId, x.audience as Audience])) }])))
   const rows = impact(people, before, afterRules, { today: today() })
   const nameOf = new Map(people.map(p => [p.id, p.name]))
-  const id = await logChange(db, {
+  // Based on what the change left behind: refused if anything moved since.
+  const loggedTools = items.filter(c => c.kind === 'tool') as unknown as { key: string; after?: { every: boolean; teams: Record<string, string> } }[]
+  const res = await commitAccess(db, ruleOps(restoreLevels, restoreTools, restoreDefaults), {
+    rules: rules.map(r => ({ level: r.level, key: r.key, allowed: r.after })),
+    tools: loggedTools.map(t => ({ key: t.key, scope: t.after ?? null })),
+  }, {
     actorId: who.personId, kind: 'undo', summary: `Undo: ${entry.summary}`, reason, undoes: changeId,
     changes: [
-      ...rules.map(r => ({ kind: 'rule', level: r.level, key: r.key, label: ITEM.get(r.key)?.label ?? r.key, before: r.after, after: r.before })),
+      // The effective value, so a tick put back to its default reads as what it does (not "Off").
+      ...rules.map(r => ({ kind: 'rule', level: r.level, key: r.key, label: ITEM.get(r.key)?.label ?? r.key, before: r.after, after: r.before ?? ITEM.get(r.key)?.defaults?.[r.level] ?? false, restoredDefault: r.before === null })),
       ...tools.map(t => ({ kind: 'tool', key: t.key, label: ITEM.get(t.key)?.label ?? t.key, after: t.before })),
     ],
     impact: rows.map(r => ({ person: nameOf.get(r.personId) ?? 'Someone', gained: r.gained, lost: r.lost })),
   })
-  if (id) await db.from('access_changes').update({ undone_by: id }).eq('id', changeId).is('undone_by', null)
+  if (!res.ok) return res
+  const id = res.id
   tellSuperAdmins(id, `Undo: ${entry.summary}`, reason, who.personId)
   refresh()
   return { ok: true, id }

@@ -9,7 +9,6 @@ import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from 
 import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
 import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, cardRights, type PersonView, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
-import type { ToolAudience } from '@/lib/access/tools'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
@@ -17,7 +16,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
 import { pageHrefs, personHref } from '@/lib/directory/page-rights'
 import { directoryLevel } from '@/lib/access/surfaces'
-import { TOOLS, TOOL_KEYS } from '@/lib/access/tools'
+import { TOOLS } from '@/lib/access/tools'
+import { loadRules } from '@/lib/access/store'
+import { toolsByTeam } from '@/lib/access/team-tools'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadInvitesByPerson } from '@/lib/directory/invites'
@@ -85,7 +86,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // people of the teams they lead, or anyone's, as Access levels says.
   const hrefFor = pageHrefs(access.can, access.personId, await loadLedMemberIds(createAdminClient(), access.personId))
 
-  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, dRes, ttRes, alRes] = await Promise.all([
+  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, dRes, alRes, accessRules] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
@@ -93,13 +94,13 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     // Separate + graceful: role_type (035) / avatar_url (036) may not exist
     // yet, a failed query here must NOT drop the PEOPLE_FULL select.
     supabase.from('people').select('id, role_type, avatar_url'),
-    // Team → tool access (037). Table may not exist yet, empty on error.
-    supabase.from('team_tool_grants').select('team_id, tool_key, audience'),
     // Access log (045), admin-readable; graceful if the table isn't there yet.
     // Only for the Access log tab and the cards' last access (d-log).
     level >= 3 && rights.accessLog
       ? supabase.from('access_log').select('id, profile_id, person_id, name, email, user_agent, accessed_at').order('accessed_at', { ascending: false }).limit(1000)
       : Promise.resolve({ data: [], error: null }),
+    // Each tool's team list, as Access levels sets it (lib/access/team-tools.ts).
+    loadRules(createAdminClient()),
   ])
 
   const people = (pRows ?? []) as unknown as PRow[]
@@ -317,16 +318,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     arr.push({ personId: m.person_id, position: m.position })
     membersByTeam.set(m.team_id, arr)
   }
-  // Tool grants per team (037). Absence of a row = unrestricted (Part 4 enforces).
-  const toolsByTeam = new Map<string, { toolKey: string; audience: ToolAudience }[]>()
-  for (const r of ttRes.data ?? []) {
-    // A grant for a tool that left the catalogue (Boards, September 2026)
-    // grants nothing, so it is not listed either.
-    if (!TOOL_KEYS.has(r.tool_key)) continue
-    const arr = toolsByTeam.get(r.team_id) ?? []
-    arr.push({ toolKey: r.tool_key, audience: r.audience === 'lead' ? 'lead' : 'all' })
-    toolsByTeam.set(r.team_id, arr)
-  }
+  // The tools each team is on, from Access levels (not the old team_tool_grants).
+  const toolLists = toolsByTeam(accessRules, teams.map(t => t.id))
+
   const teamCards: TeamCard[] = teams
     .map((t): TeamCard => {
       const key = teamKeyFromName(t.name)
@@ -354,7 +348,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         memberCount: mem.length,
         members: mem,
         access: (grantsByTeam.get(t.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
-        tools: toolsByTeam.get(t.id) ?? [],
+        tools: toolLists.get(t.id) ?? [],
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -422,7 +416,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           }))
           .sort((a, b) => a.name.localeCompare(b.name)),
         tools: level >= 2
-          ? (toolsByTeam.get(t.id) ?? []).map(g => ({
+          ? (toolLists.get(t.id) ?? []).map(g => ({
               label: toolLabel.get(g.toolKey) ?? g.toolKey,
               audience: g.audience,
             }))

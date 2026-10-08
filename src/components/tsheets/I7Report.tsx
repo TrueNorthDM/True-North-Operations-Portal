@@ -6,6 +6,7 @@
 // is computed server-side and passed in.
 
 import Link from 'next/link'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
@@ -109,7 +110,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
     const r = patch.range ?? range
     const team = patch.team ?? selectedTeam
     startNav(() => {
-      router.push(`${ROUTES.i7}?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`)
+      router.push(withViewAs(`${ROUTES.i7}?from=${r.from}&to=${r.to}${team ? `&team=${encodeURIComponent(team)}` : ''}`))
     })
   }
 

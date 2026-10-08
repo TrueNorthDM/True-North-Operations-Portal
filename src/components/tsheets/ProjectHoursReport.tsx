@@ -16,6 +16,7 @@
 // allowance; only Grants Pass Church and School buy hours in advance, at $90.
 
 import { useState, useTransition } from 'react'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { money, moneySigned } from '@/lib/tsheets/format'
@@ -101,7 +102,7 @@ export function ProjectHoursReport(
     if (next) q.set('team', next); else q.delete('team')
     // scroll: false, because the control is halfway down the page now and the
     // report should not jump back to the top under the person using it.
-    startNav(() => router.push(`${pathname}?${q.toString()}`, { scroll: false }))
+    startNav(() => router.push(withViewAs(`${pathname}?${q.toString()}`), { scroll: false }))
   }
 
   // Only ever takes names away, and only from the People columns. The totals

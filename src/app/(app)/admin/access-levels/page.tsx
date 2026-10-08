@@ -34,7 +34,9 @@ export default async function AccessLevelsPage({ searchParams }: { searchParams:
     db.from('teams').select('id, name, color').order('name'),
     db.from('team_members').select('team_id, person_id, position'),
     db.from('people').select('id, full_name, avatar_url').or('status.is.null,status.eq.active'),
-    db.from('access_exceptions').select('id, person_id, item_key, effect, until, reason, created_by, created_at').is('ended_at', null).order('created_at', { ascending: false }),
+    // The ones still in force: an exception past its date applies to nobody
+    // (decide.ts), so it is not listed or counted as active either.
+    db.from('access_exceptions').select('id, person_id, item_key, effect, until, reason, created_by, created_at').is('ended_at', null).or(`until.is.null,until.gte.${today}`).order('created_at', { ascending: false }),
     db.from('access_changes').select('id, at, actor_id, kind, summary, reason, changes, impact, undoes, undone_by').order('at', { ascending: false }).limit(200),
     loadPriorityGrants(db),
   ])

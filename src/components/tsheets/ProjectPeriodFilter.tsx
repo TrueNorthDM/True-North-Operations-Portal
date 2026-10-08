@@ -20,6 +20,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter } from 'next/navigation'
 import { RangeFilter } from './RangeFilter'
 import { choiceFromRange, rangeOf, type Range, type RangeChoice } from '@/lib/tsheets/range'
@@ -61,7 +62,7 @@ export function ProjectPeriodFilter(
     const r = rangeOf(next, newest)
     // A half-typed custom range is not worth a round trip. The popover says so.
     if (r.from <= r.to) {
-      startNav(() => router.push(href({ from: r.from, to: r.to })))
+      startNav(() => router.push(withViewAs(href({ from: r.from, to: r.to }))))
     }
   }
 
