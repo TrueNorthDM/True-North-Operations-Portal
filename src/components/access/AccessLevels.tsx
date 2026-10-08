@@ -398,14 +398,17 @@ function Permissions({
         <button type="button" className={btnNavy} onClick={() => setEditing(e => !e)}>{editing ? 'Done editing' : 'Edit'}</button>
       </div>
 
-      <div className={`${card} overflow-x-auto`}>
+      {/* The header row sticks under the portal's top bar (65px) while the list
+          scrolls. A box that scrolls sideways would hold it in place instead, so
+          it only scrolls sideways on screens too narrow for the table. */}
+      <div className={`${card} max-[1239px]:overflow-x-auto`}>
         <table className="w-full border-separate border-spacing-0 min-w-[1060px]">
           <thead>
             <tr>
-              <th className="text-left bg-subtle px-4 py-2.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted align-bottom">Module, page, tool, tab or action</th>
-              <th className="w-[78px] bg-subtle border-b border-[var(--panel-border)]" aria-label="Kind" />
+              <th className="sticky top-[65px] z-10 rounded-tl-[14px] text-left bg-subtle px-4 py-2.5 border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted align-bottom">Module, page, tool, tab or action</th>
+              <th className="sticky top-[65px] z-10 w-[78px] bg-subtle border-b border-[var(--panel-border)]" aria-label="Kind" />
               {LEVELS.map(l => (
-                <th key={l.key} className="w-[128px] min-w-[128px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom">
+                <th key={l.key} className="sticky top-[65px] z-10 w-[128px] min-w-[128px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom">
                   <div className="grid justify-items-center gap-1.5">
                     <span className="font-(family-name:--font-display) font-black text-[12.5px] text-tn-ink">{l.label}</span>
                     <span className="inline-flex items-center gap-1.5">
@@ -421,7 +424,7 @@ function Permissions({
                   </div>
                 </th>
               ))}
-              <th className="w-[230px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">Teams<div className="normal-case tracking-normal font-sans font-semibold text-[11px]">tools only</div></th>
+              <th className="sticky top-[65px] z-10 rounded-tr-[14px] w-[230px] bg-subtle px-2 py-2.5 border-b border-[var(--panel-border)] align-bottom font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.1em] uppercase text-muted">Teams<div className="normal-case tracking-normal font-sans font-semibold text-[11px]">tools only</div></th>
             </tr>
           </thead>
           <tbody>{rows.length ? rows : <tr><td colSpan={7} className="px-4 py-6 text-muted text-[13px]">Nothing matches.</td></tr>}</tbody>
