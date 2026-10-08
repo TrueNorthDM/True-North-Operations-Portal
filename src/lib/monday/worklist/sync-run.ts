@@ -9,10 +9,9 @@
 //   Runs    one row per hop: what it read, which boards failed and why. Boards
 //           that failed in a run are skipped by that run's later hops.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** Longer than one hop can live (300 s), so a live chain never loses it. */
 export const LEASE_MS = 6 * 60_000

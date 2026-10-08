@@ -5,7 +5,7 @@
  * browser: the header carries only what every open tab already shows.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { isLeadPosition } from '@/lib/access/catalogue'
 import { loadContactByPerson } from '@/lib/hr/contact'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
@@ -19,8 +19,7 @@ import type { PersonAddress } from '@/lib/address'
 import type { PersonMilestone } from '@/lib/milestones'
 import { pageRights, personHref, relationTo, type PageRights } from './page-rights'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** Everyone on the teams this person leads (the person included). */
 export async function loadLedMemberIds(db: Client, personId: string | null): Promise<Set<string>> {

@@ -2,7 +2,7 @@
 //
 // The rules live in team-priority.ts; this is only the database side of them.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import {
   baseOrder, cleanLevels, defaultOrder, hasLevels, isGrantScope, stepKey, teamRanking,
   type GrantScope, type Levels, type Membership, type Ranking, type SavedOrder,
@@ -11,8 +11,7 @@ import type { WorkRow } from './data'
 import { missingColumn } from './missing-column'
 import { placedAbove } from './order-bands'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** A person's teams, with the position they hold on each. */
 export async function loadMemberships(supabase: Client, personId: string): Promise<Membership[]> {

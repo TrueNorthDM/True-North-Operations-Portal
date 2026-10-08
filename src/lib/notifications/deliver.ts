@@ -13,13 +13,12 @@
  * Generators can therefore look again every run without keeping score.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { TYPE_BY_KEY, effective, type Pref, type Rule } from './catalogue'
 import { deliverAt, zoneDate } from './schedule'
 import { loadDelivery, loadPrefs, loadRules, type Delivery } from './store'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface Draft {
   personId: string

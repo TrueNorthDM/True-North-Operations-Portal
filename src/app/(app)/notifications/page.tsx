@@ -18,13 +18,12 @@ import { saveNotificationPref, saveNotificationRule, sendTestNotification } from
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notification rules' }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type Db = ReturnType<typeof createAdminClient>
 
 /** Per type: how many people it reaches, and how many of them switched it off. */
 async function offCountsFor(db: Db): Promise<Record<string, { off: number; reach: number }>> {
-  const aud = await loadAudience(db as any)
-  const off = await loadOffCounts(db as any, (key, personId) => {
+  const aud = await loadAudience(db)
+  const off = await loadOffCounts(db, (key, personId) => {
     const t = TYPE_BY_KEY.get(key)
     const r = aud.byId.get(personId)
     return !!t && !!r && aud.reached(t, r)

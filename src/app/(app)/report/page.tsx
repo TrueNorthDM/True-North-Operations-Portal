@@ -9,6 +9,7 @@
 // the teams they lead, level 3 everybody (lib/report/view.ts).
 
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
+import type { Db } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { ReportTabs, type ReportTabKey } from '@/components/report/ReportTabs'
@@ -112,8 +113,7 @@ async function Tab({
 }: {
   tab: ReportTabKey
   level: number
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any
+  supabase: Db
   filters: PeopleFilter
   /** Teams the Workload filters may offer; null is every team. */
   teamChoices: readonly string[] | null

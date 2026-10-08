@@ -6,15 +6,14 @@
 // Calling it again continues. Nothing is lost if it dies mid-run, because every
 // month is upserted whole and the cursor only advances after the month lands.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import {
   importJobcodes, importFields, importPeople, loadMaps,
   importMonth, applyDeletions, monthsToImport,
 } from './import'
 import { fetchTimesheetRange } from './source'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** The account has nothing before this; see docs/time-clock/01. */
 export const FIRST_MONTH = '2017-01'

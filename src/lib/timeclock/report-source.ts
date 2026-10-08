@@ -11,12 +11,11 @@
 // because the sync only asked for those job codes. tc_entries holds everything,
 // so the i7 subtree has to be selected explicitly.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { I7_PARENT_JOBCODE_ID, I7_CODE_CF, ACTIVITY_CF } from '@/lib/tsheets/i7report'
 import type { I7Entry } from '@/lib/tsheets/types'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const PAGE = 1000
 

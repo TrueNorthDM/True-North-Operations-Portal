@@ -31,7 +31,7 @@ type Row = { user_id: string; account_created: string; factor_since: string | nu
 /** Every account's second step, by account id: since when it is set up, or null. */
 export async function loadTwoStepByAccount(): Promise<Map<string, string | null> | null> {
   const db = createAdminClient()
-  const { data, error } = await db.rpc('portal_two_step_status', { p_user: null })
+  const { data, error } = await db.rpc('portal_two_step_status', {}) // no p_user: every account
   if (error) return null // migration 090 not run yet: the Directory hides the column
   return new Map((data as Row[]).map(r => [r.user_id, r.factor_since]))
 }

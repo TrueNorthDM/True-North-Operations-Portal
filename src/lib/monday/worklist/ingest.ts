@@ -22,6 +22,7 @@
 // item's next stage is.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { gql } from './discover'
 import { missingColumn } from './missing-column'
 import { boardsToProbe, readOrder } from './stale'
@@ -29,8 +30,7 @@ import { diffAssignments, keyOf, type AssignmentSnapshot } from './changes'
 import { currentStage, pickLanguageColumn, readStages, type StepStage } from './steps'
 import { selectAllPages } from './resilience'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const PAGE = 250
 
@@ -227,7 +227,11 @@ function missing091(error: { code?: string; message?: string } | null): boolean 
  * 083: item_language) are dropped from the rows, said once in the log, and the
  * board carries on: the rows are still right without them.
  */
-async function writeBoardRows(supabase: Client, board: BoardRow, rows: Record<string, unknown>[]) {
+async function writeBoardRows(typed: Client, board: BoardRow, rows: Record<string, unknown>[]) {
+  // Loosely typed on purpose: the rows are assembled per board, written to the
+  // staging table and then the live one, and lose the columns of any migration
+  // not run yet. Their columns are checked where the rows are built.
+  const supabase = typed as unknown as SupabaseClient
   const optional = ['due_col', 'item_language']
   const missing = new Set<string>()
   const trim = (r: Record<string, unknown>) => {

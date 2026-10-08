@@ -6,13 +6,12 @@
  * there makes editing and entering the same act.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { TRACKED_PROJECTS } from './projects'
 
 // Same shape the sibling loaders take: the generated types do not cover the
 // privileged client, and narrowing here would only move the cast.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface MoneyInMonth {
   month: string

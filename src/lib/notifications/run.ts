@@ -20,7 +20,7 @@
  * every entry point returns without doing anything.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { HealthResult } from '@/lib/health/checks'
 import { KEEP_READ_DAYS, KEEP_UNREAD_DAYS } from './catalogue'
@@ -32,8 +32,7 @@ import {
 } from './generators'
 import { loadRules } from './store'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface RunReport extends Partial<DeliverResult> {
   skipped?: string

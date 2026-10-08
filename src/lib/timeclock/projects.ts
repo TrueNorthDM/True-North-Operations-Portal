@@ -31,7 +31,7 @@
 // billed (hours × the client rate), shown where the others show donations, and
 // their net is billed minus costs. Kept off the People tab for now, as asked.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { PROJECT_CF, i7Invoice } from '@/lib/tsheets/i7report'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
@@ -43,8 +43,7 @@ import { shiftMonth, RANGE_FLOOR } from '@/lib/tsheets/range'
 /** The sheet starts here, as the i7 report does: budgets and rates begin in 2026. */
 const DATA_FLOOR = RANGE_FLOOR
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const PAGE = 1000
 

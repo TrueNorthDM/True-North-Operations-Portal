@@ -13,15 +13,14 @@
 //
 // Rows born in the portal have no external_id and are never touched here.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import {
   fetchAllJobcodes, fetchAllUsers, fetchFields, fetchFieldOptions,
   fetchTimesheetRange, fetchDeletedIds,
   type SourceTimesheet,
 } from './source'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface Maps {
   jobcodeByExternal: Map<number, number>

@@ -12,6 +12,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import type { Json } from '@/lib/types/database.types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { processBoard, getMondayToken } from '@/lib/monday/snapshot'
 import { BOARDS, PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
@@ -59,10 +60,10 @@ export async function GET(request: Request) {
         // The published facts go in the same write as the snapshot they were
         // taken from, so the Home card can never count a different snapshot
         // than the dashboard shows. See migration 081.
-        const row = { board_id: bid, data: snap, ingested_at: new Date().toISOString() }
+        const row = { board_id: bid, data: snap as unknown as Json, ingested_at: new Date().toISOString() }
         let { error } = await supabase
           .from('monday_snapshot')
-          .upsert({ ...row, published_items: compactPublished(snap, BOARDS[bid], new Date()) }, { onConflict: 'board_id' })
+          .upsert({ ...row, published_items: compactPublished(snap, BOARDS[bid], new Date()) as unknown as Json }, { onConflict: 'board_id' })
         // Deployed before migration 081 was applied, the column does not exist
         // and PostgREST rejects the whole row. Losing the snapshot to protect
         // an optimisation would freeze both publishing dashboards, so the

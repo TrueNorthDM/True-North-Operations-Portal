@@ -21,7 +21,7 @@
  * Until migration 092 is run, the run reports it and does nothing.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/resend'
 import { renderSummary, type SummaryCategory, type SummaryItem } from '@/lib/email/summary'
@@ -32,8 +32,7 @@ import { zoneDate, zoneHour } from './schedule'
 import { loadDelivery, missingTable } from './store'
 import { zoneLabel } from './zones'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** How far back a waiting notification still goes out by email. Older ones are let go. */
 export const EMAIL_WITHIN_DAYS = 14

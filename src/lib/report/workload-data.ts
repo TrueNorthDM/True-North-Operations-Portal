@@ -14,7 +14,7 @@
 //   estimated    open steps ahead × hours per step, and the hours per step is
 //                the estimate the audit exists to expose
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { initialsOf } from '@/lib/directory/people-types'
 import { colourOf } from '@/lib/directory/team-colour'
@@ -27,8 +27,7 @@ import type { LoggedEvent } from './spans'
 import type { Period } from './scope'
 import { buildEffortTable, hoursFor, isMeasured, type BoardEffort } from './effort'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const DAY = 86_400_000
 

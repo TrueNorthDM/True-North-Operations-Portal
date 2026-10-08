@@ -11,12 +11,11 @@
  * what a browser sent; it is pure and tested.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { DAILY_HOUR, DAILY_ZONE } from '@/lib/notifications/catalogue'
 import { validZone } from '@/lib/notifications/schedule'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export type StartPage = 'home' | 'my-work'
 
@@ -67,7 +66,8 @@ function fromRow(r: Partial<Row> | null | undefined): PersonSettings {
 export async function loadSettingsFor(db: Client, personIds: readonly string[]): Promise<Map<string, PersonSettings>> {
   const out = new Map<string, PersonSettings>()
   for (let i = 0; i < personIds.length; i += 200) {
-    let res = await db.from('person_settings').select('*').in('person_id', personIds.slice(i, i + 200))
+    // Typed loosely: the fallback reads fewer columns when a migration has not run.
+    let res: { data: unknown[] | null; error: unknown } = await db.from('person_settings').select('*').in('person_id', personIds.slice(i, i + 200))
     if (res.error) res = await db.from('person_settings').select('person_id, time_zone').in('person_id', personIds.slice(i, i + 200))
     if (res.error) break
     for (const r of (res.data ?? []) as Row[]) out.set(r.person_id, fromRow(r))

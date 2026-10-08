@@ -13,6 +13,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/types/database.types'
 import { gateHeaders } from './gate'
 
 export function createAdminClient() {
@@ -23,7 +24,7 @@ export function createAdminClient() {
       'createAdminClient: missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY',
     )
   }
-  return createClient(url, key, {
+  return createClient<Database>(url, key, {
     global: { headers: gateHeaders() },
     auth: {
       // No cookie/session storage, service_role doesn't need to be a "user".

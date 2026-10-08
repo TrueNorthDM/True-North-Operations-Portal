@@ -10,13 +10,13 @@
  * noteLevelShifts afterwards, which logs and notifies whatever moved.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Json } from '@/lib/types/database.types'
+import type { Db } from '@/lib/supabase/types'
 import { after } from 'next/server'
 import { LEVEL_LABEL, type AccessLevel } from './catalogue'
 import { loadSubject } from './store'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export type ChangeKind = 'rules' | 'tool-teams' | 'level' | 'exception' | 'position' | 'undo'
 
@@ -33,7 +33,7 @@ export interface LogEntry {
 export async function logChange(db: Client, e: LogEntry): Promise<number | null> {
   const { data, error } = await db.from('access_changes').insert({
     actor_id: e.actorId, kind: e.kind, summary: e.summary, reason: e.reason,
-    changes: e.changes, impact: e.impact ?? null, undoes: e.undoes ?? null,
+    changes: e.changes as Json, impact: (e.impact ?? null) as Json, undoes: e.undoes ?? null,
   }).select('id').single()
   if (error) { console.error('[access] log:', error.message); return null }
   return (data as { id: number }).id

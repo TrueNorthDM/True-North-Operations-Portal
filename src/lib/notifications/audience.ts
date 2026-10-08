@@ -15,7 +15,7 @@
  * their level's ticks, the tool's team list, and their exceptions.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import type { Membership } from '@/lib/access/tool-grants'
 import { teamPositionLeads } from '@/lib/directory/people-types'
 import type { RoleType } from '@/lib/auth/tier'
@@ -24,8 +24,7 @@ import { loadRules, loadSubjects } from '@/lib/access/store'
 import { zoneDate } from './schedule'
 import { reaches, type NotificationType } from './catalogue'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface Recipient {
   personId: string

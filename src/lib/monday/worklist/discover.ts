@@ -8,13 +8,13 @@
 // leaves every row somebody has reviewed exactly as they left it. A seeding
 // pass that quietly reverts corrections teaches people not to correct anything.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { TablesInsert } from '@/lib/types/database.types'
+import type { Db } from '@/lib/supabase/types'
 import { seedSteps, pickDateColumn, PEOPLE_TYPES, type BoardColumn } from './steps'
 import { missingColumn } from './missing-column'
 import { retryDecision, goneBoards, selectAllPages, type CallFailure } from './resilience'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const API = 'https://api.monday.com/v2'
 
@@ -291,7 +291,7 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     const chunk = boardRows.slice(i, i + 200)
     let { error } = await supabase.from('monday_boards').upsert(chunk, { onConflict: 'id' })
     if (missingColumn(error, 'board_updated_at')) {
-      ;({ error } = await supabase.from('monday_boards').upsert(chunk.map(withoutUpdated), { onConflict: 'id' }))
+      ;({ error } = await supabase.from('monday_boards').upsert(chunk.map(withoutUpdated) as TablesInsert<'monday_boards'>[], { onConflict: 'id' }))
     }
     if (error) throw new Error(`monday_boards upsert: ${error.message}`)
   }
@@ -358,7 +358,7 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     const chunk = seeded.slice(i, i + 200)
     let { error } = await supabase
       .from('monday_board_steps')
-      .upsert(writeStages ? chunk : chunk.map(withoutStages), { onConflict: 'board_id,people_col' })
+      .upsert((writeStages ? chunk : chunk.map(withoutStages)) as TablesInsert<'monday_board_steps'>[], { onConflict: 'board_id,people_col' })
     // Migration 082 not run yet: keep the old pairing working rather than
     // failing the whole sync, and say so where the cron's log will show it.
     if (writeStages && error?.message?.includes('stages')) {
@@ -366,7 +366,7 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
       console.warn('[monday-discover] monday_board_steps.stages is missing: run migration 082')
       ;({ error } = await supabase
         .from('monday_board_steps')
-        .upsert(chunk.map(withoutStages), { onConflict: 'board_id,people_col' }))
+        .upsert(chunk.map(withoutStages) as TablesInsert<'monday_board_steps'>[], { onConflict: 'board_id,people_col' }))
     }
     if (error) throw new Error(`monday_board_steps upsert: ${error.message}`)
   }

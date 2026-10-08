@@ -10,6 +10,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
+import type { Json, TablesUpdate } from '@/lib/types/database.types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { writerAccess } from '@/lib/access/resolve'
@@ -100,7 +101,7 @@ export async function savePersonal(personId: string, input: PersonalInput): Prom
     whatsapp_same_number: whatsapp,
     date_of_birth: dateOfBirth,
     location: text(input.location),
-    address: input.address ? normalizeAddress(input.address) : null,
+    address: (input.address ? normalizeAddress(input.address) : null) as Json,
   }).eq('id', personId)
   if (error) return fail(mapPersonError(error.message))
   refresh(personId)
@@ -184,7 +185,7 @@ export async function saveWork(personId: string, input: WorkInput): Promise<Resu
     also_reports_to_id: alsoId,
     hire_date: hireDate,
     left_on: leftOn,
-    milestones: normalizeMilestones(Array.isArray(input.milestones) ? input.milestones : []),
+    milestones: normalizeMilestones(Array.isArray(input.milestones) ? input.milestones : []) as unknown as Json,
     employment_history: text(input.history),
   }).eq('id', personId)
   if (error) return fail(mapPersonError(error.message))
@@ -219,7 +220,7 @@ export async function saveHr(personId: string, input: HrInput): Promise<Result> 
   const offboarding = text(input.offboarding)
   if ((onboarding && !allowed.has(onboarding)) || (offboarding && !allowed.has(offboarding))) return fail('Choose a status from the list.')
 
-  const patch: Record<string, unknown> = { onboarding_status: onboarding, offboarding_status: offboarding }
+  const patch: TablesUpdate<'people'> = { onboarding_status: onboarding, offboarding_status: offboarding }
   if (input.unlinkTsheets === true) patch.tsheets_user_id = null
   const { error } = await createAdminClient().from('people').update(patch).eq('id', personId)
   if (error) return fail(mapPersonError(error.message))

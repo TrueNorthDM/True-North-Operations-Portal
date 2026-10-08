@@ -4,12 +4,11 @@
 // disputes it, which a hand-written "every 4 hours" cannot do: it stops being
 // true the day the cron changes and nobody notices for a quarter.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import type { OpenDecision, Source } from '@/components/report/ReportMethod'
 import type { Recording } from './data'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** Matches deploy/cron/portal.crontab. Six passes a day, which is what the cadence text says. */
 const SYNC_CADENCE = 'every 4 hours'

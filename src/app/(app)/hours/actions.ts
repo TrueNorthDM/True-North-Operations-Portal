@@ -11,6 +11,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { loadApprovers } from '@/lib/timeclock/approvers'
+import type { Json } from '@/lib/types/database.types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { allowedTo } from '@/lib/access/resolve'
@@ -58,8 +59,9 @@ async function audit(
     entry_id: entryId,
     action,
     changed_by: ctx.me.id,
-    before: before ?? null,
-    after: after ?? null,
+    // Rows as they were read: plain JSON by construction.
+    before: (before ?? null) as Json,
+    after: (after ?? null) as Json,
   })
 }
 

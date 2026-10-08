@@ -8,7 +8,7 @@
 // still here, and being able to look back matters, but a list that opens on
 // four years of finished work is not a work list.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { unresolvedAccounts } from './links'
 import { readStages, type StepStage } from './steps'
 import { missingColumn } from './ingest'
@@ -17,8 +17,7 @@ import { COMPLETED_MONTHS } from './constants'
 
 export { COMPLETED_MONTHS }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const PAGE = 1000
 
@@ -307,6 +306,9 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   const includedBoards = boardList.filter(b => b.included).map(b => b.id)
 
   let SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at, status_col, due_col, item_language'
+  // A builder for a select list that changes with the migrations run (SELECT
+  // is reassigned below), so it has no single generated type.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const applyFilters = (q: any): any => {
     let out = q
     out = out.in('board_id', includedBoards)

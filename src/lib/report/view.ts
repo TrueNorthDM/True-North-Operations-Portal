@@ -5,7 +5,7 @@
 // that is wrong in one of them, so it is resolved here once, and the pure
 // parts (scope.ts, ReportTabs) stay testable on their own.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { redirect } from 'next/navigation'
 import type { DirectoryLevel } from '@/lib/access/surfaces'
 import { resolveTab, tabRights, type ReportTabKey, type TabRights } from '@/components/report/ReportTabs'
@@ -14,8 +14,7 @@ import type { PeopleFilter } from '@/lib/monday/worklist/data'
 import { loadMemberships } from '@/lib/monday/worklist/team-priority-data'
 import { leads } from '@/lib/monday/worklist/team-priority'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface ReportView {
   level: DirectoryLevel

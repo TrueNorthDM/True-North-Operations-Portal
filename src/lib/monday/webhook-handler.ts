@@ -32,6 +32,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import type { Json } from '@/lib/types/database.types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isChallengeBody, isEventBody, type MondayEventBody } from '@/lib/monday/types'
 import { runLinkHandler, doneHandler } from '@/lib/monday/handlers'
@@ -75,10 +76,10 @@ export async function handleMondayWebhook(rawBody: string, via: DeliveryDoor) {
     board_id: event.boardId != null ? String(event.boardId) : null,
     monday_item_id: event.pulseId != null ? String(event.pulseId) : null,
     column_id: event.columnId ?? null,
-    old_value: (event.previousValue ?? null) as object | null,
-    new_value: (event.value ?? null) as object | null,
+    old_value: (event.previousValue ?? null) as Json,
+    new_value: (event.value ?? null) as Json,
     user_id: event.userId != null ? String(event.userId) : null,
-    raw_payload: body as object,
+    raw_payload: body as unknown as Json,
   }
   const { data: auditInsert } = await supabase
     .from('monday_events')

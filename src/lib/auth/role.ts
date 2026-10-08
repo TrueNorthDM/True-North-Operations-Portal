@@ -24,5 +24,6 @@ export async function getCurrentProfile(): Promise<ProfileRow | null> {
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
   if (aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') return null
   const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
-  return data ?? null
+  // role is 'admin' or 'viewer' by the column's CHECK constraint.
+  return (data as ProfileRow | null) ?? null
 }

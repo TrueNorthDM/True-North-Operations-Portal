@@ -601,11 +601,12 @@ export async function GET(request: Request) {
     for (const month of months) {
       const [yy, mm] = month.split('-').map(Number)
       const end = new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10)
-      type Q = ReturnType<ReturnType<typeof supabase.from>['select']>
+      const durations = () => supabase.from('tc_entries').select('duration_seconds')
+      type Q = ReturnType<typeof durations>
       const sumWhere = async (fn: (q: Q) => Q) => {
         let secs = 0
         for (let from = 0; ; from += 1000) {
-          const { data } = await fn(supabase.from('tc_entries').select('duration_seconds'))
+          const { data } = await fn(durations())
             .gte('entry_date', `${month}-01`).lte('entry_date', end)
             .order('id', { ascending: true }).range(from, from + 999)
           const rs = (data ?? []) as { duration_seconds: number }[]

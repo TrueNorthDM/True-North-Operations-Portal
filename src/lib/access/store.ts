@@ -10,12 +10,11 @@
  * the database is having a bad moment. Migration 094 runs before this code.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { isLeadPosition, type ConfigurableLevel } from './catalogue'
 import { levelOf, ruleKey, type Audience, type Exception, type Rules, type Subject, type ToolScope } from './decide'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export async function loadRules(db: Client): Promise<Rules> {
   const [r, s, t] = await Promise.all([

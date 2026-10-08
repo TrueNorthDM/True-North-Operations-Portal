@@ -63,7 +63,7 @@ export async function getSitePageData(siteCode: 'aaaf' | 'hfa'): Promise<SitePag
       id: p.id,
       name: p.name,
       langStatus,
-      needsUpdate: p.needs_hreflang_update,
+      needsUpdate: p.needs_hreflang_update ?? undefined,
       confirmedDoneAt: p.confirmed_done_at,
       notRelevant: p.not_relevant ?? false,
     }

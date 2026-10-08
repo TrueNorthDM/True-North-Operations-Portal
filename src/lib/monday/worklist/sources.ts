@@ -6,11 +6,10 @@
 // this page. Collapsing them into one list of checkboxes would lose the
 // difference and make the decision harder rather than shorter.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { staleSweep } from './stale'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export type Priority = 'high' | 'medium' | 'low'
 

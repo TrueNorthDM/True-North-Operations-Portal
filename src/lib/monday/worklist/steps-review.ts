@@ -9,12 +9,11 @@
 // assignments ride on each one does, because then twenty minutes of work
 // fixes most of the data and the rest can stay a guess.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { readStages, type StepStage } from './steps'
 import { missingColumn } from './ingest'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export type StepSource = 'guess' | 'confirmed' | 'off'
 

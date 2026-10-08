@@ -9,12 +9,12 @@
  * the portal keeps working and the settings page can say what is missing.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Json } from '@/lib/types/database.types'
+import type { Db } from '@/lib/supabase/types'
 import { NOTIFICATION_TYPES, defaultRule, type Channel, type Pref, type Rule, type Timing } from './catalogue'
 import { loadSettingsFor } from '@/lib/settings/person'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** The error Postgres gives for a table that does not exist yet. */
 export const missingTable = (e: { code?: string; message?: string } | null | undefined): boolean =>
@@ -74,7 +74,7 @@ export async function readState<T>(db: Client, key: string): Promise<T | null> {
 }
 
 export async function writeState(db: Client, key: string, value: unknown): Promise<void> {
-  await db.from('notification_state').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  await db.from('notification_state').upsert({ key, value: value as Json, updated_at: new Date().toISOString() }, { onConflict: 'key' })
 }
 
 /** When a person's daily summary lands: their time zone and hour. */

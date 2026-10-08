@@ -4,15 +4,14 @@
 // process to fix; the same month traced to a person is a conversation that
 // may be about the wrong thing entirely.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
 import type { BoardWait, StepWait, StuckItem } from '@/components/report/ReportWaits'
 import { accountsInScope, loadOpenSince, loadSpans } from './data'
 import { median } from './spans'
 import type { Period } from './scope'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** How many of the longest-waiting items the panel lists. */
 const STUCK_LIMIT = 12

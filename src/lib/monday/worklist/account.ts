@@ -6,10 +6,9 @@
 // over which years, and above all who else was on the same items. People are
 // recognisable by the company they keep on a board.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface AccountProfile {
   mondayUserId: number

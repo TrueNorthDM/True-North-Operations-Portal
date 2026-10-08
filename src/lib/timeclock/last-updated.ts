@@ -16,11 +16,10 @@
  * at once, and there is no such thing as importing only September.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { getHoursImportStatus } from './import-status'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** Which of the three moved last. The wording on screen depends on it. */
 export type UpdateSource = 'import' | 'hours' | 'money'

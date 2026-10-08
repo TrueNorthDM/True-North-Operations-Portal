@@ -22,11 +22,10 @@
 // years, and roughly six a year lately. This is a history to look back at, not
 // a budget to manage, and the shape of the report follows from that.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { PROJECT_CF, ACTIVITY_CF } from '@/lib/tsheets/i7report'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const PAGE = 1000
 

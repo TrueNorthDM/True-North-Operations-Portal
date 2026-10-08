@@ -5,12 +5,11 @@
 // answering that differently for the same person is the kind of thing nobody
 // reports as a bug and everybody quietly distrusts.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { peopleInFilter, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { teamColoursFrom, type TeamColours } from '@/lib/directory/team-colour'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export type ActivePerson = { id: string; full_name: string; weekly_hours: number | null }
 

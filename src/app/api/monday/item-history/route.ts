@@ -60,8 +60,7 @@ export async function GET(request: Request) {
     // The reader as View Stage shows them, so a preview highlights the
     // previewed person's steps. Nothing is written here.
     const me = await loadCurrentPerson(supabase, auth.user)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return Response.json(await loadItemHistory(supabase as any, token, board, item, me))
+    return Response.json(await loadItemHistory(supabase, token, board, item, me))
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 502 })
   }

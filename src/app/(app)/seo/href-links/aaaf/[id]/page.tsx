@@ -36,9 +36,10 @@ export default async function AaafPageDetail({ params }: { params: Promise<{ id:
       pageName={page.name}
       languages={site?.languages ?? ['en', 'pt', 'es', 'sw']}
       savedUrls={page.page_urls ?? []}
-      confirmations={page.confirmations ?? []}
+      // An unset confirmation reads as not confirmed, as it always did.
+      confirmations={(page.confirmations ?? []).map(c => ({ ...c, confirmed_on_live: c.confirmed_on_live ?? false }))}
       accent="aaaf"
-      needsUpdate={page.needs_hreflang_update}
+      needsUpdate={page.needs_hreflang_update ?? undefined}
       confirmedDoneAt={page.confirmed_done_at}
       notRelevant={page.not_relevant ?? false}
     />

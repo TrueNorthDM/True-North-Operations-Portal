@@ -9,10 +9,9 @@
 // leaves the second reported as unresolved forever, and a pending list that
 // never empties is a pending list nobody reads.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 const PAGE = 2000
 

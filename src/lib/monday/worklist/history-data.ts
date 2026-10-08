@@ -4,15 +4,14 @@
 // lives here so it can be exercised against real data without a session.
 // Rules for grouping and drawing are in history.ts.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { gql } from './discover'
 import { missingColumn } from './missing-column'
 import {
   columnSteps, personIds, type HistoryData, type HistoryEvent, type HistoryStep, type StepRow,
 } from './history'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 interface RawLog {
   id: string

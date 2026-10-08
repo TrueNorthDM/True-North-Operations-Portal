@@ -170,7 +170,8 @@ export async function loadPublishingWeeks(now = new Date(), ranges?: { start: Da
     // ever run between applying migration 081 and the next ingest.
     console.warn(`[publishing-weeks] no stored facts for ${stale.join(', ')}; reading the full snapshot`)
     const { data: snapRows } = await supabase.from('monday_snapshot').select('board_id, data').in('board_id', stale)
-    for (const row of (snapRows ?? []) as { board_id: string; data: SnapshotBoard }[]) {
+    // data is the JSON column the ingest wrote from a board snapshot.
+    for (const row of (snapRows ?? []) as unknown as { board_id: string; data: SnapshotBoard }[]) {
       const config = BOARDS[row.board_id]
       if (!config) continue
       names[row.board_id] = clientName(config.name)

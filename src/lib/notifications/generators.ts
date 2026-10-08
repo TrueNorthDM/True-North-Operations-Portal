@@ -13,7 +13,7 @@
  * and implausible dates are left out by the same code.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { loadWorklist, type WorkRow } from '@/lib/monday/worklist/data'
 import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
@@ -26,8 +26,7 @@ import { readState, writeState } from './store'
 import type { Audience, Recipient } from './audience'
 import type { Draft } from './deliver'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface Ctx {
   db: Client

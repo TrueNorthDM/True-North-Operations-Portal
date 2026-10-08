@@ -13,7 +13,7 @@
 // that fact rather than a zero: a zero says "nothing was delivered", which is
 // a different and much worse claim than "we were not watching yet".
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { loadWorklist, peopleInFilter, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { AGE_BUCKETS, type Overview } from './overview'
 import { weekColumns, type Period } from './scope'
@@ -21,11 +21,10 @@ import {
   deriveSpans, median, onTimeShare, percentile90, type LoggedEvent, type Span,
 } from './spans'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Same shape the work list uses, and for the same reason: monday_* tables are
 // not in the generated Database type, and monday_assignment_events is newer
 // still, so a typed client rejects every query here.
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export type Recording =
   | { state: 'off' }                                   // table not there yet

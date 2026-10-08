@@ -5,11 +5,10 @@
  * export of a "use server" file would be an action anyone signed in can call.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { normalPosition } from './people-types'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** Friendlier message for the one-account-per-person unique index. */
 export function mapPersonError(message: string): string {

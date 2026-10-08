@@ -13,10 +13,9 @@
  * caller should have to be allowed to ask.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export interface Approver { id: string; name: string }
 

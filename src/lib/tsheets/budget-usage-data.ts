@@ -256,7 +256,8 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
     directoryOptions: directoryOptions as DirectoryOption[],
     syncedAt,
     publishingTargets: pubTargetsRaw ?? [],
-    publishingAudit: pubAuditRaw ?? [],
+    // action is insert, update or delete by the column's CHECK constraint.
+    publishingAudit: (pubAuditRaw ?? []) as AuditLogRow[],
   }
 }
 

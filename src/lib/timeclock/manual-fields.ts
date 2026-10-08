@@ -13,11 +13,10 @@
  * is the failure worth having.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { I7_CODE_CF, ACTIVITY_CF, PROJECT_CF } from '@/lib/tsheets/i7report'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 export const COMPANY_FIELD_NAME = '1 Company'
 export const BILLABLE_FIELD_NAME = '4 Billable'

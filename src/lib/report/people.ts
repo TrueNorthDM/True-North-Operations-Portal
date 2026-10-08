@@ -5,7 +5,7 @@
 // whole job, because the row reads as six facts about one person and they are
 // true of three different moments.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
 import { initialsOf } from '@/lib/directory/people-types'
 import { colourOf } from '@/lib/directory/team-colour'
@@ -15,8 +15,7 @@ import { activePeople, primaryTeams, teamColours } from './directory'
 import { median, onTimeShare } from './spans'
 import type { Period } from './scope'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 type DirectoryPerson = {
   id: string

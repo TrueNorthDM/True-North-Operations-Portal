@@ -79,7 +79,8 @@ export async function POST(request: Request) {
       .select('board_id, data, ingested_at')
       .in('board_id', boardIds)
     if (error) storeError = error.message
-    for (const row of (data ?? []) as { board_id: string; data: BoardSnapshot; ingested_at: string }[]) {
+    // data is the JSON column the ingest wrote from a BoardSnapshot.
+    for (const row of (data ?? []) as unknown as { board_id: string; data: BoardSnapshot; ingested_at: string }[]) {
       stored[row.board_id] = row.data
       if (!ingestedAt || row.ingested_at > ingestedAt) ingestedAt = row.ingested_at
     }

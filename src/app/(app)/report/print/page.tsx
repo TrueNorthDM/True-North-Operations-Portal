@@ -8,6 +8,7 @@
 // Puppeteer photographs.
 
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
+import type { Db } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { SCOPE_LABEL } from '@/lib/report/scope'
 import { resolveReportView } from '@/lib/report/view'
@@ -78,8 +79,7 @@ async function Body({
 }: {
   tab: string
   level: number
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any
+  supabase: Db
   filters: PeopleFilter
   period: 30 | 90
 }) {

@@ -6,7 +6,7 @@
 // TSheets, and the entry would land in the report under a code the tree does
 // not have, which shows as hours that are counted and invisible.
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Db } from '@/lib/supabase/types'
 import { i7JobcodeIdsHere } from './report-source'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateStateFor } from '@/lib/tsheets/rates'
@@ -14,8 +14,7 @@ import { mapCodeToProject, I7_PROJECTS } from '@/lib/tsheets/i7report'
 import { loadEntryFieldKeys, loadFieldOptions } from './manual-fields'
 import type { ManualOptions, ManualRow } from '@/components/tsheets/ManualHours'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Client = SupabaseClient<any, any, any>
+type Client = Db
 
 /** How far back to look for codes and activities somebody might reuse. */
 const OPTION_MONTHS = 12

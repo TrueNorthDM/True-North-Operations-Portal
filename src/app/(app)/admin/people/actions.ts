@@ -14,6 +14,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import type { TablesInsert } from '@/lib/types/database.types'
 import { allowedTo } from '@/lib/access/resolve'
 import { revalidatePath } from 'next/cache'
 import { endSessions } from '@/lib/auth/portal-access'
@@ -143,7 +144,8 @@ export async function createPerson(input: PersonInput): Promise<{ id: string }> 
   if (input.profile_id !== undefined) row.profile_id = input.profile_id || null
   if (input.tsheets === false) row.tsheets_user_id = null
 
-  const { data, error } = await supabase.from('people').insert(row).select('id').single()
+  // JSON columns (address, milestones) are typed by their own shapes here.
+  const { data, error } = await supabase.from('people').insert(row as TablesInsert<'people'>).select('id').single()
   if (error) throw new Error(mapPersonError(error.message))
   if (input.teams !== undefined && data?.id) await setPersonTeams(supabase, data.id, input.teams)
   revalidate()
