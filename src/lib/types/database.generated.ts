@@ -2822,6 +2822,7 @@ export type Database = {
           site_id: string
         }[]
       }
+      db_protections_check: { Args: never; Returns: string[] }
       is_admin: { Args: { uid: string }; Returns: boolean }
       merge_monday_links: {
         Args: { loser: string; winner: string }

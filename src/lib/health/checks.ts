@@ -32,6 +32,7 @@ export const HEALTH = {
   mondayWebhook: 'monday_webhook',
   mondayEvents: 'monday_events',
   tsheetsApi: 'tsheets_api',
+  dbProtections: 'db_protections',
 } as const
 
 export const HEALTH_LABEL: Record<string, string> = {
@@ -39,6 +40,7 @@ export const HEALTH_LABEL: Record<string, string> = {
   monday_webhook: 'Monday webhooks',
   monday_events: 'Monday event delivery',
   tsheets_api: 'TSheets API',
+  db_protections: 'Database protections',
 }
 
 const MONDAY_API = 'https://api.monday.com/v2'
@@ -168,6 +170,19 @@ async function checkTsheets(token: string): Promise<Check> {
   }
 }
 
+/**
+ * Are the database's own protections still closed (migration 098): pay and
+ * contact columns, and the functions meant for the server alone? A move or a
+ * restore reopened them once (found 8 October 2026); this notices the next.
+ */
+async function checkDbProtections(supabase: SupabaseClient): Promise<Check> {
+  const { data, error } = await supabase.rpc('db_protections_check')
+  if (error) return { service: HEALTH.dbProtections, ok: true, status: 'warn', detail: `Could not run the check (migration 098?): ${error.message}` }
+  const open = (data ?? []) as string[]
+  if (open.length) return { service: HEALTH.dbProtections, ok: false, status: 'down', detail: `Open again: ${open.slice(0, 4).join('; ')}${open.length > 4 ? `; and ${open.length - 4} more` : ''}. Run supabase/migrations/098 again.` }
+  return { service: HEALTH.dbProtections, ok: true, status: 'ok', detail: 'Pay, contact and server-only functions are closed to signed-in and anonymous roles.' }
+}
+
 /** Run every check, persist the results (best-effort), and return them. */
 export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthResult[]> {
   const { data: settings } = await supabase.from('app_settings').select('monday_api_token, tsheets_api_token').eq('singleton_id', 1).maybeSingle()
@@ -183,6 +198,7 @@ export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthR
     checkMondayWebhooks(mondayToken, sites),
     checkMondayEvents(supabase),
     checkTsheets(tsheetsToken),
+    checkDbProtections(supabase),
   ])
 
   const checkedAt = new Date().toISOString()
