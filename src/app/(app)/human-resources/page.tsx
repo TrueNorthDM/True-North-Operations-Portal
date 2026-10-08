@@ -1,26 +1,45 @@
 // Human Resources, for now, the anniversary badge gallery: every service
 // milestone (quarterly through the first year, then 1–20 years) with the people
-// who currently hold it. The access item Human Resources. Clicking a person opens their card
-// in place (no navigation).
+// who currently hold it. The access item Human Resources. A name opens that
+// person's page when the viewer may open it (lib/directory/page-rights.ts).
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { tenureSince, milestoneOf, formatTenureShort, yearColor } from '@/lib/tenure'
-import { loadDirectoryPeopleView } from '@/lib/directory/people-view'
 import { HrGallery, type HrHolder, type HrSection } from '@/components/hr/HrGallery'
 import { requireSurface } from '@/lib/access/resolve'
-import { cardRights } from '@/lib/directory/people-types'
+import { teamKeyFromName } from '@/lib/directory/people-types'
+import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
+import { loadLedMemberIds } from '@/lib/directory/person-page-data'
+import { pageHrefs } from '@/lib/directory/page-rights'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HumanResourcesPage() {
   const access = await requireSurface('human-resources')
-  // The badges are this page; the cards behind the names are "Open anyone's
-  // card" (d-cards), and what each card carries follows the Directory's items.
-  const opensCards = access.can('d-cards')
-  const rights = cardRights(access.can)
-
-  const supabase = await createClient()
-  const { people, teamOptions } = await loadDirectoryPeopleView(supabase, rights)
+  // The badges need a name, a photo, a team colour and a start date: nothing
+  // else is read. Whose page a name opens is the page's own rule.
+  const db = createAdminClient()
+  const [{ data: rows }, { data: teamRows }, { data: memberships }, led] = await Promise.all([
+    db.from('people').select('id, full_name, avatar_url, status, hire_date'),
+    db.from('teams').select('id, name, color'),
+    db.from('team_members').select('person_id, team_id, is_primary'),
+    loadLedMemberIds(db, access.personId),
+  ])
+  const hrefFor = pageHrefs(access.can, access.personId, led)
+  const teams = (teamRows ?? []) as { id: string; name: string; color: string | null }[]
+  const palette = teamColoursFrom(teams)
+  const teamName = new Map(teams.map(t => [t.id, t.name]))
+  const primaryTeam = new Map<string, string>()
+  for (const m of (memberships ?? []) as { person_id: string; team_id: string; is_primary: boolean | null }[]) {
+    if (m.is_primary || !primaryTeam.has(m.person_id)) primaryTeam.set(m.person_id, teamName.get(m.team_id) ?? '')
+  }
+  const people = ((rows ?? []) as { id: string; full_name: string; avatar_url: string | null; status: string | null; hire_date: string | null }[]).map(p => {
+    const team = primaryTeam.get(p.id) || null
+    return {
+      id: p.id, full_name: p.full_name, avatarUrl: p.avatar_url, status: p.status === 'inactive' ? 'inactive' : 'active',
+      hireDate: p.hire_date, teamName: team, teamKey: teamKeyFromName(team ?? undefined), color: colourOf(palette, team),
+    }
+  })
 
   const now = new Date()
   const quarterHolders: Record<number, HrHolder[]> = { 1: [], 2: [], 3: [] }
@@ -32,7 +51,7 @@ export default async function HumanResourcesPage() {
     if (p.status !== 'active' || !p.hireDate) continue
     const t = tenureSince(p.hireDate, now)
     const ms = milestoneOf(t)
-    const h: HrHolder = { id: p.id, name: p.full_name, avatarUrl: p.avatarUrl, teamName: p.teamName, teamKey: p.teamKey, color: p.color, tenure: formatTenureShort(t) }
+    const h: HrHolder = { id: p.id, name: p.full_name, avatarUrl: p.avatarUrl, teamName: p.teamName, teamKey: p.teamKey, color: p.color, tenure: formatTenureShort(t), href: hrefFor(p.id) }
     if (ms.kind === 'quarter') quarterHolders[ms.value].push(h)
     else if (ms.kind === 'year') {
       const arr = yearHolders.get(ms.value) ?? []
@@ -56,11 +75,11 @@ export default async function HumanResourcesPage() {
       <div>
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">Human Resources</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
-          Anniversary badges, every service milestone and who currently holds it. Click a name to open their card.
+          Anniversary badges, every service milestone and who currently holds it. A name opens that person&apos;s page.
         </p>
       </div>
 
-      <HrGallery quarters={quarters} years={years} people={opensCards ? people : []} teamOptions={teamOptions} rights={opensCards ? rights : null} />
+      <HrGallery quarters={quarters} years={years} />
 
       {underThree > 0 && (
         <p className="text-[12.5px] text-muted">

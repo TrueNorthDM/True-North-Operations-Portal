@@ -302,8 +302,8 @@ export function HowItRuns() {
             head={['To', 'Where', 'Note']}
             rows={[
               ['Invite someone', 'Directory, Portal access tab: tick the person and click Invite', 'They get an email with a sign-in button. The invitation does not expire'],
-              ['Remove access', 'Directory, the person: make them inactive, or Revoke the invitation', 'Their sessions end at once'],
-              ['Reset 2FA', 'Directory, the person, Two-step: Reset', 'For a lost or new phone. They set it up again at their next sign-in. Any portal admin can do it'],
+              ['Remove access', 'The person\'s page, Work: make them inactive; or HR and access: Revoke the invitation', 'Their sessions end at once'],
+              ['Reset 2FA', 'The person\'s page, HR and access, Two-step: Reset', 'For a lost phone. They set it up again at their next sign-in. Super Admins only (Reset someone\'s two-step sign-in, on Access levels). With the phone in hand, they move it themselves: Settings, Sign-in and security'],
               ['See who has 2FA', 'Directory, Portal access tab, Two-step column', ''],
             ]}
           />
@@ -330,7 +330,7 @@ export function HowItRuns() {
               ['A "Portal server" email about a problem', 'Whether a later email says it cleared', 'If it has not cleared in 20 minutes, send the email to Claude'],
               ['An Uptime check email: the portal does not open', 'Whether the portal opens in your browser', 'Send it to Claude. If the whole server is down, open a chat or ticket with ScalaHosting (Wendy has the PIN)'],
               ['Someone does not get their sign-in code', 'Their spam folder; the Logs screen in Resend', 'If the sign-in page said "hasn\'t been invited", invite them in the Directory'],
-              ['Someone lost or changed their phone', '', 'Directory, the person, Two-step: Reset'],
+              ['Someone lost or changed their phone', '', 'Changed: they use Move to a new phone in their Settings. Lost: a Super Admin resets it on their page, HR and access'],
               ['My Work or the Monday reports stopped updating', 'Admin, Automations', 'Send it to Claude. If the Monday token expired, create a new one in Monday and paste it in Admin, Company settings'],
               ['New hours do not show up', 'They arrive every 4 hours', 'If it takes longer, tell Claude. If the QuickBooks Time token expired, paste the new one in Admin, Company settings'],
               ['A change looks wrong on staging', 'The yellow strip, to be sure it is staging', 'Don\'t promote it. Tell Claude what you saw'],

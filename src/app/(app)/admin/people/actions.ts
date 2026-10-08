@@ -15,12 +15,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { allowedTo } from '@/lib/access/resolve'
-import { levelsOf, noteLevelShifts } from '@/lib/access/log'
 import { revalidatePath } from 'next/cache'
 import { endSessions } from '@/lib/auth/portal-access'
 import { requestOrigin } from '@/lib/auth/origin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { normalPosition } from '@/lib/directory/people-types'
+import { mapPersonError, setPersonTeams } from '@/lib/directory/person-writes'
 import { renderInvite } from '@/lib/email/invite'
 import { sendEmail } from '@/lib/email/resend'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -88,12 +87,6 @@ export interface PersonInput {
   tsheets?: boolean
 }
 
-/** Friendlier message for the one-account-per-person unique index. */
-function mapError(message: string): string {
-  if (/people_profile_id_unique/.test(message)) return 'That portal account is already linked to another person.'
-  return message
-}
-
 const trimOrNull = (v: string | null | undefined) => (v == null ? null : v.trim() || null)
 
 /** Build the `people` column patch from an input (excludes team membership). */
@@ -130,43 +123,12 @@ function personColumns(input: PersonInput): PersonCols {
   return cols
 }
 
-/** Reconcile the person's memberships to exactly the given teams + positions,
- *  with exactly one marked as the primary department. */
-async function setPersonTeams(supabase: Awaited<ReturnType<typeof createClient>>, personId: string, teams: { teamId: string; position: string; primary?: boolean }[]) {
-  const { error: delErr } = await supabase.from('team_members').delete().eq('person_id', personId)
-  if (delErr) throw new Error(delErr.message)
-  // Dedupe by team (last wins) and normalise the position value.
-  const norm = (pos: string) => normalPosition(pos)
-  const byTeam = new Map<string, { position: string; primary: boolean }>()
-  for (const t of teams) if (t.teamId) byTeam.set(t.teamId, { position: norm(t.position), primary: !!t.primary })
-  const entries = [...byTeam]
-  // Guarantee exactly one primary: default to the first team if none chosen,
-  // and keep only the first if somehow several were flagged.
-  if (entries.length && !entries.some(([, v]) => v.primary)) entries[0][1].primary = true
-  let primarySeen = false
-  for (const [, v] of entries) {
-    if (!v.primary) continue
-    if (primarySeen) v.primary = false
-    else primarySeen = true
-  }
-  const rows = entries.map(([team_id, v]) => ({ team_id, person_id: personId, position: v.position, is_primary: v.primary }))
-  if (rows.length) {
-    // is_primary is a late-added column (migration 048). Try with it; if the DB
-    // doesn't have it yet, fall back to inserting without it.
-    let insErr = (await supabase.from('team_members').insert(rows as never)).error
-    if (insErr && /is_primary|column/i.test(insErr.message)) {
-      const bare = rows.map(r => ({ team_id: r.team_id, person_id: r.person_id, position: r.position }))
-      insErr = (await supabase.from('team_members').insert(bare)).error
-    }
-    if (insErr) throw new Error(insErr.message)
-  }
-}
-
-export async function createPerson(input: PersonInput) {
+export async function createPerson(input: PersonInput): Promise<{ id: string }> {
   await requireAllowed('d-edit')
   const name = input.full_name.trim()
   if (!name) throw new Error('Name is required')
-  const supabase = await createClient()
+  // Privileged after the check above: "Add people" decides, not the database role.
+  const supabase = createAdminClient()
 
   const row: PersonCols & { full_name: string } = { full_name: name, ...personColumns(input) }
   // The rate is Rates & Costs (d-rates): without it, a new person starts with none.
@@ -175,65 +137,10 @@ export async function createPerson(input: PersonInput) {
   if (input.tsheets === false) row.tsheets_user_id = null
 
   const { data, error } = await supabase.from('people').insert(row).select('id').single()
-  if (error) throw new Error(mapError(error.message))
+  if (error) throw new Error(mapPersonError(error.message))
   if (input.teams !== undefined && data?.id) await setPersonTeams(supabase, data.id, input.teams)
   revalidate()
-}
-
-// Would setting `id`'s primary manager to `newManagerId` create a reporting
-// loop? Walk up from the proposed manager following existing manager links; if
-// we come back to `id`, it's a cycle. The `seen` set also stops us looping on a
-// pre-existing cycle elsewhere in the data. Guards the org chart's tree.
-async function wouldCreateCycle(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  id: string,
-  newManagerId: string,
-): Promise<boolean> {
-  if (newManagerId === id) return true
-  const { data } = await supabase.from('people').select('id, manager_id')
-  const mgr = new Map((data ?? []).map((p: { id: string; manager_id: string | null }) => [p.id, p.manager_id]))
-  const seen = new Set<string>([id])
-  let cur: string | null = newManagerId
-  while (cur) {
-    if (seen.has(cur)) return true
-    seen.add(cur)
-    cur = mgr.get(cur) ?? null
-  }
-  return false
-}
-
-export async function updatePerson(id: string, input: PersonInput) {
-  await requireAllowed('d-edit')
-  const name = input.full_name.trim()
-  if (!name) throw new Error('Name is required')
-  if (input.manager_id === id) throw new Error('A person cannot report to themselves')
-  const supabase = await createClient()
-  if (input.manager_id && await wouldCreateCycle(supabase, id, input.manager_id)) {
-    throw new Error('That reporting line would create a loop, the chosen manager already reports up to this person.')
-  }
-
-  const patch: PersonCols & { full_name: string } = { full_name: name, ...personColumns(input) }
-  // The rate is Rates & Costs (d-rates). Without it the card never showed the
-  // rate, so the save leaves it as it is instead of clearing it.
-  if (input.internal_rate === undefined || !(await allowedTo('d-rates'))) delete patch.internal_rate
-  // Only touch the account link when the caller passed it.
-  if (input.profile_id !== undefined) patch.profile_id = input.profile_id || null
-  if (input.tsheets === false) patch.tsheets_user_id = null
-
-  const { data: before } = await supabase.from('people').select('status, profile_id').eq('id', id).maybeSingle()
-  const levelsBefore = await levelsOf(createAdminClient(), [id])
-  const { error } = await supabase.from('people').update(patch).eq('id', id)
-  if (error) throw new Error(mapError(error.message))
-  if (input.teams !== undefined) await setPersonTeams(supabase, id, input.teams)
-  const { data: { user } } = await supabase.auth.getUser()
-  const was = before as { status?: string | null; profile_id?: string | null } | null
-  // Lead of a team or not decides Team Leader: a change of teams can move the level.
-  const actor = user ? await loadCurrentPerson(supabase, user, { real: true }) : null
-  await noteLevelShifts(createAdminClient(), levelsBefore, { personId: actor?.id ?? null, profileId: user?.id ?? null }, `Teams changed on ${name}'s card in the Directory.`)
-  // Made inactive: their sessions end now, not when the token runs out. The
-  // page gate (lib/auth/portal-access.ts) already refuses them on the next load.
-  if (patch.status === 'inactive' && was?.status !== 'inactive') await endSessions(was?.profile_id)
-  revalidate()
+  return { id: (data as { id: string }).id }
 }
 
 /** What inviting someone did, for the Directory to say. */
@@ -275,7 +182,7 @@ export async function invitePerson(id: string): Promise<InviteResult> {
       .from('people')
       .update({ portal_invited_at: new Date().toISOString(), portal_invited_by: user?.id ?? null })
       .eq('id', id)
-    if (error) throw new Error(mapError(error.message))
+    if (error) throw new Error(mapPersonError(error.message))
   }
   revalidate()
 
@@ -301,7 +208,7 @@ export async function revokeInvite(id: string): Promise<void> {
     .from('people')
     .update({ portal_invited_at: null, portal_invited_by: null })
     .eq('id', id)
-  if (error) throw new Error(mapError(error.message))
+  if (error) throw new Error(mapPersonError(error.message))
   await endSessions((before as { profile_id?: string | null } | null)?.profile_id)
   revalidate()
 }

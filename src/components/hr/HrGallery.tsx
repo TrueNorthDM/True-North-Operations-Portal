@@ -1,33 +1,26 @@
 'use client'
 
-// HrGallery: the badge gallery + in-place person card. Each milestone card puts
-// the (double-size) badge on the left and the label / headcount on the right;
-// each holder is a button that opens their PersonModal right here, no navigation.
+// HrGallery: the badge gallery. Each milestone card puts the (double-size) badge
+// on the left and the label / headcount on the right; a holder's name opens
+// their page when the viewer may open it (lib/directory/page-rights.ts).
 
-import { useState } from 'react'
+import Link from 'next/link'
 import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
-import { PersonModal, type ModalState } from '@/components/admin/PersonModal'
-import { type PersonView, type CardRights, type TeamKey } from '@/lib/directory/people-types'
-import type { TeamOption } from '@/components/admin/DirectoryTabs'
+import type { TeamKey } from '@/lib/directory/people-types'
 import type { Milestone } from '@/lib/tenure'
 
-export interface HrHolder { id: string; name: string; avatarUrl: string | null; teamName: string | null; teamKey: TeamKey; color: string; tenure: string }
+export interface HrHolder {
+  id: string; name: string; avatarUrl: string | null; teamName: string | null; teamKey: TeamKey; color: string; tenure: string
+  /** Their page, when the viewer may open it. */
+  href: string | null
+}
 export interface HrSection { key: string; milestone: Milestone; label: string; holders: HrHolder[] }
 
-export function HrGallery({ quarters, years, people, teamOptions, rights }: {
+export function HrGallery({ quarters, years }: {
   quarters: HrSection[]
   years: HrSection[]
-  /** Empty when the viewer's access does not open cards. */
-  people: PersonView[]
-  teamOptions: TeamOption[]
-  /** Null: the names do not open a card. */
-  rights: CardRights | null
 }) {
-  const [modal, setModal] = useState<ModalState>(null)
-  const activePeople = people.filter(p => p.status === 'active')
-  const open = (id: string) => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })
-
   const card = (s: HrSection) => (
     <div key={s.key} className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(1,35,88,.06)]">
       <div className="flex items-center justify-between gap-3">
@@ -41,8 +34,9 @@ export function HrGallery({ quarters, years, people, teamOptions, rights }: {
         <p className="text-[12px] text-muted italic mt-3">No one yet</p>
       ) : (
         <div className="mt-3 flex flex-col gap-0.5 border-t border-slate-100 pt-3">
-          {s.holders.map(h => (
-            <button key={h.id} type="button" disabled={!rights} onClick={() => open(h.id)} className="disabled:cursor-default group flex items-center gap-2.5 rounded-[9px] -mx-1 px-1 py-1 text-left transition-colors hover:bg-subtle">
+          {s.holders.map(h => {
+            const body = (
+              <>
               <Avatar name={h.name} avatarUrl={h.avatarUrl} size={28} color={h.color} />
               <span className="min-w-0 flex-1">
                 <span className="block text-[12.5px] font-semibold text-tn-ink truncate group-hover:text-tn-teal transition-colors">{h.name}</span>
@@ -51,8 +45,13 @@ export function HrGallery({ quarters, years, people, teamOptions, rights }: {
                 )}
               </span>
               <span className="shrink-0 text-[11px] text-muted whitespace-nowrap tabular-nums">{h.tenure}</span>
-            </button>
-          ))}
+              </>
+            )
+            const cls = 'group flex items-center gap-2.5 rounded-[9px] -mx-1 px-1 py-1 text-left transition-colors'
+            return h.href
+              ? <Link key={h.id} href={h.href} className={`${cls} hover:bg-subtle`}>{body}</Link>
+              : <div key={h.id} className={cls}>{body}</div>
+          })}
         </div>
       )}
     </div>
@@ -73,7 +72,6 @@ export function HrGallery({ quarters, years, people, teamOptions, rights }: {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">{years.map(card)}</div>
       </section>
 
-      {modal && rights && <PersonModal state={modal} setState={setModal} people={activePeople} teamOptions={teamOptions} rights={rights} />}
     </>
   )
 }

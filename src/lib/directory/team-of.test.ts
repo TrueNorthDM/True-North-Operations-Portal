@@ -49,9 +49,12 @@ describe('leadsTeam', () => {
     expect(leadsTeam('team_leader')).toBe(true)
     expect(leadsTeam('manager')).toBe(true)
     expect(leadsTeam('founder')).toBe(true)
+    expect(leadsTeam('lead')).toBe(true)
   })
   it('is false for plain membership or none', () => {
     expect(leadsTeam('collaborator')).toBe(false)
+    // The position migration 095 gave every non-Lead (7 October 2026).
+    expect(leadsTeam('member')).toBe(false)
     expect(leadsTeam(null)).toBe(false)
     expect(leadsTeam(undefined)).toBe(false)
   })

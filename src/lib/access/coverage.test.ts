@@ -28,7 +28,7 @@ const rel = (p: string) => relative(SRC, p)
 const read = (p: string) => readFileSync(p, 'utf8')
 
 /** What counts as asking the access rule. */
-const GUARD = /requireSurface\(|loadAccess\(|allowedTo\(|isSuperAdmin\(|requirePrivileged\(|requireAllowed\(|requireAdmin\(/
+const GUARD = /requireSurface\(|loadAccess\(|allowedTo\(|writerAccess\(|isSuperAdmin\(|requirePrivileged\(|requireAllowed\(|requireAdmin\(/
 
 describe('every page asks the access rule', () => {
   // Pages anyone signed in (or nobody) may open, and why.

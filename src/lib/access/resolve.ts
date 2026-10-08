@@ -118,6 +118,22 @@ export async function allowedTo(key: string): Promise<boolean> {
   return (await loadAccess()).can(key)
 }
 
+/**
+ * For a write that decides with several items at once (a person's page decides
+ * by tab and by relation): the access of the person really signed in, after the
+ * same checks allowedTo makes. Null while a View Stage preview is on, since a
+ * preview never writes, or when the checks fail.
+ */
+export async function writerAccess(): Promise<Access | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') return null
+  if (await getViewAs()) return null
+  return loadRealAccess()
+}
+
 /** Super Admin, really (the Access page, View Stage, the change log). */
 export async function isSuperAdmin(): Promise<boolean> {
   return allowedTo('access-levels')

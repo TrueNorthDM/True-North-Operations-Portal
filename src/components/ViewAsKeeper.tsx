@@ -38,7 +38,8 @@ export function ViewAsKeeper() {
       if (!href || anchor.target === '_blank') return
       if (/^(https?:|mailto:|tel:|#)/i.test(href)) return
 
-      const url = new URL(href, window.location.origin)
+      // Against the page, not the origin: "?tab=work" stays on this page.
+      const url = new URL(href, window.location.href)
       if (url.origin !== window.location.origin || url.searchParams.has('_vs')) return
 
       // Next's Link navigates from its href PROP, not the DOM attribute, so
@@ -62,7 +63,7 @@ export function withViewAs(href: string): string {
   if (typeof window === 'undefined') return href
   const token = new URLSearchParams(window.location.search).get('_vs')
   if (!token) return href
-  const url = new URL(href, window.location.origin)
+  const url = new URL(href, window.location.href)
   if (url.searchParams.has('_vs')) return href
   url.searchParams.set('_vs', token)
   return url.pathname + url.search

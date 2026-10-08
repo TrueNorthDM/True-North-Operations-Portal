@@ -69,9 +69,9 @@ const TREE: Node[] = [
       { key: 'priority-own', label: 'Set the priority order of the teams they lead', kind: 'action', v: [1, 1, 1] },
       { key: 'priority-all', label: 'Set the priority order of every team', kind: 'action', v: [1, 0, 0] },
     ] },
-    { key: 'my-team', label: 'My Team', kind: 'page', v: [1, 1, 1], ch: [
+    // Clicking someone opens their page, as "A person's page" (People) allows.
+    { key: 'my-team', label: 'My Team', kind: 'page', v: [1, 1, 1], note: "The people on their teams. Clicking someone opens their page, as A person's page allows.", ch: [
       { key: 'mt-teams', label: 'Teams', kind: 'tab', v: [1, 1, 0] },
-      { key: 'mt-cards', label: "Open teammates' cards", kind: 'action', v: [1, 0, 0] },
     ] },
     { key: 'report', label: 'Report', kind: 'page', v: [1, 0, 0], note: 'Delivery, held time and lateness.', ch: [
       { key: 'rp-overview', label: 'Overview', kind: 'tab', v: [1, 1, 1] },
@@ -127,17 +127,31 @@ const TREE: Node[] = [
     ] },
   ] },
   { key: 'm-people', label: 'People', kind: 'module', ch: [
-    { key: 'directory', label: 'Directory', kind: 'page', v: [1, 1, 0], ch: [
+    { key: 'directory', label: 'Directory', kind: 'page', v: [1, 1, 0], note: 'The list of people and the tabs beside it.', ch: [
       { key: 'd-company', label: 'See the whole company, not only their own teams', kind: 'action', v: [1, 1, 0] },
       { key: 'd-teams', label: 'Teams', kind: 'tab', v: [1, 1, 0] },
       { key: 'd-emails', label: 'Emails', kind: 'tab', v: [1, 0, 0] },
       { key: 'd-rates', label: 'Rates & Costs', kind: 'tab', v: [1, 0, 0] },
       { key: 'd-log', label: 'Access log', kind: 'tab', v: [1, 0, 0] },
       { key: 'd-portal', label: 'Portal access', kind: 'tab', v: [1, 0, 0] },
-      { key: 'd-cards', label: "Open anyone's card", kind: 'action', v: [1, 0, 0] },
-      { key: 'd-edit', label: 'Add and edit people, teams and positions', kind: 'action', v: [1, 0, 0] },
+      { key: 'd-edit', label: 'Add people, and change teams and positions on the Teams tab', kind: 'action', v: [1, 0, 0] },
       { key: 'd-invite', label: 'Invite, resend and revoke portal access', kind: 'action', v: [1, 0, 0] },
+    ] },
+    // A person's page (8 October 2026): one tab per who keeps the information.
+    // Everyone opens their own; someone else's needs p-led or p-any, and then
+    // each tab its own tick (lib/directory/page-rights.ts).
+    { key: 'person', label: "A person's page", kind: 'page', always: true, note: 'Opened from the Directory, My Team, Human Resources, and My profile in the avatar menu.', ch: [
+      { key: 'p-own', label: 'Their own page: edit Personal, see Work and Reports, never HR and access', kind: 'action', always: true },
+      { key: 'p-led', label: 'Open the pages of people on the teams they lead', kind: 'action', v: [1, 1, 0] },
+      { key: 'p-any', label: "Open anyone's page", kind: 'action', v: [1, 0, 0] },
+      { key: 'p-personal', label: 'Personal: contact, date of birth, address', kind: 'tab', v: [1, 0, 0] },
+      { key: 'p-personal-edit', label: "Edit someone else's Personal", kind: 'action', v: [1, 0, 0] },
+      { key: 'p-work', label: 'Work: job, teams, reporting, dates, history', kind: 'tab', v: [1, 1, 0] },
+      { key: 'p-work-edit', label: "Edit someone else's Work", kind: 'action', v: [1, 0, 0] },
+      { key: 'p-hr', label: 'HR and access: onboarding, offboarding, invitation, last access', kind: 'tab', v: [1, 0, 0] },
+      { key: 'p-hr-edit', label: 'Change onboarding, offboarding and the QuickBooks Time link', kind: 'action', v: [1, 0, 0] },
       { key: 'd-2fa', label: "Reset someone's two-step sign-in", kind: 'action', v: [0, 0, 0] },
+      { key: 'p-reports', label: 'Reports: who reports to the person', kind: 'tab', v: [1, 0, 0] },
     ] },
     { key: 'organization', label: 'Organization', kind: 'page', always: true },
     { key: 'history', label: 'History', kind: 'page', always: true },
@@ -177,7 +191,7 @@ const TREE: Node[] = [
     { key: 'clocky-approvals', label: 'Approvals', kind: 'page', soon: true, v: [0, 0, 0] },
   ] },
   { key: 'm-you', label: 'Your own', kind: 'module', ch: [
-    { key: 'profile', label: 'My profile', kind: 'page', always: true },
+    { key: 'profile', label: 'My profile: their own page in the Directory', kind: 'page', always: true },
     { key: 'personal-settings', label: 'Settings', kind: 'page', always: true },
   ] },
 ]

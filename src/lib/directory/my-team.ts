@@ -1,11 +1,8 @@
 /**
- * my-team.ts: the Level 1 directory view for the signed-in person, whatever
- * their access level.
- *
- * /directory shows whatever their level allows (up to the full admin tabs);
- * this is the personal view, always Level 1: the people on the teams they
- * belong to, with only their own card openable. An admin gets the same thing
- * their team gets, which is the point of having it in the user menu.
+ * my-team.ts: My Team, the people on the teams the signed-in person belongs to,
+ * whatever their access level. A name links to that person's page when the
+ * viewer may open it (lib/directory/page-rights.ts): their own always, and the
+ * others as Access levels says.
  *
  * Loads only those teams' members rather than the whole company, so it stays
  * cheap even as the directory grows.
@@ -15,11 +12,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SignedInIdentity } from './current-person'
 import type { Database } from '@/lib/types/database.types'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { loadContactByPerson } from '@/lib/hr/contact'
 import { teamKeyFromName } from '@/lib/directory/people-types'
 import { asRoleType } from '@/lib/auth/tier'
-import type { RestrictedPerson, FullProfile, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
-import { TEAM_POSITION_LABEL } from '@/lib/directory/people-types'
+import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
+import { TEAM_POSITION_LABEL, normalPosition } from '@/lib/directory/people-types'
 import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
 import { TOOLS } from '@/lib/access/tools'
 
@@ -40,19 +36,21 @@ export interface MyTeamView {
    * the team can reach.
    */
   teams: RestrictedTeam[]
-  /** Whose card the viewer may open, keyed by person id. */
-  profiles: Record<string, FullProfile>
   selfId: string | null
 }
 
 /**
- * @param level the viewer's directory level (access/surfaces.ts). At 3 every
- *   teammate's card opens; at 1 and 2 only their own, which is the same rule
- *   the Directory itself follows.
+ * @param opts.level 2 adds the Teams tab's tool access (access/surfaces.ts).
+ * @param opts.hrefFor each person's page when the viewer may open it, else null.
  */
-export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null, level: 1 | 2 | 3): Promise<MyTeamView> {
+export async function loadMyTeam(
+  supabase: Client,
+  user: SignedInIdentity | null,
+  opts: { level: 1 | 2; hrefFor: (personId: string) => string | null },
+): Promise<MyTeamView> {
+  const { level, hrefFor } = opts
   const me = await loadCurrentPerson(supabase, user)
-  if (!me) return { people: [], teamNames: [], teams: [], profiles: {}, selfId: null }
+  if (!me) return { people: [], teamNames: [], teams: [], selfId: null }
 
   // One read of the team palette for the whole view, so every avatar on the
   // page agrees with every other and with the directory.
@@ -77,17 +75,6 @@ export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null
     teamNames = (teams ?? []).map(t => t.name).sort((a, b) => a.localeCompare(b))
   }
 
-  // Two reads instead of one, split by who the viewer may actually open.
-  //
-  // The single wide select this replaced pulled dates of birth, personal
-  // emails and phone numbers for every teammate and then dropped them while
-  // building the response. That was never a leak, but it left the privacy of
-  // the screen resting entirely on two filters further down: move the wrong
-  // line, or return `rows` directly one day, and it becomes one, with nothing
-  // in the diff looking wrong. Not fetching what must not be shown removes the
-  // question instead of answering it.
-  const openableIds = level >= 3 ? [...personIds] : [me.id]
-
   // Enough for the card list: name, avatar, team colour, and the manager
   // lookup. Nothing here is private to the person.
   // Spelled out rather than composed: the typed client can only infer the row
@@ -96,18 +83,6 @@ export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null
     .from('people')
     .select('id, full_name, title, avatar_url, role_type, status, manager_id')
     .in('id', [...personIds])
-
-  // The rest, only for the people whose card this viewer can open.
-  const { data: detailRows } = await supabase
-    .from('people')
-    .select('id, full_name, last_name, title, avatar_url, role_type, status, manager_id, also_reports_to_id, reports_to_manager, manager_name_text, email_true_north, email_goodnews, email_coe, whatsapp_same_number, location, hire_date, left_on, employment_type, schedule, weekly_hours, onboarding_status, offboarding_status')
-    .in('id', openableIds)
-  const detailById = new Map((detailRows ?? []).map(r => [r.id, r]))
-
-  // Personal email, phone and date of birth are unreadable by the signed-in
-  // role (migration 056). Fetched for the SAME id list, so the openable set
-  // still decides everything and there is no second rule to keep in step.
-  const contactById = await loadContactByPerson(openableIds)
 
   const nameById = new Map((rows ?? []).map(r => [r.id, r.full_name]))
   // The primary team drives the avatar colour; one lookup for the whole set.
@@ -129,10 +104,6 @@ export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null
     .filter(p => p.status !== 'inactive')
     .map((p): RestrictedPerson => {
       const teamName = teamNameByPerson.get(p.id) ?? null
-      const mgrId = str(p.manager_id)
-      // `openable` is now decided by whether the private row was fetched at
-      // all, so the two can no longer disagree.
-      const d = detailById.get(p.id)
       return {
         id: p.id,
         name: p.full_name,
@@ -143,59 +114,10 @@ export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null
         avatarUrl: p.avatar_url ?? null,
         roleType: asRoleType(p.role_type),
         status: 'active',
-        // Levels 1 and 2: only your own card opens. Level 3: everyone's.
-        detail: d
-          ? {
-              managerName: mgrId ? nameById.get(mgrId) ?? null : null,
-              workEmail: str(d.email_true_north) ?? str(d.email_goodnews) ?? str(d.email_coe),
-              phone: contactById.get(p.id)?.phone ?? null,
-              location: str(d.location),
-              hireDate: str(d.hire_date),
-              employmentType: str(d.employment_type),
-            }
-          : null,
+        href: hrefFor(p.id),
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name))
-
-  // Full cards only for the people this viewer may open, so the extra fields
-  // are never sent to the browser for anyone else.
-  type Row = NonNullable<typeof detailRows>[number]
-  const toProfile = (r: Row): FullProfile => ({
-    name: r.full_name,
-    lastName: str(r.last_name),
-    title: str(r.title),
-    avatarUrl: r.avatar_url ?? null,
-    roleType: asRoleType(r.role_type),
-    active: r.status !== 'inactive',
-    teamNames: teamNamesByPerson.get(r.id) ?? [],
-    personalEmail: contactById.get(r.id)?.emailPersonal ?? null,
-    phone: contactById.get(r.id)?.phone ?? null,
-    whatsapp: str(r.whatsapp_same_number),
-    location: str(r.location),
-    dateOfBirth: contactById.get(r.id)?.dateOfBirth ?? null,
-    employmentType: str(r.employment_type),
-    schedule: str(r.schedule),
-    weeklyHours: r.weekly_hours ?? null,
-    managerName: str(r.manager_id) ? nameById.get(r.manager_id as string) ?? null : null,
-    alsoReportsToName: str(r.also_reports_to_id) ? nameById.get(r.also_reports_to_id as string) ?? null : null,
-    managerNameText: str(r.manager_name_text),
-    reportsToManager: str(r.reports_to_manager),
-    onboardingStatus: str(r.onboarding_status),
-    offboardingStatus: str(r.offboarding_status),
-    emailTrueNorth: str(r.email_true_north),
-    emailGoodnews: str(r.email_goodnews),
-    emailCoe: str(r.email_coe),
-    hireDate: str(r.hire_date),
-    leftOn: str(r.left_on),
-  })
-
-  // No level check here any more: detailRows IS the allowed set.
-  const profiles: Record<string, FullProfile> = {}
-  for (const r of detailRows ?? []) {
-    if (r.status === 'inactive') continue
-    profiles[r.id] = toProfile(r)
-  }
 
   // ── The Teams tab ────────────────────────────────────────────────────────
   const teamCards: RestrictedTeam[] = []
@@ -237,7 +159,7 @@ export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null
             name: nameById.get(m.person_id) ?? 'Unknown',
             title: titleById.get(m.person_id) ?? null,
             avatarUrl: avatarById.get(m.person_id) ?? null,
-            positionLabel: TEAM_POSITION_LABEL[m.position ?? 'collaborator'] ?? 'Collaborator',
+            positionLabel: TEAM_POSITION_LABEL[normalPosition(m.position)],
           }))
           .sort((a, b) => a.name.localeCompare(b.name)),
         tools: level >= 2 ? (toolsByTeam.get(t.id) ?? []) : null,
@@ -246,5 +168,5 @@ export async function loadMyTeam(supabase: Client, user: SignedInIdentity | null
     teamCards.sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  return { people, teamNames, teams: teamCards, profiles, selfId: me.id }
+  return { people, teamNames, teams: teamCards, selfId: me.id }
 }

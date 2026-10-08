@@ -26,7 +26,10 @@ const PILL: Record<PortalAccessState, Pill> = {
 const btn =
   'font-(family-name:--font-display) font-extrabold text-[12px] rounded-[8px] px-3 py-1.5 transition-all disabled:opacity-50'
 
-export function PortalAccessControl({ p, canInvite }: { p: PersonView; canInvite: boolean }) {
+/** What the control needs to know about the person (a PersonView carries it too). */
+export type PortalPerson = Pick<PersonView, 'id' | 'full_name' | 'status' | 'portalInvitedAt' | 'accountId'> & { emails: Pick<PersonView['emails'], 'goodnews'> }
+
+export function PortalAccessControl({ p, canInvite }: { p: PortalPerson; canInvite: boolean }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)

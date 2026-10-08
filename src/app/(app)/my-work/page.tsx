@@ -12,7 +12,10 @@
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
 import { myTeamLevel } from '@/lib/access/surfaces'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { loadMyTeam } from '@/lib/directory/my-team'
+import { loadLedMemberIds } from '@/lib/directory/person-page-data'
+import { pageHrefs } from '@/lib/directory/page-rights'
 import { TeamPeople } from '@/components/team/TeamPeople'
 import { WorkList } from '@/components/monday/WorkList'
 import { TeamPriorityEditor } from '@/components/monday/TeamPriorityEditor'
@@ -253,11 +256,12 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
 async function MyTeamTab() {
   const supabase = await createClient()
   const user = await getSessionUser()
-  // Same rule the Directory follows: level 3 opens every teammate's card,
-  // levels 1 and 2 only your own.
+  // A name opens that person's page when the viewer may open it, by the same
+  // rule as the page itself (lib/directory/page-rights.ts).
   const access = await loadAccess()
   const level = myTeamLevel(access.can)
-  const { people, teams, profiles, selfId } = await loadMyTeam(supabase, user, level)
+  const led = await loadLedMemberIds(createAdminClient(), access.personId)
+  const { people, teams, selfId } = await loadMyTeam(supabase, user, { level, hrefFor: pageHrefs(access.can, access.personId, led) })
 
   // The Teams tab is what level 2 adds; below that the tab does not exist,
   // rather than existing and being empty.
@@ -266,7 +270,6 @@ async function MyTeamTab() {
       people={people}
       teams={teams}
       showTeams={level >= 2}
-      profiles={profiles}
       selfId={selfId}
       alone={people.length <= 1}
     />

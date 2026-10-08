@@ -29,7 +29,7 @@ import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
 import { BTN_ICON } from '@/lib/ui/buttons'
 
-type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'rate' | 'status' | 'tsheets'
+type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'status' | 'tsheets'
 
 // Ordered to match the contact card (components/admin/RestrictedDirectory →
 // ProfileCard, the same layout as My profile), so scanning a row and reading a
@@ -38,8 +38,8 @@ type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 
 //   Employment  type, schedule
 //   Reporting   reports to
 //   Dates       joined
-// Internal rate and TSheets close the row: neither appears on the card (the
-// rate is deliberately kept off it), so they have no place in that sequence.
+// TSheets closes the row: it is not in that sequence. (The internal rate lives
+// in Rates & Costs alone since 8 October 2026.)
 //
 // The visible set is filtered THROUGH this array, so changing the order here
 // reorders every table, including column choices already saved in localStorage.
@@ -52,10 +52,9 @@ const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'time', label: 'Schedule', fr: '0.85fr' },
   { id: 'reports', label: 'Reports to', fr: '1.3fr' },
   { id: 'joined', label: 'Joined', fr: '1fr' },
-  { id: 'rate', label: 'Internal rate', fr: '0.95fr', align: 'right' },
   { id: 'tsheets', label: 'TSheets', fr: '1fr' },
 ]
-const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'rate', 'status', 'tsheets']
+const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'status', 'tsheets']
 const LS_COLS = 'tn-directory-cols-v2'
 
 const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews || p.emails.coe || p.emails.personal || ''
@@ -66,9 +65,9 @@ function PillBadge({ pill }: { pill: Pill }) {
   )
 }
 
-export function PeopleManager({ people, teamOptions, onOpen, showRate }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void; showRate: boolean }) {
-  // Without Rates & Costs the rate is not sent at all; the column and its filter go too.
-  const columns = showRate ? COLUMNS : COLUMNS.filter(c => c.id !== 'rate')
+export function PeopleManager({ people, teamOptions, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; onOpen: (id: string) => void }) {
+  // The internal rate lives in Rates & Costs alone (8 October 2026), not on this list.
+  const columns = COLUMNS
   const [q, setQ] = useState('')
   const [conds, setConds] = useState<FilterCond[]>([])
   const [sort, setSort] = useState<SortState | null>(null)
@@ -86,10 +85,9 @@ export function PeopleManager({ people, teamOptions, onOpen, showRate }: { peopl
     { id: 'type', label: 'Type', type: 'enum', get: p => p.employmentType, options: [{ value: 'us', label: 'US Employee' }, { value: 'contractor', label: 'Contractor' }] },
     { id: 'time', label: 'Schedule', type: 'enum', get: p => p.schedule, options: [{ value: 'full', label: 'Full-Time' }, { value: 'part', label: 'Part-Time' }] },
     { id: 'joined', label: 'Joined', type: 'date', get: p => p.hireDate },
-    ...(showRate ? [{ id: 'rate', label: 'Internal rate', type: 'number' as const, get: (p: PersonView) => p.internalRate }] : []),
     { id: 'status', label: 'Status', type: 'enum', get: p => p.status, options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
     { id: 'tsheets', label: 'TSheets', type: 'enum', get: p => (p.hasTsheets ? 'linked' : 'unlinked'), options: [{ value: 'linked', label: 'Linked' }, { value: 'unlinked', label: 'Not linked' }] },
-  ], [teamOptions, showRate])
+  ], [teamOptions])
 
   // Hydrate saved column choices once on mount. Deliberately a post-mount effect
   // (not a lazy initializer) so the server and first client render agree, then we
@@ -252,7 +250,6 @@ function Cell({ col, p }: { col: { id: ColId; align?: 'right' }; p: PersonView }
   if (col.id === 'role') return <span className={wrap}><PillBadge pill={roleTypePill(p.roleType)} /></span>
   if (col.id === 'job') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{p.title ?? '-'}</span></span>
   if (col.id === 'joined') return <span className={wrap}><span className="text-[13px] text-foreground truncate">{formatDate(p.hireDate) ?? '-'}</span></span>
-  if (col.id === 'rate') return <span className={wrap}><span className="text-[13.5px] font-bold tabular-nums text-tn-ink">{p.internalRate != null ? `$${p.internalRate}` : '-'}</span></span>
   if (col.id === 'type') { const pill = typePill(p.employmentType); return <span className={wrap}>{pill ? <PillBadge pill={pill} /> : <span className="text-[13px] text-muted">-</span>}</span> }
   if (col.id === 'time') { const pill = timePill(p.schedule); return <span className={wrap}>{pill ? <PillBadge pill={pill} /> : <span className="text-[13px] text-muted">-</span>}</span> }
   if (col.id === 'reports') {

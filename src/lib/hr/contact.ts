@@ -34,8 +34,6 @@ export interface Contact {
   phone: string | null
 }
 
-const EMPTY: Contact = { address: null, dateOfBirth: null, emailPersonal: null, phone: null }
-
 /**
  * Contact details keyed by people.id.
  *
@@ -66,9 +64,4 @@ export async function loadContactByPerson(
       phone: r.phone,
     }]),
   )
-}
-
-/** One person's, for the self-service profile screen. Never null-checks away. */
-export async function loadOwnContact(personId: string): Promise<Contact> {
-  return (await loadContactByPerson([personId])).get(personId) ?? EMPTY
 }

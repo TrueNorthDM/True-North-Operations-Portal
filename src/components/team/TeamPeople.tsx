@@ -15,7 +15,8 @@
 import { useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
 import { roleTypePill } from '@/lib/directory/people-types'
-import { ProfileCard, type RestrictedPerson, type FullProfile, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
+import Link from 'next/link'
+import type { RestrictedPerson, RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 
 // The pill shape the handoff uses for both role and status: 9px, uppercase,
 // fully round, and never allowed to grow with its row.
@@ -89,12 +90,10 @@ function TeamCard({ team }: { team: RestrictedTeam }) {
 }
 
 export function TeamPeople({
-  people, selfId, profiles, teams = [], showTeams = false, alone = false,
+  people, selfId, teams = [], showTeams = false, alone = false,
 }: {
   people: RestrictedPerson[]
   selfId: string | null
-  /** Full cards for the people this viewer may open, keyed by person id. */
-  profiles?: Record<string, FullProfile>
   teams?: RestrictedTeam[]
   /** The Teams tab exists from directory level 2 up. */
   showTeams?: boolean
@@ -107,8 +106,6 @@ export function TeamPeople({
 }) {
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'people' | 'teams'>('people')
-  const [openId, setOpenId] = useState<string | null>(null)
-  const open = openId ? people.find(p => p.id === openId) ?? null : null
 
   const needle = q.trim().toLowerCase()
   const shown = needle
@@ -148,7 +145,7 @@ export function TeamPeople({
       {alone && (
         <div className="border border-[var(--panel-border)] bg-white rounded-[16px] p-5 mb-4">
           <p className="text-[14.5px] text-muted leading-[1.6] m-0">
-            Your own profile. You are not on a team yet, so no colleagues are listed.
+            Your own page. You are not on a team yet, so no colleagues are listed.
           </p>
         </div>
       )}
@@ -168,19 +165,14 @@ export function TeamPeople({
           const role = roleTypePill(p.roleType)
           const active = p.status === 'active'
           const self = p.id === selfId
-          // Openable and "is me" are the same thing at these levels, but they
-          // are asked separately: the row opens because there is a card to
-          // open, not because of who it belongs to.
-          const openable = p.detail !== null
-
-          return (
-            <div
-              key={p.id}
-              onClick={() => { if (openable) setOpenId(p.id) }}
-              className={`flex items-center gap-3.5 px-[22px] py-3 transition-colors ${i > 0 ? 'border-t border-[var(--row-rule)]' : ''} ${
-                openable ? 'cursor-pointer hover:bg-[var(--row-hover)]' : ''
-              }`}
-            >
+          // The row opens the person's page when the viewer may open it
+          // (page-rights.ts): their own, and the people of the teams they lead
+          // or anyone's, as Access levels says.
+          const cls = `flex items-center gap-3.5 px-[22px] py-3 transition-colors ${i > 0 ? 'border-t border-[var(--row-rule)]' : ''} ${
+            p.href ? 'cursor-pointer hover:bg-[var(--row-hover)]' : ''
+          }`
+          const body = (
+            <>
               <span
                 className="inline-flex shrink-0 w-9 h-9 rounded-full items-center justify-center font-(family-name:--font-display) font-extrabold text-[12.5px] text-white"
                 style={{ background: p.color }}
@@ -205,70 +197,21 @@ export function TeamPeople({
 
               {/* Present only where there is somewhere to go. */}
               <span className="shrink-0 w-4 text-[var(--faint)] inline-flex justify-end">
-                {openable && (
+                {p.href && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="m9 18 6-6-6-6" />
                   </svg>
                 )}
               </span>
-            </div>
+            </>
           )
+          return p.href
+            ? <Link key={p.id} href={p.href} className={cls}>{body}</Link>
+            : <div key={p.id} className={cls}>{body}</div>
         })}
       </div>
 
-      {/* The same card the Directory and My profile open, so a person sees one
-          profile everywhere rather than three that drifted apart. */}
       </div>
-
-      {open && profiles?.[open.id] && (
-        <ProfileCard profile={profiles[open.id]} isSelf={open.id === selfId} onClose={() => setOpenId(null)} />
-      )}
-
-      {/* A colleague the viewer may open but has no full profile for: the row
-          already showed name, role and team, so the card adds only what the
-          row could not fit. */}
-      {open && !profiles?.[open.id] && open.detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true">
-          <button className="absolute inset-0 bg-tn-ink/40" onClick={() => setOpenId(null)} aria-label="Close" />
-          <div className="relative w-[420px] max-w-full bg-white rounded-[18px] overflow-hidden shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
-            <div className="flex items-center gap-3.5 px-[22px] pt-[22px] pb-[18px] border-b border-[#f2f4f7]">
-              <span
-                className="inline-flex shrink-0 w-13 h-13 rounded-full items-center justify-center font-(family-name:--font-display) font-extrabold text-[17px] text-white"
-                style={{ background: open.color }}
-              >
-                {initialsOf(open.name)}
-              </span>
-              <div className="min-w-0">
-                <h4 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0">{open.name}</h4>
-                <p className="text-[13px] text-muted m-0 mt-[3px]">{open.title ?? '-'}</p>
-              </div>
-              <button
-                onClick={() => setOpenId(null)}
-                aria-label="Close"
-                className="ml-auto inline-flex items-center justify-center w-8 h-8 rounded-[9px] text-muted hover:text-tn-ink hover:bg-subtle transition-colors"
-              >
-                ×
-              </button>
-            </div>
-            <div className="px-[22px] pt-3.5 pb-5">
-              {[
-                ['Team', open.teamName],
-                ['Manager', open.detail.managerName],
-                ['Work email', open.detail.workEmail],
-                ['Phone', open.detail.phone],
-                ['Location', open.detail.location],
-                ['Employment', open.detail.employmentType],
-                ['Started', open.detail.hireDate],
-              ].map(([label, value]) => (
-                <div key={label as string} className="flex items-baseline justify-between gap-4 py-2 border-b border-[#f7f8fa] last:border-b-0">
-                  <span className="text-[13.5px] text-muted">{label}</span>
-                  <span className="text-[13.5px] font-semibold text-tn-ink text-right">{value || '-'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

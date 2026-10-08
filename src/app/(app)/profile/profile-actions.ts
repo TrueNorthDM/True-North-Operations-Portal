@@ -1,12 +1,11 @@
 'use server'
 
 /**
- * Self-service actions for the signed-in user's own profile: the avatar photo
- * and the "your details" personal fields. All use the service role but ONLY ever
- * the current user's own person (resolved from the session, never from a
- * client-supplied id) and only a fixed whitelist of columns, so they can't be
- * used to touch anyone else's record or any HR-managed field. Photos live in the
- * public `avatars` bucket (migration 036).
+ * The signed-in person's own photo, from the cover of their own page. Uses the
+ * service role but ONLY ever the current user's own person (resolved from the
+ * session, never from a client-supplied id). The rest of their own details are
+ * saved by the page's Personal tab (directory/[id]/actions.ts). Photos live in
+ * the public `avatars` bucket (migration 036).
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -27,8 +26,8 @@ async function myPersonId(): Promise<string> {
 }
 
 function revalidate() {
-  revalidatePath('/profile')
-  revalidatePath('/directory')
+  revalidatePath('/directory', 'layout') // their own page and every list
+
   revalidatePath('/') // home org chart avatars
 }
 
@@ -59,35 +58,6 @@ export async function removeMyAvatar(): Promise<void> {
   const admin = createAdminClient()
   await admin.storage.from(BUCKET).remove([`${personId}.jpg`])
   const { error } = await admin.from('people').update({ avatar_url: null }).eq('id', personId)
-  if (error) throw new Error(error.message)
-  revalidate()
-}
-
-// ── "Your details", the fields the person can edit about themselves ─────────
-export interface MyProfileInput {
-  last_name: string | null
-  email_personal: string | null
-  phone: string | null
-  whatsapp_same_number: string | null
-  location: string | null
-  date_of_birth: string | null
-}
-
-const trimOrNull = (v: string | null) => (v == null ? null : v.trim() || null)
-
-/** Update only the whitelisted personal fields on the signed-in user's record. */
-export async function updateMyProfile(input: MyProfileInput): Promise<void> {
-  const personId = await myPersonId()
-  const admin = createAdminClient()
-  const patch = {
-    last_name: trimOrNull(input.last_name),
-    email_personal: trimOrNull(input.email_personal),
-    phone: trimOrNull(input.phone),
-    whatsapp_same_number: input.whatsapp_same_number || null,
-    location: trimOrNull(input.location),
-    date_of_birth: input.date_of_birth || null,
-  }
-  const { error } = await admin.from('people').update(patch).eq('id', personId)
   if (error) throw new Error(error.message)
   revalidate()
 }

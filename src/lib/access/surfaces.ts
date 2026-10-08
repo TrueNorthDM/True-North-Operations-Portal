@@ -21,20 +21,18 @@ export const SURFACE_KEYS: ReadonlySet<string> = new Set([...ITEM.keys(), 'tools
 /**
  * How much of the People directory someone reaches, as the Directory and the
  * other people lists draw it:
- *   3  anyone's card (and the tabs each have their own tick)
+ *   3  anyone's page (p-any), with the full list and its tabs
  *   2  the whole company list, read-only
  *   1  their own teams and their own card
  */
 export type DirectoryLevel = 1 | 2 | 3
 export function directoryLevel(can: (key: string) => boolean): DirectoryLevel {
-  if (can('d-cards')) return 3
+  if (can('p-any')) return 3
   if (can('d-company')) return 2
   return 1
 }
 
-/** The same three steps for My Team: 2 adds its Teams tab, 3 opens teammates' cards. */
-export function myTeamLevel(can: (key: string) => boolean): DirectoryLevel {
-  if (can('mt-cards')) return 3
-  if (can('mt-teams')) return 2
-  return 1
+/** My Team: 2 adds its Teams tab. Whose page opens from it is page-rights.ts. */
+export function myTeamLevel(can: (key: string) => boolean): 1 | 2 {
+  return can('mt-teams') ? 2 : 1
 }

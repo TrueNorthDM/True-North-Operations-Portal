@@ -7,6 +7,9 @@
  */
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { personHref } from '@/lib/directory/page-rights'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
@@ -30,7 +33,6 @@ export function DirectoryTabs({
   ratesPeople,
   ratesClients,
   accessLog,
-  initialOpenId,
   allowed,
 }: {
   people: PersonView[]
@@ -40,13 +42,14 @@ export function DirectoryTabs({
   ratesPeople: PersonWithAssignments[]
   ratesClients: { id: number; name: string }[]
   accessLog: AccessLogEntry[]
-  initialOpenId?: string | null
   /** The tabs this person's access opens (People always); every tab when omitted. */
   allowed?: readonly string[]
 }) {
   const [tab, setTab] = useState<Tab>('people')
   // Deep-link: open a person's card on mount when ?open=<id> was passed.
-  const [modal, setModal] = useState<ModalState>(() => (initialOpenId ? { mode: 'view', person: people.find(p => p.id === initialOpenId) ?? null } : null))
+  const router = useRouter()
+  // The popup is for adding someone; everyone else opens on their own page.
+  const [modal, setModal] = useState<ModalState>(null)
   const [addMenu, setAddMenu] = useState(false)
 
   // Inactive people live only on the People tab; every other surface (Emails,
@@ -168,17 +171,17 @@ export function DirectoryTabs({
               </div>
             </div>
           </div>
-          <PeopleManager people={people} teamOptions={teamOptions} showRate={rights.rates} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+          <PeopleManager people={people} teamOptions={teamOptions} onOpen={id => router.push(withViewAs(personHref(id)))} />
         </div>
       )}
       {tab === 'emails' && (
-        <EmailsTab people={activePeople} onOpen={id => setModal({ mode: rights.edit ? 'edit' : 'view', person: people.find(p => p.id === id) ?? null })} />
+        <EmailsTab people={activePeople} onOpen={id => router.push(withViewAs(personHref(id, 'work')))} />
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} />}
       {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
       {tab === 'portal' && (
-        <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} onOpen={id => setModal({ mode: 'view', person: people.find(p => p.id === id) ?? null })} />
+        <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
       )}
 
       {modal && (
@@ -187,7 +190,6 @@ export function DirectoryTabs({
           setState={setModal}
           people={activePeople}
           teamOptions={teamOptions}
-          rights={rights}
         />
       )}
     </div>

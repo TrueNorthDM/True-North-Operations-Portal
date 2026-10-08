@@ -11,6 +11,8 @@
 // that shows them should say which one it is: turning a dotted line into a
 // direct report silently is a worse bug than the one this fixes.
 
+import { isLeadPosition } from '@/lib/access/catalogue'
+
 export type TeamTie = 'solid' | 'dotted' | 'team'
 
 /** Direct reports first, then the dotted line, then the rest of the team. */
@@ -40,9 +42,10 @@ export function teamTie(
 }
 
 /**
- * Leading is any position that is not plain membership: team_leader, and also
- * manager and founder, who lead the teams they sit on.
+ * Leading is the Lead position (since 7 October 2026), or one of the older words
+ * that became it: team_leader, manager and founder. Member, and the older
+ * collaborator, do not lead. The access catalogue reads positions the same way.
  */
 export function leadsTeam(position: string | null | undefined): boolean {
-  return position != null && position !== 'collaborator'
+  return isLeadPosition(position)
 }

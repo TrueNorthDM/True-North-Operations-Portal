@@ -136,7 +136,7 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
             </Link>
           )}
           <Link
-            href="/my-team"
+            href="/my-work?tab=team"
             role="menuitem"
             onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-tn-ink transition-colors border-b border-slate-100 focus:outline-none focus-visible:bg-slate-50 focus-visible:text-tn-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tn-teal/40"

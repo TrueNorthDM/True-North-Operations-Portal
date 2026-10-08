@@ -1,51 +1,34 @@
 'use client'
 
 /**
- * PersonModal: the person record: a read view (Employment, Reporting, Emails,
- * Contact, Onboarding, Dates, Team members, History) and an edit form over the
- * same fields. Self-contained: it runs create/update/delete and refreshes.
+ * PersonModal: adding someone to the Directory. Since 8 October 2026 everything
+ * else about a person, reading and changing it, is on their own page
+ * (/directory/<id>, components/person/PersonPage); this opens there once saved.
  */
 
-import { useMemo, useState, useTransition, type ChangeEvent, type ReactNode } from 'react'
-import { teamTie, leadsTeam, TIE_RANK, type TeamTie } from '@/lib/directory/team-of'
+import { useMemo, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { createPerson, updatePerson, deletePerson, resetTwoStep, type PersonInput } from '@/app/(app)/admin/people/actions'
-import { uploadPersonAttachment, deletePersonAttachment, signedAttachmentUrl } from '@/app/(app)/admin/people/attachment-actions'
+import { personHref } from '@/lib/directory/page-rights'
+import { withViewAs } from '@/components/ViewAsKeeper'
+import { createPerson, type PersonInput } from '@/app/(app)/admin/people/actions'
 import { Avatar } from '@/components/Avatar'
-import { PortalAccessControl } from './PortalAccessControl'
-import { TwoStepControl } from './TwoStepControl'
 import { Select } from '@/components/ui/Select'
-import { TenureBadge } from '@/components/TenureBadge'
-import { tenureSince, milestoneOf, formatTenure } from '@/lib/tenure'
-import { formatPhone } from '@/lib/phone'
-import { toAddressForm, normalizeAddress, formatAddressLines, addressFlag, type AddressForm, type PersonAddress } from '@/lib/address'
+import { toAddressForm, normalizeAddress, type AddressForm } from '@/lib/address'
 import { allCountries } from '@/lib/countries'
-import { toMilestoneForms, normalizeMilestones, sortMilestones, milestoneLabel, milestoneColor, MILESTONE_KINDS, MILESTONE_LABEL, type MilestoneForm } from '@/lib/milestones'
-import { deviceLabel } from '@/lib/user-agent'
+import { toMilestoneForms, normalizeMilestones, MILESTONE_KINDS, MILESTONE_LABEL, type MilestoneForm } from '@/lib/milestones'
 import {
   TEAM_COLOR,
   PILL_CLASS,
-  initialsOf,
-  formatDate,
-  typePill,
-  timePill,
-  statusPill,
-  ynPill,
   roleTypePill,
   ROLE_TYPE_LABEL,
   TEAM_POSITION_OPTIONS,
   normalPosition,
   TEAM_POSITION_LABEL,
-  teamPositionPill,
   LIFECYCLE_OPTIONS,
   LIFECYCLE_LABEL,
-  lifecyclePill,
   teamKeyFromName,
   type PersonView,
-  type PersonAttachment,
-  type CardRights,
   type Pill,
-  type TeamKey,
 } from '@/lib/directory/people-types'
 import type { TeamOption } from './DirectoryTabs'
 
@@ -112,55 +95,25 @@ function toDraft(p: PersonView | null): Draft {
 const parseNum = (s: string): number | null => { const t = s.trim(); if (!t) return null; const n = Number(t); return Number.isNaN(n) ? null : n }
 const emailVal = (e: EmailDraft): string | null => (e.has && e.addr.trim() ? e.addr.trim() : null)
 
-function lastAccessText(iso: string | null, ua: string | null): string {
-  if (!iso) return 'Never'
-  const d = new Date(iso)
-  const when = Number.isNaN(d.getTime()) ? iso : d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-  return `${when} · ${deviceLabel(ua)}`
-}
 
 export function PersonModal({
-  state,
   setState,
   people,
   teamOptions,
-  rights,
 }: {
   state: NonNullable<ModalState>
   setState: (s: ModalState) => void
   people: PersonView[]
   teamOptions: TeamOption[]
-  rights: CardRights
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft>(() => toDraft(state.person))
-
-  const isEdit = state.mode === 'edit'
-  const isExisting = !!state.person
-  const p = state.person
-
-  // Tenure medallion, measured to the person's leave date (former) or today.
-  const tenureEnd = (() => {
-    const m = p?.leftOn ? /^(\d{4})-(\d{2})-(\d{2})/.exec(p.leftOn) : null
-    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date()
-  })()
-  const tenure = tenureSince(p?.hireDate, tenureEnd)
-  const tenureMs = milestoneOf(tenure)
-  const tenureText = formatTenure(tenure)
+  const [draft, setDraft] = useState<Draft>(() => toDraft(null))
 
   const teamNameById = useMemo(() => new Map(teamOptions.map(t => [t.id, t.name])), [teamOptions])
   const draftTeamKey = teamKeyFromName(teamNameById.get(draft.teams[0]?.teamId ?? ''))
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft(d => ({ ...d, [k]: v }))
-
-  function run(fn: () => Promise<void>, after: () => void) {
-    setError(null)
-    startTransition(async () => {
-      try { await fn(); after(); router.refresh() }
-      catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong') }
-    })
-  }
 
   function save() {
     const input: PersonInput = {
@@ -175,9 +128,6 @@ export function PersonModal({
       employment_type: draft.employmentType || null,
       schedule: draft.schedule || null,
       weekly_hours: parseNum(draft.weeklyHours),
-      // Without Rates & Costs the rate was never sent here; leave it out so the
-      // save cannot clear it (the server ignores it then too).
-      ...(rights.rates ? { internal_rate: parseNum(draft.internalRate) } : {}),
       status: draft.status,
       phone: draft.phone || null,
       location: draft.location || null,
@@ -194,24 +144,21 @@ export function PersonModal({
       email_personal: emailVal(draft.emails.personal),
       employment_history: draft.history || null,
       milestones: normalizeMilestones(draft.milestones),
-      monday_docs: draft.mondayDocs || null,
       tsheets: draft.hasTsheets ? undefined : false,
     }
-    run(() => (isExisting ? updatePerson(p!.id, input) : createPerson(input)), () => setState(null))
+    setError(null)
+    startTransition(async () => {
+      try {
+        // Their page is where everything else about them is seen and changed.
+        const { id } = await createPerson(input)
+        setState(null)
+        router.push(withViewAs(personHref(id)))
+      } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong') }
+    })
   }
 
-  function remove() {
-    if (!p) return
-    run(() => deletePerson(p.id), () => setState(null))
-  }
-
-  // ── header ──
-  const headTeamKey: TeamKey = isEdit ? draftTeamKey : p ? p.teamKey : 'other'
-  const headName = isEdit ? draft.full_name || 'New person' : p?.full_name ?? ''
-  const headJob = isEdit ? draft.title || '-' : p?.title ?? '-'
-  const headInactive = !isEdit && p?.status === 'inactive'
-
-  const managerOptions = people.filter(x => !p || x.id !== p.id)
+  const headName = draft.full_name || 'New person'
+  const headJob = draft.title || '-'
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center px-6 py-10 overflow-y-auto">
@@ -222,68 +169,34 @@ export function PersonModal({
         <div className="px-8 pt-6 pb-5 border-b border-slate-200 shrink-0">
           <div className="flex items-start justify-between gap-3.5">
             <div className="flex items-center gap-4 min-w-0">
-              <Avatar name={headName} avatarUrl={p?.avatarUrl} size={60} color={TEAM_COLOR[headTeamKey]} dimmed={headInactive} />
+              <Avatar name={headName} avatarUrl={null} size={60} color={TEAM_COLOR[draftTeamKey]} />
               <div className="min-w-0">
                 <h2 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink leading-tight m-0">{headName}</h2>
                 <p className="text-sm text-muted mt-1 font-semibold">{headJob}</p>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[headTeamKey], background: `${TEAM_COLOR[headTeamKey]}1a` }}>{teamNameById.get(isEdit ? (draft.teams[0]?.teamId ?? '') : (p?.teamId ?? '')) ?? 'No team'}</span>
-                  {!isEdit && p && p.roleType !== 'user' && <PillBadge pill={roleTypePill(p.roleType)} />}
-                  {!isEdit && p && <PillBadge pill={statusPill(p.status === 'active')} />}
-                  {isEdit && <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">Editing</span>}
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1 whitespace-nowrap" style={{ color: TEAM_COLOR[draftTeamKey], background: `${TEAM_COLOR[draftTeamKey]}1a` }}>{teamNameById.get(draft.teams[0]?.teamId ?? '') ?? 'No team'}</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase text-[#8a6d00] bg-[#fbeaa8] rounded-[7px] px-2.5 py-1">New</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-start gap-3.5 shrink-0">
-              {/* Tenure medallion, years of service, top-right of the card. */}
-              {tenureMs.kind !== 'none' && (
-                <div className="flex flex-col items-center gap-1 pt-0.5">
-                  <TenureBadge milestone={tenureMs} size={54} />
-                  <span className="text-[10.5px] text-muted font-semibold text-center leading-tight max-w-[116px]">{tenureText}</span>
-                </div>
-              )}
-              <button type="button" onClick={() => setState(null)} aria-label="Close" className="inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-all hover:bg-subtle hover:text-tn-ink">
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </button>
-            </div>
+            <button type="button" onClick={() => setState(null)} aria-label="Close" className="inline-flex w-9 h-9 items-center justify-center rounded-[10px] text-muted transition-all hover:bg-subtle hover:text-tn-ink">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
           </div>
         </div>
 
         {/* body */}
         <div className="flex-1 overflow-y-auto px-8 pt-6 pb-2">
-          {!isEdit && p ? <ViewBody p={p} people={people} rights={rights} /> : <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={managerOptions} teamOptions={teamOptions} personId={state.person?.id ?? null} attachments={state.person?.attachments ?? []} rights={rights} />}
+          <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={people} teamOptions={teamOptions} />
           {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         </div>
 
         {/* footer */}
         <div className="shrink-0 flex items-center gap-2.5 px-8 py-4 border-t border-slate-200 bg-subtle">
-          {!isEdit ? (
-            <>
-              <span className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[13px] text-[#b8790a] border border-[rgba(184,121,10,.4)] rounded-[10px] px-[15px] py-2.5 mr-auto opacity-80 cursor-default">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
-                Start offboarding
-                <span className="font-(family-name:--font-display) font-extrabold text-[8.5px] tracking-wide uppercase text-muted bg-white rounded-full px-[7px] py-0.5">Soon</span>
-              </span>
-              <button type="button" onClick={() => setState(null)} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink">Close</button>
-              {rights.edit && <button type="button" onClick={() => { setDraft(toDraft(p)); setState({ mode: 'edit', person: p }) }} className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                <span className="text-[#ffffff]">Edit person</span>
-              </button>}
-            </>
-          ) : (
-            <>
-              {isExisting && (
-                <button type="button" disabled={pending} onClick={remove} className="inline-flex items-center gap-[7px] font-(family-name:--font-display) font-extrabold text-[13px] text-red-600 border border-[rgba(215,57,47,.35)] rounded-[10px] px-[15px] py-2.5 mr-auto transition-all hover:bg-red-50 disabled:opacity-50">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
-                  Remove
-                </button>
-              )}
-              <button type="button" onClick={() => (isExisting ? setState({ mode: 'view', person: p }) : setState(null))} className={`font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink ${isExisting ? 'ml-auto' : 'ml-auto'}`}>Cancel</button>
-              <button type="button" disabled={pending || !draft.full_name.trim()} onClick={save} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-50">
-                <span className="text-[#ffffff]">{pending ? 'Saving…' : isExisting ? 'Save changes' : 'Add person'}</span>
-              </button>
-            </>
-          )}
+          <button type="button" onClick={() => setState(null)} className="ml-auto font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink">Cancel</button>
+          <button type="button" disabled={pending || !draft.full_name.trim()} onClick={save} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-50">
+            <span className="text-[#ffffff]">{pending ? 'Saving…' : 'Add person'}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -317,251 +230,17 @@ function GroupTitle({ children, right, className = '' }: { children: ReactNode; 
   )
 }
 
-// ── VIEW ──
-function ViewBody({ p, people, rights }: { p: PersonView; people: PersonView[]; rights: CardRights }) {
-  // My Team: the shared rule, so this screen and /profile cannot drift apart.
-  const ledTeamIds = new Set(p.teams.filter(t => leadsTeam(t.position)).map(t => t.teamId))
-  const reports = people
-    .map(x => {
-      const via = teamTie(
-        { id: x.id, managerId: x.manager_id, alsoReportsToId: x.alsoReportsToId, teamIds: x.teams.map(t => t.teamId) },
-        p.id,
-        ledTeamIds,
-      )
-      const team = via === 'team' ? x.teams.find(t => ledTeamIds.has(t.teamId)) : undefined
-      return { person: x, via, teamName: team?.teamName ?? null }
-    })
-    .filter((m): m is { person: PersonView; via: TeamTie; teamName: string | null } => m.via !== null)
-    .sort((a, b) =>
-      TIE_RANK[a.via] - TIE_RANK[b.via] || a.person.full_name.localeCompare(b.person.full_name))
-  const item = (label: string, node: ReactNode) => (
-    <div className="flex items-center justify-between gap-3.5">
-      <span className="text-[12.5px] text-muted font-semibold shrink-0">{label}</span>
-      <span className="text-right min-w-0">{node}</span>
-    </div>
-  )
-  const txt = (v: string | null | undefined) => <span className="text-[13.5px] text-foreground font-semibold">{v || '-'}</span>
-  const pillNode = (pill: Pill | null) => (pill ? <PillBadge pill={pill} /> : txt('-'))
-  const link = (v: string | null) => (v ? <a href={`mailto:${v}`} className="text-[13.5px] font-semibold text-tn-teal truncate inline-block max-w-[220px] align-bottom">{v}</a> : txt('Not set'))
-  const personNode = (id: string | null, name: string | null, key: TeamKey | null) =>
-    id && name ? (
-      <span className="inline-flex items-center gap-2">
-        <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[10px]" style={{ width: 24, height: 24, background: TEAM_COLOR[key ?? 'other'] }}>{initialsOf(name)}</span>
-        <span className="text-[13.5px] text-foreground font-semibold">{name}</span>
-      </span>
-    ) : txt('-')
-  // Phone shown in international format with the country flag (parsed from the
-  // calling code). Links to WhatsApp when the number is valid.
-  const phoneNode = (raw: string | null) => {
-    const f = formatPhone(raw)
-    if (!f) return txt('-')
-    const body = (
-      <span className="inline-flex items-center gap-1.5">
-        {f.flag && <span className="text-[15px] leading-none" aria-hidden="true">{f.flag}</span>}
-        <span className="text-[13.5px] text-foreground font-semibold">{f.international}</span>
-      </span>
-    )
-    return f.valid ? (
-      <a href={`https://wa.me/${f.digits}`} target="_blank" rel="noopener noreferrer" className="hover:text-tn-teal [&_span]:hover:text-tn-teal">{body}</a>
-    ) : body
-  }
-  // Structured address, stacked and right-aligned; the country line carries the flag.
-  const addressNode = (a: PersonAddress | null) => {
-    const lines = formatAddressLines(a)
-    if (lines.length === 0) return txt('-')
-    const flag = addressFlag(a)
-    return (
-      <span className="inline-flex flex-col items-end text-[13.5px] text-foreground font-semibold leading-snug">
-        {lines.map((ln, i) => (
-          <span key={i}>{i === lines.length - 1 && flag ? `${flag} ${ln}` : ln}</span>
-        ))}
-      </span>
-    )
-  }
-
-  return (
-    <>
-      {/* Group 1: Personal Data and Login */}
-      <GroupTitle>Personal Data and Login</GroupTitle>
-      <div className="grid grid-cols-2 gap-x-10 gap-y-6 items-start">
-        <div>
-          <SectionTitle>Personal data</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Last name', txt(p.lastName))}
-            {item('Email', link(p.emails.personal))}
-            {item('Phone / WhatsApp', phoneNode(p.phone))}
-            {item('WhatsApp, same number', pillNode(ynPill(p.whatsappSameNumber)))}
-            {item('Date of birth', txt(formatDate(p.dateOfBirth)))}
-            {item('Location', txt(p.location))}
-            {item('Full address', addressNode(p.address))}
-          </div>
-        </div>
-        <div>
-          <SectionTitle>Login &amp; access</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {rights.portal && item('Portal access', <PortalAccessControl p={p} canInvite={rights.invite} />)}
-            {rights.portal && p.twoStepSince !== undefined && item('Two-step sign-in', (
-              <TwoStepControl
-                name={p.full_name}
-                state={!p.accountId ? 'no-account' : p.twoStepSince ? 'on' : 'not-set-up'}
-                since={p.twoStepSince}
-                reset={rights.resetTwoStep ? () => resetTwoStep(p.id) : null}
-              />
-            ))}
-            {item('Access level', <PillBadge pill={roleTypePill(p.roleType)} />)}
-            {item('True North', link(p.emails.trueNorth))}
-            {item('GoodNews', link(p.emails.goodnews))}
-            {item('COE', link(p.emails.coe))}
-            {item('QuickBooks Time', pillNode(p.hasTsheets ? { kind: 'green', label: 'Linked' } : { kind: 'grey', label: 'Not linked' }))}
-            {rights.accessLog && item('Last access', txt(lastAccessText(p.lastAccessAt, p.lastAccessAgent)))}
-          </div>
-        </div>
-      </div>
-
-      {/* Group 2: Employment. Multi-column flow so the four blocks pack to fit
-          however much each one holds, instead of a rigid two-column split. */}
-      <GroupTitle className="mt-8">Employment</GroupTitle>
-      <div className="columns-2 gap-x-10">
-        <div className="break-inside-avoid mb-6">
-          <SectionTitle>Employment</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Job title', txt(p.title))}
-            {item('Type', pillNode(typePill(p.employmentType)))}
-            {item('Time', pillNode(timePill(p.schedule)))}
-            {item('Weekly hours', txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null))}
-            {rights.rates && item('Internal rate', txt(p.internalRate != null ? `$${p.internalRate} / hr` : null))}
-            {item('Status', pillNode(statusPill(p.status === 'active')))}
-          </div>
-        </div>
-        <div className="break-inside-avoid mb-6">
-          <SectionTitle>Team position</SectionTitle>
-          <div className="flex flex-col gap-2.5">
-            {p.teams.length ? p.teams.map(t => (
-              <div key={t.teamId} className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2 min-w-0">
-                  <span className="w-[9px] h-[9px] rounded-[3px] shrink-0" style={{ background: t.color }} />
-                  <span className="text-[13.5px] text-foreground font-semibold truncate">{t.teamName}</span>
-                </span>
-                <PillBadge pill={teamPositionPill(t.position)} />
-              </div>
-            )) : <span className="text-[13px] text-muted italic">No team yet.</span>}
-          </div>
-        </div>
-        <div className="break-inside-avoid mb-6">
-          <SectionTitle>Reporting</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Reports to', personNode(p.manager_id, p.managerName, p.managerTeamKey))}
-            {item('Also reports to', personNode(p.alsoReportsToId, p.alsoReportsToName, p.alsoReportsToTeamKey))}
-          </div>
-        </div>
-        <div className="break-inside-avoid mb-6">
-          <SectionTitle>Dates</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Joined on', txt(formatDate(p.hireDate)))}
-            {item('Left on', txt(formatDate(p.leftOn)))}
-          </div>
-        </div>
-      </div>
-
-      {/* Milestones timeline + employment history, still under the Employment group. */}
-      {p.milestones.length > 0 && (
-        <div className="mt-6">
-          <SectionTitle>Milestones</SectionTitle>
-          <div className="flex flex-col gap-3">
-            {sortMilestones(p.milestones).map((m, i) => (
-              <div key={i} className="flex gap-3">
-                <span className="mt-[6px] w-[9px] h-[9px] rounded-full shrink-0" style={{ background: milestoneColor(m.kind) }} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[9px] py-[3px] whitespace-nowrap" style={{ color: milestoneColor(m.kind), background: `${milestoneColor(m.kind)}1a` }}>{milestoneLabel(m.kind)}</span>
-                    {m.date && <span className="text-[12px] text-muted font-semibold">{formatDate(m.date)}</span>}
-                  </div>
-                  {m.note && <p className="text-[13px] text-foreground leading-snug mt-1 m-0">{m.note}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {p.history && p.history.trim() && (
-        <div className="mt-6">
-          <SectionTitle>Employment history</SectionTitle>
-          <p className="text-[13.5px] leading-relaxed text-foreground m-0">{p.history}</p>
-        </div>
-      )}
-
-      {/* Group 3: Hiring. Onboarding + Offboarding side by side, matched height. */}
-      <GroupTitle className="mt-2">Hiring</GroupTitle>
-      <div className="grid grid-cols-2 gap-x-10 items-start">
-        <div>
-          <SectionTitle>Onboarding</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Status', <PillBadge pill={lifecyclePill(p.onboardingStatus)} />)}
-          </div>
-        </div>
-        <div>
-          <SectionTitle>Offboarding</SectionTitle>
-          <div className="flex flex-col gap-[13px]">
-            {item('Status', <PillBadge pill={lifecyclePill(p.offboardingStatus)} />)}
-          </div>
-        </div>
-      </div>
-
-      {reports.length > 0 && (
-        <div className="mt-6">
-          <GroupTitle right={`${reports.length} ${reports.length === 1 ? 'person' : 'people'}`}>My Team</GroupTitle>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
-            {reports.map(({ person: m, via, teamName }) => (
-              <div key={m.id} className="flex items-center gap-2.5">
-                <span className="inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[11px] shrink-0" style={{ width: 30, height: 30, background: m.color }}>{initialsOf(m.full_name)}</span>
-                <span className="min-w-0">
-                  <span className="block text-[13.5px] font-bold text-tn-ink truncate">{m.full_name}</span>
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs text-muted truncate">{m.title ?? '-'}</span>
-                    {via !== 'solid' && (
-                      <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-wide text-tn-teal">
-                        {via === 'dotted' ? 'dotted line' : teamName}
-                      </span>
-                    )}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {p.mondayDocs && p.mondayDocs.trim() && (
-        <div className="mt-6 mb-2">
-          <SectionTitle>Monday Docs</SectionTitle>
-          <div className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap rounded-[10px] border border-slate-200 bg-subtle p-4 max-h-[340px] overflow-y-auto">{p.mondayDocs}</div>
-        </div>
-      )}
-
-      {p.attachments.length > 0 && (
-        <div className="mt-6 mb-2">
-          <SectionTitle right={`${p.attachments.length} ${p.attachments.length === 1 ? 'file' : 'files'}`}>Documents</SectionTitle>
-          <AttachmentsSection personId={p.id} attachments={p.attachments} editable={false} />
-        </div>
-      )}
-    </>
-  )
-}
-
-// ── EDIT ──
+// ── The form for adding someone ──
 const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[11px] w-full transition-all focus:outline-none focus:border-tn-teal'
 
 function EditBody({
-  draft, set, setDraft, managerOptions, teamOptions, personId, attachments, rights,
+  draft, set, setDraft, managerOptions, teamOptions,
 }: {
-  rights: CardRights
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
   setDraft: (fn: (d: Draft) => Draft) => void
   managerOptions: PersonView[]
   teamOptions: TeamOption[]
-  personId: string | null
-  attachments: PersonAttachment[]
 }) {
   const label = (t: string) => <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted">{t}</span>
 
@@ -656,7 +335,6 @@ function EditBody({
             {field('Type', seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v)))}
             {field('Time', seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v)))}
             {field('Weekly hours', <input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" />)}
-            {rights.rates && field('Internal rate ($/hr)', <input type="number" value={draft.internalRate} onChange={e => set('internalRate', e.target.value)} className={fieldCls} placeholder="60" />)}
             {field('Status', seg(draft.status, [{ v: 'active', l: 'Active' }, { v: 'inactive', l: 'Inactive' }], v => set('status', v as 'active' | 'inactive')))}
           </div>
         </div>
@@ -754,19 +432,6 @@ function EditBody({
         </div>
       </div>
 
-      {/* Monday Docs */}
-      <div className="mb-6">
-        <SectionTitle>Monday Docs</SectionTitle>
-        <textarea value={draft.mondayDocs} onChange={e => set('mondayDocs', e.target.value)} placeholder="Content pulled from the person's History Monday Doc…" className={`${fieldCls} min-h-[140px] resize-y leading-relaxed`} />
-      </div>
-
-      {/* Documents */}
-      <div className="mb-2">
-        <SectionTitle>Documents</SectionTitle>
-        {personId
-          ? <AttachmentsSection personId={personId} attachments={attachments} editable />
-          : <p className="text-[13px] text-muted">Save this person first, then you can attach documents.</p>}
-      </div>
     </>
   )
 }
@@ -781,75 +446,6 @@ function ToggleCard({ title, desc, on, onToggle }: { title: string; desc: string
       <button type="button" onClick={onToggle} role="switch" aria-checked={on} className="relative w-11 h-[25px] rounded-full shrink-0 transition-colors" style={{ background: on ? '#1E7D7F' : '#c9cfd8' }}>
         <span className="absolute top-[3px] left-[3px] w-[19px] h-[19px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.3)] transition-transform" style={{ transform: on ? 'translateX(19px)' : 'translateX(0)' }} />
       </button>
-    </div>
-  )
-}
-
-function fmtSize(bytes: number | null): string {
-  if (bytes == null) return ''
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-// The person's "History" documents. View mode = download only; edit mode adds
-// upload + delete. Keeps its own list so uploads/deletes show instantly (the
-// modal snapshots the person, so it wouldn't otherwise refresh in place).
-function AttachmentsSection({ personId, attachments, editable }: { personId: string; attachments: PersonAttachment[]; editable?: boolean }) {
-  const router = useRouter()
-  const [list, setList] = useState<PersonAttachment[]>(attachments)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-
-  async function open(a: PersonAttachment) {
-    setErr(null)
-    try { const url = await signedAttachmentUrl(a.storagePath); window.open(url, '_blank', 'noopener,noreferrer') }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Could not open the file') }
-  }
-  async function onPick(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setBusy(true); setErr(null)
-    try {
-      const fd = new FormData(); fd.set('file', file)
-      const added = await uploadPersonAttachment(personId, fd)
-      setList(l => [added, ...l]); router.refresh()
-    } catch (e) { setErr(e instanceof Error ? e.message : 'Upload failed') }
-    finally { setBusy(false) }
-  }
-  async function remove(a: PersonAttachment) {
-    setBusy(true); setErr(null)
-    try { await deletePersonAttachment(a.id); setList(l => l.filter(x => x.id !== a.id)); router.refresh() }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Delete failed') }
-    finally { setBusy(false) }
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {list.length === 0 && <p className="text-[13px] text-muted m-0">No documents yet.</p>}
-      {list.map(a => (
-        <div key={a.id} className="flex items-center gap-3 border border-slate-200 rounded-[10px] px-3.5 py-2.5">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E7D7F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
-          <button type="button" onClick={() => open(a)} className="min-w-0 flex-1 text-left">
-            <span className="block text-[13.5px] font-semibold text-tn-ink truncate hover:text-tn-teal">{a.fileName}</span>
-            {fmtSize(a.sizeBytes) && <span className="block text-[11px] text-muted">{fmtSize(a.sizeBytes)}</span>}
-          </button>
-          {editable && (
-            <button type="button" disabled={busy} onClick={() => remove(a)} aria-label="Delete document" className="shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-[8px] text-muted transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
-            </button>
-          )}
-        </div>
-      ))}
-      {editable && (
-        <label className="inline-flex items-center gap-2 self-start cursor-pointer font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal border border-dashed border-slate-300 rounded-[10px] px-3.5 py-2.5 transition-colors hover:bg-tn-teal-soft">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-          {busy ? 'Uploading…' : 'Add document'}
-          <input type="file" className="hidden" onChange={onPick} disabled={busy} />
-        </label>
-      )}
-      {err && <p className="text-[12.5px] text-red-600 m-0">{err}</p>}
     </div>
   )
 }

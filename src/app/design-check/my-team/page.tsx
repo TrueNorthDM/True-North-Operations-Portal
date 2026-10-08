@@ -17,9 +17,7 @@ const person = (
   avatarUrl: null,
   roleType,
   status: active ? 'active' : 'inactive',
-  detail: self
-    ? { managerName: 'Wendy Clark', workEmail: 'arnaldo@truenorth.com', phone: null, location: 'Brazil', hireDate: '2021-03-01', employmentType: 'contractor' }
-    : null,
+  href: self ? `/directory/${id}` : null,
 })
 
 const PEOPLE: RestrictedPerson[] = [
@@ -57,11 +55,7 @@ const TEAMS: RestrictedTeam[] = [
 // 5.2 needs somebody the viewer may open without a full profile behind them.
 const MATE: RestrictedPerson = {
   ...person('p4', 'Lana Prado', 'Translator', 'Writing', 'writing', 'team_leader', true),
-  detail: {
-    managerName: 'Wendy Clark', workEmail: 'lana@goodnewsadvocates.org',
-    phone: '+55 11 99999 0000', location: 'São Paulo, Brazil',
-    hireDate: '2023-04-17', employmentType: 'contractor',
-  },
+  href: '/directory/p4',
 }
 
 export default function DesignCheckTeam() {
@@ -75,7 +69,7 @@ export default function DesignCheckTeam() {
           <div>
             <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">People</h2>
             <p className="text-[14.5px] text-muted mt-1.5 m-0 max-w-[640px] leading-[1.6]">
-              Your team, and your own profile. Open your card for the full details; everyone else shows name, role and team.
+              Your team, and your own page. A name with an arrow opens that person\u2019s page; everyone else shows name, role and team.
             </p>
           </div>
           <div className="flex items-center bg-subtle border border-[#e4e7ec] rounded-[11px] p-1">

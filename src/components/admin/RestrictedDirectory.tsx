@@ -4,8 +4,8 @@
  * RestrictedDirectory: the People directory at levels 1 and 2 (see
  * access/surfaces.ts). Level 3 gets the full DirectoryTabs instead.
  *
- * Level 1  the People list, scoped to the teams the viewer belongs to, and only
- *          their own card is openable.
+ * Level 1  the People list, scoped to the teams the viewer belongs to. A name
+ *          opens that person's page when page-rights.ts allows it.
  * Level 2  adds a Teams tab for those same teams, showing who can open which
  *          tool, read-only.
  *
@@ -19,52 +19,7 @@ import Link from 'next/link'
 import { SearchField } from '@/components/ui/SearchField'
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
-import { roleTypePill, statusPill, formatDate, typePill, timePill, ynPill, lifecyclePill, PILL_CLASS, type TeamKey } from '@/lib/directory/people-types'
-import { teamColour } from '@/lib/directory/team-colour'
-import { Badge, Row, Section, ManagedNote, txt, mail } from '@/components/profile/profile-parts'
-
-export interface RestrictedPersonDetail {
-  managerName: string | null
-  workEmail: string | null
-  phone: string | null
-  location: string | null
-  hireDate: string | null
-  employmentType: string | null
-}
-
-/**
- * A full profile card, the same fields My profile shows. Built for the people
- * the viewer may open: only themselves at directory levels 1 and 2, everyone on
- * their teams at level 3.
- */
-export interface FullProfile {
-  name: string
-  lastName: string | null
-  title: string | null
-  avatarUrl: string | null
-  roleType: string
-  active: boolean
-  teamNames: string[]
-  personalEmail: string | null
-  phone: string | null
-  whatsapp: string | null
-  location: string | null
-  dateOfBirth: string | null
-  employmentType: string | null
-  schedule: string | null
-  weeklyHours: number | null
-  managerName: string | null
-  alsoReportsToName: string | null
-  managerNameText: string | null
-  reportsToManager: string | null
-  onboardingStatus: string | null
-  offboardingStatus: string | null
-  emailTrueNorth: string | null
-  emailGoodnews: string | null
-  emailCoe: string | null
-  hireDate: string | null
-  leftOn: string | null
-}
+import { roleTypePill, statusPill, PILL_CLASS, type TeamKey } from '@/lib/directory/people-types'
 
 export interface RestrictedTeamMember {
   id: string
@@ -107,28 +62,21 @@ export interface RestrictedPerson {
   avatarUrl: string | null
   roleType: string
   status: 'active' | 'inactive'
-  detail: RestrictedPersonDetail | null
+  /** Their page, when the viewer may open it (lib/directory/page-rights.ts); null otherwise. */
+  href: string | null
 }
-
-const EMPLOYMENT_LABEL: Record<string, string> = { us: 'US employee', contractor: 'Contractor' }
 
 export function RestrictedDirectory({
   people,
   teams,
   showTeams,
-  profiles,
-  selfId,
 }: {
   people: RestrictedPerson[]
   teams: RestrictedTeam[]
   /** Level 2, the Teams tab. Level 1 gets the People list on its own. */
   showTeams: boolean
-  /** Whose full card can be opened, keyed by person id. */
-  profiles?: Record<string, FullProfile>
-  selfId?: string | null
 }) {
   const [q, setQ] = useState('')
-  const [openId, setOpenId] = useState<string | null>(null)
   const [tab, setTab] = useState<'people' | 'teams'>('people')
 
   const needle = q.trim().toLowerCase()
@@ -138,7 +86,6 @@ export function RestrictedDirectory({
         (p.title ?? '').toLowerCase().includes(needle) ||
         (p.teamName ?? '').toLowerCase().includes(needle))
     : people
-  const open = openId ? people.find(p => p.id === openId) ?? null : null
 
   return (
     <div className="space-y-6">
@@ -146,7 +93,7 @@ export function RestrictedDirectory({
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">People</h1>
         <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
           {people.length > 1
-            ? 'Your team, and your own profile. Open your card for the full details; everyone else shows name, role and team.'
+            ? 'Your team, and your own page. A name with an arrow opens that person\u2019s page; everyone else shows name, role and team.'
             : 'Your own profile. You are not on a team yet, so no colleagues are listed.'}
         </p>
       </div>
@@ -184,16 +131,9 @@ export function RestrictedDirectory({
         {rows.map((p, i) => {
           const rp = roleTypePill(p.roleType)
           const sp = statusPill(p.status === 'active')
-          const openable = p.detail !== null
-          return (
-            <div
-              key={p.id}
-              role={openable ? 'button' : undefined}
-              tabIndex={openable ? 0 : undefined}
-              onClick={openable ? () => setOpenId(p.id) : undefined}
-              onKeyDown={openable ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(p.id) } } : undefined}
-              className={`flex items-center gap-3.5 px-[22px] py-3 ${i === 0 ? '' : 'border-t border-slate-200'} ${openable ? 'cursor-pointer hover:bg-subtle transition-colors' : ''}`}
-            >
+          const cls = `flex items-center gap-3.5 px-[22px] py-3 ${i === 0 ? '' : 'border-t border-slate-200'} ${p.href ? 'cursor-pointer hover:bg-subtle transition-colors' : ''}`
+          const body = (
+            <>
               <Avatar name={p.name} avatarUrl={p.avatarUrl} size={36} color={p.color} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
@@ -204,53 +144,19 @@ export function RestrictedDirectory({
               </span>
               <span className="hidden sm:block text-[12.5px] text-muted truncate max-w-[160px]">{p.teamName ?? '-'}</span>
               <span className={`font-(family-name:--font-display) font-extrabold text-[9px] tracking-wide uppercase rounded-full px-2 py-0.5 shrink-0 ${PILL_CLASS[sp.kind]}`}>{sp.label}</span>
-              {openable && (
+              {p.href && (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-slate-300 shrink-0"><path d="M9 18l6-6-6-6" /></svg>
               )}
-            </div>
+            </>
           )
+          return p.href
+            ? <Link key={p.id} href={p.href} className={cls}>{body}</Link>
+            : <div key={p.id} className={cls}>{body}</div>
         })}
       </div>
 
       </div>
 
-      {open && profiles?.[open.id] ? (
-        <ProfileCard profile={profiles[open.id]} isSelf={open.id === selfId} onClose={() => setOpenId(null)} />
-      ) : open && open.detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-tn-ink/40" onClick={() => setOpenId(null)} />
-          <div className="relative w-full max-w-[420px] bg-white rounded-[18px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] overflow-hidden">
-            <div className="px-6 pt-6 pb-5 flex items-center gap-3.5 border-b border-slate-100">
-              <Avatar name={open.name} avatarUrl={open.avatarUrl} size={52} color={open.color} />
-              <div className="min-w-0">
-                <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0 truncate">{open.name}</h2>
-                <p className="text-[13px] text-muted mt-0.5 truncate">{open.title ?? '-'}</p>
-              </div>
-              <button type="button" onClick={() => setOpenId(null)} aria-label="Close" className="ml-auto shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-[9px] text-muted hover:bg-subtle hover:text-tn-ink transition-colors">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <dl className="px-6 py-4 text-[13.5px]">
-              <DetailRow label="Team" value={open.teamName} />
-              <DetailRow label="Manager" value={open.detail.managerName} />
-              <DetailRow label="Work email" value={open.detail.workEmail} />
-              <DetailRow label="Phone" value={open.detail.phone} />
-              <DetailRow label="Location" value={open.detail.location} />
-              <DetailRow label="Employment" value={open.detail.employmentType ? EMPLOYMENT_LABEL[open.detail.employmentType] ?? open.detail.employmentType : null} />
-              <DetailRow label="Start date" value={formatDate(open.detail.hireDate)} />
-            </dl>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DetailRow({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-2 border-b border-slate-50 last:border-0">
-      <dt className="text-muted shrink-0">{label}</dt>
-      <dd className="font-semibold text-foreground text-right min-w-0 truncate">{value || '-'}</dd>
     </div>
   )
 }
@@ -317,105 +223,6 @@ function TeamsView({ teams }: { teams: RestrictedTeam[] }) {
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-// ── The full profile card ───────────────────────────────────────────────────
-// Deliberately the SAME layout as the My profile page, in a popup, built from
-// the same shared parts (components/profile/profile-parts) so the two cannot
-// drift into lookalikes. Read-only either way: editing your own details still
-// lives on My profile, the one place that owns those writes.
-export function ProfileCard({ profile: p, isSelf, onClose }: { profile: FullProfile; isSelf: boolean; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8" role="dialog" aria-modal="true" aria-label={`${p.name} profile`}>
-      <div className="fixed inset-0 bg-tn-ink/40" onClick={onClose} />
-      <div className="relative w-full max-w-[920px] my-auto rounded-[18px] border border-[var(--panel-border)] bg-white overflow-hidden shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)]">
-        {/* header, same proportions as the page */}
-        <div className="px-[30px] pt-7 pb-6 border-b border-[var(--panel-border)] flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-6 min-w-0">
-            <Avatar name={p.name} avatarUrl={p.avatarUrl} size={110} color={teamColour(null, p.teamNames[0] ?? null)} />
-            <div className="min-w-0">
-              <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] leading-[1.15] text-tn-ink m-0">{p.name}</h2>
-              <p className="text-[15px] text-muted mt-1 font-semibold">{p.title || '-'}</p>
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                {p.teamNames.length === 0 ? (
-                  <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: teamColour(null, null), background: `${teamColour(null, null)}1a` }}>No team</span>
-                ) : p.teamNames.map(t => (
-                  <span key={t} className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-wide uppercase rounded-full px-[11px] py-1" style={{ color: teamColour(null, t), background: `${teamColour(null, t)}1a` }}>{t}</span>
-                ))}
-                <Badge pill={roleTypePill(p.roleType)} />
-                <Badge pill={statusPill(p.active)} />
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} aria-label="Close" className="shrink-0 text-muted hover:text-tn-ink text-[26px] leading-none -mt-1">&times;</button>
-        </div>
-
-        {/* Part 1, the personal details (read-only here, editable on My profile) */}
-        <div className="px-8 pt-6 pb-6 border-b border-slate-200">
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <span className="font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.06em] uppercase text-tn-teal">
-              {isSelf ? 'Your details' : 'Personal details'}
-            </span>
-            {isSelf && (
-              <Link href="/profile" className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-teal">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
-                Edit
-              </Link>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-[13px]">
-            <Row label="Last name">{txt(p.lastName)}</Row>
-            <Row label="Personal email">{mail(p.personalEmail)}</Row>
-            <Row label="Phone / WhatsApp">{txt(p.phone)}</Row>
-            <Row label="WhatsApp, same number">{txt(p.whatsapp)}</Row>
-            <Row label="Location">{txt(p.location)}</Row>
-            <Row label="Date of birth">{txt(formatDate(p.dateOfBirth))}</Row>
-          </div>
-        </div>
-
-        {/* Part 2, HR-managed, read-only */}
-        <div className="px-8 pt-6 pb-8">
-          <ManagedNote own={isSelf} />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-            <Section title="Employment">
-              <Row label="Access level"><Badge pill={roleTypePill(p.roleType)} /></Row>
-              <Row label="Type"><Badge pill={typePill(p.employmentType)} /></Row>
-              <Row label="Time"><Badge pill={timePill(p.schedule)} /></Row>
-              <Row label="Weekly hours">{txt(p.weeklyHours != null ? `${p.weeklyHours} h / week` : null)}</Row>
-              <Row label="Status"><Badge pill={statusPill(p.active)} /></Row>
-            </Section>
-
-            <Section title="Reporting">
-              <Row label="Reports to">{txt(p.managerName)}</Row>
-              <Row label={isSelf ? 'Do you report to a manager?' : 'Reports to a manager?'}><Badge pill={ynPill(p.reportsToManager)} /></Row>
-              <Row label="Also reports to">{txt(p.alsoReportsToName)}</Row>
-              <Row label="Manager (as stated)">{txt(p.managerNameText)}</Row>
-            </Section>
-
-            <Section title="Company emails">
-              <Row label="True North">{mail(p.emailTrueNorth)}</Row>
-              <Row label="GoodNews">{mail(p.emailGoodnews)}</Row>
-              <Row label="COE">{mail(p.emailCoe)}</Row>
-            </Section>
-
-            <Section title="Onboarding">
-              <Row label="Status"><Badge pill={lifecyclePill(p.onboardingStatus)} /></Row>
-            </Section>
-
-            <Section title="Offboarding">
-              <Row label="Status"><Badge pill={lifecyclePill(p.offboardingStatus)} /></Row>
-            </Section>
-
-            <Section title="Dates">
-              <Row label="Joined on">{txt(formatDate(p.hireDate))}</Row>
-              <Row label="Left on">{txt(formatDate(p.leftOn))}</Row>
-            </Section>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

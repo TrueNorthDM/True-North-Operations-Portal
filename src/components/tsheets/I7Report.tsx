@@ -263,7 +263,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
             <div className="mt-1 leading-relaxed">
               {unratedPeople.join(', ')}. Their hours are in the totals below and their cost is counted as $0,
               so the budget shows less used than it really is. Set a rate in{' '}
-              <a href="/directory#rates" className="underline font-semibold">Directory → Rates &amp; Costs</a>.
+              <Link href="/directory#rates" className="underline font-semibold">Directory → Rates &amp; Costs</Link>.
             </div>
           </div>
         )}

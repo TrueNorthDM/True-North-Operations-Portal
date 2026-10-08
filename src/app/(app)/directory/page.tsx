@@ -3,20 +3,19 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { loadCompensationByPerson } from '@/lib/hr/compensation'
-import { loadContactByPerson, type Contact } from '@/lib/hr/contact'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
-import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, cardRights, type PersonView, type PersonAttachment, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
-import type { PersonAddress } from '@/lib/address'
-import type { PersonMilestone } from '@/lib/milestones'
+import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, cardRights, type PersonView, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import type { ToolAudience } from '@/lib/access/tools'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { loadLedMemberIds } from '@/lib/directory/person-page-data'
+import { pageHrefs, personHref } from '@/lib/directory/page-rights'
 import { directoryLevel } from '@/lib/access/surfaces'
 import { TOOLS, TOOL_KEYS } from '@/lib/access/tools'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -26,13 +25,14 @@ import { loadTwoStepByAccount } from '@/lib/auth/two-step'
 
 // Full people select (needs migration 029). Falls back to base columns if the
 // migration hasn't run yet, so the page never 500s on a pre-migration deploy.
+// Only what the lists and tabs here show. Everything else about a person is on
+// their own page (/directory/<id>, 8 October 2026), which reads it per tab by
+// Access levels: personal data, HR, history and milestones are not read here,
+// so they never reach this page's browser payload.
 const PEOPLE_FULL =
-  'id, full_name, last_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
-  'employment_type, schedule, weekly_hours, reports_to_manager, also_reports_to_id, manager_name_text, ' +
-  // personal email, phone, date of birth and address are privileged reads now
-  // (migration 056); they come back from lib/hr/contact.ts.
-  'email_true_north, email_goodnews, email_coe, location, whatsapp_same_number, ' +
-  'hire_date, left_on, employment_history'
+  'id, full_name, title, manager_id, status, profile_id, tsheets_user_id, ' +
+  'employment_type, schedule, weekly_hours, also_reports_to_id, ' +
+  'email_true_north, email_goodnews, email_coe, hire_date'
 const PEOPLE_BASE = 'id, full_name, title, manager_id, status, profile_id, tsheets_user_id'
 
 const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
@@ -40,7 +40,7 @@ const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/l
 /** Loosely-typed people row, columns depend on whether migration 029 ran. */
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
-export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
+export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string; _vs?: string }> }) {
   const access = await requireSurface('directory')
   // Resolved up here, not next to the view models, because it decides which
   // COLUMNS to read a few lines below and not just what to render.
@@ -52,8 +52,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const supabase = await createClient()
   const user = await getSessionUser()
   if (!user) redirect('/login')
-  // ?open=<personId>, deep-link a person's card open (e.g. from Human Resources).
-  const openId = (await searchParams).open ?? null
+  // ?open=<personId> opened a person's card here before their own page existed
+  // (8 October 2026): old links go to the page now.
+  const { open: openId, _vs: vs } = await searchParams
+  if (openId && /^[0-9a-f-]{36}$/i.test(openId)) redirect(personHref(openId) + (vs ? `?_vs=${encodeURIComponent(vs)}` : ''))
   // Directory is reachable by everyone; the configured directory level decides
   // the view (see access/surfaces.ts): level 3 gets the full admin tabs,
   // levels 1 and 2 the read-only, team-scoped list below.
@@ -79,26 +81,20 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     pRows = base.data ?? []
   }
 
-  // The viewer's own row in full, since their own card opens at every level.
-  const { data: selfWide } = mePerson && level < 3
-    ? await supabase.from('people').select(PEOPLE_FULL).eq('id', mePerson.id).maybeSingle()
-    : { data: null }
+  // Whose page each row opens (lib/directory/page-rights.ts): their own, the
+  // people of the teams they lead, or anyone's, as Access levels says.
+  const hrefFor = pageHrefs(access.can, access.personId, await loadLedMemberIds(createAdminClient(), access.personId))
 
-  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, aRes, dRes, ttRes, lcRes, msRes, alRes] = await Promise.all([
+  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, dRes, ttRes, alRes] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
     supabase.from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
-    supabase.from('person_attachments').select('id, person_id, file_name, storage_path, mime, size_bytes, uploaded_at'),
-    // Separate + graceful: monday_docs (034) / role_type (035) / avatar_url (036)
-    // may not exist yet, a failed query here must NOT drop the PEOPLE_FULL select.
-    supabase.from('people').select('id, monday_docs, role_type, avatar_url'),
+    // Separate + graceful: role_type (035) / avatar_url (036) may not exist
+    // yet, a failed query here must NOT drop the PEOPLE_FULL select.
+    supabase.from('people').select('id, role_type, avatar_url'),
     // Team → tool access (037). Table may not exist yet, empty on error.
     supabase.from('team_tool_grants').select('team_id, tool_key, audience'),
-    // Isolated + graceful: onboarding/offboarding status (043).
-    supabase.from('people').select('id, onboarding_status, offboarding_status'),
-    // Isolated + graceful: milestones (044).
-    supabase.from('people').select('id, milestones'),
     // Access log (045), admin-readable; graceful if the table isn't there yet.
     // Only for the Access log tab and the cards' last access (d-log).
     level >= 3 && rights.accessLog
@@ -137,38 +133,14 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const sites = sData ?? []
   const profiles = prData ?? []
 
-  // "History" documents, grouped per person (empty if migration 033 isn't applied).
-  const attachmentsByPerson = new Map<string, PersonAttachment[]>()
-  for (const a of aRes.data ?? []) {
-    const arr = attachmentsByPerson.get(a.person_id) ?? []
-    arr.push({ id: a.id, fileName: a.file_name, storagePath: a.storage_path, mime: a.mime, sizeBytes: a.size_bytes, uploadedAt: a.uploaded_at })
-    attachmentsByPerson.set(a.person_id, arr)
-  }
-
-  // Monday Docs text (034) + contact type (035) per person; empty/'user' default
-  // if the migration isn't applied yet.
-  const mondayDocsById = new Map<string, string>()
+  // Contact type (035) and photo per person; 'user' default if the migration
+  // isn't applied yet.
   const roleTypeById = new Map<string, string>()
   const avatarById = new Map<string, string>()
   for (const d of dRes.data ?? []) {
-    if (d.monday_docs) mondayDocsById.set(d.id, d.monday_docs)
     if (d.role_type) roleTypeById.set(d.id, d.role_type)
     if (d.avatar_url) avatarById.set(d.id, d.avatar_url)
   }
-  // Address, personal email, phone and date of birth: privileged reads now
-  // (migration 056). Only fetched at level 3, where the full cards render; at
-  // levels 1 and 2 the view model built from them is discarded anyway.
-  const contactById = level >= 3 ? await loadContactByPerson() : new Map<string, Contact>()
-  const addressById = new Map<string, PersonAddress>()
-  for (const [id, c] of contactById) if (c.address) addressById.set(id, c.address)
-  const onboardingById = new Map<string, string>()
-  const offboardingById = new Map<string, string>()
-  if (!lcRes.error) for (const r of (lcRes.data ?? []) as { id: string; onboarding_status: string | null; offboarding_status: string | null }[]) {
-    if (r.onboarding_status) onboardingById.set(r.id, r.onboarding_status)
-    if (r.offboarding_status) offboardingById.set(r.id, r.offboarding_status)
-  }
-  const milestonesById = new Map<string, PersonMilestone[]>()
-  if (!msRes.error) for (const r of (msRes.data ?? []) as { id: string; milestones: PersonMilestone[] | null }[]) if (Array.isArray(r.milestones)) milestonesById.set(r.id, r.milestones)
 
   // Access log (045). Rows come newest-first, so the first row per profile is
   // their latest access. Graceful if the table doesn't exist yet.
@@ -264,8 +236,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const nameById = new Map(people.map(p => [p.id, p.full_name]))
 
   // ── People view models ──
-  const compensation = level >= 3 && rights.rates ? await loadCompensationByPerson() : new Map<string, { internalRate: number | null }>()
-
   const peopleView: PersonView[] = people
     .map((p): PersonView => {
       const pt = primaryTeam(p.id)
@@ -274,7 +244,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       return {
         id: p.id,
         full_name: p.full_name,
-        lastName: str(p.last_name),
+        lastName: null,
         avatarUrl: avatarById.get(p.id) ?? null,
         title: str(p.title),
         teamId: pt?.id ?? null,
@@ -288,40 +258,41 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         alsoReportsToId: alsoId,
         alsoReportsToName: alsoId ? nameById.get(alsoId) ?? null : null,
         alsoReportsToTeamKey: alsoId ? teamKeyByPerson.get(alsoId) ?? 'other' : null,
-        reportsToManager: str(p.reports_to_manager),
-        managerNameText: str(p.manager_name_text),
+        reportsToManager: null,
+        managerNameText: null,
         employmentType: str(p.employment_type),
         schedule: str(p.schedule),
         weeklyHours: num(p.weekly_hours),
-        internalRate: compensation.get(p.id)?.internalRate ?? null,
+        internalRate: null,
         roleType: roleTypeById.get(p.id) ?? 'user',
         status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
-        phone: str(p.phone),
-        location: str(p.location),
-        address: addressById.get(p.id) ?? null,
-        whatsappSameNumber: str(p.whatsapp_same_number),
-        onboardingStatus: onboardingById.get(p.id) ?? null,
-        offboardingStatus: offboardingById.get(p.id) ?? null,
-        dateOfBirth: str(p.date_of_birth),
+        // Personal and HR: on the person's own page, by its tabs, not here.
+        phone: null,
+        location: null,
+        address: null,
+        whatsappSameNumber: null,
+        onboardingStatus: null,
+        offboardingStatus: null,
+        dateOfBirth: null,
         hireDate: str(p.hire_date),
-        leftOn: str(p.left_on),
+        leftOn: null,
         emails: {
           trueNorth: str(p.email_true_north),
           goodnews: str(p.email_goodnews),
           coe: str(p.email_coe),
-          personal: str(p.email_personal),
+          personal: null,
         },
         accountId: str(p.profile_id),
         accountEmail: str(p.profile_id) ? emailByProfile.get(p.profile_id as string) ?? null : null,
         hasTsheets: p.tsheets_user_id != null,
         lastAccessAt: lastAccessByPersonId.get(p.id as string)?.at ?? null,
-        lastAccessAgent: lastAccessByPersonId.get(p.id as string)?.agent ?? null,
+        lastAccessAgent: null,
         portalInvitedAt: invites.get(p.id) ?? null,
         twoStepSince: twoStepByAccount ? (p.profile_id ? twoStepByAccount.get(p.profile_id as string) ?? null : null) : undefined,
-        history: str(p.employment_history),
-        milestones: milestonesById.get(p.id) ?? [],
-        mondayDocs: mondayDocsById.get(p.id) ?? null,
-        attachments: attachmentsByPerson.get(p.id) ?? [],
+        history: null,
+        milestones: [],
+        mondayDocs: null,
+        attachments: [],
       }
     })
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
@@ -415,11 +386,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       .filter(p => p.status !== 'inactive' && (seesEveryone || visible.has(p.id)))
       .map((p): RestrictedPerson => {
         const pt = primaryTeam(p.id)
-        const mgrId = str(p.manager_id)
-        // Only the viewer's own card carries detail, at both levels.
-        // Own card only, and its fields come from the row fetched for exactly
-        // that purpose: at these levels `p` does not carry them at all.
-        const self = p.id === viewerId ? (selfWide as Record<string, unknown> | null) : null
         return {
           id: p.id,
           name: p.full_name,
@@ -430,16 +396,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           avatarUrl: avatarById.get(p.id) ?? null,
           roleType: roleTypeById.get(p.id) ?? 'user',
           status: (p.status === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
-          detail: self
-            ? {
-                managerName: mgrId ? nameById.get(mgrId) ?? null : null,
-                workEmail: str(self.email_true_north) ?? str(self.email_goodnews) ?? str(self.email_coe),
-                phone: str(self.phone),
-                location: str(self.location),
-                hireDate: str(self.hire_date),
-                employmentType: str(self.employment_type),
-              }
-            : null,
+          href: hrefFor(p.id),
         }
       })
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -531,7 +488,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         ratesPeople={budget?.people ?? []}
         ratesClients={(budget?.clients ?? []).map(c => ({ id: c.id, name: c.name }))}
         accessLog={accessLog}
-        initialOpenId={openId}
         allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['rates', 'd-rates'], ['access', 'd-log'], ['portal', 'd-portal']] as const)
           .filter(([, key]) => access.can(key)).map(([tab]) => tab)}
       />
