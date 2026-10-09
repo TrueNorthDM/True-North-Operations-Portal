@@ -11,9 +11,9 @@ export function monthBounds(ym: string): { startDate: string; endDate: string } 
 }
 
 // Default to current month in YYYY-MM format
-export function currentYearMonth(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+/** This month in the company's time zone (New York), whatever the server's is. */
+export function currentYearMonth(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit' }).format(now).slice(0, 7)
 }
 
 /**

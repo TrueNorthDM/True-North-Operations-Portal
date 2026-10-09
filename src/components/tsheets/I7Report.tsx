@@ -6,6 +6,8 @@
 // is computed server-side and passed in.
 
 import Link from 'next/link'
+import { tabKeys } from '@/components/ui/tab-keys'
+import { hoursByPerson, totalBudgetHours as sumBudgetHours } from '@/lib/tsheets/i7-view'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -18,7 +20,7 @@ import { ManualHoursDialog } from './ManualHoursDialog'
 import type { ManualOptions, ManualRow } from './ManualHours'
 import { CarryoverPanel } from './I7CarryoverPanel'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
-import type { I7Report, I7Carryover, PersonHours, I7TrendPoint } from '@/lib/tsheets/types'
+import type { I7Report, I7Carryover, PersonHours } from '@/lib/tsheets/types'
 import { choiceFromRange, isSingleMonth, rangeOf, spanWording, type Range, type RangeChoice } from '@/lib/tsheets/range'
 import { ROUTES } from '@/lib/nav/routes'
 
@@ -31,7 +33,6 @@ interface Props {
   projectHours?: Record<string, number>   // project → budgeted hours (guide)
   carryover?: I7Carryover | null
   stdRate?: number                        // standard i7 rate for the month ($/h)
-  trend?: I7TrendPoint[]                  // the charted months, for the charts
   /** Hand-entry, opened from here rather than from the foot of the page. */
   manual?: { rows: ManualRow[]; options: ManualOptions; blurb: string }
   canExport?: boolean                     // the file exports (PDF, CSV, print)
@@ -54,7 +55,7 @@ function newestOf(months: string[]): string {
   return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, trend = [], manual, canExport = false, canTeamUpdate = false, unratedPeople = [], teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, manual, canExport = false, canTeamUpdate = false, unratedPeople = [], teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
   const router = useRouter()
   const [navigating, startNav] = useTransition()
   const [view, setView] = useState<'numbers' | 'graphics' | undefined>(views[0])
@@ -89,14 +90,13 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
   const showHrsAvail = hasBudget
   const showBudgetAvail = hasBudget && data.hasRates && stdRate > 0   // $ available needs a rate
   const showCost = data.hasRates
-  const totalBudgetHours = Object.values(projectHours).reduce((s, h) => s + h, 0)
+  const totalBudgetHours = sumBudgetHours(projectHours)
   const totalHrsAvail = totalBudgetHours - data.totalHours
   const projectOnlyCols = (showBudgetHrs ? 1 : 0) + (showHrsAvail ? 1 : 0) + (showBudgetAvail ? 1 : 0)
   const cols = 1 + people.length + 1 + projectOnlyCols + (showCost ? 1 : 0)
 
   // Per-person totals across the whole report (footer row).
-  const totalByPerson: PersonHours = {}
-  for (const p of data.projects) for (const [name, h] of Object.entries(p.byPerson)) totalByPerson[name] = (totalByPerson[name] ?? 0) + h
+  const totalByPerson: PersonHours = hoursByPerson(data)
 
   // Both filters live in the URL together, so changing one keeps the other and
   // the address stays shareable. Empty team drops the param instead of sending
@@ -221,10 +221,15 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         )}
 
         {/* View tabs, the same month's data as a table (In Numbers) or charts (In Graphics) */}
-        <div className="flex gap-1 border-b border-slate-200">
+        <div role="tablist" aria-label="Report view" onKeyDown={view ? tabKeys(views, view, setView) : undefined} className="flex gap-1 border-b border-slate-200">
           {views.map(v => (
             <button
               key={v}
+              type="button"
+              role="tab"
+              data-tab={v}
+              aria-selected={view === v}
+              tabIndex={view === v ? 0 : -1}
               onClick={() => setView(v)}
               className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'}`}
             >
@@ -236,7 +241,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
         {!view ? (
           <p className="text-sm text-muted">Neither view of this report is open to your access level.</p>
         ) : view === 'graphics' ? (
-          <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} showCost={showCost} trend={trend} />
+          <I7Charts data={data} projectHours={projectHours} totalByPerson={totalByPerson} />
         ) : (
         <>
         {/* Carryover: bank-account running balance */}
@@ -328,7 +333,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
 
         <div className="flex items-center justify-between flex-wrap gap-2">
           <p className="text-xs text-muted leading-relaxed">
-            Hours pulled from QuickBooks Time · grouped by the “1 - i7 Code” &amp; “3 Activity” fields · one hours column per person
+            Hours from QuickBooks Time and hours added by hand · grouped by the “1 - i7 Code” &amp; “3 - Activity” fields · one hours column per person
             {showCost && <> · Budget used = hours × each person&apos;s rate</>}
             {showBudgetAvail && <> · Budget avail. = hours available × the i7 rate (${stdRate}/h)</>}
           </p>

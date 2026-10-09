@@ -1,14 +1,15 @@
 'use client'
 
-// "In Graphics" tab, dependency-free SVG/CSS charts from the same month's data
-// (plus the Jan→month trend series). Styled to the True North handoff: donut
-// (hours by project), horizontal bars (hours by person), radial rings (budget
-// utilization), a global 100% stacked bar (activity mix), and a line+area trend.
-// Values/labels are always shown as text (accessible; no colour-only meaning).
+// "In Graphics" tab, dependency-free SVG/CSS charts from the same period's data.
+// Styled to the True North handoff: donut (hours by project), horizontal bars
+// (hours by person), radial rings (budget utilization) and a 100% stacked bar
+// (activity mix). Values and labels are always shown as text (accessible; no
+// colour-only meaning). The client PDF draws its own (ReportPrint).
 
 import type { ReactNode } from 'react'
-import type { I7Report, I7TrendPoint } from '@/lib/tsheets/types'
+import type { I7Report } from '@/lib/tsheets/types'
 import { fmtHours } from '@/lib/tsheets/format'
+import { activityMix } from '@/lib/tsheets/i7-view'
 
 // Brand palette, teal / blue / purple / orange / cyan / green.
 const PROJ = ['#1E7D7F', '#3B82C6', '#e08a1e', '#6d5ae0', '#00A3DD', '#009C3B']
@@ -20,19 +21,15 @@ interface Props {
   data: I7Report
   projectHours: Record<string, number>
   totalByPerson: Record<string, number>
-  showCost: boolean
-  trend: I7TrendPoint[]
-  // 'full' = the on-screen In Graphics tab. 'client' = the client PDF.
-  variant?: 'full' | 'client'
 }
 
-function Card({ title, subtitle, className = '', legend, children, dense = false }: { title: string; subtitle?: string; className?: string; legend?: ReactNode; children: ReactNode; dense?: boolean }) {
+function Card({ title, subtitle, className = '', legend, children }: { title: string; subtitle?: string; className?: string; legend?: ReactNode; children: ReactNode }) {
   return (
-    <div className={`rounded-[16px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(1,35,88,.06)] ${dense ? 'p-4' : 'p-5'} ${className}`}>
-      <div className={`${dense ? 'mb-3' : 'mb-4'} flex items-start justify-between gap-3 flex-wrap`}>
+    <div className={`rounded-[16px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(1,35,88,.06)] p-5 ${className}`}>
+      <div className={`mb-4 flex items-start justify-between gap-3 flex-wrap`}>
         <div>
-          <h3 className={`${dense ? 'text-[12px]' : 'text-[15px]'} font-(family-name:--font-display) font-extrabold text-tn-ink`}>{title}</h3>
-          {subtitle && <p className={`${dense ? 'text-[10px]' : 'text-xs'} text-muted mt-0.5`}>{subtitle}</p>}
+          <h3 className={`text-[15px] font-(family-name:--font-display) font-extrabold text-tn-ink`}>{title}</h3>
+          {subtitle && <p className={`text-xs text-muted mt-0.5`}>{subtitle}</p>}
         </div>
         {legend}
       </div>
@@ -41,20 +38,6 @@ function Card({ title, subtitle, className = '', legend, children, dense = false
   )
 }
 
-function Legend({ items, dense = false }: { items: { label: string; color: string; value?: string }[]; dense?: boolean }) {
-  return (
-    <div className={`flex flex-wrap gap-x-4 gap-y-1.5 ${dense ? 'text-[10px]' : 'text-xs'} text-foreground`}>
-      {items.map(i => (
-        <span key={i.label} className="inline-flex items-center gap-1.5">
-          <span className={`${dense ? 'w-2 h-2' : 'w-2.5 h-2.5'} rounded-sm shrink-0`} style={{ background: i.color }} />
-          <span className="whitespace-nowrap">{i.label}{i.value != null && <span className="text-muted"> · {i.value}</span>}</span>
-        </span>
-      ))}
-    </div>
-  )
-}
-
-// ── Donut: share of hours by project ───────────────────────────────────────
 function Donut({ segments, centerTop, centerBottom }: { segments: { label: string; value: number; color: string }[]; centerTop: string; centerBottom: string }) {
   const total = segments.reduce((s, x) => s + x.value, 0)
   const r = 46, C = 2 * Math.PI * r
@@ -67,7 +50,7 @@ function Donut({ segments, centerTop, centerBottom }: { segments: { label: strin
   }))
   return (
     <div className="flex items-center justify-center shrink-0">
-      <svg viewBox="0 0 130 130" width="140" height="140" role="img">
+      <svg viewBox="0 0 130 130" width="140" height="140" role="img" aria-label={`${centerTop} ${centerBottom.toLowerCase()}, by project: ${segments.filter(x => x.value > 0).map(x => `${x.label} ${fmtHours(x.value)}`).join(', ')}`}>
         <g transform="rotate(-90 65 65)" fill="none" strokeWidth={16}>
           <circle cx="65" cy="65" r={r} stroke="#eef0f3" />
           {arcs.map(a => <circle key={a.label} cx="65" cy="65" r={r} stroke={a.color} strokeDasharray={`${a.dash} ${C - a.dash}`} strokeDashoffset={a.offset} strokeLinecap="butt" />)}
@@ -114,7 +97,7 @@ function Rings({ rows }: { rows: { label: string; pct: number | null; hours: num
         const color = !has ? '#cbd5e1' : over ? '#ef4444' : near ? '#e08a1e' : '#1E7D7F'
         return (
           <div key={row.label} className="flex items-center gap-3 rounded-[12px] border border-slate-200 bg-subtle/50 p-3">
-            <svg viewBox="0 0 60 60" width="58" height="58" role="img" className="shrink-0">
+            <svg viewBox="0 0 60 60" width="58" height="58" role="img" aria-label={has ? `${row.label}: ${Math.round(p * 100)}% of its budgeted hours` : `${row.label}: no budgeted hours`} className="shrink-0">
               <g fill="none" strokeWidth={6}>
                 <circle cx="30" cy="30" r={r} stroke="#eef0f3" />
                 <circle cx="30" cy="30" r={r} stroke={color} strokeLinecap="round" strokeDasharray={`${fill * C} ${C}`} transform="rotate(-90 30 30)" />
@@ -159,60 +142,7 @@ function ActivityMix({ parts, total, colorOf }: { parts: { activity: string; hou
 }
 
 // ── 100% stacked bar per project, activity mix (client PDF) ─────────────────
-function StackedBars({ rows, colorOf, dense = false }: { rows: { label: string; total: number; parts: { activity: string; hours: number }[] }[]; colorOf: (a: string) => string; dense?: boolean }) {
-  return (
-    <div className={dense ? 'space-y-2.5' : 'space-y-3'}>
-      {rows.filter(r => r.total > 0).map(r => (
-        <div key={r.label}>
-          <div className="flex items-baseline justify-between mb-1">
-            <span className={`${dense ? 'text-[11px]' : 'text-sm'} text-tn-ink font-medium`}>{r.label}</span>
-            <span className={`${dense ? 'text-[10px]' : 'text-xs'} tabular-nums text-muted`}>{fmtHours(r.total)} h</span>
-          </div>
-          <div className={`flex ${dense ? 'h-3' : 'h-3.5'} rounded-full overflow-hidden bg-subtle`}>
-            {r.parts.map(p => (
-              <div key={p.activity} title={`${p.activity}: ${fmtHours(p.hours)} h`} style={{ width: `${(p.hours / r.total) * 100}%`, background: colorOf(p.activity) }} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ── Vertical bars, % of budget used per project (client PDF) ────────────────
-function BudgetBars({ rows }: { rows: { label: string; pct: number | null; hours: number; budget: number }[] }) {
-  const H = 106
-  return (
-    <div>
-      <div className="relative flex items-end justify-around gap-3" style={{ height: H }}>
-        <div className="absolute inset-x-0 top-0 border-t border-dashed border-slate-200" />
-        <span className="absolute right-0 -top-1.5 text-[8px] text-muted bg-white px-1">100%</span>
-        {rows.map(row => {
-          const p = row.pct
-          const has = p != null
-          const fill = has ? Math.min(1, p) : 0
-          const color = !has ? '#cbd5e1' : p > 1 ? '#ef4444' : p >= 0.9 ? '#e08a1e' : '#1E7D7F'
-          return (
-            <div key={row.label} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full">
-              <span className="text-[10px] tabular-nums mb-1" style={{ color: has ? color : '#8593a4' }}>{has ? `${Math.round(p * 100)}%` : '-'}</span>
-              <div className="w-full max-w-[44px] rounded-t-md" style={{ height: `${Math.max(fill * H, has ? 3 : 0)}px`, background: color }} />
-            </div>
-          )
-        })}
-      </div>
-      <div className="flex items-start justify-around gap-3 mt-2 border-t border-slate-100 pt-2">
-        {rows.map(row => (
-          <div key={row.label} className="flex-1 min-w-0 text-center">
-            <div className="text-[10px] text-muted leading-tight">{row.label}</div>
-            {row.budget > 0 && <div className="text-[8px] tabular-nums text-muted mt-0.5">{fmtHours(row.hours)} / {fmtHours(row.budget)} h</div>}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export function I7Charts({ data, projectHours, totalByPerson, variant = 'full' }: Props) {
+export function I7Charts({ data, projectHours, totalByPerson }: Props) {
   // Donut + rings, per project
   const projectSegments = data.projects.map((p, i) => ({ label: p.project, value: p.hours, color: PROJ[i % PROJ.length] }))
   const rings = data.projects.map(p => {
@@ -227,19 +157,11 @@ export function I7Charts({ data, projectHours, totalByPerson, variant = 'full' }
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // Activity totals + a shared colour map (top activities coloured, rest grey).
-  const globalAct = new Map<string, number>()
-  for (const p of data.projects) for (const jc of p.jobcodes) for (const a of jc.activities) globalAct.set(a.activity, (globalAct.get(a.activity) ?? 0) + a.hours)
+  const globalAct = new Map(activityMix(data).map(a => [a.activity, a.hours]))
   const topActs = [...globalAct.entries()].sort((a, b) => b[1] - a[1]).slice(0, ACT.length).map(([a]) => a)
   const actColor = new Map(topActs.map((a, i) => [a, ACT[i]]))
   const colorOf = (a: string) => actColor.get(a) ?? OTHER
 
-  // Per-project stacked rows (client PDF) + the global mix (screen).
-  const stackedRows = data.projects.map(p => {
-    const m = new Map<string, number>()
-    for (const jc of p.jobcodes) for (const a of jc.activities) m.set(a.activity, (m.get(a.activity) ?? 0) + a.hours)
-    const parts = [...m.entries()].map(([activity, hours]) => ({ activity, hours })).sort((a, b) => b.hours - a.hours)
-    return { label: p.project, total: p.hours, parts }
-  })
   const actTotal = [...globalAct.values()].reduce((s, h) => s + h, 0)
   const sumTop = topActs.reduce((s, a) => s + (globalAct.get(a) ?? 0), 0)
   const otherHours = actTotal - sumTop
@@ -247,22 +169,6 @@ export function I7Charts({ data, projectHours, totalByPerson, variant = 'full' }
     ...topActs.map(a => ({ activity: a, hours: globalAct.get(a) ?? 0 })),
     ...(otherHours > 0.005 ? [{ activity: 'Other', hours: otherHours }] : []),
   ]
-  const actLegend = [...topActs.map((a, i) => ({ label: a, color: ACT[i] })), ...(globalAct.size > topActs.length ? [{ label: 'Other', color: OTHER }] : [])]
-
-  // Client PDF, just the two charts i7 asked for, stacked full-width.
-  if (variant === 'client') {
-    return (
-      <div className="space-y-4">
-        <Card dense title="Activity mix per project" subtitle="How each project’s hours split by activity" legend={<Legend dense items={actLegend} />}>
-          <StackedBars dense rows={stackedRows} colorOf={colorOf} />
-        </Card>
-        <Card dense title="% of budget used" subtitle="Hours used ÷ budgeted, per project">
-          <BudgetBars rows={rings} />
-        </Card>
-      </div>
-    )
-  }
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
       <Card title="Hours by project" subtitle="Share of logged hours this period">

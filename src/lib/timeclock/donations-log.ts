@@ -93,3 +93,47 @@ export async function logDonationChange(
     return { logged: false, error: e instanceof Error ? e.message : 'Could not write the log entry.' }
   }
 }
+
+export interface PurchaseChange {
+  purchaseId: number | null
+  project: string
+  month: string
+  action: 'created' | 'updated' | 'deleted'
+  hoursBefore?: number | null
+  hoursAfter?: number | null
+  amountBefore?: number | null
+  amountAfter?: number | null
+  noteBefore?: string | null
+  noteAfter?: string | null
+}
+
+/**
+ * The same record for prepaid hour purchases (migration 101): they were
+ * written in place with nothing left behind (audit, 9 October 2026). Never
+ * throws; the error is returned so the caller can say the history is missing.
+ */
+export async function logPurchaseChange(
+  change: PurchaseChange,
+  actor: DonationActor,
+): Promise<{ logged: boolean; error?: string }> {
+  try {
+    const { error } = await createAdminClient().from('tc_project_purchases_log').insert({
+      purchase_id: change.purchaseId,
+      project_label: change.project,
+      month: change.month,
+      action: change.action,
+      hours_before: change.hoursBefore ?? null,
+      hours_after: change.hoursAfter ?? null,
+      amount_before: change.amountBefore ?? null,
+      amount_after: change.amountAfter ?? null,
+      note_before: change.noteBefore ?? null,
+      note_after: change.noteAfter ?? null,
+      actor_person_id: actor.personId,
+      actor_name: actor.name,
+      actor_email: actor.email,
+    })
+    return error ? { logged: false, error: error.message } : { logged: true }
+  } catch (e) {
+    return { logged: false, error: e instanceof Error ? e.message : 'Could not write the log entry.' }
+  }
+}

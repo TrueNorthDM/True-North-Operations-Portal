@@ -5,7 +5,7 @@ import { requireSurface } from '@/lib/access/resolve'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { ROUTES } from '@/lib/nav/routes'
 // How the i7 Budget Usage Report is built, a plain-language explainer linked
-// from the info icon in Settings. Static content (the July 2026 numbers are an
+// from the report (its Guide tab). Static content (the July 2026 numbers are an
 // illustrative worked example).
 
 function InfoMark({ className = 'w-5 h-5' }: { className?: string }) {
@@ -19,7 +19,7 @@ function InfoMark({ className = 'w-5 h-5' }: { className?: string }) {
 
 const SOURCES = [
   { tag: 'Actuals', name: 'QuickBooks Time (TSheets)', cls: 'bg-blue-50 border-blue-200 text-blue-900', dot: 'text-blue-600',
-    body: 'The real hours. Pulled automatically every 4 hours. Each approved entry says who worked, on which i7 code (→ project + job code), on which activity, and how many hours.' },
+    body: 'The real hours, imported automatically every 4 hours, plus any added by hand from the report. Every entry counts, approved or not yet, and says who worked, on which i7 code (→ project + job code), on which activity, and how many hours.' },
   { tag: 'Rates', name: 'Hourly rates', cls: 'bg-indigo-50 border-indigo-200 text-indigo-900', dot: 'text-indigo-600',
     body: 'Directory → Rates & Costs. Each person’s Rate / client ($/hour billed on i7), with history ($120 through January, $95 from February, foreign contractors $60).' },
   { tag: 'Budget $', name: 'Monthly budget', cls: 'bg-emerald-50 border-emerald-200 text-emerald-900', dot: 'text-emerald-600',
@@ -51,7 +51,7 @@ export default async function ReportGuidePage() {
   if (!access.can('i7-guide')) redirect(await previewHref(ROUTES.i7))
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10">
+    <div className="space-y-10">
       {/* Header */}
       <div>
         <Breadcrumb parents={[ROUTES.clientReports, ROUTES.i7]} now="How the report works" />
@@ -62,7 +62,7 @@ export default async function ReportGuidePage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">How the i7 Budget Usage Report is built</h1>
             <p className="mt-1 text-slate-500">
-              The report never invents a number. It combines <strong className="text-slate-700">one thing pulled from QuickBooks Time</strong> with{' '}
+              The report never invents a number. It combines <strong className="text-slate-700">the hours from QuickBooks Time</strong> with{' '}
               <strong className="text-slate-700">three things you set</strong>, then only adds and subtracts.
             </p>
           </div>

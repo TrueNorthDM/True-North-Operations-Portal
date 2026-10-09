@@ -129,7 +129,8 @@ export function fakeDb(seed: Record<string, Row[]>, opts: FakeOptions = {}): Fak
       if (op === 'insert') {
         const keys = opts.unique?.[table]
         if (keys && incoming.some(r => rows.some(x => sameKey(x, r, keys)))) {
-          return { data: null, error: { message: 'duplicate key value violates unique constraint' } }
+          // As Postgres says it: code 23505, the index named in the message.
+          return { data: null, error: { code: '23505', message: `duplicate key value violates unique constraint "${table}_${keys.join('_')}"` } }
         }
         const added = incoming.map(r => ({ id: `new-${nextId++}`, ...r }))
         rows.push(...added)
@@ -141,13 +142,13 @@ export function fakeDb(seed: Record<string, Row[]>, opts: FakeOptions = {}): Fak
         const changed = rows.filter(hit)
         for (const r of changed) Object.assign(r, payload)
         fake.writes.push({ op, table, rows: changed.map(r => ({ ...r })) })
-        return { data: null, error: null, count: count ? changed.length : null }
+        return { data: returning ? changed.map(r => ({ ...r })) : null, error: null, count: count ? changed.length : null }
       }
       if (op === 'delete') {
         const gone = rows.filter(hit)
         tables[table] = rows.filter(r => !hit(r))
         fake.writes.push({ op, table, rows: gone })
-        return { data: null, error: null }
+        return { data: returning ? gone : null, error: null }
       }
 
       fake.reads.push(table)

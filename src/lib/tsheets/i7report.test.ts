@@ -177,3 +177,31 @@ describe('buildI7Days', () => {
     expect(days.find(d => d.date === '2026-02-11')?.cost).toBeCloseTo(150, 2)
   })
 })
+
+describe('the lines of an invoice add up to its total (audit, 9 October 2026)', () => {
+  // Two job codes of 7 minutes each at $95: $11.0833 each. Rounding each level
+  // on its own printed $11.08 + $11.08 under a total of $22.17.
+  const entries: I7Entry[] = [
+    { personId: 'p1', duration: 420, date: '2026-09-01', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 'p1', duration: 420, date: '2026-09-02', i7Code: 'WM-CONTENT', activity: 'Content: Writing' },
+  ]
+  const r = buildI7Report(entries, () => 95, { p1: 'Alice' }, '2026-09-01')
+  const cents = (n: number) => Math.round(n * 100)
+
+  it('job codes add up to their project, projects to the total, to the cent', () => {
+    for (const p of r.projects) {
+      expect(cents(p.cost)).toBe(p.jobcodes.reduce((s, j) => s + cents(j.cost), 0))
+      for (const j of p.jobcodes) expect(cents(j.cost)).toBe(j.activities.reduce((s, a) => s + cents(a.cost), 0))
+    }
+    expect(cents(r.totalCost)).toBe(r.projects.reduce((s, p) => s + cents(p.cost), 0))
+    expect(r.totalCost).toBe(22.16)
+  })
+
+  it('hours add up the same way', () => {
+    expect(Math.round(r.totalHours * 100)).toBe(r.projects.reduce((s, p) => s + Math.round(p.hours * 100), 0))
+  })
+
+  it('ends a month on its last day, whatever the server time zone', () => {
+    expect(r.endDate).toBe('2026-09-30')
+  })
+})

@@ -7,19 +7,24 @@
 //              blocks, budget-health gauge, investment + activity charts,
 //              highlights. No internal costs or staff names.
 // Colours are hardcoded hex (print must be identical regardless of theme and
-// survive the browser dropping backgrounds). Data logic stays in report-data.
+// survive the browser dropping backgrounds). Data logic stays in report-data,
+// and the figures shared with the screen in lib/tsheets/i7-view.
+//
+// Rendered by the PDF route (headless Chromium), which saves the file; the
+// person sees it in the PDF preview first. No print dialog of its own.
 
 import Link from 'next/link'
-import { Fragment, useEffect } from 'react'
-import type { I7Report, I7Carryover, I7TrendPoint } from '@/lib/tsheets/types'
+import { Fragment } from 'react'
+import type { I7Report, I7Carryover } from '@/lib/tsheets/types'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
+import { activityMix, budgetStatus, BUDGET_STATUS_LABEL, hoursByPerson, isMMEProject as isMME, projectsNearBudget, totalBudgetHours, usedShare } from '@/lib/tsheets/i7-view'
+import { formatDate } from '@/lib/directory/people-types'
 import { ROUTES } from '@/lib/nav/routes'
 
 const INK = '#012358', TEAL = '#1E7D7F', BLUE = '#2A6FDB', GOLD = '#F2C40A', PURPLE = '#6D5AE6', AMBER = '#E8912A', MMEC = '#B8790A', GREEN = '#1E9E6A', MUTED = '#8593a4', BODY = '#435066', BORDER = '#e4e7ec', WARM = '#f4f2ec', RED = '#C2410C', TRACK = '#eef0f3'
 const COST_COLORS = [TEAL, BLUE, GOLD, PURPLE, AMBER]
 const ACT_COLORS = [TEAL, BLUE, PURPLE, AMBER, '#00A3DD', GREEN]
 
-const isMME = (name: string) => /mme|moisture/i.test(name)
 const pctOf = (v: number, t: number) => (t > 0 ? Math.round((v / t) * 100) : 0)
 
 interface Props {
@@ -27,7 +32,6 @@ interface Props {
   projectHours: Record<string, number>
   carryover: I7Carryover | null
   stdRate: number
-  trend: I7TrendPoint[]
   type: 'client' | 'internal'
   monthLabel: string
   generatedOn: string
@@ -38,8 +42,11 @@ interface Props {
 function Donut({ segs, size = 110, sw = 18 }: { segs: { value: number; color: string }[]; size?: number; sw?: number }) {
   const total = segs.reduce((s, x) => s + x.value, 0)
   const r = 52, C = 2 * Math.PI * r
-  let acc = 0
-  const arcs = segs.filter(s => s.value > 0).map(s => { const dash = (total > 0 ? s.value / total : 0) * C; const a = { dash, offset: -acc, color: s.color }; acc += dash; return a })
+  // Each arc starts where the ones before it end: worked out from the values,
+  // not by changing a counter while drawing (the React Compiler refuses that).
+  const shown = segs.filter(s => s.value > 0)
+  const dashOf = (v: number) => (total > 0 ? v / total : 0) * C
+  const arcs = shown.map((s, i) => ({ dash: dashOf(s.value), offset: -shown.slice(0, i).reduce((a, x) => a + dashOf(x.value), 0), color: s.color }))
   return (
     <svg width={size} height={size} viewBox="0 0 128 128" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
       <circle cx="64" cy="64" r={r} fill="none" stroke={TRACK} strokeWidth={sw} />
@@ -59,19 +66,31 @@ function LegendRow({ color, label, value, extra }: { color: string; label: strin
   )
 }
 
+/** The sheet's top: the logo, and what the document is. */
+function PrintHeader({ label, sub }: { label: string; sub: string }) {
+  return (
+    <div className="flex items-start justify-between gap-6 pb-[18px]" style={{ borderBottom: `2px solid ${INK}` }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logos/true-north.png" alt="True North Digital Marketing" style={{ height: 40, display: 'block' }} />
+      <div className="text-right shrink-0">
+        <div className="font-(family-name:--font-display) font-extrabold text-[9.9px] tracking-[.16em] uppercase" style={{ color: TEAL }}>{label}</div>
+        <div className="text-[10.4px] mt-1" style={{ color: MUTED }}>{sub}</div>
+      </div>
+    </div>
+  )
+}
+
+/** "$1,234.56 left" in green, or "−$1,234.56 over" in red. */
+function LeftOrOver({ left }: { left: number }) {
+  return left < 0
+    ? <b style={{ color: RED }}>{money(-left)} over</b>
+    : <b style={{ color: GREEN }}>{money(left)} left</b>
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 export function ReportPrint({ report, projectHours, carryover, stdRate, type, monthLabel, generatedOn, note }: Props) {
-  useEffect(() => {
-    // Server-side PDF (Puppeteer, ?pdf=1) prints via page.pdf() itself, don't
-    // pop the browser print dialog in that headless render.
-    if (new URLSearchParams(window.location.search).has('pdf')) return
-    const t = setTimeout(() => window.print(), 700) // let the SVG charts paint first
-    return () => clearTimeout(t)
-  }, [])
-
   const showCost = report.hasRates
   const totalCost = report.totalCost
-  const monthShort = monthLabel.split(' ')[0]
 
   // Invoice split, MME is billed separately; everything else is the i7 invoice.
   const i7Projects = report.projects.filter(p => !isMME(p.project))
@@ -85,8 +104,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   const costSegs = byCost.map((p, i) => ({ label: p.project.replace(/\s*\(.*\)/, ''), value: p.cost, color: COST_COLORS[i % COST_COLORS.length] }))
 
   // Team workload (hours per person).
-  const byPerson: Record<string, number> = {}
-  for (const p of report.projects) for (const [n, h] of Object.entries(p.byPerson)) byPerson[n] = (byPerson[n] ?? 0) + h
+  const byPerson = hoursByPerson(report)
   const persons = Object.entries(byPerson).map(([name, hours]) => ({ name, hours: Math.round(hours * 100) / 100 })).sort((a, b) => b.hours - a.hours)
   const maxPerson = Math.max(1, ...persons.map(p => p.hours))
 
@@ -96,37 +114,24 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
     const pct = budget > 0 ? p.hours / budget : null
     return { name: p.project.replace(/\s*\(.*\)/, ''), hours: p.hours, budget, pct }
   }).filter(u => u.budget > 0)
-  const nearBudget = util.some(u => u.pct != null && u.pct >= 0.9)
+  const nearBudget = projectsNearBudget(report, projectHours)
 
   // Activity mix (global).
-  const actMap = new Map<string, number>()
-  for (const p of report.projects) for (const jc of p.jobcodes) for (const a of jc.activities) actMap.set(a.activity, (actMap.get(a.activity) ?? 0) + a.hours)
-  const acts = [...actMap.entries()].sort((a, b) => b[1] - a[1]).map(([activity, hours], i) => ({ activity, hours, color: ACT_COLORS[i % ACT_COLORS.length] }))
+  const acts = activityMix(report).map((a, i) => ({ ...a, color: ACT_COLORS[i % ACT_COLORS.length] }))
   const actTotal = acts.reduce((s, a) => s + a.hours, 0)
 
   const budgetLeft = carryover ? carryover.totalLeft : 0
-  const usedPct = carryover && carryover.totalAvailable > 0 ? carryover.monthUsed / carryover.totalAvailable : 0
-  const leftPct = carryover && carryover.totalAvailable > 0 ? Math.round((carryover.totalLeft / carryover.totalAvailable) * 100) : 0
-  const onTrack = !carryover || carryover.totalLeft >= 0
+  const usedPct = usedShare(carryover)
+  // The same status, at the same thresholds, as the screen's pill.
+  const status = carryover ? budgetStatus(carryover.monthUsed, carryover.totalAvailable) : 'none'
+  const onTrack = status === 'good'
+  const statusColor = status === 'good' ? GREEN : status === 'warn' ? AMBER : status === 'bad' ? RED : MUTED
 
+  // Only someone who opened the page by its address sees this: the PDF is
+  // made from it, and the preview offers the file.
   const Toolbar = (
     <div className="no-print mx-auto max-w-[1056px] mb-4 flex items-center justify-between px-2">
       <Link href={`${ROUTES.i7}?month=${report.startDate.slice(0, 7)}`} className="text-sm font-(family-name:--font-display) font-bold" style={{ color: BODY }}>&larr; Back to report</Link>
-      <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-[18px] py-2.5 rounded-[10px] text-white font-(family-name:--font-display) font-extrabold text-[11.7px]" style={{ background: INK }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
-        Save as PDF
-      </button>
-    </div>
-  )
-
-  const Header = ({ label, sub }: { label: string; sub: string }) => (
-    <div className="flex items-start justify-between gap-6 pb-[18px]" style={{ borderBottom: `2px solid ${INK}` }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logos/true-north.png" alt="True North Digital Marketing" style={{ height: 40, display: 'block' }} />
-      <div className="text-right shrink-0">
-        <div className="font-(family-name:--font-display) font-extrabold text-[9.9px] tracking-[.16em] uppercase" style={{ color: TEAL }}>{label}</div>
-        <div className="text-[10.4px] mt-1" style={{ color: MUTED }}>{sub}</div>
-      </div>
     </div>
   )
 
@@ -135,14 +140,14 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   // ══════════════════════════ CLIENT REPORT ══════════════════════════
   if (type === 'client') {
     const blocks = [
-      { title: 'i7 Marketing, Bessemeter, Wagner Meter', note: '', color: TEAL, headBg: '#eef6f5', projects: i7Projects, invest: i7Cost },
-      ...(mmeProjects.length ? [{ title: 'Moisture Meters', note: '', color: MMEC, headBg: '#fdf6dc', projects: mmeProjects, invest: mmeCost }] : []),
+      { title: 'i7 Marketing, Bessemeter, Wagner Meter', color: TEAL, headBg: '#eef6f5', projects: i7Projects, invest: i7Cost },
+      ...(mmeProjects.length ? [{ title: 'Moisture Meters', color: MMEC, headBg: '#fdf6dc', projects: mmeProjects, invest: mmeCost }] : []),
     ]
     return (
       <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
         {Toolbar}
         <div className={sheet} style={{ color: BODY }}>
-          <Header label="Monthly Marketing Report" sub="Prepared for i7 Marketing" />
+          <PrintHeader label="Monthly Marketing Report" sub="Prepared for i7 Marketing" />
 
           <div className="flex items-end justify-between gap-6 mt-4">
             <div>
@@ -152,7 +157,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             <div className="text-right shrink-0">
               <div className="font-(family-name:--font-display) font-extrabold text-[7.9px] tracking-[.1em] uppercase" style={{ color: MUTED }}>Reporting period</div>
               <div className="font-(family-name:--font-display) font-extrabold text-[12.7px] mt-0.5" style={{ color: INK }}>{monthLabel}</div>
-              <div className="text-[9.2px] mt-px tabular-nums" style={{ color: MUTED }}>{report.startDate} &rarr; {report.endDate}</div>
+              <div className="text-[9.2px] mt-px tabular-nums" style={{ color: MUTED }}>{formatDate(report.startDate)} &rarr; {formatDate(report.endDate)}</div>
             </div>
           </div>
 
@@ -161,7 +166,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             {[
               { l: 'Budget available', v: carryover ? moneySigned(carryover.totalAvailable) : '-', c: INK },
               { l: 'Total work delivered', v: money(totalCost), c: INK },
-              { l: 'Hours delivered', v: report.totalHours.toFixed(2), c: INK },
+              { l: 'Hours delivered', v: fmtHours(report.totalHours), c: INK },
             ].map(x => (
               <div key={x.l} className="rounded-[12px] p-[6px_14px]" style={{ border: `1px solid ${BORDER}` }}>
                 <div className="font-(family-name:--font-display) font-extrabold text-[7.6px] tracking-[.09em] uppercase" style={{ color: MUTED }}>{x.l}</div>
@@ -171,7 +176,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             <div className="rounded-[12px] p-[6px_14px]" style={{ border: `1px solid ${onTrack ? '#d6ebe4' : BORDER}`, background: onTrack ? '#f2faf6' : '#fff' }}>
               <div className="flex items-center justify-between">
                 <div className="font-(family-name:--font-display) font-extrabold text-[7.6px] tracking-[.09em] uppercase" style={{ color: onTrack ? GREEN : MUTED }}>Budget remaining</div>
-                {onTrack && <span className="inline-flex items-center gap-1 text-[7.9px] font-bold" style={{ color: GREEN }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} />On track</span>}
+                {status !== 'none' && <span className="inline-flex items-center gap-1 text-[7.9px] font-bold" style={{ color: statusColor }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor }} />{BUDGET_STATUS_LABEL[status]}</span>}
               </div>
               <div className="font-(family-name:--font-display) font-black text-[17.4px] mt-1.5 tabular-nums" style={{ color: budgetLeft < 0 ? RED : GREEN }}>{moneySigned(budgetLeft)}</div>
             </div>
@@ -202,7 +207,6 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                   <span className="w-[11px] h-[11px] rounded-[3px] shrink-0" style={{ background: blk.color }} />
                   <div className="flex-1 min-w-0">
                     <div className="font-(family-name:--font-display) font-black text-[10.7px]" style={{ color: INK }}>{blk.title}</div>
-                    {blk.note && <div className="text-[8.7px] mt-px" style={{ color: MUTED }}>{blk.note}</div>}
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-(family-name:--font-display) font-black text-[15px] tabular-nums leading-none" style={{ color: blk.color }}>{money(blk.invest)}</div>
@@ -257,7 +261,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
           <div className="mt-3 flex items-center justify-between gap-4 rounded-[12px] p-[6px_20px] text-white break-inside-avoid" style={{ background: INK }}>
             <span className="font-(family-name:--font-display) font-extrabold text-[9.9px] tracking-[.03em]">Grand total · all work delivered <span className="font-semibold" style={{ color: '#8fa6c6' }}>(i7 {money(i7Cost)}{mmeCost > 0 ? ` + MME ${money(mmeCost)}` : ''})</span></span>
             <span className="flex items-center gap-6 tabular-nums">
-              <span className="text-[9.2px]" style={{ color: '#aebfd6' }}>{report.totalHours.toFixed(2)} h</span>
+              <span className="text-[9.2px]" style={{ color: '#aebfd6' }}>{fmtHours(report.totalHours)} h</span>
               <span className="font-(family-name:--font-display) font-black text-[15px]" style={{ color: GOLD }}>{money(totalCost)}</span>
             </span>
           </div>
@@ -292,7 +296,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                     <div className="text-[7.1px] uppercase tracking-wide mt-0.5" style={{ color: MUTED }}>used</div>
                   </div>
                 </div>
-                <div className="text-center text-[8.7px] mt-2.5" style={{ color: BODY }}>{money(carryover?.monthUsed ?? 0)} used · <b style={{ color: GREEN }}>{money(budgetLeft)} left</b></div>
+                <div className="text-center text-[8.7px] mt-2.5" style={{ color: BODY }}>{money(carryover?.monthUsed ?? 0)} used · <LeftOrOver left={budgetLeft} /></div>
               </div>
             </div>
 
@@ -330,7 +334,8 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
 
   // ══════════════════════════ INTERNAL REPORT ══════════════════════════
   const showBudgetAvail = showCost && stdRate > 0
-  const totBudget = report.projects.reduce((s, p) => s + (projectHours[p.project] ?? 0), 0)
+  // Every project's budgeted hours, as the screen counts them.
+  const totBudget = totalBudgetHours(projectHours)
   const totAvail = totBudget - report.totalHours
   const cardData = carryover ? [
     { l: 'Budget this month', v: moneySigned(carryover.totalAvailable), c: INK, sub: 'after carry in' },
@@ -350,7 +355,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
         <tr style={{ borderBottom: `1px solid ${TRACK}` }}>
           <td className="p-[6px_16px] font-(family-name:--font-display) font-bold whitespace-nowrap" style={{ color: INK }}>{p.project}</td>
           <td className="p-[6px_9px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? budget.toLocaleString() : '-'}</td>
-          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: avail < 0 ? RED : BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? avail.toFixed(2) : '-'}</td>
+          <td className="p-[6px_9px] text-right tabular-nums" style={{ color: avail < 0 ? RED : BODY, background: 'rgba(30,125,127,.05)' }}>{budget ? fmtHours(avail) : '-'}</td>
           {showBudgetAvail && <td className="p-[6px_9px] text-right tabular-nums font-semibold" style={{ color: avail < 0 ? RED : INK, background: 'rgba(30,125,127,.05)' }}>{budget ? moneySigned(avail * stdRate) : '-'}</td>}
           {showCost && <td className="p-[6px_9px] text-right tabular-nums font-bold" style={{ color: INK, background: 'rgba(30,125,127,.05)', borderRight: '1px solid rgba(1,35,88,.10)' }}>{p.cost > 0 ? money(p.cost) : '-'}</td>}
           {cells(p.byPerson)}
@@ -411,28 +416,18 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   return (
     <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
       {Toolbar}
-      {/* Internal only: the wide per-person table needs landscape paper. We do NOT
-          set @page{size:landscape}: Safari ignores it AND specifying a page size
-          can lock the print dialog's orientation toggle (leaving the user stuck in
-          portrait). Instead we let the dialog own orientation and prompt for it. */}
-      <div className="no-print mx-auto max-w-[1056px] -mt-1 mb-4 px-2">
-        <div className="flex items-start gap-2 rounded-[9px] px-3.5 py-2.5 text-[13px] leading-snug" style={{ background: '#fdf6dc', color: MMEC, border: '1px solid #f0dfa8' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={MMEC} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginTop: 1, flexShrink: 0 }}><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M8 12h8M8 16h5" /></svg>
-          <span>Before you save: in the print dialog set <b>Orientation → Landscape</b> so the whole per-person table fits. (Portrait cuts off the right-hand columns.)</span>
-        </div>
-      </div>
       <div className={sheet} style={{ color: BODY }}>
-        <Header label="Budget Usage Report" sub={`Generated ${generatedOn}`} />
+        <PrintHeader label="Budget Usage Report" sub={`Generated ${generatedOn}`} />
 
         <div className="flex items-end justify-between gap-6 mt-5">
           <div>
             <h1 className="font-(family-name:--font-display) font-black text-[22.5px] leading-[1.05] m-0" style={{ color: INK }}>i7 Budget Usage Report</h1>
-            <p className="text-[11.3px] mt-1" style={{ color: BODY }}>Hours, cost and budget usage for the <b style={{ color: INK }}>i7 Marketing</b> client · pulled from QuickBooks Time.</p>
+            <p className="text-[11.3px] mt-1" style={{ color: BODY }}>Hours, cost and budget usage for the <b style={{ color: INK }}>i7 Marketing</b> client · from QuickBooks Time and hours added by hand.</p>
           </div>
           <div className="text-right shrink-0">
-            <div className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.1em] uppercase" style={{ color: MUTED }}>Pay period</div>
+            <div className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.1em] uppercase" style={{ color: MUTED }}>Month</div>
             <div className="font-(family-name:--font-display) font-extrabold text-[14.4px] mt-0.5" style={{ color: INK }}>{monthLabel}</div>
-            <div className="text-[10.4px] mt-px tabular-nums" style={{ color: MUTED }}>{report.startDate} &rarr; {report.endDate}</div>
+            <div className="text-[10.4px] mt-px tabular-nums" style={{ color: MUTED }}>{formatDate(report.startDate)} &rarr; {formatDate(report.endDate)}</div>
           </div>
         </div>
 
@@ -458,7 +453,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             <div className="flex items-center gap-3.5 mt-3">
               <div className="font-(family-name:--font-display) font-extrabold text-[9px] uppercase tracking-wide whitespace-nowrap" style={{ color: MUTED }}>Budget used</div>
               <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: TRACK }}><div className="h-full rounded-full" style={{ width: `${Math.min(100, usedPct * 100)}%`, background: 'linear-gradient(90deg,#1E7D7F,#31a39a)' }} /></div>
-              <div className="text-[9.9px] font-bold whitespace-nowrap tabular-nums" style={{ color: BODY }}>{Math.round(usedPct * 100)}% used · {money(budgetLeft)} remaining</div>
+              <div className="text-[9.9px] font-bold whitespace-nowrap tabular-nums" style={{ color: BODY }}>{Math.round(usedPct * 100)}% used · <LeftOrOver left={budgetLeft} /></div>
             </div>
           </>
         )}
@@ -507,20 +502,19 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               <tr style={{ borderTop: '2px solid #cfd6de', background: WARM }}>
                 <td className="p-[7px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: INK }}>Total</td>
                 <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderLeft: '1px solid rgba(1,35,88,.12)' }}>{totBudget ? totBudget.toLocaleString() : '-'}</td>
-                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? totAvail.toFixed(2) : '-'}</td>
+                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : INK, ...tealTh }}>{totBudget ? fmtHours(totAvail) : '-'}</td>
                 {showBudgetAvail && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: totAvail < 0 ? RED : GREEN, ...tealTh }}>{totBudget ? moneySigned(totAvail * stdRate) : '-'}</td>}
                 {showCost && <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, ...tealTh, borderRight: '1px solid rgba(1,35,88,.12)' }}>{money(totalCost)}</td>}
                 {report.people.map(n => <td key={n} className="p-[7px_3px] text-right tabular-nums font-bold text-[9.9px]" style={{ color: INK }}>{byPerson[n] ? fmtHours(Math.round(byPerson[n] * 100) / 100) : <span style={{ color: '#cbd5e1' }}>-</span>}</td>)}
-                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{report.totalHours.toFixed(2)}</td>
+                <td className="p-[7px_9px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: INK, background: 'rgba(242,196,10,.16)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{fmtHours(report.totalHours)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <p className="text-[9.5px] leading-relaxed mt-2.5" style={{ color: MUTED }}>
-          Hours pulled from QuickBooks Time, grouped by the “1 · i7 Code” and “3 · Activity” fields; one hours column per person. <b style={{ color: BODY }}>Budget used</b> = hours × each person’s rate.
+          Hours from QuickBooks Time and hours added by hand, grouped by the “1 - i7 Code” and “3 - Activity” fields; one hours column per person. <b style={{ color: BODY }}>Budget used</b> = hours × each person’s rate.
           {showBudgetAvail && <> <b style={{ color: BODY }}>Budget avail.</b> = hours available × the i7 rate (${stdRate}/h).</>} Carried-in balance reflects last month’s over/under.
-          {' '}The monthly <b style={{ color: BODY }}>budget</b> is built per project from its budgeted hours × the <b style={{ color: BODY }}>average</b> i7 hourly rate of the people assigned to that project.
         </p>
 
         {/* charts, flow after the table (Puppeteer paginates + numbers). */}
@@ -552,7 +546,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                 <div className="font-(family-name:--font-display) font-extrabold text-[10.8px]" style={{ color: INK }}>Budget utilization</div>
                 <div className="text-[9.9px] mt-0.5" style={{ color: MUTED }}>Hours used vs. hours budgeted</div>
               </div>
-              {nearBudget && <span className="inline-flex items-center gap-1 text-[8.6px] font-bold rounded-full px-[9px] py-1" style={{ color: MMEC, background: '#fdf6dc' }}>MME near budget</span>}
+              {nearBudget.length > 0 && <span className="inline-flex items-center gap-1 text-[8.6px] font-bold rounded-full px-[9px] py-1" style={{ color: MMEC, background: '#fdf6dc' }}>{nearBudget.length === 1 ? `${nearBudget[0]} near budget` : `${nearBudget.length} projects near budget`}</span>}
             </div>
             <div className="mt-3 flex flex-col gap-[11px]">
               {util.map(u => {

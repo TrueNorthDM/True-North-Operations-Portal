@@ -70,11 +70,14 @@ export function ProjectRows({ project, people, pOpen, openCodes, showCost, showB
       {/* Level 1, Project (budget columns live here) */}
       <tr className="border-b border-slate-100 hover:bg-subtle/60 cursor-pointer" onClick={onToggleProject}>
         <td className="px-4 py-3 sticky left-0 bg-white z-10">
-          <div className="flex items-center gap-2">
+          {/* A real button, so the keyboard opens the row too (audit, 9 October
+              2026); the click on the row stays for the mouse. */}
+          <button type="button" aria-expanded={pOpen} onClick={e => { e.stopPropagation(); onToggleProject() }}
+            className="flex items-center gap-2 text-left rounded-[6px] focus-visible:outline-2 focus-visible:outline-tn-teal">
             <Chevron open={pOpen} />
             <span className="font-(family-name:--font-display) font-bold text-tn-ink whitespace-nowrap">{project.project}</span>
             <span className="text-xs text-muted whitespace-nowrap">{project.jobcodes.length} job code{project.jobcodes.length !== 1 ? 's' : ''}</span>
-          </div>
+          </button>
         </td>
         {showBudgetHrs && <td className={`px-3 py-3 text-right text-foreground tabular-nums ${tealCell}`}>{budgetHours != null ? budgetHours.toLocaleString() : <span className="text-slate-300">-</span>}</td>}
         {showHrsAvail && <td className={`px-3 py-3 text-right font-semibold tabular-nums ${tealCell}${hrsAvailSep} ${avail != null && avail < 0 ? 'text-[#c2410c]' : 'text-foreground'}`}>{avail != null ? avail.toFixed(2) : <span className="text-slate-300">-</span>}</td>}
@@ -93,10 +96,18 @@ export function ProjectRows({ project, people, pOpen, openCodes, showCost, showB
           <Fragment key={jc.code}>
             <tr className={`border-b border-slate-100 bg-subtle/40 ${hasActs ? 'hover:bg-subtle/70 cursor-pointer' : ''}`} onClick={hasActs ? () => onToggleCode(jc.code) : undefined}>
               <td className="px-4 py-2.5 sticky left-0 bg-subtle z-10">
-                <div className="flex items-center gap-2 pl-6">
-                  {hasActs ? <Chevron open={cOpen} /> : <span className="w-3.5" />}
-                  <span className="font-semibold text-tn-ink tabular-nums whitespace-nowrap">{jc.code}</span>
-                </div>
+                {hasActs ? (
+                  <button type="button" aria-expanded={cOpen} onClick={e => { e.stopPropagation(); onToggleCode(jc.code) }}
+                    className="flex items-center gap-2 pl-6 text-left rounded-[6px] focus-visible:outline-2 focus-visible:outline-tn-teal">
+                    <Chevron open={cOpen} />
+                    <span className="font-semibold text-tn-ink tabular-nums whitespace-nowrap">{jc.code}</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 pl-6">
+                    <span className="w-3.5" />
+                    <span className="font-semibold text-tn-ink tabular-nums whitespace-nowrap">{jc.code}</span>
+                  </div>
+                )}
               </td>
               {emptyBudget}
               {showCost && <td className={`px-3 py-2.5 text-right text-foreground tabular-nums ${budgetUsedCell}`}>{jc.cost > 0 ? money(jc.cost) : <span className="text-slate-300">-</span>}</td>}

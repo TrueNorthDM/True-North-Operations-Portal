@@ -46,7 +46,11 @@ export default async function HomePage() {
   const carryoverP = accessP.then(a =>
     // Whoever opens the i7 report sees its budget here too: the tool itself,
     // level and team list (owner's decision, 7 October 2026).
-    a.canTool('i7-budget') ? loadI7Carryover(month) : null)
+    a.canTool('i7-budget')
+      // A read that fails shows as unavailable, never as a figure: it used to
+      // come back as $0 used and the whole budget left (audit, 9 October 2026).
+      ? loadI7Carryover(month).catch(e => { console.error('[home] i7 budget:', (e as Error).message); return 'unavailable' as const })
+      : null)
 
   // Publishing goals is for everyone, so it is loaded for everyone. It reads the
   // published facts the ingest stores beside the snapshot, about 20 KB, not the
@@ -81,7 +85,9 @@ export default async function HomePage() {
       </Suspense>
 
       {/* Budget at a glance, gated by level + team tool grant. */}
-      {i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
+      {i7Carryover === 'unavailable'
+        ? <p role="status" className="m-0 rounded-[14px] border border-[var(--panel-border)] bg-white px-5 py-4 text-[13.5px] text-muted">The i7 budget could not be read just now. Open the i7 report to try again.</p>
+        : i7Carryover && <I7BudgetWidget month={month} carryover={i7Carryover} />}
 
       {/* Half the width each. Publishing goals is four weeks of two clients,
           so it runs as tall as the two short celebration cards stacked, and the

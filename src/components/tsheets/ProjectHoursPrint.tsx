@@ -3,7 +3,10 @@
  *
  * Two versions of one sheet, the same split the report's tabs have and the same
  * split the i7 exports have:
- *   client   → what each project consumed and what came in for it. No names.
+ *   client   → the hours each project took, its prepaid balance, and what came
+ *              in for it. No names, no costs, no margin, and no i7 or MME rows
+ *              (decided 9 October 2026: the client file carries nothing
+ *              internal). Costs and margin are in the month by month export.
  *   internal → who did the hours, one column per person. Names, so it stays in.
  *
  * A server component with no interaction: the PDF route drives a headless
@@ -59,9 +62,13 @@ export function ProjectHoursPrint(
   const { totals } = data
   // i7 and MME are on the client sheet and not on the by-person one (September 2026).
   const onPeople = peopleView(data)
-  const rows = type === 'internal' ? onPeople.rows : data.rows
+  // The client sheet leaves out the billed rows (i7, MME): their figures are
+  // what was invoiced and the margin on it.
+  const rows = type === 'internal' ? onPeople.rows : data.rows.filter(r => !r.billed)
   const people = [...data.people].sort((a, b) => a.localeCompare(b))
 
+  /** Totals of the rows on this sheet (the client sheet has no billed rows). */
+  const sumHours = (pick: (r: typeof rows[number]) => number | null) => rows.reduce((s, r) => s + (pick(r) ?? 0), 0)
   const given = (pick: (r: typeof rows[number]) => number | null) => {
     const parts = rows.map(pick).filter((n): n is number => n != null)
     return parts.length === 0 ? null : parts.reduce((s, n) => s + n, 0)
@@ -83,7 +90,7 @@ export function ProjectHoursPrint(
             Project Hours &amp; Others
           </div>
           <div style={{ fontSize: 10.5, color: MUTED, marginTop: 3 }}>
-            {type === 'internal' ? 'Hours by person' : 'What each project consumed, and what came in'}
+            {type === 'internal' ? 'Hours by person' : 'Hours on each project, and what came in'}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -101,13 +108,9 @@ export function ProjectHoursPrint(
               <th style={th}>Prepaid</th>
               <th style={th}>Remaining</th>
               <th style={th}>Hours</th>
-              <th style={th}>Employee costs</th>
-              <th style={th}>Contractor costs</th>
-              <th style={th}>Donations / billed</th>
-              <th style={th}>Net</th>
+              <th style={th}>Donations</th>
               <th style={th}>Hours {year}</th>
-              <th style={th}>Donations / billed {year}</th>
-              <th style={th}>Costs {year}</th>
+              <th style={th}>Donations {year}</th>
               <th style={th}>{lastYear} same period</th>
             </tr>
           </thead>
@@ -116,9 +119,9 @@ export function ProjectHoursPrint(
               <tr key={r.label}>
                 <td style={tdL}>
                   {r.name}
-                  {(r.prepaid || r.billed) && (
-                    <span style={{ marginLeft: 6, fontSize: 7, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: r.billed ? '#B8790A' : TEAL }}>
-                      {r.billed ? 'billed' : 'prepaid'}
+                  {r.prepaid && (
+                    <span style={{ marginLeft: 6, fontSize: 7, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: TEAL }}>
+                      prepaid
                     </span>
                   )}
                 </td>
@@ -126,13 +129,9 @@ export function ProjectHoursPrint(
                 <td style={td}>{hours(r.boughtThisMonth)}</td>
                 <td style={td}>{hours(r.remaining)}</td>
                 <td style={td}>{hours(r.workedThisMonth)}</td>
-                <td style={td}>{money(r.employeeCostThisMonth)}</td>
-                <td style={td}>{money(r.contractorCostThisMonth)}</td>
                 <td style={td}>{money(r.donationsThisMonth)}</td>
-                <td style={{ ...td, fontWeight: 600, color: r.netThisMonth == null ? INK : r.netThisMonth < 0 ? '#c2410c' : '#1E9E6A' }}>{money(r.netThisMonth)}</td>
                 <td style={td}>{hours(r.yearToDate)}</td>
                 <td style={td}>{money(r.donationsYtd)}</td>
-                <td style={td}>{money(r.totalCosts)}</td>
                 <td style={{ ...td, color: MUTED }}>{hours(r.sameMonthLastYear)}</td>
               </tr>
             ))}
@@ -142,15 +141,11 @@ export function ProjectHoursPrint(
               <td style={footL}>Totals</td>
               <td style={foot} /><td style={foot} />
               <td style={foot}>{hours(rows.reduce((s, r) => s + (r.remaining ?? 0), 0))}</td>
-              <td style={foot}>{hours(totals.workedThisMonth)}</td>
-              <td style={foot}>{money(totals.employeeCostThisMonth)}</td>
-              <td style={foot}>{money(totals.contractorCostThisMonth)}</td>
+              <td style={foot}>{hours(sumHours(r => r.workedThisMonth))}</td>
               <td style={foot}>{money(given(r => r.donationsThisMonth))}</td>
-              <td style={foot}>{money(given(r => r.netThisMonth))}</td>
-              <td style={foot}>{hours(totals.yearToDate)}</td>
+              <td style={foot}>{hours(sumHours(r => r.yearToDate))}</td>
               <td style={foot}>{money(given(r => r.donationsYtd))}</td>
-              <td style={foot}>{money(totals.totalCosts)}</td>
-              <td style={{ ...foot, color: MUTED }}>{hours(totals.sameMonthLastYear)}</td>
+              <td style={{ ...foot, color: MUTED }}>{hours(sumHours(r => r.sameMonthLastYear))}</td>
             </tr>
           </tfoot>
         </table>
@@ -186,14 +181,13 @@ export function ProjectHoursPrint(
         </table>
       )}
 
-      <p style={{ fontSize: 8.5, color: MUTED, marginTop: 14, lineHeight: 1.5 }}>
-        Costs are hours × each person&rsquo;s break-even rate: what a project consumed, not what left
-        the bank. The donation funded projects are not billed; i7 and MME are. Grants Pass Church and School buy hours in advance at $90,
-        which is what the balance columns track; the others have no allowance, so those cells are
-        blank rather than zero. A blank donation means nothing came in, unless the month has not ended yet.
-        For i7 and MME, billed is hours times the client rate, as on the i7 invoices, and net is billed
-        minus employee and contractor costs.
-      </p>
+      {type === 'client' && (
+        <p style={{ fontSize: 8.5, color: MUTED, marginTop: 14, lineHeight: 1.5 }}>
+          Grants Pass Church and School buy hours in advance, which is what the balance columns track; the
+          others have no allowance, so those cells are blank rather than zero. A blank donation means nothing
+          came in, unless the month has not ended yet.
+        </p>
+      )}
     </div>
   )
 }

@@ -23,6 +23,7 @@ import { launchBrowser } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { I7_EXPORT_KEYS, projectsExportKeys } from '@/lib/tsheets/export-keys'
 import { spanWording } from '@/lib/tsheets/range'
+import { monthName } from '@/lib/timeclock/periods'
 import { ROUTES } from '@/lib/nav/routes'
 
 export const runtime = 'nodejs'
@@ -30,13 +31,17 @@ export const maxDuration = 60
 export const preferredRegion = 'iad1'
 export const dynamic = 'force-dynamic'
 
-const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const monthLabel = (ym: string) => /^\d{4}-\d{2}$/.test(ym) ? `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
+const monthLabel = (ym: string) => monthName(ym)
+const plain = (text: string, status: number) => new Response(text, { status, headers: { 'Content-Type': 'text/plain' } })
 
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const month = url.searchParams.get('month') ?? ''
+  // The file is named after this month and the page reads it: anything else
+  // used to be swapped for the current month while the file kept the name asked.
+  if (!MONTH.test(month)) return plain('Choose a month (YYYY-MM).', 400)
   // Which report. One route rather than two, because everything below it is
   // launching a headless browser and setting margins, and none of that differs.
   const report = url.searchParams.get('report') === 'projects' ? 'projects' : 'i7'
@@ -66,8 +71,11 @@ export async function GET(request: Request) {
     const page = await browser.newPage()
     if (cookie) await page.setExtraHTTPHeaders({ cookie })
     await page.goto(target, { waitUntil: 'networkidle0', timeout: 45_000 })
-    // Belt-and-suspenders: make sure the document actually rendered.
-    await page.waitForSelector('.print-doc', { timeout: 10_000 })
+    // The document, or a page saying why there is none (the print page's
+    // PrintError): that reason goes back to the preview instead of a PDF.
+    await page.waitForSelector('.print-doc, [data-print-error]', { timeout: 10_000 })
+    const refused = await page.$eval('[data-print-error]', el => el.textContent ?? '').catch(() => null)
+    if (refused) return plain(refused.trim(), 409)
 
     const label = type === 'history' && /^\d{4}-\d{2}$/.test(month)
       ? spanWording(`${month.slice(0, 4)}-01`, month)
@@ -124,12 +132,9 @@ export async function GET(request: Request) {
       },
     })
   } catch (err) {
+    // The detail stays in the server log; the person gets a sentence.
     console.error('[time-report/pdf] generation failed:', err)
-    const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    return new Response(`PDF generation failed: ${detail}`, {
-      status: 500,
-      headers: { 'Content-Type': 'text/plain' },
-    })
+    return plain('The PDF could not be made just now. Try again in a moment.', 500)
   } finally {
     await browser?.close()
   }

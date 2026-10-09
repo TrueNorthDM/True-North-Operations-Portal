@@ -15,25 +15,21 @@
  */
 
 import { useState, useEffect } from 'react'
+import { budgetStatus, BUDGET_STATUS_LABEL, type BudgetStatus } from '@/lib/tsheets/i7-view'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import type { I7Carryover } from '@/lib/tsheets/types'
 
 const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
 
-type Status = 'good' | 'warn' | 'bad' | 'none'
-function statusOf(actual: number, budget: number | null | undefined): Status {
-  if (budget == null || budget <= 0) return 'none'
-  const p = actual / budget
-  if (p > 1) return 'bad'
-  if (p >= 0.75) return 'warn'
-  return 'good'
-}
+// The status and its words are the PDF's too (lib/tsheets/i7-view.ts).
+type Status = BudgetStatus
+const statusOf = budgetStatus
 const PILL: Record<Status, { cls: string; label: string }> = {
-  good: { cls: 'text-[#1E9E6A] bg-[#eafaf1] border-[#c3ead5]', label: 'On track' },
-  warn: { cls: 'text-amber-700 bg-amber-50 border-amber-200', label: 'Watch' },
-  bad: { cls: 'text-red-700 bg-red-50 border-red-200', label: 'Over budget' },
-  none: { cls: 'text-slate-500 bg-slate-100 border-slate-200', label: 'No budget' },
+  good: { cls: 'text-[#1E9E6A] bg-[#eafaf1] border-[#c3ead5]', label: BUDGET_STATUS_LABEL.good },
+  warn: { cls: 'text-amber-700 bg-amber-50 border-amber-200', label: BUDGET_STATUS_LABEL.warn },
+  bad: { cls: 'text-red-700 bg-red-50 border-red-200', label: BUDGET_STATUS_LABEL.bad },
+  none: { cls: 'text-slate-500 bg-slate-100 border-slate-200', label: BUDGET_STATUS_LABEL.none },
 }
 
 /** The budget-balance card: navy header + this month's total, balance left and

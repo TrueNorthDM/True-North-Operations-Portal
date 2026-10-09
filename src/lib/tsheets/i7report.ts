@@ -140,6 +140,12 @@ export function buildI7Report(
   const projects: I7Project[] = []
   // Name → hours this month, which is what decides whether they get a column.
   const personTotals = new Map<string, number>()
+  // Rounded once, at the smallest cell (a person within an activity), and
+  // added up from there in whole cents and hundredths of an hour (audit,
+  // 9 October 2026). Rounding every level on its own let two job codes of
+  // 7 minutes at $95 read $11.08 + $11.08 under a total of $22.17: the lines
+  // on an invoice must add up to its total, the July lesson (format.ts).
+  const hundredths = (n: number) => Math.round(n * 100)
   let totalHours = 0
   let totalCost = 0
 
@@ -159,7 +165,7 @@ export function buildI7Report(
       let cHours = 0, cCost = 0
       const cByPerson = new Map<string, number>()
       for (const [activity, ppl] of acts) {
-        let aHours = 0, aCost = 0
+        let aHours = 0, aCost = 0   // hundredths
         const aByPerson = new Map<string, number>()
         for (const [personId, leaf] of ppl) {
           // A person with no name is a link that never happened, so the id is
@@ -170,20 +176,20 @@ export function buildI7Report(
           aByPerson.set(name, (aByPerson.get(name) ?? 0) + leaf.hours)
           cByPerson.set(name, (cByPerson.get(name) ?? 0) + leaf.hours)
           pByPerson.set(name, (pByPerson.get(name) ?? 0) + leaf.hours)
-          aHours += leaf.hours
-          aCost += leaf.cost
+          aHours += hundredths(leaf.hours)
+          aCost += hundredths(leaf.cost)
         }
-        activities.push({ activity, hours: round2(aHours), cost: round2(aCost), byPerson: roundMap(aByPerson) })
+        activities.push({ activity, hours: aHours / 100, cost: aCost / 100, byPerson: roundMap(aByPerson) })
         cHours += aHours
         cCost += aCost
       }
       activities.sort((a, b) => b.hours - a.hours)
-      jobcodes.push({ code, hours: round2(cHours), cost: round2(cCost), activities, byPerson: roundMap(cByPerson) })
+      jobcodes.push({ code, hours: cHours / 100, cost: cCost / 100, activities, byPerson: roundMap(cByPerson) })
       pHours += cHours
       pCost += cCost
     }
     jobcodes.sort((a, b) => a.code.localeCompare(b.code))
-    projects.push({ project, hours: round2(pHours), cost: round2(pCost), jobcodes, byPerson: roundMap(pByPerson) })
+    projects.push({ project, hours: pHours / 100, cost: pCost / 100, jobcodes, byPerson: roundMap(pByPerson) })
     totalHours += pHours
     totalCost += pCost
   }
@@ -198,9 +204,10 @@ export function buildI7Report(
 
   const [year, monthIdx] = startDate.split('-').map(Number)
   const month = span?.label ?? `${MONTH_NAMES[monthIdx - 1]} ${year}`
-  const endDate = span?.endDate ?? new Date(year, monthIdx, 0).toISOString().slice(0, 10)
+  // In UTC: a local midnight east of UTC printed the day before.
+  const endDate = span?.endDate ?? new Date(Date.UTC(year, monthIdx, 0)).toISOString().slice(0, 10)
 
-  return { month, startDate, endDate, projects, people, totalHours: round2(totalHours), totalCost: round2(totalCost), hasRates: sawRate }
+  return { month, startDate, endDate, projects, people, totalHours: totalHours / 100, totalCost: totalCost / 100, hasRates: sawRate }
 }
 
 

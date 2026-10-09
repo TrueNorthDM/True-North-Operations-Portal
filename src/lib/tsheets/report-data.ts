@@ -5,7 +5,6 @@
 // trend series. No live TSheets calls.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadI7EntriesHere, loadI7UniverseHere } from '@/lib/timeclock/report-source'
 import { retentionFloorDate } from './retention'
@@ -77,13 +76,24 @@ async function loadUniverse(): Promise<{ jobcodes: string[] }> {
   return loadI7UniverseHere(createAdminClient(), retentionFloorDate(new Date()))
 }
 
+/**
+ * A read that fails stops the report (audit, 9 October 2026). Reading on
+ * would turn the failure into a plausible number: no budget reads as over
+ * budget, no rate as $0 used, and nothing on screen would say so. Every read
+ * here is the server's own (the privileged client): what a client is told
+ * never depends on the viewer's database role (memory: client report access).
+ */
+function failed(what: string, error: { message: string } | null | undefined): void {
+  if (error) throw new Error(`The i7 report could not read ${what}: ${error.message}`)
+}
+
 // tsheets_user_id → display (first) name, from the synced directory.
 // person id → display (first) name. Every active person, not only the ones
 // with a TSheets account: a contractor whose hours are added by hand has a
 // name here and nowhere else.
 async function loadNames(): Promise<Record<string, string>> {
-  const supabase = await createClient()
-  const { data } = await supabase.from('people').select('id, full_name')
+  const { data, error } = await createAdminClient().from('people').select('id, full_name')
+  failed('names', error)
   const out: Record<string, string> = {}
   for (const p of (data ?? []) as { id: string; full_name: string | null }[]) {
     out[p.id] = (p.full_name || '').split(' ')[0] || `Person ${p.id.slice(0, 8)}`
@@ -93,9 +103,10 @@ async function loadNames(): Promise<Record<string, string>> {
 
 // `db`: the cron passes the privileged client, having no signed-in user.
 export async function loadI7Assignments(db?: SupabaseClient): Promise<Assignment[]> {
-  const supabase = db ?? await createClient()
-  const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
-  if (!i7) return []
+  const supabase = db ?? createAdminClient()
+  const { data: i7, error } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
+  failed('the i7 client', error)
+  if (!i7) throw new Error('The i7 client is missing from the rates table, so no cost can be worked out.')
   // hourly_rate is no longer readable by the `authenticated` role (migration
   // 054). The rates never leave this function: they are multiplied into the
   // costs the report already showed, which team leaders are meant to see.
@@ -114,8 +125,9 @@ export interface BudgetInputs {
 
 // The month's total $ budget (budget + extra) per month, the source of truth.
 async function loadBudgetInputs(db?: SupabaseClient): Promise<BudgetInputs> {
-  const supabase = db ?? await createClient()
-  const { data } = await supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount')
+  const supabase = db ?? createAdminClient()
+  const { data, error } = await supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount')
+  failed('the monthly budgets', error)
   const flat: Record<string, number> = {}
   for (const b of data ?? []) flat[String(b.month).slice(0, 7)] = Number(b.budget_amount) + Number(b.extra_amount)
   return { flat }
@@ -127,14 +139,16 @@ async function loadBudgetInputs(db?: SupabaseClient): Promise<BudgetInputs> {
 // it added together: what a quarter was meant to take is what its three months
 // were meant to take.
 async function loadProjectHours(from: string, to: string): Promise<Record<string, number>> {
-  const supabase = await createClient()
-  const { data: i7 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
+  const supabase = createAdminClient()
+  const { data: i7, error: e1 } = await supabase.from('tr_clients').select('id').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
+  failed('the i7 client', e1)
   if (!i7) return {}
-  const { data } = await supabase.from('i7_project_month_hours')
+  const { data, error } = await supabase.from('i7_project_month_hours')
     .select('project, hours_allocated')
     .eq('client_id', i7.id)
     .gte('month', `${from}-01`)
     .lte('month', `${to}-01`)
+  failed('the budgeted hours', error)
   const out: Record<string, number> = {}
   for (const p of data ?? []) out[p.project] = (out[p.project] ?? 0) + Number(p.hours_allocated)
   return out
@@ -158,8 +172,8 @@ export interface ProjectDirectory {
 // rides along so the budget-hours grid can estimate how many hours the month's
 // budget covers at the highest rate.
 export async function loadProjectDirectory(ym: string): Promise<ProjectDirectory> {
-  const supabase = await createClient()
-  const { data: i7 } = await supabase.from('tr_clients').select('name').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
+  const { data: i7, error } = await createAdminClient().from('tr_clients').select('name').eq('tsheets_jobcode_id', I7_PARENT_JOBCODE_ID).maybeSingle()
+  failed('the i7 client', error)
 
   const [universe, assignments] = await Promise.all([
     loadUniverse(),
@@ -408,8 +422,8 @@ export async function loadI7ByMonth(from: string, to: string): Promise<I7MonthSl
 
 // The optional narrative for a month (empty string when none).
 export async function loadReportNote(month: string): Promise<string> {
-  const supabase = await createClient()
-  const { data } = await supabase.from('i7_report_notes').select('note').eq('month', `${month}-01`).maybeSingle()
+  const { data, error } = await createAdminClient().from('i7_report_notes').select('note').eq('month', `${month}-01`).maybeSingle()
+  failed('the month note', error)
   return data?.note ?? ''
 }
 

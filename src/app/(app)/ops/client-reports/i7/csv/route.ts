@@ -17,6 +17,7 @@
  */
 
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
+import { isMMEProject as isMME } from '@/lib/tsheets/i7-view'
 import { I7_EXPORT_KEYS } from '@/lib/tsheets/export-keys'
 import { loadI7ByMonth, loadI7Days } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
@@ -26,7 +27,6 @@ import { resolveRange, spanWording } from '@/lib/tsheets/range'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const isMME = (name: string) => /mme|moisture/i.test(name)
 const round2 = (n: number) => Math.round(n * 100) / 100
 const pct = (v: number, t: number) => (t > 0 ? Math.round((v / t) * 100) : 0)
 

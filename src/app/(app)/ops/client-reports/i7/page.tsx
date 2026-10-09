@@ -167,7 +167,6 @@ async function I7Tab({ month, from, to, team }: { month?: string; from?: string;
             projectHours={{ 'Wagner Meters (WM)': 221, 'Bessemeter': 188, 'Moisture Meters (MME)': 5, 'i7 Marketing': 40 }}
             carryover={{ opening: -2500, monthBudget: 50000, monthUsed: 4200, totalAvailable: 47500, totalLeft: 43300, openingFrom: '2026-01', openingComplete: true }}
             stdRate={95}
-            trend={MOCK_TREND}
             preview
           />
           <ClientFullHistory trend={MOCK_TREND} currentMonth="2026-06" />
@@ -185,16 +184,17 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
   try {
     data = await loadI7ReportData(range.from, range.to)
   } catch (e) {
-    fetchError = e instanceof Error ? e.message : 'Unknown error reading the report.'
+    // The detail goes to the server log; the page says what to do.
+    console.error('[i7 report]', e instanceof Error ? e.message : e)
+    fetchError = 'read'
   }
 
   if (fetchError) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 space-y-2">
-        <p className="font-semibold text-red-700">Couldn&apos;t load the report</p>
-        <p className="text-sm text-red-600 font-mono">{fetchError}</p>
-        <p className="text-sm text-red-500">
-          The report reads from the synced cache. If this persists, run a sync from <Link href="/admin/settings" className="underline">Settings</Link>.
+        <p className="font-semibold text-red-700">The report could not be read just now</p>
+        <p className="text-sm text-red-600 m-0">
+          Nothing is shown rather than a figure that could be wrong. Reload the page in a moment. If it keeps happening, look at the integrations on <Link href="/admin/automations" className="underline">Automations</Link>.
         </p>
       </div>
     )
@@ -211,8 +211,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
 
   // The teams the filter offers.
   const { teams } = await loadTeamRoster()
-  const filterTeams = teams
-  const selectedTeam = filterTeams.some(t => t.id === team) ? team! : ''
+  const selectedTeam = teams.some(t => t.id === team) ? team! : ''
 
   // A month with no logged hours still shows the full report (month picker,
   // budget/carryover, charts), just with an empty hours table, instead of a
@@ -230,13 +229,12 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
     ? { ...(await loadAllManualHours(createAdminClient(), range.to)), blurb: MANUAL_BLURB }
     : undefined
 
-  const report = full
   const unratedPeople = data?.unratedPeople ?? []
 
   return (
     <>
       <I7ReportView
-        data={report}
+        data={full}
         unratedPeople={unratedPeople}
         range={range}
         availableMonths={availableMonths}
@@ -244,12 +242,11 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         // The carryover panel is In Numbers' alone.
         carryover={views.includes('numbers') ? data?.carryover ?? null : null}
         stdRate={data?.stdRate ?? 0}
-        trend={data?.trend ?? []}
         views={views}
         manual={manual}
         canExport={access.can('i7-export')}
         canTeamUpdate={access.can('report-team-update')}
-        teams={filterTeams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
+        teams={teams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
         selectedTeam={selectedTeam}
       />
       <ClientFullHistory

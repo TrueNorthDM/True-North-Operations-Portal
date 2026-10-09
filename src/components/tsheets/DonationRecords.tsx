@@ -17,6 +17,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDonation } from '@/lib/timeclock/money-in-actions'
+import { useConfirm } from '@/components/ui/useConfirm'
 import type { DonationEntry, DonationLogEntry } from '@/lib/timeclock/donations-ledger'
 import { ROUTES } from '@/lib/nav/routes'
 
@@ -26,10 +27,11 @@ const monthLabel = (ym: string) => `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slic
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })
 
-/** "9 Sep 2026, 14:32" in the reader's own zone, which is where they typed it. */
+/** "9 Sep 2026, 2:32 PM" in the reader's own zone, which is where they typed it. */
 function when(iso: string): string {
   const d = new Date(iso)
-  return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}, ${time}`
 }
 
 const TH = 'text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 whitespace-nowrap'
@@ -119,7 +121,7 @@ export function DonationRecords(
             looks like nothing ever happened. */}
         {logMissing ? (
           <Empty>
-            The change log table is not in the database yet. Run migration 080 and it will fill from here on.
+            The change history is not available right now.
           </Empty>
         ) : log.length === 0 ? (
           <Empty>No changes recorded{year ? ` for ${year}` : ''}.</Empty>
@@ -228,16 +230,29 @@ function Row(
   const [note, setNote] = useState(entry.note ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const [confirmDialog, confirm] = useConfirm()
 
   function submit(nextAmount: string) {
     setError(null)
     start(async () => {
       const res = await saveDonation({
         project: entry.project, month: entry.month, amount: nextAmount, note,
-      })
+      }).catch(() => ({ ok: false, error: 'That did not save. Try again in a moment.' }))
+      // Saved but without its history line: said, not hidden.
+      if (res.ok && (res as { warning?: string }).warning) { setError((res as { warning?: string }).warning!); return }
       if (res.ok) onSaved()
       else setError(res.error ?? 'That did not save.')
     })
+  }
+
+  async function remove() {
+    const yes = await confirm({
+      title: 'Delete this donation?',
+      body: `${money(entry.amount)} for ${entry.projectName} in ${monthLabel(entry.month)} leaves the report. The change history keeps a record of it.`,
+      action: 'Delete',
+      danger: true,
+    })
+    if (yes) submit('')
   }
 
   if (!open) {
@@ -246,7 +261,7 @@ function Row(
         <td className={`${TD} font-semibold whitespace-nowrap`}>{entry.projectName}</td>
         <td className={`${TD} whitespace-nowrap`}>{monthLabel(entry.month)}</td>
         <td className={`${TD} text-right tabular-nums font-semibold whitespace-nowrap`}>{money(entry.amount)}</td>
-        <td className={`${TD} text-muted max-w-[280px]`}>{entry.note || <span className="text-slate-300">-</span>}</td>
+        <td className={`${TD} text-muted`}>{entry.note || <span className="text-slate-300">-</span>}</td>
         <td className={`${TD} text-muted text-[13px] whitespace-nowrap`}>
           {entry.lastChangedAt ? (
             <>
@@ -297,8 +312,9 @@ function Row(
         <div className="flex items-center justify-end gap-2">
           {/* Removing is saving an empty amount, which is the rule saveDonation
               already had: a blank month and a zero month are different things. */}
+          {confirmDialog}
           <button
-            type="button" disabled={pending} onClick={() => submit('')}
+            type="button" disabled={pending} onClick={remove}
             className="text-[13.5px] font-semibold text-[#c2410c] hover:underline disabled:opacity-50"
           >
             Delete

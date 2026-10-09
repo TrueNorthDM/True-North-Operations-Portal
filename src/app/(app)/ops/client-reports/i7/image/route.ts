@@ -2,29 +2,33 @@
  * GET /ops/client-reports/i7/image?month=YYYY-MM
  *
  * A shareable PNG of the i7 budget at a glance, the card the team sends around
- * (like the spreadsheet screenshot, but generated). Shows budget used ($ + %),
- * amount left, and the month's total budget. "Used" includes any overage carried
- * in from prior months, so: used = this month's cost − carried-in balance (a
- * negative carried-in adds the overage); left = total budget − used.
+ * (like the spreadsheet screenshot, but generated). Shows this month's spend
+ * against the budget available this month (the month's budget plus or minus
+ * what carried in), the percentage, and what is left: the same figures, to the
+ * cent, as the report (lib/tsheets/format.ts money).
  *
- * Built server-side: we load the report data with the caller's session, render a
- * self-contained HTML card into headless Chromium (setContent, no auth forward
- * needed), and screenshot it. Same Chromium setup as the PDF route.
+ * Built server-side: the balance is read with the privileged reader, a
+ * self-contained HTML card is rendered into headless Chromium (setContent, no
+ * auth forward needed), and screenshot. Same Chromium setup as the PDF route.
+ * The month must be YYYY-MM: it is written into that HTML (audit, 9 October 2026).
  */
 
 import type { Browser } from 'puppeteer-core'
 import { launchBrowser } from '@/lib/pdf/browser'
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
+import { money as cents } from '@/lib/tsheets/format'
+import { monthName } from '@/lib/timeclock/periods'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 export const preferredRegion = 'iad1'
 export const dynamic = 'force-dynamic'
 
-const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const monthLabel = (ym: string) => /^\d{4}-\d{2}$/.test(ym) ? `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym
-const money = (n: number) => (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString('en-US')
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
+const monthLabel = (ym: string) => monthName(ym)
+/** Cents, as on the report; a minus written as the report writes it. */
+const money = (n: number) => (n < 0 ? '−' : '') + cents(Math.abs(n))
 
 
 function cardHtml(month: string, c: { opening: number; monthBudget: number; monthUsed: number; totalAvailable: number; totalLeft: number } | null): string {
@@ -105,6 +109,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const month = url.searchParams.get('month') ?? ''
+  if (!MONTH.test(month)) return new Response('Choose a month (YYYY-MM).', { status: 400, headers: { 'Content-Type': 'text/plain' } })
 
   let browser: Browser | null = null
   try {
@@ -133,9 +138,9 @@ export async function GET(request: Request) {
       },
     })
   } catch (err) {
+    // The detail stays in the server log; the person gets a sentence.
     console.error('[time-report/image] generation failed:', err)
-    const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    return new Response(`Image generation failed: ${detail}`, { status: 500, headers: { 'Content-Type': 'text/plain' } })
+    return new Response('The image could not be made just now. Try again in a moment.', { status: 500, headers: { 'Content-Type': 'text/plain' } })
   } finally {
     await browser?.close()
   }

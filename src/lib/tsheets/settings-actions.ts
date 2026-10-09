@@ -10,6 +10,33 @@ import { ROUTES } from '@/lib/nav/routes'
 
 // TSheets sync actions live in ./sync-actions.ts (audit M5-2).
 
+/**
+ * Who is saving (from the session), and the client the save is written with:
+ * the privileged one, after the access item above has decided (audit,
+ * 9 October 2026). Written with the session, a save by someone given the item
+ * but not the database's admin role changed nothing and still answered ok.
+ */
+async function writer() {
+  const session = await createClient()
+  const { data: { user } } = await session.auth.getUser()
+  return { supabase: createAdminClient(), user }
+}
+
+type Writer = Awaited<ReturnType<typeof writer>>['supabase']
+
+/** A line in the settings history. A failure is logged, never silent. */
+async function audit(supabase: Writer, row: Record<string, unknown>) {
+  const { error } = await supabase.from('tr_audit_log').insert(row as never)
+  if (error) console.error('[i7 settings] history line not written:', error.message)
+}
+
+/** The day before a YYYY-MM-DD, in UTC whatever the server's zone. */
+const dayBefore = (iso: string) => {
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+
 // ─── Budget ──────────────────────────────────────────────────────────────────
 
 export async function saveTrBudget(input: {
@@ -32,8 +59,7 @@ export async function saveTrBudget(input: {
     return { ok: false, error: 'Extra budget start date is required when an extra budget is set.' }
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
 
   // Close the current active budget for this client
   const { data: current } = await supabase
@@ -44,11 +70,9 @@ export async function saveTrBudget(input: {
     .maybeSingle()
 
   if (current) {
-    const endDate = new Date(input.budgetStartDate)
-    endDate.setDate(endDate.getDate() - 1)
     const { error } = await supabase
       .from('tr_budgets')
-      .update({ end_date: endDate.toISOString().slice(0, 10) })
+      .update({ end_date: dayBefore(input.budgetStartDate) })
       .eq('id', current.id)
     if (error) return { ok: false, error: error.message }
   }
@@ -74,7 +98,7 @@ export async function saveTrBudget(input: {
   if (insertErr) return { ok: false, error: insertErr.message }
 
   // Audit log
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'budget',
     entity_id: inserted.id,
     action: current ? 'update' : 'create',
@@ -107,8 +131,7 @@ export async function saveMonthlyBudgets(input: {
     if (c.budgetAmount < 0 || c.extraAmount < 0) return { ok: false, error: 'Amounts must be 0 or more.' }
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
 
   // Previous values (for the audit before/after)
   const monthKeys = input.changes.map(c => `${c.month}-01`)
@@ -134,7 +157,7 @@ export async function saveMonthlyBudgets(input: {
     if (error) return { ok: false, error: error.message }
   }
 
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'monthly_budget',
     entity_id: 0,
     action: 'update',
@@ -153,8 +176,7 @@ export async function saveMonthlyBudgets(input: {
 export async function saveReportNote(input: { month: string; note: string }): Promise<{ ok: boolean; error?: string }> {
   const notAdmin = await requireAdmin('i7-note')
   if (notAdmin) return { ok: false, error: notAdmin }
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
   const { error } = await supabase
     .from('i7_report_notes')
     .upsert({ month: `${input.month}-01`, note: input.note, updated_by: user?.id, updated_at: new Date().toISOString() }, { onConflict: 'month' })
@@ -182,8 +204,7 @@ export async function saveProjectMonthHours(input: {
     if (c.hours < 0) return { ok: false, error: 'Hours must be 0 or more.' }
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
 
   const { data: existing } = await supabase
     .from('i7_project_month_hours')
@@ -206,7 +227,7 @@ export async function saveProjectMonthHours(input: {
     if (error) return { ok: false, error: error.message }
   }
 
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'project_month_hours',
     entity_id: input.clientId,
     action: 'update',
@@ -233,8 +254,7 @@ export async function saveProjectBudget(input: {
   const notAdmin = await requireAdmin()
   if (notAdmin) return { ok: false, error: notAdmin }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
 
   // Close the current active hours for this project
   const { data: current } = await supabase
@@ -246,11 +266,10 @@ export async function saveProjectBudget(input: {
     .maybeSingle()
 
   if (current) {
-    const closeDate = new Date(input.effectiveFrom)
-    closeDate.setDate(closeDate.getDate() - 1)
+    const closeDate = dayBefore(input.effectiveFrom)
     const { error } = await supabase
       .from('tr_project_budgets')
-      .update({ effective_to: closeDate.toISOString().slice(0, 10) })
+      .update({ effective_to: closeDate })
       .eq('id', current.id)
     if (error) return { ok: false, error: error.message }
   }
@@ -269,7 +288,7 @@ export async function saveProjectBudget(input: {
     .single()
   if (insertErr) return { ok: false, error: insertErr.message }
 
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'project_budget',
     entity_id: inserted.id,
     action: current ? 'update' : 'create',
@@ -304,16 +323,17 @@ export async function saveTrAssignment(input: {
   const notAdmin = await requireAdmin()
   if (notAdmin) return { ok: false, error: notAdmin }
 
-  const session = await createClient()
-  const { data: { user } } = await session.auth.getUser()
+  // A rate starts on the 1st (decided 9 October 2026): the report prices a
+  // whole month at one rate, so a rate from the 15th would bill the first
+  // half of the month at it too.
+  if (!/^\d{4}-\d{2}-01$/.test(input.effectiveFrom)) {
+    return { ok: false, error: 'A rate starts on the first day of a month. Choose the 1st.' }
+  }
 
   // The rate table goes through the privileged client, the way every other
-  // reader of it already does. Migration 054 revoked SELECT on the table from
-  // `authenticated` and re-granted a fixed list of columns, so a session
-  // client cannot read hourly_rate at all, and cannot read person_id either
-  // because that column did not exist when the list was written. This is
-  // still admin-only: requireAdmin above is the gate, not the grant.
-  const supabase = createAdminClient()
+  // reader of it already does (migration 054 closed hourly_rate to the
+  // signed-in role). requireAdmin above is the gate, not the grant.
+  const { supabase, user } = await writer()
 
   // Close current active assignment
   const { data: current } = await supabase
@@ -326,11 +346,10 @@ export async function saveTrAssignment(input: {
     .maybeSingle()
 
   if (current) {
-    const closeDate = new Date(input.effectiveFrom)
-    closeDate.setDate(closeDate.getDate() - 1)
+    const closeDate = dayBefore(input.effectiveFrom)
     const { error } = await supabase
       .from('tr_assignments')
-      .update({ effective_to: closeDate.toISOString().slice(0, 10) })
+      .update({ effective_to: closeDate })
       .eq('id', current.id)
     if (error) return { ok: false, error: error.message }
   }
@@ -353,7 +372,7 @@ export async function saveTrAssignment(input: {
   if (insertErr) return { ok: false, error: insertErr.message }
 
   // Audit log
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'assignment',
     entity_id: inserted.id,
     action: current ? 'update' : 'create',
@@ -377,21 +396,21 @@ export async function savePersonCostRate(input: {
   const notAdmin = await requireAdmin('d-rates')
   if (notAdmin) return { ok: false, error: notAdmin }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
 
   // internal_rate is unreadable by the `authenticated` role (migration 054),
   // so the audit "before" snapshot comes through the privileged reader.
   const before = await loadPersonCompensation(input.personId)
   if (!before) return { ok: false, error: 'Person not found.' }
 
-  const { error: updErr } = await supabase
+  const { data: updRows, error: updErr } = await supabase
     .from('people')
     .update({ internal_rate: input.costRate })
-    .eq('id', input.personId)
+    .eq('id', input.personId).select('id')
   if (updErr) return { ok: false, error: updErr.message }
+  if ((updRows ?? []).length !== 1) return { ok: false, error: 'Person not found.' }
 
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'person_cost',
     entity_id: 0, // person is keyed by UUID; the name lives in after_data
     action: 'update',
@@ -416,21 +435,21 @@ export async function savePersonBeRate(input: {
   const notAdmin = await requireAdmin('d-rates')
   if (notAdmin) return { ok: false, error: notAdmin }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
 
   // Read through the privileged reader, like the cost rate: be_rate is excluded
   // from the `authenticated` column grant for the same reason it is.
   const before = await loadPersonCompensation(input.personId)
   if (!before) return { ok: false, error: 'Person not found.' }
 
-  const { error: updErr } = await supabase
+  const { data: updRows, error: updErr } = await supabase
     .from('people')
     .update({ be_rate: input.beRate })
-    .eq('id', input.personId)
+    .eq('id', input.personId).select('id')
   if (updErr) return { ok: false, error: updErr.message }
+  if ((updRows ?? []).length !== 1) return { ok: false, error: 'Person not found.' }
 
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'person_be_rate',
     entity_id: 0,
     action: 'update',
@@ -456,20 +475,20 @@ export async function savePersonMonthlySalary(input: {
   const notAdmin = await requireAdmin('d-rates')
   if (notAdmin) return { ok: false, error: notAdmin }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await writer()
 
   // Same as savePersonCostRate: the old value is a privileged read now.
   const before = await loadPersonCompensation(input.personId)
   if (!before) return { ok: false, error: 'Person not found.' }
 
-  const { error: updErr } = await supabase
+  const { data: updRows, error: updErr } = await supabase
     .from('people')
     .update({ monthly_salary: input.monthlySalary })
-    .eq('id', input.personId)
+    .eq('id', input.personId).select('id')
   if (updErr) return { ok: false, error: updErr.message }
+  if ((updRows ?? []).length !== 1) return { ok: false, error: 'Person not found.' }
 
-  await supabase.from('tr_audit_log').insert({
+  await audit(supabase, {
     entity_type: 'person_salary',
     entity_id: 0, // person is keyed by UUID; the name lives in after_data
     action: 'update',

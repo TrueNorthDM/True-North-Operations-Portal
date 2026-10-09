@@ -80,38 +80,32 @@ export async function GET(request: Request) {
     // i7 and MME are not by person (September 2026), so the total is of the four.
     lines.push(row([label, 'TOTAL', '', hrs(peopleView(data).workedThisMonth)]))
   } else {
+    // The client file: hours, prepaid balance and what came in. No costs, no
+    // margin, and no i7 or MME rows, whose figures are what was invoiced
+    // (decided 9 October 2026). Costs are in the month by month export.
+    const shown = data.rows.filter(r => !r.billed)
     lines.push(row([
-      'Period', 'Project', 'Carried in', 'Prepaid', 'Remaining',
-      'Hours', 'Employee costs (USD)', 'Contractor costs (USD)', 'Donations / billed (USD)', 'Net (USD)',
-      `Total hours ${year}`, `Total donations / billed ${year} (USD)`, `Total costs ${year} (USD)`,
-      `${lastYear} hours, same period`,
+      'Period', 'Project', 'Carried in', 'Prepaid', 'Remaining', 'Hours', 'Donations (USD)',
+      `Total hours ${year}`, `Total donations ${year} (USD)`, `${lastYear} hours, same period`,
     ]))
-    for (const r of data.rows) {
+    for (const r of shown) {
       lines.push(row([
-        label, r.billed ? `${r.name} (billed)` : r.name, hrs(r.carriedIn), hrs(r.boughtThisMonth), hrs(r.remaining),
-        hrs(r.workedThisMonth), cash(r.employeeCostThisMonth), cash(r.contractorCostThisMonth),
-        cash(r.donationsThisMonth), cash(r.netThisMonth), hrs(r.yearToDate), cash(r.donationsYtd),
-        cash(r.totalCosts), hrs(r.sameMonthLastYear),
+        label, r.name, hrs(r.carriedIn), hrs(r.boughtThisMonth), hrs(r.remaining),
+        hrs(r.workedThisMonth), cash(r.donationsThisMonth), hrs(r.yearToDate), cash(r.donationsYtd),
+        hrs(r.sameMonthLastYear),
       ]))
     }
-
-    /** Only the rows that have one contribute, so a total is of the same rows the column shows. */
-    const sum = (pick: (r: typeof data.rows[number]) => number | null) => {
-      const parts = data.rows.map(pick).filter((n): n is number => n != null)
-      return parts.length === 0 ? null : parts.reduce((a, b) => a + b, 0)
-    }
-    const givenNow = data.rows.map(r => r.donationsThisMonth).filter((n): n is number => n != null)
-    const givenYtd = data.rows.map(r => r.donationsYtd).filter((n): n is number => n != null)
+    const total = (pick: (r: typeof shown[number]) => number | null) => shown.reduce((s, r) => s + (pick(r) ?? 0), 0)
+    const givenNow = shown.map(r => r.donationsThisMonth).filter((n): n is number => n != null)
+    const givenYtd = shown.map(r => r.donationsYtd).filter((n): n is number => n != null)
 
     lines.push(row([
-      label, 'TOTAL', '', '', hrs(data.rows.reduce((s, r) => s + (r.remaining ?? 0), 0)),
-      hrs(data.totals.workedThisMonth), cash(data.totals.employeeCostThisMonth),
-      cash(data.totals.contractorCostThisMonth),
+      label, 'TOTAL', '', '', hrs(total(r => r.remaining)),
+      hrs(total(r => r.workedThisMonth)),
       givenNow.length ? cash(givenNow.reduce((s, n) => s + n, 0)) : '',
-      cash(sum(r => r.netThisMonth)),
-      hrs(data.totals.yearToDate),
+      hrs(total(r => r.yearToDate)),
       givenYtd.length ? cash(givenYtd.reduce((s, n) => s + n, 0)) : '',
-      cash(data.totals.totalCosts), hrs(data.totals.sameMonthLastYear),
+      hrs(total(r => r.sameMonthLastYear)),
     ]))
   }
 

@@ -278,12 +278,15 @@ export function crossed(used: number, budget: number): 75 | 90 | null {
 export async function i7Drafts(ctx: Ctx): Promise<Draft[]> {
   const month = ctx.today.slice(0, 7)
   const c = await loadI7Carryover(month, ctx.db)
-  const level = crossed(c.monthUsed, c.monthBudget)
+  // Against the money available this month (the budget plus or minus what
+  // carried in), as the report, Home and the image measure it: against the
+  // bare budget the screen could say 92% while this said 81% and never warned.
+  const level = crossed(c.monthUsed, c.totalAvailable)
   if (!level) return []
-  const pct = Math.floor((c.monthUsed / c.monthBudget) * 100)
+  const pct = Math.floor((c.monthUsed / c.totalAvailable) * 100)
   return ctx.aud.withTool('i7-budget').flatMap(r => draftFor(ctx, 'i7-budget', r, {
     title: `i7 budget crossed ${level}%`,
-    body: `i7 has used ${pct}% of ${MONTH[Number(month.slice(5)) - 1]}'s budget.`,
+    body: `i7 has used ${pct}% of the budget available in ${MONTH[Number(month.slice(5)) - 1]}.`,
     href: ROUTES.i7,
     dedupeKey: `${month}:${level}`,
   }))

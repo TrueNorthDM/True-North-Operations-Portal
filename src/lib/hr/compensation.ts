@@ -66,9 +66,12 @@ export async function loadCompensationByPerson(): Promise<Map<string, Compensati
   // the migration being run, which is the same failure the hire_date fallback in
   // budget-usage-data.ts exists to prevent.
   const withBe = await admin.from('people').select('id, internal_rate, monthly_salary, be_rate')
-  const { data } = withBe.error
+  const res = withBe.error
     ? await admin.from('people').select('id, internal_rate, monthly_salary')
     : withBe
+  // A failed read must not come back as "nobody is paid": every cost would be $0.
+  if (res.error) throw new Error(`Pay could not be read: ${res.error.message}`)
+  const { data } = res
 
   const rows = (data ?? []) as {
     id: string; internal_rate: number | null; monthly_salary: number | null; be_rate?: number | null
@@ -110,7 +113,9 @@ export async function loadAssignmentRates(
   if (opts.clientId != null) q = q.eq('client_id', opts.clientId)
   if (opts.activeOnly) q = q.is('effective_to', null).eq('active', true)
 
-  const { data } = await q
+  const { data, error } = await q
+  // A failed read must not come back as "no rates": every cost would be $0.
+  if (error) throw new Error(`Rates could not be read: ${error.message}`)
   const rows = (data ?? []) as {
     id: number; tsheets_user_id: number; person_id: string | null; client_id: number
     hourly_rate: number; effective_from: string | null; effective_to: string | null

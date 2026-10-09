@@ -93,6 +93,7 @@ const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px_224px] gap
 export function PeopleTab({ people, allClients }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().slice(0, 10)
+  const firstOfThisMonth = `${today.slice(0, 7)}-01`
   // The tool is i7-locked; "Rate / client" is the person's rate on the i7 client.
   const i7ClientId = allClients.find(c => /i7/i.test(c.name))?.id ?? null
 
@@ -190,9 +191,11 @@ export function PeopleTab({ people, allClients }: Props) {
     setError(null)
     const rates = changedRates()
     if (rates.length > 0) { setPendingRates(rates); return }
-    void commit(today)
+    void commit(firstOfThisMonth)
   }
 
+  // A rate starts on the 1st (decided 9 October 2026): "this month as well"
+  // starts it on the 1st of this month, which is what a whole-month rate means.
   async function commit(effectiveFrom: string) {
     setPendingRates(null)
     setSaving(true)
@@ -437,7 +440,7 @@ export function PeopleTab({ people, allClients }: Props) {
                 <span className="block text-xs font-normal text-slate-300 mt-0.5">Leaves {monthName(today)} exactly as it is.</span>
               </button>
               <button
-                onClick={() => void commit(today)}
+                onClick={() => void commit(firstOfThisMonth)}
                 className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg border border-amber-300 bg-amber-50 text-[#7a4e05] hover:bg-amber-100 transition-colors text-left"
               >
                 Apply to {monthName(today)} as well

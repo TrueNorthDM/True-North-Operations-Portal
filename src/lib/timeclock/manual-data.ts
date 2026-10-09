@@ -133,21 +133,33 @@ async function peopleForEntry(supabase: Client, month: string) {
  * alike is the shape of a defect waiting to happen, and neither of them could
  * ever have added an hour for a client that did not yet have a report.
  */
+/** A month as [its first day, the first day of the next): every month has both. */
+export function monthSpan(month: string): { start: string; next: string } {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error(`Not a month: ${month}`)
+  const [y, m] = month.split('-').map(Number)
+  return { start: `${month}-01`, next: m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01` }
+}
+
 export async function loadAllManualHours(
   supabase: Client, month: string,
 ): Promise<{ rows: ManualRow[]; options: ManualOptions }> {
-  const start = `${month}-01`
-  const end = `${month}-31`
+  // The month as [first day, first day of the next): "-31" is not a date in
+  // a 30-day month, and Postgres refusing it left the list empty, which read
+  // as "nothing added" and invited adding the same invoice again (audit,
+  // 9 October 2026).
+  const { start, next } = monthSpan(month)
 
   const keys = await loadEntryFieldKeys(supabase)
 
-  const [{ data: jobRows }, { data: entryRows }, people, companies, projects, billable, i7Ids] =
+  const [jobRes, entryRes, people, companies, projects, billable, i7Ids] =
     await Promise.all([
       supabase.from('tc_jobcodes').select('id, name, parent_id, active, external_id'),
+      // Only what the panel added (migration 101): a person's own
+      // duration-only entries from My Hours are not the panel's to list or remove.
       supabase.from('tc_entries')
         .select('id, person_id, entry_date, duration_seconds, jobcode_id, fields, notes, created_by')
-        .eq('kind', 'manual').is('external_id', null)
-        .gte('entry_date', start).lte('entry_date', end)
+        .eq('kind', 'manual').is('external_id', null).not('manual_batch', 'is', null)
+        .gte('entry_date', start).lt('entry_date', next)
         .order('entry_date', { ascending: false }),
       peopleForEntry(supabase, month),
       loadFieldOptions(supabase, keys.company),
@@ -155,6 +167,10 @@ export async function loadAllManualHours(
       loadFieldOptions(supabase, keys.billable),
       i7JobcodeIdsHere(supabase),
     ])
+  if (jobRes.error) throw new Error(`Job codes could not be read: ${jobRes.error.message}`)
+  if (entryRes.error) throw new Error(`Hours added by hand could not be read: ${entryRes.error.message}`)
+  const jobRows = jobRes.data
+  const entryRows = entryRes.data
 
   const all = (jobRows ?? []) as {
     id: number; name: string; parent_id: number | null; active: boolean; external_id: number | null
@@ -195,7 +211,7 @@ export async function loadAllManualHours(
     if (c) codes.add(c)
     if (a) activities.add(a)
   }
-  const recentCodes = await recentI7Codes(supabase, month, keys.code)
+  const recentCodes = await recentI7Codes(supabase, month, keys.code, i7Ids)
   for (const c of recentCodes) codes.add(c)
 
   const rows: ManualRow[] = ((entryRows ?? []) as {
@@ -236,15 +252,24 @@ export async function loadAllManualHours(
   }
 }
 
-/** i7 codes seen in the last year, so the list matches what people already type. */
-async function recentI7Codes(supabase: Client, month: string, codeKey: string | null): Promise<string[]> {
-  if (!codeKey) return []
-  const { data } = await supabase.from('tc_entries').select('fields')
-    .gte('entry_date', optionsSince(month)).limit(20_000)
+/**
+ * i7 codes seen in the last year, so the list matches what people already
+ * type. Read in pages of the i7 tree only: one read stopped at the server's
+ * 1,000 rows, of every client, and left codes out of the list.
+ */
+async function recentI7Codes(supabase: Client, month: string, codeKey: string | null, i7Ids: ReadonlySet<number>): Promise<string[]> {
+  if (!codeKey || !i7Ids.size) return []
   const out = new Set<string>()
-  for (const r of (data ?? []) as { fields: Record<string, string> | null }[]) {
-    const c = r.fields?.[codeKey]
-    if (c) out.add(c)
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from('tc_entries').select('id, fields')
+      .in('jobcode_id', [...i7Ids]).gte('entry_date', optionsSince(month))
+      .order('id').range(from, from + 999)
+    if (error) throw new Error(`i7 codes could not be read: ${error.message}`)
+    for (const r of (data ?? []) as { fields: Record<string, string> | null }[]) {
+      const c = r.fields?.[codeKey]
+      if (c) out.add(c)
+    }
+    if ((data ?? []).length < 1000) break
   }
   return [...out]
 }

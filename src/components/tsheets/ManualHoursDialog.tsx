@@ -13,7 +13,8 @@
  * Sending you to another page and back loses the month you were reading.
  */
 
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useModal } from '@/components/ui/useModal'
 import { ManualHours, type ManualOptions, type ManualRow } from './ManualHours'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
@@ -31,17 +32,9 @@ export function ManualHoursDialog(
   const [open, setOpen] = useState(false)
 
   // Escape closes it, and the page behind stops scrolling while it is up.
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
-    document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-    }
-  }, [open])
+  // Focus in and back, Tab kept inside, Escape, no scrolling behind (useModal).
+  const box = useRef<HTMLDivElement>(null)
+  useModal(open, box, () => setOpen(false))
 
   return (
     <>
@@ -60,6 +53,7 @@ export function ManualHoursDialog(
           onClick={() => setOpen(false)}
         >
           <div
+            ref={box}
             role="dialog"
             aria-modal="true"
             aria-label="Add hours by hand"
@@ -79,7 +73,7 @@ export function ManualHoursDialog(
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>
-            <ManualHours rows={rows} options={options} month={month} blurb={blurb} embedded />
+            <ManualHours rows={rows} options={options} month={month} blurb={blurb} />
           </div>
         </div>
       )}

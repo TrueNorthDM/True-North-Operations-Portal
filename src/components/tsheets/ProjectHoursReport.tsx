@@ -16,6 +16,7 @@
 // allowance; only Grants Pass Church and School buy hours in advance, at $90.
 
 import { useState, useTransition } from 'react'
+import { tabKeys } from '@/components/ui/tab-keys'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
@@ -145,7 +146,7 @@ export function ProjectHoursReport(
         {view === 'costs' ? (
           <>
             <div className={card}>
-              <div className={label}>Costs this month</div>
+              <div className={label}>Costs {oneMonth ? 'this month' : 'in this period'}</div>
               <div className={big}>{money(costThisMonth)}</div>
               <div className="text-xs text-muted mt-0.5">
                 {money(totals.employeeCostThisMonth)} employees · {money(totals.contractorCostThisMonth)} contractors
@@ -165,7 +166,7 @@ export function ProjectHoursReport(
               <div className="text-xs text-muted mt-0.5">January to {monthName(data.month).split(' ')[0]}</div>
             </div>
             <div className={card}>
-              <div className={label}>Same month, {lastYear}</div>
+              <div className={label}>{oneMonth ? 'Same month' : 'Same period'}, {lastYear}</div>
               <div className={big}>{onPeople.sameMonthLastYear.toFixed(2)}</div>
               <div className="text-xs text-muted mt-0.5">
                 {onPeople.sameMonthLastYear > 0
@@ -187,11 +188,15 @@ export function ProjectHoursReport(
           the underline moves from the row to the tabs themselves: otherwise it
           would run under the filter and leave the tabs floating above it. */}
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3 sm:border-b sm:border-slate-200">
-        <div className="flex gap-1 w-full sm:w-auto border-b border-slate-200 sm:border-b-0">
+        <div role="tablist" aria-label="Report view" onKeyDown={view ? tabKeys(views, view, setView) : undefined} className="flex gap-1 w-full sm:w-auto border-b border-slate-200 sm:border-b-0">
           {views.map(v => (
             <button
               key={v}
               type="button"
+              role="tab"
+              data-tab={v}
+              aria-selected={view === v}
+              tabIndex={view === v ? 0 : -1}
               onClick={() => setView(v)}
               className={`px-4 py-2.5 text-[13.5px] font-(family-name:--font-display) font-bold border-b-2 -mb-px transition-colors ${
                 view === v ? 'border-tn-teal text-tn-teal' : 'border-transparent text-muted hover:text-tn-ink'

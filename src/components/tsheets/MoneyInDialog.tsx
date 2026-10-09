@@ -21,7 +21,8 @@
  * more clicks and six more chances to leave half of it done.
  */
 
-import { Fragment, useEffect, useState, useTransition } from 'react'
+import { Fragment, useRef, useState, useTransition } from 'react'
+import { useModal } from '@/components/ui/useModal'
 import { useRouter } from 'next/navigation'
 import { saveDonation, savePurchase } from '@/lib/timeclock/money-in-actions'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
@@ -55,17 +56,9 @@ export function MoneyInDialog(
   const [seen, setSeen] = useState(data)
   if (seen !== data) { setSeen(data); setGifts(data.donations); setBuys(data.purchases) }
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
-    document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-    }
-  }, [open])
+  // Focus in and back, Tab kept inside, Escape, no scrolling behind (useModal).
+  const box = useRef<HTMLDivElement>(null)
+  useModal(open, box, () => setOpen(false))
 
   function save() {
     setError(null)
@@ -73,19 +66,25 @@ export function MoneyInDialog(
       // Sequentially, and stopping at the first refusal. A batch that half
       // applies leaves somebody guessing which half, and there are seven rows
       // at most so nothing is gained by firing them together.
+      const failed = { ok: false, error: 'Not saved. Try again in a moment.' }
+      let warning: string | undefined
       for (const p of projects.filter(p => !p.prepaid)) {
-        const r = await saveDonation({ project: p.label, month: data.month, amount: gifts[p.label] ?? '' })
+        const r = await saveDonation({ project: p.label, month: data.month, amount: gifts[p.label] ?? '' }).catch(() => failed)
         if (!r.ok) { setError(r.error ?? 'Could not save.'); return }
+        warning ??= (r as { warning?: string }).warning
       }
 
       for (const p of projects.filter(p => p.prepaid)) {
         const b = buys[p.label] ?? { hours: '', amount: '' }
-        const r = await savePurchase({ project: p.label, month: data.month, hours: b.hours, amount: b.amount })
+        const r = await savePurchase({ project: p.label, month: data.month, hours: b.hours, amount: b.amount }).catch(() => failed)
         if (!r.ok) { setError(r.error ?? 'Could not save.'); return }
+        warning ??= (r as { warning?: string }).warning
       }
 
-      setOpen(false)
       router.refresh()
+      // The figures are saved; if their history is not, the window stays to say so.
+      if (warning) { setError(warning); return }
+      setOpen(false)
     })
   }
 
@@ -112,6 +111,7 @@ export function MoneyInDialog(
           onClick={() => setOpen(false)}
         >
           <div
+            ref={box}
             role="dialog"
             aria-modal="true"
             aria-label="Money in"

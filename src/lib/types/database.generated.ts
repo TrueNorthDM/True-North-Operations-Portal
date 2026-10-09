@@ -1926,6 +1926,8 @@ export type Database = {
           id: number
           jobcode_id: number | null
           kind: string
+          manual_batch: string | null
+          manual_line: number | null
           notes: string | null
           person_id: string
           source: string
@@ -1944,6 +1946,8 @@ export type Database = {
           id?: number
           jobcode_id?: number | null
           kind?: string
+          manual_batch?: string | null
+          manual_line?: number | null
           notes?: string | null
           person_id: string
           source?: string
@@ -1962,6 +1966,8 @@ export type Database = {
           id?: number
           jobcode_id?: number | null
           kind?: string
+          manual_batch?: string | null
+          manual_line?: number | null
           notes?: string | null
           person_id?: string
           source?: string
@@ -2314,6 +2320,60 @@ export type Database = {
           project_label?: string
           rate_usd?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tc_project_purchases_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_name: string | null
+          actor_person_id: string | null
+          amount_after: number | null
+          amount_before: number | null
+          at: string
+          hours_after: number | null
+          hours_before: number | null
+          id: number
+          month: string
+          note_after: string | null
+          note_before: string | null
+          project_label: string | null
+          purchase_id: number | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_person_id?: string | null
+          amount_after?: number | null
+          amount_before?: number | null
+          at?: string
+          hours_after?: number | null
+          hours_before?: number | null
+          id?: number
+          month: string
+          note_after?: string | null
+          note_before?: string | null
+          project_label?: string | null
+          purchase_id?: number | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_person_id?: string | null
+          amount_after?: number | null
+          amount_before?: number | null
+          at?: string
+          hours_after?: number | null
+          hours_before?: number | null
+          id?: number
+          month?: string
+          note_after?: string | null
+          note_before?: string | null
+          project_label?: string | null
+          purchase_id?: number | null
         }
         Relationships: []
       }

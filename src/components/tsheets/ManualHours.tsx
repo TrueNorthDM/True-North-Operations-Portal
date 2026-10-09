@@ -1,15 +1,20 @@
 'use client'
 
 /**
- * Hours added by hand, for people the timeclock does not have.
+ * Hours added by hand, for people the timeclock does not have. Drawn inside
+ * ManualHoursDialog, opened from the report.
  *
- * Sits under the report rather than beside it, and lists what it has added,
- * because the risk here is not adding a wrong number once: it is adding the
- * same invoice twice a month apart with nothing on screen to notice it.
+ * It lists what it has added, because the risk here is not adding a wrong
+ * number once: it is adding the same invoice twice a month apart with nothing
+ * on screen to notice it. A batch carries one id made here, so sending it
+ * twice (a double click, a retry after a timeout) lands it once.
  */
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { useConfirm } from '@/components/ui/useConfirm'
+import { formatDate } from '@/lib/directory/people-types'
+import { BTN } from '@/lib/ui/buttons'
 import { Select } from '@/components/ui/Select'
 import { addManualEntries, deleteManualEntry } from '@/lib/timeclock/manual-actions'
 import type { ManualEntryInput } from '@/lib/timeclock/manual-entry'
@@ -71,23 +76,23 @@ const FIELD = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-whit
 const FIELD_SELECT = 'w-full rounded-[10px] border border-[var(--panel-border)] bg-white px-3 py-2 text-[13.5px]'
 const LABEL = 'block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5'
 
+/** Hours to two decimals, so a sum never shows as 7.300000001h. */
+const h2 = (n: number) => Math.round(n * 100) / 100
+
 export function ManualHours(
-  { rows, options, month, blurb, embedded = false }: {
+  { rows, options, month, blurb }: {
     rows: ManualRow[]; options: ManualOptions; month: string
     /** What these hours are for, in the words of the report they land in. */
     blurb: string
-    /**
-     * Inside a dialog that already frames it: no card border, no heading, and
-     * the form open from the start, because opening the dialog was the click
-     * that used to open the form.
-     */
-    embedded?: boolean
   },
 ) {
   const router = useRouter()
   const [busy, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState(embedded)
+  const [confirmDialog, confirm] = useConfirm()
+  // One id per batch, kept across a retry and dropped once it lands or the
+  // lines change: the server refuses the same batch twice.
+  const batch = useRef<string | null>(null)
 
   const [personId, setPersonId] = useState('')
   const [entryDate, setEntryDate] = useState(`${month}-01`)
@@ -146,6 +151,7 @@ export function ManualHours(
       return
     }
     const d = draft()
+    batch.current = null
     setLines(ls => [...ls, { ...d, label: describe(d), billable: d.billable }])
     // Cleared: what belongs to this line. Kept: what an invoice repeats down
     // its own lines, which is everything above the day.
@@ -158,6 +164,8 @@ export function ManualHours(
     // press a second button, is a rule that only exists because of how this is
     // built.
     const pending = Number(hours) > 0 && jobcodeId ? [...lines, draft()] : lines
+    batch.current ??= crypto.randomUUID()
+    const id = batch.current
     start(async () => {
       // Rebuilt field by field: the staged lines carry the sentence the list
       // shows, and that belongs to the screen, not to the write.
@@ -165,23 +173,31 @@ export function ManualHours(
         personId: d.personId, entryDate: d.entryDate, jobcodeId: d.jobcodeId,
         hours: d.hours, i7Code: d.i7Code, company: d.company, project: d.project,
         activity: d.activity, billable: d.billable, notes: d.notes,
-      })))
+      })), id).catch(() => ({ ok: false, error: 'The hours were not added. Try again in a moment.' }))
       if (!r.ok) { setError(r.error ?? 'Something went wrong.'); return }
+      batch.current = null
       setLines([]); setHours(''); setNotes('')
       router.refresh()
     })
   }
 
-  const remove = (id: number) => {
+  const remove = async (r: ManualRow) => {
+    const yes = await confirm({
+      title: 'Remove these hours?',
+      body: `${h2(r.hours)}h for ${r.personName} on ${formatDate(r.entryDate)} leave the report, and the invoice with them.`,
+      action: 'Remove',
+      danger: true,
+    })
+    if (!yes) return
     setError(null)
     start(async () => {
-      const r = await deleteManualEntry(id)
-      if (!r.ok) setError(r.error ?? 'Something went wrong.')
+      const res = await deleteManualEntry(r.id).catch(() => ({ ok: false, error: 'The line was not removed. Try again in a moment.' }))
+      if (!res.ok) setError(res.error ?? 'Something went wrong.')
       else router.refresh()
     })
   }
 
-  const total = rows.reduce((s, r) => s + r.hours, 0)
+  const total = h2(rows.reduce((s, r) => s + r.hours, 0))
   // The line still in the fields counts towards what the button says it
   // will send, because it is going to be sent.
   const typing = Number(hours) > 0 && Boolean(jobcodeId)
@@ -189,30 +205,17 @@ export function ManualHours(
   const pendingHours = Math.round((lines.reduce((a, l) => a + l.hours, 0) + (typing ? Number(hours) : 0)) * 100) / 100
 
   return (
-    <section className={`${embedded ? '' : 'border border-[var(--panel-border)] bg-white rounded-[14px] px-5 pt-[18px] pb-5'} transition-opacity ${busy ? 'opacity-60' : ''}`}>
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
-        <div>
-          {!embedded && (
-            <h3 className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink m-0">
-              Hours added by hand
-            </h3>
-          )}
-          <p className="text-[12.5px] text-muted mt-1 m-0 leading-[1.55]">{blurb}</p>
-        </div>
-        {!embedded && <button
-          type="button"
-          onClick={() => setOpen(o => !o)}
-          className="shrink-0 text-[13px] font-semibold px-3.5 py-2 rounded-[10px] border border-[var(--panel-border)] text-tn-ink hover:bg-[var(--row-hover)] transition-colors"
-        >
-          {open ? 'Cancel' : 'Add hours'}
-        </button>}
+    <section className={`transition-opacity ${busy ? 'opacity-60' : ''}`}>
+      {confirmDialog}
+      <div className="mb-4">
+        <p className="text-[12.5px] text-muted mt-1 m-0 leading-[1.55]">{blurb}</p>
       </div>
 
       {error ? (
-        <div className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-[13px] text-red-800 mb-4">{error}</div>
+        <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-[13px] text-red-800 mb-4">{error}</div>
       ) : null}
 
-      {open ? (
+      {(
         <div className="border border-[var(--panel-border)] rounded-[12px] p-4 mb-4 bg-subtle">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -247,13 +250,14 @@ export function ManualHours(
             </div>
 
             <div>
-              <label className={LABEL}>Day</label>
-              <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} className={FIELD} />
+              <label htmlFor="manual-day" className={LABEL}>Day</label>
+              <input id="manual-day" type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} className={FIELD} />
             </div>
 
             <div>
-              <label className={LABEL}>Hours</label>
+              <label htmlFor="manual-hours" className={LABEL}>Hours</label>
               <input
+                id="manual-hours"
                 type="number" step="0.25" min="0" max={MAX_HOURS_PER_ENTRY}
                 value={hours} onChange={e => setHours(e.target.value)}
                 placeholder="0.00" className={FIELD}
@@ -297,7 +301,7 @@ export function ManualHours(
                 the same fields somebody fills in over there. */}
             {top?.branch === 'i7' && (
               <div>
-                <label className={LABEL}>1 - i7 code</label>
+                <label className={LABEL}>1 - i7 Code</label>
                 <Select
                   strongValue
                   className={FIELD_SELECT}
@@ -359,8 +363,9 @@ export function ManualHours(
             )}
 
             <div className="sm:col-span-3">
-              <label className={LABEL}>Note (optional)</label>
+              <label htmlFor="manual-note" className={LABEL}>Note (optional)</label>
               <input
+                id="manual-note"
                 value={notes} onChange={e => setNotes(e.target.value)}
                 placeholder="Invoice number, or what the hours were for"
                 className={FIELD}
@@ -377,19 +382,19 @@ export function ManualHours(
             + Add another line
           </button>
         </div>
-      ) : null}
+      )}
 
       {/* Staged lines. Dashed above, solid below: the two buttons do different
           things and used to look the same, which is the one confusion this
           shape can cause. */}
-      {open && lines.length > 0 && (
+      {lines.length > 0 && (
         <div className="mt-3 rounded-[12px] border border-[var(--panel-border)] overflow-hidden">
           {lines.map((l, i) => (
             <div
               key={i}
               className="flex items-center gap-3 px-4 py-2.5 text-[13px] border-b border-[var(--panel-border)] last:border-b-0 bg-subtle"
             >
-              <span className="w-[62px] shrink-0 text-muted tabular-nums">{l.entryDate.slice(8)}/{l.entryDate.slice(5, 7)}</span>
+              <span className="w-[92px] shrink-0 text-muted tabular-nums">{formatDate(l.entryDate)}</span>
               <span className="flex-1 min-w-0 truncate text-foreground">
                 {l.label}
                 {/* Only when it is not billable. A tag on every line is a column
@@ -401,7 +406,7 @@ export function ManualHours(
               <span className="w-[56px] shrink-0 text-right font-semibold text-tn-ink tabular-nums">{l.hours}h</span>
               <button
                 type="button"
-                onClick={() => setLines(ls => ls.filter((_, j) => j !== i))}
+                onClick={() => { batch.current = null; setLines(ls => ls.filter((_, j) => j !== i)) }}
                 aria-label={`Remove line ${i + 1}`}
                 className="shrink-0 text-muted hover:text-tn-ink transition-colors"
               >
@@ -412,15 +417,15 @@ export function ManualHours(
         </div>
       )}
 
-      {open && (lines.length > 0 || Number(hours) > 0) && (
+      {(lines.length > 0 || Number(hours) > 0) && (
         <div className="mt-3 flex items-center gap-3 flex-wrap">
           <button
             type="button"
             onClick={submit}
             disabled={busy}
-            className="text-[13px] font-bold px-4 py-2 rounded-[10px] bg-tn-ink text-white hover:opacity-90 transition-opacity"
+            className={`${BTN.navy} disabled:opacity-50`}
           >
-            {pendingCount === 1 ? 'Add to the report' : `Add ${pendingCount} lines to the reports`}
+            <span className="text-[#ffffff]">{pendingCount === 1 ? 'Add to the report' : `Add ${pendingCount} lines to the report`}</span>
           </button>
           <span className="text-[12.5px] text-muted">{pendingHours}h in total</span>
         </div>
@@ -433,19 +438,21 @@ export function ManualHours(
           <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden">
             {rows.map((r, i) => (
               <div key={r.id} className={`flex items-center gap-3 px-4 py-2.5 ${i ? 'border-t border-[var(--row-rule)]' : ''}`}>
-                <span className="w-[100px] flex-none text-[12.5px] text-muted">{r.entryDate}</span>
+                <span className="w-[100px] flex-none text-[12.5px] text-muted">{formatDate(r.entryDate)}</span>
                 <span className="w-[130px] flex-none text-[13px] font-semibold text-tn-ink truncate">{r.personName}</span>
                 <span className="min-w-0 flex-1 text-[12.5px] text-foreground truncate">
                   {[r.tag, r.activity].filter(Boolean).join(' · ') || r.jobcodeName}
                   {r.notes ? <span className="text-muted"> · {r.notes}</span> : null}
                 </span>
-                <span className="w-[60px] flex-none text-right text-[13px] font-semibold text-tn-ink">{r.hours}h</span>
+                <span className="w-[60px] flex-none text-right text-[13px] font-semibold text-tn-ink">{h2(r.hours)}h</span>
                 <span className="w-[110px] flex-none text-right text-[11.5px] text-muted truncate">
                   {r.addedBy ? `by ${r.addedBy}` : ''}
                 </span>
                 <button
                   type="button"
-                  onClick={() => remove(r.id)}
+                  onClick={() => remove(r)}
+                  disabled={busy}
+                  aria-label={`Remove ${h2(r.hours)}h for ${r.personName} on ${formatDate(r.entryDate)}`}
                   className="shrink-0 text-[12px] font-semibold text-muted hover:text-[#c2410c] transition-colors"
                 >
                   Remove

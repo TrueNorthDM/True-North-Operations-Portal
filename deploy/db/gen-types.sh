@@ -19,7 +19,11 @@ SSH=(ssh -F /dev/null -i "$HOME/.ssh/truenorth_vps" -o IdentitiesOnly=yes -p 654
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-"${SSH[@]}" 'docker exec supabase-meta node -e "fetch(\"http://localhost:8080/generators/typescript?included_schemas=public\").then(r => { if (!r.ok) throw new Error(r.status); return r.text() }).then(t => process.stdout.write(t))"' > "$TMP"
+# META=staging-supabase-meta reads the staging schema instead: for a migration
+# applied to staging before production, so the code can be checked against it.
+META="${META:-supabase-meta}"
+REMOTE='docker exec __META__ node -e "fetch(\"http://localhost:8080/generators/typescript?included_schemas=public\").then(r => { if (!r.ok) throw new Error(r.status); return r.text() }).then(t => process.stdout.write(t))"'
+"${SSH[@]}" "${REMOTE/__META__/$META}" > "$TMP"
 
 # A real answer starts with the Json type; anything else is an error page.
 if ! head -1 "$TMP" | grep -q '^export type Json'; then

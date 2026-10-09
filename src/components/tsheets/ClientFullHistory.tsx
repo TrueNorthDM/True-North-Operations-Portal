@@ -93,7 +93,10 @@ export function ClientFullHistory(
                 </thead>
                 <tbody>
                   {trend.map((t, i) => {
-                    const carryIn = i === 0 ? null : trend[i - 1].balance
+                    // The first month's carry-in is the balance it opened with,
+                    // as the History CSV says it: before it, nothing was on
+                    // screen to take it from (audit, 9 October 2026).
+                    const carryIn = i === 0 ? (Math.round((t.balance - t.budget + t.cost) * 100) / 100 || 0) : trend[i - 1].balance
                     const isCurrent = t.month === currentMonth
                     return (
                       <tr key={t.month} className={`border-b border-slate-100 last:border-0 ${isCurrent ? 'bg-[#f2c40a12]' : ''}`}>

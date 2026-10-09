@@ -237,6 +237,11 @@ async function hoursByMonth(
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/** A read that fails stops the report: the alternative is a plausible wrong figure. */
+function readOk(what: string, error: { message: string } | null | undefined): void {
+  if (error) throw new Error(`Project Hours could not read ${what}: ${error.message}`)
+}
+
 /** i7's entries and client rates over a stretch, read once for every window a caller needs. */
 interface BilledSource { entries: I7Entry[]; assignments: Assignment[] }
 
@@ -283,7 +288,7 @@ export async function loadProjectTracking(
   to: string = from,
 ): Promise<ProjectTracking> {
   const month = to
-  const [{ data: fieldRows }, { data: peopleRows }, { data: buyRows }, { data: giftRows }, pay] = await Promise.all([
+  const [fieldRes, peopleRes, buyRes, giftRes, pay] = await Promise.all([
     supabase.from('tc_fields').select('id, external_id'),
     supabase.from('people').select('id, full_name, employment_type'),
     supabase.from('tc_project_purchases').select('project_label, month, hours'),
@@ -292,12 +297,19 @@ export async function loadProjectTracking(
     // `authenticated` column grant, for the same reason internal_rate is.
     loadCompensationByPerson(),
   ])
+  // Any of these missing would still draw a report: a prepaid balance below
+  // zero, donations "not entered", everyone "Unknown" and every contractor an
+  // employee. So a failed read stops it (audit, 9 October 2026).
+  readOk('the custom fields', fieldRes.error)
+  readOk('people', peopleRes.error)
+  readOk('purchases', buyRes.error)
+  readOk('donations', giftRes.error)
+  const [fieldRows, peopleRows, buyRows, giftRows] = [fieldRes.data, peopleRes.data, buyRes.data, giftRes.data]
 
   const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
     .find(f => String(f.external_id) === PROJECT_CF)?.id
-  if (!projectKey) {
-    return { from, month, people: [], rows: [], unratedPeople: [], totals: { workedThisMonth: 0, byPerson: {}, yearToDate: 0, sameMonthLastYear: 0, employeeCostThisMonth: 0, contractorCostThisMonth: 0, totalCosts: 0 } }
-  }
+  // The "2 Project" field not synced is not a month with no project hours.
+  if (!projectKey) throw new Error('The "2 Project" field is missing from QuickBooks Time fields, so no hours can be put under a project.')
 
   // First names, because that is what the tracking sheet's columns are.
   const roster = (peopleRows ?? []) as { id: string; full_name: string; employment_type: string | null }[]
@@ -532,17 +544,21 @@ export async function loadProjectHistory(
   from: string,
   to: string,
 ): Promise<ProjectHistoryBlock[]> {
-  const [{ data: fieldRows }, { data: peopleRows }, { data: giftRows }, pay] = await Promise.all([
+  const [fieldRes, peopleRes, giftRes, pay] = await Promise.all([
     supabase.from('tc_fields').select('id, external_id'),
     supabase.from('people').select('id, employment_type'),
     supabase.from('tc_project_donations').select('project_label, month, amount_usd')
       .gte('month', from).lte('month', to),
     loadCompensationByPerson(),
   ])
+  readOk('the custom fields', fieldRes.error)
+  readOk('people', peopleRes.error)
+  readOk('donations', giftRes.error)
+  const [fieldRows, peopleRows, giftRows] = [fieldRes.data, peopleRes.data, giftRes.data]
 
   const projectKey = ((fieldRows ?? []) as { id: number; external_id: number | null }[])
     .find(f => String(f.external_id) === PROJECT_CF)?.id
-  if (!projectKey) return []
+  if (!projectKey) throw new Error('The "2 Project" field is missing from QuickBooks Time fields, so no hours can be put under a project.')
 
   const labels = TRACKED_PROJECTS.map(p => p.label)
   const kindById = new Map(((peopleRows ?? []) as { id: string; employment_type: string | null }[])

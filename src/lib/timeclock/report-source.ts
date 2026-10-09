@@ -21,9 +21,12 @@ const PAGE = 1000
 
 /** tc_fields ids for the two custom fields the report groups by. */
 async function fieldKeys(supabase: Client): Promise<{ code: string | null; activity: string | null }> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('tc_fields').select('id, external_id')
     .in('external_id', [Number(I7_CODE_CF), Number(ACTIVITY_CF)])
+  // Without the field ids every code reads as '' and lands in Unassigned, and
+  // the MME hours move onto the i7 invoice: an error, not a quiet regrouping.
+  if (error) throw new Error(`The i7 code fields could not be read: ${error.message}`)
   const rows = (data ?? []) as { id: number; external_id: number | null }[]
   const find = (ext: string) => rows.find(r => String(r.external_id) === ext)?.id ?? null
   return {
@@ -40,7 +43,11 @@ async function fieldKeys(supabase: Client): Promise<{ code: string | null; activ
  * report that is slightly slower to build.
  */
 export async function i7JobcodeIdsHere(supabase: Client): Promise<Set<number>> {
-  return jobcodeSubtree(supabase, j => j.external_id === I7_PARENT_JOBCODE_ID)
+  const ids = await jobcodeSubtree(supabase, j => j.external_id === I7_PARENT_JOBCODE_ID)
+  // No i7 root is a broken tree, not a month without hours: answering "no i7
+  // job codes" would show $0 used and the whole budget left (audit, 9 October 2026).
+  if (!ids.size) throw new Error('The i7 job code is missing from the job codes, so the report cannot tell which hours are i7.')
+  return ids
 }
 
 /**
@@ -57,8 +64,10 @@ export async function jobcodeSubtree(
 ): Promise<Set<number>> {
   const all: { id: number; parent_id: number | null; external_id: number | null; name: string }[] = []
   for (let from = 0; ; from += PAGE) {
-    const { data } = await supabase
-      .from('tc_jobcodes').select('id, parent_id, external_id, name').range(from, from + PAGE - 1)
+    const { data, error } = await supabase
+      .from('tc_jobcodes').select('id, parent_id, external_id, name').order('id').range(from, from + PAGE - 1)
+    // A failed page would cut the i7 tree, and with it hours, without a word.
+    if (error) throw new Error(`Job codes could not be read: ${error.message}`)
     const rows = (data ?? []) as typeof all
     all.push(...rows)
     if (rows.length < PAGE) break

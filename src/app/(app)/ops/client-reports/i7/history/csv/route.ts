@@ -49,19 +49,22 @@ export async function GET(request: Request) {
 
   const rows = await loadI7History(from < DATA_START ? DATA_START : from, to)
 
+  // Months as 2026-01, which sort, like the i7 CSV; figures to the cent; the
+  // column names the screen's own (audit, 9 October 2026).
+  const c2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2)
   const lines = [
-    row(['Month', 'Budget', 'Carried in', 'Used', 'Hours used', 'Balance']),
-    ...rows.map(r => row([monthLabel(r.month), r.budget, r.carryIn, r.used, r.hours, r.balance])),
+    row(['Month', 'Budget', 'Carry-in', 'Used', 'Hours used', 'Balance']),
+    ...rows.map(r => row([r.month, c2(r.budget), c2(r.carryIn), c2(r.used), c2(r.hours), c2(r.balance)])),
   ]
   if (rows.length) {
     // Budget and used sum; carried-in and balance do not, so the total row
     // leaves them blank rather than printing a number nobody should add up.
     lines.push(row([
       'Total',
-      rows.reduce((s, r) => s + r.budget, 0),
+      c2(rows.reduce((s, r) => s + r.budget, 0)),
       '',
-      Math.round(rows.reduce((s, r) => s + r.used, 0) * 100) / 100,
-      Math.round(rows.reduce((s, r) => s + r.hours, 0) * 100) / 100,
+      c2(rows.reduce((s, r) => s + r.used, 0)),
+      c2(rows.reduce((s, r) => s + r.hours, 0)),
       '',
     ]))
   }
