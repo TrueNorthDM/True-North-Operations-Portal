@@ -23,6 +23,7 @@ import { isAllowedEmail, NOT_INVITED_MESSAGE, SHAPE_MESSAGE } from '@/lib/auth-c
 import { canSignIn } from '@/lib/auth/portal-access'
 import { safeNext } from '@/lib/auth/safe-next'
 import { withStartPage } from '@/lib/auth/start-page'
+import { getViewAs } from '@/lib/auth/view-as-server'
 import type { SignedInIdentity } from '@/lib/directory/current-person'
 import { requestOrigin } from '@/lib/auth/origin'
 import { redirect } from 'next/navigation'
@@ -143,8 +144,15 @@ export async function signOut() {
  * (within the hour), since pages trust a valid token without asking the
  * sign-in service each time (lib/auth/session.ts).
  */
-export async function signOutEverywhere() {
+export async function signOutEverywhere(): Promise<{ ok: false; error: string }> {
+  // In a View Stage preview the page is someone else's, the session is not:
+  // this would sign the Super Admin out everywhere (audit, 9 October 2026).
+  if (await getViewAs()) return { ok: false, error: 'View Stage is only a preview. Close it to sign out everywhere.' }
   const supabase = await createClient()
-  await supabase.auth.signOut({ scope: 'global' })
+  const { error } = await supabase.auth.signOut({ scope: 'global' })
+  if (error) {
+    console.error('[sign-out] everywhere:', error.message)
+    return { ok: false, error: 'Could not sign out every device. Try again in a moment.' }
+  }
   redirect('/login')
 }

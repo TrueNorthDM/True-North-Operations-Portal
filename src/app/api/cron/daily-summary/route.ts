@@ -21,5 +21,8 @@ export async function GET(request: Request) {
   }
   const report = await sendDailySummaries({ origin: publicOrigin(request.url) })
   if (report.errors.length) console.error('[daily-summary]', report.errors.slice(0, 5).join(' | '))
-  return NextResponse.json({ ok: report.errors.length === 0, ...report, errors: report.errors.slice(0, 5) })
+  // A run with errors answers 500, so the crontab log says FAIL (a 200 with
+  // "ok": false was logged as ok, audit 9 October 2026).
+  const ok = report.errors.length === 0
+  return NextResponse.json({ ok, ...report, errors: report.errors.slice(0, 5) }, { status: ok ? 200 : 500 })
 }

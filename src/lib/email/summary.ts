@@ -1,6 +1,7 @@
 /**
  * The daily summary email (7 October 2026): one per category, Tools and
- * System, at 8:00 in the person's time zone on US working days. After a
+ * System, at the person's summary hour (8:00 unless they chose 6:00 to 10:00)
+ * in their time zone, on US working days. After a
  * weekend or a holiday it is a catch-up: "What you missed since Friday", with
  * the days off named and the items under the day they landed.
  *
@@ -116,7 +117,8 @@ const HEAD = {
   system: { bg: '#1d1a5c', tile: '#2c2972', tileRule: '#433f8c', sub: '#cfcdf0' },
 } as const
 
-const barColor = (type: string, category: SummaryCategory) => {
+/** The coloured bar beside each line: red for an alarm, gold for due tomorrow, else the category. The settings preview draws the same. */
+export const barColor = (type: string, category: SummaryCategory) => {
   const t = TYPE_BY_KEY.get(type)
   if (t?.alarm) return C.red
   if (type === 'step-due-tomorrow') return C.gold
@@ -237,8 +239,8 @@ export function renderSummary(input: SummaryInput): { subject: string; html: str
       </td></tr>
       <tr><td style="background:${C.subtle};padding:18px 28px;font-family:${SANS};font-size:12px;line-height:1.6;color:${C.muted};">
         <p style="margin:0 0 6px;">${category === 'tools'
-          ? `You get this summary Monday to Friday at ${input.hour ?? 8}:00, your time (${e(input.zoneLabel)}). After a weekend or a US holiday, it catches you up on the days you missed. Everything here is also in the bell.`
-          : `Urgent problems, like an integration that stops answering, never wait for this email: they reach the bell the moment they happen. This summary comes Monday to Friday at ${input.hour ?? 8}:00, your time (${e(input.zoneLabel)}).`}</p>
+          ? `You get this summary Monday to Friday at ${input.hour ?? 8}:00 AM, your time (${e(input.zoneLabel)}). After a weekend or a US holiday, it catches you up on the days you missed. Everything here is also in the bell.`
+          : `Urgent problems, like an integration that stops answering, never wait for this email: they reach the bell the moment they happen. This summary comes Monday to Friday at ${input.hour ?? 8}:00 AM, your time (${e(input.zoneLabel)}).`}</p>
         <p style="margin:0 0 6px;"><a href="${e(origin)}/settings#notifications" style="color:${C.teal};font-weight:700;text-decoration:none;">Choose what reaches you</a> in your notification settings.</p>
         <p style="margin:0;">True North Digital Marketing · Operations Portal</p>
       </td></tr>

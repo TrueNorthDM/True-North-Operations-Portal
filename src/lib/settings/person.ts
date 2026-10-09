@@ -14,6 +14,7 @@
 import type { Db } from '@/lib/supabase/types'
 import { DAILY_HOUR, DAILY_ZONE } from '@/lib/notifications/catalogue'
 import { validZone } from '@/lib/notifications/schedule'
+import { missingTable } from '@/lib/supabase/errors'
 
 type Client = Db
 
@@ -62,14 +63,23 @@ function fromRow(r: Partial<Row> | null | undefined): PersonSettings {
   }
 }
 
-/** Settings for several people at once; anyone missing has the defaults. */
-export async function loadSettingsFor(db: Client, personIds: readonly string[]): Promise<Map<string, PersonSettings>> {
+/**
+ * Settings for several people at once; anyone missing has the defaults. A
+ * screen keeps going on the defaults if the read fails; `strict` (sending a
+ * summary) throws instead, so nobody is emailed at the wrong hour.
+ */
+export async function loadSettingsFor(db: Client, personIds: readonly string[], opts: { strict?: boolean } = {}): Promise<Map<string, PersonSettings>> {
   const out = new Map<string, PersonSettings>()
   for (let i = 0; i < personIds.length; i += 200) {
     // Typed loosely: the fallback reads fewer columns when a migration has not run.
     let res: { data: unknown[] | null; error: unknown } = await db.from('person_settings').select('*').in('person_id', personIds.slice(i, i + 200))
     if (res.error) res = await db.from('person_settings').select('person_id, time_zone').in('person_id', personIds.slice(i, i + 200))
-    if (res.error) break
+    if (res.error) {
+      if (opts.strict && !missingTable(res.error as { code?: string; message?: string })) {
+        throw new Error(`Personal settings could not be read: ${(res.error as { message?: string }).message ?? 'unknown error'}`)
+      }
+      break
+    }
     for (const r of (res.data ?? []) as Row[]) out.set(r.person_id, fromRow(r))
   }
   return out

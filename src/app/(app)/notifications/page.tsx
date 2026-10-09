@@ -14,7 +14,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NOTIFICATION_TYPES, TYPE_BY_KEY } from '@/lib/notifications/catalogue'
 import { loadAudience } from '@/lib/notifications/audience'
 import { loadOffCounts, loadRules } from '@/lib/notifications/store'
-import { saveNotificationPref, saveNotificationRule, sendTestNotification } from './actions'
+import { saveNotificationRule } from './rule-actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notification rules' }
@@ -52,18 +52,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         </div>
       )}
       <NotificationSettings
+        mode="rules"
         types={NOTIFICATION_TYPES}
-        mine={[]}
         rules={rules}
-        prefs={{}}
-        isAdmin
-        only="rules"
-        savePref={saveNotificationPref}
         saveRule={saveNotificationRule}
-        zone={null}
-        sendTest={sendTestNotification}
         offCounts={offCounts}
-        blocked={!ready ? 'Not saved: migration 088 is not in the database yet.' : undefined}
+        blocked={!ready ? 'Notification rules cannot be saved right now.' : undefined}
       />
     </div>
   )

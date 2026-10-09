@@ -9,7 +9,8 @@
  *
  * Each notification has two settings: on or off, and when. "When" decides
  * where (7 October 2026): as it happens lands in the bell at once; the daily
- * summary lands in the bell at 8:00 and goes out by email, at most two emails
+ * summary lands in the bell at the person's summary hour (8:00 unless they
+ * chose 6:00 to 10:00) and goes out by email, at most two emails
  * a day (one per category, Tools and System), on US working days only. Some
  * types only make sense one way (`timings`), and then "when" is not a choice.
  * An admin sets the rule for everyone: a default for each setting, and whether
@@ -94,14 +95,13 @@ export interface Rule {
 export interface Pref {
   enabled?: boolean
   timing?: Timing
-  channel?: Channel
 }
 
-export const BLOCKS: readonly { key: BlockKey; title: string; drawer: string; description: string; available: boolean; blockedBy?: string }[] = [
-  { key: 'tools', title: 'Tools', drawer: 'Notifications', description: 'Your work, and the dashboards and reports you can reach.', available: true },
-  { key: 'system', title: 'System', drawer: 'Notifications', description: 'The portal itself: integrations, syncs and access.', available: true },
-  { key: 'chat', title: 'Chat', drawer: 'Messages', description: 'Channels and direct messages.', available: false, blockedBy: 'Arrives with Chat, which is not built yet.' },
-  { key: 'email', title: 'Email', drawer: 'Messages', description: 'The mailboxes you hold.', available: false, blockedBy: 'Arrives with Emails, which is not built yet.' },
+export const BLOCKS: readonly { key: BlockKey; title: string; available: boolean; blockedBy?: string }[] = [
+  { key: 'tools', title: 'Tools', available: true },
+  { key: 'system', title: 'System', available: true },
+  { key: 'chat', title: 'Chat', available: false, blockedBy: 'Arrives with Chat, which is not built yet.' },
+  { key: 'email', title: 'Email', available: false, blockedBy: 'Arrives with Email, which is not built yet.' },
 ]
 
 /**
@@ -166,7 +166,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     timings: 'both', section: 'i7 budget', stat: 'budget alerts', statOne: 'budget alert',
     example: { title: 'i7 budget crossed 75%', body: "i7 has used 78% of October's budget." },
     title: 'i7 budget crossed 75% or 90%',
-    description: "This month's i7 budget passed three quarters, then nine tenths.",
+    description: "This month's i7 budget passed 75%, then 90%.",
     who: 'Who can open the i7 report', audience: { kind: 'tool', tool: 'i7-budget' },
   },
   {
@@ -174,7 +174,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     timings: 'daily', section: 'Late piles', stat: 'late piles', statOne: 'late pile', alarm: true,
     example: { title: 'Late steps piling up on Design', body: 'One person on Design has 12 late steps.' },
     title: 'Late steps piling up on your team',
-    description: `People on a team you lead with ${LATE_PILE} or more late steps. Once a week, one notification per team.`,
+    description: `People on a team you lead with ${LATE_PILE} or more late steps. Checked once a week, one notification per team, in that day's summary.`,
     who: 'Team leaders', audience: { kind: 'leaders' },
   },
 
@@ -185,7 +185,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: 'QuickBooks Time is not answering', body: 'The sync could not sign in: check the token.' },
     title: 'An integration failed',
     description: 'Monday, its webhooks or QuickBooks Time stopped answering.',
-    who: 'Admins', audience: { kind: 'admins' },
+    who: 'Who sees the integration alert on Home', audience: { kind: 'tool', tool: 'home-health' },
   },
   {
     key: 'sync-incomplete', src: 'Monday sync', block: 'system', icon: 'automations', defaultTiming: 'daily', available: true,
@@ -193,7 +193,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: "A sync didn't finish", body: 'The Monday sync that started at 9:15 PM stopped with 2 boards left: the time ran out.' },
     title: "A sync didn't finish",
     description: 'A Monday sync stopped before reading every board.',
-    who: 'Admins', audience: { kind: 'admins' },
+    who: 'Who sees the integration alert on Home', audience: { kind: 'tool', tool: 'home-health' },
   },
   {
     key: 'first-login', src: 'Access', block: 'system', icon: 'admin', defaultTiming: 'daily', available: true,
@@ -201,7 +201,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: 'Someone signed in for the first time', body: 'Maria Example signed in for the first time, as Collaborator.' },
     title: 'Someone signed in for the first time',
     description: 'A new person reached the portal, and the level they landed on.',
-    who: 'Admins', audience: { kind: 'admins' },
+    who: 'Who can open the Access log', audience: { kind: 'tool', tool: 'd-log' },
   },
   {
     key: 'level-changed', src: 'Access', block: 'system', icon: 'admin', defaultTiming: 'instant', available: true,
@@ -209,7 +209,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: 'An access level was changed', body: 'John Example is now Team leader (was Collaborator).' },
     title: 'An access level was changed',
     description: "Someone's access level changed. The person is told too.",
-    who: 'Admins, and the person', audience: { kind: 'everyone' },
+    who: 'Who can open the Access log, and the person', audience: { kind: 'everyone' },
   },
   {
     key: 'access-rules-changed', src: 'Access levels', block: 'system', icon: 'admin', defaultTiming: 'instant', available: true,
@@ -225,7 +225,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     example: { title: 'A new Monday account with no person', body: 'New Writer (new.writer@example.org) has no person in the Directory, so its work shows under Unknown user.' },
     title: 'A new Monday account with no person',
     description: 'Monday has an account the Directory does not know, so its work shows under Unknown user.',
-    who: 'Admins', audience: { kind: 'admins' },
+    who: 'Who can open Monday accounts', audience: { kind: 'tool', tool: 'monday-accounts' },
   },
 ]
 
@@ -271,7 +271,8 @@ export function reaches(t: NotificationType, who: { isAdmin: boolean; leads: boo
   switch (t.audience.kind) {
     case 'everyone': return true
     case 'admins': return who.isAdmin
-    case 'leaders': return who.leads || who.isAdmin
+    // A team's late pile is My Team's news: only with My Team open (audit, 9 October 2026).
+    case 'leaders': return (who.leads || who.isAdmin) && who.canTool('my-team')
     case 'tool': return who.canTool(t.audience.tool)
   }
 }

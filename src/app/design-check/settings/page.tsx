@@ -43,10 +43,9 @@ export default function SettingsCheck() {
           twoStep={<TwoStepSelf since="2026-09-28" daysLeft={null} />}
           notifications={
             <NotificationSettings
-              types={NOTIFICATION_TYPES} mine={NOTIFICATION_TYPES.map(t => t.key)}
+              mode="mine" types={NOTIFICATION_TYPES}
               rules={Object.fromEntries(NOTIFICATION_TYPES.map(t => [t.key, defaultRule(t)]))}
-              prefs={{}} isAdmin only="mine" savePref={null} saveRule={null}
-              zone="America/Sao_Paulo" hour={7} sendTest={null}
+              zone="America/Sao_Paulo" hour={7}
             />
           }
         />

@@ -22,7 +22,7 @@ import { ROLE_TYPE_LABEL } from '@/lib/directory/people-types'
 import { ROUTES } from '@/lib/nav/routes'
 import { LATE_PILE, TYPE_BY_KEY } from './catalogue'
 import { addDays, weekOf, zoneDate } from './schedule'
-import { readState, writeState } from './store'
+import { readState } from './store'
 import type { Audience, Recipient } from './audience'
 import type { Draft } from './deliver'
 
@@ -70,8 +70,13 @@ function draftFor(ctx: Ctx, type: string, r: Recipient | undefined, d: Omit<Draf
 
 // ── My Work: new, due tomorrow, late, and a team's late pile ──────────────────
 
+// Every read here throws on failure (audit, 9 October 2026): an empty answer
+// would be taken for "nothing happened", and an event window that moves on
+// without its events never reads them again.
+
 async function accountOwners(db: Client): Promise<Map<number, string>> {
-  const { data } = await db.from('monday_user_links').select('monday_user_id, person_id')
+  const { data, error } = await db.from('monday_user_links').select('monday_user_id, person_id')
+  if (error) throw new Error(`Monday account owners could not be read: ${error.message}`)
   return new Map(((data ?? []) as { monday_user_id: number; person_id: string }[]).map(l => [l.monday_user_id, l.person_id]))
 }
 
@@ -84,14 +89,16 @@ async function accountOwners(db: Client): Promise<Map<number, string>> {
  * from its second read on, its events are the real thing.
  */
 async function newAssignments(db: Client, since: string): Promise<Set<string>> {
-  const { data } = await db.from('monday_assignment_events')
+  const { data, error } = await db.from('monday_assignment_events')
     .select('board_id, item_id, people_col, monday_user_id')
     .eq('event', 'assigned').gte('detected_at', since).limit(20000)
+  if (error) throw new Error(`Assignment events could not be read: ${error.message}`)
   const events = (data ?? []) as { board_id: number; item_id: number; people_col: string; monday_user_id: number }[]
   const boards = [...new Set(events.map(e => e.board_id))]
   const known = new Set<number>()
   await Promise.all(boards.map(async b => {
-    const { data: older } = await db.from('monday_assignment_events').select('id').eq('board_id', b).lt('detected_at', since).limit(1)
+    const { data: older, error: e } = await db.from('monday_assignment_events').select('id').eq('board_id', b).lt('detected_at', since).limit(1)
+    if (e) throw new Error(`Assignment history could not be read: ${e.message}`)
     if (older?.length) known.add(b)
   }))
   return new Set(events.filter(e => known.has(e.board_id)).map(e => `${e.item_id}:${e.people_col}:${e.monday_user_id}`))
@@ -286,10 +293,12 @@ export async function i7Drafts(ctx: Ctx): Promise<Draft[]> {
 
 /** S1: an integration stopped answering. Once a day per service while it stays down. */
 export function integrationDrafts(ctx: Ctx, results: readonly HealthResult[]): Draft[] {
-  return results.filter(r => r.status === 'down').flatMap(res => ctx.aud.admins().flatMap(a => draftFor(ctx, 'integration-failed', a, {
+  // Whoever sees the integration alert on Home (home-health), linked to
+  // Automations when they can open it, else to Home, where the alert is.
+  return results.filter(r => r.status === 'down').flatMap(res => ctx.aud.withTool('home-health').flatMap(a => draftFor(ctx, 'integration-failed', a, {
     title: `${HEALTH_LABEL[res.service] ?? res.service} is not answering`,
     body: res.detail,
-    href: '/admin/automations',
+    href: a.canTool('automations') ? '/admin/automations' : '/',
     dedupeKey: `${res.service}:${ctx.today}`,
   })))
 }
@@ -298,10 +307,10 @@ export function integrationDrafts(ctx: Ctx, results: readonly HealthResult[]): D
 export function syncDrafts(ctx: Ctx, info: { since: string; remaining: number | null; reason: string }): Draft[] {
   const started = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }).format(new Date(info.since))
   const left = info.remaining == null ? 'before reading every board' : `with ${info.remaining} board${info.remaining === 1 ? '' : 's'} left`
-  return ctx.aud.admins().flatMap(a => draftFor(ctx, 'sync-incomplete', a, {
+  return ctx.aud.withTool('home-health').flatMap(a => draftFor(ctx, 'sync-incomplete', a, {
     title: "A sync didn't finish",
     body: `The Monday sync that started at ${started} stopped ${left}: ${info.reason}`,
-    href: '/admin/settings#my-work',
+    href: a.canTool('settings') ? '/admin/settings#my-work' : '/',
     dedupeKey: info.since,
   }))
 }
@@ -313,12 +322,21 @@ export function syncDrafts(ctx: Ctx, info: { since: string; remaining: number | 
  */
 export async function firstLoginDrafts(ctx: Ctx): Promise<Draft[]> {
   const from = new Date(ctx.now.getTime() - 3 * 86_400_000).toISOString()
-  const { data } = await ctx.db.from('access_log').select('profile_id, person_id, name, email, accessed_at').gte('accessed_at', from)
+  const { data, error } = await ctx.db.from('access_log').select('profile_id, person_id, name, email, accessed_at').gte('accessed_at', from)
+  if (error) throw new Error(`The access log could not be read: ${error.message}`)
   const recent = (data ?? []) as { profile_id: string; person_id: string | null; name: string | null; email: string | null }[]
-  const ids = [...new Set(recent.map(r => r.profile_id))]
+  const ids = [...new Set(recent.map(r => r.profile_id).filter(Boolean))]
   if (!ids.length) return []
-  const { data: olderRows } = await ctx.db.from('access_log').select('profile_id').in('profile_id', ids).lt('accessed_at', from)
-  const older = new Set(((olderRows ?? []) as { profile_id: string }[]).map(r => r.profile_id))
+  // One row per account is enough to know it came before; a failed read
+  // throws, or every recent visitor would look new and flood the admins.
+  const older = new Set<string>()
+  for (let i = 0; i < ids.length; i += 10) {
+    await Promise.all(ids.slice(i, i + 10).map(async id => {
+      const { data: one, error: e } = await ctx.db.from('access_log').select('profile_id').eq('profile_id', id).lt('accessed_at', from).limit(1)
+      if (e) throw new Error(`The access log could not be read: ${e.message}`)
+      if (one?.length) older.add(id)
+    }))
+  }
   const out: Draft[] = []
   for (const id of ids) {
     if (older.has(id)) continue
@@ -326,7 +344,7 @@ export async function firstLoginDrafts(ctx: Ctx): Promise<Draft[]> {
     const person = ctx.aud.byProfile.get(id)
     const who = person?.name ?? row.name ?? row.email ?? 'Someone'
     const level = person ? ROLE_TYPE_LABEL[person.roleType] ?? person.roleType : 'no Directory person yet'
-    for (const a of ctx.aud.admins()) {
+    for (const a of ctx.aud.withTool('d-log')) {
       if (a.profileId === id) continue
       out.push(...draftFor(ctx, 'first-login', a, {
         title: 'Someone signed in for the first time',
@@ -344,12 +362,13 @@ export function levelDrafts(ctx: Ctx, change: { personId: string; name: string; 
   const label = (k: string) => ROLE_TYPE_LABEL[k] ?? k
   const key = `${change.personId}:${change.to}:${ctx.now.getTime()}`
   const out: Draft[] = []
-  for (const a of ctx.aud.admins()) {
+  // Who keeps the Access log (d-log), not every admin by level (audit, 9 October 2026).
+  for (const a of ctx.aud.withTool('d-log')) {
     if (a.profileId === change.actorProfileId || a.personId === change.personId) continue
     out.push(...draftFor(ctx, 'level-changed', a, {
       title: 'An access level was changed',
       body: `${change.name} is now ${label(change.to)} (was ${label(change.from)}).`,
-      href: a.roleType === 'super_admin' ? '/admin/access-levels?tab=people' : '/directory',
+      href: a.canTool('access-levels') ? '/admin/access-levels?tab=people' : '/directory',
       dedupeKey: key,
     }))
   }
@@ -383,14 +402,22 @@ export function accessChangeDrafts(ctx: Ctx, change: { changeId: number; summary
  * The first run only takes note: the accounts already waiting are not news,
  * and telling admins about all of them at once would bury the next real one.
  */
+export const UNLINKED_SEEN = 'monday-unlinked-seen'
+
+/**
+ * The accounts seen so far, to save once the drafts below are delivered (and
+ * only then: saved first, a failed delivery told nobody and never would).
+ */
+export async function unlinkedSeen(ctx: Ctx, unlinked: readonly { id: number }[]): Promise<number[]> {
+  const seen = await readState<number[]>(ctx.db, UNLINKED_SEEN)
+  return [...new Set([...(seen ?? []), ...unlinked.map(u => u.id)])]
+}
+
 export async function unlinkedDrafts(ctx: Ctx, unlinked: readonly { id: number; name: string; email: string | null }[]): Promise<Draft[]> {
-  const KEY = 'monday-unlinked-seen'
-  const seen = await readState<number[]>(ctx.db, KEY)
-  const ids = unlinked.map(u => u.id)
-  await writeState(ctx.db, KEY, [...new Set([...(seen ?? []), ...ids])])
+  const seen = await readState<number[]>(ctx.db, UNLINKED_SEEN)
   if (seen === null) return []
   const known = new Set(seen)
-  return unlinked.filter(u => !known.has(u.id)).flatMap(u => ctx.aud.admins().flatMap(a => draftFor(ctx, 'monday-account-unlinked', a, {
+  return unlinked.filter(u => !known.has(u.id)).flatMap(u => ctx.aud.withTool('monday-accounts').flatMap(a => draftFor(ctx, 'monday-account-unlinked', a, {
     title: 'A new Monday account with no person',
     body: `${u.name}${u.email ? ` (${u.email})` : ''} has no person in the Directory, so its work shows under Unknown user.`,
     href: '/admin/monday-links',

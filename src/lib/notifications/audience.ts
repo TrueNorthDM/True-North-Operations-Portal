@@ -8,7 +8,13 @@
  * Signing in is decided the way the portal decides it: an explicit account
  * link (people.profile_id), else a mailbox matching an account's email. Most
  * people who sign in every day are matched by email, so reading profile_id
- * alone would leave most of the company out.
+ * alone would leave most of the company out. And as at sign-in
+ * (lib/auth/portal-rule.ts mayUsePortal), only someone active AND invited:
+ * an invitation withdrawn stops their notifications and emails too (audit,
+ * 9 October 2026).
+ *
+ * A read that fails throws. An empty audience would let a summary run treat
+ * everyone as gone and drop the day's emails without a word.
  *
  * Admin means Super Admin or Admin. Tools, and everything else, follow the
  * access rule exactly as the person's own pages do (lib/access/decide.ts):
@@ -22,6 +28,7 @@ import { allowedKeys } from '@/lib/access/decide'
 import { loadRules, loadSubjects } from '@/lib/access/store'
 import { zoneDate } from './schedule'
 import { reaches, type NotificationType } from './catalogue'
+import { isFounding } from '@/lib/auth/portal-rule'
 
 /** One team membership: the team and the position held in it. */
 interface Membership { team_id: string; position?: string | null }
@@ -46,9 +53,8 @@ export interface Audience {
   byId: ReadonlyMap<string, Recipient>
   byProfile: ReadonlyMap<string, Recipient>
   teamName: ReadonlyMap<string, string>
-  /** Every member of a team, sign-in or not: whose work a leader watches. */
+  /** Every ACTIVE member of a team, sign-in or not: whose work a leader watches. */
   teamMembers: ReadonlyMap<string, readonly string[]>
-  admins(): Recipient[]
   withTool(key: string): Recipient[]
   leadersOf(teamId: string): Recipient[]
   membersOf(teamId: string): Recipient[]
@@ -59,27 +65,32 @@ export interface Audience {
 const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
 
 export async function loadAudience(db: Client): Promise<Audience> {
-  const [{ data: peopleRows }, { data: profileRows }, { data: memberRows }, { data: teamRows }, rules, subjects] =
+  const [peopleRes, profileRes, memberRes, teamRes, rules, subjects] =
     await Promise.all([
-      db.from('people').select('id, full_name, profile_id, status, email_true_north, email_goodnews, email_coe, email_personal'),
+      db.from('people').select('id, full_name, profile_id, status, portal_invited_at, email_true_north, email_goodnews, email_coe, email_personal'),
       db.from('profiles').select('id, email, role'),
       db.from('team_members').select('team_id, person_id, position'),
       db.from('teams').select('id, name'),
       loadRules(db),
       loadSubjects(db),
     ])
+  const failedRead = [peopleRes, profileRes, memberRes, teamRes].find(r => r.error)?.error
+  if (failedRead) throw new Error(`The notification audience could not be read: ${failedRead.message}`)
+  const [peopleRows, profileRows, memberRows, teamRows] = [peopleRes.data, profileRes.data, memberRes.data, teamRes.data]
   const subjectOf = new Map(subjects.map(s => [s.id, s]))
   const today = zoneDate(new Date())
 
   type P = {
-    id: string; full_name: string; profile_id: string | null; status: string | null
+    id: string; full_name: string; profile_id: string | null; status: string | null; portal_invited_at: string | null
     email_true_north: string | null; email_goodnews: string | null; email_coe: string | null; email_personal: string | null
   }
   const profiles = (profileRows ?? []) as { id: string; email: string | null; role: string | null }[]
   const profileById = new Map(profiles.map(p => [p.id, p]))
   const profileByEmail = new Map(profiles.filter(p => p.email).map(p => [norm(p.email), p]))
 
-  const members = (memberRows ?? []) as (Membership & { person_id: string })[]
+  const inactive = new Set(((peopleRows ?? []) as P[]).filter(p => p.status === 'inactive').map(p => p.id))
+  // Someone made inactive is on no team here: no leader is told about their work.
+  const members = ((memberRows ?? []) as (Membership & { person_id: string })[]).filter(m => !inactive.has(m.person_id))
   const membershipsOf = new Map<string, Membership[]>()
   const teamMembers = new Map<string, string[]>()
   for (const m of members) {
@@ -95,6 +106,7 @@ export async function loadAudience(db: Client): Promise<Audience> {
         .map(e => profileByEmail.get(norm(e)))
         .find(Boolean)
     if (!profile) continue
+    if (!p.portal_invited_at && !isFounding(profile.email)) continue
 
     // The access rule decides, as for the person themselves (lib/access/decide.ts).
     const subject = subjectOf.get(p.id)
@@ -123,7 +135,6 @@ export async function loadAudience(db: Client): Promise<Audience> {
     byProfile: new Map(people.map(r => [r.profileId, r])),
     teamName: new Map(((teamRows ?? []) as { id: string; name: string }[]).map(t => [t.id, t.name])),
     teamMembers,
-    admins: () => people.filter(r => r.isAdmin),
     withTool: key => people.filter(r => r.canTool(key)),
     leadersOf: teamId => people.filter(r => r.teams.get(teamId) === true),
     membersOf: teamId => (teamMembers.get(teamId) ?? []).map(id => byId.get(id)).filter((r): r is Recipient => !!r),

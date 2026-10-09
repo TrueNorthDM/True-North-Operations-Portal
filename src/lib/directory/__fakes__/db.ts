@@ -1,9 +1,11 @@
 /**
- * An in-memory stand-in for the Supabase client, for the People tests (audit,
- * 8 October 2026). It answers the query shapes the People code uses: select
- * with filters (eq, neq, in, not is null, or), embeds such as `teams(name)` or
- * `people!inner(status)`, counts, insert, update, delete, rpc and storage
- * removes, and records every write so a test can say what was changed.
+ * An in-memory stand-in for the Supabase client, for the People and
+ * notification tests (audit, 8 and 9 October 2026). It answers the query
+ * shapes that code uses: select with filters (eq, neq, in, is, lt, lte, gt,
+ * gte, not is null, or), order and range, embeds such as `teams(name)`,
+ * counts, insert (refused on a repeated unique key), upsert, update, delete,
+ * rpc and storage removes, and records every write so a test can say what
+ * was changed.
  *
  * Not a database: rows come back whole (a select's column list only decides
  * the embeds), which is enough for code that reads named fields.
@@ -17,6 +19,10 @@ export interface FakeOptions {
   fail?: string[]
   /** An rpc that fails, with this message. */
   rpcError?: string
+  /** Unique keys per table: an insert repeating one fails, as Postgres would. */
+  unique?: Record<string, string[]>
+  /** A write containing a row this matches fails whole (a bad row in a batch). */
+  rejectRow?: (table: string, row: Row) => boolean
 }
 
 export interface Fake {
@@ -51,7 +57,9 @@ export function fakeDb(seed: Record<string, Row[]>, opts: FakeOptions = {}): Fak
 
   function from(table: string) {
     const preds: Pred[] = []
-    let op: 'select' | 'insert' | 'update' | 'delete' = 'select'
+    let op: 'select' | 'insert' | 'update' | 'delete' | 'upsert' = 'select'
+    let upsertOpts: { onConflict?: string; ignoreDuplicates?: boolean } = {}
+    let range: [number, number] | null = null
     let payload: Row | Row[] | null = null
     let columns = '*'
     let count = false
@@ -69,11 +77,18 @@ export function fakeDb(seed: Record<string, Row[]>, opts: FakeOptions = {}): Fak
         return q
       },
       insert(rows: Row | Row[]) { op = 'insert'; payload = rows; return q },
+      upsert(rows: Row | Row[], o: { onConflict?: string; ignoreDuplicates?: boolean } = {}) { op = 'upsert'; payload = rows; upsertOpts = o; return q },
       update(patch: Row, o?: { count?: string }) { op = 'update'; payload = patch; if (o?.count) count = true; return q },
       delete() { op = 'delete'; return q },
       eq(col: string, v: unknown) { preds.push(r => r[col] === v); return q },
       neq(col: string, v: unknown) { preds.push(r => r[col] !== v); return q },
       in(col: string, vs: unknown[]) { preds.push(r => vs.includes(r[col])); return q },
+      is(col: string, v: unknown) { preds.push(r => (v === null ? r[col] == null : r[col] === v)); return q },
+      lt(col: string, v: string) { preds.push(r => r[col] != null && String(r[col]) < v); return q },
+      lte(col: string, v: string) { preds.push(r => r[col] != null && String(r[col]) <= v); return q },
+      gt(col: string, v: string) { preds.push(r => r[col] != null && String(r[col]) > v); return q },
+      gte(col: string, v: string) { preds.push(r => r[col] != null && String(r[col]) >= v); return q },
+      range(from: number, to: number) { range = [from, to]; return q },
       not(col: string, o: string, v: unknown) {
         if (o !== 'is' || v !== null) throw new Error('fake db: only not(col, "is", null)')
         preds.push(r => r[col] != null)
@@ -93,9 +108,30 @@ export function fakeDb(seed: Record<string, Row[]>, opts: FakeOptions = {}): Fak
       if (opts.fail?.includes(table)) return { data: null, error: { message: 'boom' }, count: null }
       const rows = (tables[table] ??= [])
       const hit = (r: Row) => preds.every(p => p(r))
+      const incoming = Array.isArray(payload) ? payload : payload ? [payload] : []
+      if (op !== 'select' && op !== 'delete' && opts.rejectRow && incoming.some(r => opts.rejectRow!(table, r))) {
+        return { data: null, error: { message: 'row refused' }, count: null }
+      }
+      const sameKey = (a: Row, b: Row, cols: string[]) => cols.every(c => a[c] === b[c])
+
+      if (op === 'upsert') {
+        const cols = (upsertOpts.onConflict ?? 'id').split(',').map(c => c.trim())
+        const written: Row[] = []
+        for (const r of incoming) {
+          const there = rows.find(x => sameKey(x, r, cols))
+          if (there) { if (!upsertOpts.ignoreDuplicates) { Object.assign(there, r); written.push({ ...there }) } }
+          else { const row = { id: `new-${nextId++}`, ...r }; rows.push(row); written.push(row) }
+        }
+        fake.writes.push({ op: 'insert', table, rows: written })
+        return { data: null, error: null }
+      }
 
       if (op === 'insert') {
-        const added = (Array.isArray(payload) ? payload : [payload!]).map(r => ({ id: `new-${nextId++}`, ...r }))
+        const keys = opts.unique?.[table]
+        if (keys && incoming.some(r => rows.some(x => sameKey(x, r, keys)))) {
+          return { data: null, error: { message: 'duplicate key value violates unique constraint' } }
+        }
+        const added = incoming.map(r => ({ id: `new-${nextId++}`, ...r }))
         rows.push(...added)
         fake.writes.push({ op, table, rows: added })
         const data = returning ? (one ? added[0] : added) : null
@@ -124,6 +160,7 @@ export function fakeDb(seed: Record<string, Row[]>, opts: FakeOptions = {}): Fak
           .map(r => ({ ...r, [embed]: (tables[embed] ?? []).find(x => x.id === r[fk]) ?? null }))
           .filter(r => !inner || r[embed] !== null)
       }
+      if (range) out = out.slice(range[0], range[1] + 1)
       if (limit != null) out = out.slice(0, limit)
       const n = out.length
       if (one === 'single' && n !== 1) return { data: null, error: { message: 'not one row' } }

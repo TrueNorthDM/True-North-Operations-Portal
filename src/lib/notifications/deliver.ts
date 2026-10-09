@@ -5,7 +5,8 @@
  * and when, is decided here and nowhere else: the admin's rule for the type,
  * then the person's own choice where the rule leaves it open (`effective`).
  * Switched off means no row at all; the daily summary means a row that waits
- * until 8:00 in the person's time zone (New York unless they chose another),
+ * until the person's summary hour (8:00 unless they chose another) in their
+ * time zone (New York unless they chose another),
  * and then goes out in the summary email too (summary.ts).
  *
  * Every notification carries a dedupe key, and the table is unique on
@@ -83,17 +84,29 @@ export async function deliver(db: Client, drafts: readonly Draft[], opts: { now?
   const now = opts.now ?? new Date()
   if (!drafts.length) return { drafts: 0, rows: 0, byType: {} }
   const people = [...new Set(drafts.map(d => d.personId))]
-  const [{ rules }, prefs, delivery] = await Promise.all([loadRules(db), loadPrefs(db, people), loadDelivery(db, people)])
+  const [{ rules }, prefs, delivery] = await Promise.all([loadRules(db), loadPrefs(db, people), loadDelivery(db, people, { strict: true })])
   const rows = plan(drafts, rules, prefs, now, delivery)
   const byType: Record<string, number> = {}
   for (const r of rows) byType[r.type_key] = (byType[r.type_key] ?? 0) + 1
   if (opts.dryRun) return { drafts: drafts.length, rows: rows.length, byType, planned: rows }
 
+  // Already there is the intended outcome for a repeat, not an error.
+  const write = (batch: Row[]) => db.from('notifications')
+    .upsert(batch, { onConflict: 'person_id,type_key,dedupe_key', ignoreDuplicates: true })
+  // A batch that fails is tried row by row, so one bad row costs only itself
+  // and the batches after it still land (audit, 9 October 2026).
+  let written = 0
+  const errors: string[] = []
   for (let i = 0; i < rows.length; i += 500) {
-    // Already there is the intended outcome for a repeat, not an error.
-    const { error } = await db.from('notifications')
-      .upsert(rows.slice(i, i + 500), { onConflict: 'person_id,type_key,dedupe_key', ignoreDuplicates: true })
-    if (error) return { drafts: drafts.length, rows: i, byType, error: error.message }
+    const batch = rows.slice(i, i + 500)
+    const { error } = await write(batch)
+    if (!error) { written += batch.length; continue }
+    for (const row of batch) {
+      const one = await write([row])
+      if (one.error) errors.push(`${row.type_key} for ${row.person_id}: ${one.error.message}`)
+      else written += 1
+    }
   }
-  return { drafts: drafts.length, rows: rows.length, byType }
+  if (errors.length) console.error('[notifications] rows not written:', errors.slice(0, 20))
+  return { drafts: drafts.length, rows: written, byType, ...(errors.length ? { error: `${errors.length} not written; first: ${errors[0]}` } : {}) }
 }

@@ -5,6 +5,7 @@
 // Shown for the person this page renders as: in a View Stage preview, the
 // previewed person's choices, and the actions refuse to save from a preview.
 
+import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { NotificationSettings } from '@/components/NotificationSettings'
 import { PersonalSettings } from '@/components/settings/PersonalSettings'
@@ -52,32 +53,32 @@ export default async function SettingsPage() {
         <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Settings</h1>
         <p className="mt-1.5 text-muted leading-relaxed m-0">
           How the portal works for you. Your choices follow you to any computer or phone.
-          {access.can('settings') && ' Company settings live in Admin, Configuration.'}
+          {access.can('settings') && <> Company settings are in <Link href="/admin/settings" className="text-tn-teal font-semibold">Admin &gt; Configuration</Link>.</>}
         </p>
       </div>
       <PersonalSettings
         settings={settings}
-        email={user?.email ?? null}
+        // The person on screen: in View Stage, theirs, not the session's.
+        email={me?.email ?? user?.email ?? null}
         blocked={blocked}
         save={saveSettings}
         signOutEverywhere={signOutEverywhere}
         favourites={resolveFavourites(rail, settings.favourites)}
         groups={pinnable(rail)}
-        twoStep={<TwoStepSelf since={twoStep.since} daysLeft={twoStepDays} />}
+        twoStep={viewAs ? <p className="m-0 text-[13px] text-muted">Not shown in View Stage: two-step sign-in belongs to the account, not the level.</p> : <TwoStepSelf since={twoStep.since} daysLeft={twoStepDays} blocked={blocked} />}
         notifications={
           <NotificationSettings
-            types={NOTIFICATION_TYPES}
-            mine={mine}
-            rules={rules}
+            mode="mine"
+            // Only what can reach this person, and only those rules: the
+            // rest of the catalogue is not theirs to read (audit, 9 October 2026).
+            types={NOTIFICATION_TYPES.filter(t => mine.includes(t.key))}
+            rules={Object.fromEntries(mine.filter(k => rules[k]).map(k => [k, rules[k]]))}
             prefs={(me && prefs.get(me.id)) ?? {}}
-            isAdmin={access.isAdmin}
-            only="mine"
             savePref={saveNotificationPref}
-            saveRule={null}
             zone={settings.ownZone ? settings.timeZone : null}
             hour={settings.summaryHour}
             sendTest={sendTestNotification}
-            blocked={!ready ? 'Not saved: migration 088 is not in the database yet.' : blocked}
+            blocked={!ready ? 'Notification choices cannot be saved right now.' : blocked}
           />
         }
       />

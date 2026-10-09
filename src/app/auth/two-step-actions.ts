@@ -18,6 +18,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { safeNext } from '@/lib/auth/safe-next'
+import { getViewAs } from '@/lib/auth/view-as-server'
 import { withStartPage } from '@/lib/auth/start-page'
 import { SKIP_COOKIE, checkTwoStep } from '@/lib/auth/two-step'
 import { getSessionUser } from '@/lib/auth/session'
@@ -105,12 +106,14 @@ export async function skipTwoStep(): Promise<void> {
 }
 
 /**
- * Move two-step sign-in to a new phone, from My profile. Only from a session that
+ * Move two-step sign-in to a new phone, from Settings. Only from a session that
  * has given the current app's code (aal2): the old app is removed, and the setup
  * screen comes up for the new one. Someone who has lost the old phone cannot get
- * this far, and asks an admin for a Reset instead.
+ * this far, and asks an admin for a Reset instead. Refused in a View Stage
+ * preview: the page is someone else's, the session is the Super Admin's own.
  */
 export async function moveTwoStep(): Promise<{ ok: false; error: string } | never> {
+  if (await getViewAs()) return { ok: false, error: 'View Stage is only a preview. Close it to move your two-step sign-in.' }
   const supabase = await createClient()
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
   if (aal?.currentLevel !== 'aal2') return { ok: false, error: 'Sign in with your current app first.' }

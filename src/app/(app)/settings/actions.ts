@@ -12,9 +12,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { getViewAs } from '@/lib/auth/view-as-server'
-import { loadAccess, verifiedSession } from '@/lib/access/resolve'
+import { loadAccess } from '@/lib/access/resolve'
+import { NOT_SAVED, signedInPerson } from '@/lib/notifications/signed-in'
 import { buildRail } from '@/lib/access/nav'
 import { pinnable } from '@/lib/settings/pages'
 import { cleanSettings, type SettingsPatch } from '@/lib/settings/person'
@@ -22,16 +21,21 @@ import { cleanSettings, type SettingsPatch } from '@/lib/settings/person'
 type Result = { ok: boolean; error?: string }
 
 export async function saveSettings(patch: SettingsPatch): Promise<Result> {
-  if (await getViewAs()) return { ok: false, error: 'View Stage is only a preview. Close it to change your settings.' }
+  try {
+    return await save(patch)
+  } catch (e) {
+    console.error('[settings] save:', (e as Error).message)
+    return { ok: false, error: NOT_SAVED }
+  }
+}
+
+async function save(patch: SettingsPatch): Promise<Result> {
   const clean = cleanSettings(patch)
   if (!clean) return { ok: false, error: 'That choice could not be read. Reload the page and try again.' }
-
-  // Verified, two-step given, still active and invited (lib/access/resolve.ts).
-  const session = await verifiedSession()
-  if (!session) return { ok: false, error: 'Sign in again to save.' }
-  const { supabase, user } = session
-  const me = await loadCurrentPerson(supabase, user, { real: true })
-  if (!me) return { ok: false, error: 'Your login is not linked to anyone in the Directory.' }
+  // The person actually signed in, never a View Stage preview's (refused).
+  const signed = await signedInPerson('change your settings')
+  if ('error' in signed) return { ok: false, error: signed.error }
+  const me = { id: signed.personId }
 
   if (Array.isArray(clean.favourites)) {
     const access = await loadAccess()
@@ -44,7 +48,10 @@ export async function saveSettings(patch: SettingsPatch): Promise<Result> {
     { person_id: me.id, ...clean, updated_at: new Date().toISOString() },
     { onConflict: 'person_id' },
   )
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    console.error('[settings] save:', error.message)
+    return { ok: false, error: NOT_SAVED }
+  }
   if ('favourites' in clean || 'show_birthday' in clean || 'show_anniversary' in clean) revalidatePath('/')
   return { ok: true }
 }

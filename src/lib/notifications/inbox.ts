@@ -1,7 +1,8 @@
 /**
  * One person's notifications for the bell, read on every page by the layout:
  * the landed ones (deliver_at in the past), newest first, split by drawer tab.
- * A daily-summary notification waiting for 8:00 is not shown until then.
+ * A daily-summary notification waiting for the person's summary hour is not
+ * shown until then.
  *
  * One indexed query, beside the person's time zone. If the table is not there
  * yet (migration 088), the bell is simply empty, as it was before.

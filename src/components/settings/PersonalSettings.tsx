@@ -18,6 +18,10 @@
  */
 
 import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { useConfirm } from '@/components/ui/useConfirm'
+import { Switch } from '@/components/ui/Switch'
+import { Segmented as Choice } from '@/components/ui/Segmented'
 import { NavIcon } from '@/components/NavIcon'
 import { Select } from '@/components/ui/Select'
 import type { NavItem } from '@/lib/access/nav'
@@ -57,28 +61,6 @@ function Row({ label, hint, status, children }: { label: string; hint: string; s
         {status}
       </div>
       {children && <div className="flex items-center gap-3 flex-wrap">{children}</div>}
-    </div>
-  )
-}
-
-function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)}
-      className={`shrink-0 w-10 h-[22px] rounded-full transition-colors disabled:opacity-50 ${on ? 'bg-tn-teal' : 'bg-slate-300'}`}>
-      <span className={`block w-[18px] h-[18px] rounded-full bg-white transition-transform ${on ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
-    </button>
-  )
-}
-
-function Choice<K extends string | number>({ options, value, onChange, label }: { options: readonly { key: K; label: string }[]; value: K; onChange: (k: K) => void; label: string }) {
-  return (
-    <div role="radiogroup" aria-label={label} className="inline-flex items-center gap-0.5 bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] flex-wrap">
-      {options.map(o => (
-        <button key={String(o.key)} type="button" role="radio" aria-checked={value === o.key} onClick={() => onChange(o.key)}
-          className={`px-3 py-[5px] rounded-[7px] text-[12.5px] font-bold whitespace-nowrap transition-colors ${value === o.key ? 'bg-tn-primary text-[#ffffff]' : 'text-muted hover:text-tn-ink'}`}>
-          {o.label}
-        </button>
-      ))}
     </div>
   )
 }
@@ -133,7 +115,7 @@ function Favourites({ items, groups, onChange }: { items: NavItem[]; groups: Pag
                 {g.rows.map(r => {
                   const on = chosen.has(r.key)
                   return (
-                    <button key={r.key} type="button" disabled={!on && full}
+                    <button key={r.key} type="button" aria-pressed={on} disabled={!on && full}
                       onClick={() => onChange(on ? items.filter(x => x.key !== r.key) : [...items, r])}
                       className={`inline-flex items-center gap-1.5 rounded-[9px] border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-40 ${
                         on ? 'border-tn-teal bg-[rgba(30,125,127,.08)] text-tn-ink' : 'border-[var(--panel-border)] bg-white text-foreground hover:border-tn-teal'}`}>
@@ -162,10 +144,10 @@ export function PersonalSettings({
   email: string | null
   /** The notification table, drawn by the server. */
   notifications: React.ReactNode
-  /** Two-step sign-in, as on My profile. */
+  /** Two-step sign-in (TwoStepSelf), or a note in View Stage. */
   twoStep: React.ReactNode
-  /** Null in the design check. */
-  signOutEverywhere: (() => Promise<void>) | null
+  /** Null in the design check. Answers only when it could not sign out (otherwise it goes to the sign-in page). */
+  signOutEverywhere: (() => Promise<{ ok: false; error: string }>) | null
   favourites: NavItem[]
   /** What can be pinned: the pages this person can open. */
   groups: PageGroup[]
@@ -177,7 +159,8 @@ export function PersonalSettings({
   const [s, setS] = useState(settings)
   const [favs, setFavs] = useState(initialFavourites)
   const [status, setStatus] = useState<{ key: string; state: 'saving' | 'saved' | 'error'; error?: string } | null>(null)
-  const [confirmOut, setConfirmOut] = useState(false)
+  const [confirmDialog, confirm] = useConfirm()
+  const router = useRouter()
   const [active, setActive] = useState<string>(SECTIONS[0].id)
   const [, start] = useTransition()
 
@@ -198,9 +181,12 @@ export function PersonalSettings({
     if (!save) { setStatus({ key, state: 'saved' }); return }
     setStatus({ key, state: 'saving' })
     start(async () => {
-      const res = await save(patch).catch(e => ({ ok: false, error: String(e) }))
+      const res = await save(patch).catch(() => ({ ok: false, error: 'Not saved. Try again in a moment.' }))
       if (!res.ok) revert()
       setStatus({ key, state: res.ok ? 'saved' : 'error', error: res.error })
+      // The Notifications section says when the summary arrives: drawn by the
+      // server, so it is drawn again with the new zone or hour.
+      if (res.ok && (key === 'zone' || key === 'hour')) router.refresh()
     })
   }
   const set = <K extends keyof PersonSettings>(key: string, field: K, value: PersonSettings[K], patch: SettingsPatch) => {
@@ -210,6 +196,22 @@ export function PersonalSettings({
   const setFavourites = (next: NavItem[]) => {
     const before = favs
     change('favourites', { favourites: next.map(n => n.key) }, () => setFavs(next), () => setFavs(before))
+  }
+
+  async function signOutAll() {
+    if (!signOutEverywhere || blocked) return
+    const yes = await confirm({
+      title: 'Sign out on all devices?',
+      body: 'Every computer and phone signed in to your account is signed out, this one too. You sign in again with a code.',
+      action: 'Sign out everywhere',
+      danger: true,
+    })
+    if (!yes) return
+    setStatus(null)
+    start(async () => {
+      const res = await signOutEverywhere().catch(() => ({ ok: false as const, error: 'Could not sign out every device. Try again in a moment.' }))
+      if (res && !res.ok) setStatus({ key: 'signout', state: 'error', error: res.error })
+    })
   }
 
   const statusFor = (key: string) => {
@@ -224,12 +226,13 @@ export function PersonalSettings({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
+      {confirmDialog}
       <nav aria-label="On this page" className="hidden lg:block sticky top-24">
         <div className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.12em] uppercase text-muted mb-2">On this page</div>
         <ul className="list-none m-0 p-0 space-y-0.5 border-l-2 border-[var(--panel-border)]">
           {SECTIONS.map(x => (
             <li key={x.id}>
-              <a href={`#${x.id}`} className={`block -ml-0.5 pl-3 py-1.5 border-l-2 text-[13.5px] font-semibold transition-colors ${active === x.id ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink'}`}>{x.title}</a>
+              <a href={`#${x.id}`} aria-current={active === x.id ? 'location' : undefined} className={`block -ml-0.5 pl-3 py-1.5 border-l-2 text-[13.5px] font-semibold transition-colors ${active === x.id ? 'border-tn-teal text-tn-ink' : 'border-transparent text-muted hover:text-tn-ink'}`}>{x.title}</a>
             </li>
           ))}
         </ul>
@@ -247,16 +250,9 @@ export function PersonalSettings({
           <Row label="Two-step sign-in" hint="A 6-digit code from the authenticator app on your phone, after the email code.">
             <div className="min-w-[260px]">{twoStep}</div>
           </Row>
-          <Row label="Sign out on all devices" hint="Ends your sessions on every computer and phone, this one included. Useful after using a shared computer. Other devices are signed out within the hour.">
-            {!confirmOut ? (
-              <button type="button" onClick={() => setConfirmOut(true)} className="rounded-[9px] border border-[var(--panel-border)] bg-white text-tn-ink px-3.5 py-2 text-[13px] font-bold hover:border-[#b3271f] hover:text-[#b3271f]">Sign out on all devices</button>
-            ) : (
-              <form action={signOutEverywhere ?? undefined} onSubmit={e => { if (!signOutEverywhere) e.preventDefault() }} className="flex items-center gap-2 flex-wrap">
-                <span className="text-[12.5px] font-semibold text-tn-ink">You will need to sign in again here too.</span>
-                <button type="submit" className="rounded-[9px] bg-[#b3271f] text-[#ffffff] px-3.5 py-2 text-[13px] font-bold">Sign out everywhere</button>
-                <button type="button" onClick={() => setConfirmOut(false)} className="rounded-[9px] border border-[var(--panel-border)] bg-white text-tn-ink px-3.5 py-2 text-[13px] font-bold">Cancel</button>
-              </form>
-            )}
+          <Row label="Sign out on all devices" hint="Ends your sessions on every computer and phone: this one at once, the others within the hour. Useful after using a shared computer." status={statusFor('signout')}>
+            <button type="button" disabled={!!blocked} title={blocked} onClick={signOutAll}
+              className="rounded-[9px] border border-[var(--panel-border)] bg-white text-tn-ink px-3.5 py-2 text-[13px] font-bold hover:border-[#b3271f] hover:text-[#b3271f] disabled:opacity-50 disabled:hover:border-[var(--panel-border)] disabled:hover:text-tn-ink">Sign out on all devices</button>
           </Row>
         </Section>
 
@@ -266,7 +262,7 @@ export function PersonalSettings({
           </Row>
           <Row label="Daily summary at" hint={`When the daily summary reaches you, in ${zoneLabel(s.timeZone)} time, Monday to Friday.`} status={statusFor('hour')}>
             <Choice label="Daily summary at" value={s.summaryHour} onChange={h => set('hour', 'summaryHour', h, { summaryHour: h })}
-              options={SUMMARY_HOURS.map(h => ({ key: h, label: `${h}:00` }))} />
+              options={SUMMARY_HOURS.map(h => ({ key: h, label: `${h}:00 AM` }))} />
           </Row>
         </Section>
 

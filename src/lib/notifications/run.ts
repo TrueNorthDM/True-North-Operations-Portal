@@ -28,9 +28,20 @@ import { loadAudience } from './audience'
 import { deliver, type Draft, type DeliverResult, type Row } from './deliver'
 import {
   accessChangeDrafts, firstLoginDrafts, i7Drafts, integrationDrafts, levelDrafts, makeCtx, publishingDrafts,
-  syncDrafts, teamOrderDrafts, unlinkedDrafts, workDrafts, type Ctx,
+  syncDrafts, teamOrderDrafts, unlinkedDrafts, unlinkedSeen, workDrafts, UNLINKED_SEEN, type Ctx,
 } from './generators'
-import { loadRules } from './store'
+import { loadRules, readState, writeState } from './store'
+
+/**
+ * Where "a step was assigned" (T1) has read events up to. The next run reads
+ * from here, so a run that failed or was skipped is caught up by the next one
+ * (audit, 9 October 2026: each run read only its own sync, and lost the events
+ * of a sync that was not followed by a run). Moved on only after the
+ * notifications are written.
+ */
+const ASSIGNED_UPTO = 'step-assigned-upto'
+/** Never further back than this: a long outage is not worth a flood. */
+const ASSIGNED_MAX_BACK_MS = 3 * 86_400_000
 
 type Client = Db
 
@@ -79,8 +90,11 @@ export async function notifyAfterSync(opts: {
     // catalogue's default rules): that is how the generators were checked.
     if (!opts.dryRun && !(await ready(db))) return { skipped: 'Migration 088 has not been run.', failed: {} }
     const ctx = makeCtx(db, await loadAudience(db), opts.now)
+    const upto = opts.since ? await readState<string>(db, ASSIGNED_UPTO) : null
+    const floor = new Date(ctx.now.getTime() - ASSIGNED_MAX_BACK_MS).toISOString()
+    const from = opts.since ? (upto && upto < opts.since ? (upto > floor ? upto : floor) : opts.since) : null
     const { drafts, failed } = await gather(ctx, {
-      work: c => workDrafts(c, { since: opts.since }),
+      work: c => workDrafts(c, { since: from }),
       publishing: publishingDrafts,
       i7: i7Drafts,
       firstLogin: firstLoginDrafts,
@@ -89,6 +103,7 @@ export async function notifyAfterSync(opts: {
         : {}),
     })
     const res = await deliver(db, drafts, { now: ctx.now, dryRun: opts.dryRun })
+    if (!opts.dryRun && opts.since && !failed.work && !res.error) await writeState(db, ASSIGNED_UPTO, ctx.now.toISOString())
     const cleaned = opts.dryRun ? 0 : await cleanup(db, ctx.now)
     return { ...res, failed, cleaned }
   } catch (e) {
@@ -96,12 +111,14 @@ export async function notifyAfterSync(opts: {
   }
 }
 
-async function simple(name: string, build: (ctx: Ctx) => Promise<Draft[]> | Draft[], db: Client = createAdminClient()): Promise<RunReport> {
+/** `after`: runs only once the drafts are all written (state that says "told"). */
+async function simple(name: string, build: (ctx: Ctx) => Promise<Draft[]> | Draft[], db: Client = createAdminClient(), after?: (ctx: Ctx) => Promise<void>): Promise<RunReport> {
   try {
     if (!(await ready(db))) return { skipped: 'Migration 088 has not been run.', failed: {} }
     const ctx = makeCtx(db, await loadAudience(db))
     const res = await deliver(db, await build(ctx))
     if (res.error) console.error(`[notifications] ${name}:`, res.error)
+    else if (after) await after(ctx)
     return { ...res, failed: {} }
   } catch (e) {
     console.error(`[notifications] ${name}:`, (e as Error).message)
@@ -110,7 +127,8 @@ async function simple(name: string, build: (ctx: Ctx) => Promise<Draft[]> | Draf
 }
 
 export const notifyUnlinked = (db: Client, unlinked: readonly { id: number; name: string; email: string | null }[]) =>
-  simple('unlinked', ctx => unlinkedDrafts(ctx, unlinked), db)
+  simple('unlinked', ctx => unlinkedDrafts(ctx, unlinked), db,
+    async ctx => writeState(ctx.db, UNLINKED_SEEN, await unlinkedSeen(ctx, unlinked)))
 
 export const notifyHealth = (db: Client, results: readonly HealthResult[]) =>
   simple('health', ctx => integrationDrafts(ctx, results), db)

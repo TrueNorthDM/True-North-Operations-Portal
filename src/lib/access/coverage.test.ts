@@ -133,10 +133,18 @@ describe('every server action asks the access rule', () => {
   })
 
   it('verifies the session behind every own-record action (two-step given, still active and invited)', () => {
+    // signedInPerson() (lib/notifications/signed-in.ts) verifies it for the
+    // notification and settings actions; the next test holds it to that.
     const unverified = Object.keys(SELF)
       .filter(f => !/^app\/auth\//.test(f))
-      .filter(f => !/verifiedSession\(/.test(read(join(SRC, f))))
+      .filter(f => !/verifiedSession\(|signedInPerson\(/.test(read(join(SRC, f))))
     expect(unverified).toEqual([])
+  })
+
+  it('signedInPerson verifies the session and refuses a View Stage preview', () => {
+    const s = read(join(SRC, 'lib/notifications/signed-in.ts'))
+    expect(s).toMatch(/verifiedSession\(/)
+    expect(s).toMatch(/getViewAs\(/)
   })
 })
 

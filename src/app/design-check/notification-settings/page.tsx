@@ -34,9 +34,8 @@ export default async function NotificationSettingsCheck({ searchParams }: { sear
           <p className="mt-1.5 text-muted leading-relaxed m-0">What notifies you, and when: in the bell as it happens, or in the daily summary email. Every notification the portal has, including the ones still to come.</p>
         </div>
         <NotificationSettings
-          types={NOTIFICATION_TYPES} mine={mine} rules={rules} prefs={{}} isAdmin={isAdmin}
-          savePref={null} saveRule={null} initialTab={tab === 'rules' ? 'rules' : 'mine'}
-          zone={null} sendTest={null}
+          mode={tab === 'rules' ? 'rules' : 'mine'}
+          types={tab === 'rules' ? NOTIFICATION_TYPES : NOTIFICATION_TYPES.filter(t => mine.includes(t.key))} rules={rules}
           offCounts={Object.fromEntries(NOTIFICATION_TYPES.map((t, i) => [t.key, { off: [2, 1, 4, 5, 0, 3, 0, 1, 0, 2, 5, 0, 1][i] ?? 0, reach: [31, 31, 31, 8, 31, 6, 3, 8, 4, 4, 4, 31, 4][i] ?? 1 }]))}
         />
       </div>

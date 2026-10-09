@@ -3,8 +3,8 @@
  * Clocky) unless a person chose their own time zone. Pure: the generators, the
  * delivery, the summary email and the tests share it.
  *
- * "As it happens" lands at once. "Daily summary" lands at the next 8:00 in the
- * person's zone (in New York that is 12:00 or 13:00 UTC depending on daylight
+ * "As it happens" lands at once. "Daily summary" lands at the person's next
+ * summary hour (8:00 unless they chose another) in their zone (8:00 in New York that is 12:00 or 13:00 UTC depending on daylight
  * saving), so the hour is worked out from the zone rather than written down as
  * an offset.
  */

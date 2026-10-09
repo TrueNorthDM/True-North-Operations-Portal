@@ -65,7 +65,7 @@ export const DRAWERS: Record<DrawerKind, { title: string; icon: NavIconKey; tabs
   },
 }
 
-export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onClose }: {
+export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUnread, onClose }: {
   kind: DrawerKind
   tab: string
   onTab: (key: string) => void
@@ -73,11 +73,25 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
   /** Read since the page loaded, kept by the button so its count follows. */
   read: ReadonlySet<string>
   onRead: (ids: string[]) => void
+  /** Puts them back to unread: the server did not mark them. */
+  onUnread?: (ids: string[]) => void
   onClose: () => void
 }) {
   const router = useRouter()
   const d = DRAWERS[kind]
   const [onlyUnread, setOnlyUnread] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  // Shown read at once; put back, with the reason, if the server refused
+  // (a View Stage preview, a lapsed session).
+  const markRead = (ids: string[], save: () => Promise<{ ok: boolean; error?: string }>) => {
+    onRead(ids)
+    setError(null)
+    save().catch(() => ({ ok: false, error: 'Not marked read. Try again in a moment.' })).then(res => {
+      if (res.ok) return
+      onUnread?.(ids)
+      setError(res.error ?? 'Not marked read.')
+    })
+  }
   const isUnread = (i: NotificationItem) => i.unread && !read.has(i.id)
   const rows = (items[tab] ?? []).filter(i => !onlyUnread || isUnread(i))
   const current = d.tabs.find(t => t.key === tab) ?? d.tabs[0]
@@ -88,6 +102,15 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
   useEffect(() => {
     box.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({ preventScroll: true })
   }, [kind])
+  // A modal panel: Tab stays inside it while it is open.
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab') return
+    const list = [...(box.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex="0"]') ?? [])]
+    if (!list.length) return
+    const first = list[0], last = list[list.length - 1]
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+  }
   const onTabKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
     e.preventDefault()
@@ -101,7 +124,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
   return (
     <>
       <div aria-hidden="true" onClick={onClose} className="fixed inset-x-0 bottom-0 top-[var(--chrome-top)] z-40 bg-[rgba(1,35,88,.16)]" />
-      <div ref={box} role="dialog" aria-label={d.title} className="fixed right-0 bottom-0 top-[var(--chrome-top)] z-40 w-[416px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-14px_0_40px_rgba(1,35,88,.14)] flex flex-col">
+      <div ref={box} role="dialog" aria-modal="true" aria-label={d.title} onKeyDown={onKeyDown} className="fixed right-0 bottom-0 top-[var(--chrome-top)] z-40 w-[416px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-14px_0_40px_rgba(1,35,88,.14)] flex flex-col">
         <div className="px-5 pt-[18px] pb-3.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-[9px] bg-[rgba(30,125,127,.1)] text-tn-teal inline-flex items-center justify-center"><NavIcon name={d.icon} size={17} /></span>
@@ -140,24 +163,26 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
           </div>
           <button
             type="button"
+            disabled={!(items[current.key] ?? []).some(isUnread)}
             onClick={() => {
               const ids = (items[current.key] ?? []).filter(isUnread).map(i => i.id)
               if (!ids.length) return
-              onRead(ids)
-              void markTabRead(current.key)
+              markRead(ids, () => markTabRead(current.key))
             }}
-            className="text-[12.5px] font-semibold text-tn-teal hover:text-tn-ink"
+            className="text-[12.5px] font-semibold text-tn-teal hover:text-tn-ink disabled:text-muted disabled:opacity-60"
           >
             Mark all read
           </button>
         </div>
+
+        {error && <p role="alert" className="m-0 px-5 py-2 text-[12.5px] text-[#b3271f] border-b border-[var(--row-rule)]">{error}</p>}
 
         <div id="drawer-panel" role="tabpanel" aria-labelledby={`drawer-tab-${current.key}`} className="flex-1 overflow-y-auto">
           {rows.length === 0 ? (
             <div className="px-8 py-14 text-center flex flex-col items-center gap-2">
               <span className="w-11 h-11 rounded-xl bg-subtle text-muted inline-flex items-center justify-center"><NavIcon name={d.icon} size={20} /></span>
               <p className="text-[14px] font-semibold text-tn-ink m-0">{current.emptyTitle}</p>
-              <p className="text-[12.5px] text-muted leading-relaxed m-0 max-w-[280px]">{current.empty}</p>
+              <p className="text-[12.5px] text-muted leading-relaxed m-0">{current.empty}</p>
             </div>
           ) : rows.map(i => {
             const unread = isUnread(i)
@@ -166,7 +191,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
                 key={i.id}
                 type="button"
                 onClick={() => {
-                  if (unread) { onRead([i.id]); void markNotificationsRead([i.id]) }
+                  if (unread) markRead([i.id], () => markNotificationsRead([i.id]))
                   onClose()
                   router.push(withViewAs(i.href))
                 }}
@@ -193,9 +218,12 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onCl
           })}
         </div>
 
-        <div className="px-5 py-3 border-t border-[var(--panel-border)]">
-          <Link href="/settings#notifications" onClick={onClose} className={`${BTN.navy} w-full justify-center`}>Open notification settings</Link>
-        </div>
+        {/* Chat and Email have no settings yet: the link is the bell's alone. */}
+        {kind === 'bell' && (
+          <div className="px-5 py-3 border-t border-[var(--panel-border)]">
+            <Link href="/settings#notifications" onClick={onClose} className={`${BTN.navy} w-full justify-center`}>Open notification settings</Link>
+          </div>
+        )}
       </div>
     </>
   )

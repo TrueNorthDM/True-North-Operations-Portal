@@ -6,7 +6,10 @@
  * server acts for the person it has already identified.
  *
  * Every reader degrades to "nothing" while the migration has not been run, so
- * the portal keeps working and the settings page can say what is missing.
+ * the portal keeps working and the settings page can say what is missing. Any
+ * other failed read throws (audit, 9 October 2026): falling back to the
+ * catalogue's defaults would deliver a type an admin or the person turned off,
+ * and at the wrong hour.
  */
 
 import type { Json } from '@/lib/types/database.types'
@@ -16,9 +19,8 @@ import { loadSettingsFor } from '@/lib/settings/person'
 
 type Client = Db
 
-/** The error Postgres gives for a table that does not exist yet. */
-export const missingTable = (e: { code?: string; message?: string } | null | undefined): boolean =>
-  !!e && (e.code === '42P01' || e.code === 'PGRST205' || /does not exist|could not find the table/i.test(e.message ?? ''))
+export { missingTable } from '@/lib/supabase/errors'
+import { missingTable } from '@/lib/supabase/errors'
 
 type RuleRow = {
   type_key: string; enabled: boolean; timing: Timing; channel: Channel
@@ -34,14 +36,16 @@ export const ruleToRow = (key: string, r: Rule) => ({
 const rowToPref = (r: PrefRow): Pref => ({
   ...(r.enabled != null ? { enabled: r.enabled } : {}),
   ...(r.timing ? { timing: r.timing } : {}),
-  ...(r.channel ? { channel: r.channel } : {}),
 })
 
 /** Every type's rule: what an admin saved, else the catalogue's default. */
 export async function loadRules(db: Client): Promise<{ rules: Record<string, Rule>; ready: boolean }> {
   const rules = Object.fromEntries(NOTIFICATION_TYPES.map(t => [t.key, defaultRule(t)]))
   const { data, error } = await db.from('notification_rules').select('*')
-  if (error) return { rules, ready: !missingTable(error) }
+  if (error) {
+    if (missingTable(error)) return { rules, ready: false }
+    throw new Error(`The notification rules could not be read: ${error.message}`)
+  }
   for (const r of (data ?? []) as RuleRow[]) {
     if (!rules[r.type_key]) continue
     rules[r.type_key] = {
@@ -57,7 +61,10 @@ export async function loadPrefs(db: Client, personIds: readonly string[]): Promi
   const out = new Map<string, Record<string, Pref>>()
   for (let i = 0; i < personIds.length; i += 200) {
     const { data, error } = await db.from('notification_prefs').select('*').in('person_id', personIds.slice(i, i + 200))
-    if (error) break
+    if (error) {
+      if (missingTable(error)) break
+      throw new Error(`Notification choices could not be read: ${error.message}`)
+    }
     for (const r of (data ?? []) as PrefRow[]) {
       const mine = out.get(r.person_id) ?? out.set(r.person_id, {}).get(r.person_id)!
       mine[r.type_key] = rowToPref(r)
@@ -66,15 +73,21 @@ export async function loadPrefs(db: Client, personIds: readonly string[]): Promi
   return out
 }
 
-/** Kept state between runs: what has already been seen, so it is told once. */
+/**
+ * Kept state between runs: what has already been seen, so it is told once.
+ * Null means no state yet (the first run); a failed read throws, so it is
+ * never taken for a first run that would swallow what happened since.
+ */
 export async function readState<T>(db: Client, key: string): Promise<T | null> {
   const { data, error } = await db.from('notification_state').select('value').eq('key', key).maybeSingle()
-  if (error || !data) return null
+  if (error) throw new Error(`Notification state "${key}" could not be read: ${error.message}`)
+  if (!data) return null
   return (data as { value: T }).value
 }
 
 export async function writeState(db: Client, key: string, value: unknown): Promise<void> {
-  await db.from('notification_state').upsert({ key, value: value as Json, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  const { error } = await db.from('notification_state').upsert({ key, value: value as Json, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  if (error) throw new Error(`Notification state "${key}" could not be saved: ${error.message}`)
 }
 
 /** When a person's daily summary lands: their time zone and hour. */
@@ -82,10 +95,11 @@ export interface Delivery { zone: string; hour: number }
 
 /**
  * Each person's summary time (person_settings, migrations 092 and 093). Anyone
- * missing, or everyone before the migration, gets 8:00 New York.
+ * missing, or everyone before the migration, gets 8:00 New York. `strict`
+ * (sending): a failed read throws instead of putting everyone on 8:00 New York.
  */
-export async function loadDelivery(db: Client, personIds: readonly string[]): Promise<Map<string, Delivery>> {
-  const settings = await loadSettingsFor(db, personIds)
+export async function loadDelivery(db: Client, personIds: readonly string[], opts: { strict?: boolean } = {}): Promise<Map<string, Delivery>> {
+  const settings = await loadSettingsFor(db, personIds, opts)
   return new Map([...settings].map(([id, s]) => [id, { zone: s.timeZone, hour: s.summaryHour }]))
 }
 

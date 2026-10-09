@@ -1,5 +1,5 @@
 /**
- * GET /api/cron/health, integration health check (every 2 days, from the server's crontab).
+ * GET /api/cron/health, integration health check (daily, from the server's crontab).
  *
  * Verifies Monday + TSheets connectivity and that the Monday webhooks are still
  * registered, then records the results to system_health_checks. This is the

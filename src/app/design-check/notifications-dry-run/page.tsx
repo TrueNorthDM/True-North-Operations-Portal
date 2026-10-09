@@ -46,7 +46,7 @@ export default async function DryRun({ searchParams }: { searchParams: Promise<{
     <div className="min-h-screen bg-background p-8 text-[13px]">
       <div className="max-w-[1100px] mx-auto space-y-4">
         <h1 className="text-[22px] font-extrabold text-tn-ink">Notifications, dry run</h1>
-        <p>People who can sign in: {aud.people.length} (admins {aud.admins().length}). Drafts: {res.drafts ?? 0}. Would send: {rows.length}.</p>
+        <p>People who can sign in: {aud.people.length} (admins {aud.people.filter(r => r.isAdmin).length}). Drafts: {res.drafts ?? 0}. Would send: {rows.length}.</p>
         <pre className="bg-white p-3 rounded border">{JSON.stringify({ byType: res.byType, failed: res.failed, skipped: res.skipped }, null, 2)}</pre>
         <table className="w-full bg-white border">
           <thead><tr className="text-left"><th className="p-2">To</th><th>Type</th><th>When</th><th>Title</th><th>Body</th></tr></thead>

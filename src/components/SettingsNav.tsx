@@ -1,14 +1,17 @@
 'use client'
 
 /**
- * SettingsNav: the Settings surface as a top action row (help + sync + change
- * history) over a sticky left sub-nav + content panel, matching the handoff.
- * Only the active section mounts. "Change history" is a top-right toggle, not a
- * nav item.
+ * SettingsNav: Company settings (Admin > Configuration) as a sticky left
+ * sub-nav and one content panel. Only the active section mounts. An Edit /
+ * Done button under the panel turns its editors on and off.
+ *
+ * The open section follows the address's #hash (a deep link, the back and
+ * forward buttons) until one is picked here.
  */
 
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { EditingContext } from './settings/editing-context'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 export interface SettingsSection {
   id: string
@@ -27,26 +30,25 @@ export function SettingsNav({
   signedIn: { name: string; role: string }
   sections: SettingsSection[]
 }) {
-  const [active, setActive] = useState(sections[0]?.id)
   const [editing, setEditing] = useState(false)
-
-  // Deep-link support: /admin/settings#clients opens that section.
-  // Done in an effect (not the initial state) to avoid a hydration mismatch.
-  useEffect(() => {
-    const h = window.location.hash.slice(1)
-    if (h && sections.some(s => s.id === h)) setActive(h)
-  }, [sections])
+  // The hash read as an outside value (audit, 9 October 2026): copying it into
+  // state in an effect drew the first section and then jumped to the linked
+  // one, and missed back and forward. The server has no hash: '' there.
+  const hash = useSyncExternalStore(subscribeHash, () => window.location.hash.slice(1), () => '')
+  // replaceState fires no event: the pick also re-renders, which reads the new hash.
+  const [picked, setPicked] = useState<string | null>(null)
+  const want = hash || picked
+  const active = want && sections.some(s => s.id === want) ? want : sections[0]?.id
 
   function select(id: string) {
-    setActive(id)
-    if (typeof window !== 'undefined') history.replaceState(null, '', `#${id}`)
+    history.replaceState(null, '', `#${id}`)
+    setPicked(id)
   }
 
   const activeSection = sections.find(s => s.id === active)
   const showEdit = activeSection?.editable !== false
 
   return (
-    <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-[232px_1fr] gap-6 items-start">
         {/* sub-nav */}
         <nav className="flex flex-col gap-[3px] lg:sticky lg:top-[81px]">
@@ -61,6 +63,7 @@ export function SettingsNav({
               <button
                 key={s.id}
                 type="button"
+                aria-current={on ? 'page' : undefined}
                 onClick={() => select(s.id)}
                 className={`flex items-center gap-[11px] w-full text-left rounded-[11px] px-[13px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13.5px] transition-all ${
                   on ? 'bg-tn-teal-soft text-tn-teal' : 'text-foreground hover:bg-subtle'
@@ -82,24 +85,24 @@ export function SettingsNav({
 
           {showEdit && (
             <div className="flex justify-end mt-6 pt-5 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setEditing(v => !v)}
-                className={`inline-flex items-center gap-2 rounded-[10px] px-5 py-[11px] font-(family-name:--font-display) font-extrabold text-[13.5px] transition-all shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] hover:-translate-y-px ${
-                  editing ? 'bg-tn-teal text-white' : 'bg-tn-primary text-white'
-                }`}
-              >
+              {/* The portal's two buttons: Edit is navy with a gold symbol;
+                  Done, while editing, is white with a green one. */}
+              <button type="button" aria-pressed={editing} onClick={() => setEditing(v => !v)} className={editing ? BTN.white : BTN.navy}>
                 {editing ? (
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
                 ) : (
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                 )}
-                <span className="text-[#ffffff]">{editing ? 'Done' : 'Edit'}</span>
+                {editing ? 'Done' : <span className="text-[#ffffff]">Edit</span>}
               </button>
             </div>
           )}
         </section>
       </div>
-    </div>
   )
+}
+
+function subscribeHash(onChange: () => void) {
+  window.addEventListener('hashchange', onChange)
+  return () => window.removeEventListener('hashchange', onChange)
 }

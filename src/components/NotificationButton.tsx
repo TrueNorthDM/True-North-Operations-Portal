@@ -98,7 +98,9 @@ export function NotificationButton({ kind, items = {}, startOpen = false }: {
         <NotificationDrawer
           kind={kind} tab={tab} onTab={pickTab} items={items}
           read={read} onRead={ids => setRead(prev => new Set([...prev, ...ids]))}
-          onClose={() => setOpen(false)}
+          onUnread={ids => setRead(prev => new Set([...prev].filter(id => !ids.includes(id))))}
+          // Every way out gives focus back to the button, not only Escape.
+          onClose={() => { setOpen(false); btnRef.current?.focus({ preventScroll: true }) }}
         />
       )}
     </div>

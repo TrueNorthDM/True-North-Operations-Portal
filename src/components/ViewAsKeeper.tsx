@@ -47,10 +47,12 @@ export function ViewAsKeeper() {
 
       // Next's Link navigates from its href PROP, not the DOM attribute, so
       // rewriting the attribute would do nothing. Take the navigation over.
+      // preventDefault alone: Link then skips its own navigation but still
+      // runs its onClick (a drawer closing as it is followed). The hash
+      // (#notifications) goes along (audit, 9 October 2026).
       url.searchParams.set('_vs', token as string)
       e.preventDefault()
-      e.stopPropagation()
-      router.push(url.pathname + url.search)
+      router.push(url.pathname + url.search + url.hash)
     }
 
     // Capture phase, so this runs before Link's own handler.
@@ -69,5 +71,5 @@ export function withViewAs(href: string): string {
   const url = new URL(href, window.location.href)
   if (url.searchParams.has('_vs')) return href
   url.searchParams.set('_vs', token)
-  return url.pathname + url.search
+  return url.pathname + url.search + url.hash
 }

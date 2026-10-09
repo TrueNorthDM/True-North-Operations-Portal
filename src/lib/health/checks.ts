@@ -33,6 +33,7 @@ export const HEALTH = {
   mondayEvents: 'monday_events',
   tsheetsApi: 'tsheets_api',
   dbProtections: 'db_protections',
+  dailySummary: 'daily_summary',
 } as const
 
 export const HEALTH_LABEL: Record<string, string> = {
@@ -41,6 +42,7 @@ export const HEALTH_LABEL: Record<string, string> = {
   monday_events: 'Monday event delivery',
   tsheets_api: 'TSheets API',
   db_protections: 'Database protections',
+  daily_summary: 'Daily summary email',
 }
 
 const MONDAY_API = 'https://api.monday.com/v2'
@@ -183,6 +185,36 @@ async function checkDbProtections(supabase: SupabaseClient): Promise<Check> {
   return { service: HEALTH.dbProtections, ok: true, status: 'ok', detail: 'Pay, contact and server-only functions are closed to signed-in and anonymous roles.' }
 }
 
+/**
+ * Is the daily summary email going out (audit, 9 October 2026)? Its failures
+ * were invisible: the run answered "ok" and nothing watched it. Down when a
+ * summary gave up after its tries or a claim is stuck; a warning when daily
+ * notifications have waited five days without an email (the run not running).
+ */
+async function checkDailySummary(supabase: SupabaseClient): Promise<Check> {
+  const since = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10)
+  const [digests, stale] = await Promise.all([
+    supabase.from('notification_digests').select('status, attempts, updated_at, error').gte('local_day', since),
+    supabase.from('notifications').select('id', { count: 'exact', head: true })
+      .eq('timing', 'daily').is('emailed_at', null).lt('deliver_at', new Date(Date.now() - 5 * 86_400_000).toISOString()),
+  ])
+  if (digests.error || stale.error) {
+    return { service: HEALTH.dailySummary, ok: true, status: 'warn', detail: `Could not read the summary log: ${(digests.error ?? stale.error)!.message}` }
+  }
+  const rows = (digests.data ?? []) as { status: string; attempts: number; updated_at: string; error: string | null }[]
+  const gaveUp = rows.filter(r => r.status === 'failed' && r.attempts >= 3)
+  const stuck = rows.filter(r => r.status === 'sending' && Date.now() - new Date(r.updated_at).getTime() > 60 * 60_000)
+  if (gaveUp.length || stuck.length) {
+    const why = gaveUp[0]?.error ? ` Last error: ${gaveUp[0].error}` : ''
+    return { service: HEALTH.dailySummary, ok: false, status: 'down', detail: `${gaveUp.length} summary email(s) gave up after 3 tries, ${stuck.length} stuck while sending, in the last two days.${why}` }
+  }
+  if ((stale.count ?? 0) > 0) {
+    return { service: HEALTH.dailySummary, ok: false, status: 'warn', detail: `${stale.count} daily notification(s) have waited more than five days for their email. Is the daily-summary cron running?` }
+  }
+  const sent = rows.filter(r => r.status === 'sent').length
+  return { service: HEALTH.dailySummary, ok: true, status: 'ok', detail: `${sent} summary email(s) sent in the last two days, none failing.` }
+}
+
 /** Run every check, persist the results (best-effort), and return them. */
 export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthResult[]> {
   const { data: settings } = await supabase.from('app_settings').select('monday_api_token, tsheets_api_token').eq('singleton_id', 1).maybeSingle()
@@ -199,6 +231,7 @@ export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthR
     checkMondayEvents(supabase),
     checkTsheets(tsheetsToken),
     checkDbProtections(supabase),
+    checkDailySummary(supabase),
   ])
 
   const checkedAt = new Date().toISOString()
