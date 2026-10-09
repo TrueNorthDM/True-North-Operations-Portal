@@ -34,8 +34,11 @@ export type WorkloadRow = {
    * into somebody who did no work all quarter.
    */
   hoursLogged: number | null
-  /** Estimated hours of work due in the next 30 days. */
-  estimatedAhead: number
+  /**
+   * Estimated hours of work due in the next 30 days. Null when a step ahead
+   * of them has no hours-per-step estimate yet: unknown, never 0% and Spare.
+   */
+  estimatedAhead: number | null
   /** Steps arriving and finishing per week, over the backlog window. */
   arriving: number
   finishing: number
@@ -92,8 +95,8 @@ export function groupAverageWeek(people: { observed: number | null }[]): number 
   return Math.round((known.reduce((s, h) => s + h, 0) / known.length) * 10) / 10
 }
 
-export function loadPercent(estimatedAhead: number, available: number): number | null {
-  if (available <= 0) return null
+export function loadPercent(estimatedAhead: number | null, available: number): number | null {
+  if (estimatedAhead === null || available <= 0) return null
   return Math.round((estimatedAhead / available) * 100)
 }
 

@@ -4,23 +4,21 @@
 // disputes it, which a hand-written "every 4 hours" cannot do: it stops being
 // true the day the cron changes and nobody notices for a quarter.
 
-import type { Db } from '@/lib/supabase/types'
-import type { OpenDecision, Source } from '@/components/report/ReportMethod'
-import type { Recording } from './data'
-
-type Client = Db
+import type { OpenDecision, Source } from './types'
+import { countChanges, failed, reportDb, type Recording } from './data'
 
 /** Matches deploy/cron/portal.crontab. Six passes a day, which is what the cadence text says. */
 const SYNC_CADENCE = 'every 4 hours'
 
-export async function loadMethod(
-  supabase: Client, recording: Recording,
-): Promise<{ sources: Source[]; todo: OpenDecision[] }> {
-  const { count: boards } = await supabase
-    .from('monday_boards').select('id', { count: 'exact', head: true }).eq('included', true)
+export async function loadMethod(recording: Recording): Promise<{ sources: Source[]; todo: OpenDecision[] }> {
+  const [{ count: boards, error }, changes] = await Promise.all([
+    reportDb().from('monday_boards').select('id', { count: 'exact', head: true }).eq('included', true),
+    recording.state === 'on' ? countChanges() : Promise.resolve(0),
+  ])
+  failed('the boards', error)
 
   const logged = recording.state === 'on'
-    ? `${recording.events.toLocaleString('en-US')} changes recorded`
+    ? `about ${changes.toLocaleString('en-US')} changes recorded`
     : 'not recording yet'
 
   const sources: Source[] = [
@@ -39,21 +37,16 @@ export async function loadMethod(
     {
       name: 'Timeclock entries',
       state: 'live',
-      cadence: 'approved hours only',
-      what: 'Approved hours per person per day with the i7 code. Answers how much time went in, which the boards never record.',
+      cadence: 'approved and locked hours only',
+      what: 'Hours per person per day, by timeclock code. Answers how much time went in, which the boards never record.',
     },
   ]
 
-  // The decisions that are settled drop off the list. One that stays on the
-  // page after being made is the fastest way to make the whole panel ignored.
-  const todo: OpenDecision[] = []
-  if (recording.state !== 'on') {
-    todo.push({ text: 'Run migration 071 so the sync can start writing the change log.' })
-  }
-  todo.push(
-    { text: 'Backfill what Monday still remembers for open items, one item at a time.' },
-    { text: 'Decide who gets the Everyone scope beyond directory level 3.' },
-  )
+  // Only what is still open. A settled item that stays on the page is the
+  // fastest way to make the whole panel ignored.
+  const todo: OpenDecision[] = recording.state === 'on'
+    ? []
+    : [{ text: 'Start the change log, so the sync writes down what changes on each step.' }]
 
   return { sources, todo }
 }

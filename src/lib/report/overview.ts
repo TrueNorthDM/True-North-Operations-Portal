@@ -26,7 +26,7 @@ export type AgeBucket = {
 
 export type HeldPerson = {
   name: string
-  /** Days from hand-off to done: the middle one, and the slowest in ten. */
+  /** Working days from hand-off to done: the middle one, and the slowest in ten. */
   median: number
   p90: number
 }
@@ -38,11 +38,14 @@ export type Overview = {
   held: HeldPerson[]
 }
 
-/** The four ages, in order, with the colour each is drawn in. */
+/**
+ * The four ages, in order, with the colour each is drawn in. Measured in
+ * working days like held time (lib/report/clock.ts): a working week is 5.
+ */
 export const AGE_BUCKETS: { label: string; color: string; maxDays: number | null }[] = [
-  { label: 'Under a week', color: '#1E7D7F', maxDays: 7 },
-  { label: '1 to 4 weeks', color: '#579BFC', maxDays: 28 },
-  { label: '1 to 3 months', color: '#E09422', maxDays: 92 },
+  { label: 'Under a week', color: '#1E7D7F', maxDays: 5 },
+  { label: '1 to 4 weeks', color: '#579BFC', maxDays: 20 },
+  { label: '1 to 3 months', color: '#E09422', maxDays: 65 },
   { label: 'Over 3 months', color: '#c2410c', maxDays: null },
 ]
 

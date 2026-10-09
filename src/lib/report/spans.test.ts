@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  daysBetween, deriveSpans, lateness, median, onTimeShare, percentile90, type LoggedEvent,
+  deriveSpans, lateness, median, onTimeShare, percentile90, type LoggedEvent,
 } from './spans'
+import { workingDaysBetween } from './clock'
 
 const ev = (o: Partial<LoggedEvent> & Pick<LoggedEvent, 'event' | 'occurred_at'>): LoggedEvent => ({
   board_id: 7, item_id: 1, people_col: 'writer', monday_user_id: 42, due_date: null, ...o,
@@ -10,11 +11,11 @@ const ev = (o: Partial<LoggedEvent> & Pick<LoggedEvent, 'event' | 'occurred_at'>
 describe('deriveSpans', () => {
   it('pairs a hand-off with the finish that closes it', () => {
     const spans = deriveSpans([
-      ev({ event: 'assigned', occurred_at: '2026-08-01T09:00:00Z' }),
-      ev({ event: 'done', occurred_at: '2026-08-05T09:00:00Z' }),
+      ev({ event: 'assigned', occurred_at: '2026-08-03T13:00:00Z' }),
+      ev({ event: 'done', occurred_at: '2026-08-06T13:00:00Z' }),
     ])
     expect(spans).toHaveLength(1)
-    expect(spans[0].heldDays).toBe(4)
+    expect(spans[0].heldDays).toBe(3)
   })
 
   it('ignores a step that landed and has not been finished', () => {
@@ -32,13 +33,13 @@ describe('deriveSpans', () => {
     const spans = deriveSpans([
       ev({ event: 'assigned', occurred_at: '2026-08-01T00:00:00Z' }),
       ev({ event: 'done', occurred_at: '2026-08-03T00:00:00Z' }),
-      ev({ event: 'reopened', occurred_at: '2026-08-04T00:00:00Z' }),
-      ev({ event: 'done', occurred_at: '2026-08-09T00:00:00Z' }),
+      ev({ event: 'reopened', occurred_at: '2026-08-04T14:00:00Z' }),
+      ev({ event: 'done', occurred_at: '2026-08-07T14:00:00Z' }),
     ])
     expect(spans).toHaveLength(1)
-    expect(spans[0].doneAt).toBe('2026-08-09T00:00:00Z')
+    expect(spans[0].doneAt).toBe('2026-08-07T14:00:00Z')
     // Measured from the reopen, not from the original hand-off.
-    expect(spans[0].heldDays).toBe(5)
+    expect(spans[0].heldDays).toBe(3)
   })
 
   it('drops the delivery entirely while a reopen is still open', () => {
@@ -67,10 +68,10 @@ describe('deriveSpans', () => {
 
   it('keeps two people on one step apart', () => {
     const spans = deriveSpans([
-      ev({ event: 'assigned', occurred_at: '2026-08-01T00:00:00Z', monday_user_id: 1 }),
-      ev({ event: 'done', occurred_at: '2026-08-02T00:00:00Z', monday_user_id: 1 }),
-      ev({ event: 'assigned', occurred_at: '2026-08-01T00:00:00Z', monday_user_id: 2 }),
-      ev({ event: 'done', occurred_at: '2026-08-08T00:00:00Z', monday_user_id: 2 }),
+      ev({ event: 'assigned', occurred_at: '2026-08-03T14:00:00Z', monday_user_id: 1 }),
+      ev({ event: 'done', occurred_at: '2026-08-04T14:00:00Z', monday_user_id: 1 }),
+      ev({ event: 'assigned', occurred_at: '2026-08-03T14:00:00Z', monday_user_id: 2 }),
+      ev({ event: 'done', occurred_at: '2026-08-12T14:00:00Z', monday_user_id: 2 }),
     ])
     expect(spans.map(s => s.heldDays).sort()).toEqual([1, 7])
   })
@@ -105,16 +106,50 @@ describe('lateness', () => {
   it('does not credit an early finish as negative', () => {
     expect(lateness('2026-08-01T09:00:00Z', '2026-08-05')).toBe(0)
   })
-})
 
-describe('daysBetween', () => {
-  it('counts calendar days, weekends included', () => {
-    // Friday to Monday is three days, because that is how long it sat.
-    expect(daysBetween('2026-08-07T09:00:00Z', '2026-08-10T09:00:00Z')).toBe(3)
+  it('reads the due date in New York: 10pm there on the day is still on time', () => {
+    expect(lateness('2026-08-06T02:00:00Z', '2026-08-05')).toBe(0)
+    expect(lateness('2026-08-06T05:00:00Z', '2026-08-05')).toBe(1)
   })
 
-  it('is zero for same-day work rather than negative for a clock skew', () => {
-    expect(daysBetween('2026-08-10T18:00:00Z', '2026-08-10T09:00:00Z')).toBe(0)
+  it('has no answer for a year typed wrong', () => {
+    expect(lateness('2026-08-06T05:00:00Z', '0202-08-05')).toBeNull()
+  })
+})
+
+describe('held time in working days (decided 9 October 2026)', () => {
+  it('leaves the weekend out: Friday 5pm to Monday 10am in New York is 17 hours', () => {
+    expect(workingDaysBetween('2026-08-07T21:00:00Z', '2026-08-10T14:00:00Z')).toBe(0.7)
+  })
+
+  it('leaves a US holiday out: Labor Day 2026 is Monday 7 September', () => {
+    // Friday noon to Tuesday noon: half of Friday and half of Tuesday.
+    expect(workingDaysBetween('2026-09-04T16:00:00Z', '2026-09-08T16:00:00Z')).toBe(1)
+  })
+
+  it('is zero for a clock skew rather than negative', () => {
+    expect(workingDaysBetween('2026-08-10T18:00:00Z', '2026-08-10T09:00:00Z')).toBe(0)
+  })
+})
+
+describe('a repeated hand-off (the log before 30 September 2026)', () => {
+  it('does not restart the clock while they already hold the step', () => {
+    const spans = deriveSpans([
+      ev({ event: 'assigned', occurred_at: '2026-08-03T14:00:00Z' }),
+      ev({ event: 'assigned', occurred_at: '2026-08-05T14:00:00Z' }),
+      ev({ event: 'assigned', occurred_at: '2026-08-06T14:00:00Z' }),
+      ev({ event: 'done', occurred_at: '2026-08-07T14:00:00Z' }),
+    ])
+    expect(spans[0].assignedAt).toBe('2026-08-03T14:00:00Z')
+    expect(spans[0].heldDays).toBe(4)
+  })
+
+  it('a new hand-off after the finish is new work, and cancels that delivery like a reopen', () => {
+    expect(deriveSpans([
+      ev({ event: 'assigned', occurred_at: '2026-08-03T14:00:00Z' }),
+      ev({ event: 'done', occurred_at: '2026-08-04T14:00:00Z' }),
+      ev({ event: 'assigned', occurred_at: '2026-08-05T14:00:00Z' }),
+    ])).toEqual([])
   })
 })
 

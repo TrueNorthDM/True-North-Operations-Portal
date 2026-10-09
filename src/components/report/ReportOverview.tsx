@@ -50,8 +50,9 @@ export function ReportOverview({ data }: { data: Overview }) {
 /**
  * Steps marked done, week by week, split by whether the due date had passed.
  *
- * Twelve columns on the 90-day period, five on the 30-day one, which is what
- * the period switch decides; this draws however many it is handed.
+ * Twelve whole weeks on the 90-day period, five on the 30-day one, which is
+ * what the period switch decides; this draws however many it is handed. Its
+ * window is whole weeks, so it says so rather than claim the period's.
  */
 function DeliveredPerWeek({ weeks }: { weeks: Overview['weeks'] }) {
   const busiest = Math.max(0, ...weeks.map(w => w.total))
@@ -61,7 +62,9 @@ function DeliveredPerWeek({ weeks }: { weeks: Overview['weeks'] }) {
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <h3 className={PANEL_TITLE}>Delivered per week</h3>
-          <p className={`${PANEL_SUB} mt-1`}>Steps marked done, split by whether the due date had passed.</p>
+          <p className={`${PANEL_SUB} mt-1`}>
+            {`Steps marked done in the last ${weeks.length} whole weeks, split by whether the due date had passed.`}
+          </p>
         </div>
         <div className="flex items-center gap-3.5 text-[11.5px] text-muted">
           <span className="inline-flex items-center gap-1.5">
@@ -73,7 +76,14 @@ function DeliveredPerWeek({ weeks }: { weeks: Overview['weeks'] }) {
         </div>
       </div>
 
-      <div className="flex items-end gap-2.5 h-[150px] border-b border-[var(--panel-border)]">
+      {weeks.length === 0 ? (
+        <p className="text-[13px] text-muted m-0 py-10 text-center">Waiting on the change log.</p>
+      ) : null}
+      <div
+        role="img"
+        aria-label={weeks.map(w => `Week of ${w.label}: ${w.total} delivered, ${w.late} late`).join('. ')}
+        className={`flex items-end gap-2.5 h-[150px] border-b border-[var(--panel-border)] ${weeks.length ? '' : 'hidden'}`}
+      >
         {weeks.map(w => {
           const px = weekBars(w, busiest)
           return (
@@ -85,7 +95,7 @@ function DeliveredPerWeek({ weeks }: { weeks: Overview['weeks'] }) {
           )
         })}
       </div>
-      <div className="flex gap-2.5 mt-2">
+      <div className="flex gap-2.5 mt-2" aria-hidden="true">
         {weeks.map(w => (
           <div key={w.label} className="flex-1 text-center text-[10.5px] text-muted">{w.label}</div>
         ))}
@@ -107,7 +117,10 @@ function OpenByAge({ aging }: { aging: Overview['aging'] }) {
   return (
     <section className={`${CARD} px-5 pt-[18px] pb-5`}>
       <h3 className={PANEL_TITLE}>Open work, by age</h3>
-      <p className={`${PANEL_SUB} mt-1 mb-4`}>How long each open step has been sitting with its assignee.</p>
+      <p className={`${PANEL_SUB} mt-1 mb-4`}>
+        Working days each open step has been with its assignee. Steps the change log has not seen
+        land are left out.
+      </p>
       <div className="flex flex-col gap-3.5">
         {aging.map(a => (
           <div key={a.label}>
@@ -135,18 +148,23 @@ function HeldPerPerson({ held }: { held: Overview['held'] }) {
       <div className="flex items-start justify-between gap-3 mb-[18px]">
         <div>
           <h3 className={PANEL_TITLE}>How long work stays with each person</h3>
-          <p className={`${PANEL_SUB} mt-1`}>Bar is the median, the line runs to the slowest one in ten.</p>
+          <p className={`${PANEL_SUB} mt-1`}>
+            Working days. Bar is the median, the line runs to the slowest one in ten.
+          </p>
         </div>
-        <span className="text-[11.5px] text-muted whitespace-nowrap">0 to {HELD_SCALE_DAYS} days</span>
+        <span className="text-[11.5px] text-muted whitespace-nowrap">{`0 to ${HELD_SCALE_DAYS} working days`}</span>
       </div>
 
+      {held.length === 0 ? (
+        <p className="text-[13px] text-muted m-0">Nothing delivered in this period.</p>
+      ) : null}
       <div className="flex flex-col gap-[11px]">
-        {held.map(p => {
+        {held.map((p, i) => {
           const w = heldWidths(p)
           return (
-            <div key={p.name} className="flex items-center gap-3.5">
+            <div key={`${p.name}-${i}`} className="flex items-center gap-3.5">
               <span className="w-[150px] flex-none text-[13px] font-semibold text-tn-ink">{p.name}</span>
-              <span className="flex-1 relative h-5 bg-subtle rounded-md">
+              <span className="flex-1 relative h-5 bg-subtle rounded-md" aria-hidden="true">
                 <span
                   className="absolute top-2 h-1 rounded-sm bg-[rgba(194,65,12,.45)]"
                   style={{ left: `${w.whiskerLeft}%`, width: `${w.whiskerWidth}%` }}
@@ -159,7 +177,7 @@ function HeldPerPerson({ held }: { held: Overview['held'] }) {
               {/* nowrap, not just a width: at 104px the handoff's own readout
                   wraps onto a second line and pushes the row out of line. */}
               <span className="min-w-[104px] flex-none text-right text-[12.5px] text-foreground whitespace-nowrap">
-                med {formatDays(p.median)} · p90 {p.p90}d
+                med {formatDays(p.median)} · p90 {formatDays(p.p90)}
               </span>
             </div>
           )

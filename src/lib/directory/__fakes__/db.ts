@@ -19,6 +19,8 @@ export interface FakeOptions {
   fail?: string[]
   /** An rpc that fails, with this message. */
   rpcError?: string
+  /** What an rpc answers, by function name (null when absent). */
+  rpc?: Record<string, (args: Record<string, unknown>) => unknown>
   /** Unique keys per table: an insert repeating one fails, as Postgres would. */
   unique?: Record<string, string[]>
   /** A write containing a row this matches fails whole (a bad row in a batch). */
@@ -176,7 +178,8 @@ export function fakeDb(seed: Record<string, Row[]>, opts: FakeOptions = {}): Fak
     from,
     rpc: async (fn: string, args: unknown) => {
       fake.rpcs.push({ fn, args })
-      return { data: null, error: opts.rpcError ? { message: opts.rpcError } : null }
+      if (opts.rpcError) return { data: null, error: { message: opts.rpcError } }
+      return { data: opts.rpc?.[fn]?.(args as Record<string, unknown>) ?? null, error: null }
     },
     storage: {
       from: (bucket: string) => ({

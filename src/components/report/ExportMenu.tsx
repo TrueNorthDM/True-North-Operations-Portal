@@ -9,21 +9,22 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
-
-const BUTTON =
-  'inline-flex items-center gap-[7px] text-[13px] font-semibold px-[13px] py-[9px] rounded-[10px] border border-[var(--panel-border)] bg-white text-foreground hover:bg-[var(--row-hover)] transition-colors'
+import { withViewAs } from '@/components/ViewAsKeeper'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 const ORIENTATION =
   'flex-1 text-center text-[12px] font-bold py-2 rounded-lg border transition-colors'
 
-function DownloadIcon() {
+function DownloadIcon({ tone = 'white' }: { tone?: keyof typeof BTN_ICON }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON[tone]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <path d="M7 10l5 5 5-5M12 15V3" />
     </svg>
   )
 }
+
+const BUTTON = BTN.white
 
 export function ExportMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: string }) {
   const [open, setOpen] = useState(false)
@@ -47,12 +48,18 @@ export function ExportMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: str
     }
   }, [open])
 
+  // Both files keep a View Stage preview (?_vs): without it they were built
+  // as the person signed in, not as the level being previewed.
   const sep = pdfHref.includes('?') ? '&' : '?'
   const href = `${pdfHref}${sep}orientation=${landscape ? 'landscape' : 'portrait'}`
 
   return (
     <div className="flex items-center gap-2.5">
-      <a className={BUTTON} href={csvHref}><DownloadIcon />CSV</a>
+      {/* The preview token is read at the click, not in render, so the server
+          and the browser draw the same link. */}
+      <a className={BUTTON} href={csvHref} onClick={e => { e.currentTarget.href = withViewAs(csvHref) }}>
+        <DownloadIcon />CSV
+      </a>
 
       <div className="relative" ref={box}>
         <button type="button" className={BUTTON} onClick={() => setOpen(o => !o)} aria-expanded={open}>
@@ -85,10 +92,11 @@ export function ExportMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: str
               type="button"
               onClick={() => {
                 setOpen(false)
-                setPdf({ url: href, title: `Report, ${landscape ? 'landscape' : 'portrait'}`, fallbackName: 'report.pdf' })
+                setPdf({ url: withViewAs(href), title: `Report, ${landscape ? 'landscape' : 'portrait'}`, fallbackName: 'report.pdf' })
               }}
-              className="block w-full text-center text-[12.5px] font-bold py-2 rounded-lg bg-tn-ink text-white hover:opacity-90 transition-opacity"
+              className={`${BTN.navy} w-full justify-center`}
             >
+              <DownloadIcon tone="navy" />
               Build the PDF
             </button>
           </div>

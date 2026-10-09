@@ -30,11 +30,11 @@ export async function launcherPeople(): Promise<{ id: string; name: string; href
   const withHref = (list: { id: string; full_name: string }[]) => list.map(p => ({ id: p.id, name: p.full_name, href: hrefFor(p.id) }))
   // The whole company is "See the whole company" (d-company); without it, the
   // people of their own teams, as the Directory itself shows them.
-  if (access.can('d-company')) return withHref(await activePeople(supabase, {}))
+  if (access.can('d-company')) return withHref(await activePeople({}))
   if (!access.personId) return []
   const { data } = await supabase.from('team_members').select('team_id').eq('person_id', access.personId)
   const teamIds = ((data ?? []) as { team_id: string }[]).map(m => m.team_id)
-  const people = await activePeople(supabase, { teamIds })
-  const own = people.some(p => p.id === access.personId) ? [] : await activePeople(supabase, { personIds: [access.personId] })
+  const people = await activePeople({ teamIds })
+  const own = people.some(p => p.id === access.personId) ? [] : await activePeople({ personIds: [access.personId] })
   return withHref([...people, ...own])
 }

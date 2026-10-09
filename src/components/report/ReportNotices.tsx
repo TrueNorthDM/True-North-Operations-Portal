@@ -5,6 +5,7 @@
 // data. A zero is a measurement, and "we were not watching" is not one.
 
 import type { Recording } from '@/lib/report/data'
+import { reportDate } from '@/lib/report/clock'
 
 const PANEL = 'rounded-[10px] px-4 py-3.5 text-[13.5px] leading-[1.6]'
 
@@ -17,13 +18,14 @@ const PANEL = 'rounded-[10px] px-4 py-3.5 text-[13.5px] leading-[1.6]'
  * against the reason it is low.
  */
 export function ChangeLogNotice({ recording }: { recording: Recording }) {
-  if (recording.state === 'on' && recording.events > 0) {
-    const since = new Date(recording.startedAt)
-      .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (recording.state === 'on') {
+    // Said as it is (audit, 9 October 2026): this used to claim the earlier
+    // steps were counted as delivered, and they are not counted at all.
     return (
       <div className={`${PANEL} border border-[rgba(224,148,14,.5)] bg-[var(--warn-bg)] text-[var(--warn-fg)]`}>
-        Held time and on-time delivery start on {since}. Steps finished before that date are
-        counted as delivered, without a held time.
+        {`Delivery, on-time share and held time start on ${reportDate(recording.startedAt)}, when the change log began. `}
+        Steps finished before that date are not counted, and a step that was already open then
+        has no hand-off date, so it has no held time.
       </div>
     )
   }
@@ -48,10 +50,10 @@ export function ChangeLogNotice({ recording }: { recording: Recording }) {
  */
 export function StaleSnapshot({ syncedAt, hoursBehind }: { syncedAt: string; hoursBehind: number }) {
   const at = new Date(syncedAt).toLocaleTimeString('en-US', {
-    hour: '2-digit', minute: '2-digit', hour12: false,
+    hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York',
   })
   const zone = new Date(syncedAt)
-    .toLocaleTimeString('en-US', { timeZoneName: 'shortOffset' }).split(' ').pop()
+    .toLocaleTimeString('en-US', { timeZoneName: 'short', timeZone: 'America/New_York' }).split(' ').pop()
 
   return (
     <div className={`${PANEL} border border-[var(--panel-border)] bg-subtle text-foreground`}>
@@ -78,6 +80,26 @@ export function NothingInWindow({ periodDays }: { periodDays: number }) {
         No delivered work in the last {`${periodDays} days`}. Check the period, or whether
         this team&rsquo;s boards are switched on in{' '}
         <a href="/admin/settings" className="text-tn-teal font-semibold hover:underline">Settings</a>.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Why the Load column is empty.
+ *
+ * Hours per step is logged hours over steps delivered, and the log has
+ * delivered nothing in the window yet. Saying so beats a Load column of
+ * zeros, which would read as a team with nothing to do. On the screen and on
+ * paper alike.
+ */
+export function NoEstimateYet() {
+  return (
+    <div className="rounded-[10px] border border-[rgba(224,148,14,.5)] bg-[var(--warn-bg)] px-4 py-3.5">
+      <p className="text-[13.5px] text-[var(--warn-fg)] m-0 leading-[1.6]">
+        Load cannot be estimated yet. Hours per step is the logged hours divided by the steps
+        the change log has seen delivered, and it has seen none in the last 13 weeks.
+        Utilisation and Backlog do not depend on it.
       </p>
     </div>
   )

@@ -6,28 +6,16 @@
 // numeric column, and the row itself is the way into the person drawer, so
 // the whole row lights on hover rather than growing a button.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { chip } from '@/components/monday/tokens'
 import { formatDays } from '@/lib/report/overview'
 import { PersonDrawer, type DrawerPerson } from '@/components/report/PersonDrawer'
 import type { PersonDetail } from '@/lib/report/drawer'
 
-export type PersonRow = {
-  id: string
-  name: string
-  team: string | null
-  /** Their team's colour, already resolved by the caller. */
-  color: string
-  initials: string
-  delivered: number | null
-  /** 0 to 100, or null while there is no history to divide. */
-  onTimePct: number | null
-  medianHeld: number | null
-  open: number
-  late: number
-  /** Timeclock, not Monday. Null for anyone not on the timeclock. */
-  hours: number | null
-}
+/** What fetching one person's detail answers. */
+export type DetailResult = { ok: true; detail: PersonDetail } | { ok: false; error: string }
+import type { PersonRow } from '@/lib/report/types'
+export type { PersonRow }
 
 const GRID = '1.6fr .8fr 1.1fr 1fr .8fr .8fr .9fr 28px'
 
@@ -60,21 +48,35 @@ export function ReportPeople({
 }: {
   people: PersonRow[]
   periodDays?: number
-  /** Fetches the per-item detail. Absent in previews, where nothing opens. */
-  loadDetail?: (personId: string) => Promise<PersonDetail>
+  /** Fetches the per-item detail for the period. Absent on paper, where nothing opens. */
+  loadDetail?: (personId: string, period: string) => Promise<DetailResult>
 }) {
   // Open state lives here rather than in the URL on purpose: the handoff asks
   // that opening the drawer not lose the table's scroll position, and a query
   // param means a navigation, which restores scroll wherever it feels like.
   const [open, setOpen] = useState<PersonRow | null>(null)
   const [detail, setDetail] = useState<PersonDetail | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const asked = useRef<string | null>(null)
 
   const openRow = (p: PersonRow) => {
     if (!loadDetail) return
     setOpen(p)
     setDetail(null)
-    loadDetail(p.id).then(d => setDetail(cur => (cur === null ? d : cur)))
+    setError(null)
+    // Only the answer for the row still open lands: a slow answer for a
+    // person closed in the meantime is dropped.
+    asked.current = p.id
+    const mine = () => asked.current === p.id
+    loadDetail(p.id, String(periodDays))
+      .then(r => {
+        if (!mine()) return
+        if (r.ok) setDetail(r.detail)
+        else setError(r.error)
+      })
+      .catch(() => { if (mine()) setError('Their detail could not be read. Try again in a moment.') })
   }
+  const close = () => { asked.current = null; setOpen(null) }
 
   return (
     <>
@@ -90,11 +92,21 @@ export function ReportPeople({
         <div className="px-2 py-[11px]" />
       </div>
 
+      {people.length === 0 ? (
+        <p className="px-4 py-8 text-center text-[13.5px] text-muted m-0">Nobody in this selection.</p>
+      ) : null}
       {people.map((p, i) => (
         <div
           key={p.id}
           onClick={() => openRow(p)}
-          className={`grid transition-colors hover:bg-[var(--row-hover)] ${loadDetail ? 'cursor-pointer' : ''} ${i ? 'border-t border-[var(--row-rule)]' : ''}`}
+          // A row that opens something is reachable by keyboard too.
+          {...(loadDetail ? {
+            role: 'button', tabIndex: 0, 'aria-haspopup': 'dialog' as const, 'aria-label': `${p.name}, open their detail`,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRow(p) }
+            },
+          } : {})}
+          className={`grid transition-colors hover:bg-[var(--row-hover)] focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2 ${loadDetail ? 'cursor-pointer' : ''} ${i ? 'border-t border-[var(--row-rule)]' : ''}`}
           style={{ gridTemplateColumns: GRID }}
         >
           <div className="px-4 py-3 flex items-center gap-[11px] min-w-0">
@@ -106,7 +118,9 @@ export function ReportPeople({
             </span>
             <span className="min-w-0">
               <span className="block text-[13.5px] font-semibold text-tn-ink truncate">{p.name}</span>
-              <span className="block text-[11.5px] text-muted truncate">{p.team ?? '-'}</span>
+              <span className="block text-[11.5px] text-muted truncate">
+                {p.team ?? '-'}{p.inactive ? ' · inactive' : ''}
+              </span>
             </span>
           </div>
 
@@ -130,7 +144,7 @@ export function ReportPeople({
           <div className={`${CELL} text-right`}>{p.hours === null ? '' : `${p.hours}h`}</div>
 
           <div className="px-2 py-3 flex items-center text-[var(--faint)]">
-            <ChevronIcon />
+            {loadDetail ? <ChevronIcon /> : null}
           </div>
         </div>
       ))}
@@ -140,8 +154,9 @@ export function ReportPeople({
       <PersonDrawer
         person={drawerPerson(open)}
         detail={detail}
+        error={error}
         periodDays={periodDays}
-        onClose={() => setOpen(null)}
+        onClose={close}
       />
     ) : null}
     </>
@@ -156,6 +171,8 @@ function drawerPerson(p: PersonRow): DrawerPerson {
     initials: p.initials,
     color: p.color,
     team: p.team,
+    open: p.open,
+    inactive: p.inactive,
     stats: [
       { label: 'Delivered', value: p.delivered === null ? '-' : String(p.delivered) },
       { label: 'On time', value: p.onTimePct === null ? '-' : `${p.onTimePct}%` },

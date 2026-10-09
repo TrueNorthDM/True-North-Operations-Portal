@@ -1,4 +1,5 @@
-// Screen 1.3: Workload, level 3 only.
+// Screen 1.3: Workload. Who sees it is the Workload tab's row on Admin,
+// Access levels.
 //
 // Three columns that answer different questions on purpose, and a fourth that
 // says what the combination means. Reading them as one number is the mistake
@@ -8,8 +9,8 @@
 import { chip } from '@/components/monday/tokens'
 import {
   BACKLOG_WEEKS, LOAD_HORIZON_DAYS, LOAD_SCALE, LOAD_TICK_PCT, READING_CHIP, READING_LABEL,
-  availableHours, formatNet, groupAverageWeek, loadColour, loadPercent, netChip, netFlow,
-  reading, sparkBar, utilisation, utilisationColour, type WorkloadRow,
+  UTILISATION_WEEKS, availableHours, formatNet, groupAverageWeek, loadColour, loadPercent, netChip,
+  netFlow, reading, sparkBar, utilisation, utilisationColour, type WorkloadRow,
 } from '@/lib/report/workload'
 
 const GRID = '1.5fr 1.15fr 1.15fr 1.35fr 1fr'
@@ -18,26 +19,15 @@ const HEAD_CELL =
 const BIG_NUMBER = 'font-(family-name:--font-display) font-extrabold text-[16px]'
 const TRACK = 'h-[7px] rounded-[4px] bg-subtle overflow-hidden mt-[7px]'
 
-function LockIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  )
-}
-
 export function ReportWorkload({ people, children }: { people: WorkloadRow[]; children?: React.ReactNode }) {
+  const average = groupAverageWeek(people)
   return (
     <div>
-      <div className="flex items-center gap-3 flex-wrap border border-[var(--panel-border)] bg-subtle rounded-[12px] px-4 py-3 mb-4">
-        <span className="inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.06em] uppercase bg-[rgba(1,35,88,.08)] text-tn-ink rounded-full px-2.5 py-1">
-          <LockIcon />
-          Level 3 only
-        </span>
+      <div className="border border-[var(--panel-border)] bg-subtle rounded-[12px] px-4 py-3 mb-4">
         <span className="text-[12.5px] text-foreground leading-[1.5]">
-          Three separate readings, on three different clocks. None of them is a score, and only
-          the first two use hours at all.
+          {`Three separate readings, on three different clocks: hours over the last ${UTILISATION_WEEKS} weeks, `
+            + `work due in the next ${LOAD_HORIZON_DAYS} days, and the last ${BACKLOG_WEEKS} weeks of flow. `
+            + 'None of them is a score, only the first two use hours, and the period switch does not move them.'}
         </span>
       </div>
 
@@ -55,7 +45,7 @@ export function ReportWorkload({ people, children }: { people: WorkloadRow[]; ch
         {/* One average for the whole selection, so two contractors on the
             same screen are measured against the same week. */}
         {people.map((p, i) => (
-          <Row key={p.id} p={p} first={i === 0} average={groupAverageWeek(people)} />
+          <Row key={p.id} p={p} first={i === 0} average={average} />
         ))}
       </section>
     </div>
@@ -99,7 +89,7 @@ function Row({ p, first, average }: { p: WorkloadRow; first: boolean; average: n
             <div className="flex items-baseline gap-[7px]">
               <span className={BIG_NUMBER} style={{ color: utilisationColour(util) }}>{util}%</span>
               <span className="text-[11.5px] text-muted">
-                {`${Math.round((p.hoursLogged ?? 0) / 13)}h of ${p.contracted}h`}
+                {`${Math.round((p.hoursLogged ?? 0) / UTILISATION_WEEKS)}h of ${p.contracted}h`}
               </span>
             </div>
             <div className={TRACK}>
@@ -114,7 +104,7 @@ function Row({ p, first, average }: { p: WorkloadRow; first: boolean; average: n
 
       <div className="px-4 py-[13px]">
         {load === null ? (
-          <NoHours />
+          p.estimatedAhead === null ? <NoEstimate /> : <NoHours />
         ) : (
           <>
             <div className="flex items-baseline gap-[7px]">
@@ -185,6 +175,15 @@ function NoHours() {
       className="text-[12.5px] text-[var(--faint)]"
       title="No approved hours in this window"
     >
+      -
+    </span>
+  )
+}
+
+/** Load for somebody with a step nobody can estimate yet: unknown, not 0% and Spare. */
+function NoEstimate() {
+  return (
+    <span className="text-[12.5px] text-[var(--faint)]" title="A step due soon has no hours-per-step estimate yet">
       -
     </span>
   )

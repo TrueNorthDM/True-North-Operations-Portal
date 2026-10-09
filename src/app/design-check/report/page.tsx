@@ -91,7 +91,7 @@ function StatesDemo() {
   return (
     <div className="space-y-4">
       <ChangeLogNotice recording={{ state: 'off' }} />
-      <ChangeLogNotice recording={{ state: 'on', startedAt: '2026-02-12T09:00:00Z', events: 4210 }} />
+      <ChangeLogNotice recording={{ state: 'on', startedAt: '2026-02-12T09:00:00Z' }} />
       <StaleSnapshot syncedAt="2026-08-20T09:15:00Z" hoursBehind={9} />
       <NothingInWindow periodDays={90} />
     </div>
@@ -266,7 +266,7 @@ export default async function ReportPreview(
             </div>
           )
           : tab === 'waits' ? <ReportWaits steps={STEPS} boards={BOARDS} stuck={STUCK} />
-          : tab === 'method' ? <ReportMethod sources={SOURCES} todo={TODO} yourLevel={level} />
+          : tab === 'method' ? <ReportMethod sources={SOURCES} todo={TODO} yours={scopesFor(level).at(-1)} />
           : tab === 'states' ? <StatesDemo />
           : <ReportOverview data={SAMPLE} />}
         </div>

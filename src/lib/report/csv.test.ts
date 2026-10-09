@@ -35,15 +35,20 @@ describe('cell', () => {
 describe('peopleCsv', () => {
   it('writes one row per person under a header', () => {
     const lines = peopleCsv([person()])
-    expect(lines[0]).toContain('Person,Team,Delivered')
-    expect(lines[1]).toBe('Amy Marsh,SEO,42,79,4.2,9,3,494')
+    expect(lines[0]).toContain('Person,Team,Status,Delivered')
+    expect(lines[1]).toBe('Amy Marsh,SEO,Active,42,79,4.2,9,3,494')
+  })
+
+  // Someone no longer active stays in the file while they delivered in the period.
+  it('says who is inactive', () => {
+    expect(peopleCsv([person({ inactive: true })])[1]).toContain(',Inactive,')
   })
 
   // A spreadsheet sums a column. A zero standing in for "no history" becomes
   // part of a total somebody then presents as fact.
   it('leaves an unknown empty rather than writing a zero', () => {
     const lines = peopleCsv([person({ delivered: null, onTimePct: null, medianHeld: null, hours: null })])
-    expect(lines[1]).toBe('Amy Marsh,SEO,,,,9,3,')
+    expect(lines[1]).toBe('Amy Marsh,SEO,Active,,,,9,3,')
   })
 })
 
@@ -78,7 +83,7 @@ describe('waitsCsv', () => {
   it('separates the two tables with a blank line and its own header', () => {
     const lines = waitsCsv([], [{ id: '1', item: 'A', who: 'B', step: 'C', heldDays: 4 }])
     expect(lines).toContain('')
-    expect(lines).toContain('Item,With,Step,Held (days)')
+    expect(lines).toContain('Item,With,Status,Step,Held (working days)')
   })
 })
 
@@ -91,6 +96,6 @@ describe('toFile and exportName', () => {
   })
 
   it('names the file after what it actually covers', () => {
-    expect(exportName('people', 'My team', 30)).toMatch(/^Report People - My team, last 30 days - \d{4}-\d{2}-\d{2}$/)
+    expect(exportName('people', 'My team', 30, '2026-10-09')).toBe('Report People - My team, last 30 days - 2026-10-09')
   })
 })

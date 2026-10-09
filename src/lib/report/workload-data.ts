@@ -9,30 +9,37 @@
 //   contracted   people.weekly_hours, a fact somebody typed
 //   observed     approved timeclock hours over the window, divided by weeks
 //   hoursLogged  approved timeclock hours, straight
-//   arriving     assigned events per week, from the change log
+//   arriving     hand-offs per week, from the change log (repeats and each
+//                board's first read left out, migration 102)
 //   finishing    done events per week, from the change log
 //   estimated    open steps ahead × hours per step, and the hours per step is
 //                the estimate the audit exists to expose
+//
+// Hours per step divides hours by steps delivered over the same 13 weeks and
+// by the same people (audit, 9 October 2026). It used to divide 13 weeks of
+// hours by the deliveries of whatever period was picked, which made the
+// 30-day view's Load about three times the 90-day one.
 
-import type { Db } from '@/lib/supabase/types'
-import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
+import type { PeopleFilter } from '@/lib/monday/worklist/data'
 import { initialsOf } from '@/lib/directory/people-types'
 import { colourOf } from '@/lib/directory/team-colour'
-import type { EffortBasis } from '@/components/report/WorkloadHoldings'
+import type { EffortBasis } from './types'
 import type { WorkloadRow } from './workload'
-import { BACKLOG_WEEKS, UTILISATION_WEEKS } from './workload'
-import { accountsInScope, loadSpans, NO_TABLE } from './data'
+import { BACKLOG_WEEKS, LOAD_HORIZON_DAYS, UTILISATION_WEEKS } from './workload'
+import {
+  accountOwners, accountsInScope, failed, loadOpenWork, loadSpans, reportCall, reportDb,
+} from './data'
 import { activePeople, primaryTeams, teamColours } from './directory'
-import type { LoggedEvent } from './spans'
+import { periodStart, periodStartDay, reportToday } from './clock'
+import { addDays } from '@/lib/notifications/schedule'
+import type { Span } from './spans'
 import type { Period } from './scope'
-import { buildEffortTable, hoursFor, isMeasured, type BoardEffort } from './effort'
-
-type Client = Db
+import { buildEffortTable, hoursFor, isMeasured, type BoardEffort, type EffortTable } from './effort'
+import { approvedHours, hoursByCode } from './hours'
 
 const DAY = 86_400_000
 
-/** The horizon the Load column looks ahead over. Fixed, never the period. */
-const AHEAD_DAYS = 30
+type FlowEvent = { monday_user_id: number; event: 'assigned' | 'done'; occurred_at: string }
 
 function weekIndex(iso: string, now: number, weeks: number): number | null {
   const back = Math.floor((now - Date.parse(iso)) / (7 * DAY))
@@ -40,128 +47,122 @@ function weekIndex(iso: string, now: number, weeks: number): number | null {
 }
 
 export async function loadWorkload(
-  supabase: Client,
+  // The period switch does not move this tab: every window here is fixed.
   f: PeopleFilter & { period?: Period },
 ): Promise<{ people: WorkloadRow[]; effort: EffortBasis[]; estimateReady: boolean }> {
-  const period = f.period ?? 90
-  const now = Date.now()
+  const now = new Date()
 
-  const [accounts, snapshot] = await Promise.all([
-    accountsInScope(supabase, f),
+  const [accounts, open, people, owners, colours] = await Promise.all([
+    accountsInScope(f),
     // Open steps only: Load is about what is still ahead of them.
-    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, teamIds: f.teamIds, includeDone: false }),
+    loadOpenWork(f),
+    activePeople(f),
+    accountOwners(),
+    teamColours(),
   ])
-
-  const people = await activePeople(supabase, f)
   if (!people.length) return { people: [], effort: [], estimateReady: false }
 
   const personIds = people.map(p => p.id)
-  const [teamOf, colours] = await Promise.all([primaryTeams(supabase, personIds), teamColours(supabase)])
-  const utilSince = new Date(now - UTILISATION_WEEKS * 7 * DAY).toISOString().slice(0, 10)
-
-  const [{ data: entries }, links, spans, events] = await Promise.all([
-    supabase.from('tc_entries')
-      .select('person_id, duration_seconds')
-      .in('person_id', personIds)
-      .in('state', ['approved', 'locked'])
-      .gte('entry_date', utilSince)
-      .limit(100_000),
-    supabase.from('monday_user_links').select('monday_user_id, person_id').in('person_id', personIds),
-    loadSpans(supabase, accounts, new Date(now - period * DAY)),
-    loadFlowEvents(supabase, accounts, new Date(now - BACKLOG_WEEKS * 7 * DAY)),
+  const window = UTILISATION_WEEKS * 7
+  const since = periodStart(window, now)
+  const [teamOf, seconds, scopeSpans, companySpans, events] = await Promise.all([
+    primaryTeams(personIds),
+    approvedHours(personIds, periodStartDay(window, now)),
+    loadSpans(accounts, since),
+    // A board's own hours per step is a fact about the board, so it is
+    // measured on everyone's deliveries, like its hours.
+    accounts === null ? Promise.resolve(null) : loadSpans(null, since),
+    loadFlowEvents(accounts, new Date(now.getTime() - BACKLOG_WEEKS * 7 * DAY)),
   ])
 
-  const seconds = new Map<string, number>()
-  for (const e of (entries ?? []) as { person_id: string; duration_seconds: number }[]) {
-    seconds.set(e.person_id, (seconds.get(e.person_id) ?? 0) + e.duration_seconds)
-  }
-
-  const personOf = new Map<number, string>(
-    ((links.data ?? []) as { monday_user_id: number; person_id: string }[])
-      .map(l => [l.monday_user_id, l.person_id]),
-  )
-
+  // The shared average: these people's hours over the steps these people
+  // delivered, both over the same 13 weeks.
+  const inScope = new Set(personIds)
+  const delivered = scopeSpans.filter(s => inScope.has(owners.get(s.monday_user_id)?.personId ?? '')).length
   const totalHours = [...seconds.values()].reduce((s, x) => s + x, 0) / 3600
 
   // Per board where the board is linked to a project, and one shared average
   // everywhere else. A translation step and a monthly report step do not take
   // the same time, and one number for both tells a lead neither.
   const effort = buildEffortTable(
-    await boardEffort(supabase, spans, new Date(now - period * DAY)),
+    await boardEffort(companySpans ?? scopeSpans, periodStartDay(window, now)),
     totalHours,
-    spans.length,
+    delivered,
   )
 
-  // Open steps due inside the horizon. A step with no date is left out: it is
-  // work, but nothing says it is work for the next 30 days.
-  const horizon = new Date(now + AHEAD_DAYS * DAY).toISOString().slice(0, 10)
-  // Hours, not steps: two open steps on different boards are not the same
-  // amount of work, which is the whole reason the effort table exists.
-  const aheadOf = new Map<string, number>()
-  for (const r of snapshot.rows) {
-    if (r.statusDone || r.dueSuspect || !r.dueDate) continue
-    if (r.dueDate > horizon) continue
-    const pid = personOf.get(r.mondayUserId)
-    if (!pid) continue
-    // Everything left here is due inside the horizon, overdue included: a
-    // step whose date has passed is still ahead of them, because it is not
-    // done. Excluding it would make the most overloaded person look free.
-    aheadOf.set(pid, (aheadOf.get(pid) ?? 0) + (hoursFor(effort, r.boardId) ?? 0))
-  }
-
-  const flow = flowByPerson(events, personOf, now)
+  const ahead = estimatedAhead(open, effort, owners, addDays(reportToday(now), LOAD_HORIZON_DAYS))
+  const flow = flowByPerson(events, owners, now.getTime())
 
   const rows: WorkloadRow[] = people.map(p => {
     const secs = seconds.get(p.id)
     const logged = secs === undefined ? null : Math.round(secs / 3600)
     const observed = logged === null ? null : Math.round((logged / UTILISATION_WEEKS) * 10) / 10
-    const f = flow.get(p.id) ?? { weekly: new Array(BACKLOG_WEEKS).fill(0), arriving: 0, finishing: 0 }
+    const fl = flow.get(p.id) ?? { weekly: new Array(BACKLOG_WEEKS).fill(0), arriving: 0, finishing: 0 }
+    const a = ahead.get(p.id)
+    const team = teamOf.get(p.id) ?? null
 
     return {
       id: p.id,
       name: p.full_name,
       initials: initialsOf(p.full_name),
-      color: colourOf(colours, teamOf.get(p.id) ?? null),
+      color: colourOf(colours, team),
       contracted: p.weekly_hours ?? 0,
       observed,
       hoursLogged: logged,
-      estimatedAhead: Math.round(aheadOf.get(p.id) ?? 0),
-      arriving: f.arriving,
-      finishing: f.finishing,
-      weekly: f.weekly,
+      // Nothing due in the horizon is a measured zero; a step whose hours
+      // nobody can estimate makes the whole figure unknown, never a zero.
+      estimatedAhead: a === undefined ? 0 : a === null ? null : Math.round(a),
+      arriving: fl.arriving,
+      finishing: fl.finishing,
+      weekly: fl.weekly,
     }
   })
 
-  const audit = await effortAudit(supabase, effort, totalHours, spans.length)
+  const audit = await effortAudit(effort, totalHours, delivered)
   return { people: rows, effort: audit, estimateReady: effort.fallback !== null || effort.perBoard.size > 0 }
 }
 
-/** assigned and done events over the backlog window, for the flow columns. */
-async function loadFlowEvents(supabase: Client, accounts: number[] | null, since: Date) {
-  if (accounts !== null && !accounts.length) return []
-
-  let q = supabase
-    .from('monday_assignment_events')
-    .select('board_id, item_id, people_col, monday_user_id, event, due_date, occurred_at')
-    .in('event', ['assigned', 'done'])
-    .gte('occurred_at', since.toISOString())
-    .limit(50_000)
-  if (accounts) q = q.in('monday_user_id', accounts)
-
-  const { data, error } = await q
-  if (error) {
-    if (NO_TABLE.has(error.code ?? '')) return []
-    throw error
+/**
+ * Estimated hours of open work due inside the horizon, per person. Null for
+ * a person with a step nobody can estimate yet.
+ */
+export function estimatedAhead(
+  open: { statusDone: boolean | null; dueSuspect: boolean; dueDate: string | null; mondayUserId: number; boardId: number }[],
+  effort: EffortTable,
+  owners: Map<number, { personId: string }>,
+  horizon: string,
+): Map<string, number | null> {
+  const out = new Map<string, number | null>()
+  for (const r of open) {
+    // A step with no date is left out: it is work, but nothing says it is
+    // work for the next 30 days.
+    if (r.statusDone || r.dueSuspect || !r.dueDate || r.dueDate > horizon) continue
+    const pid = owners.get(r.mondayUserId)?.personId
+    if (!pid) continue
+    // Everything left here is due inside the horizon, overdue included: a
+    // step whose date has passed is still ahead of them, because it is not
+    // done. Excluding it would make the most overloaded person look free.
+    const h = hoursFor(effort, r.boardId)
+    const cur = out.get(pid)
+    out.set(pid, h === null || cur === null ? null : (cur ?? 0) + h)
   }
-  return (data ?? []) as LoggedEvent[]
+  return out
+}
+
+/** Hand-offs and finishes over the backlog window, for the flow columns. */
+async function loadFlowEvents(accounts: number[] | null, since: Date): Promise<FlowEvent[]> {
+  if (accounts !== null && !accounts.length) return []
+  return (await reportCall<FlowEvent[] | null>('report_flow_events', {
+    p_accounts: accounts, p_since: since.toISOString(),
+  })) ?? []
 }
 
 /** Steps arriving and finishing per week, per person. */
-function flowByPerson(events: LoggedEvent[], personOf: Map<number, string>, now: number) {
+function flowByPerson(events: FlowEvent[], owners: Map<number, { personId: string }>, now: number) {
   const out = new Map<string, { weekly: number[]; arriving: number; finishing: number }>()
 
   for (const e of events) {
-    const pid = personOf.get(e.monday_user_id)
+    const pid = owners.get(e.monday_user_id)?.personId
     if (!pid) continue
     const week = weekIndex(e.occurred_at, now, BACKLOG_WEEKS)
     if (week === null) continue
@@ -181,33 +182,23 @@ function flowByPerson(events: LoggedEvent[], personOf: Map<number, string>, now:
 }
 
 /**
- * Hours booked to each mapped board, against what that board delivered.
+ * Hours booked to each mapped board, against what that board delivered, both
+ * over the same window.
  *
  * Only boards carrying a project code appear: the rest have nothing of their
  * own to divide and take the shared average instead.
  */
-async function boardEffort(supabase: Client, spans: { board_id: number }[], since: Date): Promise<BoardEffort[]> {
-  const { data: mapped } = await supabase
+async function boardEffort(spans: Span[], sinceDay: string): Promise<BoardEffort[]> {
+  const { data, error } = await reportDb()
     .from('monday_boards')
     .select('id, name, tc_jobcode_id')
     .not('tc_jobcode_id', 'is', null)
+  failed('the boards', error)
 
-  const boards = (mapped ?? []) as { id: number; name: string; tc_jobcode_id: number }[]
+  const boards = (data ?? []) as { id: number; name: string; tc_jobcode_id: number }[]
   if (!boards.length) return []
 
-  const { data: entries } = await supabase
-    .from('tc_entries')
-    .select('jobcode_id, duration_seconds')
-    .in('jobcode_id', boards.map(b => b.tc_jobcode_id))
-    .in('state', ['approved', 'locked'])
-    .gte('entry_date', since.toISOString().slice(0, 10))
-    .limit(100_000)
-
-  const secondsByCode = new Map<number, number>()
-  for (const e of (entries ?? []) as { jobcode_id: number; duration_seconds: number }[]) {
-    secondsByCode.set(e.jobcode_id, (secondsByCode.get(e.jobcode_id) ?? 0) + e.duration_seconds)
-  }
-
+  const secondsByCode = await hoursByCode([...new Set(boards.map(b => b.tc_jobcode_id))], sinceDay)
   const deliveredByBoard = new Map<number, number>()
   for (const s of spans) deliveredByBoard.set(s.board_id, (deliveredByBoard.get(s.board_id) ?? 0) + 1)
 
@@ -225,18 +216,17 @@ async function boardEffort(supabase: Client, spans: { board_id: number }[], sinc
  * Measured boards first, since they are the ones somebody can check, then one
  * row standing for everything on the shared average.
  */
-async function effortAudit(
-  supabase: Client, effort: ReturnType<typeof buildEffortTable>, totalHours: number, delivered: number,
-): Promise<EffortBasis[]> {
+async function effortAudit(effort: EffortTable, totalHours: number, delivered: number): Promise<EffortBasis[]> {
   const rows: EffortBasis[] = []
+  const db = reportDb()
 
   if (effort.perBoard.size) {
-    const { data } = await supabase
-      .from('monday_boards').select('id, name').in('id', [...effort.perBoard.keys()])
+    const { data, error } = await db.from('monday_boards').select('id, name').in('id', [...effort.perBoard.keys()])
+    failed('the boards', error)
     for (const b of (data ?? []) as { id: number; name: string }[]) {
       rows.push({
         board: b.name,
-        basis: 'its own project code',
+        basis: `its own project code, last ${UTILISATION_WEEKS} weeks`,
         perStep: `${effort.perBoard.get(b.id)}h`,
         measured: isMeasured(effort, b.id),
       })
@@ -244,12 +234,13 @@ async function effortAudit(
   }
 
   if (effort.fallback !== null) {
-    const { count } = await supabase
+    const { count, error } = await db
       .from('monday_boards').select('id', { count: 'exact', head: true })
       .eq('included', true).is('tc_jobcode_id', null)
+    failed('the boards', error)
     rows.push({
       board: `${count ?? 0} other boards`,
-      basis: `${Math.round(totalHours).toLocaleString('en-US')}h over ${delivered} steps delivered`,
+      basis: `${Math.round(totalHours).toLocaleString('en-US')}h over ${delivered} steps delivered, last ${UTILISATION_WEEKS} weeks`,
       perStep: `${effort.fallback}h`,
       measured: false,
     })

@@ -6,7 +6,7 @@
 // loading state is a single frame nobody can look at, and it is the state
 // most likely to be got wrong.
 
-import { ReportPeople, type PersonRow } from '@/components/report/ReportPeople'
+import { ReportPeople, type DetailResult, type PersonRow } from '@/components/report/ReportPeople'
 import type { PersonDetail } from '@/lib/report/drawer'
 
 const DETAIL: Record<string, PersonDetail> = {
@@ -19,10 +19,10 @@ const DETAIL: Record<string, PersonDetail> = {
       { id: 'd', item: 'i7 Monthly Report, Jul billing', step: 'Write', heldDays: 11, lateDays: 5 },
     ],
     hours: [
-      { project: 'i7 Marketing', hours: 146 },
-      { project: 'SEO Sprints', hours: 128 },
-      { project: 'AAAF', hours: 74 },
-      { project: 'Internal', hours: 36 },
+      { project: 'Monthly reporting', folder: '2 - i7 Marketing', hours: 146 },
+      { project: 'SEO Sprints', folder: '1 - True North', hours: 128 },
+      { project: 'AAAF', folder: '1 - True North', hours: 74 },
+      { project: 'Internal', folder: '1 - True North', hours: 36 },
     ],
   },
 }
@@ -31,7 +31,7 @@ const EMPTY: PersonDetail = { totalDeliveries: 0, deliveries: [], hours: [] }
 
 export function PeopleDemo({ people }: { people: PersonRow[] }) {
   const loadDetail = (id: string) =>
-    new Promise<PersonDetail>(resolve => setTimeout(() => resolve(DETAIL[id] ?? EMPTY), 900))
+    new Promise<DetailResult>(resolve => setTimeout(() => resolve({ ok: true, detail: DETAIL[id] ?? EMPTY }), 900))
 
   return <ReportPeople people={people} periodDays={90} loadDetail={loadDetail} />
 }

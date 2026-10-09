@@ -567,6 +567,51 @@ export type Database = {
         }
         Relationships: []
       }
+      monday_assignment_events_reserve_103: {
+        Row: {
+          board_id: number
+          detected_at: string
+          due_date: string | null
+          event: string
+          from_value: string | null
+          id: number
+          item_id: number
+          monday_user_id: number
+          occurred_at: string
+          people_col: string
+          status_done: boolean | null
+          to_value: string | null
+        }
+        Insert: {
+          board_id: number
+          detected_at?: string
+          due_date?: string | null
+          event: string
+          from_value?: string | null
+          id?: number
+          item_id: number
+          monday_user_id: number
+          occurred_at: string
+          people_col: string
+          status_done?: boolean | null
+          to_value?: string | null
+        }
+        Update: {
+          board_id?: number
+          detected_at?: string
+          due_date?: string | null
+          event?: string
+          from_value?: string | null
+          id?: number
+          item_id?: number
+          monday_user_id?: number
+          occurred_at?: string
+          people_col?: string
+          status_done?: boolean | null
+          to_value?: string | null
+        }
+        Relationships: []
+      }
       monday_assignments: {
         Row: {
           board_id: number
@@ -2905,6 +2950,50 @@ export type Database = {
           launch: string
           user_id: string
         }[]
+      }
+      report_counted_events: {
+        Args: { p_accounts: number[] }
+        Returns: {
+          board_id: number
+          detected_at: string
+          due_date: string | null
+          event: string
+          from_value: string | null
+          id: number
+          item_id: number
+          monday_user_id: number
+          occurred_at: string
+          people_col: string
+          status_done: boolean | null
+          to_value: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "monday_assignment_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      report_flow_events: {
+        Args: { p_accounts: number[]; p_since: string }
+        Returns: Json
+      }
+      report_hours: {
+        Args: { p_people: string[]; p_since: string }
+        Returns: Json
+      }
+      report_jobcode_hours: {
+        Args: { p_codes: number[]; p_since: string }
+        Returns: Json
+      }
+      report_open_since: { Args: { p_accounts: number[] }; Returns: Json }
+      report_person_hours: {
+        Args: { p_person: string; p_since: string }
+        Returns: Json
+      }
+      report_span_events: {
+        Args: { p_accounts: number[]; p_since: string }
+        Returns: Json
       }
       set_person_teams: {
         Args: { p_person: string; p_teams: Json }

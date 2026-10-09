@@ -14,8 +14,8 @@ import type { Browser } from 'puppeteer-core'
 import { internalOrigin } from '@/lib/auth/public-origin'
 import { launchBrowser } from '@/lib/pdf/browser'
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
-import { SCOPE_LABEL } from '@/lib/report/scope'
 import { resolveReportView } from '@/lib/report/view'
+import { reportToday } from '@/lib/report/clock'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentPerson } from '@/lib/auth/session'
 import { exportName } from '@/lib/report/csv'
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const me = await getCurrentPerson()
-  const { tab, scope, period, team, person } = await resolveReportView(
+  const { tab, scope, label: shown, period, team, person } = await resolveReportView(
     await createClient(), access.can, me?.id ?? null, Object.fromEntries(url.searchParams),
   )
 
@@ -50,6 +50,10 @@ export async function GET(request: Request) {
   const query = new URLSearchParams({ tab, scope, period: String(period), pdf: '1' })
   if (team) query.set('team', team)
   if (person) query.set('person', person)
+  // A View Stage preview is built as the level previewed, like the screen;
+  // without the token the file came out as the person signed in.
+  const vs = url.searchParams.get('_vs')
+  if (vs) query.set('_vs', vs)
   const target = `${internalOrigin(request.url)}/report/print?${query}`
   const cookie = request.headers.get('cookie') ?? ''
 
@@ -61,7 +65,7 @@ export async function GET(request: Request) {
     await page.goto(target, { waitUntil: 'networkidle0', timeout: 45_000 })
     await page.waitForSelector('.print-doc', { timeout: 10_000 })
 
-    const label = `${SCOPE_LABEL[scope]}, last ${period} days`
+    const label = `${shown}, last ${period} days`
     const esc = (s: string) => s.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!))
     const footerTemplate =
       '<div style="width:100%;font-size:7px;color:#8593a4;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;padding:0 9mm;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;">'
@@ -80,7 +84,7 @@ export async function GET(request: Request) {
       margin: { top: '9mm', right: '9mm', bottom: '13mm', left: '9mm' },
     })
 
-    const name = `${exportName(tab, SCOPE_LABEL[scope], period)}.pdf`
+    const name = `${exportName(tab, shown, period, reportToday())}.pdf`
     const ascii = name.replace(/[^\x20-\x7e]/g, '-')
 
     return new Response(pdf as unknown as BodyInit, {
@@ -91,9 +95,9 @@ export async function GET(request: Request) {
       },
     })
   } catch (err) {
+    // The detail goes to the log; the person gets a sentence, not a stack.
     console.error('[report/pdf] generation failed:', err)
-    const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    return new Response(`PDF generation failed: ${detail}`, {
+    return new Response('The PDF could not be built. Try again in a moment.', {
       status: 500, headers: { 'Content-Type': 'text/plain' },
     })
   } finally {

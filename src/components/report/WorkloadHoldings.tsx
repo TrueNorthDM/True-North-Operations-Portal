@@ -10,6 +10,8 @@ import {
   barWidth, boardColour, holdingReadout, labelOn, totalHours,
   type PersonHoldings,
 } from '@/lib/report/holdings'
+import type { EffortBasis } from '@/lib/report/types'
+export type { EffortBasis }
 
 const CARD = 'border border-[var(--panel-border)] bg-white rounded-[12px] px-4 py-[13px]'
 const CARD_LABEL =
@@ -122,14 +124,6 @@ export function NobodyInSelection() {
       <div className="px-5 py-[34px] text-center text-[13.5px] text-muted">Nobody in this selection.</div>
     </section>
   )
-}
-
-export type EffortBasis = {
-  board: string
-  /** How the number was arrived at, in the units it was arrived at in. */
-  basis: string
-  perStep: string
-  measured: boolean
 }
 
 /**

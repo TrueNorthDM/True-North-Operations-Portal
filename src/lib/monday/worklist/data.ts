@@ -129,6 +129,12 @@ export interface WorklistFilters extends PeopleFilter {
    * ranks: a finished step has no place in it.
    */
   openOnly?: boolean
+  /**
+   * Every matching row, past the 5,000 the Everyone view stops at. For the
+   * Report, whose counts are wrong if they stop early; a page that lists rows
+   * keeps the cap.
+   */
+  uncapped?: boolean
 }
 
 export interface Worklist {
@@ -193,7 +199,9 @@ export async function peopleInFilter(supabase: Client, f: PeopleFilter): Promise
   const teams = f.teamIds ?? (f.teamId ? [f.teamId] : null)
   if (teams === null) return null
   if (!teams.length) return []
-  const { data } = await supabase.from('team_members').select('person_id').in('team_id', [...teams])
+  const { data, error } = await supabase.from('team_members').select('person_id').in('team_id', [...teams])
+  // A failed read is not an empty team: it would read as nobody's work.
+  if (error) throw new Error(`Could not read the team members: ${error.message}`)
   return [...new Set(((data ?? []) as { person_id: string }[]).map(m => m.person_id))]
 }
 
@@ -203,8 +211,9 @@ async function accountsFor(supabase: Client, personIds: string[]): Promise<numbe
   // In slices: a list of everyone is longer than a query string should be.
   const out: number[] = []
   for (let i = 0; i < personIds.length; i += 200) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('monday_user_links').select('monday_user_id').in('person_id', personIds.slice(i, i + 200))
+    if (error) throw new Error(`Could not read the Monday account links: ${error.message}`)
     out.push(...((data ?? []) as { monday_user_id: number }[]).map(r => r.monday_user_id))
   }
   return out
@@ -216,7 +225,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   const people = await peopleInFilter(supabase, f)
   const onlyAccounts: number[] | null = people === null ? null : await accountsFor(supabase, people)
 
-  const [{ data: boardRows }, firstSteps, { data: linkRows }, { data: userRows }, { data: peopleRows }] =
+  const [boardRead, firstSteps, linkRead, userRead, peopleRead] =
     await Promise.all([
       supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at, date_title, priority'),
       supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source, stages'),
@@ -224,11 +233,22 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
       supabase.from('monday_users').select('id, name, is_external, hidden'),
       supabase.from('people').select('id, full_name'),
     ])
+  // A side read that fails is not an empty table: no boards would hide every
+  // row, and the list (and the Report's counts) would read as no work at all.
+  for (const [what, r] of [['boards', boardRead], ['account links', linkRead], ['Monday accounts', userRead], ['people', peopleRead]] as const) {
+    if (r.error) throw new Error(`Could not read the ${what}: ${r.error.message}`)
+  }
+  const { data: boardRows } = boardRead
+  const { data: linkRows } = linkRead
+  const { data: userRows } = userRead
+  const { data: peopleRows } = peopleRead
   // Migration 082 adds stages. Until it is run, every step reads as seeded
   // before stages existed, which is how the page behaved before it.
   let stepRows: unknown[] | null = firstSteps.data
   if (missingColumn(firstSteps.error, 'stages')) {
     stepRows = (await supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source')).data
+  } else if (firstSteps.error) {
+    throw new Error(`Could not read the board steps: ${firstSteps.error.message}`)
   }
 
   const slug = await mondaySlug(supabase)
@@ -334,7 +354,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     supabase.from('monday_assignments').select('id', { count: 'exact', head: true }),
   )) as { count: number | null }
 
-  const cap = onlyAccounts ? Number.POSITIVE_INFINITY : UNFILTERED_CAP
+  const cap = onlyAccounts || f.uncapped ? Number.POSITIVE_INFINITY : UNFILTERED_CAP
   const rows: A[] = []
   let truncated = false
   for (let from = 0; from < cap; from += PAGE) {

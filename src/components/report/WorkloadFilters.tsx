@@ -7,8 +7,8 @@
 // reads the query string, so a filter that lived in React state would be the
 // one control a pasted link could not carry.
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { withViewAs } from '@/components/ViewAsKeeper'
+import { useSearchParams } from 'next/navigation'
+import { useReportNav } from '@/components/report/ReportFrame'
 import { Select } from '@/components/ui/Select'
 import { applyFilter, clearFilters, toQuery, type FilterKey } from '@/lib/report/filters'
 
@@ -17,12 +17,14 @@ export function WorkloadFilters({
 }: {
   /** From team_members, and only teams with an active member on them. */
   teams: { id: string; name: string }[]
-  /** Every person in scope, each tagged with the teams they are on. */
+  /** Every person in scope, each tagged with every team they are on, not only the main one. */
   people: { id: string; name: string; teamIds: string[] }[]
   /** What the selection amounts to, e.g. "2 people on Writing, member by member". */
   note: string
 }) {
-  const router = useRouter()
+  // The Report's own navigation, so the table dims while the filter loads
+  // like it does for the scope and period, and a preview keeps its ?_vs.
+  const { go: navigate } = useReportNav()
   const params = useSearchParams()
 
   const team = params.get('team') ?? ''
@@ -31,7 +33,7 @@ export function WorkloadFilters({
   const current = Object.fromEntries(params.entries())
   const go = (next: Record<string, string>) => {
     const q = toQuery(next)
-    router.push(withViewAs(q ? `/report?${q}` : '/report'))
+    navigate(q ? `/report?${q}` : '/report')
   }
 
   const setParam = (key: FilterKey, value: string) => go(applyFilter(current, key, value))

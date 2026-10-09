@@ -6,6 +6,9 @@
 // just a sort order on the one before it.
 
 import { chip } from '@/components/monday/tokens'
+import { formatDays } from '@/lib/report/overview'
+import type { StepWait, BoardWait, StuckItem } from '@/lib/report/types'
+export type { StepWait, BoardWait, StuckItem }
 
 const STUCK_GRID = '2fr 1fr .9fr .9fr'
 
@@ -15,30 +18,6 @@ const LABEL =
   'font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase text-muted'
 const STUCK_HEAD =
   'px-3 py-2 font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase text-muted'
-
-export type StepWait = {
-  name: string
-  /** Days from hand-off to done, the middle one. */
-  median: number
-  delivered: number
-}
-
-export type BoardWait = {
-  board: string
-  delivered: number
-  medianHeld: number
-  /** 0 to 100. Null when nothing delivered carried a deadline. */
-  latePct: number | null
-}
-
-export type StuckItem = {
-  id: string
-  item: string
-  who: string
-  step: string
-  /** Days it has been sitting, right now. */
-  heldDays: number
-}
 
 /**
  * The same spans, grouped by board.
@@ -57,9 +36,7 @@ function ByBoard({ boards }: { boards: BoardWait[] }) {
           <div key={b.board} className="grid grid-cols-[1fr_auto_auto_auto] items-baseline gap-3">
             <span className="text-[13px] font-semibold text-tn-ink truncate">{b.board}</span>
             <span className="w-10 text-right text-[12.5px] text-foreground">{b.delivered}</span>
-            <span className="w-12 text-right text-[12.5px] text-foreground">
-              {`${b.medianHeld < 10 ? b.medianHeld.toFixed(1) : Math.round(b.medianHeld)}d`}
-            </span>
+            <span className="w-12 text-right text-[12.5px] text-foreground">{formatDays(b.medianHeld)}</span>
             {/* A quarter of the work late is the line where a board stops
                 being a scheduling wobble and starts being a problem. */}
             <span
@@ -104,18 +81,23 @@ export function ReportWaits(
     <div className="flex flex-col gap-3.5">
       <div className={boards?.length ? 'grid grid-cols-2 gap-3.5 items-start' : ''}>
       <section className={PANEL}>
-        <h3 className={`${PANEL_TITLE} mb-3.5`}>By step</h3>
+        <h3 className={`${PANEL_TITLE} mb-1`}>By step</h3>
+        <p className="text-[12px] text-muted m-0 mb-3.5">
+          Median working days from hand-off to done, for steps with at least three deliveries.
+        </p>
+        {ordered.length === 0 ? (
+          <p className="text-[13px] text-muted m-0">Not enough deliveries in this period to compare steps.</p>
+        ) : null}
         <div className="flex flex-col gap-3">
           {ordered.map(s => (
             <div key={s.name}>
               <div className="flex items-baseline justify-between gap-2.5 mb-1.5">
                 <span className="text-[13.5px] font-semibold text-tn-ink">{s.name}</span>
                 <span className="text-[12.5px] text-muted">
-                  {`${s.median < 10 ? s.median.toFixed(1) : Math.round(s.median)}d median`}
-                  {` · ${s.delivered} delivered`}
+                  {`${formatDays(s.median)} median · ${s.delivered} delivered`}
                 </span>
               </div>
-              <div className="h-2.5 rounded-[5px] bg-subtle overflow-hidden">
+              <div className="h-2.5 rounded-[5px] bg-subtle overflow-hidden" aria-hidden="true">
                 <div
                   className="h-full rounded-[5px]"
                   style={{ background: stepColour(s.median), width: `${slowest ? (s.median / slowest) * 100 : 0}%` }}
@@ -133,7 +115,11 @@ export function ReportWaits(
           today, and mixing it with a 90-day window would put finished work
           in a queue of things to chase. */}
       <section className={PANEL}>
-        <h3 className={`${PANEL_TITLE} mb-1.5`}>Sitting longest right now</h3>
+        <h3 className={`${PANEL_TITLE} mb-1`}>Sitting longest right now</h3>
+        <p className="text-[12px] text-muted m-0">
+          Open steps, by working days since they landed. Steps the change log has not seen land are
+          left out.
+        </p>
         <div className="grid bg-subtle rounded-lg mt-2.5" style={{ gridTemplateColumns: STUCK_GRID }}>
           <div className={STUCK_HEAD}>Item</div>
           <div className={STUCK_HEAD}>With</div>
@@ -147,11 +133,19 @@ export function ReportWaits(
             style={{ gridTemplateColumns: STUCK_GRID }}
           >
             <div className="px-3 py-2.5 text-[12.5px] font-semibold text-tn-ink leading-[1.4]">{s.item}</div>
-            <div className="px-3 py-2.5 text-[12.5px] text-foreground">{s.who}</div>
+            <div className="px-3 py-2.5 text-[12.5px] text-foreground">
+              {s.who}
+              {s.inactive ? (
+                <span className={`${chip} ml-1.5 bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>Inactive</span>
+              ) : null}
+            </div>
             <div className="px-3 py-2.5 text-[12.5px] text-muted">{s.step}</div>
-            <div className="px-3 py-2.5 text-right text-[12.5px] font-bold text-[#c2410c]">{s.heldDays}d</div>
+            <div className="px-3 py-2.5 text-right text-[12.5px] font-bold text-[#c2410c]">{formatDays(s.heldDays)}</div>
           </div>
         ))}
+        {stuck.length === 0 ? (
+          <p className="text-[13px] text-muted m-0 pt-3">Nothing open with a known hand-off date.</p>
+        ) : null}
       </section>
     </div>
   )

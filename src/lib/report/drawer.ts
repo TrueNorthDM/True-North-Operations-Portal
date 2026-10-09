@@ -7,13 +7,14 @@ export type Delivery = {
   id: string
   item: string
   step: string
-  /** Days from the step landing on them to being marked done. */
+  /** Working days from the step landing on them to being marked done. */
   heldDays: number
   /** Days past the due date. 0 or null is on time; there is no bare boolean. */
   lateDays: number | null
 }
 
-export type LoggedHours = { project: string; hours: number }
+/** Approved hours on one timeclock code, with the folder it sits in. */
+export type LoggedHours = { project: string; folder?: string | null; hours: number }
 
 export type PersonDetail = {
   deliveries: Delivery[]

@@ -6,18 +6,9 @@
 // 4 hours" stops being true the day the cron changes and nobody notices.
 
 import { chip } from '@/components/monday/tokens'
-
-export type SourceState = 'live' | 'to-build'
-
-export type Source = {
-  name: string
-  state: SourceState
-  /** How often it refreshes, read from the thing that refreshes it. */
-  cadence: string
-  what: string
-}
-
-export type OpenDecision = { text: string }
+import type { Scope } from '@/lib/report/scope'
+import type { OpenDecision, Source, SourceState } from '@/lib/report/types'
+export type { OpenDecision, Source, SourceState }
 
 const SOURCE_CHIP: Record<SourceState, { label: string; className: string }> = {
   live: { label: 'live', className: 'bg-[rgba(30,125,127,.12)] text-tn-teal' },
@@ -25,7 +16,11 @@ const SOURCE_CHIP: Record<SourceState, { label: string; className: string }> = {
 }
 
 export function ReportMethod(
-  { sources, todo, yourLevel }: { sources: Source[]; todo: OpenDecision[]; yourLevel?: number },
+  { sources, todo, yours }: {
+    sources: Source[]; todo: OpenDecision[]
+    /** The widest scope the reader has, marked as theirs. */
+    yours?: Scope
+  },
 ) {
   return (
     <div className="flex flex-col gap-3.5">
@@ -42,43 +37,61 @@ export function ReportMethod(
         </div>
       ))}
 
+      <HowItCounts />
       {todo.length > 0 ? <ToBuild todo={todo} /> : null}
-      {yourLevel ? <WhoSeesWhat yourLevel={yourLevel} /> : null}
+      {yours ? <WhoSeesWhat yours={yours} /> : null}
     </div>
   )
 }
 
-// Whose work each level reads. Which tabs it gets (People, Workload) is set per
-// level on Admin, Access levels, so it is stated there rather than here.
-const LEVELS: { level: number; who: string; sees: string }[] = [
-  { level: 1, who: 'Everyone signed in', sees: 'Their own work, and no other name anywhere on the page.' },
-  { level: 2, who: 'Team leaders', sees: 'Themselves and the teams they lead (as Founder, Manager or Team Leader), nobody else.' },
-  { level: 3, who: 'Directory admins', sees: 'Everyone, including the Monday accounts nobody is linked to.' },
+// Whose work each scope reads (access model, 7 October 2026; My team decided
+// 9 October 2026). Which tabs each person gets is set on Admin, Access levels,
+// so it is stated there rather than here.
+const SCOPES: { scope: Scope; who: string; sees: string }[] = [
+  { scope: 'me', who: 'Me', sees: 'Your own work, for everyone who opens the Report.' },
+  { scope: 'team', who: 'My team', sees: 'The teams you lead, for whoever leads a team.' },
+  { scope: 'everyone', who: 'Everyone', sees: 'The whole company, including Monday accounts nobody is linked to, for whoever has "See everyone".' },
 ]
 
+/** The rules every figure on the page follows. */
+function HowItCounts() {
+  return (
+    <div className="border border-[var(--panel-border)] bg-white rounded-[12px] px-4 py-3.5">
+      <h3 className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink m-0 mb-2">
+        How it counts
+      </h3>
+      <ul className="m-0 pl-4 flex flex-col gap-1.5 text-[12.5px] text-foreground leading-[1.55]">
+        <li>Held time is working days, Monday to Friday without US federal holidays, from the moment a step lands on someone to the moment it is marked done.</li>
+        <li>Late means finished after the end of its due date in New York. A step with no due date is neither on time nor late.</li>
+        <li>A step reopened and finished again counts once, on its last finish.</li>
+        <li>Switched-off boards, switched-off steps and hidden Monday accounts are left out of the past as well as the present.</li>
+      </ul>
+    </div>
+  )
+}
+
 /**
- * Who sees what, level by level.
+ * Who sees what, scope by scope.
  *
  * On the Method tab rather than in a settings screen because the question it
  * answers is about the numbers: somebody comparing their Report against a
  * colleague's and finding different figures needs to know that is by design
- * and not a fault. The row for the reader's own level is marked, since the
- * common version of that question is "which one am I".
+ * and not a fault. The reader's own widest scope is marked.
  */
-function WhoSeesWhat({ yourLevel }: { yourLevel: number }) {
+function WhoSeesWhat({ yours }: { yours: Scope }) {
   return (
     <div className="border border-[var(--panel-border)] bg-white rounded-[12px] px-4 py-3.5">
       <h3 className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink m-0 mb-3">
         Who sees what
       </h3>
       <div className="flex flex-col gap-2.5">
-        {LEVELS.map(l => (
-          <div key={l.level} className="flex items-start gap-2.5">
-            <span className={`${chip} flex-none mt-px ${l.level === yourLevel
+        {SCOPES.map(l => (
+          <div key={l.scope} className="flex items-start gap-2.5">
+            <span className={`${chip} flex-none mt-px ${l.scope === yours
               ? 'bg-[rgba(30,125,127,.12)] text-tn-teal'
               : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'}`}
             >
-              {l.level === yourLevel ? 'you' : `level ${l.level}`}
+              {l.scope === yours ? 'you' : l.who}
             </span>
             <span className="min-w-0 text-[12.5px] text-foreground leading-[1.55]">
               <strong className="font-bold">{l.who}.</strong> {l.sees}

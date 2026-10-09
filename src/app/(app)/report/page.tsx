@@ -9,12 +9,12 @@
 // the teams they lead, level 3 everybody (lib/report/view.ts).
 
 import { requireSurface, loadAccess } from '@/lib/access/resolve'
-import type { Db } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { WorkViewSwitch, VIEW_SURFACE, type WorkView } from '@/components/monday/WorkViewSwitch'
 import { ReportTabs, type ReportTabKey } from '@/components/report/ReportTabs'
 import { ReportNav, DimWhilePending } from '@/components/report/ReportFrame'
-import { ChangeLogNotice } from '@/components/report/ReportNotices'
+import { ChangeLogNotice, NoEstimateYet } from '@/components/report/ReportNotices'
+import { reportDate } from '@/lib/report/clock'
 import { ReportOverview } from '@/components/report/ReportOverview'
 import { ReportPeople } from '@/components/report/ReportPeople'
 import { ReportWaits } from '@/components/report/ReportWaits'
@@ -26,9 +26,11 @@ import { ReportWorkload } from '@/components/report/ReportWorkload'
 import { EstimateAudit, NobodyInSelection } from '@/components/report/WorkloadHoldings'
 import { WorkloadFilters } from '@/components/report/WorkloadFilters'
 import { loadWorkload } from '@/lib/report/workload-data'
-import { activePeople, primaryTeams } from '@/lib/report/directory'
+import { activePeople, teamsOf } from '@/lib/report/directory'
+import { failed, reportDb } from '@/lib/report/data'
 import { ReportControls } from '@/components/report/ReportControls'
-import type { ReportState } from '@/lib/report/scope'
+import type { ReportState, Scope } from '@/lib/report/scope'
+import { personDetail } from './actions'
 import { resolveReportView } from '@/lib/report/view'
 import type { PeopleFilter } from '@/lib/monday/worklist/data'
 import { loadReportOverview, readRecording, type Recording } from '@/lib/report/data'
@@ -58,13 +60,13 @@ export default async function ReportPage(
   // leader naming a team they do not lead lands on their own teams, and a tab
   // they may not see resolves to Overview (screen 6.6) rather than throwing.
   const view = await resolveReportView(supabase, access.can, me?.id ?? null, sp)
-  const { level, tab, scope, period, filter: filters } = view
+  const { tab, scope, period, filter: filters } = view
   const state: ReportState = { tab, scope, period, team: view.team ?? undefined, person: view.person ?? undefined }
   // Only the recording state is needed by every tab: the notice above the
   // content and the note beside the controls. The Overview's own load reads
   // the whole worklist and a year of events, so it waits until it is the tab
   // actually being shown.
-  const recording = await readRecording(supabase)
+  const recording = await readRecording()
 
   return (
     <div className="space-y-6">
@@ -88,12 +90,13 @@ export default async function ReportPage(
           state={state}
           scopes={view.scopes}
           note={methodNote(recording)}
+          label={view.label}
           canExport={access.can('report-export')}
         />
         <DimWhilePending>
           <div className="space-y-4">
             <ChangeLogNotice recording={recording} />
-            <Tab tab={tab} supabase={supabase} filters={filters} period={period} recording={recording} level={level} teamChoices={view.teamChoices} />
+            <Tab tab={tab} filters={filters} period={period} recording={recording} widest={view.scopes[view.scopes.length - 1]} teamChoices={view.teamChoices} />
           </div>
         </DimWhilePending>
       </ReportNav>
@@ -109,11 +112,11 @@ export default async function ReportPage(
  * so there is no case to fall through.
  */
 async function Tab({
-  tab, supabase, filters, period, recording, level, teamChoices,
+  tab, filters, period, recording, widest, teamChoices,
 }: {
   tab: ReportTabKey
-  level: number
-  supabase: Db
+  /** The widest scope the reader has, marked on the Method tab. */
+  widest: Scope
   filters: PeopleFilter
   /** Teams the Workload filters may offer; null is every team. */
   teamChoices: readonly string[] | null
@@ -121,12 +124,12 @@ async function Tab({
   recording: Recording
 }) {
   if (tab === 'people') {
-    const people = await loadReportPeople(supabase, { ...filters, period })
-    return <ReportPeople people={people} periodDays={period} />
+    const people = await loadReportPeople({ ...filters, period })
+    return <ReportPeople people={people} periodDays={period} loadDetail={personDetail} />
   }
 
   if (tab === 'waits') {
-    const { steps, boards, stuck } = await loadWaits(supabase, { ...filters, period })
+    const { steps, boards, stuck } = await loadWaits({ ...filters, period })
     return <ReportWaits steps={steps} boards={boards} stuck={stuck} />
   }
 
@@ -134,26 +137,22 @@ async function Tab({
     // The filters offer only what this person may read: every team at level
     // 3, the teams they lead at level 2. A name in a dropdown is still a name.
     const [{ people, effort, estimateReady }, teams, everyone] = await Promise.all([
-      loadWorkload(supabase, { ...filters, period }),
-      supabase.from('teams').select('id, name').order('name'),
-      teamChoices === null ? activePeople(supabase, {}) : activePeople(supabase, { teamIds: teamChoices }),
+      loadWorkload({ ...filters, period }),
+      reportDb().from('teams').select('id, name').order('name'),
+      teamChoices === null ? activePeople({}) : activePeople({ teamIds: teamChoices }),
     ])
+    failed('the teams', teams.error)
     const offered = ((teams.data ?? []) as { id: string; name: string }[])
       .filter(t => teamChoices === null || teamChoices.includes(t.id))
-    const teamOf = await primaryTeams(supabase, everyone.map(p => p.id))
-    const teamIds = new Map(
-      ((teams.data ?? []) as { id: string; name: string }[]).map(t => [t.name, t.id]),
-    )
+    // Every team a person is on, not only their main one: someone on a team
+    // as their second team is still on it when that team is picked.
+    const memberOf = await teamsOf(everyone.map(p => p.id))
 
     return (
       <div className="space-y-4">
         {teamChoices?.length === 0 ? null : <WorkloadFilters
           teams={offered}
-          people={everyone.map(p => ({
-            id: p.id,
-            name: p.full_name,
-            teamIds: [teamIds.get(teamOf.get(p.id) ?? '')].filter((x): x is string => Boolean(x)),
-          }))}
+          people={everyone.map(p => ({ id: p.id, name: p.full_name, teamIds: memberOf.get(p.id) ?? [] }))}
           note={`${people.length} ${people.length === 1 ? 'person' : 'people'} in scope`}
         />}
         {people.length === 0 ? <NobodyInSelection /> : <ReportWorkload people={people} />}
@@ -168,38 +167,17 @@ async function Tab({
   }
 
   if (tab === 'method') {
-    const { sources, todo } = await loadMethod(supabase, recording)
-    return <ReportMethod sources={sources} todo={todo} yourLevel={level} />
+    const { sources, todo } = await loadMethod(recording)
+    return <ReportMethod sources={sources} todo={todo} yours={widest} />
   }
 
-  const { overview } = await loadReportOverview(supabase, { ...filters, period })
+  const { overview } = await loadReportOverview({ ...filters, period })
   return <ReportOverview data={overview} />
-}
-
-/**
- * Why the Load column is empty.
- *
- * Hours per step is total logged hours over steps delivered, and the log has
- * delivered nothing yet. Saying so beats a Load column of zeros, which would
- * read as a team with nothing to do.
- */
-function NoEstimateYet() {
-  return (
-    <div className="rounded-[10px] border border-[rgba(224,148,14,.5)] bg-[var(--warn-bg)] px-4 py-3.5">
-      <p className="text-[13.5px] text-[var(--warn-fg)] m-0 leading-[1.6]">
-        Load cannot be estimated yet. Hours per step is the logged hours divided by the steps
-        the change log has seen delivered, and it has seen none so far. Utilisation and Backlog
-        do not depend on it.
-      </p>
-    </div>
-  )
 }
 
 /** The real change-log start date, never a constant. */
 function methodNote(recording: Recording): string {
   if (recording.state !== 'on') return 'change log not running yet'
-  const since = new Date(recording.startedAt)
-    .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-  return `change log since ${since}`
+  return `change log since ${reportDate(recording.startedAt)}`
 }
 

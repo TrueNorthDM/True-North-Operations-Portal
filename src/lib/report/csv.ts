@@ -7,8 +7,8 @@
 //
 // Pure string work, no I/O, so the shapes can be tested without a database.
 
-import type { PersonRow } from '@/components/report/ReportPeople'
-import type { StepWait, StuckItem } from '@/components/report/ReportWaits'
+import type { PersonRow } from './types'
+import type { BoardWait, StepWait, StuckItem } from './types'
 import type { Overview } from './overview'
 import type { WorkloadRow } from './workload'
 import {
@@ -46,17 +46,17 @@ export function overviewCsv(data: Overview): string[] {
   for (const a of data.aging) lines.push(row([a.label, a.count]))
 
   if (data.held.length) {
-    lines.push('', 'Person,Median held (days),p90 (days)')
+    lines.push('', 'Person,Median held (working days),p90 (working days)')
     for (const h of data.held) lines.push(row([h.name, h.median, h.p90]))
   }
   return lines
 }
 
 export function peopleCsv(people: PersonRow[]): string[] {
-  const lines = ['Person,Team,Delivered,On time (%),Median held (days),Open,Late now,Hours']
+  const lines = ['Person,Team,Status,Delivered,On time (%),Median held (working days),Open,Late now,Hours']
   for (const p of people) {
     lines.push(row([
-      p.name, p.team, num(p.delivered), num(p.onTimePct),
+      p.name, p.team, p.inactive ? 'Inactive' : 'Active', num(p.delivered), num(p.onTimePct),
       p.medianHeld === null ? '' : p.medianHeld,
       p.open, p.late, num(p.hours),
     ]))
@@ -89,21 +89,27 @@ export function workloadCsv(people: WorkloadRow[]): string[] {
   return lines
 }
 
-export function waitsCsv(steps: StepWait[], stuck: StuckItem[]): string[] {
-  const lines = ['Step,Median held (days),Delivered']
+export function waitsCsv(steps: StepWait[], stuck: StuckItem[], boards: BoardWait[] = []): string[] {
+  const lines = ['Step,Median held (working days),Delivered']
   for (const s of [...steps].sort((a, b) => b.median - a.median)) {
     lines.push(row([s.name, s.median, s.delivered]))
   }
-  lines.push('', 'Item,With,Step,Held (days)')
-  for (const s of stuck) lines.push(row([s.item, s.who, s.step, s.heldDays]))
+  if (boards.length) {
+    // The screen's By board panel, which the file used to leave out.
+    lines.push('', 'Board,Delivered,Median held (working days),Late (%)')
+    for (const b of [...boards].sort((a, b) => b.medianHeld - a.medianHeld)) {
+      lines.push(row([b.board, b.delivered, b.medianHeld, num(b.latePct)]))
+    }
+  }
+  lines.push('', 'Item,With,Status,Step,Held (working days)')
+  for (const s of stuck) lines.push(row([s.item, s.who, s.inactive ? 'Inactive' : 'Active', s.step, s.heldDays]))
   return lines
 }
 
 /** What the file is called, and what it says it covers. */
-export function exportName(tab: string, scope: string, period: number): string {
+export function exportName(tab: string, scope: string, period: number, today: string): string {
   const label = tab.charAt(0).toUpperCase() + tab.slice(1)
-  const when = new Date().toISOString().slice(0, 10)
-  return `Report ${label} - ${scope}, last ${period} days - ${when}`
+  return `Report ${label} - ${scope}, last ${period} days - ${today}`
 }
 
 /** A BOM, so Excel reads the accented names as UTF-8 instead of mojibake. */

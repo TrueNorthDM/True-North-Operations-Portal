@@ -16,7 +16,6 @@
 import { loadAccess, requireSurface } from '@/lib/access/resolve'
 import { createClient } from '@/lib/supabase/server'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
-import { SCOPE_LABEL } from '@/lib/report/scope'
 import { resolveReportView } from '@/lib/report/view'
 import { loadReportOverview } from '@/lib/report/data'
 import { loadReportPeople } from '@/lib/report/people'
@@ -25,6 +24,7 @@ import { loadWorkload } from '@/lib/report/workload-data'
 import { exportName, overviewCsv, peopleCsv, toFile, waitsCsv, workloadCsv } from '@/lib/report/csv'
 import { loadMethod } from '@/lib/report/method'
 import { readRecording } from '@/lib/report/data'
+import { reportToday } from '@/lib/report/clock'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,28 +44,36 @@ export async function GET(request: Request) {
   const { data: auth } = await supabase.auth.getUser()
   const me = await loadCurrentPerson(supabase, auth?.user ?? null)
 
-  const { tab, scope, period, filter: filters } = await resolveReportView(
+  const { tab, label, period, filter: filters } = await resolveReportView(
     supabase, access.can, me?.id ?? null, Object.fromEntries(url.searchParams),
   )
 
   let lines: string[]
+  try {
   if (tab === 'people') {
-    lines = peopleCsv(await loadReportPeople(supabase, { ...filters, period }))
+    lines = peopleCsv(await loadReportPeople({ ...filters, period }))
   } else if (tab === 'workload') {
-    lines = workloadCsv((await loadWorkload(supabase, { ...filters, period })).people)
+    lines = workloadCsv((await loadWorkload({ ...filters, period })).people)
   } else if (tab === 'waits') {
-    const { steps, stuck } = await loadWaits(supabase, { ...filters, period })
-    lines = waitsCsv(steps, stuck)
+    const { steps, stuck, boards } = await loadWaits({ ...filters, period })
+    lines = waitsCsv(steps, stuck, boards)
   } else if (tab === 'method') {
-    const { sources } = await loadMethod(supabase, await readRecording(supabase))
+    const { sources } = await loadMethod(await readRecording())
     lines = ['Source,State,Cadence,What it carries',
       ...sources.map(s => [s.name, s.state, s.cadence, s.what].map(v =>
         /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v).join(','))]
   } else {
-    lines = overviewCsv((await loadReportOverview(supabase, { ...filters, period })).overview)
+    lines = overviewCsv((await loadReportOverview({ ...filters, period })).overview)
+  }
+  } catch (e) {
+    // Said plainly; the detail goes to the log, not to the person.
+    console.error('[report/csv]', e instanceof Error ? e.message : e)
+    return new Response('The file could not be built. Try again in a moment.', {
+      status: 500, headers: { 'Content-Type': 'text/plain' },
+    })
   }
 
-  const name = `${exportName(tab, SCOPE_LABEL[scope], period)}.csv`
+  const name = `${exportName(tab, label, period, reportToday())}.csv`
   // HTTP headers are Latin-1, so an accented name needs an ASCII fallback
   // alongside the RFC 5987 form that carries the real one.
   const ascii = name.replace(/[^\x20-\x7e]/g, '-')

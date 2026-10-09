@@ -4,14 +4,12 @@
 // process to fix; the same month traced to a person is a conversation that
 // may be about the wrong thing entirely.
 
-import type { Db } from '@/lib/supabase/types'
-import { loadWorklist, type PeopleFilter } from '@/lib/monday/worklist/data'
-import type { BoardWait, StepWait, StuckItem } from '@/components/report/ReportWaits'
-import { accountsInScope, loadOpenSince, loadSpans } from './data'
+import type { PeopleFilter } from '@/lib/monday/worklist/data'
+import type { BoardWait, StepWait, StuckItem } from './types'
+import { accountOwners, accountsInScope, failed, keyOfRow, loadOpenSince, loadOpenWork, loadSpans, reportDb } from './data'
+import { periodStart, workingDaysBetween } from './clock'
 import { median } from './spans'
 import type { Period } from './scope'
-
-type Client = Db
 
 /** How many of the longest-waiting items the panel lists. */
 const STUCK_LIMIT = 12
@@ -20,27 +18,30 @@ const STUCK_LIMIT = 12
 const MIN_SPANS_PER_STEP = 3
 
 export async function loadWaits(
-  supabase: Client,
   f: PeopleFilter & { period?: Period },
 ): Promise<{ steps: StepWait[]; boards: BoardWait[]; stuck: StuckItem[] }> {
   const period = f.period ?? 90
-  const since = new Date(Date.now() - period * 86_400_000)
+  const since = periodStart(period)
 
-  const accounts = await accountsInScope(supabase, f)
-  const [spans, openSince, snapshot] = await Promise.all([
-    loadSpans(supabase, accounts, since),
-    loadOpenSince(supabase, accounts),
-    loadWorklist(supabase, { personId: f.personId, teamId: f.teamId, teamIds: f.teamIds, includeDone: false }),
+  const accounts = await accountsInScope(f)
+  const db = reportDb()
+  const [spans, openSince, open, owners, stepRead, boardRead] = await Promise.all([
+    loadSpans(accounts, since),
+    loadOpenSince(accounts),
+    loadOpenWork(f),
+    accountOwners(),
+    db.from('monday_board_steps').select('board_id, people_col, step_name'),
+    db.from('monday_boards').select('id, name'),
   ])
+  failed('the board steps', stepRead.error)
+  failed('the boards', boardRead.error)
 
   // The log stores a board and a people column; the step's name lives on
   // monday_board_steps. Both halves of the key are carried through the span,
   // so this is an exact lookup rather than a search for a column id that
   // happens to appear on some other board.
-  const { data: stepRows } = await supabase
-    .from('monday_board_steps').select('board_id, people_col, step_name')
   const nameByCol = new Map(
-    ((stepRows ?? []) as { board_id: number; people_col: string; step_name: string }[])
+    ((stepRead.data ?? []) as { board_id: number; people_col: string; step_name: string }[])
       .map(s => [`${s.board_id}|${s.people_col}`, s.step_name]),
   )
 
@@ -55,10 +56,9 @@ export async function loadWaits(
     else byStep.set(name, [s.heldDays])
   }
 
-  // Board names come from the snapshot, which already reads them, rather than
-  // from a second query returning names for boards nobody in scope touched.
-  const boardName = new Map<number, string>()
-  for (const r of snapshot.rows) boardName.set(r.boardId, r.boardName)
+  // Every board's name, not only the ones with open work today: a board can
+  // have delivered plenty this quarter and have nothing open now.
+  const boardName = new Map(((boardRead.data ?? []) as { id: number; name: string }[]).map(b => [b.id, b.name]))
 
   const byBoard = new Map<number, { held: number[]; late: number; judged: number }>()
   for (const s of spans) {
@@ -88,23 +88,21 @@ export async function loadWaits(
   /**
    * The live snapshot, not the period: this is the list somebody acts on
    * today. An item is only here if the log knows when it landed, because
-   * "sitting longest" with no hand-off date is a guess.
+   * "sitting longest" with no hand-off date is a guess. Work still in the
+   * name of someone no longer active is listed and marked, so somebody hands
+   * it on (decided 9 October 2026).
    */
-  const now = Date.now()
-  const stuck: StuckItem[] = snapshot.rows
-    .filter(r => !r.statusDone)
-    .map(r => {
-      // Exactly the key the log writes: item, people column, person.
-      const started = openSince.get(`${r.itemId}|${r.peopleCol}|${r.mondayUserId}`)
-      return { r, started }
-    })
-    .filter((x): x is { r: (typeof snapshot.rows)[number]; started: string } => Boolean(x.started))
+  const now = new Date().toISOString()
+  const stuck: StuckItem[] = open
+    .map(r => ({ r, started: openSince.get(keyOfRow(r)) }))
+    .filter((x): x is { r: (typeof open)[number]; started: string } => Boolean(x.started))
     .map(({ r, started }) => ({
       id: String(r.id),
       item: r.parentItemName ? `${r.parentItemName}: ${r.itemName}` : r.itemName,
       who: r.who,
+      inactive: owners.get(r.mondayUserId)?.active === false,
       step: r.stepName,
-      heldDays: Math.max(0, Math.round((now - Date.parse(started)) / 86_400_000)),
+      heldDays: workingDaysBetween(started, now),
     }))
     .sort((a, b) => b.heldDays - a.heldDays)
     .slice(0, STUCK_LIMIT)

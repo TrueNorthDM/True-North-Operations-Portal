@@ -9,8 +9,9 @@ import type { Db } from '@/lib/supabase/types'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { redirect } from 'next/navigation'
 import type { DirectoryLevel } from '@/lib/access/surfaces'
-import { resolveTab, tabRights, type ReportTabKey, type TabRights } from '@/components/report/ReportTabs'
-import { reportFilter, resolvePeriod, resolveScope, scopesFor, type Period, type Scope } from './scope'
+import { resolveTab, tabRights, type ReportTabKey, type TabRights } from './tabs'
+import { reportFilter, resolvePeriod, resolveScope, scopesFor, viewLabel, type Period, type Scope } from './scope'
+import { reportDb } from './data'
 import type { PeopleFilter } from '@/lib/monday/worklist/data'
 import { loadMemberships } from '@/lib/monday/worklist/team-priority-data'
 import { leads } from '@/lib/monday/worklist/team-priority'
@@ -30,8 +31,14 @@ export interface ReportView {
   team: string | null
   person: string | null
   /**
-   * The teams the Workload filters may offer: null for every team (level 3),
-   * the ones they lead at level 2, and none when the scope is only themselves.
+   * What the page is showing, in words: the person or team picked, or the
+   * scope. The screen, the printout, the PDF and the file name all say it, so
+   * a filter carried over from the Workload tab is never shown as My team.
+   */
+  label: string
+  /**
+   * The teams the Workload filters may offer: null for every team (Everyone),
+   * the ones they lead (My team), and none when the scope is only themselves.
    */
   teamChoices: readonly string[] | null
 }
@@ -48,13 +55,14 @@ export async function resolveReportView(
   const rights = tabRights(can)
 
   // Leading a team is the Lead position, the same rule team priority and the
-  // org chart use. Only level 2 needs it.
-  const led = level === 2 && meId
+  // org chart use. My team is the teams they lead at every level.
+  const led = level >= 2 && meId
     ? (await loadMemberships(supabase, meId)).filter(leads).map(m => m.teamId)
     : []
   let ledMembers = new Set<string>()
   if (led.length) {
-    const { data } = await supabase.from('team_members').select('person_id').in('team_id', led)
+    const { data, error } = await supabase.from('team_members').select('person_id').in('team_id', led)
+    if (error) throw new Error(`The Report could not read your teams: ${error.message}`)
     ledMembers = new Set(((data ?? []) as { person_id: string }[]).map(m => m.person_id))
   }
 
@@ -70,8 +78,18 @@ export async function resolveReportView(
     scope, level, meId, team: asked.team, person: asked.person, led, ledMembers,
   })
 
+  // Names for the filters already decided above: reading them cannot widen
+  // anything, and a name the session cannot read would turn into an id.
+  const names = async (table: 'teams' | 'people', id: string | null, col: 'name' | 'full_name') => {
+    if (!id) return null
+    const { data } = await reportDb().from(table).select(col).eq('id', id).maybeSingle()
+    return ((data ?? null) as Record<string, string> | null)?.[col] ?? null
+  }
+  const [teamName, personName] = await Promise.all([names('teams', team, 'name'), names('people', person, 'full_name')])
+
   return {
     level,
+    label: viewLabel(scope, teamName, personName),
     rights,
     tab,
     scope,
@@ -80,6 +98,6 @@ export async function resolveReportView(
     filter,
     team,
     person,
-    teamChoices: scope === 'me' ? [] : level >= 3 ? null : led,
+    teamChoices: scope === 'everyone' ? null : scope === 'team' ? led : [],
   }
 }

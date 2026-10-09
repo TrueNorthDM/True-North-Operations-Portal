@@ -5,15 +5,24 @@
 // is counted off these: delivery, on-time share, held time, the weekly chart
 // and the age buckets.
 //
-// Two rules here were open questions in the handoff and are now decided:
+// Three rules here decide what the numbers mean:
 //
 //   A reopened step cancels its earlier delivery. It counts once, on the last
 //   done, and its held time runs from the last time it landed on them. Rework
 //   should not inflate delivery, or a bad month looks like a good one.
 //
-//   Held time is calendar days, weekends included. It answers how long the
-//   work sat, which is the question somebody waiting on it is asking, and it
-//   does not depend on knowing every person's schedule.
+//   Held time is working days: Monday to Friday, minus the US holidays
+//   (lib/report/clock.ts, decided 9 October 2026). It was calendar days, which
+//   made whoever got work on a Friday look slow.
+//
+//   An "assigned" for a step they already hold is not a new hand-off. Until
+//   30 September 2026 the log wrote the same assignment again and again on
+//   large boards, and each repeat restarted the clock, so held time came out
+//   shorter than it was.
+
+import { lateness, workingDaysBetween } from './clock'
+
+export { lateness }
 
 export type LoggedEvent = {
   board_id: number
@@ -32,33 +41,12 @@ export type Span = {
   monday_user_id: number
   assignedAt: string
   doneAt: string
-  /** Calendar days from landing on them to being marked done. */
+  /** Working days from landing on them to being marked done, to a tenth. */
   heldDays: number
   /** The deadline in force when it was finished, or null if it had none. */
   dueDate: string | null
   /** Days past that deadline. 0 when on time; null when there was no deadline. */
   lateDays: number | null
-}
-
-const DAY = 86_400_000
-
-/** Whole calendar days between two moments, never negative. */
-export function daysBetween(from: string, to: string): number {
-  return Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / DAY))
-}
-
-/**
- * Days past the deadline.
- *
- * Null when there was no deadline: a step with no due date is not on time and
- * not late, and counting it as on time would inflate the share with steps
- * nobody ever set a date for.
- */
-export function lateness(doneAt: string, dueDate: string | null): number | null {
-  if (!dueDate) return null
-  const due = Date.parse(`${dueDate}T23:59:59.999Z`)
-  if (Number.isNaN(due)) return null
-  return Math.max(0, Math.ceil((Date.parse(doneAt) - due) / DAY))
 }
 
 function keyOf(e: LoggedEvent): string {
@@ -68,7 +56,7 @@ function keyOf(e: LoggedEvent): string {
 /**
  * Every completed span in the log.
  *
- * Walks each step's events in order, holding the last moment it landed on the
+ * Walks each step's events in order, holding the moment it landed on the
  * person. A done closes a span; a reopen throws the closed one away and puts
  * the step back in hand, which is what "the last done counts" means in
  * practice. An unassignment ends the attempt without a delivery.
@@ -97,6 +85,8 @@ export function deriveSpans(events: LoggedEvent[]): Span[] {
       if (e.due_date !== null) due = e.due_date
 
       if (e.event === 'assigned') {
+        // Already theirs: the log seeing the same thing twice.
+        if (heldSince) continue
         heldSince = e.occurred_at
         closed = null
       } else if (e.event === 'done' && heldSince) {
@@ -107,10 +97,13 @@ export function deriveSpans(events: LoggedEvent[]): Span[] {
           monday_user_id: e.monday_user_id,
           assignedAt: heldSince,
           doneAt: e.occurred_at,
-          heldDays: daysBetween(heldSince, e.occurred_at),
+          heldDays: workingDaysBetween(heldSince, e.occurred_at),
           dueDate: due,
           lateDays: lateness(e.occurred_at, due),
         }
+        // Finished: no longer in their hands. A later hand-off is new work
+        // on the same step and cancels this delivery, like a reopen.
+        heldSince = null
       } else if (e.event === 'reopened') {
         // The earlier delivery is cancelled, and the clock restarts from the
         // reopen: the person is holding it again from this moment.

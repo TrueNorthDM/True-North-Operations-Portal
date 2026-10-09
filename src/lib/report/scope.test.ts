@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectiveScope, reportFilter, reportHref, resolvePeriod, resolveScope, scopesFor, weekColumns } from './scope'
+import { reportFilter, reportHref, resolvePeriod, resolveScope, scopesFor, viewLabel, weekColumns } from './scope'
 
 describe('scopesFor', () => {
   it('gives level 1 one option, not a disabled row of three', () => {
@@ -13,12 +13,17 @@ describe('scopesFor', () => {
   it('gives level 3 everyone', () => {
     expect(scopesFor(3)).toEqual(['me', 'team', 'everyone'])
   })
+
+  it('offers My team only to someone who leads a team, at level 3 too', () => {
+    expect(scopesFor(3, false)).toEqual(['me', 'everyone'])
+  })
 })
 
 describe('resolveScope', () => {
-  it('defaults to the team, because this is a lead page', () => {
+  it('opens on Everyone for whoever may see everyone, and on My team for a lead', () => {
     expect(resolveScope(undefined, 2)).toBe('team')
-    expect(resolveScope(undefined, 3)).toBe('team')
+    expect(resolveScope(undefined, 3)).toBe('everyone')
+    expect(resolveScope(undefined, 3, false)).toBe('everyone')
   })
 
   it('defaults level 1 to themselves, the only thing they may see', () => {
@@ -33,7 +38,8 @@ describe('resolveScope', () => {
   })
 
   it('ignores a scope that is not a scope at all', () => {
-    expect(resolveScope('all-the-things', 3)).toBe('team')
+    expect(resolveScope('all-the-things', 3)).toBe('everyone')
+    expect(resolveScope('team', 3, false)).toBe('everyone')
   })
 
   it('honours a scope the level may ask for', () => {
@@ -80,13 +86,15 @@ describe('reportHref', () => {
       .toBe('/report?tab=people&scope=everyone')
   })
 
-  it('leaves the defaults out, so the plain view has a plain URL', () => {
-    expect(reportHref('/report', { tab: 'overview', scope: 'team', period: 90 })).toBe('/report')
+  // The default scope depends on who opens the link, so a pasted My team
+  // link must say My team, or it opens as Everyone for an Admin.
+  it('leaves the default tab and period out, and always writes the scope', () => {
+    expect(reportHref('/report', { tab: 'overview', scope: 'team', period: 90 })).toBe('/report?scope=team')
   })
 
   it('keeps the team and person filters', () => {
     expect(reportHref('/report', { tab: 'overview', scope: 'team', period: 90, team: 'abc' }))
-      .toBe('/report?team=abc')
+      .toBe('/report?scope=team&team=abc')
   })
 
   it('builds the export URLs from the same state', () => {
@@ -94,18 +102,11 @@ describe('reportHref', () => {
   })
 })
 
-describe('effectiveScope', () => {
-  // A lead's own-team scope crossed with another team returns nothing, which
-  // reads as a broken filter rather than as two conditions that cannot both
-  // hold. Forcing Everyone is the honest answer, and the switch shows it.
-  it('forces everyone once a team or person is picked', () => {
-    expect(effectiveScope('team', 'writing-id')).toBe('everyone')
-    expect(effectiveScope('me', undefined, 'person-id')).toBe('everyone')
-  })
-
-  it('leaves the scope alone with no filter', () => {
-    expect(effectiveScope('team')).toBe('team')
-    expect(effectiveScope('me', '', '')).toBe('me')
+describe('what the page is showing, in words', () => {
+  it('names a filter rather than the scope it sits under', () => {
+    expect(viewLabel('team', 'SEO', null)).toBe('SEO team')
+    expect(viewLabel('everyone', 'SEO', 'Ana Silva')).toBe('Ana Silva')
+    expect(viewLabel('everyone')).toBe('Everyone')
   })
 })
 
@@ -159,8 +160,15 @@ describe('reportFilter', () => {
     expect(reportFilter({ ...base, level: 2, scope: 'team' }).filter).toEqual({ personId: 'me' })
   })
 
-  it('leaves level 3 as it was: a picked person or team, otherwise everyone', () => {
-    expect(reportFilter({ ...base, level: 3, scope: 'team' }).filter).toEqual({})
+  // Decided 9 October 2026: My team is the teams they lead at every level.
+  // It read the whole company for an Admin, under the label My team.
+  it('gives My team the teams they lead at level 3 too, never the company', () => {
+    expect(reportFilter({ ...lead, level: 3, scope: 'team' }).filter).toEqual({ teamIds: ['seo', 'graphics'] })
+    expect(reportFilter({ ...base, level: 3, scope: 'team' }).filter).toEqual({ personId: 'me' })
+  })
+
+  it('gives Everyone a picked person or team, otherwise everyone', () => {
+    expect(reportFilter({ ...base, level: 3, scope: 'everyone' }).filter).toEqual({})
     expect(reportFilter({ ...base, level: 3, scope: 'everyone', team: 'finance' }).filter).toEqual({ teamId: 'finance' })
     expect(reportFilter({ ...base, level: 3, scope: 'everyone', person: 'zed' }).filter).toEqual({ personId: 'zed' })
   })
