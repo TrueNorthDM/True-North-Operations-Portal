@@ -15,10 +15,11 @@
 //   (lib/report/clock.ts, decided 9 October 2026). It was calendar days, which
 //   made whoever got work on a Friday look slow.
 //
-//   An "assigned" for a step they already hold is not a new hand-off. Until
-//   30 September 2026 the log wrote the same assignment again and again on
-//   large boards, and each repeat restarted the clock, so held time came out
-//   shorter than it was.
+//   An "assigned" for a step they already hold, or for a step already
+//   finished, is not a new hand-off. Until 30 September 2026 the log wrote
+//   the same assignment again and again on large boards: each repeat
+//   restarted the clock (held time came out shorter than it was), and one
+//   after a finish cancelled the delivery.
 
 import { lateness, workingDaysBetween } from './clock'
 
@@ -30,6 +31,8 @@ export type LoggedEvent = {
   people_col: string
   monday_user_id: number
   event: 'assigned' | 'unassigned' | 'status' | 'due_date' | 'done' | 'reopened'
+  /** Whether the step read as finished when this was written. */
+  status_done?: boolean | null
   due_date: string | null
   occurred_at: string
 }
@@ -85,8 +88,10 @@ export function deriveSpans(events: LoggedEvent[]): Span[] {
       if (e.due_date !== null) due = e.due_date
 
       if (e.event === 'assigned') {
-        // Already theirs: the log seeing the same thing twice.
-        if (heldSince) continue
+        // Already theirs: the log seeing the same thing twice. Or already
+        // finished: the old bug wrote "assigned" for finished items it had
+        // not read before, and a hand-off of finished work is not one.
+        if (heldSince || e.status_done === true) continue
         heldSince = e.occurred_at
         closed = null
       } else if (e.event === 'done' && heldSince) {

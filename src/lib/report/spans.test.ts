@@ -144,6 +144,17 @@ describe('a repeated hand-off (the log before 30 September 2026)', () => {
     expect(spans[0].heldDays).toBe(4)
   })
 
+  it('a hand-off of a step already finished is not one, and leaves the delivery standing', () => {
+    const spans = deriveSpans([
+      ev({ event: 'assigned', occurred_at: '2026-08-03T14:00:00Z' }),
+      ev({ event: 'done', occurred_at: '2026-08-04T14:00:00Z' }),
+      ev({ event: 'status', occurred_at: '2026-08-05T14:00:00Z' }),
+      ev({ event: 'assigned', occurred_at: '2026-08-06T14:00:00Z', status_done: true }),
+    ])
+    expect(spans).toHaveLength(1)
+    expect(spans[0].doneAt).toBe('2026-08-04T14:00:00Z')
+  })
+
   it('a new hand-off after the finish is new work, and cancels that delivery like a reopen', () => {
     expect(deriveSpans([
       ev({ event: 'assigned', occurred_at: '2026-08-03T14:00:00Z' }),

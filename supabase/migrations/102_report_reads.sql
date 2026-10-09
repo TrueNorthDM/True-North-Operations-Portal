@@ -60,7 +60,7 @@ AS $$
   )
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
            'board_id', ev.board_id, 'item_id', ev.item_id, 'people_col', ev.people_col,
-           'monday_user_id', ev.monday_user_id, 'event', ev.event,
+           'monday_user_id', ev.monday_user_id, 'event', ev.event, 'status_done', ev.status_done,
            'due_date', ev.due_date, 'occurred_at', ev.occurred_at)
          ORDER BY ev.occurred_at, ev.id), '[]'::jsonb)
     FROM ev JOIN finished f USING (item_id, people_col, monday_user_id)
@@ -110,9 +110,11 @@ $$;
 -- Steps arriving and finishing since p_since, for the Workload flow columns.
 --
 -- An arrival is a hand-off to someone who did not already hold the step.
--- Two kinds of "assigned" are not arrivals: the repeats (the step was already
--- with them), and each board's first read, when the log wrote down everything
--- that was already assigned at the time (21 August 2026 for most boards).
+-- Three kinds of "assigned" are not arrivals: the repeats (the step was
+-- already with them), a step already finished when it "landed" (the old
+-- 1,000-row bug wrote those for items it had not read before), and each
+-- board's first read, when the log wrote down everything that was already
+-- assigned at the time (21 August 2026 for most boards).
 CREATE OR REPLACE FUNCTION public.report_flow_events(p_accounts BIGINT[], p_since TIMESTAMPTZ)
 RETURNS JSONB
 LANGUAGE SQL STABLE SECURITY DEFINER
@@ -122,7 +124,7 @@ AS $$
     SELECT board_id, min(detected_at) AS at FROM monday_assignment_events GROUP BY board_id
   ),
   ev AS (
-    SELECT e.board_id, e.monday_user_id, e.event, e.occurred_at, e.detected_at,
+    SELECT e.board_id, e.monday_user_id, e.event, e.status_done, e.occurred_at, e.detected_at,
            lag(e.event) OVER (PARTITION BY e.item_id, e.people_col, e.monday_user_id
                               ORDER BY e.occurred_at, e.id) AS before
       FROM report_counted_events(p_accounts) e
@@ -134,6 +136,7 @@ AS $$
    WHERE ev.occurred_at >= p_since
      AND (ev.event = 'done'
           OR (ev.event = 'assigned'
+              AND ev.status_done IS NOT TRUE
               AND ev.detected_at >= f.at + INTERVAL '1 hour'
               AND (ev.before IS NULL OR ev.before IN ('done', 'unassigned'))))
 $$;
