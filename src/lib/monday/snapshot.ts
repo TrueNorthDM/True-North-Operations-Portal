@@ -256,6 +256,27 @@ async function fetchBoardActivity(
     idx++
   }
 
+  // A stretch at Monday's 10,000-entry limit may hold more, and what is cut
+  // off would be published pages with no "Done". It is read again in halves
+  // until each half fits (audit, 10 October 2026): one busy month on the
+  // AAAF board had been cut at 10,000 without a word.
+  const LIMIT = 10000
+  async function readRange(from: string, to: string, what: string, depth = 0): Promise<MondayLog[]> {
+    const r = await mondayCall<{ boards: MondayBoard[] }>(token, q, { boardId: [boardId], from, to, limit: LIMIT }, what)
+    const logs = r.boards?.[0]?.activity_logs || []
+    if (logs.length < LIMIT) return logs
+    const a = Date.parse(from), b = Date.parse(to)
+    if (depth >= 6 || b - a < 3_600_000) throw new Error(`${what} has more than ${LIMIT} entries even in its smallest stretch`)
+    const mid = new Date(a + Math.floor((b - a) / 2)).toISOString()
+    const [left, right] = await Promise.all([
+      readRange(from, mid, `${what}a`, depth + 1),
+      readRange(mid, to, `${what}b`, depth + 1),
+    ])
+    // The two halves share the instant between them; one entry is kept once.
+    const seen = new Set(left.map(l => l.id))
+    return [...left, ...right.filter(l => !seen.has(l.id))]
+  }
+
   const relevantSet = relevantColumnIds && relevantColumnIds.length ? new Set(relevantColumnIds) : null
   const out: MondayLog[] = []
   let nextIdx = 0
@@ -266,16 +287,7 @@ async function fetchBoardActivity(
     while (myIdx < chunks.length) {
       const c = chunks[myIdx]
       try {
-        const r = await mondayCall<{ boards: MondayBoard[] }>(
-          token,
-          q,
-          { boardId: [boardId], from: c.from, to: c.to, limit: 10000 },
-          `${label} log chunk ${c.idx}`,
-        )
-        const logs = r.boards?.[0]?.activity_logs || []
-        // A chunk at its limit may have more: what is missing would be
-        // published pages with no "Done", so it fails rather than undercount.
-        if (logs.length >= 10000) throw new Error(`chunk ${c.idx} reached its 10,000 entry limit`)
+        const logs = await readRange(c.from, c.to, `${label} log chunk ${c.idx}`)
 
         for (const log of logs) {
           if (!log || !log.event) continue
