@@ -1,33 +1,28 @@
 'use client'
 
 /**
- * NotRelevantButton: toggle a page's not_relevant flag.
+ * NotRelevantButton: sets a page aside (Not relevant) or brings it back.
  *
- * When OFF (default): page is part of the normal workflow. Button label
- *   is "Not relevant" with a muted appearance, inviting opt-out.
- * When ON: page is excluded from the normal flow and counted as done.
- *   Button label is "Marked not relevant" with a soft slate background
- *   so it stops looking like an action and starts looking like a status
- *   chip the user can click to undo.
+ * A toggle button: the words stay "Not relevant" and the state is
+ * aria-pressed, shown as a ticked box, so a screen reader says it once. A set
+ * aside page counts as done.
  *
- * No confirm dialog, the action is fully reversible, so a single click
- * is fine. Errors surface inline.
+ * No confirmation: it is undone with the same click. The server finds the
+ * page's site itself (audit, 10 October 2026), so only the page is sent.
  */
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { setPageNotRelevant } from '@/app/actions'
+import { setPageNotRelevant } from '@/app/(app)/seo/href-links/actions'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 interface Props {
   pageId: string
-  siteCode: 'aaaf' | 'hfa'
   initialValue: boolean
 }
 
-export function NotRelevantButton({ pageId, siteCode, initialValue }: Props) {
-  // Optimistic local state so the toggle feels instant even on slow links.
-  // We still revalidate via revalidatePath in the action, so the DB is
-  // source of truth on next render.
+export function NotRelevantButton({ pageId, initialValue }: Props) {
+  // Shown at once; the server's answer puts it back if it was refused.
   const [value, setValue] = useState(initialValue)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -38,10 +33,10 @@ export function NotRelevantButton({ pageId, siteCode, initialValue }: Props) {
     setValue(next)
     setError(null)
     startTransition(async () => {
-      const res = await setPageNotRelevant({ pageId, siteCode, value: next })
+      const res = await setPageNotRelevant({ pageId, value: next })
       if (!res.ok) {
-        setValue(!next) // rollback
-        setError(res.error ?? 'Could not update.')
+        setValue(!next)
+        setError(res.error ?? 'Not saved. Try again in a moment.')
         return
       }
       router.refresh()
@@ -55,15 +50,15 @@ export function NotRelevantButton({ pageId, siteCode, initialValue }: Props) {
         onClick={handleClick}
         disabled={pending}
         aria-pressed={value}
-        className={`inline-flex items-center text-sm font-semibold px-3 py-1.5 rounded-[9px] transition-colors disabled:opacity-50 ${
-          value
-            ? 'bg-subtle text-foreground border border-slate-300 hover:opacity-80'
-            : 'border border-slate-200 text-muted hover:bg-subtle hover:text-tn-ink'
-        }`}
+        className={`${BTN.white} disabled:opacity-50`}
       >
-        {value ? 'Marked not relevant' : 'Not relevant'}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="4" />
+          {value && <path d="m8 12 3 3 5-6" />}
+        </svg>
+        Not relevant
       </button>
-      {error && <span className="mt-1 text-xs text-red-600">{error}</span>}
+      {error && <span role="alert" className="mt-1 text-xs text-red-600">{error}</span>}
     </div>
   )
 }

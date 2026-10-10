@@ -34,7 +34,7 @@ export function ComingSoon({ icon, title, description, parents, self, canSuggest
         </span>
         <span className="rounded-[5px] bg-[#fbf1cf] px-[9px] py-1 text-[10.5px] font-bold tracking-[.1em] text-[#8a6703]">COMING SOON</span>
         <h1 className="font-(family-name:--font-display) font-black text-[26px] tracking-[-.01em] text-tn-ink m-0">{title}</h1>
-        <p className="text-[14px] leading-relaxed text-foreground max-w-[440px] m-0">{description}</p>
+        <p className="text-[14px] leading-relaxed text-foreground m-0">{description}</p>
         <div className="flex gap-2.5 mt-2 flex-wrap justify-center">
           <Link href="/" className={BTN.navy}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5" /></svg>

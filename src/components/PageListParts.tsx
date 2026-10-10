@@ -7,7 +7,7 @@
  * table concerns; these are reusable leaves with no PageList state.
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId } from 'react'
 
 export type SortDir = 'asc' | 'desc'
 
@@ -34,6 +34,11 @@ export function Tooltip({ label, children }: { label: string; children: React.Re
 /**
  * Generic popover used by the filter dropdowns.
  *
+ * A plain disclosure: the button says whether it is open (aria-expanded) and
+ * which panel it opens (aria-controls); the panel holds an ordinary list of
+ * buttons or checkboxes. It used to call itself a listbox, which promises
+ * arrow-key options and holds none of them (audit, 10 October 2026).
+ *
  * Why a custom component vs. native <select>? <select> doesn't support
  * multi-checkbox layouts and is impossible to style consistently across
  * browsers. The trade-off is we own the click-outside + escape-key
@@ -53,6 +58,7 @@ export function Popover({
 }) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const panelId = useId()
 
   useEffect(() => {
     if (!open) return
@@ -77,8 +83,8 @@ export function Popover({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         className={`inline-flex items-center gap-2 text-xs px-3 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 ${accentRing} ${
           highlight
             ? 'bg-slate-800 text-white border-slate-800'
@@ -92,7 +98,7 @@ export function Popover({
       </button>
       {open && (
         <div
-          role="listbox"
+          id={panelId}
           className="absolute z-20 mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"
         >
           {children({ close: () => setOpen(false) })}
@@ -102,6 +108,10 @@ export function Popover({
   )
 }
 
+/**
+ * One choice in a single-choice filter: a real button that says whether it is
+ * the current choice (aria-pressed).
+ */
 export function PopoverItem({
   selected,
   onClick,
@@ -115,8 +125,7 @@ export function PopoverItem({
     <li>
       <button
         type="button"
-        role="option"
-        aria-selected={selected}
+        aria-pressed={selected}
         onClick={onClick}
         className={`w-full text-left flex items-center px-3 py-2 text-sm hover:bg-slate-50 ${
           selected ? 'bg-slate-50 text-slate-900' : 'text-slate-700'

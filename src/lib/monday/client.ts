@@ -19,6 +19,7 @@ interface GqlInput {
 }
 
 async function gql<T>({ token, query, variables }: GqlInput): Promise<T> {
+  if (!token) throw new Error('Monday API: no token configured')
   const res = await fetch(MONDAY_API, {
     method: 'POST',
     headers: {
@@ -27,9 +28,12 @@ async function gql<T>({ token, query, variables }: GqlInput): Promise<T> {
       'API-Version': '2024-10',
     },
     body: JSON.stringify({ query, variables }),
+    // A call Monday never answers must not hold the webhook open (audit,
+    // 10 October 2026).
+    signal: AbortSignal.timeout(15_000),
   })
   // Monday returns 200 with {errors: [...]} on validation errors, check both.
-  const json = (await res.json()) as { data?: T; errors?: { message: string }[] }
+  const json = (await res.json().catch(() => ({}))) as { data?: T; errors?: { message: string }[] }
   if (json.errors?.length) {
     throw new Error(`Monday API: ${json.errors.map(e => e.message).join('; ')}`)
   }

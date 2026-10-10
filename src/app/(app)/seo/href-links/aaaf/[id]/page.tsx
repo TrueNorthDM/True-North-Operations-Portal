@@ -1,48 +1,18 @@
-// AAAF: page detail (Server Component)
-// Fetches one page with its URLs + confirmations, renders the shared editor.
+// AAAF: one Href Links page (server component). The page itself lives in
+// components/href-links/SitePageDetail.tsx, shared with the other site; this
+// route keeps its own access check, so a reader can see it is guarded.
 
-import { notFound, redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { previewHref } from '@/lib/auth/view-as-server'
 import { requireSurface } from '@/lib/access/resolve'
-import { createClient } from '@/lib/supabase/server'
-import { PageDetail } from '@/components/PageDetail'
+import { SitePageDetail } from '@/components/href-links/SitePageDetail'
 
 export default async function AaafPageDetail({ params }: { params: Promise<{ id: string }> }) {
-  // Href Links, so the area plus its team grant. /aaaf was guarded
-  // but this detail page was not.
+  // Href Links, so the area plus its team grant; the per-site grant is checked
+  // in SitePageDetail, once the site is known.
   const access = await requireSurface('tools')
   if (!access.canTool('href-links')) redirect(await previewHref('/'))
 
   const { id } = await params
-  const supabase = await createClient()
-
-  const { data: site } = await supabase
-    .from('sites')
-    .select('languages')
-    .eq('code', 'aaaf')
-    .single()
-
-  const { data: page } = await supabase
-    .from('pages')
-    .select('id, name, needs_hreflang_update, confirmed_done_at, not_relevant, page_urls(language_code, url), confirmations(language_code, confirmed_on_live)')
-    .eq('id', id)
-    .maybeSingle()
-
-  if (!page) notFound()
-
-  return (
-    <PageDetail
-      pageId={page.id}
-      siteCode="aaaf"
-      pageName={page.name}
-      languages={site?.languages ?? ['en', 'pt', 'es', 'sw']}
-      savedUrls={page.page_urls ?? []}
-      // An unset confirmation reads as not confirmed, as it always did.
-      confirmations={(page.confirmations ?? []).map(c => ({ ...c, confirmed_on_live: c.confirmed_on_live ?? false }))}
-      accent="aaaf"
-      needsUpdate={page.needs_hreflang_update ?? undefined}
-      confirmedDoneAt={page.confirmed_done_at}
-      notRelevant={page.not_relevant ?? false}
-    />
-  )
+  return <SitePageDetail code="aaaf" id={id} />
 }

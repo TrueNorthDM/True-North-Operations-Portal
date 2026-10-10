@@ -93,8 +93,17 @@ export function renderHreflangHtml(urls: PageUrl[], defaultLang = 'en'): string 
   return tags
     .map(
       ({ hreflang, href }) =>
-        `<link rel="alternate" href="${href}" hreflang="${hreflang}" />`,
+        `<link rel="alternate" href="${escapeAttr(href)}" hreflang="${escapeAttr(hreflang)}" />`,
     )
     .join('\n')
+}
+
+/**
+ * Escaped for an HTML attribute (audit, 10 October 2026). This text is pasted
+ * into the head of the public sites: a link with a quote in it closed the
+ * attribute and could carry a script there.
+ */
+export function escapeAttr(v: string): string {
+  return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 

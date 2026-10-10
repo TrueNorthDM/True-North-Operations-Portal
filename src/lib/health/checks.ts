@@ -262,6 +262,11 @@ export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthR
   const checkedAt = new Date().toISOString()
   const results: HealthResult[] = checks.map(c => ({ ...c, checked_at: checkedAt }))
 
+  // The webhook log keeps what it ignored for 90 days (migration 107); the
+  // daily check is the job that runs every day anyway.
+  const { error: pruneErr } = await supabase.rpc('prune_monday_events')
+  if (pruneErr) console.error('[health] pruning the webhook log:', pruneErr.message)
+
   // Best-effort persist. If the table isn't there yet (migration 046 pending),
   // just skip, the checks still ran and the caller gets the live results.
   try {

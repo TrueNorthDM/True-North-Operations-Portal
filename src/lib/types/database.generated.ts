@@ -934,6 +934,7 @@ export type Database = {
         Row: {
           board_id: string | null
           column_id: string | null
+          delivery_key: string | null
           event_type: string
           id: string
           monday_item_id: string | null
@@ -948,6 +949,7 @@ export type Database = {
         Insert: {
           board_id?: string | null
           column_id?: string | null
+          delivery_key?: string | null
           event_type: string
           id?: string
           monday_item_id?: string | null
@@ -962,6 +964,7 @@ export type Database = {
         Update: {
           board_id?: string | null
           column_id?: string | null
+          delivery_key?: string | null
           event_type?: string
           id?: string
           monday_item_id?: string | null
@@ -3058,6 +3061,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      prune_monday_events: { Args: never; Returns: number }
       publishing_remove_target: {
         Args: { p_actor: string; p_id: string; p_week: string }
         Returns: boolean

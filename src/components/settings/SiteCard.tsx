@@ -9,12 +9,20 @@
  * Save persists the board/URL fields. Pausing/resuming and adding a language act
  * immediately (they refresh the server data). English is the x-default anchor,
  * it's not shown as a toggleable row.
+ *
+ * Audit, 10 October 2026: the add-language question is a real dialog
+ * (useModal: focus kept inside, Escape closes, named by its title), the
+ * switches are the portal's own (ui/Switch, named by the language), every
+ * field has a <label>, and the buttons are the portal's two (lib/ui/buttons).
  */
 
-import { useState, useTransition } from 'react'
+import { useId, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateSiteLanguages, setLanguagePaused, saveMondayBoardId, saveSiteWpUrls } from '@/app/actions'
 import { languageName, languageDot, codeFromInput } from '@/lib/language-display'
+import { Switch } from '@/components/ui/Switch'
+import { useModal } from '@/components/ui/useModal'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 interface SiteCardProps {
   site: {
@@ -36,30 +44,49 @@ const BRAND: Record<'aaaf' | 'hfa', string> = {
   hfa: 'bg-hfa-soft text-hfa-primary',
 }
 
-const PencilGold = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-const CheckGold = () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
-const PlusIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+const PencilIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+const CheckIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
 
 const textField = 'flex-1 min-w-0 text-sm font-semibold text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3 py-2.5 focus:outline-none focus:border-tn-teal focus:bg-white focus:ring-2 focus:ring-tn-teal/20 read-only:cursor-default'
-const label = 'text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.09em] text-muted'
+const caption = 'block text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.09em] text-muted'
+const envLabel = 'w-[52px] text-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-foreground bg-subtle rounded-[8px] py-[7px] shrink-0'
 
-function Switch({ on, disabled, onClick }: { on: boolean; disabled: boolean; onClick: () => void }) {
+/** The add-language question, as a modal dialog (useModal keeps the keyboard in it). */
+function AddLanguageDialog({ code, site, pending, onCancel, onConfirm }: {
+  code: string
+  site: SiteCardProps['site']
+  pending: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const box = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  useModal(true, box, onCancel)
+  const name = languageName(code)
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      disabled={disabled}
-      onClick={onClick}
-      className={`relative inline-flex h-[22px] w-10 items-center rounded-full transition-colors shrink-0 ${on ? 'bg-tn-teal' : 'bg-slate-300'} ${disabled ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer'}`}
-    >
-      <span className={`inline-block h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform ${on ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
-    </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel() }}>
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby={titleId} className="w-full max-w-md rounded-[16px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] p-6 space-y-4">
+        <h3 id={titleId} className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[17px]">Add {name}?</h3>
+        <div className="text-[13.5px] text-foreground space-y-2">
+          <p>Adds <b className="text-tn-ink">{name}</b> as a tracked publishing language for {site.name}.</p>
+          {site.pagesWithUrlsCount > 0 ? (
+            <p className="pt-2 border-t border-slate-100"><b className="text-[var(--bdg-gold-fg)]">Heads up:</b> {site.pagesWithUrlsCount} page{site.pagesWithUrlsCount === 1 ? '' : 's'} with URLs will be flagged as <em>needs update</em> so their hreflang tags get the new language.</p>
+          ) : (
+            <p className="pt-2 border-t border-slate-100 text-muted">No pages will be flagged, empty pages don&apos;t need attention.</p>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button type="button" onClick={onCancel} className={BTN.white}>Cancel</button>
+          <button type="button" onClick={onConfirm} disabled={pending} className={`${BTN.navy} disabled:opacity-60`}>{pending ? 'Adding…' : 'Add and flag pages'}</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
 export function SiteCard({ site }: SiteCardProps) {
   const router = useRouter()
+  const ids = useId()
   const [editing, setEditing] = useState(false)
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -142,10 +169,10 @@ export function SiteCard({ site }: SiteCardProps) {
       type="button"
       onClick={editing ? saveCard : enterEdit}
       disabled={pending}
-      className={`inline-flex items-center gap-2 rounded-[10px] px-5 py-[11px] font-(family-name:--font-display) font-extrabold text-[13.5px] transition-all shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] hover:-translate-y-px disabled:opacity-60 ${editing ? 'bg-tn-teal text-white' : 'bg-tn-primary text-white'}`}
+      className={`${BTN.navy} disabled:opacity-60`}
     >
-      {editing ? <CheckGold /> : <PencilGold />}
-      <span className="text-[#ffffff]">{editing ? (pending ? 'Saving…' : 'Save') : 'Edit'}</span>
+      {editing ? <CheckIcon /> : <PencilIcon />}
+      {editing ? (pending ? 'Saving…' : 'Save') : 'Edit'}
     </button>
   )
 
@@ -168,17 +195,19 @@ export function SiteCard({ site }: SiteCardProps) {
         {rows.length === 0 && <p className="py-2 text-[13px] text-muted">No languages tracked yet.</p>}
         {rows.map(({ code, active }) => (
           <div key={code} className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
-            <span className="w-3 h-3 rounded-[4px] shrink-0" style={{ background: languageDot(code) }} />
+            <span className="w-3 h-3 rounded-[4px] shrink-0" style={{ background: languageDot(code) }} aria-hidden="true" />
             <span className="flex-1 min-w-0 text-[14px] font-semibold text-tn-ink truncate">{languageName(code)}</span>
             <span className={`inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 ${active ? 'text-tn-teal bg-tn-teal-soft' : 'text-[var(--bdg-slate-fg)] bg-[var(--bdg-slate-bg)]'}`}>{active ? 'Active' : 'Paused'}</span>
-            <Switch on={active} disabled={!editing || pending} onClick={() => toggle(code, active)} />
+            <Switch on={active} disabled={!editing || pending} onChange={() => toggle(code, active)} label={`Track ${languageName(code)}`} />
           </div>
         ))}
 
         {/* Add language */}
         {adding ? (
           <div className="flex items-center gap-2 pt-3.5 mt-1 border-t border-slate-200 flex-wrap">
+            <label htmlFor={`${ids}-new-lang`} className="sr-only">Language to add</label>
             <input
+              id={`${ids}-new-lang`}
               type="text"
               value={newLang}
               onChange={(e) => setNewLang(e.target.value)}
@@ -186,25 +215,27 @@ export function SiteCard({ site }: SiteCardProps) {
               placeholder="Language name (e.g. French)"
               className="flex-1 min-w-[150px] text-sm font-semibold text-tn-ink bg-subtle border border-slate-200 rounded-[9px] px-3 py-2 focus:outline-none focus:border-tn-teal focus:bg-white focus:ring-2 focus:ring-tn-teal/20"
             />
-            <button type="button" onClick={startAdd} disabled={pending} className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-white bg-tn-teal rounded-[9px] px-4 py-2 disabled:opacity-50">Add</button>
-            <button type="button" onClick={() => { setAdding(false); setNewLang(''); setError(null) }} className="font-(family-name:--font-display) font-extrabold text-[12.5px] text-muted px-2 py-2">Cancel</button>
+            <button type="button" onClick={startAdd} disabled={pending} className={`${BTN.navy} disabled:opacity-50`}>Add</button>
+            <button type="button" onClick={() => { setAdding(false); setNewLang(''); setError(null) }} className={BTN.white}>Cancel</button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => { setAdding(true); setError(null) }}
             disabled={!editing}
-            className="inline-flex items-center gap-2 mt-3.5 font-(family-name:--font-display) font-extrabold text-[13px] text-tn-teal bg-tn-teal-soft border border-dashed border-tn-teal rounded-[10px] px-3.5 py-2.5 disabled:opacity-45 disabled:cursor-not-allowed"
+            className={`${BTN.white} mt-3.5 disabled:opacity-45 disabled:cursor-not-allowed`}
           >
-            <PlusIcon /> Add language
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            Add language
           </button>
         )}
       </div>
 
       {/* Monday board ID */}
       <div className="border-t border-slate-200 mt-[18px] pt-[18px]">
-        <div className={`${label} mb-2.5`}>Monday board ID</div>
+        <label htmlFor={`${ids}-board`} className={`${caption} mb-2.5`}>Monday board ID</label>
         <input
+          id={`${ids}-board`}
           type="text"
           inputMode="numeric"
           value={boardId}
@@ -218,41 +249,25 @@ export function SiteCard({ site }: SiteCardProps) {
 
       {/* WordPress URLs */}
       <div className="border-t border-slate-200 mt-[18px] pt-[18px]">
-        <div className={`${label} mb-3`}>WordPress URLs</div>
+        <div className={`${caption} mb-3`} aria-hidden="true">WordPress URLs</div>
         <div className="flex items-center gap-2.5 mb-2.5">
-          <span className="w-[52px] text-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-foreground bg-subtle rounded-[8px] py-[7px] shrink-0">Dev</span>
-          <input type="url" value={dev} onChange={(e) => setDev(e.target.value)} readOnly={!editing} placeholder="https://devsite…" className={textField} />
+          <label htmlFor={`${ids}-dev`} className={envLabel}><span className="sr-only">WordPress </span>Dev</label>
+          <input id={`${ids}-dev`} type="url" value={dev} onChange={(e) => setDev(e.target.value)} readOnly={!editing} placeholder="https://devsite…" className={textField} />
         </div>
         <div className="flex items-center gap-2.5">
-          <span className="w-[52px] text-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-foreground bg-subtle rounded-[8px] py-[7px] shrink-0">Live</span>
-          <input type="url" value={live} onChange={(e) => setLive(e.target.value)} readOnly={!editing} placeholder="https://www…" className={textField} />
+          <label htmlFor={`${ids}-live`} className={envLabel}><span className="sr-only">WordPress </span>Live</label>
+          <input id={`${ids}-live`} type="url" value={live} onChange={(e) => setLive(e.target.value)} readOnly={!editing} placeholder="https://www…" className={textField} />
         </div>
         <p className="text-[12px] text-muted mt-3">Used by the Dev / Live buttons on the project header. Leave blank to hide that button.</p>
       </div>
 
-      {error && <p className="mt-3 text-xs text-[var(--bdg-red-fg)]">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-xs text-[var(--bdg-red-fg)]">{error}</p>}
 
       <div className="flex justify-end mt-4 pt-4 border-t border-slate-100">{editBtn}</div>
 
-      {/* Confirm add, a new language flags existing pages for an hreflang update */}
+      {/* Confirm add: a new language flags existing pages for an hreflang update. */}
       {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(1,20,45,.44)] backdrop-blur-[2px] p-4" onClick={() => setConfirm(null)}>
-          <div className="w-full max-w-md rounded-[16px] bg-white shadow-[0_40px_90px_-30px_rgba(1,35,88,.6)] p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-(family-name:--font-display) font-extrabold text-tn-ink text-[17px]">Add {languageName(confirm.code)}?</h3>
-            <div className="text-[13.5px] text-foreground space-y-2">
-              <p>Adds <b className="text-tn-ink">{languageName(confirm.code)}</b> as a tracked publishing language for {site.name}.</p>
-              {site.pagesWithUrlsCount > 0 ? (
-                <p className="pt-2 border-t border-slate-100"><b className="text-[var(--bdg-gold-fg)]">Heads up:</b> {site.pagesWithUrlsCount} page{site.pagesWithUrlsCount === 1 ? '' : 's'} with URLs will be flagged as <em>needs update</em> so their hreflang tags get the new language.</p>
-              ) : (
-                <p className="pt-2 border-t border-slate-100 text-muted">No pages will be flagged, empty pages don&apos;t need attention.</p>
-              )}
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button onClick={() => setConfirm(null)} className="font-(family-name:--font-display) font-extrabold text-[13px] text-muted px-3 py-2">Cancel</button>
-              <button onClick={confirmAdd} disabled={pending} className="font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-4 py-2.5 disabled:opacity-60">{pending ? 'Adding…' : 'Add and flag pages'}</button>
-            </div>
-          </div>
-        </div>
+        <AddLanguageDialog code={confirm.code} site={site} pending={pending} onCancel={() => setConfirm(null)} onConfirm={confirmAdd} />
       )}
     </div>
   )

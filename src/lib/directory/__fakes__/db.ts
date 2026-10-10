@@ -38,7 +38,7 @@ export interface Fake {
 }
 
 // The foreign key an embed follows: `teams(name)` on team_members is team_id.
-const FK: Record<string, string> = { people: 'person_id', teams: 'team_id' }
+const FK: Record<string, string> = { people: 'person_id', teams: 'team_id', sites: 'site_id' }
 
 function orPred(expr: string): Pred {
   const parts = expr.split(',').map(p => {

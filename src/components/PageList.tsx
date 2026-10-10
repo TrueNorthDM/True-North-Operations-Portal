@@ -1,11 +1,17 @@
 'use client'
 
 /**
- * PageList: interactive list view shared by /aaaf and /hfa.
+ * PageList: the page list of one Href Links site (each site's list page).
  *
- * The Server Components fetch and shape data, then pass it to this Client
- * Component. Search/filter/sort all live here as local state, no network
- * roundtrips, so it's instant even on 100+ pages.
+ * The server reads and shapes the rows (lib/href-links/data.ts), including
+ * whether each page is done by the one rule (rules.ts); this list only
+ * searches, filters, sorts and groups them, with no request of its own.
+ *
+ * Done is row.done everywhere here: the status pill, the Done / Incomplete
+ * filter and the Completed group. The Completed group used to go by the done
+ * date instead, so a page that lost a language sat under Completed while its
+ * pill said "3 of 4" (audit, 10 October 2026). The done date is only shown,
+ * as the day the page first got done.
  */
 
 import Link from 'next/link'
@@ -15,16 +21,11 @@ import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Tooltip, Popover, PopoverItem, SortHeader } from './PageListParts'
 import { hrefLinksPage } from '@/lib/nav/routes'
-
-// Language chips use flag colours (matches the handoff): filled when the system
-// holds the URL for that language, a muted track when not. Literal hex, so they
-// read identically in light and dark, same as the prototype.
-const LANG_FLAG: Record<string, { bg: string; text: string }> = {
-  en: { bg: '#111111', text: '#ffffff' },
-  pt: { bg: '#009C3B', text: '#ffffff' },
-  es: { bg: '#F5B800', text: '#012358' },
-  sw: { bg: '#00A3DD', text: '#ffffff' },
-}
+import { languageName } from '@/lib/language-display'
+import { reportDate } from '@/lib/report/clock'
+import type { PageListRow } from '@/lib/href-links/data'
+import type { SiteCode } from '@/lib/href-links/rules'
+import { langChipStyle } from '@/components/href-links/lang-chip'
 
 // All filter + sort state lives in URL query params, so the view is
 // shareable and the browser Back button rewinds filter changes.
@@ -40,42 +41,16 @@ const STATUS_LABEL: Record<StatusFilter, string> = {
   not_relevant: 'Not relevant',
 }
 
-const LANG_LABEL: Record<string, string> = {
-  en: 'English',
-  pt: 'Portuguese',
-  es: 'Spanish',
-  sw: 'Swahili',
-  fr: 'French',
+/** "Oct 9, 2026" on the New York day (audit, 10 October 2026: it was the UTC day). */
+export function formatDoneDate(iso: string | null | undefined): string | null {
+  return iso ? reportDate(iso) : null
 }
 
-export interface PageListRow {
-  id: string
-  name: string
-  langStatus: Record<string, { hasUrl: boolean; confirmed: boolean }>
-  /** Flagged after a language config change, page may have stale hreflang. */
-  needsUpdate?: boolean
-  /** Intentional opt-out: counts as done in progress; shown faded in the list. */
-  notRelevant?: boolean
-  /** ISO timestamp: first date all langs went live. Preserved on un-toggle. */
-  confirmedDoneAt?: string | null
-}
-
-// Compact "MMM D, YYYY" formatter, UTC so the calendar day matches imported sheet dates.
-function formatDoneDate(iso: string | null | undefined): string | null {
-  if (!iso) return null
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  })
-}
-
-// ── Row groups ────────────────────────────────────────────────────
-// Three buckets based on the user's mental model:
-//   - On-going    : active work, neither completed nor opted out
-//   - Completed   : strict definition, confirmed_done_at is stamped
-//   - Not relevant: explicitly opted out of the workflow
+// Row groups, in the order the list shows them:
+//   - Ready        : every language has a link, not done yet
+//   - On-going     : the rest of the work in progress
+//   - Completed    : done by the one rule (row.done), Not relevant aside
+//   - Not relevant : set aside on purpose
 // Module-level (pure) so the grouping useMemo can depend on `groupOf` safely.
 type GroupKey = 'ready' | 'ongoing' | 'completed' | 'not_relevant'
 const GROUP_ORDER: GroupKey[] = ['ready', 'ongoing', 'completed', 'not_relevant']
@@ -86,25 +61,24 @@ const GROUP_LABEL: Record<GroupKey, string> = {
   not_relevant: 'Not relevant',
 }
 // `languages` is passed in (not closed over) so this stays pure and safe to
-// call from a useMemo. A page is "ready" once every language has a page/URL
-// created but the item is not finished yet, so all that's left is the work of
-// reviewing and marking each language live.
-function groupOf(r: PageListRow, languages: string[]): GroupKey {
+// call from a useMemo. A page is "ready" once every language has a link but it
+// is not done yet: what is left is pasting the tags and confirming each live.
+export function groupOf(r: PageListRow, languages: string[]): GroupKey {
   if (r.notRelevant) return 'not_relevant'
-  if (r.confirmedDoneAt) return 'completed'
+  if (r.done) return 'completed'
   if (languages.length > 0 && languages.every(l => r.langStatus[l]?.hasUrl)) return 'ready'
   return 'ongoing'
 }
 
+/** Done comes from the server, by the one rule (Not relevant counts as done). */
+const isDone = (r: PageListRow) => r.done
+
 interface Props {
   rows: PageListRow[]
-  languages: string[]                       // ordered, e.g. ['en','pt','es','sw']
-  siteCode: 'aaaf' | 'hfa'
-  accent: 'aaaf' | 'hfa'
-  /**
-   * Cluster is still indexed by search (so 'Faith' filters HFA pages) but no
-   * longer rendered as a column. It surfaces on the detail page instead.
-   */
+  /** The site's current languages, in order, e.g. ['en','pt','es','sw']. */
+  languages: string[]
+  siteCode: SiteCode
+  accent: SiteCode
 }
 
 const accentMap = {
@@ -185,14 +159,6 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
     [],
   )
 
-  // "Not relevant" pages are explicitly opted out, they count as done for
-  // progress, filtering, and the "Done" status pill. Memoized (deps: languages)
-  // so the filtering useMemos can list them without re-running every render.
-  const isDone = useCallback((r: PageListRow) => {
-    if (r.notRelevant) return true
-    return languages.every(l => r.langStatus[l]?.confirmed)
-  }, [languages])
-
   const urlCount = useCallback(
     (r: PageListRow) => languages.filter(l => r.langStatus[l]?.hasUrl).length,
     [languages],
@@ -237,9 +203,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
       return cmp
     })
     return base
-  }, [rows, search, status, hasLangs, sortKey, sortDir, collator, isDone, urlCount])
+  }, [rows, search, status, hasLangs, sortKey, sortDir, collator, urlCount])
 
-  const doneCount = useMemo(() => rows.filter(isDone).length, [rows, isDone])
+  const doneCount = useMemo(() => rows.filter(isDone).length, [rows])
   const incompleteCount = rows.length - doneCount
   const needsUpdateCount = useMemo(() => rows.filter(r => r.needsUpdate).length, [rows])
   const notRelevantCount = useMemo(() => rows.filter(r => r.notRelevant).length, [rows])
@@ -324,7 +290,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                 </PopoverItem>
               ))}
               {(needsUpdateCount > 0 || notRelevantCount > 0) && (
-                <li className="border-t border-slate-100 my-1" />
+                <li aria-hidden="true" className="border-t border-slate-100 my-1" />
               )}
               {needsUpdateCount > 0 && (
                 <PopoverItem
@@ -380,14 +346,14 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                         className="w-4 h-4 rounded border-slate-300"
                       />
                       <span className="font-mono uppercase text-xs text-slate-500 w-7">{lang}</span>
-                      <span className="text-slate-800">{LANG_LABEL[lang] ?? lang}</span>
+                      <span className="text-slate-800">{languageName(lang)}</span>
                     </label>
                   </li>
                 )
               })}
               {hasLangs.length > 0 && (
                 <>
-                  <li className="border-t border-slate-100 my-1" />
+                  <li aria-hidden="true" className="border-t border-slate-100 my-1" />
                   <li>
                     <button
                       type="button"
@@ -444,7 +410,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                   onClick={() => toggleSort('hreflang_status')}
                 />
                 <SortHeader
-                  label="All Live"
+                  label="First done"
                   active={sortKey === 'all_live'}
                   dir={sortDir}
                   onClick={() => toggleSort('all_live')}
@@ -497,11 +463,8 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                     </tr>
                     {isOpen && groupRows.map((r, i) => {
                       const done = isDone(r)
-                // HREFLANG (SYSTEM) tracks what THIS system holds, i.e.
-                // URLs received from the Monday Run Link webhook. So we
-                // color and count by `hasUrl`. The final "✓ Done" pill
-                // still uses `confirmed` because that means all langs
-                // were marked Done in Monday (live in WordPress).
+                // The chips and the "2 of 4" count go by the links the portal
+                // holds (hasUrl); "✓ Done" is the one rule, from the server.
                 const urlCount = languages.filter(l => r.langStatus[l]?.hasUrl).length
                 return (
                   <tr
@@ -509,8 +472,11 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                     // Not-relevant pages fade the whole row so they read
                     // as "set aside, not part of the active work" without
                     // hiding them entirely.
+                    // The last row of its group drops its line: the next
+                    // group's header (or the table's edge) draws one. It
+                    // compared with the whole list's length, so it never hit.
                     className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                      i === filtered.length - 1 ? 'border-0' : ''
+                      i === groupRows.length - 1 ? 'border-b-0' : ''
                     } ${r.notRelevant ? 'opacity-50' : ''}`}
                   >
                     <td className="px-5 py-4">
@@ -523,7 +489,7 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                             className="shrink-0 text-amber-700"
                             aria-label="Needs update"
                           >
-                            <title>Language config changed, this page needs URLs reviewed</title>
+                            <title>Needs update: a language was added or a live link changed, so the tags need pasting again</title>
                             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                             <path d="M12 9v4M12 17h.01" />
                           </svg>
@@ -550,20 +516,20 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       <div className="flex gap-1">
                         {languages.map(lang => {
                           const s = r.langStatus[lang] ?? { hasUrl: false, confirmed: false }
-                          // Coloured (flag colour) when the system holds the URL
-                          // for this language; muted track when it doesn't.
-                          const flag = s.hasUrl ? LANG_FLAG[lang] : null
+                          // Flag colour when the portal holds the link for this
+                          // language; a muted track when it does not.
                           const title = s.confirmed
-                            ? `${lang.toUpperCase()}: URL received, confirmed live`
+                            ? `${languageName(lang)}: link saved, confirmed live`
                             : s.hasUrl
-                              ? `${lang.toUpperCase()}: URL received`
-                              : `${lang.toUpperCase()}: no URL yet`
+                              ? `${languageName(lang)}: link saved`
+                              : `${languageName(lang)}: no link yet`
                           return (
                             <span
                               key={lang}
                               title={title}
-                              className={`inline-flex items-center justify-center w-[26px] h-[22px] rounded-[5px] text-[11px] font-bold uppercase ${flag ? '' : 'bg-slate-100 text-slate-400'}`}
-                              style={flag ? { backgroundColor: flag.bg, color: flag.text } : undefined}
+                              aria-label={title}
+                              className={`inline-flex items-center justify-center w-[26px] h-[22px] rounded-[5px] text-[11px] font-bold uppercase ${s.hasUrl ? '' : 'bg-slate-100 text-slate-400'}`}
+                              style={s.hasUrl ? langChipStyle(lang) : undefined}
                             >
                               {lang}
                             </span>
@@ -590,8 +556,9 @@ export function PageList({ rows, languages, siteCode, accent }: Props) {
                       </span>
                     </td>
 
-                    {/* HREFLANG (system), done date */}
-                    <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap">
+                    {/* The day the page first got done: history only. A page
+                        that lost a language since keeps its date here. */}
+                    <td className="px-5 py-4 text-xs text-slate-500 whitespace-nowrap" title={r.confirmedDoneAt ? 'The day it first got done' : undefined}>
                       {formatDoneDate(r.confirmedDoneAt) ?? <span className="text-slate-300">-</span>}
                     </td>
 

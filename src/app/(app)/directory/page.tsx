@@ -88,7 +88,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, dRes, alRes, accessRules] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('grants').select('subject_type, subject_id, project_id, role'),
-    supabase.from('sites').select('id, name, code'),
+    // Site names only, read by the server: sites is closed to sessions (migration 107).
+    createAdminClient().from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
     // Separate + graceful: role_type (035) / avatar_url (036) may not exist
     // yet, a failed query here must NOT drop the LIST_COLUMNS select.

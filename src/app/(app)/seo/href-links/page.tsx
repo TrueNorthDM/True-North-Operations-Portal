@@ -1,24 +1,27 @@
-// Dashboard: overview of both AAAF and HFA sites
-// This is a Server Component, data is fetched at request time.
+// Href Links overview: both sites at a glance (server component, read at
+// request time). Each site's languages and domain come from Settings
+// (getProjectsOverview), not from this file (audit, 10 October 2026); only
+// each card's branding is written here.
 
 import Link from 'next/link'
 import { previewHref } from '@/lib/auth/view-as-server'
 import Image from 'next/image'
 import { languagePalette } from '@/lib/language-colors'
-import { getProjectsOverview } from '@/lib/projects-data'
+import { getProjectsOverview } from '@/lib/href-links/data'
+import { siteHost } from '@/lib/href-links/rules'
 import { StatCell } from '@/components/ProjectStatCell'
 import { requireSurface } from '@/lib/access/resolve'
 import { redirect } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { ROUTES, hrefLinksSite } from '@/lib/nav/routes'
+import { HrefLinksReadError } from '@/components/href-links/ReadError'
+import { attempt } from '@/components/href-links/load'
 
-// Each card carries its project's brand identity, colors + display font + real logo.
+// Each card carries its site's brand: colours, display font and real logo.
 const SITES = [
   {
     code: 'aaaf',
     name: 'Ask An Adventist Friend',
-    domain: 'askanadventistfriend.com',
-    languages: ['EN', 'PT', 'ES', 'SW'],
     href: hrefLinksSite('aaaf'),
     logo: '/logos/aaaf.jpg',
     logoW: 148,
@@ -32,8 +35,6 @@ const SITES = [
   {
     code: 'hfa',
     name: 'Hope For Africa',
-    domain: 'hopefor.africa',
-    languages: ['EN', 'SW'],
     href: hrefLinksSite('hfa'),
     logo: '/logos/hfa.png',
     logoW: 300,
@@ -65,8 +66,13 @@ export default async function ProjectsPage() {
   const access = await requireSurface('tools')
   if (!access.canTool('href-links')) redirect(await previewHref('/'))
 
-  const { accessibleCodes, readyBySite, totalReady, statsBySite } = await getProjectsOverview()
-  const visibleSites = SITES.filter(s => accessibleCodes.has(s.code))
+  const overview = await attempt('the overview', getProjectsOverview)
+  if (!overview.ok) return <HrefLinksReadError />
+  const { accessibleCodes, readyBySite, totalReady, statsBySite, sites } = overview.value
+  const visibleSites = SITES.filter(s => accessibleCodes.has(s.code)).map(s => {
+    const host = siteHost(sites[s.code]?.domain)
+    return { ...s, host, shownDomain: host?.replace(/^www\./, '') ?? null, languages: sites[s.code]?.languages ?? [] }
+  })
 
   return (
     <div className="space-y-8">
@@ -83,8 +89,8 @@ export default async function ProjectsPage() {
 
       {/* Compact "ready to apply" banner (handoff 2): one line + per-site jump
           pills. A page is ready when every language has a URL but it isn't live
-          yet, SEO 2 can apply the hreflang now. The pill links to the site's
-          page list. bg-white on the pills maps to the dark surface via the mirror. */}
+          yet, so SEO 2 can apply the hreflang now. Each pill links to that
+          site's page list; only sites the reader may open are counted. */}
       {totalReady > 0 && (
         <div className="flex items-center gap-3 flex-wrap rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <svg
@@ -104,13 +110,13 @@ export default async function ProjectsPage() {
             {totalReady} {totalReady === 1 ? 'page is' : 'pages are'} ready to apply
           </span>
           <div className="ml-auto flex gap-2">
-            {(['aaaf', 'hfa'] as const).map(code => {
-              const list = readyBySite[code]
+            {SITES.map(({ code }) => {
+              const list = readyBySite[code] ?? []
               if (list.length === 0) return null
               return (
                 <Link
                   key={code}
-                  href={`/${code}`}
+                  href={hrefLinksSite(code)}
                   className="inline-flex items-center gap-1.5 rounded-full bg-white border border-amber-200 px-2.5 py-1 text-[11.5px] font-bold text-amber-700 whitespace-nowrap transition-colors hover:bg-amber-100"
                 >
                   <span className="uppercase tracking-wide">{code}</span> · {list.length} →
@@ -122,8 +128,8 @@ export default async function ProjectsPage() {
       )}
 
       {/* Site cards, pseudo-element overlay pattern so the card is clickable
-          (→ project page) AND the domain inside is independently clickable
-          (→ external site). Valid HTML, no JS, fully keyboard accessible. */}
+          (to the site's page list) AND the domain inside is independently
+          clickable (to the live site). Valid HTML, no JS, keyboard reachable. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {visibleSites.map(site => (
           <article
@@ -161,16 +167,18 @@ export default async function ProjectsPage() {
                   </h2>
                   {/* Domain link, `relative z-10` lifts it above the ::before,
                       so clicks here open the external site instead of the title link. */}
-                  <a
-                    href={`https://${site.domain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="relative z-10 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 hover:underline mt-1"
-                    aria-label={`Open ${site.domain} in a new tab`}
-                  >
-                    {site.domain}
-                    <span aria-hidden="true">↗</span>
-                  </a>
+                  {site.host && (
+                    <a
+                      href={`https://${site.host}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative z-10 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 hover:underline mt-1"
+                      aria-label={`Open ${site.shownDomain} in a new tab`}
+                    >
+                      {site.shownDomain}
+                      <span aria-hidden="true">↗</span>
+                    </a>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-end gap-3">
@@ -180,7 +188,7 @@ export default async function ProjectsPage() {
                       return (
                         <span
                           key={lang}
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${langC.bg} ${langC.text} ${langC.border}`}
+                          className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${langC.bg} ${langC.text} ${langC.border}`}
                         >
                           {lang}
                         </span>
