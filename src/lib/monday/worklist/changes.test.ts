@@ -131,3 +131,22 @@ describe('diffAssignments when the way steps are read changes', () => {
     expect(kinds(e)).toEqual(['unassigned'])
   })
 })
+
+describe('work that comes back after leaving for a setting (audit, 10 October 2026)', () => {
+  const back = { baseline: new Set(['people']) }
+
+  it('writes no hand-off for it, so nobody is told about work they already had', () => {
+    expect(diffAssignments(7, [], [row()], NOW, back)).toEqual([])
+  })
+
+  it('logs the finish of a step finished while it was away, if the log still had it in hand', () => {
+    const done = row({ status_done: true, status_text: 'Done' })
+    const events = diffAssignments(7, [], [done], NOW, { ...back, heldInLog: new Set([keyOf(done)]) })
+    expect(events.map(e => e.event)).toEqual(['done'])
+    expect(diffAssignments(7, [], [done], NOW, back)).toEqual([])
+  })
+
+  it('still logs a hand-off on a column that did not leave', () => {
+    expect(diffAssignments(7, [], [row({ people_col: 'reviewer' })], NOW, back).map(e => e.event)).toEqual(['assigned'])
+  })
+})

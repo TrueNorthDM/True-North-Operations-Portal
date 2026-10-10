@@ -11,7 +11,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { primaryTeamByPerson } from './primary-team'
 import { loadRules } from '@/lib/access/store'
-import { toolsByTeam, type TeamTool } from '@/lib/access/team-tools'
+import { toolsByTeam } from '@/lib/access/team-tools'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { SignedInIdentity } from './current-person'
 import type { Database } from '@/lib/types/database.types'
@@ -34,17 +34,16 @@ export interface MyTeamView {
   people: RestrictedPerson[]
   teamNames: string[]
   /**
-   * The viewer's teams as cards. Tool access is filled from level 2 up and
-   * null below, which is the one thing that separates the two levels: at
-   * level 1 the tab shows who is on the team, at level 2 it also shows what
-   * the team can reach.
+   * The viewer's teams as cards, for the Teams tab that level 2 adds, with
+   * what each team can reach. Empty at level 1: the tab is hidden there, and a
+   * hidden part is never built or sent to the browser (audit, 10 October 2026).
    */
   teams: RestrictedTeam[]
   selfId: string | null
 }
 
 /**
- * @param opts.level 2 adds the Teams tab's tool access (access/surfaces.ts).
+ * @param opts.level 2 adds the Teams tab: the team cards and what each can reach (access/surfaces.ts).
  * @param opts.hrefFor each person's page when the viewer may open it, else null.
  */
 export async function loadMyTeam(
@@ -120,14 +119,14 @@ export async function loadMyTeam(
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // ── The Teams tab ────────────────────────────────────────────────────────
+  // Level 2 only: below it the tab does not exist, so nothing is read for it.
   const teamCards: RestrictedTeam[] = []
-  if (teamIds.length) {
+  if (teamIds.length && level >= 2) {
     const [{ data: teamRows }, { data: memberRows }, tools] = await Promise.all([
       supabase.from('teams').select('id, name').in('id', teamIds),
       supabase.from('team_members').select('team_id, person_id, position').in('team_id', teamIds),
-      // Level 1 never sees tool access, so it is never even asked for. Each
-      // tool's team list as Access levels sets it (lib/access/team-tools.ts).
-      level >= 2 ? loadRules(createAdminClient()) : Promise.resolve(null),
+      // Each tool's team list as Access levels sets it (lib/access/team-tools.ts).
+      loadRules(createAdminClient()),
     ])
 
     const titleById = new Map((rows ?? []).map(r => [r.id, str(r.title)]))
@@ -140,7 +139,7 @@ export async function loadMyTeam(
     for (const m of (memberRows ?? []) as { team_id: string; person_id: string; position?: string }[]) {
       byTeam.set(m.team_id, [...(byTeam.get(m.team_id) ?? []), m])
     }
-    const lists = tools ? toolsByTeam(tools, teamIds) : new Map<string, TeamTool[]>()
+    const lists = toolsByTeam(tools, teamIds)
     const toolsFor = (teamId: string) => (lists.get(teamId) ?? [])
       .map(t => ({ label: toolLabel.get(t.toolKey) ?? t.toolKey, audience: t.audience }))
 
@@ -160,7 +159,7 @@ export async function loadMyTeam(
             positionLabel: TEAM_POSITION_LABEL[normalPosition(m.position)],
           }))
           .sort((a, b) => a.name.localeCompare(b.name)),
-        tools: level >= 2 ? toolsFor(t.id) : null,
+        tools: toolsFor(t.id),
       })
     }
     teamCards.sort((a, b) => a.name.localeCompare(b.name))

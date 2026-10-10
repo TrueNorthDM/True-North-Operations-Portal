@@ -7,6 +7,8 @@
 // difference and make the decision harder rather than shorter.
 
 import type { Db } from '@/lib/supabase/types'
+import { selectAllPages } from './resilience'
+import { assignmentCounts } from './counts'
 import { staleSweep } from './stale'
 
 type Client = Db
@@ -56,16 +58,23 @@ export interface WorklistSources {
 }
 
 export async function loadWorklistSources(supabase: Client): Promise<WorklistSources> {
-  const [{ data: boardRows }, { data: userRows }, { data: linkRows }, { data: peopleRows }] = await Promise.all([
-    supabase.from('monday_boards')
-      .select('id, name, workspace_name, included, included_pinned, priority, is_subitem_board, assignments_count, last_activity_at'),
-    supabase.from('monday_users').select('id, name, email, hidden, is_external'),
-    supabase.from('monday_user_links').select('monday_user_id, person_id'),
-    supabase.from('people').select('id, full_name'),
+  const [boardRead, userRead, linkRead, peopleRead, settingsRead, counted] = await Promise.all([
+    selectAllPages((from, to) => supabase.from('monday_boards')
+      .select('id, name, workspace_name, included, included_pinned, priority, is_subitem_board, assignments_count, last_activity_at')
+      .order('id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('monday_users').select('id, name, email, hidden, is_external').order('id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('monday_user_links').select('monday_user_id, person_id').order('monday_user_id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('people').select('id, full_name').order('id').range(from, to)),
+    supabase.from('app_settings').select('monday_hide_stale_boards').eq('singleton_id', 1).maybeSingle(),
+    assignmentCounts(supabase),
   ])
-
-  const { data: settings } = await supabase
-    .from('app_settings').select('monday_hide_stale_boards').eq('singleton_id', 1).maybeSingle()
+  // A failed read is not an empty one: no boards would read as nothing to show.
+  for (const [what, r] of [['boards', boardRead], ['Monday accounts', userRead], ['account links', linkRead],
+    ['people', peopleRead], ['settings', settingsRead]] as const) {
+    if (r.error) throw new Error(`Could not read the ${what}: ${r.error.message}`)
+  }
+  const boardRows = boardRead.data, userRows = userRead.data, linkRows = linkRead.data, peopleRows = peopleRead.data
+  const settings = settingsRead.data
 
   const sweep = staleSweep(
     ((boardRows ?? []) as { id: number; included: boolean; included_pinned: boolean; last_activity_at: string | null }[])
@@ -119,17 +128,9 @@ export async function loadWorklistSources(supabase: Client): Promise<WorklistSou
   const personByAccount = new Map(((linkRows ?? []) as { monday_user_id: number; person_id: string }[])
     .map(l => [l.monday_user_id, l.person_id]))
 
-  // Per-account totals come from the boards' own counts being unavailable at
-  // this grain, so this is the one place a scan is unavoidable. Ids only, which
-  // is a single column over the table.
-  const counts = new Map<number, number>()
-  for (let from = 0; ; from += 2000) {
-    const { data } = await supabase.from('monday_assignments')
-      .select('monday_user_id').order('id', { ascending: true }).range(from, from + 1999)
-    const page = (data ?? []) as { monday_user_id: number }[]
-    for (const r of page) counts.set(r.monday_user_id, (counts.get(r.monday_user_id) ?? 0) + 1)
-    if (page.length < 2000) break
-  }
+  // Per account, counted by the database: a scan of the rows stopped at the
+  // first 1,000 (audit, 10 October 2026).
+  const counts = counted.accounts
 
   const users: SourceUser[] = ((userRows ?? []) as {
     id: number; name: string; email: string | null; hidden: boolean; is_external: boolean

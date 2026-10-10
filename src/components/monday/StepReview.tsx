@@ -12,6 +12,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { SearchField } from '@/components/ui/SearchField'
+import { Switch } from '@/components/ui/Switch'
 import { setStepSource } from '@/app/(app)/admin/settings/monday/actions'
 import { chip } from '@/components/monday/tokens'
 import { isNotAStep, type StepUnderReview } from '@/lib/monday/worklist/steps-review'
@@ -28,6 +29,7 @@ export function StepReview(
   const [pending, start] = useTransition()
   const [query, setQuery] = useState('')
   const [onlyPending, setOnlyPending] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const q = query.trim().toLowerCase()
   const shown = steps.filter(s => {
@@ -36,18 +38,24 @@ export function StepReview(
     return `${s.boardName} ${s.stepName} ${s.peopleTitle} ${s.workspaceName ?? ''}`.toLowerCase().includes(q)
   })
 
+  // The answer is read, not assumed (audit, 10 October 2026): a refused or
+  // failed decision used to refresh the page as though it had been saved.
   const decide = (s: StepUnderReview, source: 'guess' | 'confirmed' | 'off') => {
+    setError(null)
     start(async () => {
-      await setStepSource(s.boardId, s.peopleCol, source)
+      const r = await setStepSource(s.boardId, s.peopleCol, source)
+      if (!r.ok) { setError(r.error ?? 'That step could not be saved. Try again in a moment.'); return }
       router.refresh()
     })
   }
 
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
+      {error && <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-[13px] text-foreground">
-          {`${progress.settled} of ${progress.total} steps reviewed`}
+          {`${progress.settled.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')} steps reviewed`}
         </span>
         {/* The number that matters is not how many steps are unverified, it
             is how much work is riding on them. */}
@@ -70,15 +78,13 @@ export function StepReview(
 
       <div className="flex items-center gap-2.5 flex-wrap">
         <SearchField value={query} onChange={setQuery} placeholder="Board or step" />
-        <button
-          type="button"
-          onClick={() => setOnlyPending(v => !v)}
-          className={`${BUTTON} ${onlyPending
-            ? 'border-tn-teal text-tn-teal bg-[rgba(30,125,127,.07)]'
-            : 'border-[var(--panel-border)] text-muted'}`}
-        >
-          Only unreviewed
-        </button>
+        {/* A switch with its name beside it: the old button said nothing of
+            whether it was on (audit, 10 October 2026). A label, so the words
+            click it too. */}
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <Switch on={onlyPending} onChange={setOnlyPending} label="Only unreviewed" />
+          <span aria-hidden="true" className={`text-[12.5px] font-semibold ${onlyPending ? 'text-tn-teal' : 'text-muted'}`}>Only unreviewed</span>
+        </label>
       </div>
 
       <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden bg-white">

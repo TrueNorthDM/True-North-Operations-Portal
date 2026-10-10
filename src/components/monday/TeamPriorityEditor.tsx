@@ -18,22 +18,32 @@
  *
  * Three levels since 18 September 2026 (team-priority.ts): whole workspaces,
  * then the boards inside each, then single items. The first two are rules the
- * list is rebuilt from; items placed by hand keep their places above them.
+ * list is rebuilt from; items placed by hand keep their places above them. The
+ * Workspace and Board tables are PriorityLevels.tsx.
+ *
+ * Two leaders can have the same team open. Each save says which saved order it
+ * changes, and one that finds the order changed by someone else since is
+ * refused (my-work/actions.ts): the editor then says so, stops saving, and
+ * offers a reload, rather than quietly writing over the other leader's work
+ * (audit, 10 October 2026).
  */
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, type DragEvent } from 'react'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { SearchField } from '@/components/ui/SearchField'
+import { Segmented } from '@/components/ui/Segmented'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { chip, PRIORITY_CHIP } from './tokens'
 import { BandHeader, BandMap, NextBandPill, OrderMark, type BandSummary } from './OrderBands'
+import { ARROW, BoardLevel, HEAD, WorkspaceLevel, type BoardInfo } from './PriorityLevels'
+import { dateLabel, n, useIsClient, workToday, WORK_ZONE } from './shared'
 import { bandRange, bandReason, bandsOf, placedAbove } from '@/lib/monday/worklist/order-bands'
 import {
   teamRanking, pinsFor, moveTo, agreement, displacement, updatedWhen, levelOrder, workspaceRanking, boardRanking,
   trueNorthWorkspaces, hasLevels, workspaceOf, type Levels, type SavedOrder,
 } from '@/lib/monday/worklist/team-priority'
-import { todayIso } from '@/lib/monday/worklist/list-view'
 import { saveTeamPriority, type SaveResult } from '@/app/(app)/my-work/actions'
 
 /** One open step, as the editor shows it. */
@@ -55,22 +65,11 @@ export interface EditorStep {
 
 const FIRST_ROWS = 200
 const COLS = '72px 72px minmax(0,1fr) minmax(120px,170px) 124px 112px 112px'
-const HEAD = 'px-3 py-[11px] min-w-0 font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.07em] uppercase text-muted whitespace-nowrap'
 /** A symbol for each level of Order by: a grid of workspaces, a board's columns, a list of items. */
 const LEVEL_ICON: Record<Level, React.ReactNode> = {
   workspace: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
   board: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M15 4v16" /></>,
   item: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></>,
-}
-
-/** The Workspace and Board levels share one set of columns. */
-const LEVEL_COLS = '52px 72px minmax(0,1fr) 110px 110px 90px 120px'
-const n = (v: number) => v.toLocaleString('en-US')
-
-// True in the browser, false while rendering on the server, without an effect.
-const noSubscribe = () => () => {}
-function useIsClient() {
-  return useSyncExternalStore(noSubscribe, () => true, () => false)
 }
 
 /**
@@ -102,21 +101,8 @@ function GripIcon() {
   )
 }
 
-function shortDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-type SaveState = { state: 'idle' | 'waiting' | 'saving' | 'saved' | 'error'; error?: string }
+type SaveState = { state: 'idle' | 'waiting' | 'saving' | 'saved' | 'error' | 'conflict'; error?: string }
 type Level = 'workspace' | 'board' | 'item'
-
-/** How far a workspace or board sits from True North's place for it. Nothing when it has not moved. */
-function LevelDelta({ by }: { by: number }) {
-  if (!by) return <span className="text-[var(--faint)] text-[13px]">-</span>
-  return by > 0
-    ? <span className={`${chip} bg-[rgba(30,125,127,.12)] text-tn-teal`}>{`up ${by}`}</span>
-    : <span className={`${chip} bg-[rgba(224,138,30,.16)] text-[#b06d0a]`}>{`down ${-by}`}</span>
-}
 
 function swap<T>(list: T[], i: number, dir: -1 | 1): T[] {
   const j = i + dir
@@ -128,6 +114,7 @@ function swap<T>(list: T[], i: number, dir: -1 | 1): T[] {
 
 export function TeamPriorityEditor({
   team, teams, steps, saved, savedAt, savedBy, savedBySelf, preview = false, stickyTop = 65, levelsAvailable = false,
+  canSeeEveryone = true, today: givenToday,
 }: {
   team: { id: string; name: string }
   /** Every team this person may set. */
@@ -143,10 +130,16 @@ export function TeamPriorityEditor({
   stickyTop?: number
   /** Migration 087 is in: whole workspaces and boards can be ordered. */
   levelsAvailable?: boolean
+  /** "See everyone's list" (mw-everyone). Off: no Everyone to go back to. */
+  canSeeEveryone?: boolean
+  /** Today in New York, YYYY-MM-DD, from the server. A design check leaves it out. */
+  today?: string
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const isClient = useIsClient()
+  const [fallbackToday] = useState(() => workToday())
+  const today = givenToday ?? fallbackToday
 
   // True North's order: the steps as they arrive. The team's own base order is
   // that, rebuilt by its workspace and board order when it has one.
@@ -177,39 +170,66 @@ export function TeamPriorityEditor({
   // ── Saving ────────────────────────────────────────────────────────────────
   // The latest arrangement waits here until the leader pauses, then goes. A
   // save that fails keeps it, so "Try again" sends what is on screen.
+  //
+  // One save at a time. Each carries the stamp of the order it changes
+  // (`version`: the one the page loaded, then the one each save returns), so
+  // two in flight at once would refuse each other. A change made while one is
+  // on its way waits and goes the moment it lands.
   const queued = useRef<SavedOrder | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const sending = useRef(0)
-  const inFlight = useRef(false)
+  const flight = useRef<Promise<void> | null>(null)
+  const version = useRef<string | null>(savedAt)
+  const conflicted = useRef(false)
 
-  const send = async () => {
-    const body = queued.current as (SavedOrder & { levels?: Levels | null }) | null
-    if (!body) return
-    queued.current = null
-    if (timer.current) { clearTimeout(timer.current); timer.current = null }
-    const mine = ++sending.current
-    inFlight.current = true
-    setSave({ state: 'saving' })
-    let res: SaveResult
+  const call = async (body: SavedOrder & { levels?: Levels | null }): Promise<SaveResult> => {
     try {
-      res = await saveTeamPriority(team.id, body.order, body.pinned, levelsAvailable ? body.levels ?? undefined : undefined)
+      return await saveTeamPriority(team.id, body.order, body.pinned, levelsAvailable ? body.levels ?? undefined : undefined, version.current)
     } catch {
-      res = { ok: false, error: 'The connection dropped before it saved.' }
+      return { ok: false, error: 'The connection dropped before it saved.' }
     }
-    inFlight.current = false
-    // A later change is already queued or on its way; it reports for both.
-    if (mine !== sending.current || queued.current) return
-    if (res.ok) {
-      setSave({ state: 'saved' })
-      setFresh(new Set())
-    } else {
-      queued.current = body
-      setSave({ state: 'error', error: res.error })
-    }
+  }
+
+  const send = (): Promise<void> => {
+    if (flight.current) return flight.current
+    const run = (async () => {
+      if (timer.current) { clearTimeout(timer.current); timer.current = null }
+      let sent = false
+      while (queued.current && !conflicted.current) {
+        const body = queued.current as SavedOrder & { levels?: Levels | null }
+        queued.current = null
+        setSave({ state: 'saving' })
+        const res = await call(body)
+        if (res.ok) {
+          if (res.savedAt) version.current = res.savedAt
+          sent = true
+          continue
+        }
+        if (res.conflict) {
+          // Someone else saved this team's order since it was loaded. Nothing
+          // more is sent: the screen no longer shows what is saved.
+          conflicted.current = true
+          queued.current = null
+          if (timer.current) { clearTimeout(timer.current); timer.current = null }
+          setSave({ state: 'conflict', error: res.error })
+          return
+        }
+        // Kept for "Try again", unless a newer arrangement is already waiting.
+        if (!queued.current) queued.current = body
+        setSave({ state: 'error', error: res.error })
+        return
+      }
+      if (sent) {
+        setSave({ state: 'saved' })
+        setFresh(new Set())
+      }
+    })()
+    flight.current = run
+    return run.finally(() => { flight.current = null })
   }
 
   const queue = (order: string[], pins: string[], lv: Levels = levels) => {
     if (preview) { setSave({ state: 'saved' }); setFresh(new Set()); return }
+    if (conflicted.current) return
     queued.current = { order, pinned: pins, levels: lv }
     setSave({ state: 'waiting' })
     if (timer.current) clearTimeout(timer.current)
@@ -218,7 +238,7 @@ export function TeamPriorityEditor({
 
   // Leaving the page with a change still waiting asks first.
   useEffect(() => {
-    const warn = (e: BeforeUnloadEvent) => { if (queued.current || inFlight.current) e.preventDefault() }
+    const warn = (e: BeforeUnloadEvent) => { if (queued.current || flight.current) e.preventDefault() }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [])
@@ -229,7 +249,7 @@ export function TeamPriorityEditor({
    * leader: leaving would throw away what they just arranged.
    */
   const go = async (href: string) => {
-    if (queued.current && !preview) {
+    if (!preview && (queued.current || flight.current)) {
       await send()
       if (queued.current) return
     }
@@ -335,21 +355,20 @@ export function TeamPriorityEditor({
   const isDefault = pinned.length === 0 && !levelsOn && list.every((k, i) => k === defaultKeys[i])
 
   // ── The levels ──────────────────────────────────────────────────────────
-  const today0 = todayIso()
   const wsRank = useMemo(() => workspaceRanking(steps, levels), [steps, levels])
   const tnWs = useMemo(() => trueNorthWorkspaces(steps), [steps])
   const boardRank = useMemo(() => boardRanking(steps, levels), [steps, levels])
   const tnBoardRank = useMemo(() => boardRanking(steps, null), [steps])
   const boardInfo = useMemo(() => {
-    const m = new Map<number, { name: string; ws: string; priority: EditorStep['priority']; open: number; late: number }>()
+    const m = new Map<number, BoardInfo>()
     for (const st of steps) {
       const b = m.get(st.boardId) ?? { name: st.boardName, ws: workspaceOf(st), priority: st.priority, open: 0, late: 0 }
       b.open++
-      if (st.dueDate && !st.dueSuspect && st.dueDate < today0) b.late++
+      if (st.dueDate && !st.dueSuspect && st.dueDate < today) b.late++
       m.set(st.boardId, b)
     }
     return m
-  }, [steps, today0])
+  }, [steps, today])
   const boardsIn = (ws: string, order: number[]) => order.filter(b => boardInfo.get(b)?.ws === ws)
   const wsTotals = (ws: string) => {
     const bs = boardsIn(ws, boardRank).map(b => boardInfo.get(b)!)
@@ -401,10 +420,10 @@ export function TeamPriorityEditor({
     setClosedBands(prev => { const next = new Set(prev); next.delete(i); return next })
     requestAnimationFrame(() => bandEls.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
-  const today = todayIso()
 
   const status = (() => {
     if (save.state === 'waiting' || save.state === 'saving') return <span className="text-[12.5px] text-muted">Saving…</span>
+    if (save.state === 'conflict') return <span className="text-[12.5px] text-[var(--warn-fg)]">Not saved</span>
     if (save.state === 'error') {
       return (
         <span className="inline-flex items-center gap-2 text-[12.5px] text-[var(--warn-fg)]">
@@ -424,7 +443,7 @@ export function TeamPriorityEditor({
     if ((initial.pinned.size > 0 || hasLevels(saved?.levels)) && savedAt) {
       return (
         <span className="text-[12.5px] text-muted">
-          {`Set by ${savedBySelf ? 'you' : savedBy ?? 'a team leader'}${isClient ? ` · updated ${updatedWhen(savedAt)}` : ''}`}
+          {`Set by ${savedBySelf ? 'you' : savedBy ?? 'a team leader'}${isClient ? ` · updated ${updatedWhen(savedAt, new Date(), WORK_ZONE)}` : ''}`}
         </span>
       )
     }
@@ -440,15 +459,12 @@ export function TeamPriorityEditor({
       type="button"
       onClick={() => void go(`/my-work?tab=work&pteam=${team.id}`)}
       disabled={pending}
-      className="shrink-0 inline-flex items-center gap-2 rounded-full px-[17px] py-2 font-(family-name:--font-display) font-extrabold text-[12.5px] bg-tn-primary border border-tn-primary text-white shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)] transition-transform hover:-translate-y-px disabled:opacity-50 disabled:translate-y-0"
+      className={`${BTN.navy} shrink-0 disabled:opacity-50 disabled:translate-y-0`}
     >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-      <span className="text-[#ffffff]">{busy ? 'Saving…' : 'Save and close'}</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+      <span className="text-[#ffffff]">{busy ? 'Saving…' : save.state === 'conflict' ? 'Close' : 'Save and close'}</span>
     </button>
   )
-
-  const segment = 'font-(family-name:--font-display) font-extrabold text-[13px] px-3.5 py-1.5 rounded-[8px] transition-colors'
-  const arrow = 'w-6 h-[18px] inline-flex items-center justify-center rounded-[5px] text-[10px] text-muted hover:bg-subtle hover:text-tn-ink disabled:opacity-30 disabled:hover:bg-transparent'
 
   /** One step's row: the grip, the arrows, its place, what it is, and how far it sits from True North's place. */
   const stepRow = (key: string, i: number) => {
@@ -481,8 +497,8 @@ export function TeamPriorityEditor({
             <GripIcon />
           </span>
           <span className="inline-flex flex-col">
-            <button type="button" onClick={() => nudge(key, -1)} disabled={i === 0} aria-label={`Move ${s.itemName} up`} className={arrow}>▲</button>
-            <button type="button" onClick={() => nudge(key, 1)} disabled={i === visible.length - 1} aria-label={`Move ${s.itemName} down`} className={arrow}>▼</button>
+            <button type="button" onClick={() => nudge(key, -1)} disabled={i === 0} aria-label={`Move ${s.itemName} up`} className={ARROW}>▲</button>
+            <button type="button" onClick={() => nudge(key, 1)} disabled={i === visible.length - 1} aria-label={`Move ${s.itemName} down`} className={ARROW}>▼</button>
           </span>
         </div>
 
@@ -509,6 +525,7 @@ export function TeamPriorityEditor({
               type="button"
               onClick={() => setTyping({ key, value: String(place.get(key) ?? '') })}
               title="Type a place to move it there"
+              aria-label={`Place ${n(place.get(key) ?? 0)}, type a new place for ${s.itemName}`}
               className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink rounded-[6px] px-1 -mx-1 hover:bg-subtle hover:text-tn-teal"
             >
               {n(place.get(key) ?? 0)}
@@ -530,7 +547,7 @@ export function TeamPriorityEditor({
             {s.dueDate && (
               <>
                 {' · '}
-                <span className={late ? 'text-[#c2410c] font-semibold' : ''}>{`due ${shortDate(s.dueDate)}${late ? ', late' : ''}`}</span>
+                <span className={late ? 'text-[#c2410c] font-semibold' : ''}>{`due ${dateLabel(s.dueDate)}${late ? ', late' : ''}`}</span>
               </>
             )}
           </div>
@@ -546,6 +563,15 @@ export function TeamPriorityEditor({
     )
   }
 
+  // The column heading pins under the portal's chrome, as the list's does on
+  // My Work: --chrome-top already counts the staging strip (audit, 10 October 2026).
+  const stickTo = stickyTop === 65 ? 'var(--chrome-top)' : stickyTop
+  const views = [
+    { key: 'mine' as const, label: 'Mine' },
+    ...(canSeeEveryone ? [{ key: 'all' as const, label: 'Everyone' }] : []),
+    { key: 'priority' as const, label: 'Team priority' },
+  ]
+
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
       <div className="flex items-center gap-2.5 flex-wrap">
@@ -553,11 +579,17 @@ export function TeamPriorityEditor({
           ? <SearchField value={q} onChange={setQ} placeholder="Search the team's steps…" className="flex-1 min-w-[220px]" />
           : <div className="flex-1" />}
 
-        <div className="flex items-center bg-subtle border border-[var(--panel-border)] rounded-[10px] p-[3px]">
-          <button type="button" onClick={() => void go(`/my-work?tab=work&pteam=${team.id}`)} className={`${segment} text-muted hover:text-tn-ink`}>Mine</button>
-          <button type="button" onClick={() => void go('/my-work?tab=work&person=')} className={`${segment} text-muted hover:text-tn-ink`}>Everyone</button>
-          <span aria-current="page" className={`${segment} bg-white text-tn-ink shadow-[0_1px_3px_rgba(1,35,88,.14)]`}>Team priority</span>
-        </div>
+        {/* Which view: the list (Mine, or Everyone for those who may see it) or
+            this editor. Choosing a list sends any waiting change first. */}
+        <Segmented
+          label="View"
+          value="priority"
+          options={views}
+          onChange={k => {
+            if (k === 'mine') void go(`/my-work?tab=work&pteam=${team.id}`)
+            if (k === 'all') void go('/my-work?tab=work&person=')
+          }}
+        />
 
         <Select
           value={team.id}
@@ -578,14 +610,26 @@ export function TeamPriorityEditor({
         {saveAndClose}
       </div>
 
+      {/* Someone else saved this team's order after this page loaded it. Said
+          once, where it cannot be missed, with the one way forward. */}
+      {save.state === 'conflict' && (
+        <div role="alert" className="flex items-center gap-3 flex-wrap rounded-[10px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-4 py-3 text-[13.5px] leading-[1.55] text-[var(--warn-fg)]">
+          <span className="flex-1 min-w-0">{save.error}</span>
+          <button type="button" onClick={() => window.location.reload()} className={BTN.white}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><polyline points="21 3 21 9 15 9" /></svg>
+            Reload
+          </button>
+        </div>
+      )}
+
       {/* Who set the order on the left; Order by on the right, under Save and
           close, since 18 September 2026. It was a small grey control in a card
           of its own and read as a filter, when it decides what the whole page
-          below is ordering. Styled as the same kind of button as Save and
-          close: the two controls a leader uses most, in one column. */}
+          below is ordering. */}
       <div className="flex items-start gap-4 flex-wrap border-t border-[var(--panel-border)] pt-3">
         <div className={`flex flex-col gap-1 ${levelsAvailable ? 'pt-1.5' : 'flex-row items-center gap-3 flex-1'}`}>
-          {status}
+          {/* Read out as it changes, without taking focus: Saving, Saved, Not saved. */}
+          <div role="status" aria-live="polite">{status}</div>
           <span className={`text-[13px] text-muted ${levelsAvailable ? '' : 'ml-auto'}`}>
             {narrowed ? `${n(visible.length)} of ${n(list.length)} open steps shown` : `${n(list.length)} open steps on the ${team.name} team`}
           </span>
@@ -594,27 +638,19 @@ export function TeamPriorityEditor({
         {levelsAvailable && (
           <div className="ml-auto flex flex-col items-end gap-2 max-w-full">
             <div className="flex items-center justify-end gap-x-3 gap-y-1.5 flex-wrap max-w-full">
-              <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Order by</span>
-              <div role="group" aria-label="Order by" className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full border border-[var(--panel-border)] bg-white p-1 shadow-[0_6px_16px_-10px_rgba(1,35,88,.35)]">
-                {([['workspace', 'Workspace', wsRank.length], ['board', 'Board', boardRank.length], ['item', 'Item', list.length]] as const).map(([k, label, count]) => {
-                  const on = level === k
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setLevel(k)}
-                      aria-pressed={on}
-                      className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-4 py-2 font-(family-name:--font-display) font-extrabold text-[12.5px] sm:text-[13px] transition-colors ${on ? 'bg-tn-primary shadow-[0_8px_18px_-8px_rgba(1,35,88,.6)]' : 'text-tn-ink hover:bg-subtle'}`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={on ? '#F2C40A' : 'currentColor'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="hidden sm:block">{LEVEL_ICON[k]}</svg>
-                      <span className={on ? 'text-[#ffffff]' : ''}>{label}</span>
-                      <span className={`text-[11px] font-bold rounded-full px-1.5 py-px ${on ? 'bg-[rgba(242,196,10,.18)] text-[#F2C40A]' : 'bg-subtle text-muted'}`}>{n(count)}</span>
-                    </button>
-                  )
-                })}
-              </div>
+              <span aria-hidden="true" className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Order by</span>
+              <Segmented<Level>
+                label="Order by"
+                value={level}
+                onChange={setLevel}
+                options={([['workspace', 'Workspace', wsRank.length], ['board', 'Board', boardRank.length], ['item', 'Item', list.length]] as const).map(([k, label, count]) => ({
+                  key: k,
+                  label: `${label} · ${n(count)}`,
+                  glyph: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="hidden sm:block">{LEVEL_ICON[k]}</svg>,
+                }))}
+              />
             </div>
-            <p className="text-[12.5px] text-muted leading-relaxed m-0 max-w-[560px] text-right">
+            <p className="text-[12.5px] text-muted leading-relaxed m-0 text-right">
               {level === 'workspace' && (wsSet.length
                 ? 'Whole workspaces, in your order: everything in the first comes before anything in the second. Every board and item inside moves with its workspace.'
                 : "Not set yet: workspaces follow True North's order. Moving one here starts your team's own order.")}
@@ -668,81 +704,19 @@ export function TeamPriorityEditor({
       </div>
 
       {level === 'workspace' && (
-        <div className="rounded-[14px] border border-[var(--panel-border)] bg-white">
-          <div className="grid bg-subtle border-b border-[var(--panel-border)] rounded-t-[14px]" style={{ gridTemplateColumns: LEVEL_COLS }}>
-            <div className={HEAD}><span className="sr-only">Move</span></div>
-            <div className={HEAD}>Team #</div>
-            <div className={HEAD}>Workspace</div>
-            <div className={HEAD}>Boards</div>
-            <div className={HEAD}>Open steps</div>
-            <div className={HEAD}>Late</div>
-            <div className={HEAD}>vs True North</div>
-          </div>
-          {wsRank.map((ws, i) => {
-            const t = wsTotals(ws)
-            return (
-              <div key={ws} className="grid items-center border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)]" style={{ gridTemplateColumns: LEVEL_COLS }}>
-                <div className="pl-3 py-1.5">
-                  <span className="inline-flex flex-col">
-                    <button type="button" onClick={() => moveWorkspace(i, -1)} disabled={i === 0} aria-label={`Move ${ws} up`} className={arrow}>▲</button>
-                    <button type="button" onClick={() => moveWorkspace(i, 1)} disabled={i === wsRank.length - 1} aria-label={`Move ${ws} down`} className={arrow}>▼</button>
-                  </span>
-                </div>
-                <div className="px-3 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{i + 1}</div>
-                <div className="px-3 py-3 text-[13.5px] font-semibold text-tn-ink">{ws}</div>
-                <div className="px-3 text-[13px] text-muted">{t.boards}</div>
-                <div className="px-3 text-[13px] text-foreground">{n(t.open)}</div>
-                <div className="px-3 text-[13px] font-semibold text-[#c2410c]">{t.late ? n(t.late) : <span className="text-[var(--faint)] font-normal">0</span>}</div>
-                <div className="px-3"><LevelDelta by={tnWs.indexOf(ws) - i} /></div>
-              </div>
-            )
-          })}
-        </div>
+        <WorkspaceLevel workspaces={wsRank} trueNorth={tnWs} totals={wsTotals} onMove={moveWorkspace} />
       )}
 
       {level === 'board' && (
-        <div className="space-y-3">
-          <div className="grid" style={{ gridTemplateColumns: LEVEL_COLS }}>
-            <div className={HEAD}><span className="sr-only">Move</span></div>
-            <div className={HEAD}>Team #</div>
-            <div className={HEAD}>Board</div>
-            <div className={HEAD}>Priority</div>
-            <div className={HEAD}>Open steps</div>
-            <div className={HEAD}>Late</div>
-            <div className={HEAD}>vs True North</div>
-          </div>
-          {wsRank.map((ws, wi) => {
-            const group = boardsIn(ws, boardRank)
-            const tnGroup = boardsIn(ws, tnBoardRank)
-            return (
-              <div key={ws} className="rounded-[14px] border border-[var(--panel-border)] bg-white">
-                <div className="flex items-center gap-2.5 px-4 py-2.5 bg-subtle border-b border-[var(--panel-border)] rounded-t-[14px]">
-                  <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">{`${wi + 1}. ${ws}`}</span>
-                  <span className="text-[12px] text-muted">{`${n(wsTotals(ws).open)} open ${wsTotals(ws).open === 1 ? 'step' : 'steps'}`}</span>
-                </div>
-                {group.map((b, i) => {
-                  const info = boardInfo.get(b)!
-                  return (
-                    <div key={b} className="grid items-center border-b border-[var(--row-rule)] last:border-b-0 hover:bg-[var(--row-hover)]" style={{ gridTemplateColumns: LEVEL_COLS }}>
-                      <div className="pl-3 py-1.5">
-                        <span className="inline-flex flex-col">
-                          <button type="button" onClick={() => moveBoard(ws, i, -1)} disabled={i === 0} aria-label={`Move ${info.name} up`} className={arrow}>▲</button>
-                          <button type="button" onClick={() => moveBoard(ws, i, 1)} disabled={i === group.length - 1} aria-label={`Move ${info.name} down`} className={arrow}>▼</button>
-                        </span>
-                      </div>
-                      <div className="px-3 font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{`${wi + 1}.${i + 1}`}</div>
-                      <div className="px-3 py-2.5 text-[13px] font-semibold text-tn-ink">{info.name}</div>
-                      <div className="px-3"><span className={`${chip} ${PRIORITY_CHIP[info.priority]}`}>{info.priority}</span></div>
-                      <div className="px-3 text-[13px] text-foreground">{n(info.open)}</div>
-                      <div className="px-3 text-[13px] font-semibold text-[#c2410c]">{info.late ? n(info.late) : <span className="text-[var(--faint)] font-normal">0</span>}</div>
-                      <div className="px-3"><LevelDelta by={tnGroup.indexOf(b) - i} /></div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
-        </div>
+        <BoardLevel
+          workspaces={wsRank}
+          boardsIn={boardsIn}
+          boards={boardRank}
+          trueNorthBoards={tnBoardRank}
+          info={boardInfo}
+          totals={wsTotals}
+          onMove={moveBoard}
+        />
       )}
 
       {level === 'item' && <>
@@ -759,7 +733,11 @@ export function TeamPriorityEditor({
           {`Nobody on the ${team.name} team has an open step right now.`}
         </div>
       ) : (
-        <div className="rounded-[14px] border border-[var(--panel-border)] bg-white">
+        // Sideways scrolling only where the columns do not fit: a scrolling box
+        // would hold the sticky heading inside it, so from md up, where the
+        // table fits, there is none and the heading pins to the page.
+        <div className="overflow-x-auto md:overflow-x-visible rounded-[14px] border border-[var(--panel-border)] bg-white">
+          <div className="min-w-[760px] md:min-w-0">
           {showOrigin && (
             <BandMap
               bands={bandSummaries}
@@ -774,7 +752,7 @@ export function TeamPriorityEditor({
           {/* Pinned under the portal's top bar, like the column heading on My Work. */}
           <div
             className="grid sticky z-10 bg-subtle border-b border-[var(--panel-border)] border-l-[3px] border-l-transparent rounded-t-[14px]"
-            style={{ top: stickyTop, gridTemplateColumns: COLS }}
+            style={{ top: stickTo, gridTemplateColumns: COLS }}
           >
             <div className={HEAD}><span className="sr-only">Move</span></div>
             <div className={HEAD}>Team #</div>
@@ -796,7 +774,7 @@ export function TeamPriorityEditor({
               : null
             const isOpen = !closedBands.has(bi)
             return (
-              <div key={bi} ref={el => { bandEls.current[bi] = el }} style={{ scrollMarginTop: stickyTop + 44 }}>
+              <div key={bi} ref={el => { bandEls.current[bi] = el }} style={{ scrollMarginTop: `calc(${typeof stickTo === 'number' ? `${stickTo}px` : stickTo} + 44px)` }}>
                 <BandHeader
                   index={bi}
                   band={bandSummaries[bi]}
@@ -819,7 +797,16 @@ export function TeamPriorityEditor({
               {`Show the other ${n(visible.length - FIRST_ROWS)}`}
             </button>
           )}
-          {showOrigin && bandSummaries.length > 1 && <NextBandPill sections={bandEls} bands={bandSummaries} closed={closedBands} onJump={jumpToBand} />}
+          {showOrigin && bandSummaries.length > 1 && (
+            <NextBandPill
+              sections={bandEls}
+              bands={bandSummaries}
+              closed={closedBands}
+              onJump={jumpToBand}
+              followLabel={levelsOn ? 'your workspace and board order' : "True North's order"}
+            />
+          )}
+          </div>
         </div>
       )}
       </>}

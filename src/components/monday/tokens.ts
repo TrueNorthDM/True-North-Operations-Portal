@@ -16,10 +16,10 @@ export const chip =
 export const PRIORITY_CHIP: Record<string, string> = {
   high: 'bg-[rgba(194,65,12,.12)] text-[#c2410c]',
   medium: 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]',
-  low: 'text-[#9aa7b6]',
+  // #66727f is 4.9:1 on white. It was #9aa7b6, 2.5:1, quiet enough to be
+  // unreadable (audit, 10 October 2026).
+  low: 'text-[#66727f]',
 }
-
-export const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 export type DueState = 'late' | 'today' | 'upcoming' | 'odd'
 

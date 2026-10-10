@@ -20,15 +20,19 @@
 import { useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { StatusChip } from './StatusChip'
+import { WORK_ZONE } from './shared'
 import {
   groupHistory, shortDate, type HistoryData, type HistoryEvent, type HistoryStep, type StepGroup,
 } from '@/lib/monday/worklist/history'
 
-/** When a change happened, written out. */
+/**
+ * When a change happened, written out: "Oct 9, 2026, 3:05 PM", in New York's
+ * clock (audit, 10 October 2026), the calendar the rest of My Work counts in.
+ */
 export function historyWhen(iso: string | null): string {
   if (!iso) return ''
   return new Date(iso).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: WORK_ZONE,
   })
 }
 

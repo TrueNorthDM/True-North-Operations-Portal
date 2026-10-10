@@ -24,6 +24,7 @@
 import { allowedTo } from '@/lib/access/resolve'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { selectAllPages } from '@/lib/monday/worklist/resilience'
 import { BOARDS } from '@/lib/boards/config'
 
 export const runtime = 'nodejs'
@@ -85,6 +86,14 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const part = url.searchParams.get('part') ?? 'overview'
   const boardId = url.searchParams.get('id')
+
+  // Every Monday account's email, and one account's profile, are what the
+  // Monday accounts screen shows, so they ask for its item too: one tick
+  // without the other gave a different answer to the same question
+  // (audit, 10 October 2026).
+  if ((part === 'people' || part === 'account') && !(await allowedTo('monday-accounts'))) {
+    return new Response('Admins only.', { status: 403 })
+  }
 
   const lines: string[] = []
   const say = (s = '') => lines.push(s)
@@ -288,7 +297,8 @@ export async function GET(request: Request) {
       const { data: boardRows } = await supabase.from('monday_boards').select('id, name, workspace_name')
       const boards = new Map(((boardRows ?? []) as { id: number; name: string; workspace_name: string | null }[])
         .map(b => [b.id, b]))
-      const { data: stepRows } = await supabase.from('monday_board_steps').select('board_id, people_col, step_name')
+      const { data: stepRows } = await selectAllPages((from, to) => supabase.from('monday_board_steps')
+        .select('board_id, people_col, step_name').order('board_id').order('people_col').range(from, to))
       const steps = new Map(((stepRows ?? []) as { board_id: number; people_col: string; step_name: string }[])
         .map(st => [`${st.board_id}:${st.people_col}`, st.step_name]))
 
@@ -354,7 +364,8 @@ export async function GET(request: Request) {
       ])
       type B = { id: number; name: string; workspace_name: string | null; items_count: number | null; items_synced_at: string | null; included: boolean }
       const bs = (boards ?? []) as B[]
-      const { data: stepRows } = await supabase.from('monday_board_steps').select('board_id, source')
+      const { data: stepRows } = await selectAllPages((from, to) => supabase.from('monday_board_steps')
+        .select('board_id, source').order('board_id').order('people_col').range(from, to))
       const steps = (stepRows ?? []) as { board_id: number; source: string }[]
       const withSteps = new Set(steps.filter(s2 => s2.source !== 'off').map(s2 => s2.board_id))
       const queue = bs.filter(b => b.included && withSteps.has(b.id))
@@ -512,7 +523,9 @@ export async function GET(request: Request) {
 
     return new Response(`Unknown part "${part}".`, { status: 400 })
   } catch (e) {
-    say(`FAILED: ${(e as Error).message}`)
+    // The detail goes to the server log (audit, 10 October 2026).
+    console.error('[monday-inventory]', (e as Error).message)
+    say('FAILED. The detail is in the server log.')
     return new Response(lines.join('\n'), { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
   }
 }

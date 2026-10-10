@@ -31,6 +31,7 @@ import {
 } from '@/lib/monday/worklist/team-priority-data'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
+import { zoneDate } from '@/lib/notifications/schedule'
 
 export const metadata = { title: 'My Work' }
 export const dynamic = 'force-dynamic'
@@ -49,15 +50,14 @@ export default async function MyWorkPage(
 ) {
   const sp = await searchParams
   const { tab } = sp
-  const asked: TabKey = TABS.some(t => t.key === tab) ? (tab as TabKey) : 'work'
+  const active: TabKey = TABS.some(t => t.key === tab) ? (tab as TabKey) : 'work'
 
   // The tab decides the grant, because the two views are two surfaces sharing
   // one URL. A prefix in nav.ts cannot see ?tab=team, so the check is here.
-  await requireSurface(asked === 'team' ? 'my-team' : 'my-work')
+  await requireSurface(active === 'team' ? 'my-team' : 'my-work')
 
   const access = await loadAccess()
   const can = (v: WorkView) => access.can(VIEW_SURFACE[v])
-  const active = asked
 
   const heading = active === 'work'
     ? { title: 'My Work', desc: 'Every step assigned to you across Monday, in one list.' }
@@ -72,13 +72,13 @@ export default async function MyWorkPage(
           one control rather than as tabs down the page. */}
       <div className="flex items-start justify-between gap-5 flex-wrap pb-[18px] border-b border-[var(--panel-border)]">
         <div>
-          <h2 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[26px] tracking-[-.01em] text-tn-ink m-0">
             {heading.title}
-          </h2>
+          </h1>
           <p className="text-[14.5px] text-muted mt-1.5 m-0">{heading.desc}</p>
         </div>
 
-        <WorkViewSwitch active={active === 'work' ? 'work' : 'team'} can={can} />
+        <WorkViewSwitch active={active} can={can} />
       </div>
 
       {active === 'work' ? <WorkTab sp={sp} /> : <MyTeamTab />}
@@ -99,15 +99,23 @@ export default async function MyWorkPage(
  * its order. ?view=priority opens the editor, for team leaders and admins only.
  */
 async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: string; view?: string; pteam?: string } }) {
-  const supabase = await createClient()
+  // The server's own reads (audit, 10 October 2026). Whose work this page
+  // shows is decided below in app code (the access items, the ?person and
+  // ?team clamps), and the Monday tables are closed to signed-in sessions
+  // (migration 104), so a session could not read them anyway.
+  const supabase = createAdminClient()
 
   // The portal already knows how to answer "who is signed in", and this had
   // written a weaker version of it: profile_id only. A person whose row was
-  // never linked to their login came out as nobody, so the My tasks tab asked
+  // never linked to their login came out as nobody, so the Mine tab asked
   // to filter by nobody, which is the same as everybody, and clicking it did
   // nothing at all. getCurrentPerson falls back to matching the email.
   const me = await getCurrentPerson()
   const selfPersonId = me?.id ?? null
+  // Today, once, in New York (audit, 10 October 2026): what "late" and "due
+  // today" mean on the list and in the editor, whatever clock the reader's
+  // browser or this server keeps.
+  const today = zoneDate(new Date(), 'America/New_York')
 
   const [admin, access, myTeams, myGrant, { data: teamRows }] = await Promise.all([
     allowedTo('monday-accounts'),
@@ -168,6 +176,8 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
             savedBy={order.updatedByName}
             savedBySelf={!!selfPersonId && order.updatedById === selfPersonId}
             levelsAvailable={order.levelsAvailable}
+            canSeeEveryone={everyone}
+            today={today}
           />
         )
       }
@@ -249,6 +259,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
       canSeeEveryone={everyone}
       teamOrder={teamOrder}
       canSetPriority={available && settable.length > 0}
+      today={today}
     />
   )
 }
@@ -264,7 +275,8 @@ async function MyTeamTab() {
   const { people, teams, selfId } = await loadMyTeam(supabase, user, { level, hrefFor: pageHrefs(access.can, access.personId, led) })
 
   // The Teams tab is what level 2 adds; below that the tab does not exist,
-  // rather than existing and being empty.
+  // rather than existing and being empty, and loadMyTeam builds no team cards
+  // for it: a hidden part is never sent to the browser (audit, 10 October 2026).
   return (
     <TeamPeople
       people={people}

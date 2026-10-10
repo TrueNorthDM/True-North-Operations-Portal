@@ -20,8 +20,26 @@ const row = (o: Partial<WorkRow>): { row: WorkRow } => ({
 })
 
 describe('todayIso', () => {
-  it('is the viewer\'s own calendar day', () => {
-    expect(todayIso(NOW)).toBe(TODAY)
+  it('is the viewer\'s own calendar day when asked for their zone', () => {
+    expect(todayIso(NOW, Intl.DateTimeFormat().resolvedOptions().timeZone)).toBe(TODAY)
+  })
+
+  // Audit, 10 October 2026: New York's day, whatever clock runs it.
+  it('is the New York day, not the clock of the machine asking', () => {
+    // 1:30 AM in UTC (and in the evening in Asia) is still the 14th in New York.
+    expect(todayIso(new Date('2026-09-15T01:30:00Z'))).toBe('2026-09-14')
+    // 11 PM in New York is already the next day in UTC.
+    expect(todayIso(new Date('2026-09-15T03:00:00Z'))).toBe('2026-09-14')
+    expect(todayIso(new Date('2026-09-15T04:00:00Z'))).toBe('2026-09-15')
+    // Winter: five hours behind, not four.
+    expect(todayIso(new Date('2026-01-15T04:30:00Z'))).toBe('2026-01-14')
+  })
+
+  it('lets a filter use the day the page was given', () => {
+    const late = [row({ id: 1, dueDate: '2026-09-14' })]
+    const filters = { ...NO_FILTERS, due: 'late' as const }
+    expect(applyListFilters(late, filters, NOW, '2026-09-14')).toHaveLength(0)
+    expect(applyListFilters(late, filters, NOW, '2026-09-15')).toHaveLength(1)
   })
 })
 

@@ -263,18 +263,24 @@ export function cleanSavedOrder(order: unknown, pinned: unknown): SavedOrder | n
 
 /**
  * When an order was last saved, the way the line above the list says it:
- * "today at 10:32", "yesterday at 4:05 PM", "Sep 2 at 9:00 AM". In the reader's
- * own clock, so it is only worked out in the browser.
+ * "today at 10:32 AM", "yesterday at 4:05 PM", "Sep 2 at 9:00 AM".
+ *
+ * In `zone`'s clock. My Work passes New York (audit, 10 October 2026), the
+ * calendar the rest of the page counts days in; left out, it is the clock of
+ * whatever runs it.
  */
-export function updatedWhen(iso: string, now = new Date()): string {
+export function updatedWhen(iso: string, now = new Date(), zone?: string): string {
   const at = new Date(iso)
-  const time = at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  const day = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-  if (day(at) === day(now)) return `today at ${time}`
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-  if (day(at) === day(yesterday)) return `yesterday at ${time}`
+  const time = at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: zone })
+  // YYYY-MM-DD in the zone (en-CA writes dates that way).
+  const dayOf = (d: Date) => d.toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: zone })
+  const day = dayOf(at), today = dayOf(now)
+  if (day === today) return `today at ${time}`
+  const [y, m, d] = today.split('-').map(Number)
+  const yesterday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10)
+  if (day === yesterday) return `yesterday at ${time}`
   const date = at.toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', ...(at.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+    month: 'short', day: 'numeric', timeZone: zone, ...(day.slice(0, 4) === today.slice(0, 4) ? {} : { year: 'numeric' }),
   })
   return `${date} at ${time}`
 }

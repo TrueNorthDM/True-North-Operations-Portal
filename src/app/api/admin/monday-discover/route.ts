@@ -16,6 +16,8 @@ import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { syncMondayUsers, syncMondayBoards } from '@/lib/monday/worklist/discover'
+import { acquireLease, releaseLease } from '@/lib/monday/worklist/sync-run'
+import { ANOTHER_SITE, fromAnotherSite } from '@/lib/auth/same-site'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -34,12 +36,23 @@ export async function GET(request: Request) {
       { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
   }
 
+  if (fromAnotherSite(request)) return new Response(ANOTHER_SITE, { status: 403 })
+
   const token = await getMondayToken()
   if (!token) return new Response('No Monday token configured in Settings.', { status: 400 })
 
   const supabase = createAdminClient()
   const out: string[] = []
   const started = Date.now()
+
+  // The sync's own lock: discovery clears gone boards and rewrites steps, and
+  // running beside a sync hop raced it (audit, 10 October 2026).
+  const run = `discover-${new Date().toISOString()}`
+  const lease = await acquireLease(supabase, run)
+  if (!lease.ok) {
+    return new Response('A sync is running, and it starts with this same step. Try again once it ends.\n',
+      { status: 409, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+  }
 
   try {
     const u = await syncMondayUsers(supabase, token)
@@ -65,7 +78,10 @@ export async function GET(request: Request) {
     out.push('switch off anything that is not a stage of work on the review screen.')
     return new Response(out.join('\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
   } catch (e) {
-    out.push(`FAILED after ${Math.round((Date.now() - started) / 1000)}s: ${(e as Error).message}`)
+    console.error('[monday-discover]', (e as Error).message)
+    out.push(`FAILED after ${Math.round((Date.now() - started) / 1000)}s. The detail is in the server log.`)
     return new Response(out.join('\n'), { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+  } finally {
+    await releaseLease(supabase, run)
   }
 }

@@ -114,8 +114,14 @@ describe('every server action asks the access rule', () => {
         if (GUARD.test(b) || [...out].some(h => new RegExp(`\\b${h}\\(`).test(b))) out.add(f.name)
       })
     }
-    // The access rule itself, for actions that decide with it directly.
-    fns.forEach((f, i) => { if (/\bdecide\(|\bpriorityRights\(/.test(body(i))) out.add(f.name) })
+    // The access rule itself, for actions that decide with it directly. Only
+    // with a verified session beside it (audit, 10 October 2026): deciding on
+    // what a session that never gave its two-step code may do is not a check.
+    const VERIFIED = /\bverifiedSession\(|\ballowedTo\(|\bwriterAccess\(|\bsignedInPerson\(/
+    fns.forEach((f, i) => {
+      const b = body(i)
+      if (/\bdecide\(|\bpriorityRights\(/.test(b) && VERIFIED.test(b)) out.add(f.name)
+    })
     return out
   }
 

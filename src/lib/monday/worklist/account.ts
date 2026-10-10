@@ -7,6 +7,12 @@
 // recognisable by the company they keep on a board.
 
 import type { Db } from '@/lib/supabase/types'
+import { selectAllPages } from './resilience'
+import { zoneDate } from '@/lib/notifications/schedule'
+
+function failed(what: string, error: { message?: string } | null | undefined): void {
+  if (error) throw new Error(`Could not read ${what}: ${error.message}`)
+}
 
 type Client = Db
 
@@ -29,16 +35,21 @@ export interface AccountProfile {
 }
 
 export async function loadAccountProfile(supabase: Client, id: number): Promise<AccountProfile> {
-  const [{ data: user }, { data: link }] = await Promise.all([
+  // Every read here fails loudly: a page that failed read as "0 assignments"
+  // (audit, 10 October 2026).
+  const [userRead, linkRead] = await Promise.all([
     supabase.from('monday_users').select('id, name, email, enabled, is_guest, is_external').eq('id', id).maybeSingle(),
     supabase.from('monday_user_links').select('person_id').eq('monday_user_id', id).maybeSingle(),
   ])
+  failed('the account', userRead.error ?? linkRead.error)
+  const user = userRead.data, link = linkRead.data
   const u = user as { name: string; email: string | null; enabled: boolean; is_guest: boolean; is_external: boolean } | null
 
   let linkedTo: string | null = null
   if (link) {
-    const { data: p } = await supabase.from('people').select('full_name')
+    const { data: p, error } = await supabase.from('people').select('full_name')
       .eq('id', (link as { person_id: string }).person_id).maybeSingle()
+    failed('the person', error)
     linkedTo = (p as { full_name: string } | null)?.full_name ?? null
   }
 
@@ -47,16 +58,13 @@ export async function loadAccountProfile(supabase: Client, id: number): Promise<
     people_col: string; due_date: string | null; item_updated_at: string | null
   }
   const rows: A[] = []
-  for (let from = 0; ; from += 1000) {
-    const { data } = await supabase
-      .from('monday_assignments')
-      .select('board_id, item_id, item_name, parent_item_name, people_col, due_date, item_updated_at')
-      .eq('monday_user_id', id)
-      .order('id', { ascending: true }).range(from, from + 999)
-    const page = (data ?? []) as A[]
-    rows.push(...page)
-    if (page.length < 1000) break
-  }
+  const assigned = await selectAllPages<A>((from, to) => supabase
+    .from('monday_assignments')
+    .select('board_id, item_id, item_name, parent_item_name, people_col, due_date, item_updated_at')
+    .eq('monday_user_id', id)
+    .order('id', { ascending: true }).range(from, to))
+  failed('their assignments', assigned.error)
+  rows.push(...assigned.data)
 
   const base: AccountProfile = {
     mondayUserId: id,
@@ -71,10 +79,13 @@ export async function loadAccountProfile(supabase: Client, id: number): Promise<
   }
   if (!rows.length) return base
 
-  const [{ data: boardRows }, { data: stepRows }] = await Promise.all([
-    supabase.from('monday_boards').select('id, name, workspace_name'),
-    supabase.from('monday_board_steps').select('board_id, people_col, step_name'),
+  const [boardRead, stepRead] = await Promise.all([
+    selectAllPages((from, to) => supabase.from('monday_boards').select('id, name, workspace_name').order('id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('monday_board_steps').select('board_id, people_col, step_name')
+      .order('board_id').order('people_col').range(from, to)),
   ])
+  failed('the boards', boardRead.error ?? stepRead.error)
+  const boardRows = boardRead.data, stepRows = stepRead.data
   const boardById = new Map(((boardRows ?? []) as { id: number; name: string; workspace_name: string | null }[])
     .map(b => [b.id, b]))
   const stepBy = new Map(((stepRows ?? []) as { board_id: number; people_col: string; step_name: string }[])
@@ -97,19 +108,25 @@ export async function loadAccountProfile(supabase: Client, id: number): Promise<
   base.firstDue = dues[0] ?? null
   base.lastDue = dues[dues.length - 1] ?? null
   const touched = rows.map(r => r.item_updated_at).filter(Boolean).sort() as string[]
-  base.lastTouched = touched[touched.length - 1]?.slice(0, 10) ?? null
+  // The New York day, like every date the portal shows.
+  const last = touched[touched.length - 1]
+  base.lastTouched = last ? zoneDate(new Date(last), 'America/New_York') : null
 
   // The strongest signal: 400 items is plenty to see a pattern and keeps this
   // to one query rather than one per item.
   const itemIds = [...new Set(rows.map(r => r.item_id))].slice(0, 400)
-  const { data: mates } = await supabase
-    .from('monday_assignments').select('monday_user_id').in('item_id', itemIds).neq('monday_user_id', id)
   const mateCount = new Map<number, number>()
-  for (const m of (mates ?? []) as { monday_user_id: number }[]) {
-    mateCount.set(m.monday_user_id, (mateCount.get(m.monday_user_id) ?? 0) + 1)
+  // Paged: 400 items carry more than the 1,000 rows one read returns.
+  for (let i = 0; i < itemIds.length; i += 100) {
+    const mates = await selectAllPages<{ monday_user_id: number }>((from, to) => supabase
+      .from('monday_assignments').select('monday_user_id').in('item_id', itemIds.slice(i, i + 100))
+      .neq('monday_user_id', id).order('id').range(from, to))
+    failed('who works alongside them', mates.error)
+    for (const m of mates.data) mateCount.set(m.monday_user_id, (mateCount.get(m.monday_user_id) ?? 0) + 1)
   }
   if (mateCount.size) {
-    const { data: names } = await supabase.from('monday_users').select('id, name').in('id', [...mateCount.keys()])
+    const { data: names, error: namesErr } = await supabase.from('monday_users').select('id, name').in('id', [...mateCount.keys()])
+    failed('the account names', namesErr)
     const nameById = new Map(((names ?? []) as { id: number; name: string }[]).map(n => [n.id, n.name]))
     base.alongside = [...mateCount.entries()]
       .sort((a, b) => b[1] - a[1]).slice(0, 10)

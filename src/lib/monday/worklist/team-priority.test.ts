@@ -397,6 +397,16 @@ describe('updatedWhen', () => {
     expect(updatedWhen(new Date(2026, 8, 2, 9, 0).toISOString(), now)).toBe('Sep 2 at 9:00 AM')
     expect(updatedWhen(new Date(2025, 11, 30, 9, 0).toISOString(), now)).toBe('Dec 30, 2025 at 9:00 AM')
   })
+
+  // Audit, 10 October 2026: My Work says it in New York's clock.
+  it("in New York's clock when given it, whatever the machine's", () => {
+    const ny = 'America/New_York'
+    const at = new Date('2026-09-16T23:00:00Z') // 7:00 PM in New York, already the 17th in UTC
+    expect(updatedWhen('2026-09-16T14:32:00Z', at, ny)).toBe('today at 10:32 AM')
+    expect(updatedWhen('2026-09-16T02:05:00Z', at, ny)).toBe('yesterday at 10:05 PM')
+    expect(updatedWhen('2026-09-02T13:00:00Z', at, ny)).toBe('Sep 2 at 9:00 AM')
+    expect(updatedWhen('2026-01-01T03:00:00Z', at, ny)).toBe('Dec 31, 2025 at 10:00 PM')
+  })
 })
 
 describe('three levels: workspace, board, item', () => {

@@ -26,7 +26,7 @@ import type { Db } from '@/lib/supabase/types'
 import { gql } from './discover'
 import { missingColumn } from './missing-column'
 import { boardsToProbe, readOrder } from './stale'
-import { diffAssignments, keyOf, type AssignmentSnapshot } from './changes'
+import { diffAssignments, keyOf, type AssignmentEvent, type AssignmentSnapshot } from './changes'
 import { currentStage, pickLanguageColumn, readStages, type StepStage } from './steps'
 import { selectAllPages } from './resilience'
 
@@ -42,6 +42,10 @@ export interface BoardRow {
   is_subitem_board: boolean
   /** Chosen at discovery; null when the board has no date column at all. */
   date_col?: string | null
+  /** How many items Monday's listing says the board has. */
+  items_count?: number | null
+  /** Back in the listing after being gone: its rows return without events (migration 104). */
+  baseline_pending?: boolean
 }
 
 interface StepRow {
@@ -51,6 +55,8 @@ interface StepRow {
   source: string
   /** Null on a row seeded before stages existed; see readStages. */
   stages?: unknown
+  /** Its rows return without events once (migration 104). */
+  baseline_pending?: boolean
 }
 
 /**
@@ -133,104 +139,92 @@ export interface BoardIngestResult {
 }
 
 /**
- * One board, start to finish. Deletes what it replaces for that board first:
- * an assignment that was removed in Monday has to disappear here, and an
- * upsert alone would leave it behind forever.
- */
-/**
- * Write what changed on this board since the last sync.
+ * What changed on this board since the last sync, as change-log rows. Written
+ * by the database together with the board's rows (monday_write_board), so a
+ * board whose write fails logs nothing and the retry logs it once.
  *
- * Deliberately not allowed to fail the ingest. A board whose history cannot
- * be written is a board missing some history; a board whose assignments stop
- * updating is a board missing from My Work, which people use every day. The
- * first loss is the smaller one, so it is logged and swallowed.
+ * A board whose "before" cannot be read fails (audit, 10 October 2026). It
+ * used to be written anyway, which lost that sync's history for good to save
+ * one firing of freshness.
  */
-async function recordChanges(
+async function changesFor(
   supabase: Client,
   boardId: number,
   after: AssignmentSnapshot[],
   plans: Plan[],
   untracked: Set<string>,
-) {
-  try {
-    // Every row, a page at a time. A single read stops at 1,000 rows, and on a
-    // bigger board everything past that looked new: "assigned" events for work
-    // nobody touched.
-    const readBefore = (cols: string) => selectAllPages((from, to) => supabase
-      .from('monday_assignments').select(cols).eq('board_id', boardId).order('id').range(from, to))
-    const first = await readBefore('item_id, people_col, monday_user_id, status_text, status_done, due_date, status_col, due_col')
-    let data: unknown[] | null = first.data
-    let error = first.error
-    if (missingColumn(error, 'due_col')) {
-      const second = await readBefore('item_id, people_col, monday_user_id, status_text, status_done, due_date, status_col')
-      data = second.data
-      error = second.error
-    }
-    if (error) throw error
-    const before = (data ?? []) as AssignmentSnapshot[]
+  baseline: Set<string>,
+): Promise<AssignmentEvent[]> {
+  // Every row, a page at a time. A single read stops at 1,000 rows, and on a
+  // bigger board everything past that looked new: "assigned" events for work
+  // nobody touched.
+  const { data, error } = await selectAllPages<AssignmentSnapshot>((from, to) => supabase
+    .from('monday_assignments')
+    .select('item_id, people_col, monday_user_id, status_text, status_done, due_date, status_col, due_col')
+    .eq('board_id', boardId).order('id').range(from, to))
+  if (error) throw new Error(`reading the board before the change: ${error.message}`)
+  const before = data
 
-    // A row is remapped when it used to be read from a column this step does
-    // not read any more, or from before steps had deadlines of their own (no
-    // due_col). Moving from one of a step's stages to the next is NOT that: it
-    // is the work moving, and it is recorded.
-    const readsFrom = new Map<string, Set<string>>()
-    for (const pl of plans) {
-      readsFrom.set(pl.peopleCol, new Set(pl.kind === 'stages'
-        ? pl.stages.flatMap(st => [st.statusCol, st.dateCol])
-        : [pl.statusCol ?? '']))
-    }
-    const was = new Map(before.map(r => [keyOf(r), r]))
-    const remapped = new Set<string>()
-    for (const row of after) {
-      const old = was.get(keyOf(row))
-      const plan = plans.find(pl => pl.peopleCol === row.people_col)
-      if (!old || plan?.kind !== 'stages') continue
-      const cols = readsFrom.get(row.people_col)!
-      if (old.due_col == null || !cols.has(old.status_col ?? '') || !cols.has(old.due_col)) remapped.add(keyOf(row))
-    }
-
-    const events = diffAssignments(boardId, before, after, new Date().toISOString(), { remapped, untracked })
-    if (!events.length) return
-
-    for (let i = 0; i < events.length; i += 500) {
-      // The same change seen by two syncs is one change, and the table's
-      // unique key says so. Ignoring the duplicate is the intended outcome,
-      // not an error to retry.
-      const { error: insErr } = await supabase
-        .from('monday_assignment_events')
-        .upsert(events.slice(i, i + 500), {
-          onConflict: 'board_id,item_id,people_col,monday_user_id,event,occurred_at',
-          ignoreDuplicates: true,
-        })
-      if (insErr) throw insErr
-    }
-  } catch (e) {
-    console.error(`change log for board ${boardId}:`, e instanceof Error ? e.message : e)
+  // A row is remapped when it used to be read from a column this step does
+  // not read any more, or from before steps had deadlines of their own (no
+  // due_col). Moving from one of a step's stages to the next is NOT that: it
+  // is the work moving, and it is recorded.
+  const readsFrom = new Map<string, Set<string>>()
+  for (const pl of plans) {
+    readsFrom.set(pl.peopleCol, new Set(pl.kind === 'stages'
+      ? pl.stages.flatMap(st => [st.statusCol, st.dateCol])
+      : [pl.statusCol ?? '']))
   }
-}
+  const was = new Map(before.map(r => [keyOf(r), r]))
+  const remapped = new Set<string>()
+  for (const row of after) {
+    const old = was.get(keyOf(row))
+    const plan = plans.find(pl => pl.peopleCol === row.people_col)
+    if (!old || plan?.kind !== 'stages') continue
+    const cols = readsFrom.get(row.people_col)!
+    if (old.due_col == null || !cols.has(old.status_col ?? '') || !cols.has(old.due_col)) remapped.add(keyOf(row))
+  }
 
-/** Is this "the table or function is not there yet", i.e. migration 091 not run? */
-function missing091(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false
-  return error.code === '42P01' || error.code === 'PGRST202' || error.code === 'PGRST205'
-    || /monday_assignments_staging|monday_swap_board_assignments/.test(error.message ?? '')
-      && /does not exist|could not find|schema cache/i.test(error.message ?? '')
+  const heldInLog = baseline.size ? await heldByLog(supabase, boardId, baseline) : new Set<string>()
+  return diffAssignments(boardId, before, after, new Date().toISOString(), { remapped, untracked, baseline, heldInLog })
 }
 
 /**
- * Replace a board's rows. Since migration 091 they are written to a staging
- * table and swapped in by one function, in one transaction: a write that fails
- * half way leaves the board as it was. Before 091, the old way: delete, then
- * insert in chunks, which a failure could leave half empty until the next read.
+ * The steps in these columns the log still has in someone's hands: their last
+ * hand-off (assigned or reopened) has no finish or removal after it.
+ */
+async function heldByLog(supabase: Client, boardId: number, cols: Set<string>): Promise<Set<string>> {
+  type E = { item_id: number; people_col: string; monday_user_id: number; event: string }
+  const { data, error } = await selectAllPages<E>((from, to) => supabase
+    .from('monday_assignment_events')
+    .select('item_id, people_col, monday_user_id, event')
+    .eq('board_id', boardId).in('people_col', [...cols])
+    .in('event', ['assigned', 'reopened', 'done', 'unassigned'])
+    .order('occurred_at').order('id').range(from, to))
+  if (error) throw new Error(`reading the change log: ${error.message}`)
+  const held = new Set<string>()
+  for (const e of data) {
+    const k = keyOf(e)
+    if (e.event === 'assigned' || e.event === 'reopened') held.add(k)
+    else held.delete(k)
+  }
+  return held
+}
+
+/**
+ * Replace a board's rows, and log what changed, in one transaction: the rows
+ * go to a staging table, then monday_write_board (migration 104) writes the
+ * events and swaps the rows in. A write that fails half way leaves the board
+ * as it was and logs nothing, so the next try logs it once.
  *
  * Columns added by migrations the database may not have yet (082: due_col,
  * 083: item_language) are dropped from the rows, said once in the log, and the
  * board carries on: the rows are still right without them.
  */
-async function writeBoardRows(typed: Client, board: BoardRow, rows: Record<string, unknown>[]) {
-  // Loosely typed on purpose: the rows are assembled per board, written to the
-  // staging table and then the live one, and lose the columns of any migration
-  // not run yet. Their columns are checked where the rows are built.
+async function writeBoardRows(typed: Client, board: BoardRow, rows: Record<string, unknown>[], events: AssignmentEvent[]) {
+  // Loosely typed on purpose: the rows are assembled per board and lose the
+  // columns of any migration not run yet. Their columns are checked where the
+  // rows are built.
   const supabase = typed as unknown as SupabaseClient
   const optional = ['due_col', 'item_language']
   const missing = new Set<string>()
@@ -240,39 +234,30 @@ async function writeBoardRows(typed: Client, board: BoardRow, rows: Record<strin
     for (const k of missing) delete copy[k]
     return copy
   }
-  const insertAll = async (table: string, extra: Record<string, unknown>) => {
-    for (let i = 0; i < rows.length; i += 500) {
-      const chunk = rows.slice(i, i + 500)
-      let { error } = await supabase.from(table).insert(chunk.map(r => ({ ...trim(r), ...extra })))
-      for (let tries = 0; error && tries < optional.length; tries++) {
-        const col = optional.find(k => !missing.has(k) && missingColumn(error, k))
-        if (!col) break
-        missing.add(col)
-        console.warn(`[monday-ingest] ${table}.${col} is missing: run its migration`)
-        ;({ error } = await supabase.from(table).insert(chunk.map(r => ({ ...trim(r), ...extra }))))
-      }
-      if (error) return error
-    }
-    return null
-  }
-
   const batch = crypto.randomUUID()
-  const staged = await insertAll('monday_assignments_staging', { batch })
-  if (!staged) {
-    const { error } = await supabase.rpc('monday_swap_board_assignments', { p_board: board.id, p_batch: batch })
-    if (!error) return
-    await supabase.from('monday_assignments_staging').delete().eq('batch', batch)
-    if (!missing091(error)) throw new Error(`assignments swap (${board.name}): ${error.message}`)
-  } else if (!missing091(staged)) {
-    await supabase.from('monday_assignments_staging').delete().eq('batch', batch)
-    throw new Error(`assignments staging (${board.name}): ${staged.message}`)
+  const drop = () => supabase.from('monday_assignments_staging').delete().eq('batch', batch)
+
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500)
+    let { error } = await supabase.from('monday_assignments_staging').insert(chunk.map(r => ({ ...trim(r), batch })))
+    for (let tries = 0; error && tries < optional.length; tries++) {
+      const col = optional.find(k => !missing.has(k) && missingColumn(error, k))
+      if (!col) break
+      missing.add(col)
+      console.warn(`[monday-ingest] monday_assignments_staging.${col} is missing: run its migration`)
+      ;({ error } = await supabase.from('monday_assignments_staging').insert(chunk.map(r => ({ ...trim(r), batch }))))
+    }
+    if (error) {
+      await drop()
+      throw new Error(`assignments staging (${board.name}): ${error.message}`)
+    }
   }
 
-  // Migration 091 not run yet: the old way.
-  const { error: delErr } = await supabase.from('monday_assignments').delete().eq('board_id', board.id)
-  if (delErr) throw new Error(`clear board ${board.id}: ${delErr.message}`)
-  const inserted = await insertAll('monday_assignments', {})
-  if (inserted) throw new Error(`assignments insert (${board.name}): ${inserted.message}`)
+  const { error } = await supabase.rpc('monday_write_board', { p_board: board.id, p_batch: batch, p_events: events })
+  if (error) {
+    await drop()
+    throw new Error(`writing the board (${board.name}): ${error.message}`)
+  }
 }
 
 export async function ingestBoard(
@@ -280,20 +265,10 @@ export async function ingestBoard(
   token: string,
   board: BoardRow,
 ): Promise<BoardIngestResult> {
-  const firstSteps = await supabase
+  const { data: stepRows, error: stepErr } = await supabase
     .from('monday_board_steps')
-    .select('board_id, people_col, status_col, source, stages')
+    .select('board_id, people_col, status_col, source, stages, baseline_pending')
     .eq('board_id', board.id)
-  let stepRows: unknown[] | null = firstSteps.data
-  let stepErr = firstSteps.error
-  if (missingColumn(stepErr, 'stages')) {
-    const legacy = await supabase
-      .from('monday_board_steps')
-      .select('board_id, people_col, status_col, source')
-      .eq('board_id', board.id)
-    stepRows = legacy.data
-    stepErr = legacy.error
-  }
   if (stepErr) throw new Error(`steps for board ${board.id}: ${stepErr.message}`)
   const allSteps = (stepRows ?? []) as StepRow[]
 
@@ -306,6 +281,9 @@ export async function ingestBoard(
   }
   // People columns whose rows leave because of a setting rather than the work.
   const untracked = new Set(allSteps.map(st => st.people_col).filter(pc => !plans.some(pl => pl.peopleCol === pc)))
+  // And the ones whose rows come back for one (migration 104): no hand-offs.
+  const baseline = new Set(plans.map(pl => pl.peopleCol)
+    .filter(pc => board.baseline_pending || allSteps.some(st => st.people_col === pc && st.baseline_pending)))
 
   // Nothing on this board is a step any more: every people column is switched
   // off or owns no status with a deadline. Its rows go, without history events
@@ -315,9 +293,10 @@ export async function ingestBoard(
   if (!plans.length) {
     const { error: clearErr } = await supabase.from('monday_assignments').delete().eq('board_id', board.id)
     if (clearErr) throw new Error(`clear board ${board.id}: ${clearErr.message}`)
-    await supabase.from('monday_boards')
+    const { error: stampErr } = await supabase.from('monday_boards')
       .update({ items_synced_at: new Date().toISOString(), assignments_count: 0 })
       .eq('id', board.id)
+    if (stampErr) console.error(`[monday-ingest] stamping board ${board.id}: ${stampErr.message}`)
     return { board: board.name, items: 0, assignments: 0 }
   }
 
@@ -363,7 +342,11 @@ export async function ingestBoard(
         }`, { cursor, limit: PAGE, cols: wanted })
       page = d.next_items_page
     }
-    if (!page) break
+    // No page is not an empty board: a board deleted or out of the token's
+    // reach, or a bad moment at Monday. Read as empty, it emptied the board
+    // and logged every row as taken off its person (audit, 10 October 2026).
+    // Failing keeps the board as it was, and the next firing tries again.
+    if (!page) throw new Error(`Monday returned no ${cursor ? 'next ' : ''}page of items`)
 
     for (const it of page.items ?? []) {
       items++
@@ -433,25 +416,43 @@ export async function ingestBoard(
     if (!cursor) break
   }
 
+  // Monday listing items on a board and handing back none is a read that went
+  // wrong, not a board emptied: refuse it rather than wipe the board.
+  if (items === 0 && (board.items_count ?? 0) > 0) {
+    throw new Error(`Monday returned no items for a board it lists with ${board.items_count}; kept as it was`)
+  }
+
   // Read what is there BEFORE replacing it. This is the only moment both
   // halves exist, and the difference between them is the only record of the
   // past this system will ever have: monday_assignments keeps the present and
   // Monday does not keep the rest.
-  await recordChanges(supabase, board.id, rows as unknown as AssignmentSnapshot[], plans, untracked)
+  const events = await changesFor(supabase, board.id, rows as unknown as AssignmentSnapshot[], plans, untracked, baseline)
 
-  await writeBoardRows(supabase, board, rows)
+  await writeBoardRows(supabase, board, rows, events)
+
+  // Written once: the next read logs as usual.
+  if (baseline.size) {
+    const steps = await supabase.from('monday_board_steps').update({ baseline_pending: false })
+      .eq('board_id', board.id).in('people_col', [...baseline])
+    const boards = board.baseline_pending
+      ? await supabase.from('monday_boards').update({ baseline_pending: false }).eq('id', board.id)
+      : { error: null }
+    const err = steps.error ?? boards.error
+    if (err) console.error(`[monday-ingest] clearing the baseline mark on board ${board.id}: ${err.message}`)
+  }
 
   // Recorded here because the ingest already holds it. A settings page asking
   // "when was this board last used" would otherwise scan 53,000 assignments to
   // find out.
   const touched = rows.map(r => r.item_updated_at).filter(Boolean).sort() as string[]
-  await supabase.from('monday_boards')
+  const { error: stampErr } = await supabase.from('monday_boards')
     .update({
       items_synced_at: new Date().toISOString(),
       last_activity_at: touched[touched.length - 1] ?? null,
       assignments_count: rows.length,
     })
     .eq('id', board.id)
+  if (stampErr) console.error(`[monday-ingest] stamping board ${board.id}: ${stampErr.message}`)
 
   return { board: board.name, items, assignments: rows.length }
 }
@@ -499,7 +500,7 @@ export async function ingestSlice(
 ): Promise<SliceResult> {
   const started = Date.now()
 
-  const COLS = 'id, name, is_subitem_board, date_col, items_synced_at, included, included_pinned'
+  const COLS = 'id, name, is_subitem_board, date_col, items_synced_at, included, included_pinned, items_count, assignments_count, baseline_pending'
   const read = (cols: string) => supabase
     .from('monday_boards')
     .select(cols)
@@ -522,6 +523,7 @@ export async function ingestSlice(
     included_pinned?: boolean
     board_updated_at?: string | null
     gone_at?: string | null
+    assignments_count?: number | null
   }
   const all = ((boardRows ?? []) as unknown as Row[]).filter(b => !b.gone_at)
   const probe = new Set(boardsToProbe(all.map(b => ({
@@ -546,7 +548,11 @@ export async function ingestSlice(
   const cutoff = notReadSince ? Date.parse(notReadSince) : Number.NaN
   const readThisRun = (b: { items_synced_at: string | null }) =>
     Number.isFinite(cutoff) && !!b.items_synced_at && Date.parse(b.items_synced_at) >= cutoff
-  const queue = boards.filter(b => hasSteps.has(b.id) && !readThisRun(b) && !skip.has(b.id))
+  // A board whose steps were all switched off still has rows until it is read
+  // once more and cleared; it used to keep them, and a frozen read stamp, for
+  // good (audit, 10 October 2026).
+  const toClear = (b: { id: number; assignments_count?: number | null }) => !hasSteps.has(b.id) && (b.assignments_count ?? 0) > 0
+  const queue = boards.filter(b => (hasSteps.has(b.id) || toClear(b)) && !readThisRun(b) && !skip.has(b.id))
 
   const done: BoardIngestResult[] = []
   const failed: SliceResult['failed'] = []

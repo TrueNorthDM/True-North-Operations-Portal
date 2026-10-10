@@ -19,10 +19,12 @@ import { switchOverAction } from '@/lib/switch-over'
 
 // Paths that bypass the user-session auth gate.
 //   /login + /auth, sign-in flow itself
-//   /api/monday: webhooks from Monday; authentication is HMAC of the
-//                        payload (see src/lib/monday/verify.ts), not a user
-//                        cookie. Without this exception, Monday's POSTs get
-//                        a 307 → /login and the webhook test fails.
+//   /api/monday: the Monday webhook, authenticated by the secret in its own
+//                URL (src/lib/monday/webhook-secret.ts), not a user cookie;
+//                without this exception Monday's POSTs get a 307 to /login.
+//                Every route under it checks its own caller (item-history:
+//                verifiedSession), and coverage.test.ts fails a route that
+//                does not.
 const PUBLIC_PATHS = ['/login', '/auth', '/api/monday', '/api/cron']
 
 

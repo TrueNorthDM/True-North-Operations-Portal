@@ -55,10 +55,26 @@ export function activeFilterCount(f: ListFilters): number {
 
 const DAY = 86_400_000
 
-/** Midnight today as YYYY-MM-DD in the viewer's own calendar, which is what "late" means to them. */
-export function todayIso(now = new Date()): string {
-  const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+/** The company's calendar: Monday deadlines are New York days, as Clocky's are. */
+export const WORK_ZONE = 'America/New_York'
+
+const DAY_FORMATS = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * Today as YYYY-MM-DD in New York (audit, 10 October 2026). It was the
+ * viewer's own clock, so a step due today read as late in the evening for
+ * someone east of New York and the server, in UTC, disagreed with both. The
+ * page works it out once on the server and hands it down; this is the same
+ * day for a caller without it.
+ */
+export function todayIso(now = new Date(), zone: string = WORK_ZONE): string {
+  let f = DAY_FORMATS.get(zone)
+  if (!f) {
+    // en-CA writes a date as YYYY-MM-DD.
+    f = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' })
+    DAY_FORMATS.set(zone, f)
+  }
+  return f.format(now)
 }
 
 function addDays(iso: string, days: number): string {
@@ -107,9 +123,9 @@ export function matchesChange(r: WorkRow, change: ChangeFilter, now: Date): bool
   return age >= 365
 }
 
-export function applyListFilters<T extends { row: WorkRow }>(rows: T[], f: ListFilters, now = new Date()): T[] {
+/** `today` is the page's New York day when it has one, so the filter and the badges agree. */
+export function applyListFilters<T extends { row: WorkRow }>(rows: T[], f: ListFilters, now = new Date(), today = todayIso(now)): T[] {
   if (!activeFilterCount(f)) return rows
-  const today = todayIso(now)
   return rows.filter(({ row: r }) =>
     (!f.status || (f.status === NO_STATUS ? !r.statusText : r.statusText === f.status))
     && (!f.board || String(r.boardId) === f.board)

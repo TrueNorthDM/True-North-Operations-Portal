@@ -97,16 +97,13 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
   // valid argument on this one) while `ids` is stable. It also asks a precise
   // question: these exact accounts are on real work, who are they.
   const seen = new Set(users.map(u => Number(u.id)))
-  const missing = new Set<number>()
-  for (let from = 0; ; from += 2000) {
-    const { data, error } = await supabase
-      .from('monday_assignments').select('monday_user_id')
-      .order('id', { ascending: true }).range(from, from + 1999)
-    if (error) break                       // no assignments yet on a first run
-    const rows = (data ?? []) as { monday_user_id: number }[]
-    for (const r of rows) if (!seen.has(r.monday_user_id)) missing.add(r.monday_user_id)
-    if (rows.length < 2000) break
-  }
+  // Every account on work, counted by the database: read as rows, pages of
+  // 2,000 came back as 1,000 and the scan stopped after the first, so accounts
+  // first seen past row 1,000 never got a name (audit, 10 October 2026).
+  const { data: counts, error: countErr } = await supabase.rpc('monday_assignment_counts')
+  if (countErr) throw new Error(`counting assignments: ${countErr.message}`)
+  const onWork = Object.keys(((counts ?? {}) as { accounts?: Record<string, number> }).accounts ?? {}).map(Number)
+  const missing = new Set(onWork.filter(id => !seen.has(id)))
   const ids = [...missing]
   let recovered = 0
   for (let i = 0; i < ids.length; i += 100) {
@@ -145,27 +142,42 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
     if (error) throw new Error(`monday_users upsert: ${error.message}`)
   }
 
-  const [{ data: peopleRows }, { data: linkRows }, { data: externalRows }] = await Promise.all([
-    supabase.from('people').select('id, full_name, email_true_north, email_goodnews, email_coe, email_personal'),
+  // A read that fails stops here (audit, 10 October 2026): read as empty, no
+  // link looked made yet and every account matching an email was linked over
+  // an admin's own choice.
+  const [peopleRead, linkRead, settledRead] = await Promise.all([
+    supabase.from('people').select('id, full_name, status, email_true_north, email_goodnews, email_coe, email_personal'),
     supabase.from('monday_user_links').select('monday_user_id'),
-    // Marked as somebody outside True North. That is a finished answer, and
-    // reporting it as pending is what makes a pending list stop being read:
-    // the migration that added this column existed to prevent exactly that,
-    // and this function was still counting the old way.
-    supabase.from('monday_users').select('id').eq('is_external', true),
+    // Settled already, so not linked by email: marked as somebody outside True
+    // North (a finished answer, which a pending list must not repeat), or
+    // cleared by an admin, which sticks until someone links it by hand
+    // (migration 104, decided 10 October 2026).
+    supabase.from('monday_users').select('id').or('is_external.eq.true,auto_link.eq.false'),
   ])
+  for (const [what, r] of [['people', peopleRead], ['account links', linkRead], ['Monday accounts', settledRead]] as const) {
+    if (r.error) throw new Error(`reading the ${what}: ${r.error.message}`)
+  }
   type P = {
-    id: string; full_name: string
+    id: string; full_name: string; status: string
     email_true_north: string | null; email_goodnews: string | null
     email_coe: string | null; email_personal: string | null
   }
-  const already = new Set(((linkRows ?? []) as { monday_user_id: number }[]).map(l => l.monday_user_id))
-  const external = new Set(((externalRows ?? []) as { id: number }[]).map(u => u.id))
+  const already = new Set(((linkRead.data ?? []) as { monday_user_id: number }[]).map(l => l.monday_user_id))
+  const external = new Set(((settledRead.data ?? []) as { id: number }[]).map(u => u.id))
   const norm = (s: string) => s.trim().toLowerCase()
-  const byEmail = new Map<string, P>()
-  for (const p of (peopleRows ?? []) as P[]) {
+  // One person per address. Two records sharing one: the active one wins, and
+  // two active ones leave the address unlinked rather than guess.
+  const byEmail = new Map<string, P | null>()
+  for (const p of (peopleRead.data ?? []) as P[]) {
     for (const e of [p.email_true_north, p.email_goodnews, p.email_coe, p.email_personal]) {
-      if (e) byEmail.set(norm(e), p)
+      if (!e) continue
+      const k = norm(e)
+      if (!byEmail.has(k)) { byEmail.set(k, p); continue }
+      const cur = byEmail.get(k)
+      if (!cur || cur.id === p.id) continue
+      const curActive = cur.status === 'active', pActive = p.status === 'active'
+      if (pActive && !curActive) byEmail.set(k, p)
+      else if (pActive === curActive) byEmail.set(k, null)
     }
   }
 
@@ -182,7 +194,10 @@ export async function syncMondayUsers(supabase: Client, token: string): Promise<
     else unlinked.push({ id, name: u.name, email: u.email })
   }
   if (newLinks.length) {
-    const { error } = await supabase.from('monday_user_links').upsert(newLinks, { onConflict: 'monday_user_id' })
+    // Never over a link already there: one made by an admin between the read
+    // above and this write stays.
+    const { error } = await supabase.from('monday_user_links')
+      .upsert(newLinks, { onConflict: 'monday_user_id', ignoreDuplicates: true })
     if (error) throw new Error(`monday_user_links upsert: ${error.message}`)
   }
 
@@ -276,9 +291,14 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
   }))
   // Read before the upsert overwrites it: the comparison is against what the
   // board was reading a moment ago.
-  const { data: before } = await supabase.from('monday_boards').select('id, date_col')
+  const { data: before, error: beforeErr } = await supabase.from('monday_boards').select('id, date_col, items_synced_at')
+  if (beforeErr) throw new Error(`monday_boards read: ${beforeErr.message}`)
   const wasUsing = new Map(((before ?? []) as { id: number; date_col: string | null }[])
     .map(b => [b.id, b.date_col]))
+  // Boards the sync has read: a step new on one of these comes in without
+  // hand-offs (migration 104), since its rows are work people already had.
+  const readBefore = new Set(((before ?? []) as { id: number; items_synced_at: string | null }[])
+    .filter(b => b.items_synced_at).map(b => b.id))
 
   // Migration 086 adds board_updated_at. Until it is run the rest is written
   // and no hidden board is read again, which is how the sync behaved before it.
@@ -308,8 +328,14 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
     .filter(b => wasUsing.has(b.id) && wasUsing.get(b.id) !== b.date_col)
     .map(b => b.id)
   for (let i = 0; i < changed.length; i += 200) {
+    // Only rows read the old way, from the board's one date column (no
+    // due_col). A step with stages reads its own date column, which this does
+    // not change: clearing those emptied every deadline on the board until
+    // its next read, and the read then logged a "deadline changed" for each
+    // row (audit, 10 October 2026).
     await supabase.from('monday_assignments')
-      .update({ due_date: null }).in('board_id', changed.slice(i, i + 200)).not('due_date', 'is', null)
+      .update({ due_date: null }).in('board_id', changed.slice(i, i + 200))
+      .is('due_col', null).not('due_date', 'is', null)
   }
 
   const withPeople = boards.filter(b => (b.columns ?? []).some(c => PEOPLE_TYPES.has(c.type)))
@@ -318,19 +344,32 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
   // Every row, a page at a time: past 1,000 rows a single read stops short, and a
   // reviewed step missing from this set would be re-seeded as a guess.
   const { data: existing, error: existingErr } = await selectAllPages((from, to) => supabase
-    .from('monday_board_steps').select('board_id, people_col, source').order('board_id').order('people_col').range(from, to))
+    .from('monday_board_steps').select('board_id, people_col, source, stages, baseline_pending').order('board_id').order('people_col').range(from, to))
   if (existingErr) throw new Error(`monday_board_steps read: ${existingErr.message}`)
+  type Existing = { board_id: number; people_col: string; source: string; stages: unknown; baseline_pending: boolean }
   const reviewed = new Set(
-    ((existing ?? []) as { board_id: number; people_col: string; source: string }[])
+    ((existing ?? []) as Existing[])
       .filter(r => r.source !== 'guess')
       .map(r => `${r.board_id}:${r.people_col}`))
+  // Whether each known column is a step today (owns a stage), to tell a column
+  // that starts being one again.
+  const wasStep = new Map(((existing ?? []) as Existing[])
+    .map(r => [`${r.board_id}:${r.people_col}`, Array.isArray(r.stages) ? r.stages.length > 0 : true]))
+  // A mark not yet used by the sync is kept: every row in an upsert carries
+  // the column, so one left out would be written back as false.
+  const pending = new Set(((existing ?? []) as Existing[]).filter(r => r.baseline_pending)
+    .map(r => `${r.board_id}:${r.people_col}`))
 
   const seeded: Record<string, unknown>[] = []
   let withDeadline = 0
   for (const b of withPeople) {
     for (const st of seedSteps(b.columns ?? [])) {
-      if (reviewed.has(`${b.id}:${st.peopleCol}`)) continue
+      const key = `${b.id}:${st.peopleCol}`
+      if (reviewed.has(key)) continue
       if (st.stages.length) withDeadline++
+      // Its rows come back without hand-offs when it starts being a step on a
+      // board already read: new, or owning a deadline again.
+      const returning = st.stages.length > 0 && readBefore.has(Number(b.id)) && wasStep.get(key) !== true
       seeded.push({
         board_id: Number(b.id),
         people_col: st.peopleCol,
@@ -344,6 +383,7 @@ export async function syncMondayBoards(supabase: Client, token: string): Promise
         // a board nobody has read yet.
         stages: st.stages,
         source: 'guess',
+        baseline_pending: returning || pending.has(key),
         updated_at: now,
       })
     }
@@ -408,8 +448,12 @@ async function markGoneBoards(supabase: Client, activeIds: Set<number>): Promise
     const { error: clearErr } = await supabase.from('monday_assignments').delete().in('board_id', ids)
     if (clearErr) throw new Error(`clear gone boards: ${clearErr.message}`)
   }
+  // A board back in the listing: its rows return without hand-offs, since
+  // its work never changed hands (migration 104).
   for (let i = 0; i < r.back.length; i += 200) {
-    await supabase.from('monday_boards').update({ gone_at: null }).in('id', r.back.slice(i, i + 200))
+    const { error: backErr } = await supabase.from('monday_boards')
+      .update({ gone_at: null, baseline_pending: true }).in('id', r.back.slice(i, i + 200))
+    if (backErr) throw new Error(`mark boards back: ${backErr.message}`)
   }
   if (r.gone.length || r.back.length) console.log(`[monday-discover] boards gone: ${r.gone.length}, back: ${r.back.length}`)
   return { gone: r.gone.length, back: r.back.length, refused: r.refused }

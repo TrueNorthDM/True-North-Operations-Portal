@@ -16,6 +16,8 @@
 
 import { allowedTo } from '@/lib/access/resolve'
 import { internalOrigin } from '@/lib/auth/public-origin'
+import { ANOTHER_SITE, fromAnotherSite } from '@/lib/auth/same-site'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -28,6 +30,21 @@ export async function GET(request: Request) {
     return new Response('This one writes. Add ?run=yes.\n', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
+  }
+
+  if (fromAnotherSite(request)) return new Response(ANOTHER_SITE, { status: 403 })
+
+  // A sync already running would make this one skip its turn without a word,
+  // and "Started." would be untrue (audit, 10 October 2026).
+  const { data: lock, error: lockErr } = await createAdminClient()
+    .from('monday_sync_lock').select('holder, expires_at').eq('id', 1).maybeSingle()
+  if (lockErr) return new Response('The sync could not be checked. Try again in a moment.', { status: 500 })
+  const held = lock as { holder: string | null; expires_at: string | null } | null
+  if (held?.holder && held.expires_at && Date.parse(held.expires_at) > Date.now()) {
+    return new Response(
+      'A sync is already running, so this one was not started. It reads every board;\n'
+      + 'watch it at /api/admin/monday-inventory?part=status\n',
+      { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
   }
 
   const secret = process.env.CRON_SECRET
@@ -54,8 +71,7 @@ export async function GET(request: Request) {
       'Watch it here:',
       '  /api/admin/monday-inventory?part=status',
       '',
-      'Or just wait: the same job runs on its own at 02:15, 06:15, 10:15,',
-      '14:15, 18:15 and 22:15 (GMT-3).',
+      'Or just wait: the same job runs on its own every four hours.',
     ].join('\n'),
     { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
   )

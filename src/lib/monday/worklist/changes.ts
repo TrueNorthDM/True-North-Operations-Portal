@@ -44,6 +44,17 @@ export interface DiffOptions {
    * at the moment of the sync.
    */
   untracked?: Set<string>
+  /**
+   * People columns whose rows come back after leaving for a setting (a step
+   * switched on again, a board back in the listing, a new step on a board
+   * already read; migration 104). Their rows are not new work: no "assigned"
+   * is written for them, and nobody is told. One that was finished while it
+   * was away gets its "done", when the log still has it in someone's hands
+   * (`heldInLog`), so the delivery counts (decided 10 October 2026).
+   */
+  baseline?: Set<string>
+  /** Row keys the log has in someone's hands: last hand-off not yet closed. */
+  heldInLog?: Set<string>
 }
 
 export type AssignmentEvent = {
@@ -100,6 +111,12 @@ export function diffAssignments(
     prev.delete(k)
 
     if (!was) {
+      if (opts.baseline?.has(row.people_col)) {
+        if (row.status_done === true && opts.heldInLog?.has(k)) {
+          events.push({ ...base(row, at(row)), event: 'done', from_value: null, to_value: row.status_text })
+        }
+        continue
+      }
       // The moment a step lands on somebody. Held time is measured from here,
       // so losing this event means the step can never have one.
       events.push({ ...base(row, at(row)), event: 'assigned', from_value: null, to_value: row.status_text })

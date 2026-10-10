@@ -20,6 +20,8 @@ export async function GET(request: Request) {
   try {
     return Response.json(await loadAccountProfile(createAdminClient(), id))
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: 500 })
+    // The detail goes to the log; the screen gets a sentence (audit, 10 October 2026).
+    console.error('[monday-account]', (e as Error).message)
+    return Response.json({ error: 'This account could not be read. Try again in a moment.' }, { status: 500 })
   }
 }

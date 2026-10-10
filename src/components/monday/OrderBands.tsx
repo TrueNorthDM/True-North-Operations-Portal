@@ -80,7 +80,7 @@ export function BandMap({
             key={i}
             type="button"
             onClick={() => onJump(i)}
-            aria-label={`Go to band ${i + 1}: ${b.placed ? 'placed by hand' : "True North's order"}, ${plural(b.count, 'step', 'steps')}`}
+            aria-label={`Go to band ${i + 1}: ${b.placed ? placedLabel : followLabel}, ${plural(b.count, 'step', 'steps')}`}
             className={`rounded-full min-w-[6px] hover:opacity-80 transition-opacity ${b.placed ? 'bg-tn-primary' : 'bg-tn-teal'}`}
             style={{ flexGrow: b.count }}
           />
@@ -141,12 +141,18 @@ export function BandHeader({
  * band is collapsed, and when the list is off screen.
  */
 export function NextBandPill({
-  sections, bands, closed, onJump,
+  sections, bands, closed, onJump, followLabel = "True North's order",
 }: {
   sections: RefObject<(HTMLElement | null)[]>
   bands: BandSummary[]
   closed: ReadonlySet<number>
   onJump: (i: number) => void
+  /**
+   * What a band nobody placed follows: "True North's order", or the team's
+   * workspace and board order when it has one (audit, 10 October 2026: it
+   * always said True North's).
+   */
+  followLabel?: string
 }) {
   const [next, setNext] = useState<number | null>(null)
   // Measured on scroll against the latest bands, without re-subscribing every
@@ -191,7 +197,7 @@ export function NextBandPill({
         className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-tn-primary pl-3 pr-4 py-2 shadow-[0_12px_28px_-10px_rgba(1,35,88,.75)] font-(family-name:--font-display) font-extrabold text-[12.5px]"
       >
         <span className="text-[#F2C40A]" aria-hidden="true">↓</span>
-        <span className="text-[#ffffff]">{`Next: ${b.placed ? 'placed by hand' : "True North's order"} · ${plural(b.count, 'step', 'steps')} · ${b.range}`}</span>
+        <span className="text-[#ffffff]">{`Next: ${b.placed ? 'placed by hand' : followLabel} · ${plural(b.count, 'step', 'steps')} · ${b.range}`}</span>
       </button>
     </div>
   )

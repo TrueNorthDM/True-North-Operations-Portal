@@ -14,6 +14,7 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
+import { selectAllPages } from '@/lib/monday/worklist/resilience'
 import { loadWorklist, type WorkRow } from '@/lib/monday/worklist/data'
 import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
@@ -89,11 +90,16 @@ async function accountOwners(db: Client): Promise<Map<number, string>> {
  * from its second read on, its events are the real thing.
  */
 async function newAssignments(db: Client, since: string): Promise<Set<string>> {
-  const { data, error } = await db.from('monday_assignment_events')
+  // Every one, in order: a single read stops at 1,000 rows, in no order, and
+  // real hand-offs past it went unannounced. A step already finished when it
+  // "landed" is not new work for anyone (audit, 10 October 2026).
+  type E = { board_id: number; item_id: number; people_col: string; monday_user_id: number }
+  const { data: events, error } = await selectAllPages<E>((from, to) => db.from('monday_assignment_events')
     .select('board_id, item_id, people_col, monday_user_id')
-    .eq('event', 'assigned').gte('detected_at', since).limit(20000)
+    .eq('event', 'assigned').gte('detected_at', since)
+    .or('status_done.is.null,status_done.eq.false')
+    .order('id').range(from, to))
   if (error) throw new Error(`Assignment events could not be read: ${error.message}`)
-  const events = (data ?? []) as { board_id: number; item_id: number; people_col: string; monday_user_id: number }[]
   const boards = [...new Set(events.map(e => e.board_id))]
   const known = new Set<number>()
   await Promise.all(boards.map(async b => {

@@ -1,5 +1,5 @@
 /**
- * GET /api/admin/monday-backfill
+ * GET /api/admin/monday-backfill?run=yes
  *
  * Recovers hand-off dates for work that was already open when the change log
  * started, by reading Monday's own activity_logs item by item.
@@ -21,6 +21,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getMondayToken } from '@/lib/monday/snapshot'
 import { allowedTo } from '@/lib/access/resolve'
 import { internalOrigin } from '@/lib/auth/public-origin'
+import { ANOTHER_SITE, fromAnotherSite } from '@/lib/auth/same-site'
+import { selectAllPages } from '@/lib/monday/worklist/resilience'
 import {
   backfillEvents, fetchItemLogs, handoffsFrom, type OpenAssignment,
 } from '@/lib/monday/worklist/backfill'
@@ -45,6 +47,14 @@ export async function GET(request: Request) {
   if (!chained && !(await allowedTo('cs-my-work'))) {
     return NextResponse.json({ error: 'Admins only.' }, { status: 403 })
   }
+  if (!chained) {
+    // It writes, so it says so and waits for ?run=yes, like the other sync
+    // routes, and a link on another site cannot start it (audit, 10 October 2026).
+    if (fromAnotherSite(request)) return NextResponse.json({ error: ANOTHER_SITE }, { status: 403 })
+    if (url.searchParams.get('run') !== 'yes') {
+      return NextResponse.json({ waiting: 'This one writes hand-off dates to the change log. Add ?run=yes to go ahead.' })
+    }
+  }
   if (hop >= LINKS) return NextResponse.json({ stopped: `Chain hit its limit of ${LINKS} hops.` })
 
   const token = await getMondayToken()
@@ -53,25 +63,25 @@ export async function GET(request: Request) {
   const supabase = createAdminClient()
   const started = Date.now()
 
-  // Every step that already has a hand-off is done. Read the ids once rather
-  // than asking per item, because that question is cheap here and thousands
-  // of round trips is not.
-  const { data: known } = await supabase
+  // Every step that already has a hand-off is done. Read whole, a page at a
+  // time: a single read stopped at 1,000 of them, so steps with a hand-off
+  // looked like they had none and got a second one (audit, 10 October 2026).
+  const known = await selectAllPages<{ item_id: number; people_col: string; monday_user_id: number }>((from, to) => supabase
     .from('monday_assignment_events')
     .select('item_id, people_col, monday_user_id')
     .eq('event', 'assigned')
-    .limit(200_000)
+    .order('id').range(from, to))
+  if (known.error) return NextResponse.json({ error: 'The change log could not be read.' }, { status: 500 })
 
-  const haveHandoff = new Set(
-    ((known ?? []) as { item_id: number; people_col: string; monday_user_id: number }[])
-      .map(k => `${k.item_id}|${k.people_col}|${k.monday_user_id}`),
-  )
+  const haveHandoff = new Set(known.data.map(k => `${k.item_id}|${k.people_col}|${k.monday_user_id}`))
 
-  const { data: openRows } = await supabase
+  const open = await selectAllPages<OpenAssignment>((from, to) => supabase
     .from('monday_assignments')
     .select('board_id, item_id, people_col, monday_user_id, status_text, status_done, due_date')
     .or('status_done.is.null,status_done.eq.false')
-    .limit(60_000)
+    .order('id').range(from, to))
+  if (open.error) return NextResponse.json({ error: 'The open work could not be read.' }, { status: 500 })
+  const openRows = open.data
 
   const missing = ((openRows ?? []) as OpenAssignment[])
     .filter(a => !haveHandoff.has(`${a.item_id}|${a.people_col}|${a.monday_user_id}`))
@@ -139,7 +149,7 @@ export async function GET(request: Request) {
     const cookie = request.headers.get('cookie')
     if (cookie) forward.cookie = cookie
 
-    void fetch(`${internalOrigin(request.url)}/api/admin/monday-backfill?hop=${hop + 1}`, { headers: forward })
+    void fetch(`${internalOrigin(request.url)}/api/admin/monday-backfill?run=yes&hop=${hop + 1}`, { headers: forward })
       .catch(() => {})
   }
 

@@ -101,7 +101,7 @@ const base = () => ({
   app_settings: [{ monday_account_slug: 'truenorth' }],
   monday_assignments: [
     assignment({ id: 1, board_id: 10, monday_user_id: 1, item_name: 'On a shown board' }),
-    assignment({ id: 2, board_id: 20, monday_user_id: 1, item_name: 'On a board switched off' }),
+    assignment({ id: 2, board_id: 20, item_id: 200, monday_user_id: 1, item_name: 'On a board switched off' }),
     assignment({ id: 3, board_id: 10, monday_user_id: 2, item_name: 'Assigned to a hidden person' }),
   ],
 })

@@ -10,8 +10,9 @@
 // fixes most of the data and the rest can stay a guess.
 
 import type { Db } from '@/lib/supabase/types'
+import { selectAllPages } from './resilience'
+import { assignmentCounts } from './counts'
 import { readStages, type StepStage } from './steps'
-import { missingColumn } from './ingest'
 
 type Client = Db
 
@@ -56,26 +57,25 @@ export function looksSuspicious(stepName: string): boolean {
 }
 
 export async function loadStepsForReview(supabase: Client): Promise<StepUnderReview[]> {
-  const [firstSteps, { data: boards }, { data: counts }] = await Promise.all([
-    supabase.from('monday_board_steps').select('board_id, people_col, people_title, step_name, source, stages'),
-    supabase.from('monday_boards').select('id, name, workspace_name').eq('included', true),
-    supabase.from('monday_assignments').select('board_id, people_col').limit(200_000),
+  // Every step, every board, and the counts from the database: read as rows,
+  // each stopped at 1,000, and a failed read showed nothing to review
+  // (audit, 10 October 2026).
+  const [stepRead, boardRead, counted] = await Promise.all([
+    selectAllPages((from, to) => supabase.from('monday_board_steps')
+      .select('board_id, people_col, people_title, step_name, source, stages')
+      .order('board_id').order('people_col').range(from, to)),
+    selectAllPages((from, to) => supabase.from('monday_boards')
+      .select('id, name, workspace_name').eq('included', true).order('id').range(from, to)),
+    assignmentCounts(supabase),
   ])
-  let steps: unknown[] | null = firstSteps.data
-  if (missingColumn(firstSteps.error, 'stages')) {
-    steps = (await supabase.from('monday_board_steps').select('board_id, people_col, people_title, step_name, source')).data
-  }
+  if (stepRead.error) throw new Error(`Could not read the board steps: ${stepRead.error.message}`)
+  if (boardRead.error) throw new Error(`Could not read the boards: ${boardRead.error.message}`)
+  const steps = stepRead.data
 
   const boardById = new Map(
-    ((boards ?? []) as { id: number; name: string; workspace_name: string | null }[])
+    (boardRead.data as { id: number; name: string; workspace_name: string | null }[])
       .map(b => [b.id, b]),
   )
-
-  const rides = new Map<string, number>()
-  for (const a of (counts ?? []) as { board_id: number; people_col: string }[]) {
-    const k = `${a.board_id}|${a.people_col}`
-    rides.set(k, (rides.get(k) ?? 0) + 1)
-  }
 
   return ((steps ?? []) as { board_id: number; people_col: string; people_title: string; step_name: string; source: StepSource; stages?: unknown }[])
     .filter(s => boardById.has(s.board_id))
@@ -88,7 +88,7 @@ export async function loadStepsForReview(supabase: Client): Promise<StepUnderRev
       stepName: s.step_name,
       stages: readStages(s.stages),
       source: s.source,
-      assignments: rides.get(`${s.board_id}|${s.people_col}`) ?? 0,
+      assignments: counted.steps.get(`${s.board_id}:${s.people_col}`) ?? 0,
       suspicious: looksSuspicious(s.step_name),
     }))
     .sort(orderForReview)

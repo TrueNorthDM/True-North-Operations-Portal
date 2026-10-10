@@ -18,6 +18,12 @@ function done() {
   revalidatePath('/my-work')
 }
 
+/** The detail goes to the server log; the person gets a sentence (audit, 10 October 2026). */
+function notSaved(error: { message: string }): Result {
+  console.error('[monday settings]', error.message)
+  return { ok: false, error: 'Not saved. Try again in a moment.' }
+}
+
 /**
  * Clicking Shown or Not shown pins the board.
  *
@@ -30,7 +36,7 @@ export async function setBoardIncluded(boardId: number, included: boolean): Prom
   const no = await guard(); if (no) return { ok: false, error: no }
   const { error } = await createAdminClient()
     .from('monday_boards').update({ included, included_pinned: true }).eq('id', boardId)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
   done()
   return { ok: true }
 }
@@ -48,7 +54,7 @@ export async function setWorkspaceIncluded(workspace: string, included: boolean)
   const { error } = workspace === 'No workspace'
     ? await q.is('workspace_name', null)
     : await q.eq('workspace_name', workspace)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
   done()
   return { ok: true }
 }
@@ -58,7 +64,7 @@ export async function setBoardPriority(boardId: number, priority: 'high' | 'medi
   const no = await guard(); if (no) return { ok: false, error: no }
   const { error } = await createAdminClient()
     .from('monday_boards').update({ priority }).eq('id', boardId)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
   done()
   return { ok: true }
 }
@@ -71,7 +77,7 @@ export async function setWorkspacePriority(workspace: string, priority: 'high' |
   const { error } = workspace === 'No workspace'
     ? await q.is('workspace_name', null)
     : await q.eq('workspace_name', workspace)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
   done()
   return { ok: true }
 }
@@ -80,7 +86,7 @@ export async function setUserHidden(mondayUserId: number, hidden: boolean): Prom
   const no = await guard(); if (no) return { ok: false, error: no }
   const { error } = await createAdminClient()
     .from('monday_users').update({ hidden }).eq('id', mondayUserId)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
   done()
   return { ok: true }
 }
@@ -97,12 +103,20 @@ export async function setStepSource(
   boardId: number, peopleCol: string, source: 'guess' | 'confirmed' | 'off',
 ): Promise<Result> {
   const no = await guard(); if (no) return { ok: false, error: no }
-  const { error } = await createAdminClient()
+  const db = createAdminClient()
+  const { data: was, error: readErr } = await db.from('monday_board_steps')
+    .select('source').eq('board_id', boardId).eq('people_col', peopleCol).maybeSingle()
+  if (readErr) return notSaved(readErr)
+  // Switched back on: its rows return without hand-offs and without telling
+  // anybody, since the work never changed hands (migration 104, decided
+  // 10 October 2026).
+  const back = (was as { source: string } | null)?.source === 'off' && source !== 'off'
+  const { error } = await db
     .from('monday_board_steps')
-    .update({ source })
+    .update({ source, ...(back ? { baseline_pending: true } : {}) })
     .eq('board_id', boardId)
     .eq('people_col', peopleCol)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
   done()
   return { ok: true }
 }
@@ -118,7 +132,7 @@ export async function setBoardJobcode(boardId: number, jobcodeId: number | null)
   const no = await guard(); if (no) return { ok: false, error: no }
   const { error } = await createAdminClient()
     .from('monday_boards').update({ tc_jobcode_id: jobcodeId }).eq('id', boardId)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
   done()
   return { ok: true }
 }
@@ -136,7 +150,7 @@ export async function setHideStaleBoards(on: boolean): Promise<Result & { hidden
 
   const { error } = await supabase
     .from('app_settings').update({ monday_hide_stale_boards: on }).eq('singleton_id', 1)
-  if (error) return { ok: false, error: error.message }
+  if (error) return notSaved(error)
 
   // Switching it off changes nothing that is already hidden: the rule stops
   // deciding, it does not undo what it decided. Undoing would flood My Work

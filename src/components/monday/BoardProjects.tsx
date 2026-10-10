@@ -34,6 +34,7 @@ export function BoardProjects(
   const router = useRouter()
   const [pending, start] = useTransition()
   const [query, setQuery] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const q = query.trim().toLowerCase()
   const shown = boards.filter(b =>
@@ -41,18 +42,25 @@ export function BoardProjects(
 
   const linked = boards.filter(b => b.jobcodeId !== null).length
 
+  // The answer is read, not assumed (audit, 10 October 2026): a failed link
+  // used to refresh as though it had been saved, and the choice snapped back
+  // with no word of why.
   const set = (boardId: number, value: string) => {
+    setError(null)
     start(async () => {
-      await setBoardJobcode(boardId, value ? Number(value) : null)
+      const r = await setBoardJobcode(boardId, value ? Number(value) : null)
+      if (!r.ok) { setError(r.error ?? 'That board could not be linked. Try again in a moment.'); return }
       router.refresh()
     })
   }
 
   return (
     <div className={`space-y-3.5 transition-opacity ${pending ? 'opacity-60' : ''}`}>
+      {error && <div role="alert" className="rounded-[10px] border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-[13px] text-foreground">
-          {`${linked} of ${boards.length} boards linked to a project`}
+          {`${linked.toLocaleString('en-US')} of ${boards.length.toLocaleString('en-US')} boards linked to a project`}
         </span>
         {linked === 0 ? (
           <span className={`${chip} bg-[rgba(224,138,30,.16)] text-[#b06d0a]`}>

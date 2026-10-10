@@ -11,8 +11,9 @@ import { staleSweep } from './stale'
 export async function applyStaleRule(
   supabase: ReturnType<typeof createAdminClient>,
 ): Promise<{ hidden: number; shown: number }> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('monday_boards').select('id, included, included_pinned, last_activity_at')
+  if (error) throw new Error(`Could not read the boards: ${error.message}`)
 
   const boards = ((data ?? []) as {
     id: number; included: boolean; included_pinned: boolean; last_activity_at: string | null
@@ -24,8 +25,13 @@ export async function applyStaleRule(
   }))
 
   const { hide, show } = staleSweep(boards, new Date())
-  if (hide.length) await supabase.from('monday_boards').update({ included: false }).in('id', hide)
-  if (show.length) await supabase.from('monday_boards').update({ included: true }).in('id', show)
+  // Said, not swallowed: a count of boards hidden that were not is a lie on
+  // the settings page (audit, 10 October 2026).
+  for (const [ids, included] of [[hide, false], [show, true]] as const) {
+    if (!ids.length) continue
+    const { error: e } = await supabase.from('monday_boards').update({ included }).in('id', [...ids])
+    if (e) throw new Error(`Could not ${included ? 'show' : 'hide'} the boards: ${e.message}`)
+  }
 
   return { hidden: hide.length, shown: show.length }
 }

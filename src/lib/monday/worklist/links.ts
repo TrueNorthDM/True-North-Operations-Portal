@@ -10,10 +10,11 @@
 // never empties is a pending list nobody reads.
 
 import type { Db } from '@/lib/supabase/types'
+import { selectAllPages } from './resilience'
+import { assignmentCounts } from './counts'
 
 type Client = Db
 
-const PAGE = 2000
 
 /**
  * Accounts that still owe an answer, decided in one place.
@@ -70,20 +71,6 @@ function nameKey(full: string): string {
   return `${parts[0]} ${parts[parts.length - 1]}`
 }
 
-async function assignmentCounts(supabase: Client): Promise<Map<number, number>> {
-  const counts = new Map<number, number>()
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('monday_assignments').select('monday_user_id')
-      .order('id', { ascending: true }).range(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    const rows = (data ?? []) as { monday_user_id: number }[]
-    for (const r of rows) counts.set(r.monday_user_id, (counts.get(r.monday_user_id) ?? 0) + 1)
-    if (rows.length < PAGE) break
-  }
-  return counts
-}
-
 export interface LinkBoard {
   pending: PendingAccount[]
   external: PendingAccount[]
@@ -97,12 +84,19 @@ export interface LinkBoard {
 }
 
 export async function loadLinkBoard(supabase: Client): Promise<LinkBoard> {
-  const [{ data: userRows }, { data: linkRows }, { data: peopleRows }, counts] = await Promise.all([
-    supabase.from('monday_users').select('id, name, email, enabled, is_guest, is_external'),
-    supabase.from('monday_user_links').select('monday_user_id, person_id, linked_by'),
-    supabase.from('people').select('id, full_name, status'),
+  const [userRead, linkRead, peopleRead, counted] = await Promise.all([
+    selectAllPages((from, to) => supabase.from('monday_users').select('id, name, email, enabled, is_guest, is_external').order('id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('monday_user_links').select('monday_user_id, person_id, linked_by').order('monday_user_id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('people').select('id, full_name, status').order('id').range(from, to)),
     assignmentCounts(supabase),
   ])
+  // A failed read is not an empty one: every account would show as pending
+  // (audit, 10 October 2026).
+  for (const [what, r] of [['Monday accounts', userRead], ['account links', linkRead], ['people', peopleRead]] as const) {
+    if (r.error) throw new Error(`Could not read the ${what}: ${r.error.message}`)
+  }
+  const userRows = userRead.data, linkRows = linkRead.data, peopleRows = peopleRead.data
+  const counts = counted.accounts
 
   type U = { id: number; name: string; email: string | null; enabled: boolean; is_guest: boolean; is_external: boolean }
   type P = { id: string; full_name: string; status: string }

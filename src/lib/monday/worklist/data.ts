@@ -9,6 +9,8 @@
 // four years of finished work is not a work list.
 
 import type { Db } from '@/lib/supabase/types'
+import { assignmentCounts } from './counts'
+import { selectAllPages } from './resilience'
 import { unresolvedAccounts } from './links'
 import { readStages, type StepStage } from './steps'
 import { missingColumn } from './ingest'
@@ -227,8 +229,13 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
 
   const [boardRead, firstSteps, linkRead, userRead, peopleRead] =
     await Promise.all([
-      supabase.from('monday_boards').select('id, name, workspace_name, included, items_synced_at, date_title, priority'),
-      supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source, stages'),
+      // Paged: one read stops at 1,000 rows, and a step missing from the
+      // lookup showed its raw column id and skipped the off filter (audit,
+      // 10 October 2026). 527 steps today, and discovery never deletes one.
+      selectAllPages((from, to) => supabase.from('monday_boards')
+        .select('id, name, workspace_name, included, items_synced_at, date_title, priority, gone_at').order('id').range(from, to)),
+      selectAllPages((from, to) => supabase.from('monday_board_steps')
+        .select('board_id, people_col, step_name, position, source, stages').order('board_id').order('people_col').range(from, to)),
       supabase.from('monday_user_links').select('monday_user_id, person_id'),
       supabase.from('monday_users').select('id, name, is_external, hidden'),
       supabase.from('people').select('id, full_name'),
@@ -242,14 +249,8 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   const { data: linkRows } = linkRead
   const { data: userRows } = userRead
   const { data: peopleRows } = peopleRead
-  // Migration 082 adds stages. Until it is run, every step reads as seeded
-  // before stages existed, which is how the page behaved before it.
-  let stepRows: unknown[] | null = firstSteps.data
-  if (missingColumn(firstSteps.error, 'stages')) {
-    stepRows = (await supabase.from('monday_board_steps').select('board_id, people_col, step_name, position, source')).data
-  } else if (firstSteps.error) {
-    throw new Error(`Could not read the board steps: ${firstSteps.error.message}`)
-  }
+  if (firstSteps.error) throw new Error(`Could not read the board steps: ${firstSteps.error.message}`)
+  const stepRows: unknown[] = firstSteps.data
 
   const slug = await mondaySlug(supabase)
 
@@ -276,7 +277,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
 
   type B = {
     id: number; name: string; workspace_name: string | null; included: boolean
-    items_synced_at: string | null; date_title: string | null
+    items_synced_at: string | null; date_title: string | null; gone_at?: string | null
     priority: 'high' | 'medium' | 'low'
   }
   const boardList = (boardRows ?? []) as B[]
@@ -350,9 +351,11 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
 
   // How many match, asked once and counted by the database rather than by
   // reading the rows and measuring the array.
-  const { count: matching } = (await applyFilters(
+  const { count: matching, error: countErr } = (await applyFilters(
     supabase.from('monday_assignments').select('id', { count: 'exact', head: true }),
-  )) as { count: number | null }
+  )) as { count: number | null; error: { message: string } | null }
+  // Unknown is not "everything": the Everyone view would say it showed it all.
+  if (countErr) throw new Error(`Could not count the work: ${countErr.message}`)
 
   const cap = onlyAccounts || f.uncapped ? Number.POSITIVE_INFINITY : UNFILTERED_CAP
   const rows: A[] = []
@@ -390,7 +393,13 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   const accountsOnWork = new Set<number>()
   let unlinkedAssignments = 0
 
+  // A board written between two pages can move a row across the page edge;
+  // one step is listed once (audit, 10 October 2026).
+  const seenKeys = new Set<string>()
   for (const a of rows) {
+    const rowKey = `${a.item_id}|${a.people_col}|${a.monday_user_id}`
+    if (seenKeys.has(rowKey)) continue
+    seenKeys.add(rowKey)
     const b = boards.get(a.board_id)
     if (!b || !b.included) continue
     if (hiddenAccounts.has(a.monday_user_id)) continue
@@ -452,16 +461,36 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     || sortDate(x).localeCompare(sortDate(y))
     || (x.parentItemName ?? x.itemName).localeCompare(y.parentItemName ?? y.itemName))
 
+  // Boards gone from Monday are not read again, so their stamp would pin the
+  // footer to the day they left.
   const stamps = boardList
-    .filter(b => b.included && b.items_synced_at)
+    .filter(b => b.included && b.items_synced_at && !b.gone_at)
     .map(b => b.items_synced_at as string)
     .sort()
+
+  // Past the cap the rows read are not all the work, so the banner is counted
+  // by the database, over the same filters, the way the links screen counts
+  // it: the comment above says the two cannot differ, and they did.
+  let unlinked = unresolvedAccounts(accountsOnWork, linkedAccounts, externalAccounts).size
+  if (truncated) {
+    const onWork = [...(await assignmentCounts(supabase)).accounts.keys()]
+    const nobody = onWork.filter(id => !linkedAccounts.has(id) && !externalAccounts.has(id) && !hiddenAccounts.has(id))
+    unlinked = nobody.length
+    unlinkedAssignments = 0
+    for (let i = 0; i < nobody.length; i += 200) {
+      const { count, error } = (await applyFilters(supabase.from('monday_assignments')
+        .select('id', { count: 'exact', head: true }).in('monday_user_id', nobody.slice(i, i + 200)))) as
+        { count: number | null; error: { message: string } | null }
+      if (error) throw new Error(`Could not count the unlinked work: ${error.message}`)
+      unlinkedAssignments += count ?? 0
+    }
+  }
 
   return {
     rows: out,
     open,
     total: rows.length,
-    unlinked: unresolvedAccounts(accountsOnWork, linkedAccounts, externalAccounts).size,
+    unlinked,
     unlinkedAssignments,
     truncated,
     matching: matching ?? rows.length,

@@ -612,6 +612,54 @@ export type Database = {
         }
         Relationships: []
       }
+      monday_assignment_events_reserve_105: {
+        Row: {
+          board_id: number
+          detected_at: string
+          due_date: string | null
+          event: string
+          from_value: string | null
+          id: number
+          item_id: number
+          monday_user_id: number
+          occurred_at: string
+          people_col: string
+          status_done: boolean | null
+          to_value: string | null
+          why: string | null
+        }
+        Insert: {
+          board_id: number
+          detected_at?: string
+          due_date?: string | null
+          event: string
+          from_value?: string | null
+          id?: number
+          item_id: number
+          monday_user_id: number
+          occurred_at: string
+          people_col: string
+          status_done?: boolean | null
+          to_value?: string | null
+          why?: string | null
+        }
+        Update: {
+          board_id?: number
+          detected_at?: string
+          due_date?: string | null
+          event?: string
+          from_value?: string | null
+          id?: number
+          item_id?: number
+          monday_user_id?: number
+          occurred_at?: string
+          people_col?: string
+          status_done?: boolean | null
+          to_value?: string | null
+          why?: string | null
+        }
+        Relationships: []
+      }
       monday_assignments: {
         Row: {
           board_id: number
@@ -762,6 +810,7 @@ export type Database = {
       }
       monday_board_steps: {
         Row: {
+          baseline_pending: boolean
           board_id: number
           people_col: string
           people_title: string
@@ -773,6 +822,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          baseline_pending?: boolean
           board_id: number
           people_col: string
           people_title: string
@@ -784,6 +834,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          baseline_pending?: boolean
           board_id?: number
           people_col?: string
           people_title?: string
@@ -806,6 +857,7 @@ export type Database = {
       monday_boards: {
         Row: {
           assignments_count: number | null
+          baseline_pending: boolean
           board_updated_at: string | null
           date_col: string | null
           date_title: string | null
@@ -827,6 +879,7 @@ export type Database = {
         }
         Insert: {
           assignments_count?: number | null
+          baseline_pending?: boolean
           board_updated_at?: string | null
           date_col?: string | null
           date_title?: string | null
@@ -848,6 +901,7 @@ export type Database = {
         }
         Update: {
           assignments_count?: number | null
+          baseline_pending?: boolean
           board_updated_at?: string | null
           date_col?: string | null
           date_title?: string | null
@@ -1121,6 +1175,7 @@ export type Database = {
       }
       monday_users: {
         Row: {
+          auto_link: boolean
           email: string | null
           enabled: boolean
           hidden: boolean
@@ -1131,6 +1186,7 @@ export type Database = {
           synced_at: string
         }
         Insert: {
+          auto_link?: boolean
           email?: string | null
           enabled?: boolean
           hidden?: boolean
@@ -1141,6 +1197,7 @@ export type Database = {
           synced_at?: string
         }
         Update: {
+          auto_link?: boolean
           email?: string | null
           enabled?: boolean
           hidden?: boolean
@@ -2934,8 +2991,13 @@ export type Database = {
         Returns: number
       }
       merge_people: { Args: { loser: string; winner: string }; Returns: Json }
+      monday_assignment_counts: { Args: never; Returns: Json }
       monday_swap_board_assignments: {
         Args: { p_batch: string; p_board: number }
+        Returns: number
+      }
+      monday_write_board: {
+        Args: { p_batch: string; p_board: number; p_events: Json }
         Returns: number
       }
       my_person_id: { Args: never; Returns: string }
