@@ -67,29 +67,3 @@ export function getColumnValue(
 }
 
 /** The display text of a column ('' if missing/empty). */
-export function getColumnText(item: SnapshotItem | SnapshotSubitem, colId: string): string {
-  return getColumnValue(item, colId)?.text ?? ''
-}
-
-/** Parse a column's raw `value` JSON, or null if absent/malformed. */
-export function parseColumnValue<T = unknown>(
-  item: SnapshotItem | SnapshotSubitem,
-  colId: string,
-): T | null {
-  const raw = getColumnValue(item, colId)?.value
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as T
-  } catch {
-    return null
-  }
-}
-
-/** Parse a Monday activity-log `data` string into an object. */
-export function parseLogData(log: SnapshotLog): Record<string, unknown> {
-  try {
-    return typeof log.data === 'string' ? JSON.parse(log.data) : (log.data ?? {})
-  } catch {
-    return {}
-  }
-}

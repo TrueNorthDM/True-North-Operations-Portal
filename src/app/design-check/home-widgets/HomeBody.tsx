@@ -30,7 +30,7 @@ const CARRYOVER: I7Carryover = {
 // AAAF's English is 2 of 11 and was missed in three of these four weeks while
 // the total read 82%, 27%, 136% and 82%.
 const week = (label: string, done: number, target: number, en: [number, number]) =>
-  ({ start: label, label, done, target, en: { done: en[0], target: en[1] } })
+  ({ start: label, label, done, target, en: { done: en[0], target: en[1] }, untargeted: done > target ? 1 : 0 })
 
 const PUBLISHING: PublishingBoardWeeks[] = [
   {
@@ -81,7 +81,7 @@ export function HomeBody() {
       <I7BudgetWidget month="2026-09" carryover={CARRYOVER} />
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <PublishingGoalsWidget boards={PUBLISHING} linked />
+        <PublishingGoalsWidget data={{ boards: PUBLISHING, updatedAt: '2026-10-09T19:05:00Z' }} linked />
         <div className="space-y-6">
           <Birthdays people={PEOPLE} />
           <Anniversaries people={PEOPLE} />

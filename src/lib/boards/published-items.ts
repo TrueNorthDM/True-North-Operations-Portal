@@ -16,8 +16,8 @@
  * The weeks and the targets are deliberately NOT precomputed. A stored "9 of 11"
  * would go stale the moment somebody edited a target, and would show last week's
  * window for up to four hours after Monday midnight. Storing the facts instead of
- * the figures keeps both of those live, and keeps the counting rules in one place:
- * `computePublishingMetrics`, which the Publishing Goals dashboard also uses.
+ * the figures keeps both of those live, and keeps the counting in one place:
+ * `computePublishingMetrics`, with the rules from publishing-rules.ts.
  */
 
 import type { BoardConfig } from './config'
@@ -46,15 +46,19 @@ export interface CompactPublished {
 /**
  * Reduce enriched items to the published ones inside the horizon.
  *
- * Publishers are kept whoever they are. Whether Samuel, Wendy or somebody else
- * counts is `isPublisher`'s decision, made when the numbers are computed; filtering
- * here would bake today's list into data that outlives it.
+ * Publishers are kept whoever they are. Who counts is the Settings list
+ * (publishing-rules.ts), applied when the numbers are computed; filtering here
+ * would bake today's list into data that outlives it. One item is kept once:
+ * Monday can return it twice when items change while a board is read.
  */
 export function compactFromItems(items: PublishedItem[], now: Date): CompactPublished[] {
   const cutoff = now.getTime() - PUBLISHED_HORIZON_DAYS * 86_400_000
   const out: CompactPublished[] = []
+  const seen = new Set<string>()
   for (const it of items) {
     if (!it.isPublished || !it.publishedDate) continue
+    if (seen.has(it.id)) continue
+    seen.add(it.id)
     const at = new Date(it.publishedDate).getTime()
     if (Number.isNaN(at) || at < cutoff) continue
     out.push({ id: it.id, language: it.language, publishers: it.publishers, publishedDate: it.publishedDate })

@@ -17,6 +17,7 @@ import type { Db } from '@/lib/supabase/types'
 import { selectAllPages } from '@/lib/monday/worklist/resilience'
 import { loadWorklist, type WorkRow } from '@/lib/monday/worklist/data'
 import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
+import { weekBounds } from '@/lib/boards/publishing-rules'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
 import { HEALTH_LABEL, type HealthResult } from '@/lib/health/checks'
 import { ROLE_TYPE_LABEL } from '@/lib/directory/people-types'
@@ -250,10 +251,17 @@ export function expectedSoFar(target: number, today: string): number {
   return Math.floor((target * gone) / 5)
 }
 
+/** Older than this, the boards were not read in time to say anyone is behind. */
+const SNAPSHOT_FRESH_MS = 8 * 3_600_000
+
 export async function publishingDrafts(ctx: Ctx): Promise<Draft[]> {
   const start = weekOf(ctx.today)
-  const [y, m, d] = start.split('-').map(Number)
-  const boards = await loadPublishingWeeks(ctx.now, [{ start: new Date(Date.UTC(y, m - 1, d)), end: ctx.now }])
+  // The week from Monday 00:00 in New York, not UTC midnight, which is Sunday
+  // evening there (audit, 10 October 2026).
+  const { boards, updatedAt } = await loadPublishingWeeks(ctx.now, [{ start: weekBounds(start).start, end: ctx.now }])
+  // A stale read would announce a client as behind on pages it already
+  // published: say nothing until the boards are read again.
+  if (!updatedAt || ctx.now.getTime() - Date.parse(updatedAt) > SNAPSHOT_FRESH_MS) return []
   const readers = ctx.aud.withTool('publishing')
   const out: Draft[] = []
   for (const b of boards) {

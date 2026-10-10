@@ -1,5 +1,5 @@
 // Data loader for the Budget Usage Report settings (clients & budgets, people &
-// rates, change history, publishing targets). Extracted from the old
+// rates, change history). Extracted from the old
 // BudgetUsageSettings component so the Settings page can compose these into its
 // own left-nav sections.
 
@@ -12,7 +12,6 @@ import { I7_PROJECTS } from '@/lib/tsheets/i7report'
 import type { ClientWithBudget } from '@/components/tsheets/settings/ClientsTab'
 import type { PersonWithAssignments, DirectoryOption } from '@/components/tsheets/settings/PeopleTab'
 import type { AuditEntry } from '@/components/tsheets/settings/HistoryTab'
-import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
 
 /** Change history entries about budgets, which carry no pay. */
 const BUDGET_ENTITIES = new Set(['budget', 'monthly_budget', 'project_budget', 'project_month_hours', 'budget_history'])
@@ -23,8 +22,6 @@ export interface BudgetUsageData {
   auditLog: AuditEntry[]
   directoryOptions: DirectoryOption[]
   syncedAt: string | null
-  publishingTargets: PublishingTargetRow[]
-  publishingAudit: AuditLogRow[]
 }
 
 /**
@@ -55,8 +52,6 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
     { data: projBudgetsRaw },
     { data: monthlyRaw },
     { data: projMonthRaw },
-    { data: pubTargetsRaw },
-    { data: pubAuditRaw },
     { data: allPeopleRaw },
   ] = await Promise.all([
     supabase.from('tr_clients').select('id, name, active').is('parent_id', null).order('name'),
@@ -111,8 +106,6 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
     supabase.from('tr_project_budgets').select('client_id, project, hours_allocated').is('effective_to', null),
     supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount').order('month'),
     supabase.from('i7_project_month_hours').select('project, month, hours_allocated').order('month'),
-    supabase.from('publishing_targets').select('*').eq('period_type', 'weekly').order('board_short', { ascending: true }).order('language', { ascending: true }),
-    supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(30),
     supabase.from('people').select('id, full_name'),
   ])
 
@@ -255,9 +248,7 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
     auditLog,
     directoryOptions: directoryOptions as DirectoryOption[],
     syncedAt,
-    publishingTargets: pubTargetsRaw ?? [],
     // action is insert, update or delete by the column's CHECK constraint.
-    publishingAudit: (pubAuditRaw ?? []) as AuditLogRow[],
   }
 }
 

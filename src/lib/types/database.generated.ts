@@ -1801,6 +1801,51 @@ export type Database = {
         }
         Relationships: []
       }
+      publishing_publishers: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          name: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          name: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      publishing_target_periods: {
+        Row: {
+          board_id: string
+          id: number
+          language: string
+          target_value: number
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          board_id: string
+          id?: number
+          language: string
+          target_value: number
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          board_id?: string
+          id?: number
+          language?: string
+          target_value?: number
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: []
+      }
       publishing_targets: {
         Row: {
           board_id: string
@@ -3012,6 +3057,21 @@ export type Database = {
           launch: string
           user_id: string
         }[]
+      }
+      publishing_remove_target: {
+        Args: { p_actor: string; p_id: string; p_week: string }
+        Returns: boolean
+      }
+      publishing_set_target: {
+        Args: {
+          p_actor: string
+          p_board: string
+          p_language: string
+          p_short: string
+          p_value: number
+          p_week: string
+        }
+        Returns: undefined
       }
       report_counted_events: {
         Args: { p_accounts: number[] }

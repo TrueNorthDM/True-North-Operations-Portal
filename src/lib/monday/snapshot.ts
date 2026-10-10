@@ -107,7 +107,16 @@ async function mondayCall<T>(
 
     const data = await r.json()
     if (data.errors) {
-      throw new Error(`Monday GraphQL${label ? ` [${label}]` : ''}: ${JSON.stringify(data.errors).slice(0, 300)}`)
+      // Monday's complexity budget and rate limit answer 200 with an error:
+      // worth a wait and another try, like a 429 (audit, 10 October 2026).
+      const said = JSON.stringify(data.errors)
+      if (/complexity|rate limit|budget|too many/i.test(said) && attempt < MAX_ATTEMPTS) {
+        const wait = Math.min(30_000, 2000 * Math.pow(2, attempt - 1))
+        console.warn(`[snapshot ${label}] Monday asked to slow down, attempt ${attempt}, retrying in ${wait}ms`)
+        await new Promise((res) => setTimeout(res, wait))
+        return mondayCall<T>(token, query, variables, label, attempt + 1)
+      }
+      throw new Error(`Monday GraphQL${label ? ` [${label}]` : ''}: ${said.slice(0, 300)}`)
     }
     return data.data as T
   } catch (err) {
@@ -173,7 +182,9 @@ async function fetchBoardItems(
     `${label} items page 0`,
   )
   const board = first.boards?.[0]
-  if (!board) return { items: [], groups: [] }
+  // No board is not an empty board: written as one, it replaced the stored
+  // snapshot and its published pages with nothing (audit, 10 October 2026).
+  if (!board) throw new Error(`Monday returned no board ${boardId}${label ? ` [${label}]` : ''}`)
 
   const items: MondayItem[] = [...(board.items_page?.items || [])]
   const groups = board.groups || []
@@ -200,14 +211,18 @@ async function fetchBoardItems(
       `${label} items page ${guard + 1}`,
     )
     const page = nxt.next_items_page
-    if (!page) break
+    if (!page) throw new Error(`Monday returned no next page for board ${boardId}${label ? ` [${label}]` : ''}`)
     cursor = page.cursor
     items.push(...(page.items || []))
     guard++
     if (!page.items || page.items.length === 0) break
   }
 
-  return { items, groups }
+  // Monday can hand the same item back twice when items change while the
+  // pages are read; one page counts once.
+  const seen = new Set<string>()
+  const unique = items.filter(it => (seen.has(it.id) ? false : (seen.add(it.id), true)))
+  return { items: unique, groups }
 }
 
 /* ---------- Activity logs (parallel chunks) ---------- */
@@ -258,6 +273,9 @@ async function fetchBoardActivity(
           `${label} log chunk ${c.idx}`,
         )
         const logs = r.boards?.[0]?.activity_logs || []
+        // A chunk at its limit may have more: what is missing would be
+        // published pages with no "Done", so it fails rather than undercount.
+        if (logs.length >= 10000) throw new Error(`chunk ${c.idx} reached its 10,000 entry limit`)
 
         for (const log of logs) {
           if (!log || !log.event) continue
@@ -291,8 +309,11 @@ async function fetchBoardActivity(
   const workerCount = Math.min(CONCURRENCY, chunks.length)
   await Promise.all(Array.from({ length: workerCount }, () => worker()))
 
+  // One chunk missing is a stretch of published pages missing, and writing
+  // that over the stored snapshot showed a week at 0 for four hours. The board
+  // fails instead, and keeps what it had (audit, 10 October 2026).
   if (failed > 0) {
-    console.warn(`[snapshot ${label}] ${failed}/${chunks.length} log chunks failed`)
+    throw new Error(`${failed} of ${chunks.length} activity log chunks failed${label ? ` [${label}]` : ''}`)
   }
   return out
 }

@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { lastFourWeeks, weekLabel } from './publishing-weeks'
 
-const at = (iso: string) => new Date(`${iso}T12:00:00Z`)
-const ymd = (d: Date) => d.toISOString().slice(0, 10)
+const at = (iso: string) => new Date(`${iso}T16:00:00Z`)
+// The New York day: weeks are cut in New York since 10 October 2026.
+const ymd = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d)
+const nyDay = (d: Date) => new Date(`${ymd(d)}T12:00:00Z`).getUTCDay()
 const range = (d: Date) => lastFourWeeks(d).map(w => `${ymd(w.start)}..${ymd(w.end)}`)
 
 describe('lastFourWeeks', () => {
@@ -23,8 +25,8 @@ describe('lastFourWeeks', () => {
     const weeks = lastFourWeeks(at('2026-09-09'))
     expect(weeks).toHaveLength(4)
     for (const w of weeks) {
-      expect(w.start.getUTCDay()).toBe(1)   // Monday
-      expect(w.end.getUTCDay()).toBe(0)     // Sunday
+      expect(nyDay(w.start)).toBe(1)   // Monday
+      expect(nyDay(w.end)).toBe(0)     // Sunday
       // end is the last moment of Sunday, so compare the dates, not the span.
       expect(ymd(w.end) > ymd(w.start)).toBe(true)
       const days = Math.floor((+w.end - +w.start) / 86_400_000)
@@ -54,6 +56,14 @@ describe('lastFourWeeks', () => {
       '2026-12-28..2027-01-03',
       '2027-01-04..2027-01-10',
     ])
+  })
+
+  // Cut on the UTC day, a page published Sunday 8:30pm in New York fell in the
+  // following week (audit, 10 October 2026).
+  it('keeps Sunday evening in New York in its own week', () => {
+    const [, , , last] = lastFourWeeks(at('2026-09-09'))
+    const sundayEvening = new Date('2026-09-07T00:30:00Z')   // Sun 6 Sep, 8:30pm EDT
+    expect(+sundayEvening >= +last.start && +sundayEvening <= +last.end).toBe(true)
   })
 
   it('leaves no gap or overlap between consecutive weeks', () => {

@@ -1,18 +1,12 @@
 /**
  * boards/config.ts
  *
- * Board configuration + label semantics for the Boards Review section, ported
- * verbatim from the COE Dashboard (index.html). This is pure data + helpers
- * (no UI, no I/O) so it's shared by both the server (snapshot enrichment) and
- * the client (rendering).
- *
- * Phase B note: this replaces the inline `BOARDS` / `LABEL_SEMANTICS` constants
- * the legacy boards.html still uses. Keep the two in sync until cutover (B6).
+ * The Monday boards the portal reads for publishing (and the translation boards
+ * the Monday inventory still lists), ported from the COE Dashboard. Pure data
+ * and helpers (no UI, no I/O). public/boards.html, the dashboard itself, keeps
+ * its own copy of the columns it renders; the counting rules are shared through
+ * /api/targets (publishing-rules.ts).
  */
-
-/** Activity-log window fetched from Monday (days). Balances Custom-filter
- *  coverage against payload size; the dashboard's longest period is ~90d. */
-export const ACTIVITY_LOG_DAYS = 180
 
 export interface BoardStage {
   col: string
@@ -150,49 +144,7 @@ export const BOARDS: Record<string, BoardConfig> = {
   },
 }
 
-/** Publishers that count toward the Publishing dashboard metric. Exact,
- *  case-insensitive match against the full name (substring matching caused
- *  false positives). */
-export const PUBLISHERS = ['Samuel Manzi', 'Wendy Cacka'] as const
-
-export function isPublisher(name: string | null | undefined): boolean {
-  const n = String(name || '').trim().toLowerCase()
-  return PUBLISHERS.some((p) => p.toLowerCase() === n)
-}
-
-/** What each status label means in the workflow. */
-export type LabelSemantic = 'complete' | 'skipped' | 'active' | 'notstarted' | 'stuck' | 'waiting'
-
-export const LABEL_SEMANTICS: Record<string, LabelSemantic> = {
-  Done: 'complete',
-  Yes: 'complete',
-  "Let's Do it!": 'complete',
-  Activated: 'complete',
-  Published: 'complete',
-  'Work complete': 'complete',
-  'Not Relevant': 'skipped',
-  'Not Needed': 'skipped',
-  'Swahili Only': 'skipped',
-  'Working on it': 'active',
-  'Being Translated': 'active',
-  'Being Revised': 'active',
-  'Re-Worked': 'active',
-  'New Language': 'active',
-  "Hasn't Started Yet": 'active',
-  Stuck: 'stuck',
-  'On Hold': 'stuck',
-  UNKNOWN: 'stuck',
-  'DO NOT USE': 'stuck',
-  'Waiting / 2nd Language': 'waiting',
-  'Waiting / 2nd Link': 'waiting',
-  'With Interns': 'waiting',
-  'New In': 'notstarted',
-}
-
-export function labelSemantic(label: string | null | undefined): LabelSemantic {
-  if (!label) return 'notstarted'
-  return LABEL_SEMANTICS[label] || 'notstarted'
-}
+/** Who counts as a publisher is a list in Settings since 10 October 2026: publishing-rules.ts. */
 
 /** Board IDs that run in publishing mode (the Goals view). */
 export const PUBLISHING_BOARD_IDS = Object.keys(BOARDS).filter((id) => BOARDS[id].publishingMode)

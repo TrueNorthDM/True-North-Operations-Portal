@@ -8,14 +8,12 @@
  * Two stages, mirroring the legacy flow:
  *   1. enrichPublishingBoard(), turn raw snapshot items + activity logs into
  *      PublishedItem[] (language, publishers, whether/when published).
- *   2. computePublishingMetrics(), aggregate published items vs targets into
- *      pace-vs-target numbers for the selected period.
+ *   2. computePublishingMetrics(), one week of published items against that
+ *      week's targets.
  */
 
-import { BOARDS, isPublisher, type BoardConfig } from './config'
+import { BOARDS, type BoardConfig } from './config'
 import type { SnapshotBoard, SnapshotColumnValue, SnapshotLog, TargetsMap } from './types'
-
-export type Period = 'week' | 'lastweek' | '2weeks' | 'month' | 'quarter' | 'all' | 'custom'
 
 export interface PublishedItem {
   id: string
@@ -179,100 +177,7 @@ export function enrichPublishingBoard(board: SnapshotBoard, config: BoardConfig)
   return out
 }
 
-/* ---------- Date range + period → weeks ---------- */
-
-/** Map a period (+ optional custom range) to concrete from/to dates. */
-export function getDateRange(
-  period: Period,
-  customFrom?: string,
-  customTo?: string,
-  now: Date = new Date(),
-): { from: Date | null; to: Date | null } {
-  if (period === 'all') return { from: null, to: null }
-  let from: Date | null = null
-  let to: Date | null = null
-  if (period === 'week') {
-    const monday = new Date(now)
-    const day = monday.getDay()
-    monday.setDate(monday.getDate() - day + (day === 0 ? -6 : 1))
-    monday.setHours(0, 0, 0, 0)
-    from = monday
-    to = new Date(now)
-  } else if (period === 'lastweek') {
-    const monday = new Date(now)
-    const day = monday.getDay()
-    monday.setDate(monday.getDate() - day + (day === 0 ? -6 : 1) - 7)
-    monday.setHours(0, 0, 0, 0)
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 7)
-    from = monday
-    to = sunday
-  } else if (period === '2weeks') {
-    from = new Date(now.getTime() - 14 * 86400000)
-    to = new Date(now)
-  } else if (period === 'month') {
-    from = new Date(now.getFullYear(), now.getMonth(), 1)
-    to = new Date(now)
-  } else if (period === 'quarter') {
-    from = new Date(now.getTime() - 90 * 86400000)
-    to = new Date(now)
-  } else if (period === 'custom') {
-    if (customFrom) from = new Date(customFrom)
-    if (customTo) {
-      to = new Date(customTo)
-      to.setHours(23, 59, 59, 999)
-    }
-  }
-  return { from, to }
-}
-
-/** Count how many calendar weeks (Mon→Sun) touch the month of a date. */
-export function countWeeksInMonth(date: Date): number {
-  const y = date.getFullYear()
-  const m = date.getMonth()
-  const first = new Date(y, m, 1)
-  const last = new Date(y, m + 1, 0)
-  const dow1 = first.getDay() || 7
-  const dow2 = last.getDay() || 7
-  const mondayStart = new Date(first)
-  mondayStart.setDate(first.getDate() - (dow1 - 1))
-  const sundayEnd = new Date(last)
-  sundayEnd.setDate(last.getDate() + (7 - dow2))
-  return Math.round(((sundayEnd.getTime() - mondayStart.getTime()) / 86400000 + 1) / 7)
-}
-
-/** How many weeks the target should cover, plus a human label for the period.
- *  Targets are always the FULL period total, never pro-rated to elapsed time. */
-export function computeWeeksFractional(
-  period: Period,
-  from: Date | null,
-  to: Date | null,
-): { weeks: number; label: string } {
-  const periodTo = to ?? new Date()
-  const daysInPeriod = from ? Math.max(0.5, (periodTo.getTime() - from.getTime()) / 86400000) : 90
-  switch (period) {
-    case 'week':
-      return { weeks: 1, label: 'this week' }
-    case 'lastweek':
-      return { weeks: 1, label: 'last week' }
-    case '2weeks':
-      return { weeks: 2, label: 'last 2 weeks' }
-    case 'month': {
-      const w = countWeeksInMonth(from ?? new Date())
-      return { weeks: w, label: `this month (${w}wk)` }
-    }
-    case 'quarter':
-      return { weeks: 13, label: 'last quarter' }
-    case 'all':
-      return { weeks: 13, label: 'last 90d (ref.)' }
-    case 'custom':
-      return { weeks: daysInPeriod / 7, label: `custom (${daysInPeriod.toFixed(1)}d)` }
-    default:
-      return { weeks: daysInPeriod / 7, label: `${daysInPeriod.toFixed(1)} days` }
-  }
-}
-
-/* ---------- Stage 2: aggregate vs targets ---------- */
+/* ---------- Count one week against its targets ---------- */
 
 export interface LangStat {
   lang: string
@@ -290,74 +195,64 @@ export interface BoardStat {
   target: number
   pct: number
   langs: LangStat[]
+  /**
+   * Published by a publisher in the week, in a language with no target (or
+   * none at all). Not part of done or target: the score is against the
+   * targeted languages, and these are shown beside it (decided 10 October 2026).
+   */
+  untargeted: number
 }
 
-export interface PublishingMetrics {
-  periodLabel: string
-  weeks: number
-  totals: { done: number; target: number; pct: number }
-  boards: BoardStat[]
-}
-
-/** Aggregate published items against per-board/language weekly targets. */
+/**
+ * One week of published pages against that week's weekly targets.
+ *
+ * The week is the caller's: Monday to Sunday in New York (publishing-rules.ts).
+ * An item counts once, on its last "Done", when one of its publishers is on the
+ * list; one page published by two of them is still one page.
+ */
 export function computePublishingMetrics(
   items: PublishedItem[],
   targets: TargetsMap,
-  period: Period,
-  from: Date | null,
-  to: Date | null,
-  boardFilter = 'all',
-): PublishingMetrics {
-  const periodTo = to ?? new Date()
-  const periodFrom = from
-  const { weeks, label } = computeWeeksFractional(period, from, to)
-
-  // Group published items by board → language (same gates as the COE).
+  from: Date,
+  to: Date,
+  isPublisher: (name: string | null | undefined) => boolean,
+): { boards: BoardStat[] } {
   const data: Record<string, Record<string, number>> = {}
+  const seen = new Set<string>()
   for (const it of items) {
-    const config = BOARDS[it.boardId]
-    if (!config?.publishingMode) continue
-    if (boardFilter !== 'all' && it.boardId !== boardFilter) continue
+    if (!BOARDS[it.boardId]?.publishingMode) continue
     if (!it.publishers.some(isPublisher)) continue
     if (!it.isPublished || !it.publishedDate) continue
     const d = new Date(it.publishedDate)
-    if (periodFrom && d < periodFrom) continue
-    if (periodTo && d > periodTo) continue
-    if (!data[it.boardId]) data[it.boardId] = {}
+    if (d < from || d > to) continue
+    // Monday can return an item twice when items change while it is read.
+    const key = `${it.boardId}:${it.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
     const lang = it.language || '-'
-    data[it.boardId][lang] = (data[it.boardId][lang] || 0) + 1
+    ;(data[it.boardId] ??= {})[lang] = (data[it.boardId][lang] || 0) + 1
   }
 
-  const boardEntries = Object.entries(targets).filter(([bid]) => boardFilter === 'all' || bid === boardFilter)
-  let totalTarget = 0
-  let totalDone = 0
   const boards: BoardStat[] = []
-
-  for (const [bid, langTargets] of boardEntries) {
+  for (const [bid, langTargets] of Object.entries(targets)) {
     const config = BOARDS[bid]
     if (!config) continue
     let bTarget = 0
     let bDone = 0
     const langs: LangStat[] = []
     for (const [lang, perWeek] of Object.entries(langTargets)) {
-      const target = perWeek * weeks
       const done = data[bid]?.[lang] || 0
-      const pct = target ? Math.round((100 * done) / target) : 0
-      bTarget += target
+      langs.push({ lang, perWeek, done, target: perWeek, pct: perWeek ? Math.round((100 * done) / perWeek) : 0 })
+      bTarget += perWeek
       bDone += done
-      langs.push({ lang, perWeek, done, target, pct })
     }
-    const pct = bTarget ? Math.round((100 * bDone) / bTarget) : 0
-    boards.push({ boardId: bid, name: config.name, short: config.short, done: bDone, target: bTarget, pct, langs })
-    totalTarget += bTarget
-    totalDone += bDone
+    const untargeted = Object.entries(data[bid] ?? {})
+      .filter(([lang]) => !(lang in langTargets))
+      .reduce((sum, [, n]) => sum + n, 0)
+    boards.push({
+      boardId: bid, name: config.name, short: config.short,
+      done: bDone, target: bTarget, pct: bTarget ? Math.round((100 * bDone) / bTarget) : 0, langs, untargeted,
+    })
   }
-
-  const totalPct = totalTarget ? Math.round((100 * totalDone) / totalTarget) : 0
-  return {
-    periodLabel: label,
-    weeks,
-    totals: { done: totalDone, target: totalTarget, pct: totalPct },
-    boards,
-  }
+  return { boards }
 }

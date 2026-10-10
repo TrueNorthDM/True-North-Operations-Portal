@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Boards Review — Translations &amp; Publishing</title>
-  <meta name="description" content="Editorial tracking dashboard for the Translations &amp; Publishing workflow, integrated with Monday.com" />
+  <title>Publishing Goals</title>
+  <meta name="description" content="Publishing pace versus weekly targets for the AAAF and HFA Publishing boards, read from Monday.com" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800;900&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -13,8 +13,6 @@
   <!-- PDF export: jsPDF + autoTable (carregados pro botão Export PDF funcionar) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <!-- Supabase JS client: auth (login/logout/session) + DB calls (admin panel writes) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     /* True North Digital Marketing brand. */
     :root {
@@ -29,7 +27,7 @@
       --border-2:    #d5dbe2;
 
       /* Text */
-      --text:        #012358;   /* headings, numbers — navy ink */
+      --text:        #012358;   /* headings, numbers - navy ink */
       --text-soft:   #435066;   /* body */
       --text-dim:    #8593a4;   /* secondary labels */
 
@@ -46,7 +44,7 @@
       --coral-bg:    rgba(214,69,69,0.12);
       --yellow:      #F2C40A;   /* gold accent */
       --yellow-bg:   rgba(242,196,10,0.15);
-      --teal:        #1E7D7F;   /* brand teal — primary accent */
+      --teal:        #1E7D7F;   /* brand teal - primary accent */
       --teal-bg:     rgba(30,125,127,0.12);
 
       /* Sidebar */
@@ -380,7 +378,7 @@
     .config-bar.compact #loadBtn { grid-column: 2; }
 
     /* Modo produção (Vercel): token vive no server, então input/Save/edit
-       desaparecem. O botão "Load data" também some — o usuário usa o
+       desaparecem. O botão "Load data" também some - o usuário usa o
        botão de refresh do hero. Sobra apenas o status pill, super
        discreto, encostado no canto. Sem barra de progresso indeterminada,
        sem labels técnicos. */
@@ -560,35 +558,10 @@
       user-select: none;
     }
 
-    /* ---------- ADMIN BUTTON ---------- */
-    .admin-btn {
-      height: 36px;
-      padding: 0 14px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      color: var(--text-dim);
-      font-family: var(--font-heading);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      transition: all 0.15s;
-    }
-    .admin-btn:hover { border-color: var(--border-2); color: var(--text-soft); }
-    .admin-btn svg { width: 14px; height: 14px; }
-    .admin-btn.is-admin {
-      background: #1E7D7F;
-      color: #fff;
-      border-color: #1E7D7F;
-    }
-    .admin-btn.is-admin:hover { background: #0f6e56; border-color: #0f6e56; }
-
-    /* ---------- AUTH MODAL ---------- */
+    /* ---------- MODAL BACKDROP (info modal) ----------
+       The login, admin panel and targets editor that used to share these
+       styles are gone (audit, 10 October 2026): targets are edited in the
+       portal's Settings now. Only the info modal still uses the backdrop. */
     .auth-backdrop {
       position: fixed; inset: 0;
       background: rgba(38, 57, 84, 0.55);
@@ -596,43 +569,6 @@
       z-index: 200;
       display: flex; align-items: center; justify-content: center;
       padding: 32px;
-    }
-    .auth-modal {
-      background: var(--bg-card, #fff);
-      border-radius: 12px;
-      width: 100%; max-width: 420px;
-      max-height: calc(100vh - 64px);   /* 32px padding × 2 do backdrop */
-      box-shadow: 0 20px 60px rgba(38, 57, 84, 0.3);
-      overflow: hidden;
-      /* flex column garante que header/tabs/footer fiquem fixos e o
-         conteúdo do meio (admin-content) seja quem rola */
-      display: flex;
-      flex-direction: column;
-    }
-    /* Header e user-bar não encolhem — sempre visíveis no topo */
-    .auth-modal-header,
-    .admin-user-bar,
-    .admin-tabs { flex-shrink: 0; }
-    /* admin-content cresce e rola sozinho quando conteúdo é maior que viewport */
-    .admin-content {
-      flex: 1 1 auto;
-      overflow-y: auto;
-      min-height: 0;   /* truque pra flex permitir scroll no filho */
-    }
-    /* Save bar fica fixo no rodapé do modal */
-    .targets-save-bar {
-      flex-shrink: 0;
-    }
-    .auth-modal-header {
-      padding: 22px 28px 18px;
-      border-bottom: 1px solid var(--border, #e4e7ec);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .auth-modal-title {
-      margin: 0;
-      font-family: var(--font-heading);
-      font-size: 16px;
-      color: var(--text, #012358);
     }
     .auth-close-btn {
       background: transparent; border: none; cursor: pointer;
@@ -643,290 +579,33 @@
       border-radius: 6px;
     }
     .auth-close-btn:hover { background: var(--bg, #f1efe8); color: var(--text, #012358); }
-    .auth-modal-body { padding: 22px 28px 26px; }
-    .auth-field { margin-bottom: 14px; }
-    .auth-field label {
-      display: block;
-      font-size: 11px; font-weight: 600;
-      color: var(--text-dim, #667085);
-      letter-spacing: 0.06em; text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-    .auth-field input {
-      width: 100%; box-sizing: border-box;
-      padding: 10px 12px;
-      border: 1px solid var(--border, #e4e7ec);
-      border-radius: 8px;
-      font-size: 14px; font-family: inherit;
-      background: var(--bg, #f6f4ee);
-      color: var(--text, #012358);
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .auth-field input:focus { border-color: #1E7D7F; }
-    .auth-actions {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; margin-top: 18px;
-    }
-    .auth-forgot {
-      font-size: 12px; color: var(--text-dim, #667085);
-      text-decoration: none; cursor: pointer; background: none; border: none;
-      font-family: inherit; padding: 0;
-    }
-    .auth-forgot:hover { color: #1E7D7F; }
-    .auth-submit {
-      background: #1E7D7F; color: #fff; border: none;
-      padding: 10px 22px; border-radius: 8px;
-      font-family: var(--font-heading); font-weight: 700; font-size: 12px;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      cursor: pointer; transition: background 0.15s;
-    }
-    .auth-submit:hover { background: #0f6e56; }
-    .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-    .auth-error {
-      margin-top: 14px; padding: 10px 12px;
-      background: #fef2f2; color: #991b1b;
-      border-radius: 8px; font-size: 13px;
-      border: 1px solid #fecaca;
-      display: none;
-    }
-    .auth-error.show { display: block; }
-    .auth-info {
-      margin-top: 14px; padding: 10px 12px;
-      background: #ecfdf5; color: #065f46;
-      border-radius: 8px; font-size: 13px;
-      border: 1px solid #a7f3d0;
-      display: none;
-    }
-    .auth-info.show { display: block; }
 
-    /* ---------- ADMIN PANEL (placeholder phase 5.3, full UI in 5.4) ---------- */
-    .admin-modal { max-width: 720px; }
-    .admin-user-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 28px; background: var(--bg, #f6f4ee);
-      border-bottom: 1px solid var(--border, #e4e7ec);
-      font-size: 13px;
-    }
-    .admin-user-info { color: var(--text-dim, #667085); }
-    .admin-user-info strong { color: var(--text, #012358); }
-    .admin-logout {
-      background: transparent;
-      border: 1px solid var(--border, #e4e7ec);
-      color: var(--text-dim, #667085);
-      padding: 6px 14px; border-radius: 6px;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      font-family: var(--font-heading);
-    }
-    .admin-logout:hover { color: var(--text, #012358); border-color: var(--border-2, #c0c8d3); }
-    .admin-content {
-      padding: 28px;
-      min-height: 200px;
-    }
-    .admin-placeholder {
-      text-align: center;
-      color: var(--text-dim, #667085);
-      padding: 40px 20px;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-    .admin-placeholder strong { color: var(--text, #012358); display: block; margin-bottom: 6px; font-size: 14px; }
-
-    /* ---------- TARGETS EDITOR (admin panel content) ---------- */
-    .targets-editor { display: flex; flex-direction: column; gap: 18px; }
-    .targets-board-card {
-      background: var(--bg, #f6f4ee);
-      border: 1px solid var(--border, #e4e7ec);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .targets-board-header {
+    /* ---------- PAGE ALERTS ----------
+       A failed read says so on the page in a plain sentence (audit, 10 October
+       2026). It used to fall back to hardcoded targets in silence, or to put
+       the raw HTTP status and body in an alert box. */
+    .page-alert {
+      margin: 0 0 16px;
       padding: 12px 16px;
-      background: var(--bg-card, #fff);
-      border-bottom: 1px solid var(--border, #e4e7ec);
-      display: flex; align-items: center; justify-content: space-between;
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.5;
     }
-    .targets-board-title {
-      font-family: var(--font-heading);
-      font-size: 13px; font-weight: 700;
-      color: var(--text, #012358);
-      letter-spacing: 0.04em;
+    .page-alert[hidden] { display: none; }
+    .pub-unavailable {
+      padding: 24px 0;
+      color: #991b1b;
+      font-size: 14px;
     }
-    .targets-board-sub {
-      font-size: 11px; color: var(--text-dim, #667085);
+    .pub-other-row {
+      display: flex; justify-content: space-between; gap: 12px;
+      padding: 8px 0 2px;
+      font-size: 12px;
+      color: var(--text-dim);
     }
-    .targets-table {
-      width: 100%; border-collapse: collapse;
-    }
-    .targets-table th {
-      text-align: left;
-      padding: 8px 14px;
-      font-size: 10px; font-weight: 600;
-      color: var(--text-dim, #667085);
-      letter-spacing: 0.08em; text-transform: uppercase;
-      border-bottom: 1px solid var(--border, #e4e7ec);
-      background: rgba(0,0,0,0.02);
-    }
-    .targets-table td {
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--border, #e4e7ec);
-      font-size: 13px;
-      color: var(--text, #012358);
-      vertical-align: middle;
-    }
-    .targets-table tr:last-child td { border-bottom: none; }
-    .targets-table td.target-lang { font-weight: 500; }
-    .targets-table input.target-input {
-      width: 70px;
-      padding: 5px 8px;
-      border: 1px solid var(--border, #e4e7ec);
-      border-radius: 6px;
-      font-size: 13px; font-family: inherit;
-      text-align: center;
-      background: var(--bg-card, #fff);
-      color: var(--text, #012358);
-      outline: none;
-    }
-    .targets-table input.target-input:focus { border-color: #1E7D7F; }
-    .targets-table input.target-input.dirty {
-      border-color: #d97706;
-      background: #fef9e8;
-    }
-    .target-row-delete {
-      background: transparent; border: none;
-      color: var(--text-dim, #667085);
-      cursor: pointer; padding: 4px 8px;
-      border-radius: 6px; font-size: 16px; line-height: 1;
-    }
-    .target-row-delete:hover { background: #fee2e2; color: #991b1b; }
-    .targets-add-row {
-      display: flex; gap: 8px; align-items: center;
-      padding: 10px 14px;
-      background: rgba(68, 173, 133, 0.05);
-      border-top: 1px dashed var(--border, #e4e7ec);
-    }
-    .targets-add-row input {
-      padding: 6px 10px;
-      border: 1px solid var(--border, #e4e7ec);
-      border-radius: 6px;
-      font-size: 12px; font-family: inherit;
-      outline: none;
-      background: var(--bg-card, #fff);
-      color: var(--text, #012358);
-    }
-    .targets-add-row input.lang-input { flex: 1; min-width: 0; }
-    .targets-add-row input.value-input { width: 70px; text-align: center; }
-    .targets-add-btn {
-      background: #1E7D7F; color: #fff; border: none;
-      padding: 6px 14px; border-radius: 6px;
-      font-family: var(--font-heading); font-weight: 700;
-      font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
-      cursor: pointer;
-    }
-    .targets-add-btn:hover { background: #0f6e56; }
-    .targets-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .targets-save-bar {
-      padding: 14px 28px;
-      background: var(--bg-card, #fff);
-      border-top: 1px solid var(--border, #e4e7ec);
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px;
-    }
-    .targets-save-status { font-size: 12px; color: var(--text-dim, #667085); }
-    .targets-save-status.dirty { color: #d97706; font-weight: 600; }
-    .targets-save-status.saved { color: #065f46; }
-    .targets-save-status.error { color: #991b1b; }
-    .targets-save-btn {
-      background: #1E7D7F; color: #fff; border: none;
-      padding: 9px 22px; border-radius: 8px;
-      font-family: var(--font-heading); font-weight: 700;
-      font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
-      cursor: pointer;
-    }
-    .targets-save-btn:hover { background: #0f6e56; }
-    .targets-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    /* Loader state — quando o editor está carregando dados do Supabase */
-    .targets-loading {
-      padding: 40px 20px; text-align: center;
-      color: var(--text-dim, #667085); font-size: 13px;
-    }
-    .admin-modal { max-width: 720px; }
-
-    /* ---------- ADMIN TABS (Targets / History) ---------- */
-    .admin-tabs {
-      display: flex;
-      background: var(--bg-card, #fff);
-      border-bottom: 1px solid var(--border, #e4e7ec);
-      padding: 0 20px;
-      gap: 4px;
-    }
-    .admin-tab {
-      background: transparent;
-      border: none;
-      padding: 12px 18px;
-      font-family: var(--font-heading);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--text-dim, #667085);
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -1px;
-      transition: color 0.15s, border-color 0.15s;
-    }
-    .admin-tab:hover { color: var(--text-soft, #435066); }
-    .admin-tab.active {
-      color: #1E7D7F;
-      border-bottom-color: #1E7D7F;
-    }
-    .admin-tab-panel { display: none; }
-    .admin-tab-panel.active { display: block; }
-
-    /* ---------- HISTORY (audit log) ---------- */
-    .history-list { display: flex; flex-direction: column; }
-    .history-entry {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border, #e4e7ec);
-      display: flex; flex-direction: column; gap: 4px;
-    }
-    .history-entry:last-child { border-bottom: none; }
-    .history-entry-meta {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 11px;
-      color: var(--text-dim, #667085);
-    }
-    .history-entry-author { font-weight: 600; color: var(--text-soft, #435066); }
-    .history-entry-author.system { color: #6366f1; font-style: italic; }
-    .history-entry-date::before { content: '·'; margin-right: 8px; }
-    .history-entry-action {
-      font-size: 13px;
-      color: var(--text, #012358);
-      line-height: 1.4;
-    }
-    .history-action-tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 10px; font-weight: 700;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-    .history-action-tag.action-insert { background: #d1fae5; color: #065f46; }
-    .history-action-tag.action-update { background: #fef9e8; color: #92400e; }
-    .history-action-tag.action-delete { background: #fee2e2; color: #991b1b; }
-    .history-loading {
-      padding: 40px 20px; text-align: center;
-      color: var(--text-dim, #667085); font-size: 13px;
-    }
-    .history-empty {
-      padding: 40px 20px; text-align: center;
-      color: var(--text-dim, #667085); font-size: 13px;
-    }
-    /* History não tem save bar — esconde quando essa aba está ativa */
-    .admin-content.history-active + .targets-save-bar { display: none; }
 
     /* ========== KPI GRID ========== */
     .kpi-grid {
@@ -975,7 +654,7 @@
 
     .kpi-arrow svg { width: 14px; height: 14px; }
 
-    /* Botão de info ao lado da arrow — explica o que cada KPI mede.
+    /* Botão de info ao lado da arrow - explica o que cada KPI mede.
        Discreto (50% opacity), realça no hover. event.stopPropagation no JS
        evita que o click conte como click no card (que aciona drill-down). */
     .kpi-info-btn {
@@ -1002,7 +681,7 @@
       flex-shrink: 0;
     }
 
-    /* Modal de info — reusa o estilo do auth-backdrop pra consistência */
+    /* Modal de info - reusa o estilo do auth-backdrop pra consistência */
     .info-modal {
       background: var(--bg-card, #fff);
       border-radius: 12px;
@@ -1065,7 +744,7 @@
     }
 
     /* Texto dos badges em tom ESCURO da própria cor (não a cor clara em cima
-       do fundo claro, que dava contraste péssimo — ex.: amarelo sobre amarelo).
+       do fundo claro, que dava contraste péssimo - ex.: amarelo sobre amarelo).
        Mantém o fundo tonal mas deixa o texto legível. */
     .kpi .delta-badge.up   { background: var(--green-bg);  color: #2f7d5b; }
     .kpi .delta-badge.down { background: var(--coral-bg);  color: #b23c38; }
@@ -1637,13 +1316,12 @@
 
     .items-table thead th:first-child { padding-left: 18px; }
 
-    /* Coluna de debug do critério de publicação — só na Publishing view.
+    /* Coluna de debug do critério de publicação - só na Publishing view.
        O <body> recebe a classe `view-publishing` via syncViewUI(). */
+    /* Pub debug was shown only to someone signed in to the old admin panel.
+       That sign-in is gone (audit, 10 October 2026), so the technical column
+       stays hidden for everyone; the cells are still drawn for the console. */
     .pub-debug-col { display: none; }
-    /* Pub debug aparece SÓ pra admins logados (body.admin) + apenas na
-       Goals/Publishing view. Pra usuário público fica sempre escondido
-       — é coluna técnica de auditoria do critério de "published". */
-    body.view-publishing.admin .pub-debug-col { display: table-cell; }
 
     /* Coluna Language: visível só na Goals/Publishing view.
        Items de Translation têm linguagens por subitem (não single value),
@@ -1658,12 +1336,12 @@
 
     /* Goals view: filtro de Status / Stage é irrelevante (estamos olhando
        metas, não pipeline). Some o grupo e re-distribui as 3 colunas restantes.
-       Sem filtro de Language — agora é drill-down via clique nas linhas do card. */
+       Sem filtro de Language - agora é drill-down via clique nas linhas do card. */
     body.view-publishing #filterStatusGroup { display: none; }
     body.view-publishing .filters { grid-template-columns: repeat(3, 1fr); }
 
     /* Label dual: "Assignee" em Translation, "Publisher" em Goals.
-       Mesmo `<select id=filterPerson>`, JS não muda — só o texto visual. */
+       Mesmo `<select id=filterPerson>`, JS não muda - só o texto visual. */
     .lbl-goals { display: none; }
     body.view-publishing .lbl-translation { display: none; }
     body.view-publishing .lbl-goals       { display: inline; }
@@ -1676,7 +1354,7 @@
     body.view-publishing .status-chips-row { display: none; }
 
     /* Goals view não usa as métricas de "items completed" / "active
-       contributors" nem o painel "By person" — esses são úteis no contexto
+       contributors" nem o painel "By person" - esses são úteis no contexto
        de Translation (throughput individual e total) mas em Goals geram
        ruído e podem ser confusos (Goals usa critério estrito de "published"
        via log de evento, enquanto essas métricas usam isDone do pipeline).
@@ -1690,7 +1368,7 @@
 
     /* Goals view: card inteiro do KPI vira clicável (drill-down via popup).
        Hover dá um leve destaque pra indicar interação. Só vale pros 3 cards
-       com data-filter (Not Published, Staged, Completed) — Avg time fica out. */
+       com data-filter (Not Published, Staged, Completed) - Avg time fica out. */
     body.view-publishing .kpi[data-filter] {
       cursor: pointer;
       transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
@@ -2510,7 +2188,7 @@
         <!-- DIAGNOSTIC PANEL -->
         <div class="config-bar" id="diagPanel" style="display:none; grid-template-columns: 1fr auto auto; margin-top:-16px;">
           <div>
-            <div style="font-weight:600; color:var(--text); margin-bottom:4px;">🔍 Diagnostic — what the dashboard is reading</div>
+            <div style="font-weight:600; color:var(--text); margin-bottom:4px;">🔍 Diagnostic: what the dashboard is reading</div>
             <div style="font-size:11px; color:var(--text-dim);">Copy this block and paste it back into chat so I can map the statuses correctly.</div>
           </div>
           <button class="btn ghost" id="copyDiagBtn">Copy</button>
@@ -2518,16 +2196,20 @@
           <pre id="diagOutput" style="grid-column:1/-1; margin-top:12px; background:var(--bg); padding:14px 16px; border-radius:var(--radius-sm); max-height:460px; overflow:auto; font-family:var(--font-mono); font-size:11px; line-height:1.6; color:var(--text-soft); white-space:pre; border:1px solid var(--border);"></pre>
         </div>
 
+        <!-- Failed reads, in a plain sentence (audit, 10 October 2026). -->
+        <div class="page-alert" id="targetsError" role="alert" hidden></div>
+        <div class="page-alert" id="loadError" role="alert" hidden></div>
+
         <!-- HERO -->
         <div class="hero">
           <div class="hero-text">
             <h1>Publishing Goals</h1>
-            <p>Publishing pace versus target for the AAAF and HFA Publishing boards over the selected timeframe — tracked from the Publishing column in Monday.</p>
+            <p>Publishing pace versus target for the AAAF and HFA Publishing boards over the selected timeframe, tracked from the Publishing column in Monday.</p>
             <!-- Linha sob o subtítulo: frescor do store + filtro de período (descido
                  pra cá). position:relative ancora o custom-date-range (absolute). -->
             <div class="hero-meta" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:20px; position:relative;">
               <span id="lastUpdated" title="Last data update" style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-soft);white-space:nowrap;">
-                <span>Updated&nbsp;<strong id="lastUpdatedRel">—</strong></span>
+                <span>Updated&nbsp;<strong id="lastUpdatedRel">-</strong></span>
                 <button class="kpi-info-btn" id="scheduleInfoBtn" data-info-key="schedule" title="Update schedule" type="button" aria-label="Update schedule" style="margin-right:0;width:18px;height:18px;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
@@ -2555,11 +2237,11 @@
               </div>
             </div>
           </div>
-          <!-- hero-controls removido — Admin foi pro Settings, refresh virou o
+          <!-- hero-controls removido - Admin foi pro Settings, refresh virou o
                indicador "Updated", e o período desceu pra linha acima. -->
         </div>
 
-        <!-- VIEW SWITCHER (Translation vs Goals — internal id 'publishing' kept)
+        <!-- VIEW SWITCHER (Translation vs Goals - internal id 'publishing' kept)
              A aba Translations está oculta nesta fase do lançamento.
              Pra re-habilitar: remove `style="display:none"` do botão Translations
              e troca `activeView` default de volta pra 'translation' em STORE. -->
@@ -2631,9 +2313,9 @@
                 </div>
               </div>
             </div>
-            <div class="value" id="kpiTotal">—</div>
+            <div class="value" id="kpiTotal">-</div>
             <div class="delta">
-              <span class="delta-badge neutral" id="kpiTotalDelta">— boards</span>
+              <span class="delta-badge neutral" id="kpiTotalDelta">- boards</span>
               <span id="kpiTotalContext">in current view</span>
             </div>
           </div>
@@ -2653,9 +2335,9 @@
                 </div>
               </div>
             </div>
-            <div class="value" id="kpiDone">—</div>
+            <div class="value" id="kpiDone">-</div>
             <div class="delta">
-              <span class="delta-badge up" id="kpiDoneDelta">—%</span>
+              <span class="delta-badge up" id="kpiDoneDelta">-%</span>
               <span>of current view</span>
             </div>
           </div>
@@ -2675,9 +2357,9 @@
                 </div>
               </div>
             </div>
-            <div class="value" id="kpiProgress">—</div>
+            <div class="value" id="kpiProgress">-</div>
             <div class="delta">
-              <span class="delta-badge neutral" id="kpiProgressDelta">—</span>
+              <span class="delta-badge neutral" id="kpiProgressDelta">-</span>
               <span></span>
             </div>
           </div>
@@ -2697,7 +2379,7 @@
                 </div>
               </div>
             </div>
-            <div class="value" id="kpiAvg">—</div>
+            <div class="value" id="kpiAvg">-</div>
             <div class="delta">
               <span class="delta-badge neutral" id="kpiAvgDelta">business days</span>
             </div>
@@ -2713,7 +2395,7 @@
                 <h3 id="chartWeeklyTitle">Completions by language</h3>
                 <div class="chart-sub" id="chartsSub">completed translations grouped by language and week</div>
               </div>
-              <span class="chart-badge" id="kpiContext">—</span>
+              <span class="chart-badge" id="kpiContext">-</span>
             </div>
             <div class="chart-wrap"><canvas id="chartWeekly"></canvas></div>
           </div>
@@ -2722,10 +2404,10 @@
             <div class="chart-header">
               <div>
                 <h3>Goals progress</h3>
-                <div class="chart-sub" id="pubChartSub">pages published vs. target — Sam & Wendy</div>
+                <div class="chart-sub" id="pubChartSub">pages published vs. target</div>
               </div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-                <span class="chart-badge" id="pubChartBadge">—</span>
+                <span class="chart-badge" id="pubChartBadge">-</span>
                 <button class="btn ghost" id="exportPdfBtn" style="padding:6px 12px;font-size:11px;text-transform:none;letter-spacing:0;">⬇ Export PDF</button>
                 <button class="btn ghost" id="exportCsvBtn" style="padding:6px 12px;font-size:11px;text-transform:none;letter-spacing:0;">⬇ Export CSV</button>
               </div>
@@ -2756,9 +2438,9 @@
                 <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
               </svg>
             </div>
-            <div class="metric-big" id="metricDoneNum">—<span class="metric-unit">items</span></div>
+            <div class="metric-big" id="metricDoneNum">-<span class="metric-unit">items</span></div>
             <div class="metric-label">completed</div>
-            <div class="metric-sub" id="metricDoneSub">— awaiting confirmation</div>
+            <div class="metric-sub" id="metricDoneSub">- awaiting confirmation</div>
           </div>
           <div class="metric-card metric-customers">
             <div class="metric-icon">
@@ -2768,13 +2450,13 @@
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
             </div>
-            <div class="metric-big" id="metricPeopleNum">—<span class="metric-unit">people</span></div>
+            <div class="metric-big" id="metricPeopleNum">-<span class="metric-unit">people</span></div>
             <div class="metric-label">active contributors</div>
-            <div class="metric-sub" id="metricPeopleSub">— awaiting assignment</div>
+            <div class="metric-sub" id="metricPeopleSub">- awaiting assignment</div>
           </div>
         </div>
 
-        <!-- PEOPLE — escondido na Goals view (irrelevante pra publishing) -->
+        <!-- PEOPLE - escondido na Goals view (irrelevante pra publishing) -->
         <div class="section-header" id="byPersonHeader" style="margin-top:32px;">
           <div>
             <h2>By person</h2>
@@ -2791,7 +2473,7 @@
         <!-- Quick-filter active banner -->
         <div class="quickfilter-bar" id="quickFilterBar">
           <span class="quickfilter-icon">⚡</span>
-          <span class="quickfilter-text">Filtering by <span class="quickfilter-pill" id="quickFilterLabel">—</span></span>
+          <span class="quickfilter-text">Filtering by <span class="quickfilter-pill" id="quickFilterLabel">-</span></span>
           <button class="quickfilter-clear" id="quickFilterClear">× clear</button>
         </div>
 
@@ -2808,29 +2490,29 @@
           <div class="status-chip-card chip-blue" data-filter="notstarted">
             <div class="chip-orb chip-card-orb"></div>
             <div class="chip-card-label">Not started</div>
-            <div class="chip-card-count" id="chipNew">—</div>
-            <div class="chip-card-delta" id="chipNewDelta">—</div>
+            <div class="chip-card-count" id="chipNew">-</div>
+            <div class="chip-card-delta" id="chipNewDelta">-</div>
             <span class="chip-card-sub">of view</span>
           </div>
           <div class="status-chip-card chip-orange" data-filter="stuck">
             <div class="chip-orb chip-card-orb"></div>
             <div class="chip-card-label">Stuck / waiting</div>
-            <div class="chip-card-count" id="chipReview">—</div>
-            <div class="chip-card-delta" id="chipReviewDelta">—</div>
+            <div class="chip-card-count" id="chipReview">-</div>
+            <div class="chip-card-delta" id="chipReviewDelta">-</div>
             <span class="chip-card-sub">of view</span>
           </div>
           <div class="status-chip-card chip-yellow" data-filter="inprogress">
             <div class="chip-orb chip-card-orb"></div>
             <div class="chip-card-label">In progress</div>
-            <div class="chip-card-count" id="chipProgress">—</div>
-            <div class="chip-card-delta" id="chipProgressDelta">—</div>
+            <div class="chip-card-count" id="chipProgress">-</div>
+            <div class="chip-card-delta" id="chipProgressDelta">-</div>
             <span class="chip-card-sub">of view</span>
           </div>
           <div class="status-chip-card chip-green" data-filter="done">
             <div class="chip-orb chip-card-orb"></div>
             <div class="chip-card-label">Completed</div>
-            <div class="chip-card-count" id="chipDone">—</div>
-            <div class="chip-card-delta" id="chipDoneDelta">—</div>
+            <div class="chip-card-count" id="chipDone">-</div>
+            <div class="chip-card-delta" id="chipDoneDelta">-</div>
             <span class="chip-card-sub">of view</span>
           </div>
         </div>
@@ -2875,9 +2557,9 @@
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal">
       <button class="close-x" id="modalClose">×</button>
-      <div class="kicker" id="modalKicker">—</div>
-      <h2 id="modalTitle">—</h2>
-      <div class="modal-meta" id="modalMeta">—</div>
+      <div class="kicker" id="modalKicker">-</div>
+      <h2 id="modalTitle">-</h2>
+      <div class="modal-meta" id="modalMeta">-</div>
       <div id="modalBody"></div>
     </div>
   </div>
@@ -2886,85 +2568,19 @@
   <div class="auth-backdrop" id="infoBackdrop" style="display:none;">
     <div class="info-modal">
       <div class="info-modal-header">
-        <h3 class="info-modal-title" id="infoModalTitle">—</h3>
+        <h3 class="info-modal-title" id="infoModalTitle">-</h3>
         <button class="auth-close-btn" id="infoCloseBtn" type="button">×</button>
       </div>
-      <div class="info-modal-body" id="infoModalBody">—</div>
-    </div>
-  </div>
-
-  <!-- LOGIN MODAL (admin auth) -->
-  <div class="auth-backdrop" id="loginBackdrop" style="display:none;">
-    <div class="auth-modal">
-      <div class="auth-modal-header">
-        <h3 class="auth-modal-title">Admin Login</h3>
-        <button class="auth-close-btn" id="loginCloseBtn" type="button">×</button>
-      </div>
-      <div class="auth-modal-body">
-        <form id="loginForm">
-          <div class="auth-field">
-            <label for="loginEmail">Email</label>
-            <input type="email" id="loginEmail" autocomplete="email" required />
-          </div>
-          <div class="auth-field">
-            <label for="loginPassword">Password</label>
-            <input type="password" id="loginPassword" autocomplete="current-password" required />
-          </div>
-          <div class="auth-actions">
-            <button type="button" class="auth-forgot" id="forgotBtn">Forgot password?</button>
-            <button type="submit" class="auth-submit" id="loginSubmitBtn">Sign In</button>
-          </div>
-          <div class="auth-error" id="loginError"></div>
-          <div class="auth-info" id="loginInfo"></div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- ADMIN PANEL MODAL (placeholder em 5.3; conteúdo real em 5.4) -->
-  <div class="auth-backdrop" id="adminBackdrop" style="display:none;">
-    <div class="auth-modal admin-modal">
-      <div class="auth-modal-header">
-        <h3 class="auth-modal-title">Admin Panel</h3>
-        <button class="auth-close-btn" id="adminCloseBtn" type="button">×</button>
-      </div>
-      <div class="admin-user-bar">
-        <div class="admin-user-info">
-          Signed in as <strong id="adminUserEmail">—</strong>
-        </div>
-        <button class="admin-logout" id="logoutBtn" type="button">Logout</button>
-      </div>
-      <div class="admin-tabs">
-        <button class="admin-tab active" id="adminTabTargets" data-tab="targets" type="button">Targets</button>
-        <button class="admin-tab" id="adminTabHistory" data-tab="history" type="button">History</button>
-      </div>
-      <div class="admin-content" id="adminContent">
-        <!-- TARGETS TAB -->
-        <div class="admin-tab-panel active" id="adminPanelTargets">
-          <div class="targets-editor" id="targetsEditor">
-            <div class="targets-loading">Loading targets…</div>
-          </div>
-        </div>
-        <!-- HISTORY TAB -->
-        <div class="admin-tab-panel" id="adminPanelHistory">
-          <div class="history-list" id="historyList">
-            <div class="history-loading">Loading history…</div>
-          </div>
-        </div>
-      </div>
-      <div class="targets-save-bar" id="targetsSaveBar">
-        <div class="targets-save-status" id="targetsSaveStatus">No changes</div>
-        <button class="targets-save-btn" id="targetsSaveBtn" disabled>Save changes</button>
-      </div>
+      <div class="info-modal-body" id="infoModalBody">-</div>
     </div>
   </div>
 
   <script>
     /* =========================================================
-       THE BOARDS REVIEW — script (lógica preservada)
+       THE BOARDS REVIEW - script (lógica preservada)
        ========================================================= */
 
-    /* Janela de activity log buscada do Monday. 180 dias (6 meses) — equilíbrio
+    /* Janela de activity log buscada do Monday. 180 dias (6 meses) - equilíbrio
        entre cobertura do filtro Custom e performance. O dashboard usa períodos
        de até "last quarter" (90 dias), então 6 meses dá folga. Custo mitigado
        por: snapshot só dos boards da view ativa, função em iad1, cache HTTP.
@@ -3064,66 +2680,130 @@
       }
     };
 
-    /* Metas de publicação semanais por board × idioma.
-       Fonte de verdade: tabela `publishing_targets` no Supabase (editável via
-       admin panel). Carregada via /api/targets logo no início do load.
-       Os valores hardcoded abaixo são FALLBACK defensivo — se o /api/targets
-       falhar (Supabase fora do ar, deploy quebrado, etc.), o dashboard
-       continua funcionando com os números antigos.
+    /* ---------- TARGETS, PERIODS, PAUSED LANGUAGES, PUBLISHERS ----------
+       All of it comes from GET /api/targets, and nothing is hardcoded here
+       any more (audit, 10 October 2026). This page used to carry its own
+       copy of the targets as a "defensive fallback" and merge the server's
+       numbers over it, so a failed read, or a language removed in Settings,
+       quietly brought back numbers from months ago. A failed read now says
+       so on the page and the goals are not drawn.
 
-       Em dev local (file://), também usa esses fallbacks por default —
-       evita ter que rodar o Supabase localmente pra desenvolver. */
-    const PUBLISHING_TARGETS_FALLBACK = {
-      "6691665827": {  // HFA · Publishing
-        'English': 5,
-        'Swahili': 5
-      },
-      "462251934": {   // AAAF · Publishing
-        'English':    2,
-        'Swahili':    3,
-        'Portuguese': 3,
-        'Spanish':    3
-      }
-    };
+         PUBLISHING_TARGETS  boardId -> { language -> weekly target } (current)
+         TARGET_PERIODS      the weekly target in force per week, so a past
+                             week is judged against the target it had then
+         PAUSED              boardId -> Set of lowercased languages that are
+                             paused on the site: left out of every count
+         PUBLISHERS          who counts as publisher on Monday */
+    let PUBLISHING_TARGETS = {};
+    let TARGET_PERIODS = new Map();   // "boardId|language" (lowercased) -> [{ from, to, target }]
+    let PAUSED = {};
+    let PUBLISHERS = [];
+    let TARGETS_STATE = 'loading';    // 'loading' | 'ok' | 'failed'
 
-    /* Map mutável. Começa com o fallback e é sobrescrito pelo /api/targets
-       no início do loadAll. Outras partes do código continuam usando
-       PUBLISHING_TARGETS exatamente como antes — zero refactor downstream. */
-    let PUBLISHING_TARGETS = { ...PUBLISHING_TARGETS_FALLBACK };
+    const TARGETS_ERROR = 'Publishing targets could not be read. Try again in a moment.';
+    const BOARDS_ERROR = 'The boards could not be read. Try again in a moment.';
 
-    /* Busca os targets atuais do Supabase via /api/targets.
-       - Em produção: chama o endpoint serverless
-       - Em dev local: usa fallback (sem chamar API) pra não exigir env vars
-       Falha silenciosa — se algo der errado, mantém o fallback. */
-    async function loadTargetsFromServer() {
-      if (IS_LOCAL_DEV) return;   // dev usa fallback hardcoded
-      try {
-        const r = await fetch('/api/targets', { cache: 'no-store' });
-        if (!r.ok) {
-          console.warn(`[targets] /api/targets returned ${r.status}, using fallback`);
-          return;
-        }
-        const data = await r.json();
-        if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-          // Merge: keys do server sobrescrevem fallback, idiomas faltantes
-          // continuam vindo do fallback (defensivo se admin esqueceu de
-          // cadastrar algum idioma no banco).
-          for (const bid of Object.keys(data)) {
-            PUBLISHING_TARGETS[bid] = { ...PUBLISHING_TARGETS_FALLBACK[bid], ...data[bid] };
-          }
-        }
-      } catch (err) {
-        console.warn('[targets] fetch failed, using fallback:', err.message);
-      }
+    const langKey = (lang) => String(lang || '').trim().toLowerCase();
+
+    function isPausedLang(boardId, lang) {
+      return !!PAUSED[boardId] && PAUSED[boardId].has(langKey(lang));
     }
 
-    /* Publishers que contam para a métrica do Publishing dashboard.
-       Match EXATO case-insensitive contra o nome completo — substring matching
-       gerava falsos positivos (ex.: "Andressa Sampaio" passava porque "sampaio"
-       contém "sam"). Pra adicionar novos publishers, é só botar o nome completo
-       como aparece no Monday. */
-    const PUBLISHERS = ['Samuel Manzi', 'Wendy Cacka'];
+    /* Shows or clears one of the page alerts. Text only, never HTML. */
+    function setPageAlert(id, text) {
+      const el = $(id);
+      if (!el) return;
+      el.textContent = text || '';
+      el.hidden = !text;
+    }
 
+    async function loadTargetsFromServer() {
+      try {
+        const r = await fetch('/api/targets', { cache: 'no-store' });
+        if (!r.ok) throw new Error('targets ' + r.status);
+        const data = await r.json();
+        if (!data || typeof data !== 'object' || !data.targets || !Array.isArray(data.publishers)) {
+          throw new Error('targets: unexpected shape');
+        }
+
+        PAUSED = {};
+        for (const [bid, langs] of Object.entries(data.paused || {})) {
+          PAUSED[bid] = new Set((langs || []).map(langKey));
+        }
+
+        PUBLISHING_TARGETS = {};
+        for (const [bid, langs] of Object.entries(data.targets || {})) {
+          PUBLISHING_TARGETS[bid] = {};
+          for (const [lang, n] of Object.entries(langs || {})) {
+            if (isPausedLang(bid, lang)) continue;
+            PUBLISHING_TARGETS[bid][lang] = Number(n);
+          }
+        }
+
+        TARGET_PERIODS = new Map();
+        for (const p of (data.periods || [])) {
+          if (!p || !p.boardId || !p.language || !p.from) continue;
+          if (isPausedLang(p.boardId, p.language)) continue;
+          const k = p.boardId + '|' + langKey(p.language);
+          if (!TARGET_PERIODS.has(k)) TARGET_PERIODS.set(k, []);
+          TARGET_PERIODS.get(k).push({ language: p.language, from: p.from, to: p.to || null, target: Number(p.target) });
+        }
+
+        PUBLISHERS = data.publishers.map(n => String(n || '').trim()).filter(Boolean);
+        TARGETS_STATE = 'ok';
+        setPageAlert('targetsError', '');
+      } catch (err) {
+        console.warn('[targets] read failed:', err && err.message);
+        PUBLISHING_TARGETS = {};
+        TARGET_PERIODS = new Map();
+        PAUSED = {};
+        PUBLISHERS = [];
+        TARGETS_STATE = 'failed';
+        setPageAlert('targetsError', TARGETS_ERROR);
+      }
+      return TARGETS_STATE === 'ok';
+    }
+
+    /* The weekly target in force for a board's language in the week that
+       starts on `monday` (YYYY-MM-DD, New York), or null when the language
+       had no target that week. A period covers the week when it began on or
+       before that Monday and had not ended before it.
+
+       When the server sent no period at all for a language, the current
+       target stands in for every week, which is what this page did before
+       periods existed. */
+    function targetInForce(boardId, lang, monday) {
+      if (!lang || lang === '-' || isPausedLang(boardId, lang)) return null;
+      const rows = TARGET_PERIODS.get(boardId + '|' + langKey(lang));
+      if (rows && rows.length) {
+        for (const p of rows) {
+          if (p.from <= monday && (p.to == null || p.to >= monday)) return p.target;
+        }
+        return null;
+      }
+      const cur = PUBLISHING_TARGETS[boardId] || {};
+      for (const [name, n] of Object.entries(cur)) {
+        if (langKey(name) === langKey(lang)) return n;
+      }
+      return null;
+    }
+
+    /* Every language a board has had a target for, current or past, by its
+       lowercased key, mapped to the name to show. */
+    function targetLanguages(boardId) {
+      const out = new Map();
+      for (const name of Object.keys(PUBLISHING_TARGETS[boardId] || {})) out.set(langKey(name), name);
+      for (const [k, rows] of TARGET_PERIODS) {
+        if (!k.startsWith(boardId + '|')) continue;
+        const key = k.slice(boardId.length + 1);
+        if (!out.has(key)) out.set(key, rows[0].language);
+      }
+      return out;
+    }
+
+    /* Who counts as publisher comes from the server: exact full name,
+       trimmed, case-insensitive. Substring matching once let "Andressa
+       Sampaio" through because "sampaio" contains "sam". */
     function isPublisher(name) {
       const n = String(name || '').trim().toLowerCase();
       return PUBLISHERS.some(p => p.toLowerCase() === n);
@@ -3174,7 +2854,7 @@
       people: new Map(),
       statuses: new Set(),
       loaded: false,
-      quickFilter: null,    // { type, value, label } — drill-down from KPI/chart clicks
+      quickFilter: null,    // { type, value, label } - drill-down from KPI/chart clicks
       activeView: 'publishing'  // 'translation' | 'publishing'
                                  // Default = publishing (Goals) enquanto a aba
                                  // Translations estiver oculta. Pra re-habilitar
@@ -3184,19 +2864,99 @@
 
     /* ---------- UTIL ---------- */
     const $ = (id) => document.getElementById(id);
-    const fmt      = (n) => Number.isFinite(n) ? new Intl.NumberFormat('en-US').format(Math.round(n)) : '—';
+    const fmt      = (n) => Number.isFinite(n) ? new Intl.NumberFormat('en-US').format(Math.round(n)) : '-';
+
+    /* ---------- NEW YORK CALENDAR ----------
+       Every week, month, "this week", "last week" and date on this page is
+       read on the New York calendar, not the browser's clock (audit, 10
+       October 2026). The targets are weekly and the team works to New York
+       time; a page published Sunday 8:30 PM in New York belongs to that
+       Sunday's week, wherever the person reading the dashboard happens to be.
+
+       Calendar days travel as "YYYY-MM-DD" strings and are only turned back
+       into instants (nyMidnight) where a range has to be compared with a
+       timestamp. */
+    const NY = 'America/New_York';
+    const NY_PARTS = new Intl.DateTimeFormat('en-US', {
+      timeZone: NY, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+
+    function nyParts(d) {
+      const o = {};
+      for (const p of NY_PARTS.formatToParts(d)) o[p.type] = p.value;
+      return { y: +o.year, m: +o.month, d: +o.day, hh: +o.hour % 24, mi: +o.minute, s: +o.second };
+    }
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+
+    /* The New York calendar date of an instant, as YYYY-MM-DD. */
+    function nyYmd(date) {
+      const d = date instanceof Date ? date : new Date(date);
+      if (isNaN(d.getTime())) return null;
+      const p = nyParts(d);
+      return `${p.y}-${pad2(p.m)}-${pad2(p.d)}`;
+    }
+
+    function ymdToUtc(ymd) {
+      const [y, m, d] = ymd.split('-').map(Number);
+      return Date.UTC(y, m - 1, d);
+    }
+    function addDays(ymd, n) {
+      return new Date(ymdToUtc(ymd) + n * 86400000).toISOString().slice(0, 10);
+    }
+    /* 0 is Sunday, as Date.getDay. */
+    const weekdayOf = (ymd) => new Date(ymdToUtc(ymd)).getUTCDay();
+    const mondayOf = (ymd) => addDays(ymd, -((weekdayOf(ymd) + 6) % 7));
+
+    /* The instant New York's clock reads 00:00 on that calendar day. The
+       offset is read at the guess and read again at the result, which is
+       enough across a daylight-saving change (they happen at 2 AM). */
+    function nyMidnight(ymd) {
+      const base = ymdToUtc(ymd);
+      const offsetAt = (t) => {
+        const p = nyParts(new Date(t));
+        return Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mi, p.s) - Math.floor(t / 1000) * 1000;
+      };
+      let t = base - offsetAt(base);
+      t = base - offsetAt(t);
+      return new Date(t);
+    }
+
+    const nyToday = () => nyYmd(new Date());
+
+    /* "Oct 9" for a timestamp or a YYYY-MM-DD day. A bare day is a calendar
+       date, not an instant, so it is formatted as it is written: read as an
+       instant it would come out as the day before anywhere west of London. */
     const fmtShort = (d) => {
-      if (!d) return '—';
+      if (!d) return '-';
+      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        return new Date(ymdToUtc(d)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+      }
       const t = new Date(d);
-      if (isNaN(t.getTime())) return '—';
-      return t.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+      if (isNaN(t.getTime())) return '-';
+      return t.toLocaleDateString('en-US', { timeZone: NY, month: 'short', day: 'numeric' });
     };
+    /* "Oct 9, 2026" in New York. */
+    const fmtDate = (d) => {
+      if (!d) return '-';
+      const t = new Date(d);
+      if (isNaN(t.getTime())) return '-';
+      return t.toLocaleDateString('en-US', { timeZone: NY, month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    /* "Oct 9, 2026, 3:05 PM" in New York. */
     const fmtDateTime = (d) => {
-      if (!d) return '—';
+      if (!d) return '-';
       const t = new Date(d);
-      if (isNaN(t.getTime())) return '—';
-      return t.toLocaleString('en-US');
+      if (isNaN(t.getTime())) return '-';
+      return t.toLocaleString('en-US', { timeZone: NY, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
     };
+    /* "2026-10-09_1505", New York, for file names. */
+    function fileStamp(d) {
+      const p = nyParts(d);
+      return `${p.y}-${pad2(p.m)}-${pad2(p.d)}_${pad2(p.hh)}${pad2(p.mi)}`;
+    }
     const initials = (name = '') => name.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 
     /* Nome do projeto pra exibição: tira o sufixo "-P" (Publishing) ou
@@ -3210,7 +2970,7 @@
       try {
         // Em produção, simplificamos pra "Loading" / "Ready" / "Error".
         // Mensagens técnicas (board names, contagem de items, "Done w/o log")
-        // são detalhe interno — usuário do dashboard só precisa saber se está
+        // são detalhe interno - usuário do dashboard só precisa saber se está
         // pronto ou carregando. Detalhes ficam no console pra debug.
         const isProd = document.body.classList.contains('production');
         if (isProd) {
@@ -3263,36 +3023,31 @@
     function businessDays(days) { return (days == null || isNaN(days)) ? null : days * (5 / 7); }
 
     function fmtDays(d) {
-      if (d == null || isNaN(d)) return '—';
+      if (d == null || isNaN(d)) return '-';
       if (d < 1) return Math.round(d * 24) + 'h';
       return d.toFixed(1) + 'd';
     }
 
+    /* The Monday (New York) of the week a timestamp falls in, YYYY-MM-DD. */
     function getWeekKey(date) {
       if (!date) return null;
-      const d = new Date(date);
-      if (isNaN(d.getTime())) return null;
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diff));
-      if (isNaN(monday.getTime())) return null;
-      return monday.toISOString().slice(0, 10);
+      const ymd = nyYmd(date);
+      return ymd ? mondayOf(ymd) : null;
     }
 
-    // Retorna 'YYYY-MM' para agrupamento mensal
+    // 'YYYY-MM' (New York) para agrupamento mensal
     function getMonthKey(date) {
       if (!date) return null;
-      const d = new Date(date);
-      if (isNaN(d.getTime())) return null;
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const ymd = nyYmd(date);
+      return ymd ? ymd.slice(0, 7) : null;
     }
 
-    // Formata 'YYYY-MM' como "Jan '26"
+    // Formata 'YYYY-MM' como "Jan '26" (calendar month, so read as UTC)
     function fmtMonth(k) {
-      if (!k) return '—';
+      if (!k) return '-';
       const [y, m] = k.split('-');
-      return new Date(+y, +m - 1, 1)
-        .toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      return new Date(Date.UTC(+y, +m - 1, 1))
+        .toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', year: '2-digit' });
     }
 
     // Decide se o período atual é longo o suficiente para agrupar por mês.
@@ -3347,503 +3102,17 @@
       // console.warn e console.error mantidos pra detectar problemas reais
     }
 
-    /* ---------- SUPABASE AUTH ----------
-       Inicializa o client do Supabase pra auth (login/logout/session).
-       URL e publishable key são públicas por design — Supabase espera que
-       essas viajem no browser. RLS no banco garante segurança real
-       (definida na migration 5.3a).
-
-       Em dev local (file://), pulamos a inicialização pra não exigir conexão.
-       Auth só funciona em prod onde temos certs HTTPS e domínio próprio. */
-    const SUPABASE_URL = 'https://ychwpdhdijupplfdxunb.supabase.co';
-    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_hESfKx3WGTLzoKdyhtin-w_rHzdSOt9';
-    let supabaseClient = null;
-    if (!IS_LOCAL_DEV && window.supabase) {
-      try {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-        });
-      } catch (err) {
-        console.error('[supabase] init failed:', err);
-      }
-    }
-
-    /* Estado global do admin auth. Atualizado por checkSession() e pelos
-       handlers de login/logout. Outros lugares do código (futuras 5.4+)
-       leem isso pra decidir se mostram editor de targets, etc. */
-    const ADMIN = {
-      session: null,    // objeto session do Supabase ou null
-      profile: null,    // row de profiles (role, full_name, etc.) ou null
-      isAdmin: false
-    };
-
-    function $auth(id) { return document.getElementById(id); }
-
-    /* Mostra/esconde elementos da auth UI baseado no estado de login.
-       Também aplica classe `body.admin` que algumas seções usam pra
-       mostrar/esconder colunas (ex.: coluna "Pub debug" da tabela). */
-    function refreshAdminUI() {
-      const btn = $('adminBtn');
-      const lbl = $('adminBtnLabel');
-      if (!btn || !lbl) return;
-      if (ADMIN.isAdmin) {
-        btn.classList.add('is-admin');
-        lbl.textContent = 'Admin Panel';
-        document.body.classList.add('admin');
-      } else {
-        btn.classList.remove('is-admin');
-        lbl.textContent = 'Admin';
-        document.body.classList.remove('admin');
-      }
-    }
-
-    /* Checa sessão atual do Supabase. Chamada no init() e depois de
-       login/logout. Hidrata ADMIN.session/profile/isAdmin a partir do
-       que o Supabase já lembra (localStorage). */
-    async function checkAdminSession() {
-      if (!supabaseClient) return;
-      try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        ADMIN.session = session;
-        if (session?.user) {
-          // Busca o profile pra saber a role
-          const { data: profile, error } = await supabaseClient
-            .from('profiles')
-            .select('id, email, full_name, role')
-            .eq('id', session.user.id)
-            .single();
-          if (error) {
-            console.warn('[auth] profile fetch failed:', error.message);
-            ADMIN.profile = null;
-            ADMIN.isAdmin = false;
-          } else {
-            ADMIN.profile = profile;
-            ADMIN.isAdmin = profile?.role === 'admin';
-          }
-        } else {
-          ADMIN.profile = null;
-          ADMIN.isAdmin = false;
-        }
-      } catch (err) {
-        console.error('[auth] checkAdminSession error:', err);
-      }
-      refreshAdminUI();
-    }
-
-    /* Abre o modal de login (ou direto o admin panel se já estiver logado). */
-    function openAdminFlow() {
-      if (!supabaseClient) {
-        alert('Admin login only available in production (deployed version).');
-        return;
-      }
-      if (ADMIN.isAdmin) {
-        openAdminPanel();
-      } else {
-        openLoginModal();
-      }
-    }
-
-    function openLoginModal() {
-      $auth('loginBackdrop').style.display = 'flex';
-      $auth('loginError').classList.remove('show');
-      $auth('loginInfo').classList.remove('show');
-      $auth('loginEmail').focus();
-    }
-    function closeLoginModal() {
-      $auth('loginBackdrop').style.display = 'none';
-      $auth('loginForm').reset();
-    }
-    function openAdminPanel() {
-      $auth('adminUserEmail').textContent = ADMIN.profile?.email || ADMIN.session?.user?.email || '';
-      $auth('adminBackdrop').style.display = 'flex';
-      // Sempre volta pra aba Targets ao abrir (UX consistente)
-      switchAdminTab('targets');
-      // Carrega os targets toda vez que abre o painel (dado sempre fresco).
-      // O load é async; enquanto isso, container mostra "Loading targets…".
-      loadTargetsForEditor();
-    }
-    function closeAdminPanel() {
-      $auth('adminBackdrop').style.display = 'none';
-    }
-
-    async function handleLogin(ev) {
-      ev.preventDefault();
-      const email = $auth('loginEmail').value.trim();
-      const password = $auth('loginPassword').value;
-      const errEl = $auth('loginError');
-      const infoEl = $auth('loginInfo');
-      const submitBtn = $auth('loginSubmitBtn');
-
-      errEl.classList.remove('show');
-      infoEl.classList.remove('show');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Signing in...';
-
-      try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-
-        await checkAdminSession();
-
-        if (!ADMIN.isAdmin) {
-          // Login funcionou mas não é admin — desloga e avisa
-          await supabaseClient.auth.signOut();
-          await checkAdminSession();
-          errEl.textContent = 'Access denied. This account does not have admin permissions.';
-          errEl.classList.add('show');
-          return;
-        }
-
-        // Sucesso: fecha login, abre painel
-        closeLoginModal();
-        openAdminPanel();
-      } catch (err) {
-        const msg = err?.message || 'Login failed.';
-        errEl.textContent = msg.includes('Invalid login credentials')
-          ? 'Email or password incorrect.'
-          : msg;
-        errEl.classList.add('show');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Sign In';
-      }
-    }
-
-    async function handleForgotPassword() {
-      const email = $auth('loginEmail').value.trim();
-      const errEl = $auth('loginError');
-      const infoEl = $auth('loginInfo');
-      errEl.classList.remove('show');
-      infoEl.classList.remove('show');
-
-      if (!email) {
-        errEl.textContent = 'Type your email above first, then click "Forgot password?".';
-        errEl.classList.add('show');
-        return;
-      }
-      try {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin
-        });
-        if (error) throw error;
-        infoEl.textContent = `Check ${email} for a password reset link (also check spam).`;
-        infoEl.classList.add('show');
-      } catch (err) {
-        errEl.textContent = err?.message || 'Could not send reset email.';
-        errEl.classList.add('show');
-      }
-    }
-
-    async function handleLogout() {
-      try {
-        await supabaseClient.auth.signOut();
-      } catch (_) {}
-      await checkAdminSession();
-      closeAdminPanel();
-    }
-
-    /* ---------- TARGETS EDITOR (5.4) ----------
-       Estado local com diffs: rows[] guarda { id, board_id, language,
-       target_value, _dirty, _new, _delete }. Save em batch via supabaseClient
-       (upserts + deletes). RLS no Supabase já garante que só admin escreve. */
-    const TARGETS_EDITOR = {
-      rows: [],          // todos os targets do banco + linhas novas/deletadas
-      loading: false,
-      saving: false
-    };
-
-    function targetsDirtyCount() {
-      return TARGETS_EDITOR.rows.filter(r => r._dirty || r._new || r._delete).length;
-    }
-
-    function updateSaveBar() {
-      const status = $('targetsSaveStatus');
-      const btn = $('targetsSaveBtn');
-      if (!status || !btn) return;
-      const n = targetsDirtyCount();
-      if (TARGETS_EDITOR.saving) {
-        status.textContent = 'Saving...';
-        status.className = 'targets-save-status';
-        btn.disabled = true;
-      } else if (n === 0) {
-        status.textContent = 'No changes';
-        status.className = 'targets-save-status';
-        btn.disabled = true;
-      } else {
-        status.textContent = `${n} unsaved change${n > 1 ? 's' : ''}`;
-        status.className = 'targets-save-status dirty';
-        btn.disabled = false;
-      }
-    }
-
-    async function loadTargetsForEditor() {
-      const container = $('targetsEditor');
-      if (!container || !supabaseClient) return;
-      container.innerHTML = '<div class="targets-loading">Loading targets…</div>';
-      TARGETS_EDITOR.loading = true;
-      try {
-        // Lê DIRETO do Supabase com sessão do admin — sem passar pelo /api/targets
-        // (que tem cache de 5 min). Admin sempre vê dado fresco.
-        const { data, error } = await supabaseClient
-          .from('publishing_targets')
-          .select('id, board_id, board_short, language, target_value, period_type, updated_at')
-          .eq('period_type', 'weekly')
-          .order('board_short', { ascending: true })
-          .order('language', { ascending: true });
-        if (error) throw error;
-        TARGETS_EDITOR.rows = (data || []).map(r => ({
-          id: r.id,
-          board_id: r.board_id,
-          board_short: r.board_short,
-          language: r.language,
-          target_value: r.target_value,
-          _dirty: false, _new: false, _delete: false
-        }));
-        renderTargetsEditor();
-      } catch (err) {
-        console.error('[targets editor] load failed:', err);
-        container.innerHTML = `<div class="targets-loading" style="color:#991b1b;">Failed to load targets: ${err.message || err}</div>`;
-      } finally {
-        TARGETS_EDITOR.loading = false;
-        updateSaveBar();
-      }
-    }
-
-    function renderTargetsEditor() {
-      const container = $('targetsEditor');
-      if (!container) return;
-
-      // Agrupa rows por board (apenas as não deletadas pra render visível;
-      // as deletadas permanecem na lista pra serem processadas no save)
-      const byBoard = {};
-      for (const row of TARGETS_EDITOR.rows) {
-        if (row._delete) continue;
-        if (!byBoard[row.board_id]) {
-          byBoard[row.board_id] = {
-            board_id: row.board_id,
-            board_short: row.board_short,
-            rows: []
-          };
-        }
-        byBoard[row.board_id].rows.push(row);
-      }
-
-      // Adiciona boards de publishing que ainda não têm nenhum target (raro,
-      // mas defensivo) usando o config local de BOARDS
-      for (const bid of Object.keys(BOARDS)) {
-        if (!BOARDS[bid].publishingMode) continue;
-        if (!byBoard[bid]) {
-          byBoard[bid] = {
-            board_id: bid,
-            board_short: BOARDS[bid].short,
-            rows: []
-          };
-        }
-      }
-
-      const boardCards = Object.values(byBoard).map(b => {
-        const tableRows = b.rows.map(row => {
-          // Tracking pelo índice no array TARGETS_EDITOR.rows pra refs estáveis
-          const idx = TARGETS_EDITOR.rows.indexOf(row);
-          const dirtyClass = row._dirty || row._new ? 'dirty' : '';
-          return `
-            <tr data-idx="${idx}">
-              <td class="target-lang">${escapeHtml(row.language)}</td>
-              <td>
-                <input type="number" min="0" class="target-input ${dirtyClass}"
-                  value="${row.target_value}" data-idx="${idx}" />
-              </td>
-              <td style="text-align:right; width:1%;">
-                <button class="target-row-delete" data-idx="${idx}" title="Delete">×</button>
-              </td>
-            </tr>`;
-        }).join('') || `<tr><td colspan="3" style="color:var(--text-dim); font-style:italic; padding:14px;">No targets yet — add one below.</td></tr>`;
-
-        return `
-          <div class="targets-board-card">
-            <div class="targets-board-header">
-              <div>
-                <div class="targets-board-title">${escapeHtml(projectName(b.board_short))}</div>
-                <div class="targets-board-sub">Weekly publishing targets</div>
-              </div>
-            </div>
-            <table class="targets-table">
-              <thead>
-                <tr>
-                  <th>Language</th>
-                  <th>Weekly target</th>
-                  <th style="text-align:right;"></th>
-                </tr>
-              </thead>
-              <tbody>${tableRows}</tbody>
-            </table>
-            <div class="targets-add-row" data-board-id="${b.board_id}" data-board-short="${escapeHtml(b.board_short)}">
-              <input type="text" class="lang-input" placeholder="Language (e.g. French)" />
-              <input type="number" min="0" class="value-input" placeholder="0" />
-              <button class="targets-add-btn">+ Add</button>
-            </div>
-          </div>`;
-      }).join('');
-
-      container.innerHTML = boardCards;
-
-      // Wire inputs (uso event delegation no container)
-      container.querySelectorAll('input.target-input').forEach(inp => {
-        inp.addEventListener('input', onTargetValueInput);
-      });
-      container.querySelectorAll('.target-row-delete').forEach(btn => {
-        btn.addEventListener('click', onTargetDelete);
-      });
-      container.querySelectorAll('.targets-add-row .targets-add-btn').forEach(btn => {
-        btn.addEventListener('click', onTargetAdd);
-      });
-
-      updateSaveBar();
-    }
-
-    function escapeHtml(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-
-    function onTargetValueInput(e) {
-      const idx = parseInt(e.target.dataset.idx, 10);
-      const row = TARGETS_EDITOR.rows[idx];
-      if (!row) return;
-      const newVal = parseInt(e.target.value, 10);
-      if (isFinite(newVal) && newVal >= 0) {
-        // Marca dirty se mudou (compara stringificado pro caso de '5' vs 5)
-        if (Number(row.target_value) !== newVal) {
-          row.target_value = newVal;
-          row._dirty = !row._new;   // _new já implica dirty, não duplica
-          e.target.classList.add('dirty');
-        }
-      }
-      updateSaveBar();
-    }
-
-    function onTargetDelete(e) {
-      const idx = parseInt(e.target.dataset.idx, 10);
-      const row = TARGETS_EDITOR.rows[idx];
-      if (!row) return;
-      if (row._new) {
-        // Linha nova não salva → remove do array direto
-        TARGETS_EDITOR.rows.splice(idx, 1);
-      } else {
-        // Linha existente → marca pra delete (vai sumir do render)
-        row._delete = true;
-      }
-      renderTargetsEditor();
-    }
-
-    function onTargetAdd(e) {
-      const addRow = e.target.closest('.targets-add-row');
-      if (!addRow) return;
-      const board_id = addRow.dataset.boardId;
-      const board_short = addRow.dataset.boardShort;
-      const langInput = addRow.querySelector('.lang-input');
-      const valInput = addRow.querySelector('.value-input');
-      const language = (langInput.value || '').trim();
-      const target_value = parseInt(valInput.value, 10);
-
-      if (!language) { alert('Type a language name.'); langInput.focus(); return; }
-      if (!isFinite(target_value) || target_value < 0) { alert('Type a non-negative number.'); valInput.focus(); return; }
-
-      // Checa duplicata (mesmo board + idioma, não deletado)
-      const dup = TARGETS_EDITOR.rows.find(r => !r._delete
-        && r.board_id === board_id && r.language.toLowerCase() === language.toLowerCase());
-      if (dup) {
-        alert(`"${language}" already exists for ${projectName(board_short)}. Edit the value above instead.`);
-        return;
-      }
-
-      TARGETS_EDITOR.rows.push({
-        id: null,
-        board_id, board_short, language, target_value,
-        _dirty: false, _new: true, _delete: false
-      });
-      langInput.value = '';
-      valInput.value = '';
-      renderTargetsEditor();
-    }
-
-    async function handleTargetsSave() {
-      if (!supabaseClient) return;
-      if (TARGETS_EDITOR.saving) return;
-      const toUpdate = TARGETS_EDITOR.rows.filter(r => r._dirty && !r._new && !r._delete && r.id);
-      const toInsert = TARGETS_EDITOR.rows.filter(r => r._new && !r._delete);
-      const toDelete = TARGETS_EDITOR.rows.filter(r => r._delete && r.id);
-
-      if (toUpdate.length + toInsert.length + toDelete.length === 0) return;
-
-      TARGETS_EDITOR.saving = true;
-      updateSaveBar();
-      const status = $('targetsSaveStatus');
-
-      try {
-        // Saves rodam em paralelo (operações independentes no banco)
-        const userEmail = ADMIN.profile?.email || ADMIN.session?.user?.email || null;
-        const promises = [];
-        for (const r of toUpdate) {
-          promises.push(
-            supabaseClient.from('publishing_targets').update({
-              target_value: r.target_value,
-              updated_by: userEmail
-            }).eq('id', r.id)
-          );
-        }
-        for (const r of toInsert) {
-          promises.push(
-            supabaseClient.from('publishing_targets').insert({
-              board_id: r.board_id,
-              board_short: r.board_short,
-              language: r.language,
-              target_value: r.target_value,
-              period_type: 'weekly',
-              updated_by: userEmail
-            })
-          );
-        }
-        for (const r of toDelete) {
-          promises.push(
-            supabaseClient.from('publishing_targets').delete().eq('id', r.id)
-          );
-        }
-        const results = await Promise.all(promises);
-        const errors = results.filter(r => r.error).map(r => r.error.message);
-        if (errors.length) throw new Error(errors.join(' · '));
-
-        // Sucesso: recarrega tudo (pega novos IDs dos inserts, limpa flags)
-        await loadTargetsForEditor();
-
-        // Atualiza PUBLISHING_TARGETS em memória pra dashboard refletir IMEDIATAMENTE
-        // (sem esperar TTL do /api/targets de 5 min)
-        applyTargetsToLiveDashboard();
-
-        status.textContent = 'Saved ✓';
-        status.className = 'targets-save-status saved';
-        setTimeout(() => { if (targetsDirtyCount() === 0) updateSaveBar(); }, 2000);
-      } catch (err) {
-        console.error('[targets save] failed:', err);
-        status.textContent = `Save failed: ${err.message || err}`.slice(0, 80);
-        status.className = 'targets-save-status error';
-      } finally {
-        TARGETS_EDITOR.saving = false;
-      }
-    }
-
     /* ---------- KPI INFO MODAL ----------
        Explicações de cada KPI. Adaptam-se à view ativa (Goals vs Translation)
        pra mostrar a definição correta. */
     const KPI_INFO = {
       total: {
         publishing: {
-          title: 'Total Items — Not Published',
+          title: 'Total Items - Not Published',
           body: `
             <p><strong>What it shows:</strong> All items currently in the publishing workflow that have <em>not yet</em> been published.</p>
             <p><strong>How it's counted:</strong> Items whose publish-status column is empty or not yet set to "Done", across all selected boards and within the active filters (board, publisher, period).</p>
-            <p><strong>Why it matters:</strong> Gives you the size of the active "to do" pile — work in flight that still needs to land.</p>
+            <p><strong>Why it matters:</strong> Gives you the size of the active "to do" pile: work in flight that still needs to land.</p>
             <p><strong>Tip:</strong> Click the card to see the full list of items.</p>
           `
         },
@@ -3861,8 +3130,8 @@
           title: 'Completed (Published)',
           body: `
             <p><strong>What it shows:</strong> Items that were successfully <strong>published</strong> within the current filter period.</p>
-            <p><strong>How it's counted:</strong> An item only counts as published if there's a <em>real activity log event</em> changing its publish-status column to "Done" inside the selected period. Items that <em>look</em> Done but have no log event (legacy items, manual edits without history) are excluded — this prevents inflation of the metric.</p>
-            <p><strong>Why it matters:</strong> This is your actual publishing pace — the truth of what shipped.</p>
+            <p><strong>How it's counted:</strong> An item only counts as published if there's a <em>real activity log event</em> changing its publish-status column to "Done" inside the selected period. Items that <em>look</em> Done but have no log event (legacy items, manual edits without history) are excluded. This prevents inflation of the metric.</p>
+            <p><strong>Why it matters:</strong> This is your actual publishing pace: the truth of what shipped.</p>
             <p><strong>Tip:</strong> Click the card to see exactly which items counted.</p>
           `
         },
@@ -3878,16 +3147,16 @@
         publishing: {
           title: 'Staged to Publish',
           body: `
-            <p><strong>What it shows:</strong> Items that are <em>in the queue</em> to be published — the publish-status column has a value, but it's not yet "Done".</p>
+            <p><strong>What it shows:</strong> Items that are <em>in the queue</em> to be published: the publish-status column has a value, but it's not yet "Done".</p>
             <p><strong>How it's counted:</strong> Items where publish-status is filled with anything <em>except</em> "Done" or empty. These items have started the publishing process and are progressing toward release.</p>
-            <p><strong>Why it matters:</strong> Gives visibility on the imminent publishing workflow — what's almost ready to go out.</p>
+            <p><strong>Why it matters:</strong> Gives visibility on the imminent publishing workflow: what's almost ready to go out.</p>
             <p><strong>Tip:</strong> Click the card to see which items are staged.</p>
           `
         },
         translation: {
           title: 'In progress',
           body: `
-            <p><strong>What it shows:</strong> Items currently being worked on — started but not finished.</p>
+            <p><strong>What it shows:</strong> Items currently being worked on: started but not finished.</p>
             <p><strong>How it's counted:</strong> Items where at least one stage has been started but the full workflow isn't done yet.</p>
           `
         }
@@ -3914,9 +3183,8 @@
         publishing: {
           title: 'Data update schedule',
           body: `
-            <p><strong>What it shows:</strong> This dashboard reads from a snapshot the system refreshes automatically — you never wait for Monday to load when you open it.</p>
-            <p><strong>When it updates:</strong> 6 times a day, every 4 hours, in <strong>Eastern Time (EST)</strong>:</p>
-            <p style="font-weight:700;">12:00 AM · 4:00 AM · 8:00 AM · 12:00 PM · 4:00 PM · 8:00 PM</p>
+            <p><strong>What it shows:</strong> This dashboard reads from a snapshot the system refreshes automatically, so you never wait for Monday to load when you open it.</p>
+            <p><strong>When it updates:</strong> Every four hours.</p>
             <p>The <strong>"Updated X ago"</strong> chip shows how fresh the current data is.</p>
           `
         }
@@ -3935,229 +3203,73 @@
       $('infoBackdrop').style.display = 'none';
     }
 
-    /* Constrói o breakdown dinâmico do Target — usado pelo botão de info no
-       widget "Target" do Goals progress. Lê:
-         - PUBLISHING_TARGETS (sempre fresco — reflete edits do admin)
-         - Filtro de board atual ($('filterBoard').value)
-         - Período atual (do __pubAuditSnapshot, computado no render)
-       Por ser recomputado a cada click, se o admin editar um target e salvar,
-       o próximo click no botão já mostra os valores novos.
-    */
+    /* Rounds to a whole number when it is one, otherwise to one decimal. */
+    const fmtTarget = (n) => Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : n.toFixed(1);
+
+    /* The Target card's breakdown. It reads the plan the last render built
+       (window.__pubAuditSnapshot.plan), so it shows exactly the numbers on the
+       page: each language's weekly target for every week of the period, which
+       is not one number times the week count once a target has changed
+       part way through (audit, 10 October 2026). */
     function openTargetInfo() {
       const snap = window.__pubAuditSnapshot || {};
       const periodLabel = snap.period || $('filterPeriod').options[$('filterPeriod').selectedIndex]?.textContent || 'this period';
-      const weeksFractional = typeof snap.weeksFractional === 'number' ? snap.weeksFractional : 1;
-      const boardFilter = $('filterBoard') ? $('filterBoard').value : 'all';
-
-      // Filtra os targets pelo board selecionado (ou todos se 'all')
-      const targetEntries = Object.entries(PUBLISHING_TARGETS)
-        .filter(([bid]) => boardFilter === 'all' || bid === boardFilter)
-        .filter(([bid]) => BOARDS[bid]?.publishingMode);   // só publishing boards
+      const plan = snap.plan || {};
+      const boardIds = Object.keys(plan);
 
       let grandTotal = 0;
-      const blocks = targetEntries.map(([bid, langTargets]) => {
+      const blocks = boardIds.map((bid) => {
         const board = BOARDS[bid];
         if (!board) return '';
         let subtotal = 0;
-        const rows = Object.entries(langTargets).map(([lang, perWeek]) => {
-          const target = perWeek * weeksFractional;
+        const rows = plan[bid].map(({ lang, target, parts }) => {
           subtotal += target;
-          // Mostra com 1 casa decimal se não for inteiro; senão sem
-          const targetDisplay = Math.abs(target - Math.round(target)) < 0.05
-            ? String(Math.round(target))
-            : target.toFixed(1);
-          const weeksDisplay = Math.abs(weeksFractional - Math.round(weeksFractional)) < 0.05
-            ? String(Math.round(weeksFractional))
-            : weeksFractional.toFixed(1);
+          const calc = parts.length
+            ? parts.map(pt => `${pt.perWeek}/wk × ${fmtTarget(pt.weeks)}`).join(' + ')
+            : 'no target in these weeks';
           return `
             <tr>
               <td class="lang">${escapeHtml(lang)}</td>
-              <td class="calc">${perWeek}/wk × ${weeksDisplay}</td>
-              <td class="total">${targetDisplay}</td>
+              <td class="calc">${escapeHtml(calc)}</td>
+              <td class="total">${fmtTarget(target)}</td>
             </tr>`;
         }).join('');
         grandTotal += subtotal;
-        const subtotalDisplay = Math.abs(subtotal - Math.round(subtotal)) < 0.05
-          ? String(Math.round(subtotal))
-          : subtotal.toFixed(1);
 
         return `
           <div class="target-info-block">
             <h4 class="target-info-board-title">${escapeHtml(board.name)}</h4>
             <table class="target-info-table">
-              <tbody>${rows || '<tr><td colspan="3" style="font-style:italic;color:var(--text-dim);">No targets configured.</td></tr>'}</tbody>
+              <tbody>${rows || '<tr><td colspan="3" style="font-style:italic;color:var(--text-dim);">No targets set.</td></tr>'}</tbody>
             </table>
             <div class="target-info-subtotal">
               <span>Subtotal</span>
-              <span>${subtotalDisplay} pages</span>
+              <span>${fmtTarget(subtotal)} pages</span>
             </div>
           </div>`;
       }).join('');
-
-      const grandTotalDisplay = Math.abs(grandTotal - Math.round(grandTotal)) < 0.05
-        ? String(Math.round(grandTotal))
-        : grandTotal.toFixed(1);
 
       const body = `
         <p style="margin-bottom:14px;">
-          The target is calculated by multiplying each language's <strong>weekly target</strong>
-          by the number of weeks in the selected period
-          (<strong>${escapeHtml(periodLabel)}</strong>).
+          Each language's <strong>weekly target</strong> is added up for every week of the selected period
+          (<strong>${escapeHtml(periodLabel)}</strong>), using the target that was in force that week.
+          Weeks run Monday to Sunday, New York time. Paused languages are left out.
         </p>
         ${blocks || '<p style="color:var(--text-dim);font-style:italic;">No targets to display.</p>'}
-        ${targetEntries.length > 1 ? `
+        ${boardIds.length > 1 ? `
           <div class="target-info-grandtotal">
             <span>Total target for ${escapeHtml(periodLabel)}</span>
-            <span class="num">${grandTotalDisplay}</span>
+            <span class="num">${fmtTarget(grandTotal)}</span>
           </div>
         ` : ''}
         <div class="target-info-footnote">
-          💡 Targets can be edited by admins in the <strong>Admin Panel → Targets</strong> tab.
-          Changes appear here immediately after saving.
+          Targets and publishers are set in the portal, under Settings, Publishing targets.
         </div>
       `;
 
-      $('infoModalTitle').textContent = `Target breakdown — ${periodLabel}`;
+      $('infoModalTitle').textContent = `Target breakdown: ${periodLabel}`;
       $('infoModalBody').innerHTML = body;
       $('infoBackdrop').style.display = 'flex';
-    }
-
-    /* ---------- ADMIN TABS (Targets / History) ---------- */
-    function switchAdminTab(tab) {
-      // Update tab buttons
-      document.querySelectorAll('.admin-tab').forEach(b => {
-        b.classList.toggle('active', b.dataset.tab === tab);
-      });
-      // Update panels
-      $('adminPanelTargets').classList.toggle('active', tab === 'targets');
-      $('adminPanelHistory').classList.toggle('active', tab === 'history');
-      // Save bar só faz sentido no editor de targets — esconde na aba History
-      $('adminContent').classList.toggle('history-active', tab === 'history');
-      // Lazy-load history quando entra na aba (sempre recarrega pra ver mudanças recentes)
-      if (tab === 'history') loadAuditHistory();
-    }
-
-    /* ---------- AUDIT HISTORY (read from audit_log) ---------- */
-    async function loadAuditHistory() {
-      const container = $('historyList');
-      if (!container || !supabaseClient) return;
-      container.innerHTML = '<div class="history-loading">Loading history…</div>';
-      try {
-        // Últimas 50 entradas, mais recentes primeiro.
-        // RLS já garante que só admin lê (return vazio pra qualquer outro).
-        const { data, error } = await supabaseClient
-          .from('audit_log')
-          .select('id, user_email, action, entity_id, before, after, created_at')
-          .eq('entity_type', 'publishing_target')
-          .order('created_at', { ascending: false })
-          .limit(50);
-        if (error) throw error;
-        renderAuditHistory(data || []);
-      } catch (err) {
-        console.error('[audit] load failed:', err);
-        container.innerHTML = `<div class="history-loading" style="color:#991b1b;">Failed to load history: ${escapeHtml(err.message || String(err))}</div>`;
-      }
-    }
-
-    function renderAuditHistory(entries) {
-      const container = $('historyList');
-      if (!container) return;
-      if (!entries.length) {
-        container.innerHTML = '<div class="history-empty">No changes yet. History will appear here as you edit targets.</div>';
-        return;
-      }
-      const html = entries.map(e => {
-        const isSystem = !e.user_email || e.user_email === 'system';
-        const authorClass = isSystem ? 'system' : '';
-        const authorLabel = isSystem ? 'system' : e.user_email;
-        const actionLabel = describeAuditEntry(e);
-        const tagClass = `action-${e.action}`;
-        const tagLabel = e.action.toUpperCase();
-        return `
-          <div class="history-entry">
-            <div class="history-entry-meta">
-              <span class="history-entry-author ${authorClass}">${escapeHtml(authorLabel)}</span>
-              <span class="history-entry-date">${formatAuditDate(e.created_at)}</span>
-            </div>
-            <div class="history-entry-action">
-              <span class="history-action-tag ${tagClass}">${tagLabel}</span>${actionLabel}
-            </div>
-          </div>`;
-      }).join('');
-      container.innerHTML = html;
-    }
-
-    /* Formata uma entrada do audit_log em linguagem natural:
-       - INSERT: "Added HFA-P · Swahili (target: 5)"
-       - UPDATE: "Updated HFA-P · Swahili: 5 → 7"
-       - DELETE: "Deleted HFA-P · Swahili (was 5)"
-       Se algo faltar, mostra fallback com o entity_id. */
-    function describeAuditEntry(e) {
-      const before = e.before || {};
-      const after = e.after || {};
-      const board = after.board_short || before.board_short || '?';
-      const lang = after.language || before.language || '?';
-      const label = `<strong>${escapeHtml(board)}</strong> · ${escapeHtml(lang)}`;
-
-      if (e.action === 'insert') {
-        return `Added ${label} <span style="color:var(--text-dim);">(target: ${escapeHtml(String(after.target_value ?? '?'))})</span>`;
-      }
-      if (e.action === 'delete') {
-        return `Deleted ${label} <span style="color:var(--text-dim);">(was: ${escapeHtml(String(before.target_value ?? '?'))})</span>`;
-      }
-      if (e.action === 'update') {
-        const oldV = before.target_value;
-        const newV = after.target_value;
-        if (oldV !== newV) {
-          return `Updated ${label}: <strong>${escapeHtml(String(oldV))}</strong> → <strong>${escapeHtml(String(newV))}</strong>`;
-        }
-        // Update sem mudança no target_value (ex.: só notes/updated_by mudou)
-        return `Updated ${label} <span style="color:var(--text-dim);">(metadata)</span>`;
-      }
-      return `${e.action} on ${escapeHtml(e.entity_id || '?')}`;
-    }
-
-    /* Data legível tipo "21 May 2026 · 6:32 PM" ou "2h ago" se for recente. */
-    function formatAuditDate(iso) {
-      if (!iso) return '—';
-      const d = new Date(iso);
-      const now = Date.now();
-      const diffMs = now - d.getTime();
-      const min = 60 * 1000, hr = 60 * min, day = 24 * hr;
-      if (diffMs < min) return 'just now';
-      if (diffMs < hr) return `${Math.floor(diffMs / min)}m ago`;
-      if (diffMs < day) return `${Math.floor(diffMs / hr)}h ago`;
-      if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d ago`;
-      // Mais antigo: data completa
-      return d.toLocaleString(undefined, {
-        day: 'numeric', month: 'short', year: 'numeric',
-        hour: 'numeric', minute: '2-digit'
-      });
-    }
-
-    /* Após salvar no banco, reflete os targets em PUBLISHING_TARGETS (variável
-       em memória que o resto do dashboard consulta) e re-renderiza. Evita
-       precisar dar F5 ou esperar o TTL do CDN. */
-    function applyTargetsToLiveDashboard() {
-      const newMap = {};
-      for (const r of TARGETS_EDITOR.rows) {
-        if (r._delete) continue;
-        if (!newMap[r.board_id]) newMap[r.board_id] = {};
-        newMap[r.board_id][r.language] = r.target_value;
-      }
-      // Mescla preservando o fallback pra idiomas faltantes (mesma lógica do load inicial)
-      for (const bid of Object.keys(newMap)) {
-        PUBLISHING_TARGETS[bid] = { ...PUBLISHING_TARGETS_FALLBACK[bid], ...newMap[bid] };
-      }
-      // Re-render só se dashboard já carregou items
-      if (STORE.loaded) {
-        try {
-          buildFilters();
-          renderAll();
-        } catch (e) {
-          console.warn('[targets] re-render failed:', e);
-        }
-      }
     }
 
     /* Remove qualquer caractere fora do alfabeto JWT (base64url + ponto).
@@ -4167,10 +3279,16 @@
       return String(t || '').replace(/[^A-Za-z0-9._=\-]/g, '');
     }
 
-    /* ---------- SNAPSHOT CACHE (localStorage) ----------
+    /* ---------- SNAPSHOT CACHE (sessionStorage) ----------
        Salva o último snapshot completo dos items pra mostrar instantaneamente
        na próxima abertura. Em background, dados frescos são carregados e
-       sobrescrevem o cache. UX percebido = zero loading na maioria das vezes.
+       sobrescrevem o cache.
+
+       sessionStorage, not localStorage (audit, 10 October 2026): the copy is
+       every item on both boards, and in localStorage it stayed on a shared
+       computer after the tab was closed and the person had signed out. It now
+       lives as long as the tab. clearLegacySnapshot removes the copy the old
+       version left behind.
 
        Estrutura: { ts: epochMs, items: [...] }
        TTL: 24h. Snapshots mais antigos são ignorados na exibição inicial
@@ -4178,6 +3296,10 @@
     */
     const SNAPSHOT_KEY = 'HCI_DASH_SNAPSHOT_v1';
     const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
+
+    function clearLegacySnapshot() {
+      try { localStorage.removeItem(SNAPSHOT_KEY); } catch (_) {}
+    }
 
     /* Remove items com id repetido, mantendo a primeira ocorrência.
        Item ids do Monday são globalmente únicos, então dedup por id é seguro.
@@ -4216,7 +3338,7 @@
         //   - Campos de debug (pubLogEventCount, pubMatchingEventCount, etc)
         //
         // Resultado: cada item cacheado tem ~10 campos pequenos ao invés de ~30
-        // (vários sendo arrays grandes). Cabe folgado nos 5MB do localStorage
+        // (vários sendo arrays grandes). Cabe folgado nos 5MB do sessionStorage
         // mesmo com 3000+ items.
         const trimmed = items.map(it => ({
           id: it.id,
@@ -4253,28 +3375,28 @@
           isStagedToPublish: it.isStagedToPublish
         }));
         const payload = JSON.stringify({ ts: Date.now(), items: trimmed });
-        localStorage.setItem(SNAPSHOT_KEY, payload);
+        sessionStorage.setItem(SNAPSHOT_KEY, payload);
         console.log(`[snapshot] saved ${trimmed.length} items · ${(payload.length / 1024).toFixed(1)} KB`);
       } catch (err) {
-        // QuotaExceededError ou serialização falhando — desiste silenciosamente.
+        // QuotaExceededError ou serialização falhando - desiste silenciosamente.
         // Próxima visita simplesmente faz load completo (não é regressão, só
         // perde o ganho de "abre instantâneo").
         console.warn('[snapshot] save failed:', err.message);
         // Limpa qualquer snapshot stale que possa estar lá pra evitar
         // carregar dados parciais na próxima visita.
-        try { localStorage.removeItem(SNAPSHOT_KEY); } catch (_) {}
+        try { sessionStorage.removeItem(SNAPSHOT_KEY); } catch (_) {}
       }
     }
 
     function loadSnapshot() {
       try {
-        const raw = localStorage.getItem(SNAPSHOT_KEY);
+        const raw = sessionStorage.getItem(SNAPSHOT_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!parsed?.items?.length) return null;
         const ageMs = Date.now() - (parsed.ts || 0);
         if (ageMs > SNAPSHOT_TTL_MS) return null;
-        // Dedup ao LER — protege contra caches salvos pela versão antiga
+        // Dedup ao LER - protege contra caches salvos pela versão antiga
         // (antes do fix de duplicação) que ainda têm items repetidos.
         // Sem isso, um usuário retornando veria dupes por ~50s até o refresh.
         return { items: dedupeById(parsed.items, 'cache'), ageMs };
@@ -4301,7 +3423,7 @@
         throw new Error('mondayQuery is dev-only; use /api/snapshot in production');
       }
       const clean = sanitizeToken(STORE.token);
-      if (!clean) throw new Error('Empty token — paste your Monday API token.');
+      if (!clean) throw new Error('Empty token. Paste your Monday API token.');
       const url = MONDAY_URL;
       const headers = {
         'Content-Type': 'application/json',
@@ -4408,7 +3530,7 @@
        grande, timeout, ou rate limit). Quebrando em chunks de 30 dias, cada
        requisição é pequena e o navegador não estoura nada.
 
-       Cada chunk respeita o limit de 10.000 eventos da API — se um chunk
+       Cada chunk respeita o limit de 10.000 eventos da API - se um chunk
        específico atingir 10.000, logamos um warning (improvável em 30 dias,
        mas serve de canário).
 
@@ -4479,14 +3601,14 @@
       await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
       if (chunksFailed > 0) {
-        console.warn(`[${boardShort}] ${chunksFailed}/${chunks.length} chunks falharam — métricas podem estar incompletas.`);
+        console.warn(`[${boardShort}] ${chunksFailed}/${chunks.length} chunks falharam - métricas podem estar incompletas.`);
       }
       return out;
     }
 
     /* Monday's activity_logs retornam `created_at` como uma string de ~17 dígitos
        em unidades de 100 nanossegundos (1/10.000.000 de segundo) desde a Unix epoch.
-       Isto é, NÃO é ISO 8601 nem milissegundos — `new Date("17750831407806976")`
+       Isto é, NÃO é ISO 8601 nem milissegundos - `new Date("17750831407806976")`
        retorna Invalid Date silenciosamente. Esta função converte para ISO 8601.
 
        Exemplo: "17750831407806976" / 10.000 = 1.775.083.140.780 ms = 2026-04-01T22:39:00.780Z
@@ -4518,7 +3640,7 @@
     }
 
     /* Recebe dados crus (items + groups + activity logs) de um board e devolve
-       items enriquecidos. Pura função de transformação — sem I/O. Compartilhada
+       items enriquecidos. Pura função de transformação - sem I/O. Compartilhada
        entre o caminho legacy (loadOneBoard, dev mode) e o novo
        (loadAllViaSnapshot, prod mode com /api/snapshot). */
     function enrichBoardData(bid, items, groups, logs) {
@@ -4582,7 +3704,7 @@
 
     /* Constrói lista de column IDs que importam para este board (stages,
        people, language, publishing, date). Usado pra enxugar payload do
-       /api/snapshot — só pedimos ao Monday as colunas que o dashboard usa. */
+       /api/snapshot - só pedimos ao Monday as colunas que o dashboard usa. */
     function getBoardColumnIds(bid) {
       const b = BOARDS[bid] || {};
       const set = new Set();
@@ -4622,7 +3744,7 @@
          - Prod (Vercel): chama /api/snapshot uma vez. Server pega tudo em
            paralelo (4 boards × items + activity logs) e devolve bundle único.
            Browser só enriquece localmente. ~1 round-trip vs ~40 antes.
-         - Dev local: caminho legacy — browser orquestra todas as chamadas
+         - Dev local: caminho legacy - browser orquestra todas as chamadas
            direto pro Monday usando o token colado pelo user.
     */
 
@@ -4642,12 +3764,12 @@
       else rel = Math.round(mins / 1440) + 'd ago';
       const relEl = document.getElementById('lastUpdatedRel');
       if (relEl) relEl.textContent = rel;
-      el.title = new Date(iso).toLocaleString();
+      el.title = 'Last data update: ' + fmtDateTime(iso) + ' (New York)';
     }
 
     async function loadAllViaSnapshot(since) {
       // Carrega só os boards da view ATIVA. No launch (só Goals visível),
-      // isso significa apenas os 2 boards de Publishing — pulamos os 2 de
+      // isso significa apenas os 2 boards de Publishing - pulamos os 2 de
       // Translation, cortando ~50% do trabalho do snapshot.
       //
       // Trade-off: se a Translation view for re-habilitada, trocar de view
@@ -4670,8 +3792,18 @@
         body: JSON.stringify({ boards: boardsReq, since })
       });
       if (!r.ok) {
-        const text = await r.text().catch(() => '');
-        throw new Error(`Snapshot HTTP ${r.status}: ${text.slice(0, 200)}`);
+        // The server answers { error } in a plain sentence: 403 for someone
+        // without the Publishing Goals tool, 500 when the boards could not be
+        // read. That sentence is what the person sees; the status and body
+        // never reach the page (audit, 10 October 2026).
+        let said = null;
+        try {
+          const body = await r.json();
+          if (body && typeof body.error === 'string' && body.error.length < 200) said = body.error;
+        } catch (_) {}
+        const err = new Error(`snapshot ${r.status}`);
+        err.userMessage = said || BOARDS_ERROR;
+        throw err;
       }
       const data = await r.json();
       if (data?._meta?.elapsedMs != null) {
@@ -4679,7 +3811,7 @@
       }
       if (data?._meta?.ingestedAt) updateLastUpdated(data._meta.ingestedAt);
 
-      // Enriquece cada board localmente. Operação pura (sem I/O) — rápido.
+      // Enriquece cada board localmente. Operação pura (sem I/O) - rápido.
       const enriched = [];
       for (const board of (data.boards || [])) {
         const arr = enrichBoardData(
@@ -4729,7 +3861,7 @@
     let _loadInProgress = false;
 
     async function loadAll({ silent = false } = {}) {
-      // Em produção, o token vem do server (env var) — não precisa checar localmente
+      // Em produção, o token vem do server (env var) - não precisa checar localmente
       if (IS_LOCAL_DEV && !STORE.token) {
         alert('Paste your Monday API token first.');
         return;
@@ -4737,16 +3869,15 @@
       // Se já há um load rodando, ignora esta chamada (evita concorrência).
       // O dedup por id mais abaixo é a rede de segurança caso algo escape.
       if (_loadInProgress) {
-        console.warn('[loadAll] already in progress — ignoring concurrent call');
+        console.warn('[loadAll] already in progress - ignoring concurrent call');
         return;
       }
       _loadInProgress = true;
       $('loadBtn').disabled = true;
 
-      // Atualiza os targets do Supabase ANTES de processar os items.
-      // Roda em paralelo com a fetch principal pra não adicionar latência
-      // perceptível (em prod, /api/targets fica em ~50-200ms; vs /api/snapshot
-      // que leva dezenas de segundos). Falha silenciosa cai no fallback.
+      // Re-reads the targets alongside the snapshot, so an edit made in
+      // Settings shows on the next load. A failure is no longer silent: it
+      // puts the alert on the page and the goals are not drawn.
       const targetsPromise = loadTargetsFromServer();
 
       const since = new Date(Date.now() - ACTIVITY_LOG_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -4794,11 +3925,10 @@
         // Roda ANTES do saveSnapshot pra garantir que o cache nunca guarda dupes.
         STORE.items = dedupeById(STORE.items, 'loadAll');
 
-        // Garante que targets do Supabase já carregaram antes de renderizar.
-        // Em prod, /api/targets leva ~100ms; /api/snapshot leva dezenas de
-        // segundos. Esse await é só por segurança — quase sempre resolve
-        // instantaneamente porque já terminou enquanto o snapshot baixava.
+        // Os targets precisam estar lidos antes de renderizar. Quase sempre já
+        // terminaram enquanto o snapshot baixava.
         await targetsPromise;
+        setPageAlert('loadError', '');
 
         // Re-render completo com todos os boards
         buildPeopleAndStatuses();
@@ -4836,14 +3966,15 @@
         setStatus('ok', `${STORE.items.length} items · ${doneWithoutEvent.length} Done w/o log`);
       } catch (err) {
         console.error('[loadAll] caught error:', err);
-        const msg = err?.message || String(err);
-        setStatus('err', msg.slice(0, 60));
-        // Em silent mode (refresh em background), não mostra alert — seria
-        // intrusivo. O usuário continua vendo os dados do cache. Só alerta
-        // em load manual/explícito.
-        if (!silent) {
-          alert(`Load failed: ${msg}\n\nOpen the console (F12) for per-board details.`);
-        }
+        setStatus('err', 'Error');
+        // A plain sentence on the page, never the raw status or body in an
+        // alert box (audit, 10 October 2026). After a failed background
+        // refresh the page is still showing the copy saved earlier, and says
+        // so rather than passing it off as current.
+        const said = err?.userMessage || BOARDS_ERROR;
+        setPageAlert('loadError', silent && STORE.loaded
+          ? `${said} The figures below are from the copy saved earlier.`
+          : said);
       } finally {
         _loadInProgress = false;
         $('loadBtn').disabled = false;
@@ -4861,8 +3992,8 @@
     }
 
     /* Resolve os "donos" de um stage a partir do config:
-         - ownerFixed: nome literal (ex.: "Joy Deche") — sempre retornado.
-         - ownerCol: coluna de pessoa neste item — lê o texto e divide por vírgula.
+         - ownerFixed: nome literal (ex.: "Joy Deche") - sempre retornado.
+         - ownerCol: coluna de pessoa neste item - lê o texto e divide por vírgula.
        Retorna um array de nomes (pode ser vazio). */
     function resolveStageOwners(byId, st) {
       const out = [];
@@ -4943,13 +4074,13 @@
         );
         for (const sub of it.subitems) {
           const sbyId = colsById(sub.column_values);
-          const lang = (sbyId[board.subitemPipeline.languageCol]?.text) || '—';
+          const lang = (sbyId[board.subitemPipeline.languageCol]?.text) || '-';
           const evalSub = evalPipeline(sbyId, board.subitemPipeline.stages);
 
           /* doneDate do subitem = última vez que uma coluna do pipeline do subitem
              foi marcada como "complete" nos logs de atividade.
              Se o activity_log não trouxer eventos do subitem (pulse_id não encontrado),
-             cai em null — o renderCharts vai usar a data do pai como fallback. */
+             cai em null - o renderCharts vai usar a data do pai como fallback. */
           let subDoneDate = null;
           if (evalSub.isDone && allChangesMap) {
             const subChanges = allChangesMap.get(String(sub.id)) || [];
@@ -4987,7 +4118,7 @@
         stageValue = currentStage?.value || '(not started)';
         statusKind = currentStage ? statusClass(currentStage.value) : 'pending';
       } else if (board.subitemPipeline) {
-        // pipeline do pai concluído — verifica subitems
+        // pipeline do pai concluído - verifica subitems
         if (subCount === 0) {
           currentStage = { name: 'Translation', value: '(no subitems yet)', semantic: 'notstarted', col: null };
           isDone = false;
@@ -5011,7 +4142,7 @@
           statusKind = anyStuck ? 'stuck' : 'progress';
         }
       } else {
-        // board sem subitems (Publishing) — pai done = item done
+        // board sem subitems (Publishing) - pai done = item done
         currentStage = null;
         isDone = true;
         stageName = 'Completed';
@@ -5023,7 +4154,7 @@
          Percorre os eventos cronologicamente e guarda o último move PARA um
          grupo "On Going". Se o item ainda está em On Going, essa data é
          considerada o início do trabalho; se saiu (ou nunca passou por lá),
-         workStart fica null — NUNCA usamos created_at como métrica de tempo. */
+         workStart fica null - NUNCA usamos created_at como métrica de tempo. */
       let workStart = null;
       if (onGoingGroupIds && onGoingGroupIds.size) {
         const sortedMoves = (groupMoves || [])
@@ -5033,7 +4164,7 @@
           if (onGoingGroupIds.has(String(mv.group_id))) workStart = mv.created_at;
         }
         /* Se o item está atualmente em On Going mas não temos evento (log só
-           vai até "since"), deixamos workStart = null — desconhecido. */
+           vai até "since"), deixamos workStart = null - desconhecido. */
       }
 
       /* Tempo na etapa atual:
@@ -5089,7 +4220,7 @@
            1. Tem que existir um evento real na activity_log do item onde a
               coluna `publishedCol` (status31) foi alterada PARA o label exato
               definido em `publishedLabel` (ex.: 'Done').
-           2. SEM fallback para updated_at — se não há evento, o item não conta.
+           2. SEM fallback para updated_at - se não há evento, o item não conta.
            3. publishedDate = data desse evento (o último, se houver vários).
          Isso garante que a métrica reflete somente publicações comprovadas
          pelos logs, sem inflar números por edições não-relacionadas.
@@ -5105,7 +4236,7 @@
       let pubMatchingEventCount = 0;     // quantos bateram com publishedLabel exato
       let pubIsDoneWithoutEvent = false; // true se status atual == 'Done' mas sem log
       if (board.publishingMode) {
-        pubLanguage = byId[board.languageCol]?.text || '—';
+        pubLanguage = byId[board.languageCol]?.text || '-';
         if (board.publisherCol) {
           pubPublishers = [...collectPeopleNames(byId, [board.publisherCol])];
         }
@@ -5155,7 +4286,7 @@
            - Se terminou e estamos aguardando subitems: união dos owners do
              currentStage de cada subitem ainda pendente.
            - Se isDone ou stage é sintético sem dono: vazio.
-         Itens stuck/waiting permanecem "na mesa" do owner — a bola não
+         Itens stuck/waiting permanecem "na mesa" do owner - a bola não
          atravessa o bloqueio, então quem estava responsável continua sendo. */
       let currentOwners = [];
       if (!isDone) {
@@ -5176,7 +4307,7 @@
       /* Timeline = só mudanças das colunas que são etapas do pipeline.
          "Created" aparece como âncora informativa (sem duração a partir dele),
          e "Moved to On Going" marca o início real do trabalho. Durações são
-         calculadas a partir do workStart — nunca a partir do created_at. */
+         calculadas a partir do workStart - nunca a partir do created_at. */
       const pipelineCols = new Set(board.stages.map(s => s.col));
       const stageNameByCol = Object.fromEntries(board.stages.map(s => [s.col, s.name]));
       const pipelineChanges = changes
@@ -5228,7 +4359,7 @@
         // KPI helpers (computados aqui pra renderKPIs não precisar matchar strings)
         isInExcludedGroup,
         isStagedToPublish,
-        // Campos de debug — auditoria do critério de publicação
+        // Campos de debug - auditoria do critério de publicação
         pubCurrentStatusText,
         pubLogEventCount,
         pubMatchingEventCount,
@@ -5305,13 +4436,13 @@
       const pad = (s, n) => String(s).padEnd(n);
       let out = '';
       out += '╔══════════════════════════════════════════════════════════════════╗\n';
-      out += '║  BOARDS DIAGNOSTIC — copy everything and paste back into chat    ║\n';
+      out += '║  BOARDS DIAGNOSTIC - copy everything and paste back into chat    ║\n';
       out += '╚══════════════════════════════════════════════════════════════════╝\n\n';
 
       for (const bid of Object.keys(BOARDS)) {
         const b = boardData[bid];
         out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-        out += `  ${b.name}  (${b.short} · id ${bid})  —  ${b.itemCount} items\n`;
+        out += `  ${b.name}  (${b.short} · id ${bid})  -  ${b.itemCount} items\n`;
         out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
         out += '▸ ALL COLUMNS:\n';
@@ -5341,14 +4472,14 @@
         out += '▸ ALL PEOPLE COLUMNS AVAILABLE:\n';
         if (b.peopleColumns.size === 0) out += '    (none found)\n';
         for (const [id, pc] of b.peopleColumns) {
-          out += `    ◆ "${pc.title}"  (id: ${id})  —  ${pc.filledCount}/${b.itemCount} filled, ${pc.distinctNames.size} distinct people\n`;
+          out += `    ◆ "${pc.title}"  (id: ${id})  -  ${pc.filledCount}/${b.itemCount} filled, ${pc.distinctNames.size} distinct people\n`;
         }
         out += '\n';
 
         out += '▸ ALL DATE COLUMNS AVAILABLE:\n';
         if (b.dateColumns.size === 0) out += '    (none found)\n';
         for (const [id, dc] of b.dateColumns) {
-          out += `    ◆ "${dc.title}"  (id: ${id})  —  ${dc.filledCount}/${b.itemCount} filled\n`;
+          out += `    ◆ "${dc.title}"  (id: ${id})  -  ${dc.filledCount}/${b.itemCount} filled\n`;
         }
         out += '\n';
       }
@@ -5447,34 +4578,50 @@
     }
 
     /* ---------- FILTERING ---------- */
+    /* The selected period as two instants. "This week", "last week", "this
+       month" and a custom range are New York calendar days (audit, 10
+       October 2026); they used to follow the browser's clock, so the same
+       page counted a different week in London than in New York. "Last 2
+       weeks" and "last quarter" are rolling windows and need no calendar. */
     function getDateRange() {
       const period = $('filterPeriod').value;
       const now = new Date();
+      const today = nyToday();
       let from = null, to = null;
       if (period === 'all') return { from: null, to: null };
       if (period === 'week') {
-        const monday = new Date(now); const day = monday.getDay();
-        const diff = monday.getDate() - day + (day === 0 ? -6 : 1);
-        monday.setDate(diff); monday.setHours(0, 0, 0, 0);
-        from = monday; to = new Date();
+        from = nyMidnight(mondayOf(today)); to = now;
       } else if (period === 'lastweek') {
-        const monday = new Date(now); const day = monday.getDay();
-        const diff = monday.getDate() - day + (day === 0 ? -6 : 1);
-        monday.setDate(diff - 7); monday.setHours(0, 0, 0, 0);
-        const sunday = new Date(monday); sunday.setDate(monday.getDate() + 7);
-        from = monday; to = sunday;
+        const thisMonday = mondayOf(today);
+        from = nyMidnight(addDays(thisMonday, -7));
+        to = new Date(nyMidnight(thisMonday).getTime() - 1);
       } else if (period === '2weeks') {
-        from = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); to = new Date();
+        from = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); to = now;
       } else if (period === 'month') {
-        from = new Date(now.getFullYear(), now.getMonth(), 1); to = new Date();
+        from = nyMidnight(today.slice(0, 8) + '01'); to = now;
       } else if (period === 'quarter') {
-        from = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); to = new Date();
+        from = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); to = now;
       } else if (period === 'custom') {
         const df = $('dateFrom').value, dt = $('dateTo').value;
-        if (df) from = new Date(df);
-        if (dt) { to = new Date(dt); to.setHours(23, 59, 59, 999); }
+        if (df) from = nyMidnight(df);
+        if (dt) to = new Date(nyMidnight(addDays(dt, 1)).getTime() - 1);
       }
       return { from, to };
+    }
+
+    /* STORE.items without repeats. Every count on the page goes through this
+       (audit, 10 October 2026): the load path removed repeats, but the
+       publishing counts read STORE.items directly, so an item Monday returned
+       on two pages could be counted twice there. Kept until the list changes. */
+    let _uniqueSource = null, _uniqueLen = -1, _uniqueItems = [];
+    function uniqueItems() {
+      const src = STORE.items || [];
+      if (_uniqueSource !== src || _uniqueLen !== src.length) {
+        _uniqueSource = src;
+        _uniqueLen = src.length;
+        _uniqueItems = dedupeById(src, 'counts') || [];
+      }
+      return _uniqueItems;
     }
 
     function filterItems(opts = {}) {
@@ -5486,14 +4633,17 @@
       const viewBoards = new Set(getViewBoardIds());   // restrict to active view
       const isPublishing = STORE.activeView === 'publishing';
 
-      let result = STORE.items.filter(it => {
+      let result = uniqueItems().filter(it => {
         if (!viewBoards.has(it.boardId)) return false;  // view scope
         if (board !== 'all' && it.boardId !== board) return false;
 
-        // Publishing view: só itens em que algum publisher está em publisherCol (people29)
+        // Publishing view: só itens em que algum publisher está em publisherCol (people29),
+        // and none in a language paused on the site: a paused language is
+        // left out of every count, not only the targets (audit, 10 October 2026).
         if (isPublishing) {
           const hasPub = (it.publishers || []).some(isPublisher);
           if (!hasPub) return false;
+          if (isPausedLang(it.boardId, it.language)) return false;
         }
 
         // Filtro de pessoa: em Publishing view, restrito a `it.publishers`
@@ -5501,7 +4651,7 @@
         // `it.people` (todas as pessoas do item).
         // Antes ambos olhavam pra it.people, o que fazia o filtro de
         // publisher passar items onde o publisher selecionado era apenas
-        // designer ou tradutor — não publisher de verdade.
+        // designer ou tradutor - não publisher de verdade.
         if (person) {
           const peopleToMatch = isPublishing ? (it.publishers || []) : it.people;
           if (!peopleToMatch.includes(person)) return false;
@@ -5525,7 +4675,7 @@
       });
 
       // Apply quick filter (drill-down from KPI cards / doughnut chart / status chips).
-      // Quando `ignoreQuickFilter` está true, esse bloco é pulado — usado pelos
+      // Quando `ignoreQuickFilter` está true, esse bloco é pulado - usado pelos
       // renders de KPI / charts / cards, que devem mostrar o panorama geral
       // independente de qual KPI o usuário está focando no momento.
       if (!opts.ignoreQuickFilter) {
@@ -5593,7 +4743,7 @@
       const bar   = $('quickFilterBar');
       const label = $('quickFilterLabel');
       if (bar)   bar.classList.toggle('visible', !!qf);
-      if (label) label.textContent = qf ? (qf.label || qf.type) : '—';
+      if (label) label.textContent = qf ? (qf.label || qf.type) : '-';
       // Clear active highlights
       document.querySelectorAll('.kpi.is-active, .status-chip-card.is-active').forEach(el => el.classList.remove('is-active'));
       if (!qf || qf.type === 'assignee') return;
@@ -5607,9 +4757,16 @@
     let chartWeekly = null, chartStatus = null;
 
     function renderAll() {
+      // Without the targets and the publisher list every figure on the Goals
+      // view would be wrong, so none is drawn (audit, 10 October 2026).
+      if (STORE.activeView === 'publishing' && TARGETS_STATE !== 'ok') {
+        renderTargetsUnavailable();
+        return;
+      }
+
       // baseFiltered: aplicação dos filtros de filter-bar (board, periodo, etc)
       //               SEM o quickFilter de KPI. Usado pra renderizar a foto
-      //               panorâmica — KPIs, charts, people, chips ficam constantes
+      //               panorâmica: KPIs, charts, people, chips ficam constantes
       //               independente de qual KPI o usuário focou.
       // tableFiltered: aplicação de TODOS os filtros incluindo o quickFilter.
       //                Usado só pra renderTable, que é onde o user quer ver
@@ -5626,16 +4783,94 @@
 
       const period = $('filterPeriod').options[$('filterPeriod').selectedIndex].textContent;
       $('kpiContext').textContent = period;
-      // chartsSub é gerenciado pelo renderCharts — não sobrescrever aqui
+      // chartsSub é gerenciado pelo renderCharts, não sobrescrever aqui
+    }
+
+    /* The Goals view when the targets could not be read: dashes and the
+       sentence, rather than counts against nothing. */
+    function renderTargetsUnavailable() {
+      window.__pubAuditSnapshot = null;
+      for (const id of ['kpiTotal', 'kpiDone', 'kpiProgress', 'kpiAvg', 'kpiTotalDelta', 'kpiDoneDelta', 'kpiProgressDelta']) {
+        const el = $(id);
+        if (el) el.textContent = '-';
+      }
+      const body = $('pubMatrixBody');
+      if (body) body.innerHTML = `<div class="pub-unavailable">${escapeHtml(TARGETS_ERROR)}</div>`;
+      const badge = $('pubChartBadge');
+      if (badge) badge.textContent = '-';
+      renderCharts([]);
+      renderPeople([]);
+      renderKanbanChips([]);
+      $('itemsBody').innerHTML = `<tr><td colspan="8" class="empty" style="padding:48px 20px;"><div class="small">${escapeHtml(TARGETS_ERROR)}</div></td></tr>`;
+      $('visibleCount').textContent = '';
+      $('tableCount').textContent = '';
+      $('paginationInfo').textContent = '';
+    }
+
+    /* The weeks a period's target is made of, each with its weight: the
+       Monday (New York) and how much of that week counts.
+
+         this week, last week   that one week, whole. The current week is
+                                judged against its full weekly target, as
+                                before, with the target in force this week.
+         this month             every Monday-to-Sunday week that touches the
+                                month, whole (the month's target is the full
+                                month's, never pro-rated to today).
+         last quarter, all time the 13 weeks ending with this one.
+         last 2 weeks, custom   day by day: each day adds a seventh of its
+                                week's target, so 14 days are two weeks.
+
+       Summing week by week is what lets a target that changed part way
+       through a period count at its old value for the old weeks and its new
+       value for the new ones (audit, 10 October 2026). */
+    function targetWeeksFor(periodValue, from, to) {
+      const today = nyToday();
+      const thisMonday = mondayOf(today);
+      const whole = (mondays) => mondays.map(monday => ({ monday, weight: 1 }));
+      if (periodValue === 'week') return whole([thisMonday]);
+      if (periodValue === 'lastweek') return whole([addDays(thisMonday, -7)]);
+      if (periodValue === 'month') {
+        const first = today.slice(0, 8) + '01';
+        const [y, m] = first.split('-').map(Number);
+        const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+        const out = [];
+        for (let mo = mondayOf(first); mo <= last; mo = addDays(mo, 7)) out.push(mo);
+        return whole(out);
+      }
+      if (periodValue === 'quarter' || periodValue === 'all') {
+        const out = [];
+        for (let k = 12; k >= 0; k--) out.push(addDays(thisMonday, -7 * k));
+        return whole(out);
+      }
+      // 2weeks and custom: the calendar days of the range, inclusive.
+      let firstDay, lastDay;
+      if (periodValue === '2weeks') {
+        lastDay = today;
+        firstDay = addDays(today, -13);
+      } else {
+        firstDay = from ? nyYmd(from) : addDays(today, -89);
+        lastDay = to ? nyYmd(to) : today;
+      }
+      const byMonday = new Map();
+      for (let d = firstDay; d <= lastDay; d = addDays(d, 1)) {
+        const mo = mondayOf(d);
+        byMonday.set(mo, (byMonday.get(mo) || 0) + 1 / 7);
+      }
+      return [...byMonday.entries()].map(([monday, weight]) => ({ monday, weight }));
     }
 
     /* ---------- PUBLISHING METRICS ----------
        Mostra ritmo de publicação vs meta semanal, por board × idioma.
        - Só considera itens com `publishingMode` (boards HFA-P e AAAF-P).
-       - Só conta itens em que pelo menos um publisher (Sam, Wendy) está em
-         `publisherCol` (people29).
+       - Só conta itens em que pelo menos um publisher (a lista do servidor)
+         está em `publisherCol` (people29).
        - Considera "publicado" quando `publishedDate` cai dentro do período.
-       - Meta total = pagesPerWeek × nº de semanas do período.
+       - Paused languages are left out entirely.
+       - Each page is judged in its own week (New York): it counts toward its
+         language's goal when that language had a target in force that week,
+         and otherwise goes in the separate "other languages" count, shown
+         beside the score and never added to it (audit, 10 October 2026). The
+         total is "Targeted languages"; it used to sum every language.
     */
     function renderPublishingMetrics(items) {
       const body = $('pubMatrixBody');
@@ -5646,77 +4881,91 @@
       const periodFrom = from ? new Date(from) : null;
       const periodTo   = to   ? new Date(to)   : new Date();
 
-      /* Cálculo do target — sempre o TOTAL do período, não pro-rateado pelo
-         tempo decorrido. Ou seja, se a meta é 5/semana, "this month" pede
-         ~22 páginas (full month), não ~10 (mês até hoje).
-
-         Para períodos com duração natural fixa (week, 2weeks, month, quarter),
-         usamos a duração de calendário. Para custom/all, calculamos a partir
-         de daysInPeriod. */
       const periodValue = $('filterPeriod').value;
       const daysInPeriod = periodFrom
         ? Math.max(0.5, (periodTo - periodFrom) / 86400000)
         : 90;
 
-      // Conta quantas semanas-calendário (Mon→Sun) tocam o mês de uma data.
-      // Maio/26: 1º = sexta, então a semana de 27/Abr conta + 4 semanas seguintes = 5.
-      // Fev/27: 1º = segunda, dura 28 dias, então 4 semanas exatas.
-      function countWeeksInMonth(date) {
-        const y = date.getFullYear(), m = date.getMonth();
-        const first = new Date(y, m, 1);
-        const last  = new Date(y, m + 1, 0);
-        const dow1  = first.getDay() || 7;          // Sun (0) vira 7
-        const dow2  = last.getDay()  || 7;
-        const mondayStart = new Date(first); mondayStart.setDate(first.getDate() - (dow1 - 1));
-        const sundayEnd   = new Date(last);  sundayEnd.setDate(last.getDate() + (7 - dow2));
-        return Math.round(((sundayEnd - mondayStart) / 86400000 + 1) / 7);
-      }
+      const weeks = targetWeeksFor(periodValue, periodFrom, periodTo);
+      const weeksFractional = weeks.reduce((sum, w) => sum + w.weight, 0);
 
-      // Quantas semanas a meta deve cobrir, baseado no PERÍODO COMPLETO
-      let targetWeeks;
       let periodLabel;
-      if (periodValue === 'week')          { targetWeeks = 1;        periodLabel = 'this week';      }
-      else if (periodValue === 'lastweek') { targetWeeks = 1;        periodLabel = 'last week';      }
-      else if (periodValue === '2weeks')   { targetWeeks = 2;        periodLabel = 'last 2 weeks';   }
-      else if (periodValue === 'month')    {
-        const weeksThisMonth = countWeeksInMonth(periodFrom || new Date());
-        targetWeeks = weeksThisMonth;
-        periodLabel = `this month (${weeksThisMonth}wk)`;
-      }
-      else if (periodValue === 'quarter')  { targetWeeks = 13;       periodLabel = 'last quarter';   }
-      else if (periodValue === 'all')      { targetWeeks = 13;       periodLabel = 'last 90d (ref.)';}
-      else if (periodValue === 'custom')   { targetWeeks = daysInPeriod / 7; periodLabel = `custom (${daysInPeriod.toFixed(1)}d)`; }
-      else                                 { targetWeeks = daysInPeriod / 7; periodLabel = `${daysInPeriod.toFixed(1)} days`; }
-      const weeksFractional = targetWeeks;
+      if (periodValue === 'week')          periodLabel = 'this week';
+      else if (periodValue === 'lastweek') periodLabel = 'last week';
+      else if (periodValue === '2weeks')   periodLabel = 'last 2 weeks';
+      else if (periodValue === 'month')    periodLabel = `this month (${weeks.length}wk)`;
+      else if (periodValue === 'quarter')  periodLabel = 'last quarter';
+      else if (periodValue === 'all')      periodLabel = 'last 13 weeks (ref.)';
+      else if (periodValue === 'custom')   periodLabel = `custom (${daysInPeriod.toFixed(1)}d)`;
+      else                                 periodLabel = `${daysInPeriod.toFixed(1)} days`;
 
       // Respeita o filtro de board (dropdown). 'all' = todos os goals boards.
       const boardFilter = $('filterBoard').value || 'all';
+      const boardIds = Object.keys(BOARDS)
+        .filter(bid => BOARDS[bid].publishingMode)
+        .filter(bid => boardFilter === 'all' || bid === boardFilter);
 
-      // Agrupa publicados por board → idioma
-      const data = {};            // bid → { lang → count }
-      let orphanLangCount = 0;
-      const countedItems = [];    // para debug
-      const excluded = { wrongBoard: 0, outOfBoardFilter: 0, noPublisher: 0, notPublished: 0, outOfPeriod: 0, orphanLang: 0 };
-      for (const it of (STORE.items || [])) {
+      // The plan: per board, every language with a target in at least one
+      // week of the period, its target summed week by week, and the parts
+      // that sum is made of (for the breakdown and the exports).
+      const plan = {};        // bid -> Map(langKey -> { lang, target, parts: Map(perWeek -> weeks) })
+      for (const bid of boardIds) {
+        plan[bid] = new Map();
+        for (const [key, name] of targetLanguages(bid)) {
+          let target = 0, any = false;
+          const parts = new Map();
+          for (const w of weeks) {
+            const t = targetInForce(bid, name, w.monday);
+            if (t == null) continue;
+            any = true;
+            target += t * w.weight;
+            parts.set(t, (parts.get(t) || 0) + w.weight);
+          }
+          if (any) plan[bid].set(key, { lang: name, target, parts });
+        }
+      }
+
+      // Agrupa publicados por board -> idioma
+      const data = {};            // bid -> { lang -> count }, targeted only
+      const untargeted = {};      // bid -> count
+      const countedItems = [];    // para debug e drill-down
+      const excluded = { wrongBoard: 0, outOfBoardFilter: 0, noPublisher: 0, paused: 0, notPublished: 0, outOfPeriod: 0, untargeted: 0 };
+      for (const it of uniqueItems()) {
         const board = BOARDS[it.boardId];
         if (!board?.publishingMode) { excluded.wrongBoard++; continue; }
         if (boardFilter !== 'all' && it.boardId !== boardFilter) { excluded.outOfBoardFilter++; continue; }
         const hasPublisher = (it.publishers || []).some(isPublisher);
         if (!hasPublisher) { excluded.noPublisher++; continue; }
+        if (isPausedLang(it.boardId, it.language)) { excluded.paused++; continue; }
         if (!it.isPublished || !it.publishedDate) { excluded.notPublished++; continue; }
         const d = new Date(it.publishedDate);
         if (periodFrom && d < periodFrom) { excluded.outOfPeriod++; continue; }
         if (periodTo   && d > periodTo)   { excluded.outOfPeriod++; continue; }
 
-        if (!data[it.boardId]) data[it.boardId] = {};
-        const lang = it.language || '—';
-        data[it.boardId][lang] = (data[it.boardId][lang] || 0) + 1;
-        if (!PUBLISHING_TARGETS[it.boardId]?.[lang]) { orphanLangCount++; excluded.orphanLang++; }
+        const week = getWeekKey(it.publishedDate);
+        const rawLang = String(it.language || '').trim();
+        const inForce = week ? targetInForce(it.boardId, rawLang, week) : null;
+        const targeted = inForce != null;
+        let lang = rawLang || '-';
+        if (targeted) {
+          const key = langKey(rawLang);
+          // A page from a week outside the plan's weeks (possible on "all
+          // time") still needs a row to count in.
+          if (!plan[it.boardId].has(key)) plan[it.boardId].set(key, { lang: rawLang, target: 0, parts: new Map() });
+          lang = plan[it.boardId].get(key).lang;
+          if (!data[it.boardId]) data[it.boardId] = {};
+          data[it.boardId][lang] = (data[it.boardId][lang] || 0) + 1;
+        } else {
+          untargeted[it.boardId] = (untargeted[it.boardId] || 0) + 1;
+          excluded.untargeted++;
+        }
         countedItems.push({
           id: it.id,
           name: it.name.slice(0, 80),
           board: it.boardShort,
           lang,
+          targeted,
+          week,
           publishedDate: it.publishedDate,
           currentStatus31: it.pubCurrentStatusText,
           totalLogEvents: it.pubLogEventCount,
@@ -5725,46 +4974,61 @@
         });
       }
 
-      // Guarda snapshot para o botão "Copy audit"
+      // Totais por projeto e geral (targeted languages only).
+      let totalTarget = 0;
+      let totalDone   = 0;
+      let totalOther  = 0;
+      const boardStats = {};
+      const planOut = {};
+      for (const bid of boardIds) {
+        let bTarget = 0, bDone = 0;
+        const rows = [...plan[bid].values()].sort((a, b) => a.lang.localeCompare(b.lang));
+        planOut[bid] = rows.map(r => ({
+          lang: r.lang,
+          target: r.target,
+          parts: [...r.parts.entries()].map(([perWeek, w]) => ({ perWeek, weeks: w })),
+        }));
+        for (const r of rows) {
+          bTarget += r.target;
+          bDone   += data[bid]?.[r.lang] || 0;
+        }
+        const other = untargeted[bid] || 0;
+        boardStats[bid] = { target: bTarget, done: bDone, other };
+        totalTarget += bTarget;
+        totalDone   += bDone;
+        totalOther  += other;
+      }
+      const totalTargetRounded = Math.round(totalTarget * 10) / 10;
+      const totalPct = totalTarget ? Math.round(100 * totalDone / totalTarget) : 0;
+
+      // Guarda snapshot para o breakdown, os drill-downs e os exports
       window.__pubAuditSnapshot = {
         period: periodLabel || $('filterPeriod').value,
         periodFromISO: periodFrom ? periodFrom.toISOString() : null,
         periodToISO:   periodTo   ? periodTo.toISOString()   : null,
         daysInPeriod: typeof daysInPeriod === 'number' ? daysInPeriod : null,
-        weeksFractional: typeof weeksFractional === 'number' ? weeksFractional : null,
+        weeksFractional,
+        weeks,
         counted: countedItems,
         excluded,
-        perBoardLang: data
+        perBoardLang: data,
+        untargeted,
+        plan: planOut,
+        boardStats,
+        totals: { done: totalDone, target: totalTarget, other: totalOther, pct: totalPct }
       };
 
-      // Filtra os targets pelo board selecionado (ou mantém todos se 'all').
-      const targetEntries = Object.entries(PUBLISHING_TARGETS)
-        .filter(([bid]) => boardFilter === 'all' || bid === boardFilter);
-
-      // Calcula totais por projeto e geral com target fracionário.
-      let totalTarget = 0;
-      let totalDone   = 0;
-      const boardStats = {};
-      for (const [bid, langTargets] of targetEntries) {
-        let bTarget = 0, bDone = 0;
-        for (const [lang, perWeek] of Object.entries(langTargets)) {
-          bTarget += perWeek * weeksFractional;
-          bDone   += data[bid]?.[lang] || 0;
-        }
-        boardStats[bid] = { target: bTarget, done: bDone };
-        totalTarget += bTarget;
-        totalDone   += bDone;
-      }
-      const totalTargetRounded = Math.round(totalTarget * 10) / 10;
-      const totalPct = totalTarget ? Math.round(100 * totalDone / totalTarget) : 0;
+      const otherNote = (n) => n > 0
+        ? ` · <span title="${n} ${n === 1 ? 'page' : 'pages'} in languages with no target" aria-label="${n} ${n === 1 ? 'page' : 'pages'} in languages with no target">+${n} other</span>`
+        : '';
 
       // Header summary
       let html = `
         <div class="pub-summary">
           <div class="pub-summary-card">
-            <div class="pub-summary-label">Published</div>
+            <div class="pub-summary-label">Targeted languages</div>
             <div class="pub-summary-value">${totalDone}</div>
-            <div class="pub-summary-sub">${escapeHtml(periodLabel)}</div>
+            <div class="pub-summary-sub">published ${escapeHtml(periodLabel)}${otherNote(totalOther)}</div>
           </div>
           <div class="pub-summary-card">
             <button class="pub-summary-info-btn" id="pubTargetInfoBtn" type="button" aria-label="Target breakdown" title="See breakdown">
@@ -5785,7 +5049,7 @@
       `;
 
       // Per-board section (mesmo conjunto filtrado pelo board selecionado)
-      for (const [bid, langTargets] of targetEntries) {
+      for (const bid of boardIds) {
         const board = BOARDS[bid];
         if (!board) continue;
         const st = boardStats[bid];
@@ -5795,11 +5059,13 @@
           <div class="pub-board-section">
             <div class="pub-board-title">
               <span>${escapeHtml(board.name)}</span>
-              <span class="pub-board-meta">${st.done}/${stTargetRounded} · ${bPct}%</span>
+              <span class="pub-board-meta">${st.done}/${stTargetRounded} · ${bPct}%${otherNote(st.other)}</span>
             </div>
         `;
-        for (const [lang, perWeek] of Object.entries(langTargets)) {
-          const target = perWeek * weeksFractional;
+        if (!planOut[bid].length) {
+          html += `<div class="pub-other-row"><span>No weekly target set for this board in ${escapeHtml(periodLabel)}.</span></div>`;
+        }
+        for (const { lang, target, parts } of planOut[bid]) {
           const targetRounded = Math.round(target * 10) / 10;
           const done   = data[bid]?.[lang] || 0;
           const pct    = target ? Math.round(100 * done / target) : 0;
@@ -5809,15 +5075,24 @@
             : pct >= 70 ? ''
             : pct >= 40 ? 'under'
             : 'critical';
+          const base = parts.map(pt => `${pt.perWeek}/wk`).join(', then ');
           // data-bid + data-lang = "punhos" pro click handler saber QUAL row foi clicada
           html += `
             <div class="pub-row pub-row-clickable" data-bid="${bid}" data-lang="${escapeHtml(lang)}" title="Click to see published items">
               <span class="pub-lang">${escapeHtml(lang)}</span>
               <div class="pub-bar-wrap">
-                <span class="pub-count"><strong>${done}</strong> of <strong>${targetRounded}</strong> pages · target for ${escapeHtml(periodLabel)} <em style="color:var(--text-dim);font-style:normal;">(${perWeek}/wk base)</em></span>
+                <span class="pub-count"><strong>${done}</strong> of <strong>${targetRounded}</strong> pages · target for ${escapeHtml(periodLabel)} <em style="color:var(--text-dim);font-style:normal;">(${escapeHtml(base || 'no target')} base)</em></span>
                 <div class="pub-bar"><div class="pub-bar-fill ${cls}" style="width:${cap}%"></div></div>
               </div>
               <span class="pub-pct ${cls}">${pct}%</span>
+            </div>
+          `;
+        }
+        if (st.other > 0) {
+          html += `
+            <div class="pub-other-row pub-row-clickable" data-bid="${bid}" data-other="1" title="Click to see these pages">
+              <span>Other languages (no target)</span>
+              <span>${st.other} ${st.other === 1 ? 'page' : 'pages'}, not counted toward the goal</span>
             </div>
           `;
         }
@@ -5831,12 +5106,13 @@
       const sub   = $('pubChartSub');
       if (badge) badge.textContent = `${totalDone}/${totalTargetRounded} pages`;
       if (sub) {
-        sub.textContent = `target for ${periodLabel} · Publishing → "Done" · ${PUBLISHERS.join(' & ')}`;
+        const who = PUBLISHERS.length ? PUBLISHERS.join(' & ') : 'no publishers set';
+        sub.textContent = `targeted languages, target for ${periodLabel} · Publishing to "Done" · ${who}`;
       }
 
       // Debug log para auditoria (cada vez que o filtro muda)
       console.group(`%c[Publishing pace] ${periodLabel}`, 'color:#1E7D7F;font-weight:700;');
-      console.log(`From: ${periodFrom ? periodFrom.toISOString() : 'null'}  →  To: ${periodTo.toISOString()}`);
+      console.log(`From: ${periodFrom ? periodFrom.toISOString() : 'null'} to ${periodTo.toISOString()}`);
       console.log(`Days in period: ${daysInPeriod.toFixed(2)} (${weeksFractional.toFixed(2)} weeks)`);
       console.log(`Counted as published: ${countedItems.length} items`);
       console.log('Exclusion breakdown:', excluded);
@@ -5848,7 +5124,7 @@
       const { from, to } = getDateRange();
       const isPublishing = STORE.activeView === 'publishing';
 
-      // Avg stage (igual nas duas views — só items não-done com tempo conhecido)
+      // Avg stage (igual nas duas views - só items não-done com tempo conhecido)
       const avgItems   = items.filter(it => it.stageBizDays != null && !it.isDone);
       const avgStage   = avgItems.length ? avgItems.reduce((a, c) => a + c.stageBizDays, 0) / avgItems.length : 0;
       const avgUnitLabel = (avgStage == null || isNaN(avgStage)) ? 'business days'
@@ -5862,7 +5138,7 @@
         renderKPIsTranslations(items, from, to);
       }
 
-      // Metric cards (mantém comportamento — sem mudanças por enquanto)
+      // Metric cards (mantém comportamento - sem mudanças por enquanto)
       const doneAll = items.filter(it => it.isDone).length;
       const stuck   = items.filter(it => it.statusKind === 'stuck').length;
       $('metricDoneNum').innerHTML  = `${fmt(doneAll)}<span class="metric-unit">items</span>`;
@@ -5900,11 +5176,11 @@
       $('kpiTotalDelta').textContent    = `${Object.keys(BOARDS).length} boards`;
     }
 
-    /* KPIs da Goals view — regras novas (reunião):
+    /* KPIs da Goals view - regras novas (reunião):
          - Not Published: items NÃO no grupo "Published" (nem "French - Unpublished" para HFA)
          - Staged to Publish: status31 tem valor diferente de "Done" e diferente de vazio
          - Completed: status31 mudou pra "Done" dentro do período filtrado
-       Todos respeitam o filtro Publisher (Sam/Wendy) — já vem aplicado em `items`. */
+       Todos respeitam o filtro Publisher (Sam/Wendy) - já vem aplicado em `items`. */
     function renderKPIsGoals(items, from, to) {
       $('kpiTotalLabel').textContent    = 'Total Items - Not Published';
       $('kpiDoneLabel').textContent     = 'Completed';
@@ -5955,10 +5231,10 @@
       const progItems  = items.filter(it => !it.isDone && it.statusKind === 'progress');
       const doneItems  = items.filter(it => it.isDone);
 
-      $('chipNew').textContent      = notStarted.length || '—';
-      $('chipReview').textContent   = stuckItems.length || '—';
-      $('chipProgress').textContent = progItems.length  || '—';
-      $('chipDone').textContent     = doneItems.length  || '—';
+      $('chipNew').textContent      = notStarted.length || '-';
+      $('chipReview').textContent   = stuckItems.length || '-';
+      $('chipProgress').textContent = progItems.length  || '-';
+      $('chipDone').textContent     = doneItems.length  || '-';
 
       const total = items.length || 1;
       $('chipNewDelta').textContent      = Math.round(100 * notStarted.length / total) + '%';
@@ -5972,7 +5248,7 @@
       // Usa STORE.items diretamente (não os items pré-filtrados por "updated"),
       // aplicando apenas filtro de board + período por doneDate.
       // Razão: filterItems() filtra por it.updated, o que excluiria completions
-      // antigas ao usar date range customizado — para este chart queremos contar
+      // antigas ao usar date range customizado - para este chart queremos contar
       // todas as completions cujo doneDate cai dentro do período selecionado.
       const { from: cFrom, to: cTo } = getDateRange();
       const activeBoardFilter = $('filterBoard').value || 'all';
@@ -6010,7 +5286,7 @@
           if (cTo   && dDate > cTo)   continue;
           const bucket = getBucket(d);
           if (!bucket) continue;
-          const lang = sub.language || '—';
+          const lang = sub.language || '-';
           trackLang(lang);
           langBucketMap[lang][bucket] = (langBucketMap[lang][bucket] || 0) + 1;
         }
@@ -6075,7 +5351,7 @@
         const granLabel = monthly ? 'monthly' : 'weekly';
         weeklySub.textContent = totalLangDone
           ? `${totalLangDone} completed translation${totalLangDone !== 1 ? 's' : ''} · ${langOrder.length} language${langOrder.length !== 1 ? 's' : ''} · cumulative ${granLabel}`
-          : 'no completions in selected period — translation boards only';
+          : 'no completions in selected period (translation boards only)';
       }
 
       if (chartWeekly) chartWeekly.destroy();
@@ -6130,7 +5406,7 @@
       // Para cada item NÃO concluído, distribui 1 unidade entre os currentOwners
       // Cada item pendente conta como 1 unidade inteira por owner.
       // Como cada idioma (subitem) é tratado individualmente, não há mais
-      // rateio fracionado — todos os owners de um item recebem +1.
+      // rateio fracionado - todos os owners de um item recebem +1.
       // Itens sem owner resolvido entram em "Unassigned".
       const pMap = new Map();  // name -> count (inteiro)
       let unassigned = 0;
@@ -6163,7 +5439,7 @@
       if (chartStatusHeader) {
         const totalPending = items.filter(it => !it.isDone).length;
         chartStatusHeader.textContent = totalPending
-          ? `${totalPending} items waiting on action — sliced by owner`
+          ? `${totalPending} items waiting on action, sliced by owner`
           : 'nothing pending in view';
       }
       const chartStatusTitle = document.querySelector('#chartStatus')
@@ -6269,7 +5545,7 @@
           ? (it.people.length === 1
             ? `<span class="person-chip"><span class="avatar">${initials(it.people[0])}</span>${escapeHtml(it.people[0])}</span>`
             : `<span class="person-chip"><span class="avatar multi">${it.people.length}</span>${escapeHtml(it.people[0])} <em style="font-style:italic;color:var(--text-dim);font-size:11px;">+${it.people.length - 1}</em></span>`)
-          : `<span style="color:var(--text-dim);font-size:12px;">—</span>`;
+          : `<span style="color:var(--text-dim);font-size:12px;">-</span>`;
 
         const durClass = it.isDone ? '' : (it.stageBizDays > 10 ? 'bad' : it.stageBizDays > 5 ? 'warn' : '');
         const durCell  = it.isDone
@@ -6287,7 +5563,7 @@
         const board = BOARDS[it.boardId];
         let debugCell = '<td class="pub-debug-col pub-debug-cell muted">n/a</td>';
         if (board?.publishingMode) {
-          const cur = it.pubCurrentStatusText || '—';
+          const cur = it.pubCurrentStatusText || '-';
           const isDoneCur = cur === (board.publishedLabel || 'Done');
           const stateLine = isDoneCur
             ? `<span class="ok">${escapeHtml(cur)}</span>`
@@ -6309,8 +5585,8 @@
         }
 
         // Célula de Language (visível só na Publishing view via CSS .lang-col).
-        // Em itens de Translation, it.language é null — mostra '—' como placeholder.
-        const langCell = `<td class="lang-col" style="font-size:12px;color:var(--text-soft);">${escapeHtml(it.language || '—')}</td>`;
+        // Em itens de Translation, it.language é null - mostra '-' como placeholder.
+        const langCell = `<td class="lang-col" style="font-size:12px;color:var(--text-soft);">${escapeHtml(it.language || '-')}</td>`;
 
         return `
           <tr data-item-id="${it.id}">
@@ -6328,7 +5604,7 @@
           </tr>
         `;
       }).join('') + (sorted.length > MAX_ROWS
-        ? `<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-dim);font-size:12px;">Showing ${MAX_ROWS} of ${sorted.length} — refine filters</td></tr>`
+        ? `<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text-dim);font-size:12px;">Showing ${MAX_ROWS} of ${sorted.length} - refine the filters</td></tr>`
         : '');
 
       tbody.querySelectorAll('tr[data-item-id]').forEach(tr => {
@@ -6370,13 +5646,13 @@
         const cells = sub.pipeline.map(st => {
           const kind = kindFromSem(st.semantic);
           const label = st.skipped
-            ? '—'
+            ? '-'
             : (st.value ? st.value : 'Not started');
           return `<td><span class="status-chip ${kind}">${escapeHtml(label)}</span></td>`;
         }).join('');
         return `
           <tr>
-            <td class="lang-name">${escapeHtml(sub.language || '—')}${sub.isDone ? '<span class="lang-done">✓</span>' : ''}</td>
+            <td class="lang-name">${escapeHtml(sub.language || '-')}${sub.isDone ? '<span class="lang-done">✓</span>' : ''}</td>
             ${cells}
           </tr>
         `;
@@ -6419,7 +5695,7 @@
       const stepsHtml = it.timeline.map((t, i) => {
         const isLast  = i === it.timeline.length - 1;
         const durHtml = t.durationFromPrev != null
-          ? `<span class="duration">— ${fmtDays(t.durationFromPrev)} biz days</span>` : '';
+          ? `<span class="duration">- ${fmtDays(t.durationFromPrev)} biz days</span>` : '';
         return `
           <div class="timeline-step ${isLast ? 'current' : ''}">
             <div class="title">${escapeHtml(t.title)} ${durHtml}</div>
@@ -6487,7 +5763,7 @@
 
     /* ---------- EXPORT (Goals view) ---------- */
     /* Snapshot do estado atual do dashboard pra exportar como PDF ou CSV.
-       Respeita TODOS os filtros aplicados (board, período, etc.) — exporta
+       Respeita TODOS os filtros aplicados (board, período, etc.) - exporta
        exatamente o que o usuário está vendo. */
     function buildExportData() {
       const periodLabel = $('filterPeriod').options[$('filterPeriod').selectedIndex].textContent;
@@ -6510,25 +5786,36 @@
         return true;
       }).length;
 
-      // Goals progress (per board × language) — usa o __pubAuditSnapshot já gerado pelo render
+      // Goals progress (per board × language): the plan the render built,
+      // so the export carries the page's own numbers, week-by-week targets
+      // included. Pages in languages with no target get their own row and
+      // stay out of the "Targeted languages" total (audit, 10 October 2026).
       const snap = window.__pubAuditSnapshot || {};
       const progressRows = [];
-      for (const [bid, langTargets] of Object.entries(PUBLISHING_TARGETS)) {
-        if (boardFilter !== 'all' && bid !== boardFilter) continue;
+      for (const [bid, rows] of Object.entries(snap.plan || {})) {
         const board = BOARDS[bid];
         if (!board) continue;
-        for (const [lang, perWeek] of Object.entries(langTargets)) {
-          const target = perWeek * (snap.weeksFractional || 0);
-          const done   = (snap.perBoardLang?.[bid]?.[lang]) || 0;
-          const pct    = target ? Math.round(100 * done / target) : 0;
+        for (const { lang, target } of rows) {
+          const done = (snap.perBoardLang?.[bid]?.[lang]) || 0;
+          const pct  = target ? Math.round(100 * done / target) : 0;
           progressRows.push({
             project: board.name, language: lang,
-            done, target: Math.round(target * 10) / 10, pct
+            done, target: Math.round(target * 10) / 10, pct: pct + '%'
           });
         }
+        const other = snap.untargeted?.[bid] || 0;
+        if (other > 0) {
+          progressRows.push({ project: board.name, language: 'Other languages (no target)', done: other, target: '-', pct: '-' });
+        }
+      }
+      if (snap.totals) {
+        progressRows.push({
+          project: 'All boards', language: 'Targeted languages',
+          done: snap.totals.done, target: Math.round(snap.totals.target * 10) / 10, pct: snap.totals.pct + '%'
+        });
       }
 
-      // Items list (Completed items in period — o que importa pro relatório)
+      // Items list (Completed items in period - o que importa pro relatório)
       const completedItems = visible
         .filter(it => {
           if (!it.isPublished || !it.publishedDate) return false;
@@ -6568,11 +5855,10 @@
       // Constrói uma linha CSV com N campos separados pelo SEP escolhido
       const row = (...fields) => fields.map(csv).join(SEP);
 
-      const pad = (n) => String(n).padStart(2, '0');
-      const stamp = `${d.generatedAt.getFullYear()}-${pad(d.generatedAt.getMonth()+1)}-${pad(d.generatedAt.getDate())}_${pad(d.generatedAt.getHours())}${pad(d.generatedAt.getMinutes())}`;
+      const stamp = fileStamp(d.generatedAt);
 
-      // Cabeçalho — 2 colunas cada linha pra alinhar visualmente no Excel
-      lines.push(row('Goals Report', `generated ${d.generatedAt.toISOString()}`));
+      // Cabeçalho: 2 colunas cada linha pra alinhar visualmente no Excel
+      lines.push(row('Goals Report', `generated ${fmtDateTime(d.generatedAt)} (New York)`));
       lines.push(row('Period', d.periodLabel));
       lines.push(row('Board filter', d.boardLabel));
       lines.push('');
@@ -6589,7 +5875,7 @@
       lines.push(row('--- Goals Progress (per language) ---'));
       lines.push(row('Project', 'Language', 'Published', 'Target', 'Completion %'));
       d.progressRows.forEach(r => {
-        lines.push(row(r.project, r.language, r.done, r.target, `${r.pct}%`));
+        lines.push(row(r.project, r.language, r.done, r.target, r.pct));
       });
       lines.push('');
 
@@ -6609,18 +5895,18 @@
         }
         grouped[groupName].forEach(it => {
           const date = parseMondayLogTs(it.publishedDate);
-          const dateStr = date ? new Date(date).toLocaleDateString('en-US') : '—';
+          const dateStr = date ? fmtDate(date) : '-';
           lines.push(row(
             dateStr,
             it.name,
             projectName(it.boardShort),
-            it.language || '—',
-            (it.publishers || [])[0] || '—'
+            it.language || '-',
+            (it.publishers || [])[0] || '-'
           ));
         });
       });
 
-      // Download — BOM UTF-8 (﻿) faz Excel Windows reconhecer encoding
+      // Download - BOM UTF-8 (﻿) faz Excel Windows reconhecer encoding
       // sem precisar reconfigurar nada. Sem o BOM, acentos viram lixo no
       // Excel pt-BR.
       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -6635,7 +5921,7 @@
 
     function exportToPDF() {
       if (!window.jspdf) {
-        alert('jsPDF não carregou. Confere a conexão e recarrega.');
+        alert('The PDF tool did not load. Reload the page and try again.');
         return;
       }
       const { jsPDF } = window.jspdf;
@@ -6652,7 +5938,7 @@
       y += 22;
 
       doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(106, 114, 128);
-      doc.text(`Generated: ${d.generatedAt.toLocaleString()}`, margin, y); y += 14;
+      doc.text(`Generated: ${fmtDateTime(d.generatedAt)} (New York)`, margin, y); y += 14;
       doc.text(`Period: ${d.periodLabel}`, margin, y); y += 14;
       doc.text(`Board filter: ${d.boardLabel}`, margin, y); y += 24;
 
@@ -6683,7 +5969,7 @@
       doc.autoTable({
         startY: y,
         head: [['Project', 'Language', 'Published', 'Target', 'Completion %']],
-        body: d.progressRows.map(r => [r.project, r.language, r.done, r.target, r.pct + '%']),
+        body: d.progressRows.map(r => [r.project, r.language, r.done, r.target, r.pct]),
         theme: 'striped',
         headStyles: { fillColor: [68, 173, 133], textColor: 255, fontStyle: 'bold' },
         styles: { font: 'helvetica', fontSize: 9, cellPadding: 6 },
@@ -6691,7 +5977,7 @@
       });
       y = doc.lastAutoTable.finalY + 24;
 
-      // Items list — por bloco de projeto
+      // Items list - por bloco de projeto
       const grouped = {};
       d.completedItems.forEach(it => {
         const key = it.boardName;
@@ -6700,7 +5986,7 @@
       Object.keys(grouped).sort().forEach(groupName => {
         if (y > 720) { doc.addPage(); y = margin; }
         doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(38, 57, 84);
-        doc.text(`${groupName} — ${grouped[groupName].length} item${grouped[groupName].length !== 1 ? 's' : ''}`, margin, y);
+        doc.text(`${groupName} - ${grouped[groupName].length} item${grouped[groupName].length !== 1 ? 's' : ''}`, margin, y);
         y += 6;
         doc.autoTable({
           startY: y + 4,
@@ -6708,10 +5994,10 @@
           body: grouped[groupName].map(it => {
             const dt = parseMondayLogTs(it.publishedDate);
             return [
-              dt ? new Date(dt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+              dt ? fmtDate(dt) : '-',
               it.name,
-              it.language || '—',
-              (it.publishers || [])[0] || '—'
+              it.language || '-',
+              (it.publishers || [])[0] || '-'
             ];
           }),
           theme: 'striped',
@@ -6723,10 +6009,16 @@
         y = doc.lastAutoTable.finalY + 16;
       });
 
-      // Download
-      const pad = (n) => String(n).padStart(2, '0');
-      const stamp = `${d.generatedAt.getFullYear()}-${pad(d.generatedAt.getMonth()+1)}-${pad(d.generatedAt.getDate())}_${pad(d.generatedAt.getHours())}${pad(d.generatedAt.getMinutes())}`;
-      doc.save(`goals-report_${stamp}.pdf`);
+      // Preview first, never a straight download (audit, 10 October 2026):
+      // the PDF opens in a new tab in the browser's own viewer, which shows
+      // it and offers the download from there. The title is what that tab
+      // and its download are named.
+      doc.setProperties({ title: `Goals report ${fileStamp(d.generatedAt)}` });
+      const url = doc.output('bloburl');
+      const win = window.open(url, '_blank');
+      if (!win) {
+        alert('The PDF preview could not open. Allow pop-ups for this page and try again.');
+      }
     }
 
     /* ---------- EVENTS ---------- */
@@ -6735,7 +6027,7 @@
       loadAll();
     });
 
-    // (Botão de refresh removido — os dados se atualizam pelo cron; o indicador
+    // (Botão de refresh removido - os dados se atualizam pelo cron; o indicador
     //  "Updated X ago" no hero mostra o frescor do store.)
 
     // Botão "Copy audit" do Publishing pace card
@@ -6743,13 +6035,16 @@
     //   1. Clipboard API (preferida, mas bloqueada em sandboxes)
     //   2. Download como arquivo .json via Blob URL
     //   3. Modal inline com <textarea> selecionável (sempre funciona)
+    // Plain sentences, never the raw error (audit, 10 October 2026).
     $('exportCsvBtn').addEventListener('click', () => {
+      if (TARGETS_STATE !== 'ok') { alert(TARGETS_ERROR); return; }
       try { exportToCSV(); }
-      catch (err) { console.error(err); alert('Erro ao exportar CSV: ' + err.message); }
+      catch (err) { console.error(err); alert('The CSV could not be created. Try again in a moment.'); }
     });
     $('exportPdfBtn').addEventListener('click', () => {
+      if (TARGETS_STATE !== 'ok') { alert(TARGETS_ERROR); return; }
       try { exportToPDF(); }
-      catch (err) { console.error(err); alert('Erro ao exportar PDF: ' + err.message); }
+      catch (err) { console.error(err); alert('The PDF could not be created. Try again in a moment.'); }
     });
 
     /* Helper genérico: cria/atualiza modal com lista de items + colunas configuráveis.
@@ -6822,6 +6117,7 @@
       const row = e.target.closest('.pub-row-clickable');
       if (!row) return;
       const bid  = row.dataset.bid;
+      if (row.dataset.other) { showLanguageDrillDown(bid, null); return; }
       const lang = row.dataset.lang;
       showLanguageDrillDown(bid, lang);
     });
@@ -6831,17 +6127,17 @@
     function kpiDrillItems() {
       return filterItems().filter(it => BOARDS[it.boardId]?.publishingMode);
     }
+    /* "Oct 9, 2026" in New York (it was "Oct 09, 2026" in the browser's zone). */
     function fmtPubDate(rawTs) {
       const iso = parseMondayLogTs(rawTs);
-      if (!iso) return '—';
-      return new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+      return iso ? fmtDate(iso) : '-';
     }
     const periodLabelNow = () => $('filterPeriod').options[$('filterPeriod').selectedIndex].textContent;
 
     function openKpiPopup(kpiType) {
       const { from, to } = getDateRange();
       if (kpiType === 'all') {
-        // Not Published — items que NÃO estão no grupo Published
+        // Not Published - items que NÃO estão no grupo Published
         const items = kpiDrillItems()
           .filter(it => !it.isInExcludedGroup)
           .sort((a, b) => new Date(b.updated) - new Date(a.updated));
@@ -6852,30 +6148,30 @@
           [
             { label: 'Last update', style: 'date', render: it => fmtShort(it.updated) },
             { label: 'Item', render: it => escapeHtml(it.name) },
-            { label: 'Language', style: 'meta', render: it => escapeHtml(it.language || '—') },
-            { label: 'Group',    style: 'meta', render: it => escapeHtml(it.group || '—') },
+            { label: 'Language', style: 'meta', render: it => escapeHtml(it.language || '-') },
+            { label: 'Group',    style: 'meta', render: it => escapeHtml(it.group || '-') },
             { label: 'Project',  style: 'meta', render: it => escapeHtml(projectName(it.boardShort)) }
           ]
         );
       } else if (kpiType === 'inprogress') {
-        // Staged to Publish — coluna Publishing tem valor != Done e != vazio
+        // Staged to Publish - coluna Publishing tem valor != Done e != vazio
         const items = kpiDrillItems()
           .filter(it => it.isStagedToPublish && !it.isInExcludedGroup)
           .sort((a, b) => new Date(b.updated) - new Date(a.updated));
         showItemsListModal(
           `Staged to Publish`,
-          `${items.length} item${items.length !== 1 ? 's' : ''} com status na coluna Publishing (não-Done)`,
+          `${items.length} item${items.length !== 1 ? 's' : ''} with a status other than Done in the Publishing column`,
           items,
           [
             { label: 'Last update', style: 'date', render: it => fmtShort(it.updated) },
             { label: 'Item', render: it => escapeHtml(it.name) },
-            { label: 'Language', style: 'meta', render: it => escapeHtml(it.language || '—') },
-            { label: 'Publishing', style: 'meta', render: it => escapeHtml(it.pubCurrentStatusText || '—') },
+            { label: 'Language', style: 'meta', render: it => escapeHtml(it.language || '-') },
+            { label: 'Publishing', style: 'meta', render: it => escapeHtml(it.pubCurrentStatusText || '-') },
             { label: 'Project',  style: 'meta', render: it => escapeHtml(projectName(it.boardShort)) }
           ]
         );
       } else if (kpiType === 'done') {
-        // Completed — Publishing = Done dentro do período
+        // Completed - Publishing = Done dentro do período
         const items = kpiDrillItems()
           .filter(it => {
             if (!it.isPublished || !it.publishedDate) return false;
@@ -6893,21 +6189,25 @@
           [
             { label: 'Published', style: 'date', render: it => fmtPubDate(it.publishedDate) },
             { label: 'Item', render: it => escapeHtml(it.name) },
-            { label: 'Language', style: 'meta', render: it => escapeHtml(it.language || '—') },
-            { label: 'Publisher', style: 'meta', render: it => escapeHtml((it.publishers || [])[0] || '—') },
+            { label: 'Language', style: 'meta', render: it => escapeHtml(it.language || '-') },
+            { label: 'Publisher', style: 'meta', render: it => escapeHtml((it.publishers || [])[0] || '-') },
             { label: 'Project',   style: 'meta', render: it => escapeHtml(projectName(it.boardShort)) }
           ]
         );
       }
     }
 
+    /* lang null lists the board's pages in languages with no target that
+       week, the "other languages" row. */
     function showLanguageDrillDown(bid, lang) {
       const snap = window.__pubAuditSnapshot;
       if (!snap) return;
       const board = BOARDS[bid];
+      const other = lang == null;
       const items = (snap.counted || [])
-        .filter(it => it.board === board.short && it.lang === lang)
+        .filter(it => it.board === board.short && (other ? !it.targeted : (it.targeted && it.lang === lang)))
         .sort((a, b) => new Date(b.publishedDate) - new Date(a.publishedDate));
+      const heading = other ? 'Other languages (no target)' : lang;
 
       // Cria modal se não existir
       let backdrop = document.getElementById('drillModalBackdrop');
@@ -6924,23 +6224,23 @@
 
       const rows = items.length ? items.map(it => {
         const dt = it.publishedDate ? parseMondayLogTs(it.publishedDate) : null;
-        const dateStr = dt ? new Date(dt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-        const publisher = (it.publishers || [])[0] || '—';
+        const dateStr = dt ? fmtDate(dt) : '-';
+        const publisher = (it.publishers || [])[0] || '-';
         return `
           <tr>
             <td style="white-space:nowrap;color:#667085;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;border-bottom:1px solid #e4e7ec;">${dateStr}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #e4e7ec;color:#012358;">${escapeHtml(it.name)}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #e4e7ec;color:#012358;">${escapeHtml(it.name)}${other ? ` <span style="color:#667085;font-size:11px;">(${escapeHtml(it.lang)})</span>` : ''}</td>
             <td style="padding:8px 12px;border-bottom:1px solid #e4e7ec;color:#667085;font-size:11px;white-space:nowrap;">${escapeHtml(publisher)}</td>
           </tr>
         `;
-      }).join('') : `<tr><td colspan="3" style="padding:40px;text-align:center;color:#8593a4;">No items published for ${escapeHtml(lang)} in this period.</td></tr>`;
+      }).join('') : `<tr><td colspan="3" style="padding:40px;text-align:center;color:#8593a4;">No items published for ${escapeHtml(heading)} in this period.</td></tr>`;
 
       backdrop.innerHTML = `
         <div style="background:#fff;border-radius:12px;width:100%;max-width:880px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(1,35,88,0.3);overflow:hidden;">
           <div style="padding:18px 24px 14px;border-bottom:1px solid #e4e7ec;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;">
             <div>
-              <h3 style="margin:0;font-family:Nunito,sans-serif;font-size:16px;color:#012358;">${escapeHtml(lang)} · ${escapeHtml(board.name)}</h3>
-              <p style="margin:4px 0 0;font-size:12px;color:#667085;">${items.length} item${items.length !== 1 ? 's' : ''} published · ${escapeHtml(snap.period || '—')}</p>
+              <h3 style="margin:0;font-family:Nunito,sans-serif;font-size:16px;color:#012358;">${escapeHtml(heading)} · ${escapeHtml(board.name)}</h3>
+              <p style="margin:4px 0 0;font-size:12px;color:#667085;">${items.length} item${items.length !== 1 ? 's' : ''} published · ${escapeHtml(snap.period || '-')}</p>
             </div>
             <button id="drillCloseBtn" class="btn ghost" style="padding:7px 14px;font-size:11px;text-transform:none;letter-spacing:0;">Close</button>
           </div>
@@ -6970,7 +6270,7 @@
         $('apiToken').value = t;
         $('configBar').classList.add('compact');   // colapsa input + Save após salvar
       } catch (e) {
-        alert('Could not save — private mode?');
+        alert('Could not save. Is this a private window?');
       }
     });
 
@@ -7005,7 +6305,7 @@
         range.selectNode($('diagOutput'));
         window.getSelection().removeAllRanges();
         window.getSelection().addRange(range);
-        alert('Selected — use Cmd+C / Ctrl+C to copy.');
+        alert('Selected. Use Cmd+C / Ctrl+C to copy.');
       }
     });
     $('closeDiagBtn').addEventListener('click', () => { $('diagPanel').style.display = 'none'; });
@@ -7024,12 +6324,12 @@
       }
     });
 
-    // KPI card click — comportamento por view:
+    // KPI card click - comportamento por view:
     //   Goals: abre popup (resumo) E aplica quick-filter no items table (detalhes)
     //   Translation: aplica quick-filter no items table (original)
     $('kpiGrid').addEventListener('click', (e) => {
       // Click no botão de info abre o modal explicativo (não conta como
-      // click no card — não dispara drill-down). stopPropagation seria
+      // click no card - não dispara drill-down). stopPropagation seria
       // o ideal mas com event delegation no card-pai a gente intercepta
       // aqui mesmo verificando o target.
       const infoBtn = e.target.closest('.kpi-info-btn');
@@ -7080,39 +6380,18 @@
       if (tab) setActiveView(tab.dataset.view);
     });
 
-    /* ---------- AUTH EVENT WIRING ---------- */
-    // (Botão Admin removido — admin agora vive na página Settings do portal.)
-    $auth('loginCloseBtn').addEventListener('click', closeLoginModal);
-    $auth('loginBackdrop').addEventListener('click', (e) => {
-      if (e.target === $auth('loginBackdrop')) closeLoginModal();
-    });
-    $auth('loginForm').addEventListener('submit', handleLogin);
-    $auth('forgotBtn').addEventListener('click', handleForgotPassword);
-    $auth('adminCloseBtn').addEventListener('click', closeAdminPanel);
-    $auth('adminBackdrop').addEventListener('click', (e) => {
-      if (e.target === $auth('adminBackdrop')) closeAdminPanel();
-    });
-    $auth('logoutBtn').addEventListener('click', handleLogout);
-    $auth('targetsSaveBtn').addEventListener('click', handleTargetsSave);
-    // Tab switcher (Targets / History)
-    document.querySelectorAll('.admin-tab').forEach(btn => {
-      btn.addEventListener('click', () => switchAdminTab(btn.dataset.tab));
-    });
-    // Info modal (KPI explanations) — close + click outside + ESC
+    // Info modal (KPI explanations): close, click outside, Escape.
     $('infoCloseBtn').addEventListener('click', closeKpiInfo);
     $('infoBackdrop').addEventListener('click', (e) => {
       if (e.target === $('infoBackdrop')) closeKpiInfo();
     });
-    // ESC fecha qualquer modal aberto (auth ou info)
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      if ($('infoBackdrop').style.display === 'flex') { closeKpiInfo(); return; }
-      if ($auth('loginBackdrop').style.display === 'flex') closeLoginModal();
-      else if ($auth('adminBackdrop').style.display === 'flex') closeAdminPanel();
+      if ($('infoBackdrop').style.display === 'flex') closeKpiInfo();
     });
 
     /* ---------- INIT ---------- */
-    (function init() {
+    (async function init() {
       if (IS_LOCAL_DEV) {
         // Modo dev: input do token aparece, lê do sessionStorage se já tiver
         try {
@@ -7126,18 +6405,27 @@
       } else {
         // Modo produção: marca body com classe `production` (CSS esconde
         // input + Save + edit button, mantém só o Load data e o status pill).
-        // Token vive no server (Vercel env var) — não precisa de UI pra ele.
+        // O token vive no server, não precisa de UI pra ele.
         document.body.classList.add('production');
         STORE.token = '__via_proxy__';   // truthy só pra checks legados não bloquearem
       }
       syncViewUI();   // garante que publishing card começa oculto
 
+      // The board copy used to live in localStorage, where it outlived the tab
+      // on a shared computer. It is in sessionStorage now; this clears the copy
+      // an older version of the page left behind (audit, 10 October 2026).
+      clearLegacySnapshot();
+
+      // Targets and the publisher list come before any count: without them
+      // every number on the page would be wrong, and there is no longer a
+      // hardcoded copy to fall back on (audit, 10 October 2026). The read is
+      // small, so the cached view waits for it rather than drawing twice.
+      await loadTargetsFromServer();
+
       // Auto-load no abrir. Três cenários:
-      //   1) Tem snapshot em cache  → mostra instantaneamente + refresh em background
-      //   2) Sem cache mas pode carregar → dispara load completo automaticamente
-      //   3) Dev sem token → espera o user colar (botão Load data continua disponível)
-      // Pré-condição pra qualquer load: em dev precisa de token; em prod o token
-      // está no server (env var), então sempre dá pra carregar.
+      //   1) Tem snapshot em cache: mostra instantaneamente + refresh em background
+      //   2) Sem cache mas pode carregar: dispara load completo automaticamente
+      //   3) Dev sem token: espera o user colar (botão Load data continua disponível)
       const canRefresh = IS_LOCAL_DEV ? !!STORE.token : true;
       const snap = canRefresh ? loadSnapshot() : null;
       if (snap) {
@@ -7147,28 +6435,16 @@
         buildFilters();
         renderAll();
         setStatus('ok', `cached · ${formatAge(snap.ageMs)} · refreshing...`);
-        // setTimeout pra não bloquear o paint inicial — UI aparece primeiro,
+        // setTimeout pra não bloquear o paint inicial: UI aparece primeiro,
         // depois a request começa.
         setTimeout(() => loadAll({ silent: true }), 100);
       } else if (canRefresh) {
-        // Primeira visita (sem cache) — auto-dispara load completo
+        // Primeira visita (sem cache): auto-dispara load completo
         setStatus('loading', 'auto-loading...');
         setTimeout(() => loadAll(), 100);
       } else {
-        // Dev mode sem token salvo — espera o user colar
+        // Dev mode sem token salvo: espera o user colar
         setStatus('', 'idle');
-      }
-
-      // Hidrata estado de admin (se há sessão Supabase persistida no localStorage,
-      // o botão Admin já aparece como "Admin Panel" verde no carregamento).
-      // Roda em paralelo, não bloqueia o load principal.
-      checkAdminSession();
-
-      // Reage a mudanças de auth em outras abas / refresh de token
-      if (supabaseClient) {
-        supabaseClient.auth.onAuthStateChange((_event, _session) => {
-          checkAdminSession();
-        });
       }
     })();
   </script>

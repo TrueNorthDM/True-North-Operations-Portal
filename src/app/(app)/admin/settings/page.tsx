@@ -23,6 +23,7 @@ import { WebhookUrlField } from '@/components/settings/WebhookUrlField'
 import { saveMondayApiToken, saveTsheetsApiToken, regenerateMondayWebhookSecret } from '@/app/actions'
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
+import { loadTargetsEditor } from '@/lib/boards/targets-data'
 import { loadProjectDirectory, loadReportNote } from '@/lib/tsheets/report-data'
 import { NoteCard } from '@/components/tsheets/I7ReportParts'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -111,13 +112,15 @@ export default async function SettingsPage() {
       .maybeSingle()
     : { data: null }
 
-  const { data: mondaySnap } = await supabase
+  // The OLDEST board's pull, read by the server (the table is closed to
+  // sessions, migration 106): the newest one hid a board failing for days
+  // behind the other (audit, 10 October 2026).
+  const { data: mondaySnaps } = await createAdminClient()
     .from('monday_snapshot')
     .select('ingested_at')
-    .order('ingested_at', { ascending: false })
+    .order('ingested_at', { ascending: true })
     .limit(1)
-    .maybeSingle()
-  const mondayPulledAt = (mondaySnap as { ingested_at: string } | null)?.ingested_at ?? null
+  const mondayPulledAt = ((mondaySnaps ?? []) as { ingested_at: string }[])[0]?.ingested_at ?? null
   const tsheetsPulledAt = appSettings?.tsheets_synced_at ?? null
   const tokenInfo = {
     exists: !!appSettings?.monday_api_token,
@@ -152,7 +155,8 @@ export default async function SettingsPage() {
 
   // Budget Usage Report data (clients & budgets, history, targets). Pay only
   // with Rates & Costs: the history repeats it.
-  const budget = can.clients || can.targets ? await getBudgetUsageData({ pay: access.can('d-rates') }) : null
+  const budget = can.clients ? await getBudgetUsageData({ pay: access.can('d-rates') }) : null
+  const targetsData = can.targets ? await loadTargetsEditor() : null
 
   // Clients → Projects → Job codes directory + the auto avg rate (current month).
   // highestRate is the top client rate: Rates & Costs (d-rates) only. Without
@@ -307,7 +311,7 @@ export default async function SettingsPage() {
         </div>
       ),
     },
-    can.targets && budget && {
+    can.targets && targetsData && {
       id: 'targets',
       label: 'Publishing targets',
       icon: TargetsIcon,
@@ -315,7 +319,7 @@ export default async function SettingsPage() {
       content: (
         <div className="space-y-5">
           <SectionHead title="Publishing targets" desc="The weekly pace goal per site & language. These drive the Publishing Goals dashboard." />
-          <TargetsEditor targets={budget.publishingTargets} isAdmin={can.targets} audit={budget.publishingAudit} grid />
+          <TargetsEditor {...targetsData} canEdit={can.targets} grid />
         </div>
       ),
     },

@@ -1,14 +1,17 @@
 /**
- * GET /api/cron/ingest, nightly Monday → monday_snapshot ingestion.
+ * GET /api/cron/ingest, Monday → monday_snapshot ingestion, every four hours.
  *
  * Run by the server's crontab (deploy/cron/portal.crontab). Fetches the Publishing boards from
  * Monday (using the token from Settings) and writes them to the warm store, so
  * /api/snapshot (and therefore the dashboards) load instantly.
  *
- * Window: a rolling INGEST_DAYS (3 years). Each nightly run does a full
- * re-fetch and OVERWRITES the store, so it always holds exactly the last 3
- * years, no pruning needed. maxDuration 300s covers it
- * comfortably (1yr took ~48s).
+ * Window: a rolling INGEST_DAYS (3 years). Each run does a full re-fetch and
+ * OVERWRITES the store, so it always holds exactly the last 3 years, no
+ * pruning needed. maxDuration 300s covers it comfortably (1yr took ~48s).
+ *
+ * A board that cannot be read whole keeps the snapshot it had, and the run
+ * answers 500 so the cron log says FAIL (audit, 10 October 2026): a partial
+ * read used to overwrite the good one and answer 200.
  */
 
 import { NextResponse } from 'next/server'
@@ -74,15 +77,18 @@ export async function GET(request: Request) {
         if (error) throw new Error(error.message)
         return { board: short, items: snap.items.length, logs: snap.activity.length, ok: true }
       } catch (e) {
-        return { board: short, items: 0, logs: 0, ok: false, error: e instanceof Error ? e.message : 'failed' }
+        const message = e instanceof Error ? e.message : 'failed'
+        console.error(`[ingest] ${short} kept its previous snapshot: ${message}`)
+        return { board: short, items: 0, logs: 0, ok: false, error: message }
       }
     }),
   )
 
+  const ok = results.every((r) => r.ok)
   return NextResponse.json({
-    ok: results.every((r) => r.ok),
+    ok,
     elapsedMs: Date.now() - t0,
     windowDays: INGEST_DAYS,
     results,
-  })
+  }, { status: ok ? 200 : 500 })
 }

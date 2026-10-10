@@ -14,6 +14,9 @@ import {
   compactFromItems, toPublishedItems, isCompactList, PUBLISHED_HORIZON_DAYS,
 } from './published-items'
 import type { TargetsMap } from './types'
+import { publisherTest } from './publishing-rules'
+
+const IS_PUB = publisherTest(['Samuel Manzi', 'Wendy Cacka'])
 
 const AAAF = '462251934'
 const NOW = new Date('2026-09-15T12:00:00Z')
@@ -90,8 +93,8 @@ describe('the stored facts count the same as the full items', () => {
     it(`week of ${from}`, () => {
       const start = new Date(`${from}T00:00:00Z`)
       const end = new Date(`${to}T23:59:59.999Z`)
-      const a = computePublishingMetrics(full, targets, 'lastweek', start, end)
-      const b = computePublishingMetrics(reduced, targets, 'lastweek', start, end)
+      const a = computePublishingMetrics(full, targets, start, end, IS_PUB)
+      const b = computePublishingMetrics(reduced, targets, start, end, IS_PUB)
       expect(b.boards).toEqual(a.boards)
     })
   }

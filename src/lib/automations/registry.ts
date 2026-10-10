@@ -70,7 +70,7 @@ export const AUTOMATIONS: Automation[] = [
     trigger: 'Server crontab (deploy/cron/portal.crontab)',
     schedule: 'Every 4 hours (0 1,5,9,13,17,21 * * *)',
     location: 'src/app/api/cron/ingest/route.ts',
-    healthServices: ['monday_api'],
+    healthServices: ['monday_api', 'publishing_snapshot'],
   },
   {
     id: 'tsheets-sync',

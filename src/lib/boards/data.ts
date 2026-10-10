@@ -1,15 +1,12 @@
 /**
  * boards/data.ts
  *
- * Client-side data access for the Boards Review React view: builds the
- * /api/snapshot request from the BOARDS config (so Monday returns only the
- * columns we need) and fetches snapshot + targets.
- *
- * Column-id builders are ported from the COE (getBoardColumnIds etc.).
+ * Which Monday columns each board needs, from the BOARDS config, so the ingest
+ * (api/cron/ingest) asks Monday for those and nothing more. Ported from the
+ * COE (getBoardColumnIds etc.).
  */
 
-import { BOARDS, ACTIVITY_LOG_DAYS } from './config'
-import type { SnapshotResponse, TargetsMap } from './types'
+import { BOARDS } from './config'
 
 export interface SnapshotBoardRequest {
   id: string
@@ -53,44 +50,4 @@ export function getBoardLogRelevantColumnIds(bid: string): string[] {
   if (b.publishedCol) set.add(b.publishedCol)
   if (b.subitemPipeline) for (const s of b.subitemPipeline.stages || []) if (s.col) set.add(s.col)
   return [...set]
-}
-
-export function buildSnapshotRequest(boardIds: string[]): { boards: SnapshotBoardRequest[]; since: string } {
-  const since = new Date(Date.now() - ACTIVITY_LOG_DAYS * 86400000).toISOString()
-  const boards = boardIds
-    .filter((bid) => BOARDS[bid])
-    .map((bid) => ({
-      id: bid,
-      short: BOARDS[bid].short,
-      includeSubitems: !!BOARDS[bid].subitemPipeline,
-      columnIds: getBoardColumnIds(bid),
-      subitemColumnIds: getBoardSubitemColumnIds(bid),
-      relevantLogColumnIds: getBoardLogRelevantColumnIds(bid),
-    }))
-  return { boards, since }
-}
-
-/** POST /api/snapshot for the given boards. Throws on non-2xx. */
-export async function fetchSnapshot(boardIds: string[]): Promise<SnapshotResponse> {
-  const r = await fetch('/api/snapshot', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(buildSnapshotRequest(boardIds)),
-  })
-  if (!r.ok) {
-    const text = await r.text().catch(() => '')
-    throw new Error(`Snapshot ${r.status}: ${text.slice(0, 200)}`)
-  }
-  return r.json()
-}
-
-/** GET /api/targets. Returns {} on failure so callers can fall back gracefully. */
-export async function fetchTargets(): Promise<TargetsMap> {
-  try {
-    const r = await fetch('/api/targets', { cache: 'no-store' })
-    if (!r.ok) return {}
-    return await r.json()
-  } catch {
-    return {}
-  }
 }

@@ -10,6 +10,9 @@
 import { describe, it, expect } from 'vitest'
 import { computePublishingMetrics, type PublishedItem } from './publishing'
 import type { TargetsMap } from './types'
+import { publisherTest } from './publishing-rules'
+
+const IS_PUB = publisherTest(['Samuel Manzi', 'Wendy Cacka'])
 
 const AAAF = '462251934'
 
@@ -39,7 +42,7 @@ const start = new Date('2026-08-10T00:00:00Z')
 const end = new Date('2026-08-16T23:59:59.999Z')
 
 const board = (items: PublishedItem[], targets: TargetsMap = TARGETS) =>
-  computePublishingMetrics(items, targets, 'lastweek', start, end).boards.find(b => b.boardId === AAAF)
+  computePublishingMetrics(items, targets, start, end, IS_PUB).boards.find(b => b.boardId === AAAF)
 
 describe('computePublishingMetrics', () => {
   // The question that started this: it is every language, not English alone.
@@ -100,5 +103,21 @@ describe('computePublishingMetrics', () => {
 
   it('over one week, a board target is its weekly target, not a multiple', () => {
     expect(board([])?.target).toBe(3)
+  })
+})
+
+describe('pages in a language with no target (decided 10 October 2026)', () => {
+  it('are counted beside the score, not in it', () => {
+    const b = board([
+      item({ id: 'a', language: 'English' }),
+      item({ id: 'b', language: 'French' }),
+      item({ id: 'c', language: '' }),
+    ])
+    expect(b?.done).toBe(1)
+    expect(b?.untargeted).toBe(2)
+  })
+
+  it('count one page once when Monday returned it twice', () => {
+    expect(board([item({ id: 'a', language: 'English' }), item({ id: 'a', language: 'English' })])?.done).toBe(1)
   })
 })

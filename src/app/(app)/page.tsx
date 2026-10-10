@@ -63,7 +63,12 @@ export default async function HomePage() {
     perf.time('access', accessP),
     perf.time('person', meP),
     perf.time('celebrations', loadCelebrationPeople()),
-    perf.time('publishing', loadPublishingWeeks()),
+    // A read that fails shows on the card as "could not be read", never as
+    // "no target" or no card at all (audit, 10 October 2026).
+    perf.time('publishing', loadPublishingWeeks().catch(e => {
+      console.error('[home] publishing goals:', e instanceof Error ? e.message : e)
+      return null
+    })),
     perf.time('i7', carryoverP),
     perf.time('favourites', favouritesP),
   ])
@@ -95,7 +100,7 @@ export default async function HomePage() {
           Its figures are for everyone; only those who can open the page behind
           it get a card that links. */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <PublishingGoalsWidget boards={publishing} linked={access.canTool('publishing')} />
+        <PublishingGoalsWidget data={publishing} linked={access.canTool('publishing')} />
         <div className="space-y-6">
           <Birthdays people={celebPeople} />
           <Anniversaries people={celebPeople} />

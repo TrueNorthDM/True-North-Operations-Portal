@@ -14,6 +14,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { BOARDS, PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
 
 export type HealthStatus = 'ok' | 'warn' | 'down'
 
@@ -34,6 +35,7 @@ export const HEALTH = {
   tsheetsApi: 'tsheets_api',
   dbProtections: 'db_protections',
   dailySummary: 'daily_summary',
+  publishingSnapshot: 'publishing_snapshot',
 } as const
 
 export const HEALTH_LABEL: Record<string, string> = {
@@ -43,6 +45,7 @@ export const HEALTH_LABEL: Record<string, string> = {
   tsheets_api: 'TSheets API',
   db_protections: 'Database protections',
   daily_summary: 'Daily summary email',
+  publishing_snapshot: 'Publishing boards pull',
 }
 
 const MONDAY_API = 'https://api.monday.com/v2'
@@ -215,6 +218,27 @@ async function checkDailySummary(supabase: SupabaseClient): Promise<Check> {
   return { service: HEALTH.dailySummary, ok: true, status: 'ok', detail: `${sent} summary email(s) sent in the last two days, none failing.` }
 }
 
+/**
+ * Are the publishing boards being pulled (audit, 10 October 2026)? The pull
+ * runs every four hours, and a board failing for days was hidden behind the
+ * other one: Settings showed the newer pull, and the run answered "ok".
+ */
+const SNAPSHOT_STALE_HOURS = 12
+
+async function checkPublishingSnapshot(supabase: SupabaseClient): Promise<Check> {
+  const { data, error } = await supabase.from('monday_snapshot').select('board_id, ingested_at')
+  if (error) return { service: HEALTH.publishingSnapshot, ok: true, status: 'warn', detail: `Could not read the pulls: ${error.message}` }
+  const rows = (data ?? []) as { board_id: string; ingested_at: string | null }[]
+  const missing = PUBLISHING_BOARD_IDS.filter(id => !rows.some(r => r.board_id === id))
+  const stale = rows.filter(r => PUBLISHING_BOARD_IDS.includes(r.board_id)
+    && (!r.ingested_at || Date.now() - Date.parse(r.ingested_at) > SNAPSHOT_STALE_HOURS * 3_600_000))
+  if (missing.length || stale.length) {
+    const names = [...missing, ...stale.map(r => r.board_id)].map(id => BOARDS[id]?.short ?? id).join(', ')
+    return { service: HEALTH.publishingSnapshot, ok: false, status: 'down', detail: `Not pulled in the last ${SNAPSHOT_STALE_HOURS} hours: ${names}. Publishing Goals is showing old numbers.` }
+  }
+  return { service: HEALTH.publishingSnapshot, ok: true, status: 'ok', detail: `Both publishing boards pulled in the last ${SNAPSHOT_STALE_HOURS} hours.` }
+}
+
 /** Run every check, persist the results (best-effort), and return them. */
 export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthResult[]> {
   const { data: settings } = await supabase.from('app_settings').select('monday_api_token, tsheets_api_token').eq('singleton_id', 1).maybeSingle()
@@ -232,6 +256,7 @@ export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthR
     checkTsheets(tsheetsToken),
     checkDbProtections(supabase),
     checkDailySummary(supabase),
+    checkPublishingSnapshot(supabase),
   ])
 
   const checkedAt = new Date().toISOString()

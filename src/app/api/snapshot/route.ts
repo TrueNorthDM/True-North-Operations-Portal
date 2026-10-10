@@ -1,18 +1,24 @@
 /**
  * POST /api/snapshot, returns Monday board snapshots for the dashboards.
  *
- * Reads from the `monday_snapshot` warm store (populated nightly by
- * /api/cron/ingest), so the dashboards load instantly instead of fetching live
- * from Monday on every request. Boards not yet in the store fall back to a live
- * fetch, keeps things working before the first nightly run.
+ * Reads from the `monday_snapshot` warm store (written every four hours by
+ * /api/cron/ingest), so the dashboard loads instantly instead of fetching live
+ * from Monday on every request.
+ *
+ * Called by the Publishing Goals dashboard (public/boards.html, framed on
+ * /ops/publishing) for everyone with that tool. From 7 to 10 October 2026 it
+ * answered Super Admins only, on the belief that nothing called it, and the
+ * dashboard failed for everybody else (audit, 10 October 2026). A board not in
+ * the store yet is fetched live only for a Super Admin: that spends the
+ * portal's Monday token on request.
  *
  * Response shape is unchanged: { boards: [{ id, items, groups, activity }], _meta }.
  */
 
 import { NextResponse } from 'next/server'
-import { isSuperAdmin } from '@/lib/access/resolve'
+import { isSuperAdmin, loadAccess, verifiedSession } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { BOARDS } from '@/lib/boards/config'
+import { PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
 import { processBoard, getMondayToken, type BoardReq, type BoardSnapshot } from '@/lib/monday/snapshot'
 
 export const runtime = 'nodejs'
@@ -38,11 +44,16 @@ function readClient() {
   return createAdminClient()
 }
 
+/** Whoever may open Publishing Goals, as the page itself decides it. */
+async function mayRead(): Promise<boolean> {
+  if (!(await verifiedSession())) return false
+  return (await loadAccess()).canTool('publishing')
+}
+
+const FAILED = 'The boards could not be read. Try again in a moment.'
+
 export async function POST(request: Request) {
-  // Nothing in the portal calls this any more (the Boards page left on 23
-  // September 2026), and it returns whole boards: items, assignees, activity.
-  // Super Admins only until it is removed.
-  if (!(await isSuperAdmin())) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 })
+  if (!(await mayRead())) return NextResponse.json({ error: 'Publishing Goals is not open to your access.' }, { status: 403 })
   let body: { boards?: BoardReq[]; since?: string }
   try {
     body = await request.json()
@@ -54,13 +65,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing or empty "boards" in request body' }, { status: 400 })
   }
 
-  // Only boards this portal is configured to show. The ids arrive in the
-  // request body, and a board missing from the store is fetched LIVE with the
-  // portal's own Monday token, so without this any signed-in person could name
-  // any board in the Monday account and have the portal fetch it for them
-  // (audit finding M7-2). The allowlist is the dashboard config itself, so
-  // adding a board to the product adds it here and nowhere else.
-  const unknown = boards.filter(b => !BOARDS[String(b.id)]).map(b => String(b.id))
+  // Only the publishing boards. The ids arrive in the request body, so without
+  // this a reader could name any board the portal knows (audit finding M7-2).
+  const unknown = boards.filter(b => !PUBLISHING_BOARD_IDS.includes(String(b.id))).map(b => String(b.id))
   if (unknown.length > 0) {
     return NextResponse.json({ error: `Unknown board(s): ${unknown.join(', ')}` }, { status: 400 })
   }
@@ -82,7 +89,8 @@ export async function POST(request: Request) {
     // data is the JSON column the ingest wrote from a BoardSnapshot.
     for (const row of (data ?? []) as unknown as { board_id: string; data: BoardSnapshot; ingested_at: string }[]) {
       stored[row.board_id] = row.data
-      if (!ingestedAt || row.ingested_at > ingestedAt) ingestedAt = row.ingested_at
+      // The older of the boards: the only time true of everything shown.
+      if (!ingestedAt || row.ingested_at < ingestedAt) ingestedAt = row.ingested_at
     }
   } catch (e) {
     storeError = e instanceof Error ? e.message : 'store read failed'
@@ -91,7 +99,7 @@ export async function POST(request: Request) {
   // 2) Boards missing from the store → live-fetch as a fallback.
   const missing = boards.filter((b) => !stored[b.id])
   let liveCount = 0
-  if (missing.length > 0) {
+  if (missing.length > 0 && (await isSuperAdmin())) {
     const token = await getMondayToken()
     if (token) {
       const since = new Date(Date.now() - FALLBACK_LOG_DAYS * 86400000).toISOString()
@@ -108,17 +116,18 @@ export async function POST(request: Request) {
   const results = boardIds.map((id) => stored[id]).filter(Boolean)
   const elapsed = Date.now() - t0
   const region = 'tn-server'
+  // The detail goes to the server log; the dashboard gets a sentence.
+  if (storeError) console.error('[snapshot]', storeError)
+  if (results.length === 0 && storeError) return NextResponse.json({ error: FAILED }, { status: 500 })
 
   return NextResponse.json(
     {
       boards: results,
-      _meta: { elapsedMs: elapsed, region, ingestedAt, fromStore: results.length - liveCount, live: liveCount, storeError },
+      _meta: { elapsedMs: elapsed, region, ingestedAt, fromStore: results.length - liveCount, live: liveCount, storeError: storeError ? FAILED : null },
     },
     {
-      headers: {
-        'Cache-Control': 's-maxage=60, stale-while-revalidate=300',
-        'X-Snapshot-Region': region,
-      },
+      // Private: the answer depends on who asks, so no shared cache keeps it.
+      headers: { 'Cache-Control': 'private, no-store', 'X-Snapshot-Region': region },
     },
   )
 }
