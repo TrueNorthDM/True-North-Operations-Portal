@@ -91,18 +91,20 @@ export default async function SettingsPage() {
 
   const supabase = await createClient()
 
-  const { data: sites } = can.sites
-    ? await supabase
+  // Sites & languages, read by the server: the Href Links tables are closed
+  // to sessions (migration 107), and who may see this section is decided
+  // above (cs-sites). A failed read stops the page rather than show no sites.
+  const db = createAdminClient()
+  const sitesRead = can.sites
+    ? await db
       .from('sites')
-      .select('id, code, name, domain, languages, language_paths, monday_board_id, wp_dev_url, wp_live_url')
+      .select('id, code, name, domain, languages, paused_languages, language_paths, monday_board_id, wp_dev_url, wp_live_url')
       .order('code')
-    : { data: [] }
-
-  // paused_languages is fetched separately and tolerantly, so a not-yet-migrated
-  // column doesn't break the whole Settings page (returns null → treated empty).
-  const pausedByCode = new Map<string, string[]>()
-  const { data: pausedRows } = can.sites ? await supabase.from('sites').select('code, paused_languages') : { data: [] }
-  for (const r of pausedRows ?? []) pausedByCode.set(r.code, ((r as { paused_languages?: string[] | null }).paused_languages) ?? [])
+    : { data: [], error: null }
+  if (sitesRead.error) throw new Error(`Settings could not read the sites: ${sitesRead.error.message}`)
+  const sites = sitesRead.data ?? []
+  const pausedByCode = new Map<string, string[]>(
+    sites.map(r => [r.code, ((r as { paused_languages?: string[] | null }).paused_languages) ?? []]))
 
   // The tokens and the webhook secret: APIs & tokens (cs-apis) only.
   const { data: appSettings } = can.apis
@@ -135,7 +137,7 @@ export default async function SettingsPage() {
   const enriched: SiteData[] = []
   for (const s of sites ?? []) {
     // How many pages a new language would flag (lib/site-pages.ts).
-    const pageIds = await pagesWithUrls(supabase, s.id)
+    const pageIds = await pagesWithUrls(db, s.id)
     enriched.push({
       id: s.id,
       code: s.code as 'aaaf' | 'hfa',
