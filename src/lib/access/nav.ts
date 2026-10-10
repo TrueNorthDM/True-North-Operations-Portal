@@ -183,7 +183,6 @@ export const RAIL: readonly RailEntry[] = [
       {
         label: 'Portal',
         items: [
-          { key: 'tickets', label: 'Tickets', href: '/admin/tickets', icon: 'tickets', surface: 'tickets' },
           { key: 'tests', label: 'Tests', href: '/admin/tests', icon: 'tests', surface: 'tests' },
           { key: 'manual', label: 'System manual', href: '/admin/manual', icon: 'manual', surface: 'manual' },
         ],

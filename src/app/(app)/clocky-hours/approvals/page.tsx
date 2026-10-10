@@ -8,14 +8,13 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Approvals and Invoices' }
 
 export default async function Page() {
-  const access = await requireSurface('clocky-approvals')
+  await requireSurface('clocky-approvals')
   return (
     <ComingSoon
       icon="tests"
       title="Approvals and Invoices"
       description="The approval queue and the invoices raised from approved hours."
       parents={['/clocky-hours']}
-      canSuggest={access.can('tickets')}
     />
   )
 }

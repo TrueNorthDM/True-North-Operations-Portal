@@ -3,10 +3,8 @@
 // pages of My Hours and Clocky. Real routes rather than hidden ones, so a link
 // can be shared ahead of launch and the rail shows what is coming.
 //
-// "Suggest what it should do" is meant to open a ticket with the tool's name.
-// Tickets are a list kept in the repo that only admins see (Admin → Tickets),
-// and nobody can file one from the portal yet, so the button is offered to
-// admins only, and leads to that list.
+// It no longer offers "Suggest what it should do" (audit, 10 October 2026):
+// that link led to Admin > Tickets, which was retired.
 
 import Link from 'next/link'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -15,7 +13,7 @@ import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
 import type { NavHref } from '@/lib/nav/labels'
 
-export function ComingSoon({ icon, title, description, parents, self, canSuggest = false }: {
+export function ComingSoon({ icon, title, description, parents, self }: {
   icon: NavIconKey
   title: string
   description: string
@@ -23,7 +21,6 @@ export function ComingSoon({ icon, title, description, parents, self, canSuggest
   parents?: readonly NavHref[]
   /** The page is one of the named places (Chat, Emails). */
   self?: NavHref
-  canSuggest?: boolean
 }) {
   return (
     <div className="space-y-6">
@@ -40,12 +37,6 @@ export function ComingSoon({ icon, title, description, parents, self, canSuggest
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5" /></svg>
             Back to Home
           </Link>
-          {canSuggest && (
-            <Link href="/admin/tickets" className={BTN.white}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4zM10 6v12" /></svg>
-              Suggest what it should do
-            </Link>
-          )}
         </div>
       </div>
     </div>

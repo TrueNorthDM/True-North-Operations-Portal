@@ -8,14 +8,13 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Reports' }
 
 export default async function Page() {
-  const access = await requireSurface('clocky-reports')
+  await requireSurface('clocky-reports')
   return (
     <ComingSoon
       icon="client-reports"
       title="Reports"
       description="Hours across the company, by team, person, project and period."
       parents={['/clocky-hours']}
-      canSuggest={access.can('tickets')}
     />
   )
 }

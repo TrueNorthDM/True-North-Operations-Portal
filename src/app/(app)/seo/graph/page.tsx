@@ -18,7 +18,6 @@ export default async function Page() {
       icon="knowledge-graph"
       title="Knowledge Graph"
       description="The entities in our schema and how they connect across pages."
-      canSuggest={access.can('tickets')}
     />
   )
 }

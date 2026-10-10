@@ -5,12 +5,18 @@
  * Tri-state per check (pass / fail / skip / not-run) plus an optional note,
  * remembered in localStorage per browser. Read-only data, the checks are
  * maintained in the repo. Styling matches the handoff prototype.
+ *
+ * Audit, 10 October 2026: "Reset checklist" asks first (useConfirm), since it
+ * wipes every result and note in this browser; the toggles say their state
+ * to screen readers (aria-pressed, aria-expanded); buttons come from
+ * lib/ui/buttons; the intro runs the full width.
  */
 
 import { useEffect, useMemo, useState } from 'react'
 import { TEST_AREAS } from '@/lib/tests/data'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { useConfirm } from '@/components/ui/useConfirm'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 type Result = 'pass' | 'fail' | 'skip'
 type Filter = 'all' | 'pass' | 'fail' | 'skip' | 'none'
@@ -18,22 +24,18 @@ type Filter = 'all' | 'pass' | 'fail' | 'skip' | 'none'
 const STORAGE_KEY = 'tn:tests:v2'
 const C: Record<Result, string> = { pass: '#127A3E', fail: '#E11D2A', skip: '#94a1b2' }
 
-// Per-area emoji (keyed by area name; falls back to a clipboard).
+// Per-area emoji (keyed by area name in lib/tests/data.ts; falls back to a clipboard).
 const AREA_ICON: Record<string, string> = {
-  'Navigation & access': '🧭',
-  'Account': '🎨',
-  'Home · Widgets & favourites': '🏠',
-  'Home · Org chart': '🌳',
-  'Admin · Tickets': '🎫',
-  'Admin · System manual': '📖',
-  'Admin · People': '👤',
-  'Admin · Teams': '👥',
-  'Admin · Access': '🔑',
-  'Access enforcement': '🔒',
-  'Projects · hreflang': '🌐',
-  'Settings · Publishing targets': '🎯',
-  'Tools · Budget Usage Report': '💵',
-  'Dashboards': '📊',
+  'Sign-in and two-step': '🔐',
+  'Access levels': '🔑',
+  'Directory and the person page': '👤',
+  'Settings and notifications': '🔔',
+  'My Work': '✅',
+  'Report': '⏱️',
+  'Client reports': '💵',
+  'Publishing Goals': '🎯',
+  'Href Links': '🌐',
+  'Admin': '⚙️',
 }
 
 export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean }) {
@@ -43,6 +45,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
   const [noteOpen, setNoteOpen] = useState<Record<string, boolean>>({})
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState<Filter>('all')
+  const [confirmDialog, confirm] = useConfirm()
 
   // One-time hydration from localStorage (SSR can't read it without a mismatch).
   useEffect(() => {
@@ -79,7 +82,14 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
     })
   }
 
-  function reset() {
+  async function reset() {
+    const yes = await confirm({
+      title: 'Reset the checklist?',
+      body: 'Every Pass, Fail, Skip and note saved in this browser is cleared. This cannot be undone.',
+      action: 'Reset checklist',
+      danger: true,
+    })
+    if (!yes) return
     setResults({})
     setNotes({})
     setNoteOpen({})
@@ -124,16 +134,17 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
 
   return (
     <div className="space-y-6">
+      {confirmDialog}
       <div className="flex items-start justify-between gap-5 flex-wrap">
-        <div>
+        <div className="flex-1 min-w-0">
           <Breadcrumb parents={[adminCrumb(canOpenAdmin)]} now="Tests" />
           <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Tests</h1>
-          <p className="mt-1.5 max-w-2xl text-muted">A pre-launch checklist to verify the whole system end-to-end. Walk each area, tick off what works, flag what doesn’t.</p>
+          <p className="mt-1.5 text-muted">A pre-launch checklist to verify the whole system end-to-end. Walk each area, tick off what works, flag what doesn’t.</p>
         </div>
         <button
           type="button"
           onClick={reset}
-          className="shrink-0 inline-flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[13px] text-foreground bg-white border border-slate-200 rounded-[10px] px-3.5 py-2.5 transition-colors hover:border-tn-teal hover:text-tn-teal"
+          className={`shrink-0 ${BTN.white}`}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
           Reset checklist
@@ -168,6 +179,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
               key={card.key}
               type="button"
               onClick={() => setFilter(activeCard && card.key !== 'all' ? 'all' : card.key)}
+              aria-pressed={activeCard}
               className={`text-left rounded-[13px] border px-[17px] py-[15px] shadow-sm transition-all ${activeCard ? 'border-transparent text-[#ffffff]' : 'bg-white border-slate-200 text-tn-ink hover:border-slate-300'}`}
               style={activeCard ? { background: card.color } : undefined}
             >
@@ -198,6 +210,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                 <button
                   type="button"
                   onClick={() => setCollapsed(prev => ({ ...prev, [area.area]: !prev[area.area] }))}
+                  aria-expanded={open}
                   className="w-full text-left bg-subtle border-b border-slate-200 flex items-center gap-3 px-5 py-3.5"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`}><path d="m9 6 6 6-6 6" /></svg>
@@ -232,7 +245,8 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                               <textarea
                                 value={notes[c.id] ?? ''}
                                 onChange={e => setNote(c.id, e.target.value)}
-                                placeholder="Add a note, what broke, repro steps, ticket link…"
+                                placeholder="Add a note: what broke, the steps to repeat it…"
+                                aria-label={`Note for ${c.id}`}
                                 rows={2}
                                 className="w-full mt-2.5 resize-y rounded-[9px] border border-slate-200 px-3 py-2 text-[13px] text-foreground bg-subtle outline-none leading-relaxed focus:ring-2 focus:ring-tn-teal/30"
                               />
@@ -245,7 +259,7 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                                   key={r}
                                   type="button"
                                   onClick={() => setResult(c.id, r)}
-                                  title={r[0].toUpperCase() + r.slice(1)}
+                                  aria-pressed={v === r}
                                   className={`inline-flex items-center justify-center gap-1 font-(family-name:--font-display) font-extrabold text-[12px] px-3 py-2 transition-colors ${i > 0 ? 'border-l border-slate-200' : ''} ${v === r ? 'text-[#ffffff]' : 'text-muted hover:bg-subtle'}`}
                                   style={v === r ? { background: C[r] } : undefined}
                                 >
@@ -258,6 +272,8 @@ export function TestChecklist({ canOpenAdmin = true }: { canOpenAdmin?: boolean 
                             <button
                               type="button"
                               onClick={() => setNoteOpen(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
+                              aria-label={`${notes[c.id] ? 'Edit the note' : 'Add a note'} for ${c.id}`}
+                              aria-expanded={showNote}
                               title="Note"
                               className={`flex-none inline-flex w-[34px] h-[34px] items-center justify-center rounded-[9px] border border-slate-200 bg-white transition-colors hover:bg-subtle ${notes[c.id] ? 'text-tn-teal' : 'text-muted'}`}
                             >

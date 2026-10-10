@@ -18,7 +18,6 @@ export default async function Page() {
       icon="schema-app"
       title="Schema App"
       description="Write and publish schema markup for the sites' pages."
-      canSuggest={access.can('tickets')}
     />
   )
 }

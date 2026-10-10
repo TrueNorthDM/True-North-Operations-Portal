@@ -1,32 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+// When a pull runs and when it last ran, in New York time on a 12-hour clock
+// (audit, 10 October 2026). It used to list the times in the viewer's zone on
+// a 24-hour clock and a relative "X ago", which needed a mount-time switch to
+// avoid a hydration mismatch; ET is the same on the server and in the browser.
 
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const sec = Math.floor(diffMs / 1000)
-  if (sec < 60) return 'just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min} minute${min !== 1 ? 's' : ''} ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} hour${hr !== 1 ? 's' : ''} ago`
-  const day = Math.floor(hr / 24)
-  return `${day} day${day !== 1 ? 's' : ''} ago`
+import { formatEt, formatEtTime } from '@/lib/format/et'
+
+const minutesOf = (t: string) => {
+  const m = /^(\d+):(\d+) (AM|PM)/.exec(t)
+  if (!m) return 0
+  return ((+m[1] % 12) + (m[3] === 'PM' ? 12 : 0)) * 60 + +m[2]
 }
 
-// The cron runs in UTC; convert to the viewer's local timezone so the listed
-// times mean something to whoever is looking.
-function localSchedule(utcHours: number[], utcMinute: number): { times: string; tz: string } {
-  const now = new Date()
-  const fmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+/**
+ * The cron's UTC hours as ET times, in the order of the ET day:
+ * "1:00 AM, 5:00 AM, 9:00 AM, 1:00 PM, 5:00 PM and 9:00 PM ET".
+ * `on` picks the day, so daylight saving moves the times as it should.
+ */
+export function etSchedule(utcHours: number[], utcMinute: number, on: Date = new Date()): string {
   const times = utcHours
-    .map(h => fmt.format(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), h, utcMinute))))
-    .sort()
-    .join(', ')
-  const tz = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
-    .formatToParts(now)
-    .find(p => p.type === 'timeZoneName')?.value ?? 'local'
-  return { times, tz }
+    .map(h => formatEtTime(new Date(Date.UTC(on.getUTCFullYear(), on.getUTCMonth(), on.getUTCDate(), h, utcMinute))).replace(/ ET$/, ''))
+    .sort((a, b) => minutesOf(a) - minutesOf(b))
+  if (!times.length) return ''
+  const list = times.length > 1 ? `${times.slice(0, -1).join(', ')} and ${times.at(-1)}` : times[0]
+  return `${list} ET`
 }
 
 interface Props {
@@ -48,32 +46,12 @@ interface Props {
 const DEFAULT_WRAP = 'flex items-center gap-1.5 text-xs text-slate-400 border-t border-slate-100 pt-3'
 
 export function PullInfo({ syncedAt, utcHours, utcMinute = 0, label, pastVerb, className = DEFAULT_WRAP }: Props) {
-  // Times/relative-time are timezone- and clock-dependent, so compute them only
-  // after mount, otherwise the server (UTC) and client render differently and
-  // React reports a hydration mismatch. The tick also refreshes "X ago".
-  const [mounted, setMounted] = useState(false)
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    // Intentional: flip to client-computed text only after mount (avoids the
-    // UTC-server vs local-client hydration mismatch).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true)
-    const id = setInterval(() => setTick(t => t + 1), 60_000)
-    return () => clearInterval(id)
-  }, [])
-
-  let text: string
-  if (!mounted) {
-    text = `${label} every 4 hours`
-  } else {
-    const { times, tz } = localSchedule(utcHours, utcMinute)
-    const last = syncedAt ? `last ${pastVerb} ${timeAgo(syncedAt)}` : `not ${pastVerb} yet`
-    text = `${label} at ${times} (${tz}) · ${last}`
-  }
+  const last = syncedAt ? `last ${pastVerb} ${formatEt(syncedAt)}` : `not ${pastVerb} yet`
+  const text = `${label} at ${etSchedule(utcHours, utcMinute)} · ${last}`
 
   return (
     <div className={className}>
-      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
         <circle cx="12" cy="12" r="9" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v5l3 2" />
       </svg>

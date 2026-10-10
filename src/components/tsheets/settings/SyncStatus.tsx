@@ -1,8 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { syncAllFromTsheets } from '@/lib/tsheets/sync-actions'
+import { formatEt } from '@/lib/format/et'
+
+// The sync time is written as a moment in New York, 12-hour, "ET" (audit,
+// 10 October 2026). A relative "X ago" computed during render differed between
+// the server and the browser, and needed a timer to stay true.
 
 interface Props {
   syncedAt: string | null
@@ -16,33 +21,14 @@ interface Props {
   failed?: boolean
 }
 
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const sec = Math.floor(diffMs / 1000)
-  if (sec < 60) return 'just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min} minute${min !== 1 ? 's' : ''} ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} hour${hr !== 1 ? 's' : ''} ago`
-  const day = Math.floor(hr / 24)
-  return `${day} day${day !== 1 ? 's' : ''} ago`
-}
-
 export function SyncStatus({ syncedAt, interactive = false, failed = false }: Props) {
   const router = useRouter()
-  const [, setTick] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Re-render every minute so the relative label stays fresh.
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000)
-    return () => clearInterval(id)
-  }, [])
-
   const label = failed
-    ? (syncedAt ? `Import failed, data from ${timeAgo(syncedAt)}` : 'Import failed, no data yet')
-    : syncedAt ? `Last synced ${timeAgo(syncedAt)}` : 'Never synced'
+    ? (syncedAt ? `Import failed, data from ${formatEt(syncedAt)}` : 'Import failed, no data yet')
+    : syncedAt ? `Last synced ${formatEt(syncedAt)}` : 'Never synced'
 
   async function onClick() {
     if (!interactive || syncing) return

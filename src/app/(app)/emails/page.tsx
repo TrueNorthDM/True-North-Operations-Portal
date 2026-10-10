@@ -8,14 +8,13 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Emails' }
 
 export default async function Page() {
-  const access = await requireSurface('emails')
+  await requireSurface('emails')
   return (
     <ComingSoon
       icon="emails"
       title="Emails"
       description="The team's email, inside the portal."
       self="/emails"
-      canSuggest={access.can('tickets')}
     />
   )
 }

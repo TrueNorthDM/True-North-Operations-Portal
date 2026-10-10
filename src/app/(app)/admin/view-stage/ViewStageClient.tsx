@@ -11,6 +11,7 @@ import { tokenViewAs } from './actions'
 import { Select } from '@/components/ui/Select'
 import type { ViewAsRole } from '@/lib/auth/view-as'
 import { PREVIEW_CAVEATS } from '@/lib/access/preview-fidelity'
+import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 
 type Tier = 'super_admin' | ViewAsRole
 const TIERS: Tier[] = ['super_admin', 'admin', 'team_leader', 'user']
@@ -32,7 +33,9 @@ export default function ViewStageClient({ myName }: { myName: string }) {
   const load = useCallback((t: Tier, force = false) => {
     if (!IMPERSONATE(t)) return
     const role = t
-    setToks(prev => (!force && (prev[t]?.loading || prev[t]?.token) ? prev : { ...prev, [t]: { loading: true } }))
+    // A forced refresh keeps the current token on screen until the new one
+    // arrives, so the column does not blank out to "Loading…" in between.
+    setToks(prev => (!force && (prev[t]?.loading || prev[t]?.token) ? prev : { ...prev, [t]: { ...(force ? prev[t] : {}), loading: true } }))
     startTransition(async () => {
       const res = await tokenViewAs(role)
       setToks(prev => ({ ...prev, [t]: { token: res.token, name: res.name, error: res.error, loading: false } }))
@@ -40,23 +43,29 @@ export default function ViewStageClient({ myName }: { myName: string }) {
   }, [])
   useEffect(() => { cols.forEach(t => load(t)) }, [cols, load])
 
-  // The columns show whoever holds each level RIGHT NOW, so re-resolve them
-  // whenever this tab regains focus: edit somebody's level elsewhere, come
-  // back, and the stage reflects it without a manual reload.
-  const [reloadNonce, setReloadNonce] = useState(0)
-  const refresh = useCallback(() => {
-    cols.forEach(t => load(t, true))
-    setReloadNonce(n => n + 1)
-  }, [cols, load])
+  // The columns show whoever holds each level RIGHT NOW, and their tokens last
+  // 30 minutes, so the tokens are signed again when this browser tab becomes
+  // visible: edit somebody's level in another tab, come back, and the stage
+  // reflects it.
+  //
+  // Only on visibilitychange (audit, 10 October 2026). It also listened to the
+  // window's focus event, and hovering a column focuses its iframe (see
+  // onMouseEnter below), so the next click on the canvas, the zoom or Fit gave
+  // focus back to this window and reloaded every column back to Home.
+  const refreshTokens = useCallback(() => { cols.forEach(t => load(t, true)) }, [cols, load])
   useEffect(() => {
-    function onFocus() { if (document.visibilityState === 'visible') refresh() }
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onFocus)
-    return () => {
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onFocus)
-    }
-  }, [refresh])
+    function onVisible() { if (document.visibilityState === 'visible') refreshTokens() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [refreshTokens])
+
+  // The explicit Refresh: new tokens and every column reloaded, the Super Admin
+  // one included (its address never changes, so only the key remounts it).
+  const [reloadNonce, setReloadNonce] = useState(0)
+  const refreshAll = useCallback(() => {
+    refreshTokens()
+    setReloadNonce(n => n + 1)
+  }, [refreshTokens])
 
   // ── canvas: pan + zoom ──
   const frameRef = useRef<HTMLDivElement>(null)
@@ -128,11 +137,15 @@ export default function ViewStageClient({ myName }: { myName: string }) {
             : 'Every screen here renders exactly what that level sees'}
         </span>
         <span className="flex-1" />
+        <button type="button" onClick={refreshAll} className={BTN.white}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
+          Refresh
+        </button>
         <div className="flex items-center gap-1 bg-subtle border border-slate-200 rounded-lg p-1">
-          <button onClick={() => zoom(-0.12)} className="w-7 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors">−</button>
-          <span className="text-xs w-11 text-center tabular-nums text-tn-ink">{Math.round(tr.s * 100)}%</span>
-          <button onClick={() => zoom(0.12)} className="w-7 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors">+</button>
-          <button onClick={fit} className="text-xs px-2 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors font-(family-name:--font-display) font-bold">Fit</button>
+          <button type="button" onClick={() => zoom(-0.12)} aria-label="Zoom out" className="w-7 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors">−</button>
+          <span className="text-xs w-11 text-center tabular-nums text-tn-ink" aria-live="polite">{Math.round(tr.s * 100)}%</span>
+          <button type="button" onClick={() => zoom(0.12)} aria-label="Zoom in" className="w-7 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors">+</button>
+          <button type="button" onClick={fit} className="text-xs px-2 h-7 rounded text-muted hover:bg-white hover:text-tn-ink transition-colors font-(family-name:--font-display) font-bold">Fit</button>
         </div>
       </div>
 
@@ -247,7 +260,7 @@ export default function ViewStageClient({ myName }: { myName: string }) {
         </div>
 
         <div className="absolute left-4 bottom-4 text-[11px] text-muted bg-white/90 border border-slate-200 rounded-lg px-3 py-2 max-w-md shadow-sm">
-          Drag the background to move · scroll to zoom. Each tier is a live preview of what that access level sees, the <b className="text-tn-ink font-semibold">Admin</b> column is your own session.
+          Drag the background to move · scroll to zoom. Each tier is a live preview of what that access level sees; the <b className="text-tn-ink font-semibold">Super Admin</b> column is your own session. <b className="text-tn-ink font-semibold">Refresh</b> reloads every column.
         </div>
       </div>
     </div>

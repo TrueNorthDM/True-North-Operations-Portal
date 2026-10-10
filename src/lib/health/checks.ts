@@ -6,8 +6,9 @@
  * the Automations page and a dashboard banner instead of going unnoticed.
  *
  * `runHealthChecks` performs the checks and records them; `latestHealth` reads
- * the most recent result per service for display. Both degrade gracefully if
- * the system_health_checks table doesn't exist yet (migration 046 not run).
+ * the most recent result per service for display, and summary.ts says what
+ * they add up to. A check that could not run is a problem, not "ok" (audit,
+ * 10 October 2026). Runs every four hours (deploy/cron/portal.crontab).
  *
  * Pure-ish: takes a Supabase (service-role) client so it works from both the
  * cron and the admin "Run checks now" action.
@@ -27,7 +28,7 @@ export interface HealthResult {
 }
 
 // Service keys, also referenced by the automations registry so a card can show
-// its live status. Keep in sync with registry.ts `healthService` values.
+// its live status. Keep in sync with registry.ts `healthServices` values.
 export const HEALTH = {
   mondayApi: 'monday_api',
   mondayWebhook: 'monday_webhook',
@@ -52,10 +53,8 @@ const MONDAY_API = 'https://api.monday.com/v2'
 const TSHEETS_BASE = 'https://rest.tsheets.com/api/v1'
 // The webhook "exists" but delivers nothing failure mode is caught here: if no
 // Monday event has been received in this many days, flag a soft warning.
-/** How many recent deliveries the door count looks at. */
-const DOOR_WINDOW = 20
-
 const EVENT_STALE_DAYS = 7
+const EVENT_DOWN_DAYS = 14
 
 type Check = Omit<HealthResult, 'checked_at'>
 
@@ -83,11 +82,12 @@ async function checkMondayWebhooks(token: string, sites: SiteHook[]): Promise<Ch
   if (!token) return { service: HEALTH.mondayWebhook, ok: false, status: 'down', detail: 'No Monday API token, cannot list webhooks.' }
   const missing: string[] = []
   const present: string[] = []
+  const unset: string[] = []
   try {
     for (const s of sites) {
       const boardId = s.monday_board_id
       const hrefCol = s.monday_column_ids?.hrefLinksStatus
-      if (!boardId || !hrefCol) continue
+      if (!boardId || !hrefCol) { unset.push(s.code.toUpperCase()); continue }
       const res = await fetch(MONDAY_API, {
         method: 'POST',
         headers: { Authorization: token, 'Content-Type': 'application/json', 'API-Version': '2024-10' },
@@ -102,63 +102,38 @@ async function checkMondayWebhooks(token: string, sites: SiteHook[]): Promise<Ch
     return { service: HEALTH.mondayWebhook, ok: false, status: 'down', detail: (e as Error).message }
   }
   if (missing.length > 0) return { service: HEALTH.mondayWebhook, ok: false, status: 'down', detail: `No Href Links webhook on: ${missing.join(', ')}. Page sync is broken for these.` }
-  return { service: HEALTH.mondayWebhook, ok: true, status: 'ok', detail: `Href Links webhook present on: ${present.join(', ') || '(no boards)'}.` }
+  // Nothing checked is not "present" (audit, 10 October 2026).
+  if (!present.length) return { service: HEALTH.mondayWebhook, ok: false, status: 'down', detail: 'No site has a Monday board and Href Links column set, so no webhook was checked.' }
+  if (unset.length) return { service: HEALTH.mondayWebhook, ok: false, status: 'warn', detail: `Href Links webhook present on: ${present.join(', ')}. Not checked (no board or column in Settings): ${unset.join(', ')}.` }
+  return { service: HEALTH.mondayWebhook, ok: true, status: 'ok', detail: `Href Links webhook present on: ${present.join(', ')}.` }
 }
 
+/**
+ * Are Monday deliveries still arriving? Silence for more than a week is a
+ * warning, for two weeks a failure (decided 10 October 2026): in August the
+ * webhook was silent for 18 days and only a warning, which nobody saw.
+ */
 async function checkMondayEvents(supabase: SupabaseClient): Promise<Check> {
   try {
-    // A window rather than just the latest row. Two doors are open at once
-    // during the cutover (the secret URL and the old unauthenticated one), so
-    // the most recent delivery only tells you which fired last, not whether the
-    // old door is still in use. Counting the window answers the question the
-    // cutover actually turns on: has anything come through the old one lately.
     const { data, error } = await supabase
       .from('monday_events')
-      .select('received_at, result')
+      .select('received_at')
       .order('received_at', { ascending: false })
-      .limit(DOOR_WINDOW)
-    if (error) return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: `Could not read event log: ${error.message}` }
-
-    const rows = (data ?? []) as { received_at?: string; result?: string | null }[]
-    const last = rows[0]?.received_at
-    if (!last) return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: 'No Monday events recorded yet.' }
-
-    const ageDays = Math.floor((Date.now() - new Date(last).getTime()) / 86400000)
-    const when = ageDays === 0 ? 'today' : `${ageDays}d ago`
+      .limit(1)
+    if (error) return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Could not read the event log: ${error.message}` }
+    const last = ((data ?? []) as { received_at?: string }[])[0]?.received_at
+    if (!last) return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: 'No Monday events recorded yet.' }
+    const ageDays = Math.floor((Date.now() - new Date(last).getTime()) / 86_400_000)
+    const when = ageDays === 0 ? 'today' : `${ageDays} day${ageDays === 1 ? '' : 's'} ago`
+    if (ageDays >= EVENT_DOWN_DAYS) {
+      return { service: HEALTH.mondayEvents, ok: false, status: 'down', detail: `Last event ${when}. Monday deliveries have stopped: check the webhooks on the Href Links boards.` }
+    }
     if (ageDays > EVENT_STALE_DAYS) {
-      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${ageDays} days ago. Expected activity, delivery may be broken.` }
+      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. Expected activity, delivery may be broken.` }
     }
-
-    // The webhook tags every row with the door it came through.
-    const doorOf = (r: string | null | undefined) => /^([a-z-]+url)/.exec(r ?? '')?.[1]
-    const secret = rows.filter(r => doorOf(r.result) === 'secret-url').length
-    const legacy = rows.filter(r => doorOf(r.result) === 'legacy-url').length
-    const untagged = rows.length - secret - legacy
-
-    const counts = `Last ${rows.length} deliveries: ${secret} on the secret URL${legacy ? `, ${legacy} on the old one (now removed)` : ''}${untagged ? `, ${untagged} from before tagging` : ''}.`
-
-    // A count alone cannot answer "is the old door still in use", because rows
-    // from an earlier test stay inside the window and look identical to fresh
-    // ones. The timestamp of the most recent legacy delivery can: delete a
-    // webhook, trigger another change, and if this stamp has not moved, that
-    // webhook was the one, and nothing else is knocking on the old door.
-    // Only a RECENT legacy delivery is a problem. The unauthenticated route was
-    // deleted, so nothing can arrive that way any more, but rows from before it
-    // went stay in the window for a while. Warning on those would leave a
-    // permanent alarm about something already fixed, which is how people learn
-    // to ignore the page.
-    const lastLegacy = rows.find(r => doorOf(r.result) === 'legacy-url')?.received_at
-    const legacyIsRecent = lastLegacy != null && Date.now() - new Date(lastLegacy).getTime() < 86400000
-    if (legacyIsRecent) {
-      const stamp = new Date(lastLegacy!).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. ${counts} One arrived on the OLD unauthenticated url at ${stamp}, which should no longer be possible.` }
-    }
-    if (secret === 0) {
-      return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: `Last event ${when}. ${counts} Nothing has arrived on the secret URL yet.` }
-    }
-    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${when}. ${counts}` }
+    return { service: HEALTH.mondayEvents, ok: true, status: 'ok', detail: `Last event ${when}.` }
   } catch (e) {
-    return { service: HEALTH.mondayEvents, ok: true, status: 'warn', detail: (e as Error).message }
+    return { service: HEALTH.mondayEvents, ok: false, status: 'warn', detail: (e as Error).message }
   }
 }
 
@@ -182,7 +157,9 @@ async function checkTsheets(token: string): Promise<Check> {
  */
 async function checkDbProtections(supabase: SupabaseClient): Promise<Check> {
   const { data, error } = await supabase.rpc('db_protections_check')
-  if (error) return { service: HEALTH.dbProtections, ok: true, status: 'warn', detail: `Could not run the check (migration 098?): ${error.message}` }
+  // Could not run is a failure here: this is the check that caught the open
+  // database gate, and a silent one is no check (audit, 10 October 2026).
+  if (error) return { service: HEALTH.dbProtections, ok: false, status: 'down', detail: `Could not run the check: ${error.message}. Run supabase/migrations/108 again.` }
   const open = (data ?? []) as string[]
   if (open.length) return { service: HEALTH.dbProtections, ok: false, status: 'down', detail: `Open again: ${open.slice(0, 4).join('; ')}${open.length > 4 ? `; and ${open.length - 4} more` : ''}. Run supabase/migrations/098 again.` }
   return { service: HEALTH.dbProtections, ok: true, status: 'ok', detail: 'Pay, contact and server-only functions are closed to signed-in and anonymous roles.' }
@@ -202,7 +179,7 @@ async function checkDailySummary(supabase: SupabaseClient): Promise<Check> {
       .eq('timing', 'daily').is('emailed_at', null).lt('deliver_at', new Date(Date.now() - 5 * 86_400_000).toISOString()),
   ])
   if (digests.error || stale.error) {
-    return { service: HEALTH.dailySummary, ok: true, status: 'warn', detail: `Could not read the summary log: ${(digests.error ?? stale.error)!.message}` }
+    return { service: HEALTH.dailySummary, ok: false, status: 'warn', detail: `Could not read the summary log: ${(digests.error ?? stale.error)!.message}` }
   }
   const rows = (digests.data ?? []) as { status: string; attempts: number; updated_at: string; error: string | null }[]
   const gaveUp = rows.filter(r => r.status === 'failed' && r.attempts >= 3)
@@ -227,7 +204,7 @@ const SNAPSHOT_STALE_HOURS = 12
 
 async function checkPublishingSnapshot(supabase: SupabaseClient): Promise<Check> {
   const { data, error } = await supabase.from('monday_snapshot').select('board_id, ingested_at')
-  if (error) return { service: HEALTH.publishingSnapshot, ok: true, status: 'warn', detail: `Could not read the pulls: ${error.message}` }
+  if (error) return { service: HEALTH.publishingSnapshot, ok: false, status: 'warn', detail: `Could not read the pulls: ${error.message}` }
   const rows = (data ?? []) as { board_id: string; ingested_at: string | null }[]
   const missing = PUBLISHING_BOARD_IDS.filter(id => !rows.some(r => r.board_id === id))
   const stale = rows.filter(r => PUBLISHING_BOARD_IDS.includes(r.board_id)
@@ -246,7 +223,8 @@ export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthR
   const mondayToken = s?.monday_api_token ?? ''
   const tsheetsToken = s?.tsheets_api_token ?? ''
 
-  const { data: siteData } = await supabase.from('sites').select('code, monday_board_id, monday_column_ids').in('code', ['hfa', 'aaaf'])
+  const { data: siteData, error: siteErr } = await supabase.from('sites').select('code, monday_board_id, monday_column_ids').in('code', ['hfa', 'aaaf'])
+  if (siteErr) console.error('[health] reading the sites:', siteErr.message)
   const sites = (siteData ?? []) as unknown as SiteHook[]
 
   const checks = await Promise.all([
@@ -267,30 +245,32 @@ export async function runHealthChecks(supabase: SupabaseClient): Promise<HealthR
   const { error: pruneErr } = await supabase.rpc('prune_monday_events')
   if (pruneErr) console.error('[health] pruning the webhook log:', pruneErr.message)
 
-  // Best-effort persist. If the table isn't there yet (migration 046 pending),
-  // just skip, the checks still ran and the caller gets the live results.
-  try {
-    await supabase.from('system_health_checks').insert(results.map(r => ({ service: r.service, ok: r.ok, status: r.status, detail: r.detail })))
-  } catch { /* table missing or transient, ignore */ }
+  // Said when it fails: "Run checks now" otherwise appeared to do nothing.
+  const { error: saveErr } = await supabase.from('system_health_checks')
+    .insert(results.map(r => ({ service: r.service, ok: r.ok, status: r.status, detail: r.detail })))
+  if (saveErr) console.error('[health] the results were not saved:', saveErr.message)
 
   return results
 }
 
-/** Latest recorded result per service (for the page + banner). Empty if the table is missing. */
-export async function latestHealth(supabase: SupabaseClient): Promise<Record<string, HealthResult>> {
-  try {
-    const { data, error } = await supabase
-      .from('system_health_checks')
-      .select('service, ok, status, detail, checked_at')
-      .order('checked_at', { ascending: false })
-      .limit(80)
-    if (error || !data) return {}
-    const out: Record<string, HealthResult> = {}
-    for (const row of data as unknown as HealthResult[]) {
-      if (!out[row.service]) out[row.service] = row
-    }
-    return out
-  } catch {
-    return {}
+/**
+ * Latest recorded result per service (for the page and the banner), and
+ * whether they could be read at all: an unreadable history is not "no checks
+ * recorded yet" (audit, 10 October 2026).
+ */
+export async function latestHealth(supabase: SupabaseClient): Promise<{ results: Record<string, HealthResult>; readError: string | null }> {
+  const { data, error } = await supabase
+    .from('system_health_checks')
+    .select('service, ok, status, detail, checked_at')
+    .order('checked_at', { ascending: false })
+    .limit(80)
+  if (error) {
+    console.error('[health] reading the results:', error.message)
+    return { results: {}, readError: 'The health results could not be read just now.' }
   }
+  const results: Record<string, HealthResult> = {}
+  for (const row of (data ?? []) as unknown as HealthResult[]) {
+    if (!results[row.service]) results[row.service] = row
+  }
+  return { results, readError: null }
 }

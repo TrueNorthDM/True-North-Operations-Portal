@@ -18,7 +18,6 @@ export default async function Page() {
       icon="analytics"
       title="Analytics"
       description="Traffic and search performance for each site."
-      canSuggest={access.can('tickets')}
     />
   )
 }

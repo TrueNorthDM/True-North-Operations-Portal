@@ -1,6 +1,7 @@
-// Admin: hub for the portal's admin tools (Tickets, Tests, System manual,
-// Directory). Server-guarded: only portal admins reach it; everyone else is
-// redirected home. Card layout + animated icons match the handoff prototype.
+// Admin: hub for the portal's admin tools (Access levels, View Stage, Company
+// settings, Notification rules, Tests, Automations, the System manual, Monday
+// accounts). Each card shows only to who may open it. Tickets was retired on
+// 10 October 2026 (audit). Card layout and animated icons match the handoff.
 
 import Link from 'next/link'
 import { requireSurface } from '@/lib/access/resolve'
@@ -17,13 +18,6 @@ const OpenArrow = (
 )
 
 // Ticket: the whole glyph bobs; the punch-hole dot pulses.
-const TicketsIcon = (
-  <svg className="tn-anim w-[22px] h-[22px]" style={{ animation: 'tn-ico-bob 2.8s ease-in-out infinite' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L3 13V4a1 1 0 0 1 1-1h9l7.59 7.59a2 2 0 0 1 0 2.82z" />
-    <circle className="tn-anim" cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none" style={{ transformBox: 'fill-box', transformOrigin: 'center', animation: 'tn-dot-pulse 2.8s ease-in-out infinite' }} />
-  </svg>
-)
-
 // Clipboard: the checkmark draws itself in on a loop.
 const TestsIcon = (
   <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -94,7 +88,6 @@ const ACTIVE = [
 // Usable, but still being built out. Grouped separately so the finished tools
 // above are not mistaken for work in progress.
 const IN_CONSTRUCTION = [
-  { href: '/admin/tickets', key: 'tickets', title: 'Tickets', icon: TicketsIcon, description: 'The dev work tracker, everything we need to resolve, so nothing gets lost.' },
   { href: '/admin/tests', key: 'tests', title: 'Tests', icon: TestsIcon, description: 'A checklist to verify the whole system end-to-end, tick off what works.' },
   { href: '/admin/automations', key: 'automations', title: 'Automations', icon: AutomationsIcon, description: 'Every webhook and scheduled job, with live health so an outage surfaces fast.' },
   { href: '/admin/manual', key: 'manual', title: 'System manual', icon: ManualIcon, description: 'How the portal works, pages, access, and how Monday feeds it.' },
@@ -140,7 +133,7 @@ export default async function AdminPage() {
       <div>
         <Breadcrumb self="/admin" />
         <h1 className="text-2xl font-(family-name:--font-display) font-extrabold tracking-tight text-tn-ink">Admin</h1>
-        <p className="mt-1.5 text-muted">People, teams, and who can access what.</p>
+        <p className="mt-1.5 text-muted">Access, settings, notifications and the portal&apos;s own health.</p>
       </div>
 
       <section className="space-y-4">

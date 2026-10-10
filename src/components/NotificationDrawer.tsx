@@ -52,7 +52,7 @@ export const DRAWERS: Record<DrawerKind, { title: string; icon: NavIconKey; tabs
     icon: 'bell',
     tabs: [
       { key: 'tools', label: 'Tools', emptyTitle: 'Nothing from your tools', empty: 'Alerts from the dashboards and reports you can reach land here.' },
-      { key: 'system', label: 'System', emptyTitle: 'Nothing from the portal', empty: 'Syncs, tickets and access changes land here.' },
+      { key: 'system', label: 'System', emptyTitle: 'Nothing from the portal', empty: 'Syncs, health checks and access changes land here.' },
     ],
   },
   inbox: {

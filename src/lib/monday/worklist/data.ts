@@ -168,22 +168,16 @@ export interface Worklist {
 /**
  * The Monday account's subdomain, which every "open in Monday" link is built on.
  *
- * Read with the caller's client first and the privileged one if that comes back
- * empty. app_settings is admin-only (migration 052, because it holds API tokens),
- * so for everyone who is not an admin the plain read returned nothing and every
- * row lost its link. Admins saw links, which is why it went unnoticed until
- * Stephanie asked where they were. The subdomain is in every link it builds, so
- * handing it to a signed-in reader discloses nothing.
+ * Read by the server: app_settings holds the API tokens and is closed to
+ * signed-in sessions. The subdomain is in every link it builds, so handing it
+ * to a reader discloses nothing.
  */
-async function mondaySlug(supabase: Client): Promise<string | null> {
-  const read = async (c: Client) => {
-    const { data } = await c.from('app_settings').select('monday_account_slug').eq('singleton_id', 1).maybeSingle()
-    return (data as { monday_account_slug: string | null } | null)?.monday_account_slug ?? null
-  }
-  const own = await read(supabase)
-  if (own) return own
+async function mondaySlug(): Promise<string | null> {
+  // The server's own read: app_settings holds the API tokens and is closed to
+  // sessions (migration 108). The subdomain alone goes into each link.
   try {
-    return await read(createAdminClient())
+    const { data } = await createAdminClient().from('app_settings').select('monday_account_slug').eq('singleton_id', 1).maybeSingle()
+    return (data as { monday_account_slug: string | null } | null)?.monday_account_slug ?? null
   } catch {
     return null
   }
@@ -252,7 +246,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   if (firstSteps.error) throw new Error(`Could not read the board steps: ${firstSteps.error.message}`)
   const stepRows: unknown[] = firstSteps.data
 
-  const slug = await mondaySlug(supabase)
+  const slug = await mondaySlug()
 
   /**
    * A subitem's own board cannot be opened in Monday, so a subitem links to

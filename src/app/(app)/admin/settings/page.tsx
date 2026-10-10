@@ -25,6 +25,9 @@ import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { loadTargetsEditor } from '@/lib/boards/targets-data'
 import { pagesWithUrls } from '@/lib/site-pages'
+import { PUBLISHING_BOARD_IDS } from '@/lib/boards/config'
+import { headers } from 'next/headers'
+import { publicOrigin } from '@/lib/auth/public-origin'
 import { loadProjectDirectory, loadReportNote } from '@/lib/tsheets/report-data'
 import { NoteCard } from '@/components/tsheets/I7ReportParts'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -106,9 +109,11 @@ export default async function SettingsPage() {
   const pausedByCode = new Map<string, string[]>(
     sites.map(r => [r.code, ((r as { paused_languages?: string[] | null }).paused_languages) ?? []]))
 
-  // The tokens and the webhook secret: APIs & tokens (cs-apis) only.
+  // The tokens and the webhook secret: APIs & tokens (cs-apis, Super Admin
+  // only), read by the server (app_settings is closed to sessions, migration
+  // 108). Only the last four characters of a token reach the browser.
   const { data: appSettings } = can.apis
-    ? await supabase
+    ? await db
       .from('app_settings')
       .select('monday_api_token, tsheets_api_token, monday_webhook_secret, tsheets_synced_at')
       .eq('singleton_id', 1)
@@ -121,6 +126,7 @@ export default async function SettingsPage() {
   const { data: mondaySnaps } = await createAdminClient()
     .from('monday_snapshot')
     .select('ingested_at')
+    .in('board_id', PUBLISHING_BOARD_IDS)
     .order('ingested_at', { ascending: true })
     .limit(1)
   const mondayPulledAt = ((mondaySnaps ?? []) as { ingested_at: string }[])[0]?.ingested_at ?? null
@@ -153,33 +159,37 @@ export default async function SettingsPage() {
     })
   }
 
-  // Budget Usage Report data (clients & budgets, history, targets). Pay only
-  // with Rates & Costs: the history repeats it.
-  const budget = can.clients ? await getBudgetUsageData({ pay: access.can('d-rates') }) : null
-  const targetsData = can.targets ? await loadTargetsEditor() : null
-
-  // Clients → Projects → Job codes directory + the auto avg rate (current month).
-  // highestRate is the top client rate: Rates & Costs (d-rates) only. Without
-  // it the budget editor simply offers no hours estimate.
-  const fullDirectory = can.catalog || can.clients ? await loadProjectDirectory(new Date().toISOString().slice(0, 7)) : null
+  // The sections' loaders, together rather than one after another (audit,
+  // 10 October 2026); each still runs only for the section it feeds.
+  //
+  // Budget Usage Report data (clients & budgets, history). Pay only with Rates
+  // & Costs: the history repeats it. The Clients > Projects > Job codes
+  // directory and the auto average rate are for the current New York month;
+  // highestRate is the top client rate, Rates & Costs (d-rates) only. The month
+  // note is printed on the client PDF.
+  const noteMonth = currentYearMonth()
+  const profileP = getCurrentProfile()
+  // The address Monday posts to, built here so the browser draws what the
+  // server drew (it used window.location in render).
+  const h = await headers()
+  const origin = publicOrigin(`${h.get('x-forwarded-proto') ?? 'https'}://${h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost'}`)
+  const [budget, targetsData, fullDirectory, reportNote, profile, worklistSources, stepsForReview, boardLinks] = await Promise.all([
+    can.clients ? getBudgetUsageData({ pay: access.can('d-rates') }) : null,
+    can.targets ? loadTargetsEditor() : null,
+    can.catalog || can.clients ? loadProjectDirectory(noteMonth) : null,
+    can.clients ? loadReportNote(noteMonth) : null,
+    profileP,
+    can.myWork ? loadWorklistSources(createAdminClient()) : null,
+    can.myWork ? loadStepsForReview(createAdminClient()) : null,
+    can.myWork ? loadBoardLinks() : null,
+  ])
   const projectDirectory = fullDirectory && !access.can('d-rates') ? { ...fullDirectory, highestRate: 0 } : fullDirectory
 
-  // The month note printed on the client PDF. It used to be edited from the
-  // report page itself; that page is for reading the month, and this is where
-  // the rest of what shapes the report already lives.
-  const noteMonth = currentYearMonth()
-  const reportNote = can.clients ? await loadReportNote(noteMonth) : null
-
   // "Signed in as", the current user's directory name (fallback to email).
-  const profile = await getCurrentProfile()
   const { data: me } = profile
     ? await supabase.from('people').select('full_name').eq('profile_id', profile.id).maybeSingle()
     : { data: null }
   const signedIn = { name: profile?.full_name ?? me?.full_name ?? profile?.email ?? 'You', role: `${LEVEL_LABEL[access.level]} · True North` }
-
-  const worklistSources = can.myWork ? await loadWorklistSources(createAdminClient()) : null
-  const stepsForReview = can.myWork ? await loadStepsForReview(createAdminClient()) : null
-  const boardLinks = can.myWork ? await loadBoardLinks() : null
 
   const sections: (SettingsSection | false | null)[] = [
     can.apis && {
@@ -191,18 +201,19 @@ export default async function SettingsPage() {
           <SectionHead title="APIs & tokens" desc="Connect Monday and QuickBooks Time (TSheets). Tokens are stored server-side and never exposed to the browser." />
           <SecretField
             title="Monday API"
-            description="Personal API token from monday.com, used to sync page implementation status."
+            description="Personal API token from monday.com. It reads the boards for My Work, the Report, Publishing Goals and Href Links."
             info={tokenInfo}
             save={saveMondayApiToken}
             placeholder="Paste your Monday personal API token…"
             help={<>Find it at <a href="https://auth.monday.com/users/sign_in" target="_blank" rel="noopener noreferrer" className="text-slate-700 underline">monday.com</a> → Profile picture → Developers → My Access Tokens.</>}
             changeWarning={{ title: 'Change the Monday API token?', confirm: 'I understand, let me change it', body: <p>Replacing it will <strong>break the existing Monday connection</strong> until a working token is saved.</p> }}
             clearWarning={{ title: 'Remove the Monday API token?', confirm: 'Remove token', body: <p>Removing it <strong>breaks the Monday connection</strong>. Implementation status stops syncing until a token is added again.</p> }}
-            note={<div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 flex gap-2"><span aria-hidden="true">🔒</span><span>Stored with row-level security: only admins can read or change it, and it is never sent to the browser.</span></div>}
+            note={<div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 flex gap-2"><span aria-hidden="true">🔒</span><span>Read and written only by the server, for Super Admins. Only its last four characters reach the browser.</span></div>}
             footer={<PullInfo syncedAt={mondayPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={0} label="Boards pulled" pastVerb="pulled" />}
           />
 
           <WebhookUrlField
+            origin={origin}
             secret={appSettings?.monday_webhook_secret ?? null}
             regenerate={regenerateMondayWebhookSecret}
           />
@@ -214,7 +225,7 @@ export default async function SettingsPage() {
             save={saveTsheetsApiToken}
             placeholder="Paste your TSheets API token…"
             changeWarning={{ title: 'Change the TSheets token?', confirm: 'I understand, let me change it', body: <p>Replacing it will <strong>break the hours sync</strong> until a working token is saved.</p> }}
-            clearWarning={{ title: 'Remove the TSheets token?', confirm: 'Remove token', body: <p>Removing it stops the hours sync; the Clients Reports page falls back to sample data.</p> }}
+            clearWarning={{ title: 'Remove the TSheets token?', confirm: 'Remove token', body: <p>Removing it stops the hours sync from QuickBooks Time until a new token is saved.</p> }}
             footer={<PullInfo syncedAt={tsheetsPulledAt} utcHours={[1, 5, 9, 13, 17, 21]} utcMinute={30} label="Clients & people synced" pastVerb="synced" />}
           />
         </div>

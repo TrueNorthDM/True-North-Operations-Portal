@@ -22,6 +22,11 @@ import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 
 export const dynamic = 'force-dynamic'
 
+// A fixed "now" for the fixtures: Date.now() in render is impure (lint
+// react-hooks/purity) and made the screen differ from one load to the next.
+const NOW = Date.parse('2026-10-10T12:00:00Z')
+const days = (n: number) => new Date(NOW - n * 86_400_000).toISOString()
+
 /** A QR-looking stand-in: the three finder squares and a fixed scatter of modules. */
 function mockQr(): string {
   const n = 25
@@ -47,7 +52,6 @@ export default async function TwoStepCheck({ searchParams }: { searchParams: Pro
   }
 
   if (screen === 'list') {
-    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString()
     const mk = (name: string, title: string, color: string, over: Partial<PersonView>) => ({
       id: name, full_name: name, title, color, status: 'active', accountId: null, portalInvitedAt: null, lastAccessAt: null,
       emails: { trueNorth: null, goodnews: `${name.split(' ')[0].toLowerCase()}@goodnewsadvocates.org`, coe: null },

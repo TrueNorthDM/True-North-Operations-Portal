@@ -18,7 +18,6 @@ export default async function Page() {
       icon="image-optimization"
       title="Image Optimization"
       description="Every image on a page, with weight, format and missing alt text."
-      canSuggest={access.can('tickets')}
     />
   )
 }

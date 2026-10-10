@@ -169,7 +169,7 @@ const TREE: Node[] = [
       { key: 'au-run', label: 'Run the checks now', kind: 'action', v: [1, 0, 0] },
     ] },
     { key: 'settings', label: 'Company settings', kind: 'page', v: [1, 0, 0], ch: [
-      { key: 'cs-apis', label: 'APIs & tokens', kind: 'tab', v: [0, 0, 0] },
+      { key: 'cs-apis', label: 'APIs & tokens', kind: 'tab', superOnly: true, note: 'The Monday and TSheets tokens and the webhook address: Super Admins only (10 October 2026).' },
       { key: 'cs-my-work', label: 'My Work sources', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-clients', label: 'Clients & budgets', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-catalog', label: 'Clients, Projects & Job Codes', kind: 'tab', v: [1, 0, 0] },
@@ -177,11 +177,10 @@ const TREE: Node[] = [
       { key: 'cs-sites', label: 'Sites & languages', kind: 'tab', v: [1, 0, 0] },
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },
-    { key: 'tickets', label: 'Tickets', kind: 'page', v: [1, 0, 0] },
     { key: 'tests', label: 'Tests', kind: 'page', v: [1, 0, 0] },
     { key: 'manual', label: 'System manual', kind: 'page', v: [1, 0, 0], ch: [
       { key: 'man-portal', label: 'The portal', kind: 'tab', v: [1, 0, 0] },
-      { key: 'man-runs', label: 'How it runs', kind: 'tab', v: [1, 0, 0] },
+      { key: 'man-runs', label: 'How it runs', kind: 'tab', superOnly: true, note: 'Shows the server and where its key files live: Super Admins only (10 October 2026).' },
     ] },
   ] },
   { key: 'm-clocky', label: 'Clocky', kind: 'module', building: true, ch: [

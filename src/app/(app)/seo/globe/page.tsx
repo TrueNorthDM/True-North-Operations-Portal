@@ -18,7 +18,6 @@ export default async function Page() {
       icon="impact-globe"
       title="Impact Globe"
       description="Where in the world the sites are being read."
-      canSuggest={access.can('tickets')}
     />
   )
 }

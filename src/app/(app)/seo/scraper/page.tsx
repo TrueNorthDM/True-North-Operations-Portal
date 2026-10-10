@@ -18,7 +18,6 @@ export default async function Page() {
       icon="schema-scraper"
       title="Schema Scraper"
       description="Pull the schema off any URL to read it and compare it with ours."
-      canSuggest={access.can('tickets')}
     />
   )
 }

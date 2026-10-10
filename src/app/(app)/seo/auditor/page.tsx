@@ -18,7 +18,6 @@ export default async function Page() {
       icon="page-auditor"
       title="Page Auditor"
       description="Technical checks on a page: titles, headings, links, speed."
-      canSuggest={access.can('tickets')}
     />
   )
 }

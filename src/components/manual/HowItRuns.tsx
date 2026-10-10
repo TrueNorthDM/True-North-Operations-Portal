@@ -259,7 +259,8 @@ export function HowItRuns() {
             rows={[
               ['Server watch', 'Inside the server', '10 min', 'The 9 services running; the portal and sign-in answering; more than 10 GB free; last night\'s backup less than 26 hours old', 'An email from "Portal server" when a problem starts and when it clears'],
               ['Uptime check', 'Outside, from GitHub\'s machines', '1 hour', 'The portal opens; the database answers; the old address still redirects', 'An email after a second try, 1 minute later'],
-              ['Integration health', 'Inside the portal', '2 days', 'The Monday token, the Monday webhooks, TSheets', 'A banner in Admin and the Admin, Automations screen'],
+              // Every 4 hours since the audit of 10 October 2026 (55 past 1, 5, 9, 13, 17 and 21 UTC).
+              ['Integration health', 'Inside the portal', '4 hours', 'The Monday token, webhooks and event delivery; TSheets; the database protections; the daily summary email; the publishing boards pull. Results older than 9 hours count as a failure of their own', 'A banner on Home and in Admin (red when something is down, amber for a warning), the Admin, Automations screen, and a notification'],
             ]}
           />
           <P>The server watch cannot send an alert if the whole server goes down. That is why the Uptime check looks from outside. Staging is not watched: the alerts are about production only.</P>

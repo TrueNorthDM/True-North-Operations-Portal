@@ -8,14 +8,13 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Approvals and Invoices' }
 
 export default async function Page() {
-  const access = await requireSurface('my-hours-approvals')
+  await requireSurface('my-hours-approvals')
   return (
     <ComingSoon
       icon="tests"
       title="Approvals and Invoices"
       description="What you sent for approval, what came back, and the invoices that followed."
       parents={['/hours']}
-      canSuggest={access.can('tickets')}
     />
   )
 }

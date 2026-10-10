@@ -10,6 +10,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { pagesWithUrls } from '@/lib/site-pages'
 import { allowedTo } from '@/lib/access/resolve'
+import { getRealPerson } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateWebhookSecret } from '@/lib/monday/webhook-secret'
 import { revalidatePath } from 'next/cache'
@@ -241,26 +242,20 @@ export async function saveSiteWpUrls(input: {
 }
 
 /**
- * Saves the Monday API token to app_settings (singleton row).
- * SECURITY NOTE: with the current anon-key + no-RLS setup, this value is
- * readable by anyone with the public anon key. For production, gate this
- * with RLS + service_role, or migrate to Supabase Vault / env var.
- */
-/**
- * Shared write path for every credential on Settings. Migration 052 made
- * app_settings admin-only at the database level, so this check is now the
- * second lock rather than the only one, and it exists to turn a silent RLS
- * rejection into a message the UI can show. Before today there was no check
- * here at all and no RLS either.
+ * The credentials on Settings > APIs & tokens: Super Admin only (cs-apis is
+ * superOnly, decided 10 October 2026), written by the server (app_settings is
+ * closed to sessions, migration 108). A write that changed no row is not
+ * "Saved": it used to answer ok when the database silently refused it, and a
+ * regenerated webhook address shown on screen was never stored. Each change is
+ * logged (who and when, never the value).
  */
 async function saveAppSecret(
   column: 'monday_api_token' | 'tsheets_api_token',
   raw: string,
   alsoRevalidate: string[] = [],
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!(await allowedTo('cs-apis'))) return { ok: false, error: 'Only admins can change this.' }
+  if (!(await allowedTo('cs-apis'))) return { ok: false, error: 'Only Super Admins can change this.' }
 
-  const supabase = await createClient()
   const trimmed = raw.trim()
   const value = trimmed === '' ? null : trimmed
   // Spelled out per column rather than a computed key: Supabase's typed client
@@ -268,15 +263,28 @@ async function saveAppSecret(
   const patch =
     column === 'monday_api_token' ? { monday_api_token: value } : { tsheets_api_token: value }
 
-  const { error } = await supabase
+  const { data, error } = await createAdminClient()
     .from('app_settings')
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('singleton_id', 1)
+    .select('singleton_id')
+  if (error) return notSaved(error)
+  if (data?.length !== 1) return notSaved({ message: `app_settings update changed ${data?.length ?? 0} rows` })
 
-  if (error) return { ok: false, error: error.message }
+  await logSettingChange(column, value === null ? 'cleared' : 'set')
   revalidatePath('/admin/settings')
   for (const path of alsoRevalidate) revalidatePath(path)
   return { ok: true }
+}
+
+/** Who changed a credential, and when; never the value. A failed log line is said in the server log. */
+async function logSettingChange(setting: string, action: string): Promise<void> {
+  const me = await getRealPerson()
+  const { data: { user } } = await (await createClient()).auth.getUser()
+  const { error } = await createAdminClient().from('settings_change_log').insert({
+    setting, action, actor_person_id: me?.id ?? null, actor_name: me?.full_name ?? null, actor_email: user?.email ?? null,
+  })
+  if (error) console.error('[settings] the change was not logged:', error.message)
 }
 
 export async function saveMondayApiToken(input: { value: string }) {
@@ -293,16 +301,19 @@ export async function saveMondayApiToken(input: { value: string }) {
  * defeat the point.
  */
 export async function regenerateMondayWebhookSecret(): Promise<{ ok: boolean; secret?: string; error?: string }> {
-  if (!(await allowedTo('cs-apis'))) return { ok: false, error: 'Only admins can change this.' }
+  if (!(await allowedTo('cs-apis'))) return { ok: false, error: 'Only Super Admins can change this.' }
 
   const secret = generateWebhookSecret()
-  const supabase = await createClient()
-  const { error } = await supabase
+  const { data, error } = await createAdminClient()
     .from('app_settings')
     .update({ monday_webhook_secret: secret, updated_at: new Date().toISOString() })
     .eq('singleton_id', 1)
-
-  if (error) return { ok: false, error: error.message }
+    .select('singleton_id')
+  if (error) return notSaved(error)
+  // Only an address that was stored is shown: pasting one that was not into
+  // Monday would have every delivery refused.
+  if (data?.length !== 1) return notSaved({ message: `app_settings update changed ${data?.length ?? 0} rows` })
+  await logSettingChange('monday_webhook_secret', 'regenerated')
   revalidatePath('/admin/settings')
   revalidatePath('/admin/automations')
   return { ok: true, secret }

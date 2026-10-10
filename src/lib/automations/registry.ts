@@ -8,7 +8,7 @@
  * WHEN YOU ADD OR CHANGE AN AUTOMATION, UPDATE THIS FILE. The /admin/automations
  * page renders straight from here and layers on live health where available.
  *
- * `healthService` links a row to a system_health_checks service key (see
+ * `healthServices` links a row to a system_health_checks service key (see
  * lib/health/checks.ts HEALTH) so its card can show a live green/amber/red dot.
  */
 
@@ -107,11 +107,11 @@ export const AUTOMATIONS: Automation[] = [
     id: 'health-check',
     name: 'Integration health check',
     kind: 'cron',
-    purpose: 'Verifies Monday and TSheets connectivity, that the Monday webhooks are still registered, that events are still arriving, that the database protections are closed and that the daily summary email is going out. Records results and drives the status shown on this page and the dashboard banner.',
+    purpose: 'Verifies Monday and TSheets connectivity, that the Monday webhooks are still registered, that events are still arriving, that the database protections are closed, that the publishing boards are pulled and that the daily summary email is going out. Records results and drives the status shown on this page and the Home banner. Also trims the webhook log.',
     trigger: 'Server crontab (deploy/cron/portal.crontab)',
-    schedule: 'Daily at 9:00 UTC (0 9 * * *)',
+    schedule: 'Every 4 hours, after the syncs (55 1,5,9,13,17,21 * * *)',
     location: 'src/app/api/cron/health/route.ts, src/lib/health/checks.ts',
-    healthServices: ['monday_api'],
+    healthServices: ['monday_api', 'db_protections', 'publishing_snapshot'],
     since: '2026-07-20',
   },
   {

@@ -16,7 +16,9 @@ source "$env_file"
 mkdir -p "$log_dir"
 
 stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-if out="$(curl -fsS --max-time 300 -H "Authorization: Bearer ${CRON_SECRET:?CRON_SECRET missing in $env_file}" "http://127.0.0.1:${PORT:-3000}${job}" 2>&1)"; then
+# The header goes in on stdin, not on the command line, where any user of the
+# machine could read the secret with ps (audit, 10 October 2026).
+if out="$(printf 'Authorization: Bearer %s\n' "${CRON_SECRET:?CRON_SECRET missing in $env_file}" | curl -fsS --max-time 300 -H @- "http://127.0.0.1:${PORT:-3000}${job}" 2>&1)"; then
   echo "$stamp ok   $job ${out:0:300}" >> "$log_dir/cron.log"
 else
   echo "$stamp FAIL $job ${out:0:300}" >> "$log_dir/cron.log"

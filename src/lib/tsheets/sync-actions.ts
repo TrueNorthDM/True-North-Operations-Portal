@@ -14,6 +14,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { syncClientsCore, syncPeopleCore } from '@/lib/tsheets/sync'
 import { requireAdmin } from '@/lib/tsheets/require-admin'
@@ -28,11 +29,15 @@ export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: strin
   if (notAdmin) return { ok: false, error: notAdmin }
 
   const supabase = await createClient()
-  const { data: settings } = await supabase
+  // The token is the server's own (app_settings is closed to sessions,
+  // migration 108); who may run this was decided above.
+  const admin = createAdminClient()
+  const { data: settings, error: settingsErr } = await admin
     .from('app_settings')
     .select('tsheets_api_token')
     .eq('singleton_id', 1)
     .maybeSingle()
+  if (settingsErr) return { ok: false, error: 'The TSheets settings could not be read. Try again in a moment.' }
   if (!settings?.tsheets_api_token) return { ok: false, error: 'No TSheets token configured in Settings.' }
   const token = settings.tsheets_api_token
 
@@ -41,7 +46,8 @@ export async function syncAllFromTsheets(): Promise<{ ok: boolean; error?: strin
   const people = await syncPeopleCore(supabase, token)
   if (!people.ok) return { ok: false, error: people.error }
 
-  await supabase.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
+  const { error: stampErr } = await admin.from('app_settings').update({ tsheets_synced_at: new Date().toISOString() }).eq('singleton_id', 1)
+  if (stampErr) console.error('[tsheets sync] the sync time was not stamped:', stampErr.message)
 
   revalidatePath('/admin/settings')
   revalidatePath(ROUTES.i7)

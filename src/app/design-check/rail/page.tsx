@@ -70,7 +70,7 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
           {twoStepDaysLeft !== null && <TwoStepBanner daysLeft={twoStepDaysLeft} />}
           <div className={page === 'home' ? 'px-6 py-8' : 'p-8'}>
           {page === 'home' ? <HomeBody /> : page === 'soon' ? (
-            <ComingSoon icon="schema-app" title="Schema App" description="Write and publish schema markup for the sites' pages." canSuggest={role === 'super_admin'} />
+            <ComingSoon icon="schema-app" title="Schema App" description="Write and publish schema markup for the sites' pages." />
           ) : <>
           <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.14em] text-tn-teal m-0">Design check · as built</p>
           <h1 className="font-(family-name:--font-display) font-extrabold text-[24px] text-tn-ink m-0">

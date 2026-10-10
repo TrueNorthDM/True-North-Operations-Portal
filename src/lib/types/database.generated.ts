@@ -1885,6 +1885,36 @@ export type Database = {
         }
         Relationships: []
       }
+      settings_change_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_name: string | null
+          actor_person_id: string | null
+          at: string
+          id: number
+          setting: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_person_id?: string | null
+          at?: string
+          id?: number
+          setting: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_person_id?: string | null
+          at?: string
+          id?: number
+          setting?: string
+        }
+        Relationships: []
+      }
       sites: {
         Row: {
           code: string

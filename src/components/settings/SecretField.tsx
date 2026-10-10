@@ -12,6 +12,10 @@
  *   - Saving goes through a Server Action passed in by the page, which is
  *     where the admin check lives.
  *
+ * Confirmations go through useConfirm (audit, 10 October 2026): the two
+ * hand-built overlays here had no Escape, no focus trap and left focus behind
+ * them. Buttons come from lib/ui/buttons like the rest of the portal.
+ *
  * One component for every credential on the page. MondayTokenField and
  * TsheetsTokenField were near-identical copies of this (the second's own
  * comment said it "mirrors MondayTokenField exactly"), and a third credential
@@ -21,6 +25,8 @@
 import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useEditing } from './editing-context'
+import { useConfirm } from '@/components/ui/useConfirm'
+import { BTN } from '@/lib/ui/buttons'
 
 export interface SecretInfo {
   exists: boolean
@@ -66,19 +72,23 @@ export function SecretField({
   const [saving, startSave] = useTransition()
   const [savedFlash, setSavedFlash] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [warnOpen, setWarnOpen] = useState(false)
-  const [clearWarnOpen, setClearWarnOpen] = useState(false)
+  const [confirmDialog, confirm] = useConfirm()
 
   function persist(next: string, onDone: () => void) {
     setError(null)
     startSave(async () => {
-      const res = await save({ value: next })
-      if (!res.ok) {
-        setError(res.error ?? 'Failed to save.')
-        return
+      try {
+        const res = await save({ value: next })
+        if (!res.ok) {
+          // The action's own words: it says why (not allowed, a preview, a bad value).
+          setError(res.error ?? 'Not saved. Try again in a moment.')
+          return
+        }
+        onDone()
+        router.refresh()
+      } catch {
+        setError('Not saved. Try again in a moment.')
       }
-      onDone()
-      router.refresh()
     })
   }
 
@@ -90,13 +100,30 @@ export function SecretField({
     setValue('')
   })
 
-  const confirmClear = () => {
-    setClearWarnOpen(false)
-    persist('', () => setIsEditing(true))
+  async function askChange() {
+    const yes = await confirm({
+      title: changeWarning.title,
+      body: (
+        <div className="space-y-2">
+          {changeWarning.body}
+          <p className="m-0">You won&apos;t see the old value again, so make sure you have the new one ready.</p>
+        </div>
+      ),
+      action: changeWarning.confirm,
+    })
+    if (!yes) return
+    setValue('')
+    setIsEditing(true)
+  }
+
+  async function askClear() {
+    const yes = await confirm({ title: clearWarning.title, body: <div className="space-y-2">{clearWarning.body}</div>, action: clearWarning.confirm, danger: true })
+    if (yes) persist('', () => setIsEditing(true))
   }
 
   return (
     <section className="rounded-xl bg-white border border-slate-200 p-6 space-y-4">
+      {confirmDialog}
       <div>
         <h2 className="text-lg font-bold text-slate-900">{title}</h2>
         <p className="text-sm text-slate-500 mt-0.5">{description}</p>
@@ -120,18 +147,10 @@ export function SecretField({
           </div>
           {editing && (
             <>
-              <button
-                onClick={() => setWarnOpen(true)}
-                disabled={saving}
-                className="text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
-              >
+              <button type="button" onClick={askChange} disabled={saving} className={`${BTN.white} disabled:opacity-50`}>
                 Change
               </button>
-              <button
-                onClick={() => setClearWarnOpen(true)}
-                disabled={saving}
-                className="text-sm font-medium px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-              >
+              <button type="button" onClick={askClear} disabled={saving} className={`${BTN.white} disabled:opacity-50`}>
                 Remove
               </button>
             </>
@@ -167,23 +186,28 @@ export function SecretField({
               <button
                 type="button"
                 onClick={() => setReveal(v => !v)}
-                aria-label={reveal ? 'Hide value' : 'Show value'}
+                aria-label="Show value"
+                aria-pressed={reveal}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
               >
-                {reveal ? '🙈' : '👁'}
+                {reveal
+                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3l18 18" /><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>}
               </button>
             </div>
             <button
+              type="button"
               onClick={handleSave}
               disabled={saving || value.trim() === ''}
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`${BTN.navy} disabled:opacity-40 disabled:cursor-not-allowed`}
             >
-              {saving ? 'Saving…' : savedFlash ? '✓ Saved' : 'Save'}
+              <span className="text-[#ffffff]">{saving ? 'Saving…' : savedFlash ? 'Saved' : 'Save'}</span>
             </button>
             {info.exists && (
               <button
+                type="button"
                 onClick={() => { setIsEditing(false); setValue(''); setError(null) }}
-                className="text-sm font-medium px-3 py-2 rounded-lg text-slate-500 hover:text-slate-800"
+                className={BTN.white}
               >
                 Cancel
               </button>
@@ -199,50 +223,8 @@ export function SecretField({
         </div>
       )}
 
-      {warnOpen && (
-        <Modal onClose={() => setWarnOpen(false)}>
-          <h3 className="text-lg font-bold text-slate-900">{changeWarning.title}</h3>
-          <div className="text-sm text-slate-600 space-y-2">{changeWarning.body}</div>
-          <p className="text-sm text-slate-500">
-            You won&apos;t see the old value again, make sure you have the new one ready.
-          </p>
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button onClick={() => setWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
-            <button
-              onClick={() => { setWarnOpen(false); setValue(''); setIsEditing(true) }}
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {changeWarning.confirm}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {clearWarnOpen && (
-        <Modal onClose={() => setClearWarnOpen(false)}>
-          <h3 className="text-lg font-bold text-slate-900">{clearWarning.title}</h3>
-          <div className="text-sm text-slate-600 space-y-2">{clearWarning.body}</div>
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button onClick={() => setClearWarnOpen(false)} className="text-sm font-medium px-3 py-1.5 text-slate-600 hover:text-slate-900">Cancel</button>
-            <button onClick={confirmClear} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white">
-              {clearWarning.confirm}
-            </button>
-          </div>
-        </Modal>
-      )}
-
       {note}
       {footer}
     </section>
-  )
-}
-
-function Modal({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
   )
 }
