@@ -5,6 +5,7 @@
 // revalidate the affected routes so the UI reflects the new DB state.
 
 import { createClient } from '@/lib/supabase/server'
+import { pagesWithUrls } from '@/lib/site-pages'
 import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateWebhookSecret } from '@/lib/monday/webhook-secret'
@@ -137,13 +138,16 @@ export async function updateSiteLanguages(input: {
     .eq('id', site.id)
   if (updateErr) return { ok: false, error: updateErr.message }
 
-  // Flag every page of this site that already has ≥1 URL.
-  // This is a 2-step query because PostgREST doesn't allow direct EXISTS subqueries.
-  const { data: pagesWithUrls } = await supabase
-    .from('page_urls')
-    .select('page_id, pages!inner(site_id)')
-    .eq('pages.site_id', site.id)
-  const pageIds = [...new Set((pagesWithUrls ?? []).map(r => r.page_id))]
+  // Flag every page of this site that already has at least one URL.
+  let pageIds: string[]
+  try {
+    pageIds = [...await pagesWithUrls(supabase, site.id)]
+  } catch (e) {
+    // The languages are saved; say the flagging did not happen rather than
+    // answer ok with nothing flagged (audit, 10 October 2026).
+    console.error('[site languages]', (e as Error).message)
+    return { ok: false, error: 'The languages were saved, but the pages could not be flagged for a new hreflang. Save again to retry.' }
+  }
 
   let flaggedPagesCount = 0
   if (pageIds.length > 0) {

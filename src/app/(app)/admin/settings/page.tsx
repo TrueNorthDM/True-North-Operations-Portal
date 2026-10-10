@@ -24,6 +24,7 @@ import { saveMondayApiToken, saveTsheetsApiToken, regenerateMondayWebhookSecret 
 import { PullInfo } from '@/components/PullInfo'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
 import { loadTargetsEditor } from '@/lib/boards/targets-data'
+import { pagesWithUrls } from '@/lib/site-pages'
 import { loadProjectDirectory, loadReportNote } from '@/lib/tsheets/report-data'
 import { NoteCard } from '@/components/tsheets/I7ReportParts'
 import { currentYearMonth } from '@/lib/tsheets/report'
@@ -133,11 +134,8 @@ export default async function SettingsPage() {
 
   const enriched: SiteData[] = []
   for (const s of sites ?? []) {
-    const { data: urlRows } = await supabase
-      .from('page_urls')
-      .select('page_id, pages!inner(site_id)')
-      .eq('pages.site_id', s.id)
-    const pageIds = new Set((urlRows ?? []).map(r => r.page_id))
+    // How many pages a new language would flag (lib/site-pages.ts).
+    const pageIds = await pagesWithUrls(supabase, s.id)
     enriched.push({
       id: s.id,
       code: s.code as 'aaaf' | 'hfa',

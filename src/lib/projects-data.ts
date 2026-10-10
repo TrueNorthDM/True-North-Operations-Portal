@@ -49,11 +49,27 @@ export async function getProjectsOverview(): Promise<ProjectsOverview> {
 
   // One pass over pages with their URLs + confirmations. From it we derive both
   // the per-site progress stats AND the "ready to apply" notification list.
-  const { data: pageRows } = await supabase
-    .from('pages')
-    .select(
-      'id, name, confirmed_done_at, not_relevant, sites!inner(code, languages), page_urls(language_code), confirmations(language_code, confirmed_on_live)',
-    )
+  //
+  // A plain embed and a page at a time (audit, 10 October 2026): the query had
+  // "sites!inner", which the server's proxy has refused since the move on 5
+  // October, and with the error ignored both cards showed 0 done, 0 remaining
+  // and never a page ready to apply. A failed read now stops the page.
+  type Row = {
+    id: string; name: string; confirmed_done_at: string | null; not_relevant: boolean | null
+    sites: { code: string; languages: string[] | null } | null
+    page_urls: { language_code: string }[]
+    confirmations: { language_code: string; confirmed_on_live: boolean }[]
+  }
+  const pageRows: Row[] = []
+  for (let from = 0; ; from += 500) {
+    const { data, error } = await supabase
+      .from('pages')
+      .select('id, name, confirmed_done_at, not_relevant, sites(code, languages), page_urls(language_code), confirmations(language_code, confirmed_on_live)')
+      .order('id').range(from, from + 499)
+    if (error) throw new Error(`The Href Links overview could not read the pages: ${error.message}`)
+    pageRows.push(...((data ?? []) as unknown as Row[]))
+    if ((data ?? []).length < 500) break
+  }
 
   const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000
   const twoWeeksAgo = new Date(Date.now() - TWO_WEEKS_MS)
@@ -64,7 +80,8 @@ export async function getProjectsOverview(): Promise<ProjectsOverview> {
     hfa: { recentCompletions: 0, totalDone: 0, remaining: 0 },
   }
 
-  for (const p of pageRows ?? []) {
+  for (const p of pageRows) {
+    if (!p.sites) continue
     const code = p.sites.code
     const stats = statsBySite[code]
     if (!stats) continue
