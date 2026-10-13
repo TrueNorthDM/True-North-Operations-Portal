@@ -46,6 +46,20 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** The company's day, not the server's or UTC's: after 8 pm in New York, UTC is already tomorrow. */
 const COMPANY_ZONE = 'America/New_York'
 
+const NOT_ADDED = 'The hours were not added. Try again in a moment.'
+const NOT_REMOVED = 'The line was not removed. Try again in a moment.'
+
+/**
+ * A database refusal, as the result the panel shows: a plain sentence for the
+ * person, the database's wording in the server log. Returned, not thrown
+ * (audit, 13 October 2026): the try/catch around each action stays only for
+ * what nobody here expects to fail.
+ */
+function failed(step: string, error: { message: string }, sentence: string): { ok: false; error: string } {
+  console.error(`[manual hours] ${step}:`, error.message)
+  return { ok: false, error: sentence }
+}
+
 /** The person really signed in, never a View Stage preview's. */
 async function realMe() {
   const session = await createClient()
@@ -59,7 +73,7 @@ export async function addManualEntries(inputs: ManualEntryInput[], batchId: stri
     return await addBatch(inputs, batchId)
   } catch (e) {
     console.error('[manual hours] add:', (e as Error).message)
-    return { ok: false, error: 'The hours were not added. Try again in a moment.' }
+    return { ok: false, error: NOT_ADDED }
   }
 }
 
@@ -91,9 +105,9 @@ async function addBatch(inputs: ManualEntryInput[], batchId: string): Promise<Re
   // The job codes named: real, still active, and a code rather than a folder.
   const jobIds = [...new Set(inputs.map(i => i.jobcodeId))]
   const { data: jobs, error: jobsErr } = await supabase.from('tc_jobcodes').select('id, active').in('id', jobIds)
-  if (jobsErr) throw new Error(jobsErr.message)
+  if (jobsErr) return failed('job codes', jobsErr, NOT_ADDED)
   const { data: kids, error: kidsErr } = await supabase.from('tc_jobcodes').select('parent_id').in('parent_id', jobIds)
-  if (kidsErr) throw new Error(kidsErr.message)
+  if (kidsErr) return failed('job code folders', kidsErr, NOT_ADDED)
   const activeIds = new Set(((jobs ?? []) as { id: number; active: boolean | null }[]).filter(j => j.active !== false).map(j => j.id))
   const folders = new Set(((kids ?? []) as { parent_id: number }[]).map(k => k.parent_id))
 
@@ -153,10 +167,7 @@ async function addBatch(inputs: ManualEntryInput[], batchId: string): Promise<Re
   const { error } = await supabase.from('tc_entries').insert(rows)
   // The batch already landed (a double click, a retry after a timeout): it is
   // there once, which is what was asked for.
-  if (error && !(error.code === '23505' && /manual_batch/.test(error.message))) {
-    console.error('[manual hours] insert:', error.message)
-    return { ok: false, error: 'The hours were not added. Try again in a moment.' }
-  }
+  if (error && !(error.code === '23505' && /manual_batch/.test(error.message))) return failed('insert', error, NOT_ADDED)
 
   revalidatePath(ROUTES.i7)
   revalidatePath(ROUTES.projectHours)
@@ -175,14 +186,14 @@ export async function deleteManualEntry(id: number): Promise<Result> {
     const supabase = createAdminClient()
     const { data: before, error: readErr } = await supabase.from('tc_entries').select('*')
       .eq('id', id).eq('kind', 'manual').is('external_id', null).not('manual_batch', 'is', null).maybeSingle()
-    if (readErr) throw new Error(readErr.message)
+    if (readErr) return failed('read', readErr, NOT_REMOVED)
     if (!before) return { ok: false, error: 'That line is not there any more. Reload the page.' }
     const isI7 = (await i7JobcodeIdsHere(supabase)).has((before as { jobcode_id: number }).jobcode_id)
     if (isI7 ? !mayI7 : !mayPh) return { ok: false, error: `Your access does not remove hours from ${isI7 ? 'the i7 report' : 'Project Hours'}.` }
 
     const { data: gone, error } = await supabase.from('tc_entries').delete()
       .eq('id', id).not('manual_batch', 'is', null).select('id')
-    if (error) throw new Error(error.message)
+    if (error) return failed('delete', error, NOT_REMOVED)
     if ((gone ?? []).length !== 1) return { ok: false, error: 'That line is not there any more. Reload the page.' }
 
     const { error: auditErr } = await supabase.from('tc_entry_audit').insert({
@@ -195,6 +206,6 @@ export async function deleteManualEntry(id: number): Promise<Result> {
     return { ok: true }
   } catch (e) {
     console.error('[manual hours] delete:', (e as Error).message)
-    return { ok: false, error: 'The line was not removed. Try again in a moment.' }
+    return { ok: false, error: NOT_REMOVED }
   }
 }

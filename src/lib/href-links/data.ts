@@ -45,6 +45,9 @@ export interface ActivityRow {
   result: string | null
 }
 
+// The typed client infers the row (embeds included) from PAGE_SELECT, a
+// literal; reads assign to PageDbRow without a cast, so a select that drifts
+// from this shape fails the build instead of the page (audit, 13 October 2026).
 type PageDbRow = {
   id: string; name: string; needs_hreflang_update: boolean | null; confirmed_done_at: string | null
   not_relevant: boolean | null
@@ -91,7 +94,8 @@ async function pagesOf(siteId: string): Promise<PageDbRow[]> {
     const { data, error } = await createAdminClient().from('pages').select(PAGE_SELECT)
       .eq('site_id', siteId).order('id').range(from, from + 499)
     failed('the pages', error)
-    out.push(...((data ?? []) as unknown as PageDbRow[]))
+    const page: PageDbRow[] = data ?? []
+    out.push(...page)
     if ((data ?? []).length < 500) break
   }
   return out
@@ -116,7 +120,7 @@ export async function loadSitePage(site: SiteRow, id: string): Promise<(PageList
     .eq('id', id).eq('site_id', site.id).maybeSingle()
   failed('the page', error)
   if (!data) return null
-  const p = data as unknown as PageDbRow
+  const p: PageDbRow = data
   return {
     ...toListRow(p, site.languages),
     savedUrls: p.page_urls,

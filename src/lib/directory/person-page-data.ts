@@ -34,8 +34,11 @@ export async function loadLedMemberIds(db: Client, personId: string | null): Pro
   if (!led.length) return new Set()
   // A plain embed, never an "!inner" one: the server in front of the
   // database refuses a request with "!" in it (403, found 8 October 2026).
+  // The typed client reads the embed's shape from the select (one person per
+  // row, through team_members.person_id), so no cast; the null check stays,
+  // as a row the reader may not see comes back as null (audit, 13 October 2026).
   const { data: members } = await db.from('team_members').select('person_id, people(status)').in('team_id', led)
-  const ids = ((members ?? []) as unknown as { person_id: string; people: { status: string | null } | null }[])
+  const ids = (members ?? [])
     .filter(m => m.people && m.people.status !== 'inactive')
     .map(m => m.person_id)
   return new Set([personId, ...ids])

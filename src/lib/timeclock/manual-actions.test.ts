@@ -77,6 +77,19 @@ describe('hours added by hand (audit, 9 October 2026)', () => {
   })
 })
 
+describe('a database refusal (audit, 13 October 2026)', () => {
+  it('reads as a sentence for the person, with the database wording in the log', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fake = fakeDb({ tc_jobcodes: [], tc_entries: [] }, { fail: ['tc_jobcodes'] })
+    expect(await addManualEntries([line()], BATCH)).toEqual({ ok: false, error: 'The hours were not added. Try again in a moment.' })
+    fake = fakeDb({ tc_entries: [] }, { fail: ['tc_entries'] })
+    expect(await deleteManualEntry(1)).toEqual({ ok: false, error: 'The line was not removed. Try again in a moment.' })
+    expect(log).toHaveBeenCalledWith('[manual hours] job codes:', 'boom')
+    expect(log).toHaveBeenCalledWith('[manual hours] read:', 'boom')
+    log.mockRestore()
+  })
+})
+
 describe('a month, read as [first day, first day of the next)', () => {
   it('has no "-31" in a 30-day month or in February', () => {
     expect(monthSpan('2026-09')).toEqual({ start: '2026-09-01', next: '2026-10-01' })

@@ -20,6 +20,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useConfirm } from '@/components/ui/useConfirm'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import { LEVELS, type AccessLevel, type ConfigurableLevel } from '@/lib/access/catalogue'
 import { overlay, type Rules, type ToolScope } from '@/lib/access/decide'
 import { type Tab, type AccessPageData, type Person } from './parts'
@@ -52,6 +54,11 @@ export function AccessLevels({ data }: { data: AccessPageData }) {
 
   // Unsaved changes are never lost without asking (audit, 8 October 2026):
   // closing or reloading the tab, and following a link inside the portal.
+  // The question is the portal's own dialog, not window.confirm (audit, 13
+  // October 2026). It answers later, so the click is held back and the link
+  // followed by hand on a yes. A link out of the portal is left to the
+  // browser's own leave warning, which unloading the page raises anyway.
+  const [confirmDialog, confirm] = useConfirm()
   useEffect(() => {
     if (!staged) return
     const onUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
@@ -59,15 +66,23 @@ export function AccessLevels({ data }: { data: AccessPageData }) {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
       const a = (e.target as HTMLElement | null)?.closest?.('a')
       if (!a || a.target === '_blank' || !a.getAttribute('href') || a.getAttribute('href')!.startsWith('#')) return
-      if (!window.confirm(`You have ${staged} unsaved change${staged === 1 ? '' : 's'}. Leave this page without saving them?`)) {
-        e.preventDefault()
-        e.stopPropagation()
-      }
+      const to = new URL(a.href, window.location.href)
+      if (to.origin !== window.location.origin) return
+      e.preventDefault()
+      e.stopPropagation()
+      void confirm({
+        title: 'Leave without saving?',
+        body: `You have ${staged} unsaved change${staged === 1 ? '' : 's'}. Leave this page without saving ${staged === 1 ? 'it' : 'them'}?`,
+        action: 'Leave without saving',
+        danger: true,
+      }).then(yes => {
+        if (yes) router.push(withViewAs(to.pathname + to.search + to.hash))
+      })
     }
     window.addEventListener('beforeunload', onUnload)
     document.addEventListener('click', onClick, true)
     return () => { window.removeEventListener('beforeunload', onUnload); document.removeEventListener('click', onClick, true) }
-  }, [staged])
+  }, [staged, confirm, router])
 
   const people: Person[] = useMemo(() => data.people.map(p => ({ ...p, teams: new Map(p.teams) })), [data.people])
   const teamName = useMemo(() => new Map(data.teams.map(t => [t.id, t.name])), [data.teams])
@@ -95,6 +110,7 @@ export function AccessLevels({ data }: { data: AccessPageData }) {
 
   return (
     <div className="space-y-5">
+      {confirmDialog}
       <nav aria-label="Access levels" role="tablist" className="flex items-center gap-0.5 border-b border-[var(--panel-border)] flex-wrap">
         {tabs.map(t => (
           <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}

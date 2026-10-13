@@ -138,11 +138,13 @@ export function TeamPriorityAccess({
     setError(null)
     startTransition(async () => {
       try {
-        await setPriorityGrant(personId, scope)
+        const res = await setPriorityGrant(personId, scope)
+        if (!res.ok) { setError(res.error); return }
         after?.()
         onChanged()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not save that')
+      } catch {
+        // The request itself failed (offline, or the server did not answer).
+        setError('Not saved. Try again in a moment.')
       }
     })
   }

@@ -42,10 +42,17 @@ async function pageGate(pageId: string): Promise<PageCtx | { ok: false; error: s
     .select('id, name, confirmed_done_at, sites(id, code, languages, domain, monday_board_id)')
     .eq('id', pageId).maybeSingle()
   if (error) return notSaved(error)
-  const row = data as unknown as (PageCtx['page'] & { sites: PageCtx['site'] | null }) | null
-  if (!row?.sites || !isSiteCode(row.sites.code)) return { ok: false, error: 'That page does not exist.' }
-  const site = { ...row.sites, languages: row.sites.languages?.length ? row.sites.languages : DEFAULT_LANGUAGES[row.sites.code] }
-  return { db, page: { id: row.id, name: row.name, confirmed_done_at: row.confirmed_done_at }, site }
+  // Typed from the select itself (one site per page, through pages.site_id),
+  // not cast: the code is checked before it is trusted (audit, 13 October 2026).
+  const s = data?.sites
+  if (!data || !s) return { ok: false, error: 'That page does not exist.' }
+  const code = s.code
+  if (!isSiteCode(code)) return { ok: false, error: 'That page does not exist.' }
+  const site = {
+    id: s.id, code, domain: s.domain, monday_board_id: s.monday_board_id,
+    languages: s.languages?.length ? s.languages : DEFAULT_LANGUAGES[code],
+  }
+  return { db, page: { id: data.id, name: data.name, confirmed_done_at: data.confirmed_done_at }, site }
 }
 
 const refresh = (code: SiteCode, pageId?: string) => {

@@ -10,6 +10,14 @@
 
 const BASE = 'https://rest.tsheets.com/api/v1'
 
+/**
+ * How long one page may take before it counts as no answer (audit, 13 October
+ * 2026). A page is 200 rows, which QuickBooks Time answers in a second or two;
+ * without a limit a call it never answers held the import until the platform
+ * killed it, with nothing in the log to say why.
+ */
+const CALL_TIMEOUT_MS = 30_000
+
 export interface SourceJobcode {
   id: number
   parent_id: number
@@ -87,12 +95,22 @@ export function watermark(instant: string): string {
 
 async function get(token: string, path: string, params: Record<string, string>): Promise<Page> {
   const qs = new URLSearchParams(params).toString()
-  const res = await fetch(`${BASE}${path}${qs ? `?${qs}` : ''}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store',
-  })
-  if (!res.ok) throw new Error(`TSheets ${path}: HTTP ${res.status}`)
-  const json = await res.json()
+  let json
+  try {
+    const res = await fetch(`${BASE}${path}${qs ? `?${qs}` : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+    })
+    if (!res.ok) throw new Error(`TSheets ${path}: HTTP ${res.status}`)
+    // The limit covers the body too: a page that stops halfway is no answer.
+    json = await res.json()
+  } catch (e) {
+    if ((e as Error).name === 'TimeoutError') {
+      throw new Error(`TSheets ${path}: QuickBooks Time did not answer within ${CALL_TIMEOUT_MS / 1000} seconds`)
+    }
+    throw e
+  }
   if (json.error) throw new Error(`TSheets ${path}: ${json.error.message}`)
   return json as Page
 }

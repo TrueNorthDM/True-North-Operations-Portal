@@ -16,6 +16,11 @@ import type {
 
 const BASE = 'https://rest.tsheets.com/api/v1'
 
+// How long one page may take before it counts as no answer (audit, 13 October
+// 2026): a call QuickBooks Time never answers used to hold the sync open until
+// the platform killed it. A page is at most 200 rows, a second or two.
+const CALL_TIMEOUT_MS = 30_000
+
 async function tsGet<T>(
   token: string,
   path: string,
@@ -23,15 +28,25 @@ async function tsGet<T>(
 ): Promise<TsheetsPage<T>> {
   const qs = new URLSearchParams(params).toString()
   const url = `${BASE}${path}${qs ? '?' + qs : ''}`
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    // Always fetch fresh, report data must reflect current approvals
-    cache: 'no-store',
-  })
-  if (!res.ok) {
-    throw new Error(`TSheets API ${path}: HTTP ${res.status}`)
+  let json
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      // Always fetch fresh, report data must reflect current approvals
+      cache: 'no-store',
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+    })
+    if (!res.ok) {
+      throw new Error(`TSheets API ${path}: HTTP ${res.status}`)
+    }
+    // The limit covers the body too: a page that stops halfway is no answer.
+    json = await res.json()
+  } catch (e) {
+    if ((e as Error).name === 'TimeoutError') {
+      throw new Error(`TSheets API ${path}: QuickBooks Time did not answer within ${CALL_TIMEOUT_MS / 1000} seconds`)
+    }
+    throw e
   }
-  const json = await res.json()
   if (json.error) {
     throw new Error(`TSheets API ${path}: ${json.error.message} (code ${json.error.code})`)
   }

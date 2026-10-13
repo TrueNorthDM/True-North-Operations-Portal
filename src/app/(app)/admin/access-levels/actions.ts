@@ -368,16 +368,20 @@ export async function undoChange(changeId: number, reasonIn: string): Promise<Re
 /**
  * Give a person the right to set team priorities on My Work, change how far it
  * reaches, or (scope null) take it away. Super Admin only.
+ *
+ * Returns the outcome rather than throwing (audit, 13 October 2026): in
+ * production a thrown message reaches the browser as a generic digest, so the
+ * person read nothing useful. The database's wording goes to the server log.
  */
-export async function setPriorityGrant(personId: string, scope: string | null) {
-  if (!(await isSuperAdmin())) throw new Error('Not authorized')
-  if (typeof personId !== 'string' || !UUID.test(personId)) throw new Error('Unknown person')
-  if (scope !== null && !isGrantScope(scope)) throw new Error('Unknown scope')
+export async function setPriorityGrant(personId: string, scope: string | null): Promise<Result> {
+  if (!(await isSuperAdmin())) return { ok: false, error: 'Only a Super Admin can change access.' }
+  if (typeof personId !== 'string' || !UUID.test(personId)) return { ok: false, error: 'Unknown person.' }
+  if (scope !== null && !isGrantScope(scope)) return { ok: false, error: 'Unknown reach. Choose their teams or every team.' }
 
   const db = createAdminClient()
   if (scope === null) {
     const { error } = await db.from('monday_priority_grants').delete().eq('person_id', personId)
-    if (error) throw new Error(error.message)
+    if (error) return grantNotSaved(error)
   } else {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -386,7 +390,13 @@ export async function setPriorityGrant(personId: string, scope: string | null) {
       { person_id: personId, scope, granted_by: me?.id ?? null, granted_at: new Date().toISOString() },
       { onConflict: 'person_id' },
     )
-    if (error) throw new Error(error.message)
+    if (error) return grantNotSaved(error)
   }
   revalidatePath('/admin/access-levels')
+  return { ok: true }
+}
+
+function grantNotSaved(error: { message: string }): { ok: false; error: string } {
+  console.error('[access] priority grant:', error.message)
+  return { ok: false, error: 'Not saved. Try again in a moment.' }
 }
