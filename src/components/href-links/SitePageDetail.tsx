@@ -2,14 +2,12 @@
  * One Href Links page (server component), shared by both sites' detail
  * routes. The route files keep their own access check and render this.
  *
- * Audit, 10 October 2026: per-site grants apply here too; the page is read
- * together with its site, so a page of the other site is not found under this
+ * Audit, 10 October 2026: the page is read together with its site, so a page of the other site is not found under this
  * one's address; a failed read says so in the page.
  */
 
-import { notFound, redirect } from 'next/navigation'
-import { previewHref } from '@/lib/auth/view-as-server'
-import { loadSite, loadSitePage, mayOpenSite } from '@/lib/href-links/data'
+import { notFound } from 'next/navigation'
+import { loadSite, loadSitePage } from '@/lib/href-links/data'
 import type { SiteCode } from '@/lib/href-links/rules'
 import { PageDetail } from '@/components/PageDetail'
 import { SITE_BRAND } from './site-brand'
@@ -21,13 +19,10 @@ export async function SitePageDetail({ code, id }: { code: SiteCode; id: string 
 
   const site = await attempt('the site', () => loadSite(code))
   if (!site.ok) return <HrefLinksReadError now={brand.label} />
-  const allowed = await attempt('the site access', () => mayOpenSite(site.value.id))
-  if (!allowed.ok) return <HrefLinksReadError now={brand.label} />
-  // Outside any try: redirect and notFound work by throwing.
-  if (!allowed.value) redirect(await previewHref('/'))
 
   const page = await attempt('the page', () => loadSitePage(site.value, id))
   if (!page.ok) return <HrefLinksReadError now={brand.label} />
+  // Outside any try: notFound works by throwing.
   if (!page.value) notFound()
   const p = page.value
 

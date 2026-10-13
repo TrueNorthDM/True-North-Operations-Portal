@@ -9,8 +9,8 @@ import { SiteListPage } from '@/components/href-links/SiteListPage'
 
 export default async function HfaPagesPage() {
   // Href Links is a tool in the rail's Tools panel (SEO Tools), not a rail
-  // item, so it needs the area plus its own team grant. The per-site grant is
-  // checked in SiteListPage, once the site is known.
+  // item, so it needs the area plus its own team grant. Both sites are open
+  // to everyone with the tool (13 October 2026).
   const access = await requireSurface('tools')
   if (!access.canTool('href-links')) redirect(await previewHref('/'))
 

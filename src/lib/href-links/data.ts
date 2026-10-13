@@ -10,7 +10,6 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { canAccessSite, getAccessibleSiteIds } from '@/lib/auth/access'
 import { DEFAULT_LANGUAGES, isPageDone, type SiteCode } from './rules'
 
 export interface SiteRow {
@@ -67,11 +66,6 @@ export async function loadSite(code: SiteCode): Promise<SiteRow> {
   if (!data) throw new Error(`Href Links has no site "${code}"`)
   const s = data as unknown as SiteRow
   return { ...s, languages: s.languages?.length ? s.languages : DEFAULT_LANGUAGES[code] }
-}
-
-/** Whether the signed-in person may open this site (per-site grants, decided 10 October 2026). */
-export async function mayOpenSite(siteId: string): Promise<boolean> {
-  return canAccessSite(siteId)
 }
 
 function toListRow(p: PageDbRow, siteLanguages: string[]): PageListRow {
@@ -171,8 +165,7 @@ export async function getRecentActivity(boardId: string | null, limit = 20): Pro
 export interface ProjectStats { recentCompletions: number; totalDone: number; remaining: number }
 
 export interface ProjectsOverview {
-  accessibleCodes: Set<string>
-  /** Ready to apply: every language has a URL, not set aside, not yet done. Only sites the reader may open. */
+  /** Ready to apply: every language has a URL, not set aside, not yet done. */
   readyBySite: Record<string, { id: string; name: string }[]>
   totalReady: number
   statsBySite: Record<string, ProjectStats>
@@ -182,14 +175,9 @@ export interface ProjectsOverview {
 
 export async function getProjectsOverview(): Promise<ProjectsOverview> {
   const db = createAdminClient()
-  const [{ data: siteRows, error }, accessibleIds] = await Promise.all([
-    db.from('sites').select('id, code, languages, domain'),
-    getAccessibleSiteIds(),
-  ])
+  const { data: siteRows, error } = await db.from('sites').select('id, code, languages, domain')
   failed('the sites', error)
   const sitesList = ((siteRows ?? []) as { id: string; code: string; languages: string[] | null; domain: string | null }[])
-  // null means the access check itself failed: nothing is treated as reachable.
-  const accessibleCodes = new Set(accessibleIds === null ? [] : sitesList.filter(s => accessibleIds.has(s.id)).map(s => s.code))
 
   const twoWeeksAgo = Date.now() - 14 * 86_400_000
   const readyBySite: ProjectsOverview['readyBySite'] = {}
@@ -211,10 +199,9 @@ export async function getProjectsOverview(): Promise<ProjectsOverview> {
       if (!row.notRelevant && allUrls && !row.done) ready.push({ id: p.id, name: p.name })
     }
     statsBySite[code] = stats
-    // A site the reader may not open is neither listed nor counted.
-    readyBySite[code] = accessibleCodes.has(code) ? ready : []
+    readyBySite[code] = ready
   }
 
   const totalReady = Object.values(readyBySite).reduce((n, list) => n + list.length, 0)
-  return { accessibleCodes, readyBySite, totalReady, statsBySite, sites }
+  return { readyBySite, totalReady, statsBySite, sites }
 }

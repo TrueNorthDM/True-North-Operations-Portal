@@ -8,8 +8,8 @@ import { requireSurface } from '@/lib/access/resolve'
 import { SitePageDetail } from '@/components/href-links/SitePageDetail'
 
 export default async function AaafPageDetail({ params }: { params: Promise<{ id: string }> }) {
-  // Href Links, so the area plus its team grant; the per-site grant is checked
-  // in SitePageDetail, once the site is known.
+  // Href Links, so the area plus its team grant. Both sites are open to
+  // everyone with the tool (13 October 2026).
   const access = await requireSurface('tools')
   if (!access.canTool('href-links')) redirect(await previewHref('/'))
 

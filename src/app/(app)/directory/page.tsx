@@ -10,7 +10,6 @@ import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colo
 import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, cardRights, type PersonView, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
-import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
@@ -29,7 +28,6 @@ import { loadTwoStepByAccount } from '@/lib/auth/two-step'
 // The columns the list reads, and what each row carries by access, live in
 // lib/directory/list-gates.ts, where a test holds them.
 
-const LOGO_BY_CODE: Record<string, string> = { aaaf: '/logos/aaaf.jpg', hfa: '/logos/hfa.png' }
 
 /** Loosely-typed people row, columns depend on whether migration 029 ran. */
 type PRow = Record<string, unknown> & { id: string; full_name: string }
@@ -85,11 +83,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const seesLogin = gates.login
   const seesWork = gates.work
 
-  const [{ data: tData }, { data: gData }, { data: sData }, { data: prData }, dRes, alRes, accessRules] = await Promise.all([
+  const [{ data: tData }, { data: prData }, dRes, alRes, accessRules] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
-    supabase.from('grants').select('subject_type, subject_id, project_id, role'),
-    // Site names only, read by the server: sites is closed to sessions (migration 107).
-    createAdminClient().from('sites').select('id, name, code'),
     supabase.from('profiles').select('id, email'),
     // Separate + graceful: role_type (035) / avatar_url (036) may not exist
     // yet, a failed query here must NOT drop the LIST_COLUMNS select.
@@ -130,8 +125,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     position: normalPosition(m.position),
     is_primary: m.is_primary === true,
   }))
-  const grants = gData ?? []
-  const sites = sData ?? []
   const profiles = prData ?? []
 
   // Contact type (035) and photo per person; 'user' default if the migration
@@ -155,7 +148,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v))
 
   const teamById = new Map(teams.map(t => [t.id, t]))
-  const siteById = new Map(sites.map(s => [s.id, s]))
 
   // ── Primary team per person: the portal's one rule (lib/directory/primary-team) ──
   const primaryByPerson = primaryTeamByPerson(members.flatMap(m => {
@@ -271,14 +263,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // ── Team cards (members with LEAD flag + project access) ──
-  const grantsByTeam = new Map<string, { projectId: string; name: string; logo: string | null; role: GrantRole }[]>()
-  for (const g of grants) {
-    if (g.subject_type !== 'team') continue
-    const site = siteById.get(g.project_id)
-    const arr = grantsByTeam.get(g.subject_id) ?? []
-    arr.push({ projectId: g.project_id, name: site?.name ?? '-', logo: site ? LOGO_BY_CODE[site.code] ?? null : null, role: g.role as GrantRole })
-    grantsByTeam.set(g.subject_id, arr)
-  }
   const membersByTeam = new Map<string, { personId: string; position: string }[]>()
   for (const m of members) {
     const arr = membersByTeam.get(m.team_id) ?? []
@@ -314,7 +298,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         color: teamColour(t.color, t.name),
         memberCount: mem.length,
         members: mem,
-        access: (grantsByTeam.get(t.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
         tools: toolLists.get(t.id) ?? [],
       }
     })

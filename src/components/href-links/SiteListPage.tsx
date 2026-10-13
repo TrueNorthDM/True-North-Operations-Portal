@@ -4,8 +4,9 @@
  * Monday. The route files keep their own access check and render this.
  *
  * Audit, 10 October 2026:
- *   - per-site grants apply here too (decided by Arnaldo): someone who may not
- *     open the site goes Home, before any of its pages is read
+ *   - both sites are open to everyone with Href Links: the tool's team
+ *     setting on Access levels decides, never a per-site list (decided by
+ *     Arnaldo, 13 October 2026)
  *   - progress counts `done`, the one rule (lib/href-links/rules.ts)
  *   - the site's Monday activity sits below the list, so a Run Link that
  *     failed is seen (decided the same day)
@@ -13,9 +14,7 @@
  *     empty list
  */
 
-import { redirect } from 'next/navigation'
-import { previewHref } from '@/lib/auth/view-as-server'
-import { getSitePageData, loadSite, mayOpenSite } from '@/lib/href-links/data'
+import { getSitePageData, loadSite } from '@/lib/href-links/data'
 import { siteHost, type SiteCode } from '@/lib/href-links/rules'
 import { PageList } from '@/components/PageList'
 import { WpLinks } from '@/components/WpLinks'
@@ -31,10 +30,6 @@ export async function SiteListPage({ code }: { code: SiteCode }) {
 
   const site = await attempt('the site', () => loadSite(code))
   if (!site.ok) return <HrefLinksReadError now={brand.label} />
-  const allowed = await attempt('the site access', () => mayOpenSite(site.value.id))
-  if (!allowed.ok) return <HrefLinksReadError now={brand.label} />
-  // Outside any try: redirect works by throwing.
-  if (!allowed.value) redirect(await previewHref('/'))
 
   const data = await attempt('the pages', () => getSitePageData(code))
   if (!data.ok) return <HrefLinksReadError now={brand.label} />

@@ -4,12 +4,11 @@ import { fakeDb, type Fake } from '@/lib/directory/__fakes__/db'
 // The Href Links page actions (audit, 10 October 2026).
 
 let fake: Fake
-let mayOpen = true
+let hasTool = true
 const P = '11111111-1111-4111-8111-111111111111'
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
-vi.mock('@/lib/access/resolve', () => ({ allowedTo: async () => true }))
-vi.mock('@/lib/auth/access', () => ({ canAccessSite: async () => mayOpen }))
+vi.mock('@/lib/access/resolve', () => ({ allowedTo: async () => hasTool }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => fake.db }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { email: 'ana@tn.org' } } }) } }) }))
 
@@ -18,7 +17,7 @@ const { savePageUrls, toggleConfirmation, deletePage } = await import('./actions
 const SITE = { id: 's1', code: 'aaaf', languages: ['en', 'es'], domain: 'https://www.askanadventistfriend.com', monday_board_id: '1' }
 
 beforeEach(() => {
-  mayOpen = true
+  hasTool = true
   fake = fakeDb({
     sites: [SITE],
     pages: [{ id: P, name: 'Page A', confirmed_done_at: null, needs_hreflang_update: false, site_id: 's1' }],
@@ -28,9 +27,10 @@ beforeEach(() => {
   })
 })
 
-describe('per-site access', () => {
-  it('refuses a page of a site the person may not open, whatever the address', async () => {
-    mayOpen = false
+describe('access', () => {
+  // Both sites are open to everyone with the tool (decided 13 October 2026).
+  it('refuses someone without Href Links, and changes nothing', async () => {
+    hasTool = false
     expect((await deletePage({ pageId: P })).error).toMatch(/not open to your access/)
     expect(fake.tables.pages).toHaveLength(1)
   })

@@ -14,7 +14,6 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamMemberPosition, type TeamResult } from '@/app/(app)/admin/teams/actions'
-import type { GrantRole } from '@/app/(app)/admin/teams/actions'
 import { Avatar } from '@/components/Avatar'
 import { normalPosition, roleTypePill, teamPositionPill, PILL_CLASS, type PersonView, type TeamKey } from '@/lib/directory/people-types'
 import type { ToolAudience } from '@/lib/access/tools'
@@ -22,7 +21,6 @@ import { COLOR_PALETTE, DEFAULT_COLOR, textColorFor } from '@/lib/constants/colo
 import { Select } from '@/components/ui/Select'
 
 export interface TeamCardMember { id: string; name: string; initials: string; teamKey: TeamKey; isLead: boolean; position: string; roleType: string; avatarUrl: string | null }
-export interface TeamCardAccess { projectId: string; name: string; logo: string | null; role: GrantRole }
 export interface TeamCardTool { toolKey: string; audience: ToolAudience }
 export interface TeamCard {
   id: string
@@ -31,7 +29,6 @@ export interface TeamCard {
   color: string
   memberCount: number
   members: TeamCardMember[]
-  access: TeamCardAccess[]
   tools: TeamCardTool[]
 }
 

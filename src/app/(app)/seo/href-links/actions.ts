@@ -4,8 +4,8 @@
 // language live (moved out of src/app/actions.ts, audit, 10 October 2026).
 //
 // Each one finds the page's site from the page itself, never from the caller,
-// and refuses unless the person has Href Links and may open that site (per-site
-// grants apply everywhere, decided 10 October 2026). The tables are the
+// and refuses unless the person has Href Links. Both sites are open to
+// everyone with the tool (decided 13 October 2026). The tables are the
 // server's own (migration 107). A step that fails is said, not answered "ok",
 // and the database's wording stays in the server log.
 
@@ -14,7 +14,6 @@ import { allowedTo } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { hrefLinksPage, hrefLinksSite, ROUTES } from '@/lib/nav/routes'
-import { canAccessSite } from '@/lib/auth/access'
 import { checkPageUrl, DEFAULT_LANGUAGES, isSiteCode, type SiteCode } from '@/lib/href-links/rules'
 import type { LanguageCode } from '@/lib/types/database.types'
 
@@ -45,7 +44,6 @@ async function pageGate(pageId: string): Promise<PageCtx | { ok: false; error: s
   if (error) return notSaved(error)
   const row = data as unknown as (PageCtx['page'] & { sites: PageCtx['site'] | null }) | null
   if (!row?.sites || !isSiteCode(row.sites.code)) return { ok: false, error: 'That page does not exist.' }
-  if (!(await canAccessSite(row.sites.id))) return { ok: false, error: 'This site is not open to your access.' }
   const site = { ...row.sites, languages: row.sites.languages?.length ? row.sites.languages : DEFAULT_LANGUAGES[row.sites.code] }
   return { db, page: { id: row.id, name: row.name, confirmed_done_at: row.confirmed_done_at }, site }
 }

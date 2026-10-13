@@ -68,8 +68,8 @@ export default async function ProjectsPage() {
 
   const overview = await attempt('the overview', getProjectsOverview)
   if (!overview.ok) return <HrefLinksReadError />
-  const { accessibleCodes, readyBySite, totalReady, statsBySite, sites } = overview.value
-  const visibleSites = SITES.filter(s => accessibleCodes.has(s.code)).map(s => {
+  const { readyBySite, totalReady, statsBySite, sites } = overview.value
+  const visibleSites = SITES.map(s => {
     const host = siteHost(sites[s.code]?.domain)
     return { ...s, host, shownDomain: host?.replace(/^www\./, '') ?? null, languages: sites[s.code]?.languages ?? [] }
   })
@@ -90,7 +90,7 @@ export default async function ProjectsPage() {
       {/* Compact "ready to apply" banner (handoff 2): one line + per-site jump
           pills. A page is ready when every language has a URL but it isn't live
           yet, so SEO 2 can apply the hreflang now. Each pill links to that
-          site's page list; only sites the reader may open are counted. */}
+          site's page list. */}
       {totalReady > 0 && (
         <div className="flex items-center gap-3 flex-wrap rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <svg

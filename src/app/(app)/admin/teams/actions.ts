@@ -19,7 +19,6 @@ import { levelsOf, noteLevelShifts } from '@/lib/access/log'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { revalidatePath } from 'next/cache'
 
-export type GrantRole = 'manager' | 'publisher' | 'editor' | 'viewer'
 export type TeamPosition = 'lead' | 'member'
 const TEAM_POSITIONS: TeamPosition[] = ['lead', 'member']
 
