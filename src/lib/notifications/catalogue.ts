@@ -10,8 +10,8 @@
  * Each notification has two settings: on or off, and when. "When" decides
  * where (7 October 2026): as it happens lands in the bell at once; the daily
  * summary lands in the bell at the person's summary hour (8:00 unless they
- * chose 6:00 to 10:00) and goes out by email, at most two emails
- * a day (one per category, Tools and System), on US working days only. Some
+ * chose 6:00 to 10:00) and goes out by email, one email a day for Tools
+ * (System stays in the bell, 13 October 2026), on US working days only. Some
  * types only make sense one way (`timings`), and then "when" is not a choice.
  * An admin sets the rule for everyone: a default for each setting, and whether
  * people may change it or it is fixed. A person changes what the rule leaves

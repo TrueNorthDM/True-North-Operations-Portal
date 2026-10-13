@@ -40,18 +40,26 @@ beforeEach(() => {
 })
 
 describe('the daily summary run (audit, 9 October 2026)', () => {
-  it('sends one email per category, marks the rows emailed, and nothing twice the same day', async () => {
+  it('sends the Tools email only, lets System go to the bell, and nothing twice the same day', async () => {
     seed([row('ana', 'step-late'), row('ana', 'step-due-tomorrow'), row('ana', 'monday-account-unlinked')])
     audience = () => makeAudience([person('ana', { canTool: k => k === 'monday-accounts' })])
     const first = await run()
-    expect(first).toMatchObject({ sent: 2, failed: 0, errors: [] })
-    expect(sent.map(s => s.idempotencyKey).sort()).toEqual(['summary:ana:system:2026-10-14', 'summary:ana:tools:2026-10-14'])
+    expect(first).toMatchObject({ sent: 1, letGo: 1, failed: 0, errors: [] })
+    expect(sent.map(s => s.idempotencyKey)).toEqual(['summary:ana:tools:2026-10-14'])
     expect(fake.tables.notifications.every(r => r.emailed_at)).toBe(true)
 
     fake.tables.notifications.push(row('ana', 'step-late'))
     const second = await run(new Date('2026-10-14T15:00:00Z'))
     expect(second.sent).toBe(0)
-    expect(sent).toHaveLength(2)
+    expect(sent).toHaveLength(1)
+  })
+
+  it('sends no email at all when only System is waiting', async () => {
+    seed([row('ana', 'monday-account-unlinked')])
+    audience = () => makeAudience([person('ana', { canTool: k => k === 'monday-accounts' })])
+    const r = await run()
+    expect(r).toMatchObject({ sent: 0, letGo: 1, errors: [] })
+    expect(sent).toHaveLength(0)
   })
 
   // The High finding: a failed audience read used to let everyone's rows go.

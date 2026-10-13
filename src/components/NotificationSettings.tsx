@@ -123,7 +123,7 @@ export function NotificationSettings({
         {tab === 'mine' ? (
           <div className="flex-1 min-w-0 space-y-1">
             <p className="m-0"><strong className="text-tn-ink">As it happens</strong> arrives in the bell right away. <strong className="text-tn-ink">Daily summary</strong>{` arrives by email at ${hour}:00 AM ${zoneLabel(zone)} time, Monday to Friday (change it in `}<a href="#time" className="text-tn-teal font-semibold">Time and region</a>), and in the bell too.</p>
-            <p className="m-0">{`At most two summary emails a day, one per category, and none when there is nothing to tell. After a weekend or a US holiday, the next one catches you up.`}</p>
+            <p className="m-0">{`One summary email a day, for Tools, and none when there is nothing to tell. System notifications stay in the bell. After a weekend or a US holiday, the next one catches you up.`}</p>
             <p className="m-0">{`A lock means an admin set that choice for everyone. The eye shows how a notification looks and sends you a test. Read notifications leave the bell after ${KEEP_READ_DAYS} days, unread ones after ${KEEP_UNREAD_DAYS}. Changes save on their own.`}</p>
           </div>
         ) : (

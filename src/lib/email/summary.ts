@@ -1,6 +1,6 @@
 /**
- * The daily summary email (7 October 2026): one per category, Tools and
- * System, at the person's summary hour (8:00 unless they chose 6:00 to 10:00)
+ * The daily summary email (7 October 2026): one a day for Tools (System
+ * stopped being emailed 13 October 2026), at the person's summary hour (8:00 unless they chose 6:00 to 10:00)
  * in their time zone, on US working days. After a
  * weekend or a holiday it is a catch-up: "What you missed since Friday", with
  * the days off named and the items under the day they landed.

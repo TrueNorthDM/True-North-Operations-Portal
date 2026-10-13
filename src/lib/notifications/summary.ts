@@ -6,8 +6,9 @@
  * zone. Each run looks for the ones that landed and have not been emailed, and
  * for each person whose own calendar says it is a working day (Monday to
  * Friday, not a US federal holiday) and past their summary hour (8:00 unless
- * they chose another), sends them: one email per
- * category, Tools and System, so never more than two. On a day off nothing
+ * they chose another), sends them one email: Tools. System notifications
+ * stay in the bell and are not emailed (decided 13 October 2026: the System
+ * email read as the portal talking about itself). On a day off nothing
  * goes; the next working day's email holds everything since ("what you missed
  * since Friday"). Nobody gets an empty email: no notifications, no email.
  *
@@ -57,7 +58,8 @@ const DAY = 86_400_000
 const STALE_CLAIM_MS = 30 * 60_000
 /** Between two sends: Resend allows about two a second. */
 const PACE_MS = 600
-const CATEGORIES: readonly SummaryCategory[] = ['tools', 'system']
+/** The categories that go out by email. System stays in the bell only (13 October 2026). */
+const EMAILED: readonly SummaryCategory[] = ['tools']
 
 type Waiting = { id: string; person_id: string; type_key: string; title: string; body: string; href: string | null; deliver_at: string }
 type Digest = { person_id: string; category: SummaryCategory; status: 'sending' | 'sent' | 'skipped' | 'failed'; attempts: number; updated_at: string }
@@ -66,7 +68,7 @@ export interface SummaryReport {
   skipped?: string
   waiting: number
   sent: number
-  /** Let go without an email: staging, no email service, no address, no longer signing in. */
+  /** Let go without an email: System (bell only), staging, no email service, no address, no longer signing in. */
   letGo: number
   failed: number
   /** People whose calendar says not yet: before 8:00, or a day off. */
@@ -175,14 +177,20 @@ export async function sendDailySummaries(opts: { origin: string; now?: Date; db?
     else report.letGo += ids.length
   }
 
-  for (const [personId, rows] of byPerson) {
+  for (const [personId, all] of byPerson) {
     const zone = delivery.get(personId)?.zone
     const hour = delivery.get(personId)?.hour ?? DAILY_HOUR
     const today = zoneDate(now, zone)
     const who = aud.byId.get(personId)
     // Read in full above: not in the audience means inactive, not invited or
     // without an account, so nothing will ever be emailed to them.
-    if (!who || !who.email) { await letGo(rows.map(r => r.id)); continue }
+    if (!who || !who.email) { await letGo(all.map(r => r.id)); continue }
+    // A category that is not emailed: in the bell already, never read again here.
+    const emailed = (r: Waiting) => EMAILED.includes(categoryOf(r.type_key) as SummaryCategory)
+    const bellOnly = all.filter(r => !emailed(r))
+    if (bellOnly.length) await letGo(bellOnly.map(r => r.id))
+    const rows = all.filter(emailed)
+    if (!rows.length) continue
     if (!isWorkingDay(today) || zoneHour(now, zone) < hour) { report.notYet += 1; continue }
 
     // Checked again now: what they no longer reach, or turned off since.
@@ -195,7 +203,7 @@ export async function sendDailySummaries(opts: { origin: string; now?: Date; db?
     if (held.length) await letGo(held.map(r => r.id))
     const sendable = rows.filter(still)
 
-    for (const category of CATEGORIES) {
+    for (const category of EMAILED) {
       const mine = sendable.filter(r => categoryOf(r.type_key) === category)
       if (!mine.length) continue
       const key = `${personId}|${category}|${today}`
