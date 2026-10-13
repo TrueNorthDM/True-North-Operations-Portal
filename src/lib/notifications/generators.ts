@@ -430,11 +430,20 @@ export async function unlinkedSeen(ctx: Ctx, unlinked: readonly { id: number }[]
   return [...new Set([...(seen ?? []), ...unlinked.map(u => u.id)])]
 }
 
+/**
+ * An account already deleted in Monday, kept only so its old work has an
+ * owner (the "Removed account" placeholder the Monday sync writes). Nobody can
+ * be linked to it, so it is not news (decided 13 October 2026, after 28 of
+ * them reached five admins at once).
+ */
+export const isRemovedAccount = (u: { name: string; email: string | null }) =>
+  !u.email && /^Removed account \d+$/.test(u.name)
+
 export async function unlinkedDrafts(ctx: Ctx, unlinked: readonly { id: number; name: string; email: string | null }[]): Promise<Draft[]> {
   const seen = await readState<number[]>(ctx.db, UNLINKED_SEEN)
   if (seen === null) return []
   const known = new Set(seen)
-  return unlinked.filter(u => !known.has(u.id)).flatMap(u => ctx.aud.withTool('monday-accounts').flatMap(a => draftFor(ctx, 'monday-account-unlinked', a, {
+  return unlinked.filter(u => !known.has(u.id) && !isRemovedAccount(u)).flatMap(u => ctx.aud.withTool('monday-accounts').flatMap(a => draftFor(ctx, 'monday-account-unlinked', a, {
     title: 'A new Monday account with no person',
     body: `${u.name}${u.email ? ` (${u.email})` : ''} has no person in the Directory, so its work shows under Unknown user.`,
     href: '/admin/monday-links',

@@ -70,4 +70,11 @@ describe('new Monday accounts are remembered only once they are told', () => {
     await notifyUnlinked(fake.db, unlinked)
     expect(fake.tables.notification_state.find(r => r.key === 'monday-unlinked-seen')?.value).toEqual([1])
   })
+
+  it('says nothing about an account already deleted in Monday, and still notes it as seen', async () => {
+    fake = fakeDb(tables({ notification_state: [{ key: 'monday-unlinked-seen', value: [1] }] }))
+    await notifyUnlinked(fake.db, [{ id: 1, name: 'Old', email: null }, { id: 3, name: 'Removed account 3', email: null }])
+    expect(fake.tables.notifications).toHaveLength(0)
+    expect(fake.tables.notification_state.find(r => r.key === 'monday-unlinked-seen')?.value).toEqual([1, 3])
+  })
 })
