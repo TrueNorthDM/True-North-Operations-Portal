@@ -3056,12 +3056,6 @@ export type Database = {
       }
       access_level_of: { Args: { p_person: string }; Returns: string }
       access_sync_role_type: { Args: { p_person: string }; Returns: undefined }
-      accessible_site_ids: {
-        Args: { uid: string }
-        Returns: {
-          site_id: string
-        }[]
-      }
       db_protections_check: { Args: never; Returns: string[] }
       is_admin: { Args: { uid: string }; Returns: boolean }
       merge_monday_links: {
