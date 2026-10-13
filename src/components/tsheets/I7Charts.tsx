@@ -10,12 +10,12 @@ import type { ReactNode } from 'react'
 import type { I7Report } from '@/lib/tsheets/types'
 import { fmtHours } from '@/lib/tsheets/format'
 import { activityMix } from '@/lib/tsheets/i7-view'
+import { shares } from '@/lib/tsheets/shares'
 
 // Brand palette, teal / blue / purple / orange / cyan / green.
 const PROJ = ['#1E7D7F', '#3B82C6', '#e08a1e', '#6d5ae0', '#00A3DD', '#009C3B']
 const ACT = ['#1E7D7F', '#3B82C6', '#6d5ae0', '#e08a1e', '#00A3DD', '#009C3B']
 const OTHER = '#8593a4'
-const pct = (v: number, total: number) => (total > 0 ? Math.round((v / total) * 100) : 0)
 
 interface Props {
   data: I7Report
@@ -120,6 +120,8 @@ function Rings({ rows }: { rows: { label: string; pct: number | null; hours: num
 // ── Global 100% stacked bar, activity mix ──────────────────────────────────
 function ActivityMix({ parts, total, colorOf }: { parts: { activity: string; hours: number }[]; total: number; colorOf: (a: string) => string }) {
   if (total <= 0) return <p className="text-sm text-muted py-4 text-center">No activity data this period.</p>
+  // Adding up to 100%, which rounding each part on its own did not (lib/tsheets/shares).
+  const partShares = shares(parts.map(p => p.hours))
   return (
     <div>
       <div className="flex h-4 rounded-md overflow-hidden bg-subtle">
@@ -128,12 +130,12 @@ function ActivityMix({ parts, total, colorOf }: { parts: { activity: string; hou
         ))}
       </div>
       <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-xs">
-        {parts.map(p => (
+        {parts.map((p, i) => (
           <span key={p.activity} className="inline-flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: colorOf(p.activity) }} />
             <span className="text-foreground">{p.activity}</span>
             <span className="font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums">{fmtHours(p.hours)}h</span>
-            <span className="text-muted">({pct(p.hours, total)}%)</span>
+            <span className="text-muted">({partShares[i]}%)</span>
           </span>
         ))}
       </div>
@@ -144,7 +146,9 @@ function ActivityMix({ parts, total, colorOf }: { parts: { activity: string; hou
 // ── 100% stacked bar per project, activity mix (client PDF) ─────────────────
 export function I7Charts({ data, projectHours, totalByPerson }: Props) {
   // Donut + rings, per project
-  const projectSegments = data.projects.map((p, i) => ({ label: p.project, value: p.hours, color: PROJ[i % PROJ.length] }))
+  // Each project's share of the hours, adding up to 100% (audit, 13 October 2026).
+  const projectShares = shares(data.projects.map(p => p.hours))
+  const projectSegments = data.projects.map((p, i) => ({ label: p.project, value: p.hours, share: projectShares[i], color: PROJ[i % PROJ.length] }))
   const rings = data.projects.map(p => {
     const budget = projectHours[p.project] ?? 0
     return { label: p.project, pct: budget > 0 ? p.hours / budget : null, hours: p.hours, budget }
@@ -179,7 +183,7 @@ export function I7Charts({ data, projectHours, totalByPerson }: Props) {
               <div key={s.label} className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
                 <span className="flex-1 text-[13px] text-foreground truncate">{s.label}</span>
-                <span className="text-[13px] font-(family-name:--font-display) font-bold text-tn-ink tabular-nums whitespace-nowrap">{fmtHours(s.value)}h · {pct(s.value, data.totalHours)}%</span>
+                <span className="text-[13px] font-(family-name:--font-display) font-bold text-tn-ink tabular-nums whitespace-nowrap">{fmtHours(s.value)}h · {s.share}%</span>
               </div>
             ))}
           </div>

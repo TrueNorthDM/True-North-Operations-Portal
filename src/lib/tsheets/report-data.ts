@@ -13,7 +13,7 @@ import { rateFor, standardI7Rate, type Assignment } from '@/lib/tsheets/rates'
 import { monthBounds, monthsBetween } from '@/lib/tsheets/report'
 import { spanWording } from '@/lib/tsheets/range'
 import { DATA_START } from '@/lib/tsheets/retention'
-import { buildI7Report, buildI7Days, mapCodeToProject, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
+import { buildI7Report, buildI7Days, mapCodeToProject, personLabels, unnamedPerson, I7_PROJECTS, I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import type { I7DayRow } from '@/lib/tsheets/i7report'
 import type { I7Report, I7Carryover, I7Entry, I7TrendPoint } from '@/lib/tsheets/types'
 import { accumulateMonths, bucketByMonth, computeI7Carryover } from '@/lib/tsheets/carryover'
@@ -25,7 +25,13 @@ export interface I7ReportData {
   projectHours: Record<string, number>
   carryover: I7Carryover | null
   stdRate: number
-  personRates: Record<string, number>     // display name → this month's hourly rate (for per-person cost, e.g. CSV export)
+  personRates: Record<string, number>     // display label → this month's hourly rate (for per-person cost, e.g. CSV export)
+  /**
+   * person id → the label the report shows for them, for everyone with hours in
+   * the range. What the team filter matches against, so a team keeps its "Ana
+   * S." when the report has to tell her apart from another Ana.
+   */
+  personLabels: Record<string, string>
   trend: I7TrendPoint[]
   note: string                            // optional per-month narrative
 }
@@ -87,18 +93,26 @@ function failed(what: string, error: { message: string } | null | undefined): vo
   if (error) throw new Error(`The i7 report could not read ${what}: ${error.message}`)
 }
 
-// tsheets_user_id → display (first) name, from the synced directory.
-// person id → display (first) name. Every active person, not only the ones
-// with a TSheets account: a contractor whose hours are added by hand has a
-// name here and nowhere else.
-async function loadNames(): Promise<Record<string, string>> {
+// person id → full name. Every active person, not only the ones with a TSheets
+// account: a contractor whose hours are added by hand has a name here and
+// nowhere else.
+//
+// The full name, not the first word of it: what a person is called on the
+// report depends on who else is in it, which personLabels decides once per
+// range (audit, 13 October 2026).
+async function loadFullNames(): Promise<Record<string, string>> {
   const { data, error } = await createAdminClient().from('people').select('id, full_name')
   failed('names', error)
   const out: Record<string, string> = {}
   for (const p of (data ?? []) as { id: string; full_name: string | null }[]) {
-    out[p.id] = (p.full_name || '').split(' ')[0] || `Person ${p.id.slice(0, 8)}`
+    if (p.full_name) out[p.id] = p.full_name
   }
   return out
+}
+
+/** The labels for everyone with an entry in the range, worked out once for it. */
+function labelsFor(entries: I7Entry[], fullNames: Record<string, string>): Record<string, string> {
+  return personLabels(entries.map(e => e.personId), fullNames)
 }
 
 // `db`: the cron passes the privileged client, having no signed-in user.
@@ -210,9 +224,9 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   // because it is the first month ever pulled, so nothing precedes it.
   const carryStart = `${DATA_START}-01`
 
-  const [entries, names, assignments, budgetInputs, projectHours, universe, note] = await Promise.all([
+  const [entries, fullNames, assignments, budgetInputs, projectHours, universe, note] = await Promise.all([
     loadCachedEntries(carryStart, endDate),
-    loadNames(),
+    loadFullNames(),
     loadI7Assignments(),
     loadBudgetInputs(),
     loadProjectHours(from, to),
@@ -241,6 +255,9 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   const inRange = (ym: string) => ym >= from && ym <= to
   const selEntries = entries.filter(e => inRange(e.date.slice(0, 7)))
   const rateAt = (pid: string, ym: string) => rateFor(assignments, pid, ym)
+  // Over the range, not the months since January 2026 the entries reach back
+  // to: an Ana who left last year does not turn this year's Ana into "Ana S."
+  const names = labelsFor(selEntries, fullNames)
 
   // Bucketed once, because everything below asks the same question of the same
   // list. The balance walk and the chart both go month by month from January
@@ -255,29 +272,32 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
   )
   const stdRate = standardI7Rate(assignments, to)
 
-  // display name → hourly rate, so per-person cost can be derived (report
+  // display label → hourly rate, so per-person cost can be derived (report
   // .byPerson only carries hours). Over a range a person can have had two
   // rates, so this is their hours-weighted average: the one number that makes
   // hours × rate come back to the cost the report already shows.
+  //
+  // Added up by person id and only then named: keyed by first name, two Anas
+  // shared one average rate (audit, 13 October 2026).
   const hoursByPerson: Record<string, number> = {}
   const costByPerson: Record<string, number> = {}
   for (const e of selEntries) {
-    const name = names[e.personId] ?? `Person ${e.personId.slice(0, 8)}`
     const hours = e.duration / 3600
-    hoursByPerson[name] = (hoursByPerson[name] ?? 0) + hours
-    costByPerson[name] = (costByPerson[name] ?? 0) + hours * rateAt(e.personId, e.date.slice(0, 7))
+    hoursByPerson[e.personId] = (hoursByPerson[e.personId] ?? 0) + hours
+    costByPerson[e.personId] = (costByPerson[e.personId] ?? 0) + hours * rateAt(e.personId, e.date.slice(0, 7))
   }
+  const labelOf = (pid: string) => names[pid] ?? unnamedPerson(pid)
   const personRates: Record<string, number> = {}
-  for (const [name, hours] of Object.entries(hoursByPerson)) {
-    personRates[name] = hours > 0 ? round2(costByPerson[name] / hours) : 0
+  for (const [pid, hours] of Object.entries(hoursByPerson)) {
+    personRates[labelOf(pid)] = hours > 0 ? round2(costByPerson[pid] / hours) : 0
   }
 
   // Anyone who logged i7 time in the range with no rate covering any of it.
   // Their hours are counted and their cost is zero, so the budget reads as less
   // consumed than it is, and nothing used to say so (audit finding M3-1).
   const unratedPeople = Object.entries(hoursByPerson)
-    .filter(([name, hours]) => round2(hours) > 0 && (costByPerson[name] ?? 0) === 0)
-    .map(([name]) => name)
+    .filter(([pid, hours]) => round2(hours) > 0 && (costByPerson[pid] ?? 0) === 0)
+    .map(([pid]) => labelOf(pid))
     .sort((a, b) => a.localeCompare(b))
 
   // Budget minus cost over a run of months, which the trend's running balance
@@ -309,7 +329,7 @@ export async function loadI7ReportData(from: string, to: string = from): Promise
     trend.push({ month: ym, hours: round2(h), cost: round2(c), budget: b, balance: round2(tB - tC) })
   }
 
-  return { report: report.totalHours > 0 ? report : null, unratedPeople, projectHours, carryover, stdRate, personRates, trend, note }
+  return { report: report.totalHours > 0 ? report : null, unratedPeople, projectHours, carryover, stdRate, personRates, personLabels: names, trend, note }
 }
 
 /**
@@ -348,20 +368,20 @@ export async function loadI7Days(from: string, to: string): Promise<I7DayRow[]> 
   const { startDate } = monthBounds(from)
   const { endDate } = monthBounds(to)
 
-  const [entries, names, assignments] = await Promise.all([
+  const [entries, fullNames, assignments] = await Promise.all([
     loadCachedEntries(startDate, endDate),
-    loadNames(),
+    loadFullNames(),
     loadI7Assignments(),
   ])
 
-  return buildI7Days(entries, (pid, ym) => rateFor(assignments, pid, ym), names)
+  return buildI7Days(entries, (pid, ym) => rateFor(assignments, pid, ym), labelsFor(entries, fullNames))
 }
 
 /** One month of the report, for an export that has to say which month a row is. */
 export interface I7MonthSlice {
   month: string                          // YYYY-MM
   report: I7Report
-  personRates: Record<string, number>    // display name → that month's rate
+  personRates: Record<string, number>    // display label → that month's rate
 }
 
 /**
@@ -387,11 +407,14 @@ export async function loadI7ByMonth(from: string, to: string): Promise<I7MonthSl
   const { startDate } = monthBounds(from)
   const { endDate } = monthBounds(to)
 
-  const [entries, names, assignments] = await Promise.all([
+  const [entries, fullNames, assignments] = await Promise.all([
     loadCachedEntries(startDate, endDate),
-    loadNames(),
+    loadFullNames(),
     loadI7Assignments(),
   ])
+  // Once for the whole range, not per month: a month holding only one of two
+  // Anas still calls her "Ana S.", as the screen showing the range does.
+  const names = labelsFor(entries, fullNames)
 
   const byMonth = new Map<string, I7Entry[]>()
   for (const e of entries) {
@@ -412,7 +435,7 @@ export async function loadI7ByMonth(from: string, to: string): Promise<I7MonthSl
     // Within one month a person has one rate, so this needs no weighting.
     const personRates: Record<string, number> = {}
     for (const pid of new Set(mine.map(e => e.personId))) {
-      personRates[names[pid] ?? `Person ${pid.slice(0, 8)}`] = rateFor(assignments, pid, ym)
+      personRates[names[pid] ?? unnamedPerson(pid)] = rateFor(assignments, pid, ym)
     }
 
     out.push({ month: ym, report, personRates })

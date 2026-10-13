@@ -43,7 +43,8 @@ interface Props {
   views?: readonly ('numbers' | 'graphics')[]
   /**
    * Teams offered by the filter beside the pay period, straight from the
-   * Directory's Teams tab, with the first names of their members.
+   * Directory's Teams tab, with their members as the report labels them
+   * (the column headings, so "Ana S." where two Anas are in it).
    */
   teams?: readonly { id: string; name: string; members: readonly string[] }[]
   /** Selected team id, or '' for everyone. Lives in the URL, like the range. */

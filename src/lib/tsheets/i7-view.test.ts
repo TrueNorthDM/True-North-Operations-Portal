@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { budgetStatus, hoursByPerson, isMMEProject, projectsNearBudget, totalBudgetHours, usedShare } from './i7-view'
+import { budgetStatus, costShares, hoursByPerson, isMMEProject, projectsNearBudget, totalBudgetHours, usedShare } from './i7-view'
 
 const report = {
   projects: [
@@ -34,5 +34,43 @@ describe('the i7 figures the screen, the PDFs and the image share', () => {
     expect(hoursByPerson(report)).toEqual({ Ana: 64, Bo: 35 })
     expect(isMMEProject('Moisture Meters (MME)')).toBe(true)
     expect(isMMEProject('Bessemeter')).toBe(false)
+  })
+})
+
+// The client PDF's Share column and the client CSV read these. Rounded one by
+// one, three equal projects read 33% each under a total of 100% (audit,
+// 13 October 2026).
+describe('costShares', () => {
+  const jc = (code: string, cost: number) => ({ code, hours: 1, cost, activities: [], byPerson: {} })
+  const split = {
+    projects: [
+      { project: 'Bessemeter', hours: 3, cost: 300, byPerson: {}, jobcodes: [jc('BE-A', 100), jc('BE-B', 100), jc('BE-C', 100)] },
+      { project: 'i7 Marketing', hours: 3, cost: 300, byPerson: {}, jobcodes: [jc('I7-A', 300)] },
+      { project: 'Moisture Meters (MME)', hours: 3, cost: 300, byPerson: {}, jobcodes: [jc('MME-A', 150), jc('MME-B', 150)] },
+      { project: 'Wagner Meters (WM)', hours: 0, cost: 0, byPerson: {}, jobcodes: [] },
+    ],
+  } as never
+  const s = costShares(split)
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
+
+  it('adds the invoices up to 100', () => {
+    expect(s.invoice).toEqual({ i7: 67, mme: 33 })
+  })
+
+  it('adds an invoice\'s projects up to that invoice', () => {
+    expect(s.project['Bessemeter'] + s.project['i7 Marketing'] + s.project['Wagner Meters (WM)']).toBe(s.invoice.i7)
+    expect(s.project['Moisture Meters (MME)']).toBe(s.invoice.mme)
+    expect(s.project['Wagner Meters (WM)']).toBe(0)
+  })
+
+  it('adds a project\'s job codes up to that project, and all of them to 100', () => {
+    for (const [project, codes] of Object.entries(s.jobcode)) expect(sum(Object.values(codes))).toBe(s.project[project])
+    expect(sum(Object.values(s.jobcode).flatMap(c => Object.values(c)))).toBe(100)
+  })
+
+  it('shares nothing out of a month that cost nothing', () => {
+    const free = costShares({ projects: [{ project: 'Bessemeter', hours: 2, cost: 0, byPerson: {}, jobcodes: [jc('BE-A', 0)] }] } as never)
+    expect(free.invoice).toEqual({ i7: 0, mme: 0 })
+    expect(free.jobcode['Bessemeter']['BE-A']).toBe(0)
   })
 })

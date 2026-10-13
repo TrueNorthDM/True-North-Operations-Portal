@@ -17,7 +17,7 @@
  */
 
 import { requirePrivileged } from '@/lib/tsheets/require-privileged'
-import { isMMEProject as isMME } from '@/lib/tsheets/i7-view'
+import { costShares, isMMEProject as isMME } from '@/lib/tsheets/i7-view'
 import { I7_EXPORT_KEYS } from '@/lib/tsheets/export-keys'
 import { loadI7ByMonth, loadI7Days } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
@@ -28,7 +28,6 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
-const pct = (v: number, t: number) => (t > 0 ? Math.round((v / t) * 100) : 0)
 
 function newestMonth(): string {
   const months = availableMonths(new Date())
@@ -91,12 +90,15 @@ export async function GET(request: Request) {
   } else {
     for (const { month, report } of months) {
       const total = report.totalCost
+      // The month's shares add up to the 100 on its TOTAL line, and are the
+      // ones the client PDF of the month prints (audit, 13 October 2026).
+      const share = costShares(report)
       for (const p of report.projects) {
         const inv = isMME(p.project) ? 'MME invoice' : 'i7 invoice'
         for (const jc of p.jobcodes) {
           if (jc.hours <= 0) continue
           // Two decimals, not whole dollars: this file is opened by accounting.
-          lines.push(row([month, inv, p.project, jc.code, jc.hours, round2(jc.cost).toFixed(2), pct(jc.cost, total)]))
+          lines.push(row([month, inv, p.project, jc.code, jc.hours, round2(jc.cost).toFixed(2), share.jobcode[p.project]?.[jc.code] ?? 0]))
         }
       }
       // A total per month, not one for the range. A single figure at the foot

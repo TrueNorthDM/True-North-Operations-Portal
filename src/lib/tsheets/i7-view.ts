@@ -10,6 +10,7 @@
  */
 
 import type { I7Carryover, I7Report } from './types'
+import { shares } from './shares'
 
 /** Moisture Meters (MME) is invoiced apart from the rest of i7. */
 export const isMMEProject = (project: string): boolean => /mme|moisture/i.test(project)
@@ -58,4 +59,39 @@ export function projectsNearBudget(report: Pick<I7Report, 'projects'>, projectHo
   return report.projects
     .filter(p => (projectHours[p.project] ?? 0) > 0 && p.hours / projectHours[p.project] >= share)
     .map(p => p.project.replace(/\s*\(.*\)/, ''))
+}
+
+/**
+ * Who got what share of the money, at every level a client document lists it:
+ * the two invoices, the projects under each, the job codes under each project.
+ *
+ * Shared out from the top down (audit, 13 October 2026): the invoices add up to
+ * 100%, an invoice's projects to that invoice's share, a project's job codes to
+ * that project's. Rounded on their own, the PDF's Share column could read 99%
+ * or 101% under a total of 100%, and the client CSV the same. One answer here,
+ * read by both, so the PDF and the spreadsheet of a month agree to the point.
+ */
+export interface I7CostShares {
+  invoice: { i7: number; mme: number }
+  project: Record<string, number>                    // project → % of the total
+  jobcode: Record<string, Record<string, number>>    // project → job code → % of the total
+}
+
+export function costShares(report: Pick<I7Report, 'projects'>): I7CostShares {
+  const cost = (ps: I7Report['projects']) => ps.reduce((s, p) => s + p.cost, 0)
+  const i7 = report.projects.filter(p => !isMMEProject(p.project))
+  const mme = report.projects.filter(p => isMMEProject(p.project))
+  const [i7Share, mmeShare] = shares([cost(i7), cost(mme)])
+
+  const project: Record<string, number> = {}
+  const jobcode: Record<string, Record<string, number>> = {}
+  for (const [group, total] of [[i7, i7Share], [mme, mmeShare]] as const) {
+    const projectShares = shares(group.map(p => p.cost), { total })
+    group.forEach((p, i) => {
+      project[p.project] = projectShares[i]
+      const codeShares = shares(p.jobcodes.map(j => j.cost), { total: projectShares[i] })
+      jobcode[p.project] = Object.fromEntries(p.jobcodes.map((j, k) => [j.code, codeShares[k]]))
+    })
+  }
+  return { invoice: { i7: i7Share, mme: mmeShare }, project, jobcode }
 }

@@ -17,15 +17,14 @@ import Link from 'next/link'
 import { Fragment } from 'react'
 import type { I7Report, I7Carryover } from '@/lib/tsheets/types'
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
-import { activityMix, budgetStatus, BUDGET_STATUS_LABEL, hoursByPerson, isMMEProject as isMME, projectsNearBudget, totalBudgetHours, usedShare } from '@/lib/tsheets/i7-view'
+import { activityMix, budgetStatus, BUDGET_STATUS_LABEL, costShares, hoursByPerson, isMMEProject as isMME, projectsNearBudget, totalBudgetHours, usedShare } from '@/lib/tsheets/i7-view'
+import { shares } from '@/lib/tsheets/shares'
 import { formatDate } from '@/lib/directory/people-types'
 import { ROUTES } from '@/lib/nav/routes'
 
 const INK = '#012358', TEAL = '#1E7D7F', BLUE = '#2A6FDB', GOLD = '#F2C40A', PURPLE = '#6D5AE6', AMBER = '#E8912A', MMEC = '#B8790A', GREEN = '#1E9E6A', MUTED = '#8593a4', BODY = '#435066', BORDER = '#e4e7ec', WARM = '#f4f2ec', RED = '#C2410C', TRACK = '#eef0f3'
 const COST_COLORS = [TEAL, BLUE, GOLD, PURPLE, AMBER]
 const ACT_COLORS = [TEAL, BLUE, PURPLE, AMBER, '#00A3DD', GREEN]
-
-const pctOf = (v: number, t: number) => (t > 0 ? Math.round((v / t) * 100) : 0)
 
 interface Props {
   report: I7Report
@@ -98,10 +97,13 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   const i7Cost = i7Projects.reduce((s, p) => s + p.cost, 0)
   const mmeCost = mmeProjects.reduce((s, p) => s + p.cost, 0)
   const i7Pct = totalCost > 0 ? (i7Cost / totalCost) * 100 : 100
+  // The Share figures the client reads, which add up to 100% at every level
+  // (lib/tsheets/shares). The bars keep the exact fractions above.
+  const shareOf = costShares(report)
 
   // Per-project cost (for donuts), sorted big→small.
   const byCost = [...report.projects].filter(p => p.cost > 0).sort((a, b) => b.cost - a.cost)
-  const costSegs = byCost.map((p, i) => ({ label: p.project.replace(/\s*\(.*\)/, ''), value: p.cost, color: COST_COLORS[i % COST_COLORS.length] }))
+  const costSegs = byCost.map((p, i) => ({ label: p.project.replace(/\s*\(.*\)/, ''), value: p.cost, share: shareOf.project[p.project] ?? 0, color: COST_COLORS[i % COST_COLORS.length] }))
 
   // Team workload (hours per person).
   const byPerson = hoursByPerson(report)
@@ -117,7 +119,9 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   const nearBudget = projectsNearBudget(report, projectHours)
 
   // Activity mix (global).
-  const acts = activityMix(report).map((a, i) => ({ ...a, color: ACT_COLORS[i % ACT_COLORS.length] }))
+  const actList = activityMix(report)
+  const actShares = shares(actList.map(a => a.hours))
+  const acts = actList.map((a, i) => ({ ...a, share: actShares[i], color: ACT_COLORS[i % ACT_COLORS.length] }))
   const actTotal = acts.reduce((s, a) => s + a.hours, 0)
 
   const budgetLeft = carryover ? carryover.totalLeft : 0
@@ -140,8 +144,8 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
   // ══════════════════════════ CLIENT REPORT ══════════════════════════
   if (type === 'client') {
     const blocks = [
-      { title: 'i7 Marketing, Bessemeter, Wagner Meter', color: TEAL, headBg: '#eef6f5', projects: i7Projects, invest: i7Cost },
-      ...(mmeProjects.length ? [{ title: 'Moisture Meters', color: MMEC, headBg: '#fdf6dc', projects: mmeProjects, invest: mmeCost }] : []),
+      { title: 'i7 Marketing, Bessemeter, Wagner Meter', color: TEAL, headBg: '#eef6f5', projects: i7Projects, invest: i7Cost, share: shareOf.invoice.i7 },
+      ...(mmeProjects.length ? [{ title: 'Moisture Meters', color: MMEC, headBg: '#fdf6dc', projects: mmeProjects, invest: mmeCost, share: shareOf.invoice.mme }] : []),
     ]
     return (
       <div className="min-h-dvh print:min-h-0 py-8 print:py-0 print:bg-white" style={{ background: '#e9e7df' }}>
@@ -189,7 +193,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               <div className="text-[9.2px] tabular-nums" style={{ color: BODY }}>Total work <b style={{ color: INK }}>{money(totalCost)}</b> &nbsp;=&nbsp; i7 invoice <b style={{ color: TEAL }}>{money(i7Cost)}</b> &nbsp;+&nbsp; MME separate invoice <b style={{ color: MMEC }}>{money(mmeCost)}</b></div>
             </div>
             <div className="flex h-[20px] rounded-[7px] overflow-hidden mt-2.5">
-              <div className="flex items-center px-2.5 text-white font-(family-name:--font-display) font-extrabold text-[8.7px]" style={{ flexBasis: `${i7Pct}%`, background: TEAL }}>i7 · {Math.round(i7Pct)}%</div>
+              <div className="flex items-center px-2.5 text-white font-(family-name:--font-display) font-extrabold text-[8.7px]" style={{ flexBasis: `${i7Pct}%`, background: TEAL }}>i7 · {totalCost > 0 ? shareOf.invoice.i7 : 100}%</div>
               <div style={{ flexBasis: `${100 - i7Pct}%`, background: MMEC }} />
             </div>
             <div className="flex gap-[18px] flex-wrap mt-2 text-[8.7px]">
@@ -210,7 +214,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-(family-name:--font-display) font-black text-[15px] tabular-nums leading-none" style={{ color: blk.color }}>{money(blk.invest)}</div>
-                    <div className="text-[7.9px] mt-[3px]" style={{ color: MUTED }}>{fmtHours(bHours)} h · {pctOf(blk.invest, totalCost)}% of total</div>
+                    <div className="text-[7.9px] mt-[3px]" style={{ color: MUTED }}>{fmtHours(bHours)} h · {blk.share}% of total</div>
                   </div>
                 </div>
                 <div className="rounded-b-[12px] overflow-hidden print:overflow-visible" style={{ border: `1px solid ${BORDER}`, borderTop: 'none' }}>
@@ -230,14 +234,14 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                             <td className="p-[4px_16px] font-(family-name:--font-display) font-bold" style={{ color: INK }}>{p.project}</td>
                             <td className="p-[4px_14px] text-right tabular-nums" style={{ color: BODY }}>{fmtHours(p.hours)}</td>
                             <td className="p-[4px_14px] text-right tabular-nums font-bold" style={{ color: INK }}>{money(p.cost)}</td>
-                            <td className="p-[4px_16px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{pctOf(p.cost, totalCost)}%</td>
+                            <td className="p-[4px_16px] text-right tabular-nums" style={{ color: BODY, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{shareOf.project[p.project] ?? 0}%</td>
                           </tr>
                           {p.jobcodes.filter(jc => jc.hours > 0).map(jc => (
                             <tr key={`${p.project}-${jc.code}`} style={{ borderBottom: `1px solid #f4f5f7` }}>
                               <td className="p-[2px_16px] pl-9 text-[9.2px]" style={{ color: BODY }}>{jc.code}</td>
                               <td className="p-[2px_14px] text-right tabular-nums text-[9.2px]" style={{ color: MUTED }}>{fmtHours(jc.hours)}</td>
                               <td className="p-[2px_14px] text-right tabular-nums text-[9.2px]" style={{ color: BODY }}>{money(jc.cost)}</td>
-                              <td className="p-[2px_16px] text-right tabular-nums text-[9.2px]" style={{ color: MUTED, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{pctOf(jc.cost, totalCost)}%</td>
+                              <td className="p-[2px_16px] text-right tabular-nums text-[9.2px]" style={{ color: MUTED, background: 'rgba(30,125,127,.05)', borderLeft: '1px solid rgba(1,35,88,.10)' }}>{shareOf.jobcode[p.project]?.[jc.code] ?? 0}%</td>
                             </tr>
                           ))}
                         </Fragment>
@@ -248,7 +252,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
                         <td className="p-[4px_16px] font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>Subtotal · {blk.color === MMEC ? 'MME invoice' : 'i7 invoice'}</td>
                         <td className="p-[4px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{fmtHours(bHours)}</td>
                         <td className="p-[4px_14px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color }}>{money(blk.invest)}</td>
-                        <td className="p-[4px_16px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color, background: 'rgba(30,125,127,.07)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{pctOf(blk.invest, totalCost)}%</td>
+                        <td className="p-[4px_16px] text-right tabular-nums font-(family-name:--font-display) font-extrabold" style={{ color: blk.color, background: 'rgba(30,125,127,.07)', borderLeft: '1px solid rgba(1,35,88,.12)' }}>{blk.share}%</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -306,7 +310,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
               <div className="flex-1 flex items-center gap-4 mt-1.5">
                 <Donut segs={costSegs} size={112} sw={18} />
                 <div className="flex-1 min-w-0">
-                  {costSegs.map(s => <LegendRow key={s.label} color={s.color} label={s.label} value={money(s.value)} extra={`${pctOf(s.value, totalCost)}%`} />)}
+                  {costSegs.map(s => <LegendRow key={s.label} color={s.color} label={s.label} value={money(s.value)} extra={`${s.share}%`} />)}
                 </div>
               </div>
             </div>
@@ -321,7 +325,7 @@ export function ReportPrint({ report, projectHours, carryover, stdRate, type, mo
             <div className="grid grid-cols-2 gap-x-10 mt-3">
               {[acts.slice(0, Math.ceil(acts.length / 2)), acts.slice(Math.ceil(acts.length / 2))].map((col, ci) => (
                 <div key={ci}>
-                  {col.map(a => <LegendRow key={a.activity} color={a.color} label={a.activity} value={`${fmtHours(a.hours)}h`} extra={`${pctOf(a.hours, actTotal)}%`} />)}
+                  {col.map(a => <LegendRow key={a.activity} color={a.color} label={a.activity} value={`${fmtHours(a.hours)}h`} extra={`${a.share}%`} />)}
                 </div>
               ))}
             </div>

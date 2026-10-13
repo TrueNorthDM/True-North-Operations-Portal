@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapCodeToProject, buildI7Report, buildI7Days } from './i7report'
+import { mapCodeToProject, buildI7Report, buildI7Days, personLabels } from './i7report'
 import type { I7Entry } from './types'
 
 describe('mapCodeToProject', () => {
@@ -203,5 +203,62 @@ describe('the lines of an invoice add up to its total (audit, 9 October 2026)', 
 
   it('ends a month on its last day, whatever the server time zone', () => {
     expect(r.endDate).toBe('2026-09-30')
+  })
+})
+
+// Keyed by first name, two Anas were one column holding both their hours, one
+// average rate and one line in the export (audit, 13 October 2026).
+describe('personLabels', () => {
+  it('uses the first name alone while nobody else in the report shares it', () => {
+    expect(personLabels(['a', 'b'], { a: 'Ana Souza', b: 'Bob Lee' })).toEqual({ a: 'Ana', b: 'Bob' })
+  })
+
+  it('adds the last initial when two people in the report share a first name', () => {
+    expect(personLabels(['a', 't', 'b'], { a: 'Ana Souza', t: 'Ana Torres', b: 'Bob Lee' }))
+      .toEqual({ a: 'Ana S.', t: 'Ana T.', b: 'Bob' })
+  })
+
+  it('decides by who is in the report, not by the whole directory', () => {
+    expect(personLabels(['a'], { a: 'Ana Souza', t: 'Ana Torres' })).toEqual({ a: 'Ana' })
+  })
+
+  it('treats "ana" and "Ana" as the same first name', () => {
+    expect(personLabels(['a', 't'], { a: 'Ana Souza', t: 'ana torres' })).toEqual({ a: 'Ana S.', t: 'ana T.' })
+  })
+
+  it('never gives two people one label', () => {
+    const fullNames = { a1000000: 'Ana Souza', s2000000: 'Ana Silva', d3000000: 'Ana Souza', o4000000: 'Ana' }
+    const out = personLabels(Object.keys(fullNames), fullNames)
+    expect(new Set(Object.values(out)).size).toBe(4)
+    expect(out.o4000000).toBe('Ana')
+    expect(out.s2000000).toBe('Ana Silva')
+    expect(out.a1000000).toBe('Ana Souza (a1000000)')
+  })
+
+  it('shows the id for a person with no name, rather than nothing', () => {
+    expect(personLabels(['abcdef1234'], {})).toEqual({ abcdef1234: 'Person abcdef12' })
+  })
+})
+
+describe('two people with the same first name', () => {
+  const entries: I7Entry[] = [
+    { personId: 'a', duration: 3600, date: '2026-07-01', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+    { personId: 't', duration: 7200, date: '2026-07-01', i7Code: 'WM-SEO', activity: 'SEO: Routine' },
+  ]
+  const names = personLabels(['a', 't'], { a: 'Ana Souza', t: 'Ana Torres' })
+  const rate = (pid: string) => (pid === 'a' ? 50 : 100)
+
+  it('keeps their hours in two columns, not one', () => {
+    const r = buildI7Report(entries, rate, names, '2026-07-01')
+    expect(r.people).toEqual(['Ana S.', 'Ana T.'])
+    const wm = r.projects.find(p => p.project === 'Wagner Meters (WM)')!
+    expect(wm.byPerson).toEqual({ 'Ana S.': 1, 'Ana T.': 2 })
+    expect(r.totalCost).toBe(250)
+  })
+
+  it('keeps them on two lines of the dated export', () => {
+    const days = buildI7Days(entries, rate, names)
+    expect(days).toHaveLength(2)
+    expect(days.map(d => [d.person, d.hours, d.cost])).toEqual([['Ana S.', 1, 50], ['Ana T.', 2, 200]])
   })
 })

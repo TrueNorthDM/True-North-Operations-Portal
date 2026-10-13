@@ -231,6 +231,12 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
 
   const unratedPeople = data?.unratedPeople ?? []
 
+  // A team's members as this report names them, matched by person id: by first
+  // name, a team holding one Ana would lose her column the moment the report
+  // has to call her "Ana S." (audit, 13 October 2026).
+  const labels = data?.personLabels ?? {}
+  const teamLabels = (ids: readonly string[]) => ids.flatMap(id => (labels[id] ? [labels[id]] : []))
+
   return (
     <>
       <I7ReportView
@@ -246,7 +252,7 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
         manual={manual}
         canExport={access.can('i7-export')}
         canTeamUpdate={access.can('report-team-update')}
-        teams={teams.map(t => ({ id: t.id, name: t.name, members: t.members }))}
+        teams={teams.map(t => ({ id: t.id, name: t.name, members: teamLabels(t.memberIds) }))}
         selectedTeam={selectedTeam}
       />
       <ClientFullHistory

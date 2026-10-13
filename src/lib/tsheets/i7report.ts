@@ -35,6 +35,68 @@ export function mapCodeToProject(code: string): string {
   return 'Unassigned'
 }
 
+/**
+ * How a person with no name is shown. A person with no name is a link that
+ * never happened, so the id is shown rather than swallowed: an unnamed column
+ * in an invoice is a question somebody asks, and a missing one is not.
+ */
+export const unnamedPerson = (personId: string): string => `Person ${personId.slice(0, 8)}`
+
+/**
+ * person id → the label the report shows for them, one per person and never
+ * shared (audit, 13 October 2026).
+ *
+ * The report used to key people by first name, so two people called Ana became
+ * one column holding both their hours, one rate, and one line in the export.
+ * Hours are now added up by person id, and this is the only place a person
+ * turns into words.
+ *
+ * The first name alone, as before, unless someone else in the same report
+ * shares it: then the first name and last initial ("Ana S.", "Ana T."). If that
+ * still matches, the full name, and if even that does, the full name with the
+ * start of the id, since two columns with one heading are the bug itself.
+ *
+ * `personIds` is everyone the report covers, worked out once per range by the
+ * data layer, so the screen, the PDF and the CSVs of one range call a person
+ * the same thing even where a single month of it holds only one Ana.
+ */
+export function personLabels(
+  personIds: Iterable<string>,
+  fullNames: Record<string, string | null | undefined>,
+): Record<string, string> {
+  const ids = [...new Set(personIds)]
+  const words = new Map(ids.map(id => [id, (fullNames[id] ?? '').trim().split(/\s+/).filter(Boolean)]))
+  const key = (s: string) => s.toLocaleLowerCase('en-US')
+  const out: Record<string, string> = {}
+
+  // Grouped by first name, without regard to case: "ana" and "Ana" would read
+  // as the same heading.
+  const byFirst = new Map<string, string[]>()
+  for (const id of ids) {
+    const w = words.get(id)!
+    if (w.length === 0) { out[id] = unnamedPerson(id); continue }
+    const k = key(w[0])
+    byFirst.set(k, [...(byFirst.get(k) ?? []), id])
+  }
+
+  for (const group of byFirst.values()) {
+    if (group.length === 1) { out[group[0]] = words.get(group[0])![0]; continue }
+    const initialled = group.map(id => {
+      const w = words.get(id)!
+      const last = w.length > 1 ? Array.from(w[w.length - 1])[0].toLocaleUpperCase('en-US') : ''
+      return { id, label: last ? `${w[0]} ${last}.` : w[0], full: w.join(' ') }
+    })
+    const count = (pick: (x: { label: string; full: string }) => string, value: string) =>
+      initialled.filter(x => key(pick(x)) === key(value)).length
+    for (const x of initialled) {
+      if (count(p => p.label, x.label) === 1) out[x.id] = x.label
+      else if (count(p => p.full, x.full) === 1) out[x.id] = x.full
+      else out[x.id] = `${x.full} (${x.id.slice(0, 8)})`
+    }
+  }
+  return out
+}
+
 /** The set of job code ids whose top-level ancestor is the i7 parent. */
 export function i7JobcodeIds(jobcodes: TsheetsJobcode[]): Set<number> {
   const byId = new Map(jobcodes.map(j => [j.id, j]))
@@ -86,7 +148,7 @@ export function buildI7Report(
    * only be one of the two.
    */
   rateOf: (personId: string, ym: string) => number,
-  namesByPerson: Record<string, string>, // person id → display name
+  namesByPerson: Record<string, string>, // person id → display label (personLabels)
   startDate: string,
   universe?: I7Universe,                // the always-shown scaffold (projects/codes/people)
   /**
@@ -138,8 +200,11 @@ export function buildI7Report(
   }
 
   const projects: I7Project[] = []
-  // Name → hours this month, which is what decides whether they get a column.
+  // Person id → hours this month, which is what decides whether they get a
+  // column. By id, not by name: two people sharing a first name used to be
+  // added into one column (audit, 13 October 2026).
   const personTotals = new Map<string, number>()
+  const labelOf = (personId: string) => namesByPerson[personId] ?? unnamedPerson(personId)
   // Rounded once, at the smallest cell (a person within an activity), and
   // added up from there in whole cents and hundredths of an hour (audit,
   // 9 October 2026). Rounding every level on its own let two job codes of
@@ -149,10 +214,16 @@ export function buildI7Report(
   let totalHours = 0
   let totalCost = 0
 
-  // name→hours accumulator → rounded plain object for output.
+  // id→hours accumulator → rounded plain object for output, keyed by the label
+  // the columns are headed with. Labels from personLabels are one per person;
+  // were two ever to match, their hours are added rather than one overwriting
+  // the other, so the totals stay right.
   const roundMap = (m: Map<string, number>): PersonHours => {
     const out: PersonHours = {}
-    for (const [name, h] of m) out[name] = round2(h)
+    for (const [personId, h] of m) {
+      const label = labelOf(personId)
+      out[label] = round2((out[label] ?? 0) + h)
+    }
     return out
   }
 
@@ -168,14 +239,10 @@ export function buildI7Report(
         let aHours = 0, aCost = 0   // hundredths
         const aByPerson = new Map<string, number>()
         for (const [personId, leaf] of ppl) {
-          // A person with no name is a link that never happened, so the id is
-          // shown rather than swallowed: an unnamed column in an invoice is a
-          // question somebody asks, and a missing one is not.
-          const name = namesByPerson[personId] ?? `Person ${personId.slice(0, 8)}`
-          personTotals.set(name, (personTotals.get(name) ?? 0) + leaf.hours)
-          aByPerson.set(name, (aByPerson.get(name) ?? 0) + leaf.hours)
-          cByPerson.set(name, (cByPerson.get(name) ?? 0) + leaf.hours)
-          pByPerson.set(name, (pByPerson.get(name) ?? 0) + leaf.hours)
+          personTotals.set(personId, (personTotals.get(personId) ?? 0) + leaf.hours)
+          aByPerson.set(personId, (aByPerson.get(personId) ?? 0) + leaf.hours)
+          cByPerson.set(personId, (cByPerson.get(personId) ?? 0) + leaf.hours)
+          pByPerson.set(personId, (pByPerson.get(personId) ?? 0) + leaf.hours)
           aHours += hundredths(leaf.hours)
           aCost += hundredths(leaf.cost)
         }
@@ -197,9 +264,9 @@ export function buildI7Report(
   // Column set = whoever logged hours in this month, and nobody else. Rounded
   // before the test so an entry of a few seconds does not buy a column that
   // then reads as a dash.
-  const people = [...personTotals.entries()]
+  const people = [...new Set([...personTotals.entries()]
     .filter(([, hours]) => round2(hours) > 0)
-    .map(([name]) => name)
+    .map(([personId]) => labelOf(personId)))]
     .sort((a, b) => a.localeCompare(b))
 
   const [year, monthIdx] = startDate.split('-').map(Number)
@@ -251,20 +318,22 @@ export const i7Invoice = (code: string): 'i7' | 'MME' =>
 export function buildI7Days(
   entries: I7Entry[],
   rateOf: (personId: string, ym: string) => number,
-  namesByPerson: Record<string, string>,
+  namesByPerson: Record<string, string>,  // person id → display label (personLabels)
 ): I7DayRow[] {
   const acc = new Map<string, I7DayRow>()
   for (const e of entries) {
     const code = (e.i7Code || NO_CODE).trim() || NO_CODE
     const activity = (e.activity || NO_ACTIVITY).trim() || NO_ACTIVITY
     const project = mapCodeToProject(code)
-    const person = namesByPerson[e.personId] ?? `Person ${e.personId.slice(0, 8)}`
+    const person = namesByPerson[e.personId] ?? unnamedPerson(e.personId)
     const hours = e.duration / 3600
     // Costed at the rate for the month the day falls in, the rule the screen
     // uses, so a rate change mid-range lands on the right side of it.
     const cost = hours * rateOf(e.personId, e.date.slice(0, 7))
 
-    const key = `${e.date}|${code}|${activity}|${person}`
+    // Joined by person id, never by the name shown: two people who share a
+    // name are two lines of work (audit, 13 October 2026).
+    const key = `${e.date}|${code}|${activity}|${e.personId}`
     const row = acc.get(key)
     if (row) { row.hours += hours; row.cost += cost }
     else acc.set(key, {
