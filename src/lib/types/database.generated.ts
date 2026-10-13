@@ -3073,6 +3073,17 @@ export type Database = {
         Returns: number
       }
       my_person_id: { Args: never; Returns: string }
+      my_work_list: {
+        Args: {
+          p_accounts: number[]
+          p_board_ids: number[]
+          p_done_since: string
+          p_hidden_accounts: number[]
+          p_limit: number
+          p_open_only: boolean
+        }
+        Returns: Json
+      }
       portal_can_sign_in: { Args: { p_email: string }; Returns: boolean }
       portal_end_sessions: { Args: { p_user: string }; Returns: undefined }
       portal_two_step_status: {
