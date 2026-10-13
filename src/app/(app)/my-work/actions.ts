@@ -23,7 +23,6 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { loadRealAccess, verifiedSession } from '@/lib/access/resolve'
 import { canSetOrder, cleanLevels, cleanSavedOrder, priorityRights } from '@/lib/monday/worklist/team-priority'
 import { loadMemberships, loadPriorityGrant } from '@/lib/monday/worklist/team-priority-data'
-import { missingColumn } from '@/lib/monday/worklist/missing-column'
 import { notifyTeamOrder } from '@/lib/notifications/run'
 
 export interface SaveResult {
@@ -41,9 +40,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const CONFLICT = 'Someone else changed this order a moment ago. Reload to see it.'
 
 /**
- * `levels` is the team's workspace and board order (migration 087). Left out
- * (undefined), the stored one is kept as it is, which is what an editor that
- * cannot order levels yet sends.
+ * `levels` is the team's workspace and board order, saved with the rest every
+ * time. It used to be optional, for an editor from before migration 087; that
+ * editor is long gone (audit, 13 October 2026).
  *
  * `loadedAt` is the stamp of the order the editor is changing: the saved
  * order's updated_at when the page loaded it, or the one the last save
@@ -58,8 +57,8 @@ export async function saveTeamPriority(
   if (typeof teamId !== 'string' || !UUID.test(teamId)) return { ok: false, error: 'That team does not exist.' }
   const clean = cleanSavedOrder(order, pinned)
   if (!clean) return { ok: false, error: 'The order could not be read. Reload the page and try again.' }
-  const cleanLv = levels === undefined ? undefined : cleanLevels(levels)
-  if (cleanLv === null) return { ok: false, error: 'The workspace and board order could not be read. Reload the page and try again.' }
+  const cleanLv = cleanLevels(levels)
+  if (!cleanLv) return { ok: false, error: 'The workspace and board order could not be read. Reload the page and try again.' }
   if (loadedAt !== null && (typeof loadedAt !== 'string' || Number.isNaN(Date.parse(loadedAt)))) {
     return { ok: false, error: 'The order could not be read. Reload the page and try again.' }
   }
@@ -99,7 +98,8 @@ export async function saveTeamPriority(
   const row = {
     step_order: clean.order,
     pinned: clean.pinned,
-    ...(cleanLv ? { workspace_order: cleanLv.workspaces, board_order: cleanLv.boards } : {}),
+    workspace_order: cleanLv.workspaces,
+    board_order: cleanLv.boards,
     updated_by: me.id,
     updated_at: savedAt,
   }
@@ -109,9 +109,6 @@ export async function saveTeamPriority(
   const { data, error } = loadedAt
     ? await db.from('monday_team_priority').update(row).eq('team_id', teamId).eq('updated_at', loadedAt).select('updated_at')
     : await db.from('monday_team_priority').insert({ team_id: teamId, ...row }).select('updated_at')
-  if (missingColumn(error, 'workspace_order') || missingColumn(error, 'board_order')) {
-    return { ok: false, error: 'Ordering by workspace and board needs migration 087 in the database. Nothing was saved.' }
-  }
   if (error && (error as { code?: string }).code === '23505') return { ok: false, conflict: true, error: CONFLICT }
   if (error) {
     // The database's own words go to the server log, not to the browser

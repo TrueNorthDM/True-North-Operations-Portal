@@ -113,7 +113,7 @@ function swap<T>(list: T[], i: number, dir: -1 | 1): T[] {
 }
 
 export function TeamPriorityEditor({
-  team, teams, steps, saved, savedAt, savedBy, savedBySelf, preview = false, stickyTop = 65, levelsAvailable = false,
+  team, teams, steps, saved, savedAt, savedBy, savedBySelf, preview = false, stickyTop = 65,
   canSeeEveryone = true, today: givenToday,
 }: {
   team: { id: string; name: string }
@@ -128,8 +128,6 @@ export function TeamPriorityEditor({
   /** Design check only: nothing is saved. */
   preview?: boolean
   stickyTop?: number
-  /** Migration 087 is in: whole workspaces and boards can be ordered. */
-  levelsAvailable?: boolean
   /** "See everyone's list" (mw-everyone). Off: no Everyone to go back to. */
   canSeeEveryone?: boolean
   /** Today in New York, YYYY-MM-DD, from the server. A design check leaves it out. */
@@ -181,9 +179,9 @@ export function TeamPriorityEditor({
   const version = useRef<string | null>(savedAt)
   const conflicted = useRef(false)
 
-  const call = async (body: SavedOrder & { levels?: Levels | null }): Promise<SaveResult> => {
+  const call = async (body: SavedOrder & { levels: Levels }): Promise<SaveResult> => {
     try {
-      return await saveTeamPriority(team.id, body.order, body.pinned, levelsAvailable ? body.levels ?? undefined : undefined, version.current)
+      return await saveTeamPriority(team.id, body.order, body.pinned, body.levels, version.current)
     } catch {
       return { ok: false, error: 'The connection dropped before it saved.' }
     }
@@ -195,7 +193,7 @@ export function TeamPriorityEditor({
       if (timer.current) { clearTimeout(timer.current); timer.current = null }
       let sent = false
       while (queued.current && !conflicted.current) {
-        const body = queued.current as SavedOrder & { levels?: Levels | null }
+        const body = queued.current as SavedOrder & { levels: Levels }
         queued.current = null
         setSave({ state: 'saving' })
         const res = await call(body)
@@ -627,50 +625,48 @@ export function TeamPriorityEditor({
           of its own and read as a filter, when it decides what the whole page
           below is ordering. */}
       <div className="flex items-start gap-4 flex-wrap border-t border-[var(--panel-border)] pt-3">
-        <div className={`flex flex-col gap-1 ${levelsAvailable ? 'pt-1.5' : 'flex-row items-center gap-3 flex-1'}`}>
+        <div className="flex flex-col gap-1 pt-1.5">
           {/* Read out as it changes, without taking focus: Saving, Saved, Not saved. */}
           <div role="status" aria-live="polite">{status}</div>
-          <span className={`text-[13px] text-muted ${levelsAvailable ? '' : 'ml-auto'}`}>
+          <span className="text-[13px] text-muted">
             {narrowed ? `${n(visible.length)} of ${n(list.length)} open steps shown` : `${n(list.length)} open steps on the ${team.name} team`}
           </span>
         </div>
 
-        {levelsAvailable && (
-          <div className="ml-auto flex flex-col items-end gap-2 max-w-full">
-            <div className="flex items-center justify-end gap-x-3 gap-y-1.5 flex-wrap max-w-full">
-              <span aria-hidden="true" className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Order by</span>
-              <Segmented<Level>
-                label="Order by"
-                value={level}
-                onChange={setLevel}
-                options={([['workspace', 'Workspace', wsRank.length], ['board', 'Board', boardRank.length], ['item', 'Item', list.length]] as const).map(([k, label, count]) => ({
-                  key: k,
-                  label: `${label} · ${n(count)}`,
-                  glyph: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="hidden sm:block">{LEVEL_ICON[k]}</svg>,
-                }))}
-              />
-            </div>
-            <p className="text-[12.5px] text-muted leading-relaxed m-0 text-right">
-              {level === 'workspace' && (wsSet.length
-                ? 'Whole workspaces, in your order: everything in the first comes before anything in the second. Every board and item inside moves with its workspace.'
-                : "Not set yet: workspaces follow True North's order. Moving one here starts your team's own order.")}
-              {level === 'board' && (boardSet.length
-                ? 'Boards in your order, inside their workspace. Every item on a board moves with it; inside a board, the soonest deadline comes first.'
-                : "Not set yet: boards follow True North's order inside each workspace. Moving one here starts your team's own order.")}
-              {level === 'item' && 'Single steps. A step you move here keeps its place above everything, even other workspaces.'}
-            </p>
-            {level === 'workspace' && wsSet.length > 0 && (
-              <button type="button" onClick={() => changeLevels([], boardSet)} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
-                Reset workspaces to True North&apos;s order
-              </button>
-            )}
-            {level === 'board' && boardSet.length > 0 && (
-              <button type="button" onClick={() => changeLevels(wsSet, [])} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
-                Reset boards to True North&apos;s order
-              </button>
-            )}
+        <div className="ml-auto flex flex-col items-end gap-2 max-w-full">
+          <div className="flex items-center justify-end gap-x-3 gap-y-1.5 flex-wrap max-w-full">
+            <span aria-hidden="true" className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Order by</span>
+            <Segmented<Level>
+              label="Order by"
+              value={level}
+              onChange={setLevel}
+              options={([['workspace', 'Workspace', wsRank.length], ['board', 'Board', boardRank.length], ['item', 'Item', list.length]] as const).map(([k, label, count]) => ({
+                key: k,
+                label: `${label} · ${n(count)}`,
+                glyph: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="hidden sm:block">{LEVEL_ICON[k]}</svg>,
+              }))}
+            />
           </div>
-        )}
+          <p className="text-[12.5px] text-muted leading-relaxed m-0 text-right">
+            {level === 'workspace' && (wsSet.length
+              ? 'Whole workspaces, in your order: everything in the first comes before anything in the second. Every board and item inside moves with its workspace.'
+              : "Not set yet: workspaces follow True North's order. Moving one here starts your team's own order.")}
+            {level === 'board' && (boardSet.length
+              ? 'Boards in your order, inside their workspace. Every item on a board moves with it; inside a board, the soonest deadline comes first.'
+              : "Not set yet: boards follow True North's order inside each workspace. Moving one here starts your team's own order.")}
+            {level === 'item' && 'Single steps. A step you move here keeps its place above everything, even other workspaces.'}
+          </p>
+          {level === 'workspace' && wsSet.length > 0 && (
+            <button type="button" onClick={() => changeLevels([], boardSet)} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
+              Reset workspaces to True North&apos;s order
+            </button>
+          )}
+          {level === 'board' && boardSet.length > 0 && (
+            <button type="button" onClick={() => changeLevels(wsSet, [])} className="text-[12.5px] font-semibold text-tn-teal hover:underline">
+              Reset boards to True North&apos;s order
+            </button>
+          )}
+        </div>
       </div>
 
       {/* The agreement card: the team's order against the default one, and the

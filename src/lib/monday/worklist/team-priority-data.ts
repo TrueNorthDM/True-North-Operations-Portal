@@ -8,7 +8,6 @@ import {
   type GrantScope, type Levels, type Membership, type Ranking, type SavedOrder,
 } from './team-priority'
 import type { WorkRow } from './data'
-import { missingColumn } from './missing-column'
 import { placedAbove } from './order-bands'
 
 type Client = Db
@@ -29,10 +28,6 @@ export async function loadMemberships(supabase: Client, personId: string): Promi
 }
 
 export interface SavedTeamOrder {
-  /** False until migration 084 has been run: the feature stays out of sight. */
-  available: boolean
-  /** False until migration 087 has been run: the editor orders single items only. */
-  levelsAvailable: boolean
   saved: SavedOrder | null
   updatedAt: string | null
   updatedById: string | null
@@ -40,19 +35,9 @@ export interface SavedTeamOrder {
 }
 
 /** A read that failed because the table is not there yet, rather than for any other reason. */
-function missingTable(error: { code?: string; message?: string } | null, table = 'monday_team_priority'): boolean {
+function missingTable(error: { code?: string; message?: string } | null, table: string): boolean {
   if (!error) return false
   return error.code === 'PGRST205' || error.code === '42P01' || (error.message ?? '').includes(table)
-}
-
-/**
- * Whether migration 084 has been run, for a page that has no team's order to read.
- * A plain read of one row, not a HEAD request: a HEAD answer has no body, so
- * the error that names the missing table would never arrive.
- */
-export async function priorityTableExists(supabase: Client): Promise<boolean> {
-  const { error } = await supabase.from('monday_team_priority').select('team_id').limit(1)
-  return !error
 }
 
 /** Enough of a team's saved order to know whether it has one, without reading the whole list. */
@@ -80,57 +65,49 @@ function levelsFrom(workspaces: unknown, boards: unknown): Levels | null {
 export async function loadOrderSummaries(
   supabase: Client,
   teamIds: string[],
-): Promise<{ available: boolean; byTeam: Map<string, OrderSummary> }> {
-  if (!teamIds.length) return { available: await priorityTableExists(supabase), byTeam: new Map() }
-  const read = (cols: string) => supabase.from('monday_team_priority').select(cols).in('team_id', teamIds)
-  let { data, error } = await read('team_id, pinned, updated_at, workspace_order, board_order')
-  // Migration 087 adds the level columns. Without them a team's order is its
-  // placed steps alone, which is what it was before.
-  if (missingColumn(error, 'workspace_order') || missingColumn(error, 'board_order')) {
-    ;({ data, error } = await read('team_id, pinned, updated_at'))
-  }
+): Promise<Map<string, OrderSummary> | null> {
+  if (!teamIds.length) return new Map()
+  const { data, error } = await supabase.from('monday_team_priority')
+    .select('team_id, pinned, updated_at, workspace_order, board_order')
+    .in('team_id', teamIds)
+  // A failed read leaves the list in the default order for this page load
+  // (null) rather than failing My Work: a list in the default order is still
+  // the list. The compatibility reads for migrations 084 and 087 are gone,
+  // both ran long ago (audit, 13 October 2026).
   if (error) {
-    if (!missingTable(error)) console.error('[team-priority] reading saved orders failed:', error.message)
-    return { available: false, byTeam: new Map() }
+    console.error('[team-priority] reading saved orders failed:', error.message)
+    return null
   }
-  type R = { team_id: string; pinned: unknown; updated_at: string | null; workspace_order?: unknown; board_order?: unknown }
-  return {
-    available: true,
-    byTeam: new Map(((data ?? []) as unknown as R[]).map(r => {
-      const placed = Array.isArray(r.pinned) ? r.pinned.length : 0
-      return [r.team_id, {
-        placed,
-        ordered: placed > 0 || hasLevels(levelsFrom(r.workspace_order, r.board_order)),
-        updatedAt: r.updated_at,
-      }]
-    })),
-  }
+  type R = { team_id: string; pinned: unknown; updated_at: string | null; workspace_order: unknown; board_order: unknown }
+  return new Map(((data ?? []) as unknown as R[]).map(r => {
+    const placed = Array.isArray(r.pinned) ? r.pinned.length : 0
+    return [r.team_id, {
+      placed,
+      ordered: placed > 0 || hasLevels(levelsFrom(r.workspace_order, r.board_order)),
+      updatedAt: r.updated_at,
+    }]
+  }))
 }
 
-export async function loadSavedOrder(supabase: Client, teamId: string): Promise<SavedTeamOrder> {
-  const read = (cols: string) => supabase.from('monday_team_priority').select(cols).eq('team_id', teamId).maybeSingle()
-  let levelsAvailable = true
-  let { data, error } = await read('step_order, pinned, updated_at, updated_by, workspace_order, board_order')
-  // Migration 087 adds the level columns. Until it is run the order is read
-  // without them and the editor offers single items only, as it did before.
-  if (missingColumn(error, 'workspace_order') || missingColumn(error, 'board_order')) {
-    levelsAvailable = false
-    ;({ data, error } = await read('step_order, pinned, updated_at, updated_by'))
-  }
-  const none = { saved: null, updatedAt: null, updatedById: null, updatedByName: null }
-  // Any failure hides the feature for this page load rather than failing My
-  // Work: a list in the default order is still the list. Only the missing table
-  // is expected, so anything else is said in the server log.
+/**
+ * A team's saved order, with who saved it. Null when the read failed: the
+ * page then shows the list in the default order, and logs why.
+ */
+export async function loadSavedOrder(supabase: Client, teamId: string): Promise<SavedTeamOrder | null> {
+  const { data, error } = await supabase.from('monday_team_priority')
+    .select('step_order, pinned, updated_at, updated_by, workspace_order, board_order')
+    .eq('team_id', teamId)
+    .maybeSingle()
   if (error) {
-    if (!missingTable(error)) console.error('[team-priority] reading the saved order failed:', error.message)
-    return { available: false, levelsAvailable: false, ...none }
+    console.error('[team-priority] reading the saved order failed:', error.message)
+    return null
   }
 
   const row = data as unknown as {
     step_order: unknown; pinned: unknown; updated_at: string | null; updated_by: string | null
-    workspace_order?: unknown; board_order?: unknown
+    workspace_order: unknown; board_order: unknown
   } | null
-  if (!row) return { available: true, levelsAvailable, ...none }
+  if (!row) return { saved: null, updatedAt: null, updatedById: null, updatedByName: null }
 
   const strings = (v: unknown) => (Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : [])
   let updatedByName: string | null = null
@@ -139,12 +116,10 @@ export async function loadSavedOrder(supabase: Client, teamId: string): Promise<
     updatedByName = (who as { full_name: string } | null)?.full_name ?? null
   }
   return {
-    available: true,
-    levelsAvailable,
     saved: {
       order: strings(row.step_order),
       pinned: strings(row.pinned),
-      levels: levelsAvailable ? levelsFrom(row.workspace_order, row.board_order) : null,
+      levels: levelsFrom(row.workspace_order, row.board_order),
     },
     updatedAt: row.updated_at,
     updatedById: row.updated_by,

@@ -29,7 +29,8 @@ const LEADER = 'leader-1'
 const LOADED = '2026-10-09T14:00:00.000Z'
 const ORDER = ['100|people4|7', '101|people4|7']
 
-const save = (loadedAt: string | null, order = ORDER) => saveTeamPriority(TEAM, order, [order[1]], undefined, loadedAt)
+const LEVELS = { workspaces: ['SEO'], boards: [7] }
+const save = (loadedAt: string | null, order = ORDER) => saveTeamPriority(TEAM, order, [order[1]], LEVELS, loadedAt)
 
 beforeEach(() => {
   fake = fakeDb({
@@ -103,6 +104,20 @@ describe('two leaders on one team', () => {
     expect(r.conflict).toBe(true)
     expect(fake.tables.monday_team_priority).toHaveLength(1)
     expect(fake.tables.monday_team_priority[0].step_order).toEqual([])
+  })
+
+  it('saves the workspace and board order with the steps', async () => {
+    const r = await save(LOADED)
+    expect(r.ok).toBe(true)
+    expect(fake.tables.monday_team_priority[0]).toMatchObject({ workspace_order: ['SEO'], board_order: [7] })
+  })
+
+  // The editor always sends its levels: leaving them out was for an editor
+  // from before migration 087 (audit, 13 October 2026).
+  it('refuses an order without its workspace and board order, and changes nothing', async () => {
+    const r = await saveTeamPriority(TEAM, ORDER, [ORDER[1]], undefined, LOADED)
+    expect(r).toEqual({ ok: false, error: 'The workspace and board order could not be read. Reload the page and try again.' })
+    expect(fake.writes).toEqual([])
   })
 
   it('refuses a stamp that is not a time', async () => {

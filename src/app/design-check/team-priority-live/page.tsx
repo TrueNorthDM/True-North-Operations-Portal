@@ -134,7 +134,6 @@ export default async function TeamPriorityLive(
             savedBySelf
             preview
             stickyTop={0}
-            levelsAvailable
           />
         )}
 

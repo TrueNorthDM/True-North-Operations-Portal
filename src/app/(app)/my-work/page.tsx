@@ -27,7 +27,7 @@ import {
   canSetOrder, editorTeamFor, hasLevels, orderTeamFor, priorityRights, settableTeams, stepKey, type Membership, type TeamOrderView,
 } from '@/lib/monday/worklist/team-priority'
 import {
-  loadMemberships, loadOrderSummaries, loadPriorityGrant, loadSavedOrder, rankTeam, withTeamRanks, type OrderSummary,
+  loadMemberships, loadOrderSummaries, loadPriorityGrant, loadSavedOrder, rankTeam, withTeamRanks,
 } from '@/lib/monday/worklist/team-priority-data'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
@@ -147,9 +147,9 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
         loadWorklist(supabase, { teamId, openOnly: true }),
         loadSavedOrder(supabase, teamId),
       ])
-      // Until migration 084 is run there is nowhere to save to, so the editor
-      // does not open and the list below is shown instead.
-      if (order.available) {
+      // A saved order that could not be read does not open the editor on an
+      // empty one: the list below is shown instead, and the server log says why.
+      if (order) {
         const { open } = rankTeam(teamWork.rows, null)
         return (
           <TeamPriorityEditor
@@ -175,7 +175,6 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
             savedAt={order.updatedAt}
             savedBy={order.updatedByName}
             savedBySelf={!!selfPersonId && order.updatedById === selfPersonId}
-            levelsAvailable={order.levelsAvailable}
             canSeeEveryone={everyone}
             today={today}
           />
@@ -199,17 +198,12 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
 
   // Which of those teams have an order, in one small query. A person follows
   // their main team's order, or another of theirs when the main one has none
-  // (orderTeamFor), so this has to be known before the team is chosen. With no
-  // team to follow, only whether the table exists is asked, and only of someone
-  // who could open the editor.
-  const summaries = candidates.length
-    ? await loadOrderSummaries(supabase, candidates)
-    : settable.length
-      ? await loadOrderSummaries(supabase, [])
-      : { available: false, byTeam: new Map<string, OrderSummary>() }
+  // (orderTeamFor), so this has to be known before the team is chosen. Null
+  // when the read failed: the list keeps the default order for this load.
+  const summaries = await loadOrderSummaries(supabase, candidates)
   // Placed steps, or a workspace or board order: anything that makes the list
   // differ from True North's.
-  const hasOrder = (id: string) => summaries.byTeam.get(id)?.ordered ?? false
+  const hasOrder = (id: string) => summaries?.get(id)?.ordered ?? false
   const orderTeamId = personId ? orderTeamFor(orderChoices, sp.pteam, hasOrder) : teamFilter
   const canEdit = !!orderTeamId && canSetOrder(orderTeamId, myTeams, rights)
 
@@ -217,7 +211,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
   // order, which they cannot set: their list is in the default order, exactly
   // as it was, at no extra cost. Anyone on several teams always gets the line
   // above the list, so they can see every team they are on and switch.
-  const needed = !!orderTeamId && summaries.available && (canEdit || hasOrder(orderTeamId) || orderChoices.length > 1)
+  const needed = !!orderTeamId && summaries !== null && (canEdit || hasOrder(orderTeamId) || orderChoices.length > 1)
   // A person's place in their team's order is counted against the whole team,
   // so ranking their list means reading the team's open steps too. A team's own
   // list already holds them.
@@ -230,7 +224,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
 
   let rows = data.rows
   let teamOrder: TeamOrderView | null = null
-  if (orderTeamId && order?.available) {
+  if (orderTeamId && order) {
     const { ranking, trueNorth } = rankTeam(teamWork ? teamWork.rows : data.rows, order.saved)
     rows = withTeamRanks(data.rows, ranking, trueNorth)
     teamOrder = {
@@ -247,8 +241,6 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
         .sort((a, b) => a.name.localeCompare(b.name)),
     }
   }
-  const available = summaries.available
-
   return (
     <WorkList
       data={rows === data.rows ? data : { ...data, rows }}
@@ -258,7 +250,7 @@ async function WorkTab({ sp }: { sp: { person?: string; team?: string; done?: st
       teams={everyone ? teams.map(t => ({ value: t.id, label: t.name })) : []}
       canSeeEveryone={everyone}
       teamOrder={teamOrder}
-      canSetPriority={available && settable.length > 0}
+      canSetPriority={summaries !== null && settable.length > 0}
       today={today}
     />
   )

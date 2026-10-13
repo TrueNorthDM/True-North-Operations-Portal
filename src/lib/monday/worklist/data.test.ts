@@ -1,10 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { loadWorklist } from './data'
 
-// The privileged reader, for the one value a non-admin's own read cannot see.
-// A module-level switch rather than a fixed mock, so each test says what the
-// admin read returns.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// The privileged reader: the one settings value a non-admin's own read cannot
+// see, and the work list itself (my_work_list, migration 110). A module-level
+// switch rather than a fixed mock, so each test says what the admin read
+// returns; the list is answered from the test's own tables.
 const adminSettings: { slug: string | null } = { slug: null }
+const admin: { tables: Record<string, any[]>; calls: Record<string, unknown>[]; error: string | null } = { tables: {}, calls: [], error: null }
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
     from: () => ({
@@ -12,10 +16,36 @@ vi.mock('@/lib/supabase/admin', () => ({
         eq: () => ({ maybeSingle: async () => ({ data: { monday_account_slug: adminSettings.slug }, error: null }) }),
       }),
     }),
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      if (fn !== 'my_work_list') throw new Error(`unexpected rpc ${fn}`)
+      admin.calls.push(args)
+      if (admin.error) return { data: null, error: { message: admin.error } }
+      return { data: myWorkList(admin.tables.monday_assignments ?? [], args), error: null }
+    },
   }),
 }))
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * my_work_list as migration 110 writes it: the boards given, the hidden
+ * accounts left out, only the accounts given (null is everyone), the open or
+ * recent window, open and soonest first, at most p_limit rows.
+ */
+function myWorkList(rows: any[], a: Record<string, any>): any[] {
+  const out = rows
+    .filter(r => (a.p_board_ids as number[]).includes(r.board_id))
+    .filter(r => !(a.p_hidden_accounts as number[]).includes(r.monday_user_id))
+    .filter(r => a.p_accounts === null || (a.p_accounts as number[]).includes(r.monday_user_id))
+    .filter(r => r.status_done !== true
+      || (!a.p_open_only && (a.p_done_since === null || (r.item_updated_at != null && r.item_updated_at >= a.p_done_since))))
+    .sort((x, y) => {
+      const done = (v: boolean | null) => (v == null ? 0 : v ? 2 : 1)
+      return done(x.status_done) - done(y.status_done)
+        || (x.due_date == null ? 1 : 0) - (y.due_date == null ? 1 : 0)
+        || String(x.due_date ?? '').localeCompare(String(y.due_date ?? ''))
+        || x.id - y.id
+    })
+  return a.p_limit == null ? out : out.slice(0, a.p_limit)
+}
 
 /**
  * A stand-in for the Supabase client that APPLIES the filters it is given.
@@ -28,6 +58,10 @@ vi.mock('@/lib/supabase/admin', () => ({
  */
 function fakeClient(tables: Record<string, any[]>) {
   const applied: Record<string, string[][]> = {}
+  const ranged: string[] = []
+  admin.tables = tables
+  admin.calls = []
+  admin.error = null
 
   const builder = (table: string) => {
     const filters: any[][] = []
@@ -59,7 +93,7 @@ function fakeClient(tables: Record<string, any[]>) {
       not: (...a: any[]) => { filters.push(['not', ...a]); return self },
       or: (...a: any[]) => { filters.push(['or', ...a]); return self },
       order: () => self,
-      range: () => self,
+      range: () => { ranged.push(table); return self },
       maybeSingle: async () => ({ data: (tables[table] ?? [])[0] ?? null, error: null }),
       then: (resolve: any, reject: any) => {
         applied[table] = filters.map(f => f.map(String))
@@ -72,7 +106,15 @@ function fakeClient(tables: Record<string, any[]>) {
     return self
   }
 
-  return { client: { from: (t: string) => builder(t) } as any, applied }
+  // The per-account counts the truncated Everyone view asks for (migration 104).
+  const rpc = async (fn: string) => {
+    if (fn !== 'monday_assignment_counts') throw new Error(`unexpected rpc ${fn}`)
+    const accounts: Record<string, number> = {}
+    for (const r of tables.monday_assignments ?? []) accounts[r.monday_user_id] = (accounts[r.monday_user_id] ?? 0) + 1
+    return { data: { accounts, steps: {} }, error: null }
+  }
+
+  return { client: { from: (t: string) => builder(t), rpc } as any, applied, ranged }
 }
 
 const assignment = (over: Record<string, unknown>) => ({
@@ -121,6 +163,7 @@ describe('loadWorklist and the Settings switches', () => {
     const r = await loadWorklist(client, { includeDone: true })
     expect(r.rows.map(x => x.itemName)).not.toContain('On a board switched off')
     expect(applied.monday_assignments.some(f => f[0] === 'in' && f[1] === 'board_id')).toBe(true)
+    expect(admin.calls[0].p_board_ids).toEqual([10])
   })
 
   it('never fetches work assigned to a hidden person', async () => {
@@ -128,6 +171,7 @@ describe('loadWorklist and the Settings switches', () => {
     const r = await loadWorklist(client, { includeDone: true })
     expect(r.rows.map(x => x.itemName)).not.toContain('Assigned to a hidden person')
     expect(applied.monday_assignments.some(f => f[0] === 'not' && f[1] === 'monday_user_id')).toBe(true)
+    expect(admin.calls[0].p_hidden_accounts).toEqual([2])
   })
 
   it('counts only what the switches allow', async () => {
@@ -202,5 +246,72 @@ describe('loadWorklist and steps read by deadline', () => {
     const { client } = fakeClient(t)
     const [row] = (await loadWorklist(client, { includeDone: true })).rows
     expect(row.url).toBe('https://truenorthdigitalmarketing.monday.com/boards/10/pulses/100')
+  })
+})
+
+// Item 3 of the 13 October audit: the list is one database call, not a read
+// 1,000 rows at a time, and it asks for the same rows the paged read did.
+describe('loadWorklist reads the list in one call (migration 110)', () => {
+  const many = (n: number) => {
+    const t = base()
+    t.monday_assignments = Array.from({ length: n }, (_, i) =>
+      assignment({ id: i + 1, item_id: 1000 + i, item_name: `Step ${i + 1}` }))
+    return t
+  }
+
+  it('reads past 1,000 rows in a single call', async () => {
+    const { client, ranged } = fakeClient(many(2500))
+    const r = await loadWorklist(client, { personId: 'p1', includeDone: true })
+    expect(admin.calls).toHaveLength(1)
+    expect(r.rows).toHaveLength(2500)
+    expect(r.truncated).toBe(false)
+    // No page of rows over PostgREST: the count is the only other read.
+    expect(ranged).not.toContain('monday_assignments')
+  })
+
+  it('asks for a person\'s accounts and every row', async () => {
+    const { client } = fakeClient(base())
+    await loadWorklist(client, { personId: 'p1', includeDone: true })
+    expect(admin.calls[0]).toMatchObject({ p_accounts: [1], p_limit: null, p_done_since: null, p_open_only: false })
+  })
+
+  it('caps the unfiltered view at 5,000 and says so', async () => {
+    const { client } = fakeClient(many(5200))
+    const r = await loadWorklist(client, { includeDone: true })
+    expect(admin.calls[0]).toMatchObject({ p_accounts: null, p_limit: 5000 })
+    expect(r.rows).toHaveLength(5000)
+    expect(r.truncated).toBe(true)
+    expect(r.matching).toBe(5200)
+  })
+
+  it('does not cap the Report\'s uncapped read', async () => {
+    const { client } = fakeClient(many(5200))
+    const r = await loadWorklist(client, { uncapped: true, includeDone: true })
+    expect(admin.calls[0].p_limit).toBeNull()
+    expect(r.rows).toHaveLength(5200)
+    expect(r.truncated).toBe(false)
+  })
+
+  it('keeps finished work out of an open-only read, and recent finished work in the default one', async () => {
+    const t = base()
+    t.monday_assignments = [
+      assignment({ id: 1, item_name: 'Open' }),
+      assignment({ id: 2, item_id: 201, item_name: 'Finished lately', status_done: true, item_updated_at: new Date().toISOString() }),
+      assignment({ id: 3, item_id: 202, item_name: 'Finished long ago', status_done: true, item_updated_at: '2020-01-01T00:00:00Z' }),
+    ]
+    const open = fakeClient(t)
+    expect((await loadWorklist(open.client, { personId: 'p1', openOnly: true })).rows.map(r => r.itemName)).toEqual(['Open'])
+    expect(admin.calls[0].p_open_only).toBe(true)
+
+    const recent = fakeClient(t)
+    const r = await loadWorklist(recent.client, { personId: 'p1' })
+    expect(admin.calls[0].p_done_since).toEqual(expect.any(String))
+    expect(r.rows.map(x => x.itemName)).toEqual(['Open', 'Finished lately'])
+  })
+
+  it('a failed read stops the page instead of showing no work', async () => {
+    const { client } = fakeClient(base())
+    admin.error = 'permission denied'
+    await expect(loadWorklist(client, { includeDone: true })).rejects.toThrow('permission denied')
   })
 })

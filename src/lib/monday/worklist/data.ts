@@ -13,15 +13,12 @@ import { assignmentCounts } from './counts'
 import { selectAllPages } from './resilience'
 import { unresolvedAccounts } from './links'
 import { readStages, type StepStage } from './steps'
-import { missingColumn } from './ingest'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { COMPLETED_MONTHS } from './constants'
 
 export { COMPLETED_MONTHS }
 
 type Client = Db
-
-const PAGE = 1000
 
 /**
  * How much the unfiltered view will read before it stops.
@@ -305,7 +302,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     status_text: string | null; status_done: boolean | null; status_color: string | null
     due_date: string | null; item_updated_at: string | null
     parent_item_id: number | null; parent_board_id: number | null
-    status_col: string | null; due_col?: string | null; item_language?: string | null
+    status_col: string | null; due_col: string | null; item_language: string | null
   }
   const since = new Date()
   since.setMonth(since.getMonth() - COMPLETED_MONTHS)
@@ -320,9 +317,9 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   // make room, otherwise hiding a board makes the list worse instead of shorter.
   const includedBoards = boardList.filter(b => b.included).map(b => b.id)
 
-  let SELECT = 'id, board_id, item_id, item_name, parent_item_name, parent_item_id, parent_board_id, group_title, people_col, monday_user_id, status_text, status_done, status_color, due_date, item_updated_at, status_col, due_col, item_language'
-  // A builder for a select list that changes with the migrations run (SELECT
-  // is reassigned below), so it has no single generated type.
+  // The counts below are asked over PostgREST with the same filters the list
+  // is read with (my_work_list), so the two cannot differ. A builder that
+  // takes any table query, so it has no single generated type.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const applyFilters = (q: any): any => {
     let out = q
@@ -351,35 +348,32 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   // Unknown is not "everything": the Everyone view would say it showed it all.
   if (countErr) throw new Error(`Could not count the work: ${countErr.message}`)
 
-  const cap = onlyAccounts || f.uncapped ? Number.POSITIVE_INFINITY : UNFILTERED_CAP
-  const rows: A[] = []
-  let truncated = false
-  for (let from = 0; from < cap; from += PAGE) {
-    // Open work first, soonest deadline first, when the Everyone view stops at
-    // its cap. Ordered by id it kept whichever rows happened to be inserted
-    // first, which after every sync is a different, arbitrary 5,000.
-    const page$ = () => applyFilters(
-      supabase.from('monday_assignments').select(SELECT)
-        .order('status_done', { ascending: true, nullsFirst: true })
-        .order('due_date', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true })
-        .range(from, from + PAGE - 1),
-    )
-    let { data, error } = (await page$()) as { data: A[] | null; error: { message: string } | null }
-    // Columns from migrations that may not have run yet (082, 083): read
-    // without them rather than failing the page.
-    for (const col of ['item_language', 'due_col']) {
-      if (from === 0 && missingColumn(error, col)) {
-        SELECT = SELECT.replace(`, ${col}`, '')
-        ;({ data, error } = (await page$()) as { data: A[] | null; error: { message: string } | null })
-      }
-    }
-    if (error) throw new Error(error.message)
-    const page = (data ?? []) as A[]
-    rows.push(...page)
-    if (page.length < PAGE) break
-    if (from + PAGE >= cap) truncated = (matching ?? 0) > rows.length
-  }
+  const cap = onlyAccounts || f.uncapped ? null : UNFILTERED_CAP
+  // One database call (migration 110), not a read 1,000 rows at a time: the
+  // Everyone view took five round trips and the Report's uncapped read one per
+  // thousand rows, and a board written between two pages could move a row
+  // across the page edge (audit, 13 October 2026). Same rows, same columns,
+  // same filters and order as the paged read: open work first, soonest
+  // deadline first, so the Everyone view's cap keeps the work that matters.
+  // The server's own call: the function is not open to signed-in sessions,
+  // and who is in scope was decided above.
+  const { data: listed, error: listErr } = await (createAdminClient().rpc as unknown as
+    (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>)(
+    'my_work_list', {
+      p_board_ids: includedBoards,
+      p_hidden_accounts: hiddenAccountIds,
+      p_accounts: onlyAccounts,
+      p_open_only: f.openOnly === true,
+      // Open work, plus finished work from the recent past, unless all of it
+      // was asked for. Both are wanted on the page; the difference is which
+      // block they land in.
+      p_done_since: f.includeDone ? null : sinceIso,
+      p_limit: cap,
+    })
+  // A failed read is not an empty list: it would read as nobody's work.
+  if (listErr) throw new Error(`Could not read the work list: ${listErr.message}`)
+  const rows = (Array.isArray(listed) ? listed : []) as A[]
+  const truncated = cap !== null && rows.length >= cap && (matching ?? 0) > rows.length
 
   const linkedAccounts = new Set(personByAccount.keys())
   const out: WorkRow[] = []
@@ -387,13 +381,7 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
   const accountsOnWork = new Set<number>()
   let unlinkedAssignments = 0
 
-  // A board written between two pages can move a row across the page edge;
-  // one step is listed once (audit, 10 October 2026).
-  const seenKeys = new Set<string>()
   for (const a of rows) {
-    const rowKey = `${a.item_id}|${a.people_col}|${a.monday_user_id}`
-    if (seenKeys.has(rowKey)) continue
-    seenKeys.add(rowKey)
     const b = boards.get(a.board_id)
     if (!b || !b.included) continue
     if (hiddenAccounts.has(a.monday_user_id)) continue
