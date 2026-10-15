@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ConfirmModal } from './ConfirmModal'
 import { saveTrBudget } from '@/lib/tsheets/settings-actions'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 interface CurrentBudget {
   hoursAllocated: number | null
@@ -25,14 +26,12 @@ function fmtNum(n: number | null | undefined): string {
   return String(n)
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /** "2026-07-01" -> "Jul 1, 2026" (parsed from the string, so no timezone drift). */
 function dateLabel(d: string): string {
   if (!d) return ''
   const [y, m, day] = d.split('-').map(Number)
   const idx = m - 1
-  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${day}, ${y}` : d
+  return idx >= 0 && idx < 12 ? `${MONTH_SHORT[idx]} ${day}, ${y}` : d
 }
 
 export function BudgetForm({ client, current, onClose }: Props) {

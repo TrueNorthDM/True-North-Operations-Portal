@@ -6,7 +6,8 @@ import { Avatar } from '@/components/Avatar'
 import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
 import { formatDate } from '@/lib/directory/people-types'
-import { MONTHS, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
+import { parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
+import { MONTH_LONG } from '@/lib/format/months'
 
 interface Ann extends CelebrationPerson { years: number; day: number }
 
@@ -28,7 +29,7 @@ export function Anniversaries({ people }: { people: CelebrationPerson[] }) {
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-3">
         <h2 className="text-lg font-bold text-tn-ink">Work anniversaries</h2>
-        <span className="text-xs text-muted">{MONTHS[cm]}</span>
+        <span className="text-xs text-muted">{MONTH_LONG[cm]}</span>
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         {list.length === 0 ? (

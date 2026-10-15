@@ -23,6 +23,7 @@ import { loadI7ByMonth, loadI7Days } from '@/lib/tsheets/report-data'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
+import { csvFile, csvRow } from '@/lib/format/csv'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,13 +35,6 @@ function newestMonth(): string {
   const cur = currentYearMonth()
   return months.includes(cur) ? cur : months[0]
 }
-
-// Quote a CSV cell only when it needs it (comma, quote, newline); escape quotes.
-function cell(v: string | number): string {
-  const s = String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 
 export async function GET(request: Request) {
   const denied = await requirePrivileged(...I7_EXPORT_KEYS)
@@ -78,12 +72,12 @@ export async function GET(request: Request) {
   const HEAD = type === 'internal'
     ? ['Date', 'Invoice', 'Project', 'Job code', 'Activity', 'Person', 'Hours', 'Cost (USD)']
     : ['Month', 'Invoice', 'Project', 'Job code', 'Hours', 'Investment (USD)', 'Share of month (%)']
-  lines.push(row(HEAD))
+  lines.push(csvRow(HEAD))
 
   if (type === 'internal') {
     if (days.length === 0) lines.push(`No i7 hours for ${label}.`)
     for (const d of days) {
-      lines.push(row([d.date, d.invoice, d.project, d.code, d.activity, d.person, d.hours, d.cost]))
+      lines.push(csvRow([d.date, d.invoice, d.project, d.code, d.activity, d.person, d.hours, d.cost]))
     }
   } else if (months.length === 0) {
     lines.push(`No i7 hours for ${label}.`)
@@ -98,17 +92,17 @@ export async function GET(request: Request) {
         for (const jc of p.jobcodes) {
           if (jc.hours <= 0) continue
           // Two decimals, not whole dollars: this file is opened by accounting.
-          lines.push(row([month, inv, p.project, jc.code, jc.hours, round2(jc.cost).toFixed(2), share.jobcode[p.project]?.[jc.code] ?? 0]))
+          lines.push(csvRow([month, inv, p.project, jc.code, jc.hours, round2(jc.cost).toFixed(2), share.jobcode[p.project]?.[jc.code] ?? 0]))
         }
       }
       // A total per month, not one for the range. A single figure at the foot
       // of a file covering nine months is the same trap the rows had.
-      lines.push(row([month, '', `TOTAL ${month}`, '', report.totalHours, round2(total).toFixed(2), 100]))
+      lines.push(csvRow([month, '', `TOTAL ${month}`, '', report.totalHours, round2(total).toFixed(2), 100]))
     }
   }
 
   // BOM so Excel reads UTF-8 (accented names, the em dash) correctly.
-  const csv = '﻿' + lines.join('\r\n') + '\r\n'
+  const csv = csvFile(lines)
   const name = (type === 'internal' ? `i7 Budget Internal Report - ${label}` : `i7 Budget Report - ${label}`) + '.csv'
   const asciiName = name.replace(/[^\x20-\x7e]/g, '-')
 

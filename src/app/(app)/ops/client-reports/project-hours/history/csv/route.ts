@@ -28,15 +28,10 @@ import { historyCsvRows } from '@/lib/timeclock/project-history-rows'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
+import { csvFile, csvRow } from '@/lib/format/csv'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-function cell(v: string | number): string {
-  const s = String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 
 export async function GET(request: Request) {
   const access = await requireSurface('tools')
@@ -62,7 +57,7 @@ export async function GET(request: Request) {
   }
 
   // BOM so Excel reads UTF-8 correctly.
-  const csv = '﻿' + rows.map(row).join('\r\n') + '\r\n'
+  const csv = csvFile(rows.map(csvRow))
   const name = `Project Hours month by month - ${spanWording(from, range.to)}.csv`
 
   return new Response(csv, {

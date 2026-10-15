@@ -2,7 +2,8 @@
 // self-contained block so it can sit side by side with Work anniversaries.
 
 import { Avatar } from '@/components/Avatar'
-import { MONTHS, formatMonthDay, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
+import { formatMonthDay, parseYMD, type CelebrationPerson } from '@/lib/hr/celebrations'
+import { MONTH_LONG } from '@/lib/format/months'
 
 interface Bd extends CelebrationPerson { day: number }
 
@@ -21,7 +22,7 @@ export function Birthdays({ people }: { people: CelebrationPerson[] }) {
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-3">
         <h2 className="text-lg font-bold text-tn-ink">Birthdays</h2>
-        <span className="text-xs text-muted">{MONTHS[cm]}</span>
+        <span className="text-xs text-muted">{MONTH_LONG[cm]}</span>
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         {list.length === 0 ? (

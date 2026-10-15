@@ -8,6 +8,7 @@
  */
 
 import type { ProjectHistoryBlock, ProjectMonthRow } from './projects'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 export type HistoryRowKey = 'hours' | 'employeeCost' | 'contractorCost' | 'donations' | 'net'
 
@@ -46,10 +47,8 @@ export function historyRows(block: ProjectHistoryBlock): HistoryRowKey[] {
     : ['hours', 'employeeCost']
 }
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /** "Jan": the column heading the screen uses. The year is in the title above. */
-export const historyMonthHeading = (ym: string) => MON[Number(ym.slice(5, 7)) - 1]
+export const historyMonthHeading = (ym: string) => MONTH_SHORT[Number(ym.slice(5, 7)) - 1]
 
 /**
  * A project's year so far, the Total column of the PDF and the CSV. Donations

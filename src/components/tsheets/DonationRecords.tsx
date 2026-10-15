@@ -20,9 +20,9 @@ import { saveDonation } from '@/lib/timeclock/money-in-actions'
 import { useConfirm } from '@/components/ui/useConfirm'
 import type { DonationEntry, DonationLogEntry } from '@/lib/timeclock/donations-ledger'
 import { ROUTES } from '@/lib/nav/routes'
+import { MONTH_SHORT } from '@/lib/format/months'
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const monthLabel = (ym: string) => `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
+const monthLabel = (ym: string) => `${MONTH_SHORT[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })
@@ -31,7 +31,7 @@ const money = (n: number) =>
 function when(iso: string): string {
   const d = new Date(iso)
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}, ${time}`
+  return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}, ${time}`
 }
 
 const TH = 'text-left text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted px-3 py-2.5 whitespace-nowrap'

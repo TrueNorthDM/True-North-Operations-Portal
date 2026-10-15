@@ -22,6 +22,7 @@ import { loadReportPeople } from '@/lib/report/people'
 import { loadWaits } from '@/lib/report/waits'
 import { loadWorkload } from '@/lib/report/workload-data'
 import { exportName, overviewCsv, peopleCsv, toFile, waitsCsv, workloadCsv } from '@/lib/report/csv'
+import { csvRow } from '@/lib/format/csv'
 import { loadMethod } from '@/lib/report/method'
 import { readRecording } from '@/lib/report/data'
 import { reportToday } from '@/lib/report/clock'
@@ -60,8 +61,7 @@ export async function GET(request: Request) {
   } else if (tab === 'method') {
     const { sources } = await loadMethod(await readRecording())
     lines = ['Source,State,Cadence,What it carries',
-      ...sources.map(s => [s.name, s.state, s.cadence, s.what].map(v =>
-        /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v).join(','))]
+      ...sources.map(s => csvRow([s.name, s.state, s.cadence, s.what]))]
   } else {
     lines = overviewCsv((await loadReportOverview({ ...filters, period })).overview)
   }

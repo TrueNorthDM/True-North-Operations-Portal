@@ -14,6 +14,7 @@
 
 import { CATEGORY_LABEL, NOTIFICATION_TYPES, TYPE_BY_KEY } from '@/lib/notifications/catalogue'
 import { previousWorkingDay, type MissedDay } from '@/lib/notifications/calendar'
+import { MONTH_LONG, MONTH_SHORT } from '@/lib/format/months'
 
 export type SummaryCategory = 'tools' | 'system'
 
@@ -49,16 +50,14 @@ export interface SummarySection { type: string; heading: string; items: SummaryI
 export interface SummaryStat { type: string; count: number; label: string; alarm: boolean }
 
 const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTH = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const dayParts = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
   return { w: new Date(Date.UTC(y, m - 1, d)).getUTCDay(), m: m - 1, d }
 }
 /** "Wednesday, October 7" */
-export const longDay = (iso: string) => { const p = dayParts(iso); return `${WEEKDAY[p.w]}, ${MONTH[p.m]} ${p.d}` }
+export const longDay = (iso: string) => { const p = dayParts(iso); return `${WEEKDAY[p.w]}, ${MONTH_LONG[p.m]} ${p.d}` }
 /** "Sat, Oct 10" */
-export const shortDay = (iso: string) => { const p = dayParts(iso); return `${WEEKDAY[p.w].slice(0, 3)}, ${MON[p.m]} ${p.d}` }
+export const shortDay = (iso: string) => { const p = dayParts(iso); return `${WEEKDAY[p.w].slice(0, 3)}, ${MONTH_SHORT[p.m]} ${p.d}` }
 const weekday = (iso: string) => WEEKDAY[dayParts(iso).w]
 
 /**

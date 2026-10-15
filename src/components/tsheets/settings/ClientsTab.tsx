@@ -7,6 +7,7 @@ import { ProjectBudgets, type ProjectBudget } from './ProjectBudgets'
 import { MonthlyBudgetGrid, type MonthlyBudget } from './MonthlyBudgetGrid'
 import { ProjectHoursGrid, type ProjectMonthHours } from './ProjectHoursGrid'
 import { I7_PROJECTS } from '@/lib/tsheets/i7report'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 export interface ClientWithBudget {
   id: number
@@ -39,13 +40,11 @@ interface Props {
   estimateRate?: number
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /** "2026-07-01" -> "Jul 1, 2026" (parsed from the string, so no timezone drift). */
 function dateLabel(date: string): string {
   const [y, m, d] = date.split('-')
   const idx = Number(m) - 1
-  return idx >= 0 && idx < 12 ? `${MONTHS[idx]} ${Number(d)}, ${y}` : date
+  return idx >= 0 && idx < 12 ? `${MONTH_SHORT[idx]} ${Number(d)}, ${y}` : date
 }
 
 /** A start/optional-end pair as "Jul 1, 2026 – Sep 30, 2026" or "Jul 1, 2026 – ongoing". */

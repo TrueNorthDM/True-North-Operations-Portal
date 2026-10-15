@@ -23,6 +23,7 @@ import { FilterBar } from '@/components/admin/grid/FilterBar'
 import { SortHeader } from '@/components/admin/grid/SortHeader'
 import { applyFilters, applySort, nextSort } from '@/components/admin/grid/utils'
 import type { FilterCond, GridColumn, SortState } from '@/components/admin/grid/types'
+import { MONTH_LONG } from '@/lib/format/months'
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
 // Only `name`, `teamName`, `managerName`, `hireDate`, `costRate`, `assignments`,
@@ -84,8 +85,7 @@ function TeamBadge({ team }: { team: string | null }) {
 /** 'August 2026' from a YYYY-MM-DD, for the rate-start dialog. */
 function monthName(iso: string): string {
   const [y, m] = iso.split('-').map(Number)
-  const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-  return `${names[m - 1]} ${y}`
+  return `${MONTH_LONG[m - 1]} ${y}`
 }
 
 const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px_224px] gap-3.5 items-center'

@@ -18,9 +18,9 @@ import { useState, useEffect } from 'react'
 import { budgetStatus, BUDGET_STATUS_LABEL, type BudgetStatus } from '@/lib/tsheets/i7-view'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import type { I7Carryover } from '@/lib/tsheets/types'
+import { MONTH_LONG } from '@/lib/format/months'
 
-const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
+const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MONTH_LONG[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
 
 // The status and its words are the PDF's too (lib/tsheets/i7-view.ts).
 type Status = BudgetStatus

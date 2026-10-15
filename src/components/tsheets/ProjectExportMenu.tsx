@@ -25,6 +25,7 @@ import { PdfPreview, type PdfRequest } from '@/components/ui/PdfPreview'
 import type { Range } from '@/lib/tsheets/range'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { ROUTES } from '@/lib/nav/routes'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 const CSV_ICON = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
@@ -38,8 +39,6 @@ const BARS = (ink: string) => (
 const CALENDAR = (ink: string) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>
 )
-
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: boolean }) {
   const [open, setOpen] = useState(false)
@@ -62,7 +61,7 @@ export function ProjectExportMenu({ range, monthly }: { range: Range; monthly: b
   // period is, so the row says which months rather than letting a range suggest
   // otherwise.
   const year = range.to.slice(0, 4)
-  const lastMonth = MON[Number(range.to.slice(5, 7)) - 1]
+  const lastMonth = MONTH_SHORT[Number(range.to.slice(5, 7)) - 1]
   const tableMonths = lastMonth === 'Jan' ? `Jan ${year}` : `Jan to ${lastMonth} ${year}`
 
   return (

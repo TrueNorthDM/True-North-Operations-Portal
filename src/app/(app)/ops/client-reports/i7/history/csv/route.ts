@@ -19,18 +19,13 @@ import { I7_EXPORT_KEYS } from '@/lib/tsheets/export-keys'
 import { loadI7History } from '@/lib/tsheets/report-data'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { DATA_START } from '@/lib/tsheets/retention'
+import { csvFile, csvRow } from '@/lib/format/csv'
+import { MONTH_LONG } from '@/lib/format/months'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const monthLabel = (ym: string) => `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
-
-function cell(v: string | number): string {
-  const s = String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-const row = (cells: (string | number)[]) => cells.map(cell).join(',')
+const monthLabel = (ym: string) => `${MONTH_LONG[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 
 /** A month, or null. Anything unparseable falls back rather than throwing. */
 function month(v: string | null): string | null {
@@ -53,13 +48,13 @@ export async function GET(request: Request) {
   // column names the screen's own (audit, 9 October 2026).
   const c2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2)
   const lines = [
-    row(['Month', 'Budget', 'Carry-in', 'Used', 'Hours used', 'Balance']),
-    ...rows.map(r => row([r.month, c2(r.budget), c2(r.carryIn), c2(r.used), c2(r.hours), c2(r.balance)])),
+    csvRow(['Month', 'Budget', 'Carry-in', 'Used', 'Hours used', 'Balance']),
+    ...rows.map(r => csvRow([r.month, c2(r.budget), c2(r.carryIn), c2(r.used), c2(r.hours), c2(r.balance)])),
   ]
   if (rows.length) {
     // Budget and used sum; carried-in and balance do not, so the total row
     // leaves them blank rather than printing a number nobody should add up.
-    lines.push(row([
+    lines.push(csvRow([
       'Total',
       c2(rows.reduce((s, r) => s + r.budget, 0)),
       '',
@@ -69,7 +64,7 @@ export async function GET(request: Request) {
     ]))
   }
 
-  const csv = '﻿' + lines.join('\r\n') + '\r\n'
+  const csv = csvFile(lines)
   const name = rows.length
     ? `i7 Full History - ${monthLabel(rows[0].month)} to ${monthLabel(rows[rows.length - 1].month)}.csv`
     : 'i7 Full History.csv'

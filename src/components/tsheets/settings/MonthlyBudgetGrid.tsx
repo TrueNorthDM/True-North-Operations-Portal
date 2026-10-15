@@ -11,13 +11,13 @@ import { ConfirmModal } from './ConfirmModal'
 import { editableMonths } from '@/lib/tsheets/retention'
 import { saveMonthlyBudgets } from '@/lib/tsheets/settings-actions'
 import { money } from '@/lib/tsheets/format'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 export interface MonthlyBudget { month: string; budget: number; extra: number }  // month = 'YYYY-MM'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
-  return `${MONTHS[m - 1]} ${y}`
+  return `${MONTH_SHORT[m - 1]} ${y}`
 }
 
 // Shared first-column width so this table lines up with the project-hours one.

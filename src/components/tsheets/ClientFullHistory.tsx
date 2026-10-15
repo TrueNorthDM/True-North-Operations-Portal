@@ -9,11 +9,11 @@
 import { money, moneySigned, fmtHours } from '@/lib/tsheets/format'
 import type { I7TrendPoint } from '@/lib/tsheets/types'
 import { HistoryExport } from '@/components/tsheets/HistoryExport'
+import { MONTH_LONG } from '@/lib/format/months'
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
-  return `${MONTHS[m - 1]} ${y}`
+  return `${MONTH_LONG[m - 1]} ${y}`
 }
 
 export function ClientFullHistory(

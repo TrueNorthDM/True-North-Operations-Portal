@@ -17,9 +17,9 @@
 
 import type { ProjectHistoryBlock } from '@/lib/timeclock/projects'
 import { historyRowName, historyRows, historyText, HISTORY_NOTE, HISTORY_ROW_NAMES } from '@/lib/timeclock/project-history-rows'
+import { MONTH_SHORT } from '@/lib/format/months'
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const shortMonth = (ym: string) => MON[Number(ym.slice(5, 7)) - 1]
+const shortMonth = (ym: string) => MONTH_SHORT[Number(ym.slice(5, 7)) - 1]
 
 // 14px body and 10px headings, which is what the Costs table above uses. This
 // table had 13px cells and 12.5px row labels, so one page carried three body

@@ -15,15 +15,11 @@ import {
   availableHours, groupAverageWeek, loadPercent, netFlow, reading, READING_LABEL, utilisation,
 } from './workload'
 import { formatDays } from './overview'
+import { csvFile, csvRow as row } from '@/lib/format/csv'
 
-/** Quote only when the cell needs it, and double any quote inside. */
-export function cell(v: string | number | null): string {
-  if (v === null) return ''
-  const s = String(v)
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-
-export const row = (cells: (string | number | null)[]) => cells.map(cell).join(',')
+// The cell and file rules are the portal's one CSV rule (lib/format/csv.ts),
+// kept under these names for the builders below and their tests.
+export { csvCell as cell, csvRow as row } from '@/lib/format/csv'
 
 /**
  * A number the Report does not have.
@@ -114,7 +110,7 @@ export function exportName(tab: string, scope: string, period: number, today: st
 
 /** A BOM, so Excel reads the accented names as UTF-8 instead of mojibake. */
 export function toFile(lines: string[]): string {
-  return '﻿' + lines.join('\r\n') + '\r\n'
+  return csvFile(lines)
 }
 
 export { formatDays }

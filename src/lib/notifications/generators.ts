@@ -27,6 +27,7 @@ import { addDays, weekOf, zoneDate } from './schedule'
 import { readState } from './store'
 import type { Audience, Recipient } from './audience'
 import type { Draft } from './deliver'
+import { MONTH_LONG, MONTH_SHORT } from '@/lib/format/months'
 
 type Client = Db
 
@@ -56,9 +57,7 @@ export function listOf(names: readonly string[], max = 2): string {
 /** Ends a sentence without doubling what a title already ends with ("Important?."). */
 const sentence = (s: string) => (/[.?!]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const MONTH = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const shortDate = (iso: string) => `${MON[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`
+const shortDate = (iso: string) => `${MONTH_SHORT[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`
 
 /** "Review: Salvation page (AAAF Pages)" */
 const stepLabel = (r: WorkRow) => `${r.stepName}: ${r.parentItemName ?? r.itemName}`
@@ -300,7 +299,7 @@ export async function i7Drafts(ctx: Ctx): Promise<Draft[]> {
   const pct = Math.floor((c.monthUsed / c.totalAvailable) * 100)
   return ctx.aud.withTool('i7-budget').flatMap(r => draftFor(ctx, 'i7-budget', r, {
     title: `i7 budget crossed ${level}%`,
-    body: `i7 has used ${pct}% of the budget available in ${MONTH[Number(month.slice(5)) - 1]}.`,
+    body: `i7 has used ${pct}% of the budget available in ${MONTH_LONG[Number(month.slice(5)) - 1]}.`,
     href: ROUTES.i7,
     dedupeKey: `${month}:${level}`,
   }))

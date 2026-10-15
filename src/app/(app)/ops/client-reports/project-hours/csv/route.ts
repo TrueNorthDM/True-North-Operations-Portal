@@ -28,6 +28,7 @@ import { peopleView } from '@/lib/timeclock/project-people'
 import { availableMonths } from '@/lib/tsheets/retention'
 import { currentYearMonth } from '@/lib/tsheets/report'
 import { resolveRange, spanWording } from '@/lib/tsheets/range'
+import { csvFile, csvRow } from '@/lib/format/csv'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,12 +37,6 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 /** Blank stays blank. A null donation is "nobody has said", not zero. */
 const cash = (n: number | null | undefined) => (n == null ? '' : round2(n).toFixed(2))
 const hrs = (n: number | null | undefined) => (n == null ? '' : round2(n).toFixed(2))
-
-function cell(v: string | number): string {
-  const s = String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-const row = (cells: (string | number)[]) => cells.map(cell).join(',')
 
 export async function GET(request: Request) {
   const access = await requireSurface('tools')
@@ -68,28 +63,28 @@ export async function GET(request: Request) {
   const lines: string[] = []
 
   if (type === 'internal') {
-    lines.push(row(['Period', 'Project', 'Person', 'Hours']))
+    lines.push(csvRow(['Period', 'Project', 'Person', 'Hours']))
     for (const r of data.rows) {
       // Alphabetical, the order the report's own columns are in.
       for (const person of [...Object.keys(r.byPerson)].sort((a, b) => a.localeCompare(b))) {
         const h = r.byPerson[person]
         if (!h) continue
-        lines.push(row([label, r.name, person, hrs(h)]))
+        lines.push(csvRow([label, r.name, person, hrs(h)]))
       }
     }
     // i7 and MME are not by person (September 2026), so the total is of the four.
-    lines.push(row([label, 'TOTAL', '', hrs(peopleView(data).workedThisMonth)]))
+    lines.push(csvRow([label, 'TOTAL', '', hrs(peopleView(data).workedThisMonth)]))
   } else {
     // The client file: hours, prepaid balance and what came in. No costs, no
     // margin, and no i7 or MME rows, whose figures are what was invoiced
     // (decided 9 October 2026). Costs are in the month by month export.
     const shown = data.rows.filter(r => !r.billed)
-    lines.push(row([
+    lines.push(csvRow([
       'Period', 'Project', 'Carried in', 'Prepaid', 'Remaining', 'Hours', 'Donations (USD)',
       `Total hours ${year}`, `Total donations ${year} (USD)`, `${lastYear} hours, same period`,
     ]))
     for (const r of shown) {
-      lines.push(row([
+      lines.push(csvRow([
         label, r.name, hrs(r.carriedIn), hrs(r.boughtThisMonth), hrs(r.remaining),
         hrs(r.workedThisMonth), cash(r.donationsThisMonth), hrs(r.yearToDate), cash(r.donationsYtd),
         hrs(r.sameMonthLastYear),
@@ -99,7 +94,7 @@ export async function GET(request: Request) {
     const givenNow = shown.map(r => r.donationsThisMonth).filter((n): n is number => n != null)
     const givenYtd = shown.map(r => r.donationsYtd).filter((n): n is number => n != null)
 
-    lines.push(row([
+    lines.push(csvRow([
       label, 'TOTAL', '', '', hrs(total(r => r.remaining)),
       hrs(total(r => r.workedThisMonth)),
       givenNow.length ? cash(givenNow.reduce((s, n) => s + n, 0)) : '',
@@ -110,7 +105,7 @@ export async function GET(request: Request) {
   }
 
   // BOM so Excel reads UTF-8 correctly.
-  const csv = '﻿' + lines.join('\r\n') + '\r\n'
+  const csv = csvFile(lines)
   const name = `Project Hours ${type === 'internal' ? 'by Person' : 'and Others'} - ${label}.csv`
 
   return new Response(csv, {

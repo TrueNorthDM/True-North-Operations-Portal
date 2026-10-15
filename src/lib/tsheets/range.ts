@@ -15,6 +15,8 @@
  * hours with zero money and read as a month where nothing was spent.
  */
 
+import { MONTH_LONG, MONTH_SHORT } from '@/lib/format/months'
+
 export type RangeMode = 'month' | 'year' | 'last12' | 'custom'
 
 /** What the filter is set to. One field per mode, so switching back and forth keeps each answer. */
@@ -33,11 +35,9 @@ export interface Range {
 
 export const RANGE_FLOOR = '2026-01'
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /** "2026-09" → "Sep 2026". */
 export function shortMonth(ym: string): string {
-  return `${MON[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
+  return `${MONTH_SHORT[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 }
 
 /** The month `by` months after `ym` (negative goes back). */
@@ -119,19 +119,14 @@ export function defaultChoice(currentMonth: string): RangeChoice {
   }
 }
 
-const FULL = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-
 /**
  * A range as a report heading says it, in the wording a single month already
  * used: "September 2026", "January to September 2026", "October 2025 to
  * September 2026". The year is said once when both ends share it.
  */
 export function spanWording(from: string, to: string): string {
-  const fm = FULL[Number(from.slice(5, 7)) - 1], fy = from.slice(0, 4)
-  const tm = FULL[Number(to.slice(5, 7)) - 1], ty = to.slice(0, 4)
+  const fm = MONTH_LONG[Number(from.slice(5, 7)) - 1], fy = from.slice(0, 4)
+  const tm = MONTH_LONG[Number(to.slice(5, 7)) - 1], ty = to.slice(0, 4)
   if (from === to) return `${tm} ${ty}`
   return fy === ty ? `${fm} to ${tm} ${ty}` : `${fm} ${fy} to ${tm} ${ty}`
 }

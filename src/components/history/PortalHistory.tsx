@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { BEGINNINGS, BUILT, MOVE, NEXT, NUMBERS, PURPOSE, TIMELINE, UPDATED, WHY } from '@/lib/history/portal'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 const CHAPTERS = [
   { id: 'how-it-started', label: '1 · How it started' },
@@ -38,15 +39,14 @@ const t = (d: string) => Date.parse(d) / DAY
 const T0 = t(TIMELINE.start)
 const SPAN = t(TIMELINE.end) - T0
 const X = (d: string) => Math.round((30 + ((t(d) - T0) / SPAN) * 940) * 10) / 10
-const MONTH_WORDS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const TICKS = (() => {
-  const out: { x: number; word: string }[] = [{ x: X(TIMELINE.start), word: MONTH_WORDS[Number(TIMELINE.start.slice(5, 7)) - 1] }]
+  const out: { x: number; word: string }[] = [{ x: X(TIMELINE.start), word: MONTH_SHORT[Number(TIMELINE.start.slice(5, 7)) - 1] }]
   const [y, m] = [Number(TIMELINE.start.slice(0, 4)), Number(TIMELINE.start.slice(5, 7))]
   for (let i = 1; ; i++) {
     const mm = ((m - 1 + i) % 12) + 1, yy = y + Math.floor((m - 1 + i) / 12)
     const iso = `${yy}-${String(mm).padStart(2, '0')}-01`
     if (iso > TIMELINE.end) break
-    out.push({ x: X(iso), word: MONTH_WORDS[mm - 1] })
+    out.push({ x: X(iso), word: MONTH_SHORT[mm - 1] })
   }
   return out
 })()

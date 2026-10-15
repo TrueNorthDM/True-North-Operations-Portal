@@ -9,9 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadCelebrationOptOuts } from '@/lib/settings/person'
 import { teamKeyFromName, type TeamKey } from '@/lib/directory/people-types'
 import { colourOf, teamColoursFrom } from '@/lib/directory/team-colour'
-
-export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const MON_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+import { MONTH_LONG, MONTH_SHORT } from '@/lib/format/months'
 
 export interface CelebrationPerson {
   id: string
@@ -34,7 +32,7 @@ export function parseYMD(iso: string | null | undefined): { y: number; m: number
 /** "Apr 7", month + day, no year (for birthdays). */
 export function formatMonthDay(iso: string | null | undefined): string {
   const p = parseYMD(iso)
-  return p ? `${MON_SHORT[p.m]} ${p.d}` : '-'
+  return p ? `${MONTH_SHORT[p.m]} ${p.d}` : '-'
 }
 
 export interface MonthTarget { year: number; month: number; label: string; current: boolean }
@@ -43,7 +41,7 @@ export interface MonthTarget { year: number; month: number; label: string; curre
 export function monthWindow(now: Date): MonthTarget[] {
   return [-1, 0, 1].map(off => {
     const d = new Date(now.getFullYear(), now.getMonth() + off, 1)
-    return { year: d.getFullYear(), month: d.getMonth(), label: MONTHS[d.getMonth()], current: off === 0 }
+    return { year: d.getFullYear(), month: d.getMonth(), label: MONTH_LONG[d.getMonth()], current: off === 0 }
   })
 }
 

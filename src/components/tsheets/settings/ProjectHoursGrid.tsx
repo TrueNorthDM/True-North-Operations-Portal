@@ -10,13 +10,13 @@ import { useRouter } from 'next/navigation'
 import { ConfirmModal } from './ConfirmModal'
 import { editableMonths } from '@/lib/tsheets/retention'
 import { saveProjectMonthHours } from '@/lib/tsheets/settings-actions'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 export interface ProjectMonthHours { project: string; month: string; hours: number }  // month = 'YYYY-MM'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
-  return `${MONTHS[m - 1]} ${y}`
+  return `${MONTH_SHORT[m - 1]} ${y}`
 }
 const key = (project: string, ym: string) => `${project}|${ym}`
 const fmtHrs = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, ''))

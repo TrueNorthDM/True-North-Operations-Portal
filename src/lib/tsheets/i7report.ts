@@ -9,6 +9,7 @@
 // Cost = hours × the person's i7 hourly rate.
 
 import type { TsheetsJobcode, I7Entry, I7Report, I7Project, I7Jobcode, I7Activity, PersonHours } from './types'
+import { MONTH_LONG } from '@/lib/format/months'
 
 export const I7_PARENT_JOBCODE_ID = 21152466
 export const I7_CODE_CF = '129628'
@@ -117,11 +118,6 @@ export function i7JobcodeIds(jobcodes: TsheetsJobcode[]): Set<number> {
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
 
 // The fixed structure to always render, so every project and job code shows
 // every month even with zero hours (activities stay conditional).
@@ -270,7 +266,7 @@ export function buildI7Report(
     .sort((a, b) => a.localeCompare(b))
 
   const [year, monthIdx] = startDate.split('-').map(Number)
-  const month = span?.label ?? `${MONTH_NAMES[monthIdx - 1]} ${year}`
+  const month = span?.label ?? `${MONTH_LONG[monthIdx - 1]} ${year}`
   // In UTC: a local midnight east of UTC printed the day before.
   const endDate = span?.endDate ?? new Date(Date.UTC(year, monthIdx, 0)).toISOString().slice(0, 10)
 
