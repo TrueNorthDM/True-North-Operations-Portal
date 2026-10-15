@@ -6,18 +6,22 @@ const row = (i: number): Delivery =>
 
 describe('landed', () => {
   it('carries the overshoot rather than saying Late on its own', () => {
-    expect(landed(2)).toEqual({ label: 'Late 2d', late: true })
-    expect(landed(21)).toEqual({ label: 'Late 21d', late: true })
+    expect(landed(2)).toEqual({ label: 'Late 2d', late: true, noDue: false })
+    expect(landed(21)).toEqual({ label: 'Late 21d', late: true, noDue: false })
   })
 
-  it('reads on time at zero and when there is nothing to compare against', () => {
+  it('reads on time at zero', () => {
     expect(landed(0).label).toBe('On time')
-    expect(landed(null).label).toBe('On time')
+  })
+
+  // The Method tab: a step with no due date is neither on time nor late.
+  it('says so when there is no due date to compare against', () => {
+    expect(landed(null)).toEqual({ label: 'No due date', late: false, noDue: true })
   })
 
   // A step finished early is on time, not "Late -3d".
   it('does not call an early finish late', () => {
-    expect(landed(-3)).toEqual({ label: 'On time', late: false })
+    expect(landed(-3)).toEqual({ label: 'On time', late: false, noDue: false })
   })
 })
 

@@ -63,6 +63,13 @@ describe('computePublishingMetrics', () => {
     expect(b?.done).toBe(0)
   })
 
+  // A paused language is counted nowhere, not even as "+N other" (audit, 15 October 2026).
+  it('leaves a paused language out of the other languages too', () => {
+    const items = [item({ id: '1', language: 'French' }), item({ id: '2', language: 'German' })]
+    const b = computePublishingMetrics(items, TARGETS, start, end, IS_PUB, { [AAAF]: ['French'] }).boards.find(x => x.boardId === AAAF)
+    expect(b?.untargeted).toBe(1)
+  })
+
   it('ignores work published by someone who is not a publisher', () => {
     const b = board([item({ publishers: ['Kevin Ames'] })])
     expect(b?.done).toBe(0)

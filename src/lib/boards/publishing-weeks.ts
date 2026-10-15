@@ -33,6 +33,7 @@ import type { PublishedItem } from './publishing'
 import { isCompactList, toPublishedItems } from './published-items'
 import { loadPublishingRules, publisherTest, targetsForWeek, weekBounds, weekStartDay } from './publishing-rules'
 import type { SnapshotBoard } from './types'
+import { MONTH_SHORT } from '@/lib/format/months'
 
 export interface PublishingWeek {
   /** The Monday, as YYYY-MM-DD. */
@@ -77,8 +78,6 @@ export interface PublishingBoardWeeks {
  */
 const ENGLISH = 'English'
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /** The board's name without its " · Publishing" suffix, which the widget has no room for. */
 function clientName(name: string): string {
   return name.split('·')[0].trim()
@@ -111,8 +110,8 @@ export function weekLabel(start: Date, end: Date): string {
     return { m: m - 1, d: dd, y }
   }
   const a = day(start), b = day(end)
-  const from = `${MON[a.m]} ${a.d}`
-  const to = a.m === b.m ? `${b.d}` : `${MON[b.m]} ${b.d}`
+  const from = `${MONTH_SHORT[a.m]} ${a.d}`
+  const to = a.m === b.m ? `${b.d}` : `${MONTH_SHORT[b.m]} ${b.d}`
   return `${from}-${to}`
 }
 
@@ -177,7 +176,7 @@ export async function loadPublishingWeeks(
   // Each week against the targets in force that week.
   const perWeek = weeks.map(({ start, end }) => {
     const targets = targetsForWeek(rules, weekStartDay(start))
-    const m = computePublishingMetrics(items, targets, start, end, isPublisher)
+    const m = computePublishingMetrics(items, targets, start, end, isPublisher, rules.paused)
     return { targets, stats: Object.fromEntries(m.boards.map(b => [b.boardId, b])) }
   })
 

@@ -216,6 +216,11 @@ export function computePublishingMetrics(
   from: Date,
   to: Date,
   isPublisher: (name: string | null | undefined) => boolean,
+  /**
+   * Board id -> languages paused on its site. Their pages are counted nowhere,
+   * not even as "+N other", as on the dashboard (audit, 15 October 2026).
+   */
+  paused: Record<string, string[]> = {},
 ): { boards: BoardStat[] } {
   const data: Record<string, Record<string, number>> = {}
   const seen = new Set<string>()
@@ -230,6 +235,7 @@ export function computePublishingMetrics(
     if (seen.has(key)) continue
     seen.add(key)
     const lang = it.language || '-'
+    if (paused[it.boardId]?.includes(lang)) continue
     ;(data[it.boardId] ??= {})[lang] = (data[it.boardId][lang] || 0) + 1
   }
 

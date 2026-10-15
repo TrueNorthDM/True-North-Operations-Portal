@@ -29,10 +29,13 @@ export type PersonDetail = {
  * Late carries the overshoot in days rather than saying Late on its own. One
  * day late and three weeks late are different conversations, and a chip that
  * cannot tell them apart makes the reader open the item to find out.
+ *
+ * A step with no due date is neither on time nor late, as the Method tab says
+ * (audit, 15 October 2026: it used to read "On time").
  */
-export function landed(lateDays: number | null): { label: string; late: boolean } {
-  const n = lateDays ?? 0
-  return n > 0 ? { label: `Late ${n}d`, late: true } : { label: 'On time', late: false }
+export function landed(lateDays: number | null): { label: string; late: boolean; noDue: boolean } {
+  if (lateDays === null) return { label: 'No due date', late: false, noDue: true }
+  return lateDays > 0 ? { label: `Late ${lateDays}d`, late: true, noDue: false } : { label: 'On time', late: false, noDue: false }
 }
 
 /** Newest first, then capped: a fast translator over 90 days is hundreds of rows. */

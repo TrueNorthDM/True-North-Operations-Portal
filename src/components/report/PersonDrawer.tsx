@@ -156,7 +156,7 @@ function Deliveries({ detail }: { detail: PersonDetail }) {
             <div className="px-3 py-2.5 text-right">
               <span className={`${chip} ${l.late
                 ? 'bg-[rgba(194,65,12,.12)] text-[#c2410c]'
-                : 'bg-[rgba(30,125,127,.12)] text-tn-teal'}`}
+                : l.noDue ? 'bg-subtle text-muted' : 'bg-[rgba(30,125,127,.12)] text-tn-teal'}`}
               >
                 {l.label}
               </span>
