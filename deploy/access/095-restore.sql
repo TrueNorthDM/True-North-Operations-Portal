@@ -1,6 +1,11 @@
 -- Undo migration 095 from the snapshot 095-snapshot.sql took just before it.
 -- Only for rolling the code back past the access model AFTER 095 ran
 -- (deploy/access/README.md). One transaction: all of it or nothing.
+--
+-- The snapshot schema undo_095 was dropped from production on 15 October 2026
+-- (audit, after eight days with the access model live). Its dump is on the
+-- server at /opt/tnportal/backups/manual/undo_095-2026-10-15.sql: load that
+-- first if this script is ever needed again.
 
 BEGIN;
 
