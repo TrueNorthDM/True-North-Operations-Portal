@@ -173,6 +173,7 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
           currentMonth={newest}
           modes={['month', 'year', 'last12', 'custom']}
           months={[...availableMonths].sort((a, b) => b.localeCompare(a))}
+          layout="inline"
         />
         {teams.length > 0 && (
           <>

@@ -81,6 +81,7 @@ export default function I7HeaderDesignCheck() {
                 currentMonth={MONTH}
                 modes={['month', 'year', 'last12', 'custom']}
                 months={MONTHS}
+                layout="inline"
               />
               <label htmlFor="team-select" className="text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted ml-2">Team</label>
               <Select

@@ -14,11 +14,16 @@
  * so it stays the thing you land on; the other three are what you reach for
  * when a question crosses a month end.
  *
+ * The i7 report draws it inline instead (approved 15 October 2026): the four
+ * ways in a Segmented row, always in view, and the chosen way's own control
+ * beside them, so what is showing reads without opening anything.
+ *
  * What a choice MEANS lives in lib/tsheets/range.ts. This file only draws it.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { Select } from '@/components/ui/Select'
+import { Segmented } from '@/components/ui/Segmented'
 import {
   RANGE_FLOOR, rangeLabel, rangeOf, shortMonth,
   type RangeChoice, type RangeMode,
@@ -34,8 +39,18 @@ const WORDING: Record<RangeMode, string> = {
   custom: 'Choose the months',
 }
 
+/** The same four, short enough to sit side by side. */
+const SHORT: Record<RangeMode, string> = {
+  month: 'One month',
+  year: 'Year',
+  last12: 'Last 12 months',
+  custom: 'Choose months',
+}
+
+const INLINE_FIELD = 'rounded-[9px] border border-slate-200 bg-white px-3 py-[7px] text-[13px] text-tn-ink font-semibold'
+
 export function RangeFilter(
-  { value, onChange, currentMonth, modes = ['year', 'last12', 'custom'], months, floor = RANGE_FLOOR, label, align = 'left', heading = 'Months to show' }: {
+  { value, onChange, currentMonth, modes = ['year', 'last12', 'custom'], months, floor = RANGE_FLOOR, label, align = 'left', heading = 'Months to show', layout = 'popover' }: {
     value: RangeChoice
     onChange: (next: RangeChoice) => void
     /** The newest month there is anything to show for. Nothing after it can be chosen. */
@@ -53,6 +68,8 @@ export function RangeFilter(
     /** Which edge the popover hangs from. Follow the button's own side of the row. */
     align?: 'left' | 'right'
     heading?: string
+    /** 'inline': the four ways as a Segmented row with the chosen one's control beside it. */
+    layout?: 'popover' | 'inline'
   },
 ) {
   const [open, setOpen] = useState(false)
@@ -84,6 +101,47 @@ export function RangeFilter(
   const range = rangeOf(value, currentMonth, floor)
   const valid = range.from <= range.to
   const set = (over: Partial<RangeChoice>) => onChange({ ...value, ...over })
+
+  if (layout === 'inline') {
+    return (
+      <div className="inline-flex items-center gap-2.5 flex-wrap">
+        <Segmented
+          label={heading}
+          options={modes.map(m => ({ key: m, label: SHORT[m] }))}
+          value={value.mode}
+          onChange={mode => set({ mode })}
+        />
+        {value.mode === 'month' && months && (
+          <Select
+            value={value.month} onChange={month => set({ month })} ariaLabel="Month"
+            options={months.map(ym => ({ value: ym, label: shortMonth(ym) }))}
+            className={INLINE_FIELD} strongValue
+          />
+        )}
+        {value.mode === 'year' && (
+          <Select
+            value={value.year} onChange={year => set({ year })} ariaLabel="Year"
+            options={years.map(y => ({ value: y, label: y }))}
+            className={INLINE_FIELD} strongValue
+          />
+        )}
+        {value.mode === 'last12' && (
+          <span className="text-[12.5px] text-muted font-semibold">{`${shortMonth(range.from)} to ${shortMonth(range.to)}`}</span>
+        )}
+        {/* The clamped months, as in the popover: the fields say what the report reads. */}
+        {value.mode === 'custom' && (
+          <span className="inline-flex items-center gap-2">
+            <input type="month" aria-label="From" value={range.from} min={floor} max={currentMonth} onChange={e => set({ from: e.target.value })} className={INLINE_FIELD} />
+            <span className="text-[12px] text-muted">to</span>
+            <input type="month" aria-label="To" value={range.to} min={floor} max={currentMonth} onChange={e => set({ to: e.target.value })} className={INLINE_FIELD} />
+          </span>
+        )}
+        {!valid && (
+          <span role="alert" className="text-[11.5px] text-[#b06d0a]">The first month has to come before the last.</span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="relative" ref={box}>
