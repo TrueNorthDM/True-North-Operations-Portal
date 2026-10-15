@@ -11,8 +11,9 @@
 import { describe, it, expect } from 'vitest'
 import { computePublishingMetrics, type PublishedItem } from './publishing'
 import {
-  compactFromItems, toPublishedItems, isCompactList, PUBLISHED_HORIZON_DAYS,
+  compactFromItems, compactPublished, toPublishedItems, isCompactList, PUBLISHED_HORIZON_DAYS,
 } from './published-items'
+import { BOARDS } from './config'
 import type { TargetsMap } from './types'
 import { publisherTest } from './publishing-rules'
 
@@ -54,6 +55,8 @@ describe('compactFromItems', () => {
   // complete weeks, whose first Monday is at most 34 days back.
   it('reaches back further than the oldest day the card can show', () => {
     expect(PUBLISHED_HORIZON_DAYS).toBeGreaterThan(34)
+    // Two complete two-week cycles, the second of them running (15 October 2026).
+    expect(PUBLISHED_HORIZON_DAYS).toBeGreaterThan(41)
   })
 
   // Whether a name counts is decided when the numbers are computed. Filtering
@@ -116,5 +119,28 @@ describe('isCompactList', () => {
     expect(isCompactList({})).toBe(false)
     expect(isCompactList([{ id: 1 }])).toBe(false)
     expect(isCompactList([{ id: 'x', language: 'English', publishedDate: '2026-09-01' }])).toBe(false)
+  })
+})
+
+// Bessemeters has no language column: every page is English (15 October 2026).
+describe('a board with a fixed language', () => {
+  it('stores every published item in that language', () => {
+    const board = {
+      id: '1764094550', groups: [],
+      items: [{
+        id: '77', name: 'Meter page', created_at: '', updated_at: '', state: 'active', group: { id: 'g', title: 'Published' },
+        column_values: [
+          { id: 'status67', type: 'status', text: 'Done', value: null },
+          { id: 'people9', type: 'people', text: 'Wendy Cacka', value: null },
+        ],
+      }],
+      activity: [{
+        id: 'l1', event: 'update_column_value', created_at: '2026-09-10T15:00:00Z',
+        data: JSON.stringify({ pulse_id: 77, column_id: 'status67', column_type: 'color', value: { label: { text: 'Done' } } }),
+      }],
+    }
+    expect(compactPublished(board, BOARDS['1764094550'], NOW)).toEqual([
+      { id: '77', language: 'English', publishers: ['Wendy Cacka'], publishedDate: '2026-09-10T15:00:00Z' },
+    ])
   })
 })

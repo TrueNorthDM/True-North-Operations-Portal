@@ -20,6 +20,12 @@
  *
  * The full per-language split is still what the dashboard behind this is for.
  *
+ * A board counted in two-week cycles (Bessemeters, 15 October 2026) shows its
+ * last two complete cycles instead, one row each ("Sep 29 to Oct 12", "1 of
+ * 1"), or the day its first cycle ends while none has. Its English column
+ * shows only when English is not the whole target, as it is not for a board
+ * that publishes in English alone: the same figure twice says nothing.
+ *
  * The whole card is the link. A card with one small "open" link in the corner
  * gives a mouse a target the size of two words when the obvious target is the
  * card itself. The link carries a short name of its own, so a screen reader
@@ -34,6 +40,7 @@
 
 import Link from 'next/link'
 import type { PublishingBoardWeeks } from '@/lib/boards/publishing-weeks'
+import { shortDay } from '@/lib/boards/publishing-cycles'
 import { ROUTES } from '@/lib/nav/routes'
 
 /**
@@ -69,13 +76,21 @@ export function otherText(n: number): string {
   return `${n} ${n === 1 ? 'page' : 'pages'} in languages with no target`
 }
 
+/**
+ * Whether the English column says anything: only when some row has an
+ * English target that is not the whole of it. Exported for its test.
+ */
+export function showsEnglish(b: PublishingBoardWeeks): boolean {
+  return b.weeks.some(w => w.en && w.en.target < w.target)
+}
+
 const shell = 'block rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]'
 
-function Header() {
+function Header({ cycles = false }: { cycles?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3 bg-tn-primary px-5 py-3">
       <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-lg text-white">Publishing goals</h2>
-      <span className="font-(family-name:--font-display) font-bold text-[12px] text-white/70">Last 4 weeks</span>
+      <span className="font-(family-name:--font-display) font-bold text-[12px] text-white/70">{cycles ? 'Last 4 weeks · last 2 cycles' : 'Last 4 weeks'}</span>
     </div>
   )
 }
@@ -111,37 +126,48 @@ export function PublishingGoalsWidget(
   // every pass, which remounts its whole subtree.
   const inner = (
     <>
-      <Header />
+      <Header cycles={boards.some(b => b.cycleWeeks === 2)} />
 
       <div className="p-5 space-y-5">
-        {boards.map(b => (
+        {boards.map(b => {
+          const cycles = b.cycleWeeks === 2
+          const english = showsEnglish(b)
+          // "Sep 29 to Oct 12" needs more room than "Aug 31-Sep 6".
+          const labelW = cycles ? 'w-[112px]' : 'w-[76px]'
+          return (
           <div key={b.boardId}>
             <div className="flex items-baseline justify-between gap-3 pb-2">
-              <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">{b.name}</span>
-              {b.perWeek > 0 && (
+              <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink">
+                {b.name}
+                {cycles && <span className="ml-2 font-(family-name:--font-body) font-semibold text-[11.5px] text-muted">every 2 weeks</span>}
+              </span>
+              {b.perPeriod > 0 && (
                 <span className="text-[11.5px] text-muted whitespace-nowrap">
-                  <span className="font-bold text-tn-ink tabular-nums">{b.hits}/4</span> on target
-                  {b.enPerWeek > 0 && (
-                    <span> · <span className="font-bold tabular-nums" style={{ color: colour(b.enHits, 4) }}>{b.enHits}/4</span> EN</span>
+                  <span className="font-bold text-tn-ink tabular-nums">{b.hits}/{b.weeks.length}</span> on target
+                  {english && (
+                    <span> · <span className="font-bold tabular-nums" style={{ color: colour(b.enHits, b.weeks.length) }}>{b.enHits}/{b.weeks.length}</span> EN</span>
                   )}
                 </span>
               )}
             </div>
 
             {/* No target set is not the same as missing one, so it says so
-                rather than drawing four empty bars against zero. */}
-            {b.perWeek === 0 ? (
-              <p className="text-[12px] text-muted m-0">No weekly target set for this board.</p>
+                rather than drawing four empty bars against zero. A new board
+                in cycles has nothing complete yet and says when it will. */}
+            {b.firstCycleEnds ? (
+              <p className="text-[12px] text-muted m-0">First cycle ends {shortDay(b.firstCycleEnds)}</p>
+            ) : b.perPeriod === 0 ? (
+              <p className="text-[12px] text-muted m-0">{cycles ? 'No target set for this board.' : 'No weekly target set for this board.'}</p>
             ) : (
               <>
                 {/* The columns need naming once: "9/11 82% 0/2 0%" on its own
                     is four numbers in a row with nothing saying which is which. */}
                 <div className="flex items-center gap-4 pb-1.5">
-                  <span className="w-[76px] shrink-0" />
+                  <span className={`${labelW} shrink-0`} />
                   <span className="w-[164px] shrink-0 text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">
                     Targeted languages
                   </span>
-                  {b.enPerWeek > 0 && (
+                  {english && (
                     <span className="w-[96px] shrink-0 text-right text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide text-muted">
                       English
                     </span>
@@ -156,7 +182,7 @@ export function PublishingGoalsWidget(
                     const pct = w.target > 0 ? Math.round((w.done / w.target) * 100) : 0
                     return (
                       <div key={w.start} className="flex items-center gap-4">
-                        <span className="w-[76px] shrink-0 text-[11.5px] text-muted tabular-nums whitespace-nowrap">{w.label}</span>
+                        <span className={`${labelW} shrink-0 text-[11.5px] text-muted tabular-nums whitespace-nowrap`}>{w.label}</span>
 
                         {/* The percentage is the headline and the count is the
                             working. Navy on every week: the bar and the count
@@ -170,17 +196,17 @@ export function PublishingGoalsWidget(
                             </span>
                           )}
                           <span
-                            className="text-[13px] font-(family-name:--font-display) font-extrabold tabular-nums"
+                            className="text-[13px] font-(family-name:--font-display) font-extrabold tabular-nums whitespace-nowrap"
                             style={{ color: colour(w.done, w.target) }}
                           >
-                            {w.done}/{w.target}
+                            {cycles ? `${w.done} of ${w.target}` : `${w.done}/${w.target}`}
                           </span>
                           <span className="text-[26px] leading-none font-(family-name:--font-display) font-extrabold tabular-nums text-tn-ink">
                             {pct}<span className="text-[15px]">%</span>
                           </span>
                         </span>
 
-                        {w.en && (
+                        {english && w.en && (
                           <span className="w-[96px] shrink-0 flex items-baseline justify-end gap-1.5 border-l border-slate-200 pl-3">
                             <span
                               className="text-[11.5px] font-bold tabular-nums"
@@ -193,6 +219,9 @@ export function PublishingGoalsWidget(
                             </span>
                           </span>
                         )}
+                        {/* A row with no English target keeps the column's
+                            place, so the bars stay lined up. */}
+                        {english && !w.en && <span className="w-[96px] shrink-0" />}
 
                         {/* The bar tracks the total. English has its own figures
                             and reading it as a segment here would conflate its
@@ -211,7 +240,8 @@ export function PublishingGoalsWidget(
               </>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {updated && (

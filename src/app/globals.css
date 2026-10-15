@@ -113,6 +113,11 @@
   --color-hfa-ink: #212121;
   --color-hfa-soft: #fff3e2;
 
+  /* Bessemeters: no site of its own to sample, so a soft red badge on the
+     publishing cards (15 October 2026). #c8323d reaches 4.5:1 on its soft. */
+  --color-bm-primary: #c8323d;
+  --color-bm-soft: #fdeeef;
+
   /* Brand display fonts (defined via next/font in layout.tsx) */
   --font-aaaf-display: var(--font-nunito), system-ui, sans-serif;
   --font-aaaf-body: var(--font-open-sans), system-ui, sans-serif;

@@ -38,9 +38,15 @@ export interface BoardConfig {
   subitemPipeline?: SubitemPipeline
   peopleCols: string[]
   dateCol: string
-  // ----- Publishing-mode fields (HFA-P / AAAF-P) -----
+  // ----- Publishing-mode fields (HFA-P / AAAF-P / BM-P) -----
   publishingMode?: boolean
   languageCol?: string
+  /**
+   * The language of every item, for a board with no language column
+   * (Bessemeters publishes in English only). Read in place of `languageCol`
+   * wherever an item's language is read (15 October 2026).
+   */
+  fixedLanguage?: string
   publisherCol?: string
   publishedCol?: string
   publishedLabel?: string
@@ -142,9 +148,50 @@ export const BOARDS: Record<string, BoardConfig> = {
     publishedLabel: 'Done',
     excludedGroups: ['Published'],
   },
+  // Approved 15 October 2026. English only, so no language column, and its
+  // target is counted in two-week cycles (sites.target_cycle_weeks, migration
+  // 111; see publishing-cycles.ts).
+  '1764094550': {
+    name: 'Bessemeters · Publishing',
+    short: 'BM-P',
+    stages: [
+      { col: 'status5', name: 'Kick-start' },
+      { col: 'status4', name: 'Media' },
+      { col: 'status__1', name: 'Media Approval' },
+      { col: 'status7', name: 'Staging' },
+      { col: 'status41', name: 'Assigning' },
+      { col: 'status1', name: 'Proof/Meta/Tags' },
+      { col: 'status11', name: 'Implementation' },
+      { col: 'status85', name: 'On-Page SEO' },
+      { col: 'status43', name: 'Internal Linking' },
+      { col: 'status67', name: 'Publishing' },
+    ],
+    peopleCols: ['people', 'people_1__1', 'people2', 'people1', 'people39', 'people5', 'people26', 'people4', 'people9'],
+    dateCol: 'date8',
+    publishingMode: true,
+    fixedLanguage: 'English',
+    publisherCol: 'people9',
+    publishedCol: 'status67',
+    publishedLabel: 'Done',
+    excludedGroups: ['Published'],
+  },
 }
 
 /** Who counts as a publisher is a list in Settings since 10 October 2026: publishing-rules.ts. */
 
-/** Board IDs that run in publishing mode (the Goals view). */
-export const PUBLISHING_BOARD_IDS = Object.keys(BOARDS).filter((id) => BOARDS[id].publishingMode)
+/**
+ * Board IDs that run in publishing mode (the Goals view), in the order the Home
+ * card, Settings and the dashboard show them. Written out because Object.keys
+ * puts number-like keys in numeric order, which would have slotted Bessemeters
+ * between the two older clients (15 October 2026).
+ */
+const PUBLISHING_ORDER = ['462251934', '6691665827', '1764094550']
+export const PUBLISHING_BOARD_IDS = [
+  ...PUBLISHING_ORDER.filter((id) => BOARDS[id]?.publishingMode),
+  ...Object.keys(BOARDS).filter((id) => BOARDS[id].publishingMode && !PUBLISHING_ORDER.includes(id)),
+]
+
+/** The language of an item: the board's fixed one, or the language column's text. */
+export function itemLanguage(config: BoardConfig, columnText: string | null | undefined): string {
+  return config.fixedLanguage || columnText || '-'
+}

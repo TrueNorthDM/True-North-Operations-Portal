@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { lastFourWeeks, weekLabel } from './publishing-weeks'
+import { boardRows, lastFourWeeks, weekLabel } from './publishing-weeks'
+import { toPublishedItems } from './published-items'
+import { publisherTest } from './publishing-rules'
+import { toCadence, WEEKLY } from './publishing-cycles'
 
 const at = (iso: string) => new Date(`${iso}T16:00:00Z`)
 // The New York day: weeks are cut in New York since 10 October 2026.
@@ -109,5 +112,77 @@ describe('weekLabel', () => {
       expect(weekLabel(start, end).length).toBeLessThanOrEqual(12)
     }
     expect(weekLabel(at('2026-08-31'), at('2026-09-06')).length).toBe(12)
+  })
+})
+
+// The Home card's rows for a board counted in two-week cycles (approved
+// 15 October 2026). Bessemeters' first cycle runs 12 to 25 October 2026.
+describe('boardRows, two-week cycles', () => {
+  const BM = '1764094550'
+  const AAAF = '462251934'
+  const rules = {
+    periods: [
+      { boardId: BM, language: 'English', target: 1, from: '2026-10-12', to: null },
+      { boardId: AAAF, language: 'English', target: 2, from: '2020-01-06', to: null },
+      { boardId: AAAF, language: 'Spanish', target: 3, from: '2020-01-06', to: null },
+    ],
+    paused: {},
+    cadence: { [BM]: toCadence(2, '2026-10-12'), [AAAF]: WEEKLY },
+  }
+  const isPublisher = publisherTest(['Wendy Cacka'])
+  const page = (id: string, publishedDate: string, language = 'English') => ({ id, language, publishers: ['Wendy Cacka'], publishedDate })
+  const items = [
+    ...toPublishedItems(BM, 'BM-P', [
+      page('before-start', '2026-10-05T15:00:00Z'),
+      page('a', '2026-10-14T15:00:00Z'),
+      page('b', '2026-10-30T15:00:00Z'),
+      // Sunday 8 November, 9:30 PM in New York: still the second cycle.
+      page('c', '2026-11-09T02:30:00Z'),
+      page('d', '2026-11-10T15:00:00Z'),
+    ]),
+    ...toPublishedItems(AAAF, 'AAAF-P', [page('x', '2026-11-03T15:00:00Z', 'Spanish')]),
+  ]
+  const rows = (now: string, boardId = BM, mode?: 'complete' | 'current') =>
+    boardRows({ boardId, name: 'Bessemeters', items, rules, isPublisher, now: new Date(now), mode })
+
+  it('shows the last two complete cycles, one row each', () => {
+    const b = rows('2026-11-11T16:00:00Z')   // Wednesday, third cycle running
+    expect(b.cycleWeeks).toBe(2)
+    expect(b.weeks.map(w => [w.start, w.label, w.done, w.target])).toEqual([
+      ['2026-10-12', 'Oct 12 to Oct 25', 1, 1],
+      ['2026-10-26', 'Oct 26 to Nov 8', 2, 1],
+    ])
+    expect(b.perPeriod).toBe(1)
+    expect(b.hits).toBe(2)
+    // English is the whole target, carried as such.
+    expect(b.weeks[1].en).toEqual({ done: 2, target: 1 })
+    expect(b.firstCycleEnds).toBeNull()
+  })
+
+  it('shows one cycle when only one has ended', () => {
+    expect(rows('2026-10-27T16:00:00Z').weeks.map(w => w.label)).toEqual(['Oct 12 to Oct 25'])
+  })
+
+  it('says when the first cycle ends while none has', () => {
+    const b = rows('2026-10-15T16:00:00Z')
+    expect(b.weeks).toEqual([])
+    expect(b.firstCycleEnds).toBe('2026-10-25')
+    // Before the start too.
+    expect(rows('2026-10-08T16:00:00Z').firstCycleEnds).toBe('2026-10-25')
+  })
+
+  it('counts the cycle still running for the notification', () => {
+    const b = rows('2026-10-15T16:00:00Z', BM, 'current')
+    expect(b.weeks.map(w => [w.start, w.done, w.target])).toEqual([['2026-10-12', 1, 1]])
+    expect(b.firstCycleEnds).toBeNull()
+    expect(rows('2026-10-08T16:00:00Z', BM, 'current').weeks).toEqual([])
+  })
+
+  it('leaves a weekly board on its last four weeks', () => {
+    const b = rows('2026-11-11T16:00:00Z', AAAF)
+    expect(b.cycleWeeks).toBe(1)
+    expect(b.weeks.map(w => w.label)).toEqual(['Oct 12-18', 'Oct 19-25', 'Oct 26-Nov 1', 'Nov 2-8'])
+    expect(b.weeks.map(w => w.done)).toEqual([0, 0, 0, 1])
+    expect(b.perPeriod).toBe(5)
   })
 })

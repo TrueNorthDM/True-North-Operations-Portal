@@ -1919,7 +1919,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string | null
-          domain: string
+          domain: string | null
           id: string
           language_paths: Json
           languages: string[]
@@ -1927,13 +1927,15 @@ export type Database = {
           monday_column_ids: Json | null
           name: string
           paused_languages: string[]
+          target_cycle_start: string | null
+          target_cycle_weeks: number
           wp_dev_url: string | null
           wp_live_url: string | null
         }
         Insert: {
           code: string
           created_at?: string | null
-          domain: string
+          domain?: string | null
           id?: string
           language_paths?: Json
           languages: string[]
@@ -1941,13 +1943,15 @@ export type Database = {
           monday_column_ids?: Json | null
           name: string
           paused_languages?: string[]
+          target_cycle_start?: string | null
+          target_cycle_weeks?: number
           wp_dev_url?: string | null
           wp_live_url?: string | null
         }
         Update: {
           code?: string
           created_at?: string | null
-          domain?: string
+          domain?: string | null
           id?: string
           language_paths?: Json
           languages?: string[]
@@ -1955,6 +1959,8 @@ export type Database = {
           monday_column_ids?: Json | null
           name?: string
           paused_languages?: string[]
+          target_cycle_start?: string | null
+          target_cycle_weeks?: number
           wp_dev_url?: string | null
           wp_live_url?: string | null
         }

@@ -12,7 +12,7 @@
  *      week's targets.
  */
 
-import { BOARDS, type BoardConfig } from './config'
+import { BOARDS, itemLanguage, type BoardConfig } from './config'
 import type { SnapshotBoard, SnapshotColumnValue, SnapshotLog, TargetsMap } from './types'
 
 export interface PublishedItem {
@@ -124,7 +124,8 @@ export function enrichPublishingBoard(board: SnapshotBoard, config: BoardConfig)
     const byId = colsById(it.column_values)
     const changes = changesByItem.get(String(it.id)) || []
 
-    const language = (config.languageCol ? byId[config.languageCol]?.text : null) || '-'
+    // A board with no language column names its one language (fixedLanguage).
+    const language = itemLanguage(config, config.languageCol ? byId[config.languageCol]?.text : null)
     const publishers = config.publisherCol ? [...collectPeopleNames(byId, [config.publisherCol])] : []
 
     const targetLabel = config.publishedLabel || 'Done'

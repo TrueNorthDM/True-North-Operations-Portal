@@ -11,6 +11,9 @@
  *   periods     every target and the weeks it was in force, so past weeks keep
  *               the target they had
  *   paused      languages paused on each board's site, left out everywhere
+ *   cadence     each board's rhythm, { weeks, start }: weeks 1, or 2 with the
+ *               Monday the first two-week cycle starts (15 October 2026,
+ *               publishing-cycles.ts, which the dashboard mirrors)
  *
  * For everyone with the Publishing Goals tool, as the page decides it. From 7
  * to 10 October 2026 it answered Super Admins only and the dashboard failed for
@@ -37,6 +40,7 @@ export async function GET() {
       targets: targetsForWeek(rules, weekStartDay(new Date())),
       periods: rules.periods,
       paused: rules.paused,
+      cadence: rules.cadence,
     }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     // The detail goes to the server log; the dashboard gets a sentence.

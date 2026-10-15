@@ -17,7 +17,7 @@ import type { Db } from '@/lib/supabase/types'
 import { selectAllPages } from '@/lib/monday/worklist/resilience'
 import { loadWorklist, type WorkRow } from '@/lib/monday/worklist/data'
 import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
-import { weekBounds } from '@/lib/boards/publishing-rules'
+import { workingDaysGone } from '@/lib/boards/publishing-cycles'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
 import { HEALTH_LABEL, type HealthResult } from '@/lib/health/checks'
 import { ROLE_TYPE_LABEL } from '@/lib/directory/people-types'
@@ -250,14 +250,23 @@ export function expectedSoFar(target: number, today: string): number {
   return Math.floor((target * gone) / 5)
 }
 
+/**
+ * A two-week cycle still running, judged over its ten working days the same
+ * way (15 October 2026): on the second Wednesday a target of 10 should have 7.
+ * `cycleStart` is the cycle's Monday.
+ */
+export function expectedInCycle(target: number, cycleStart: string, today: string): number {
+  const gone = workingDaysGone({ start: cycleStart, end: addDays(cycleStart, 13) }, today)
+  return Math.floor((target * gone) / 10)
+}
+
 /** Older than this, the boards were not read in time to say anyone is behind. */
 const SNAPSHOT_FRESH_MS = 8 * 3_600_000
 
 export async function publishingDrafts(ctx: Ctx): Promise<Draft[]> {
-  const start = weekOf(ctx.today)
-  // The week from Monday 00:00 in New York, not UTC midnight, which is Sunday
-  // evening there (audit, 10 October 2026).
-  const { boards, updatedAt } = await loadPublishingWeeks(ctx.now, [{ start: weekBounds(start).start, end: ctx.now }])
+  // The week (or two-week cycle) still running, from its Monday 00:00 in New
+  // York, not UTC midnight, which is Sunday evening there (audit, 10 October 2026).
+  const { boards, updatedAt } = await loadPublishingWeeks(ctx.now, 'current')
   // A stale read would announce a client as behind on pages it already
   // published: say nothing until the boards are read again.
   if (!updatedAt || ctx.now.getTime() - Date.parse(updatedAt) > SNAPSHOT_FRESH_MS) return []
@@ -265,14 +274,17 @@ export async function publishingDrafts(ctx: Ctx): Promise<Draft[]> {
   const out: Draft[] = []
   for (const b of boards) {
     const w = b.weeks[0]
-    const expected = expectedSoFar(b.perWeek, ctx.today)
-    if (!w || b.perWeek <= 0 || expected <= 0 || w.done >= expected) continue
+    if (!w) continue
+    const cycle = b.cycleWeeks === 2
+    const expected = cycle ? expectedInCycle(b.perPeriod, w.start, ctx.today) : expectedSoFar(b.perPeriod, ctx.today)
+    if (b.perPeriod <= 0 || expected <= 0 || w.done >= expected) continue
     for (const r of readers) {
       out.push(...draftFor(ctx, 'publishing-behind', r, {
         title: 'Publishing Goals behind pace',
-        body: `${b.name}: ${w.done} of ${b.perWeek} published this week, ${expected} expected by now.`,
+        body: `${b.name}: ${w.done} of ${b.perPeriod} published this ${cycle ? 'cycle' : 'week'}, ${expected} expected by now.`,
         href: ROUTES.publishing,
-        dedupeKey: `${b.boardId}:${start}`,
+        // Once per board and week, or per board and cycle: w.start is its Monday.
+        dedupeKey: `${b.boardId}:${w.start}`,
       }))
     }
   }

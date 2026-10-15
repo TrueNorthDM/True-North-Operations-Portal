@@ -10,7 +10,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { DEFAULT_LANGUAGES, isPageDone, type SiteCode } from './rules'
+import { DEFAULT_LANGUAGES, isPageDone, isSiteCode, type SiteCode } from './rules'
 
 export interface SiteRow {
   id: string
@@ -189,7 +189,10 @@ export async function getProjectsOverview(): Promise<ProjectsOverview> {
   const sites: ProjectsOverview['sites'] = {}
 
   for (const s of sitesList) {
-    const code = s.code as SiteCode
+    // Href Links sites only: a publishing-only site (Bessemeters, migration
+    // 111) has no domain and no hreflang pages, and is not one of its projects.
+    if (!isSiteCode(s.code)) continue
+    const code = s.code
     const languages = s.languages?.length ? s.languages : DEFAULT_LANGUAGES[code] ?? []
     sites[code] = { languages, domain: s.domain }
     const stats: ProjectStats = { recentCompletions: 0, totalDone: 0, remaining: 0 }

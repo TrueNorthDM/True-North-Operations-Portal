@@ -213,7 +213,7 @@ async function checkPublishingSnapshot(supabase: SupabaseClient): Promise<Check>
     const names = [...missing, ...stale.map(r => r.board_id)].map(id => BOARDS[id]?.short ?? id).join(', ')
     return { service: HEALTH.publishingSnapshot, ok: false, status: 'down', detail: `Not pulled in the last ${SNAPSHOT_STALE_HOURS} hours: ${names}. Publishing Goals is showing old numbers.` }
   }
-  return { service: HEALTH.publishingSnapshot, ok: true, status: 'ok', detail: `Both publishing boards pulled in the last ${SNAPSHOT_STALE_HOURS} hours.` }
+  return { service: HEALTH.publishingSnapshot, ok: true, status: 'ok', detail: `Every publishing board pulled in the last ${SNAPSHOT_STALE_HOURS} hours.` }
 }
 
 /** Run every check, persist the results (best-effort), and return them. */

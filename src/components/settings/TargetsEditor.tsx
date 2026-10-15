@@ -14,19 +14,25 @@
  * board's site publishes rather than typed, targets are whole numbers, a
  * removal asks first, a save that fails part way says which rows went in, and
  * the publishers list is edited here instead of living in the code.
+ *
+ * Since 15 October 2026 a board can count its target per two-week cycle
+ * (Bessemeters): Edit shows its Rhythm, "Every week | Every 2 weeks", and a
+ * change asks first, because it changes what every number on the card means.
  */
 
 import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  saveTargetValue, addTarget, deleteTarget, addPublisher, removePublisher,
+  saveTargetValue, addTarget, deleteTarget, addPublisher, removePublisher, saveTargetRhythm,
 } from '@/app/(app)/admin/settings/targets-actions'
 import { initialsOf, PILL_CLASS, type PillKind } from '@/lib/directory/people-types'
 import type { PublishingTargetRow, AuditLogRow } from '@/lib/types/database.types'
 import { BTN, BTN_ICON } from '@/lib/ui/buttons'
 import { Select } from '@/components/ui/Select'
 import { useConfirm } from '@/components/ui/useConfirm'
+import { Segmented } from '@/components/ui/Segmented'
 import type { TargetsBoard as TargetsBoardInfo } from '@/lib/boards/targets-data'
+import { isCycled, shortDay, WEEKLY } from '@/lib/boards/publishing-cycles'
 
 // ── Language dots, flag colours, keyed by the Monday label text ─────────────
 const LANG_DOT: Record<string, string> = {
@@ -42,10 +48,12 @@ const langDot = (name: string) => LANG_DOT[name.trim().toLowerCase()] ?? '#8593a
 export const shortAbbr = (short: string | null | undefined) => (short ?? '').replace(/-[PT]$/i, '')
 
 // Site-brand badge tint, keyed by the abbreviation (matches Sites & languages):
-// AAAF green, HFA orange. Theme-aware via the app's brand tokens.
+// AAAF green, HFA orange, Bessemeters a soft red (15 October 2026). Theme-aware
+// via the app's brand tokens.
 const BOARD_BADGE: Record<string, string> = {
   aaaf: 'bg-aaaf-soft text-aaaf-primary',
   hfa: 'bg-hfa-soft text-hfa-primary',
+  bm: 'bg-bm-soft text-bm-primary',
 }
 const boardBadge = (abbr: string) => BOARD_BADGE[abbr.toLowerCase()] ?? 'bg-tn-primary text-white'
 
@@ -62,6 +70,17 @@ export function parseTarget(raw: string): number | null {
 }
 
 const BAD_TARGET = 'A target is a whole number of pages a week, 0 or more.'
+
+type Rhythm = 1 | 2
+const RHYTHMS = [{ key: 1, label: 'Every week' }, { key: 2, label: 'Every 2 weeks' }] as const
+
+/** "/wk" or "per 2 weeks", beside every target on a card. Exported for its test. */
+export const unitFor = (rhythm: Rhythm) => (rhythm === 2 ? 'per 2 weeks' : '/wk')
+
+/** "Monday, Oct 13, 2026" from a Monday as YYYY-MM-DD. Exported for its test. */
+export function mondayLong(iso: string): string {
+  return `Monday, ${shortDay(iso)}, ${iso.slice(0, 4)}`
+}
 
 /** "English", "English and Spanish", "English, Portuguese and Spanish". Exported for its test. */
 export function listNames(names: string[]): string {
@@ -96,6 +115,7 @@ export function TargetsEditor({
   audit,
   boards,
   publishers,
+  thisMonday,
   canEdit,
   grid = false,
 }: {
@@ -105,6 +125,8 @@ export function TargetsEditor({
   boards: TargetsBoardInfo[]
   /** Who counts as publisher on Monday. */
   publishers: string[]
+  /** This week's Monday in New York: where a new two-week rhythm would start. */
+  thisMonday: string
   /** Publishing targets granted: the edit controls show. Without it, read-only. */
   canEdit: boolean
   grid?: boolean          // when true, lay the board cards out side by side
@@ -123,7 +145,7 @@ export function TargetsEditor({
       .filter(id => !boards.some(b => b.id === id))
       .map(id => {
         const short = byBoard.get(id)?.[0]?.board_short ?? id
-        return { id, short, name: short, languages: [] }
+        return { id, short, name: short, languages: [], cadence: WEEKLY }
       }),
   ]
 
@@ -131,7 +153,7 @@ export function TargetsEditor({
     <div className="space-y-8">
       <div className={grid ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 items-start' : 'space-y-6'}>
         {boardList.map((b) => (
-          <BoardTargets key={b.id} board={b} rows={byBoard.get(b.id) ?? []} canEdit={canEdit} />
+          <BoardTargets key={b.id} board={b} rows={byBoard.get(b.id) ?? []} canEdit={canEdit} thisMonday={thisMonday} />
         ))}
       </div>
 
@@ -148,7 +170,7 @@ export function TargetsEditor({
   )
 }
 
-function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows: PublishingTargetRow[]; canEdit: boolean }) {
+function BoardTargets({ board, rows, canEdit, thisMonday }: { board: TargetsBoardInfo; rows: PublishingTargetRow[]; canEdit: boolean; thisMonday: string }) {
   const router = useRouter()
   const sorted = [...rows].sort((a, b) => a.language.localeCompare(b.language))
   const abbr = shortAbbr(board.short) || board.name.slice(0, 4).toUpperCase()
@@ -159,8 +181,16 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
+  // The rhythm saved, and the one chosen in Edit. The card's units follow the
+  // saved one until Save, so "per 2 weeks" never shows before it is true.
+  const savedRhythm: Rhythm = isCycled(board.cadence) ? 2 : 1
+  const [rhythm, setRhythm] = useState<Rhythm>(savedRhythm)
+  const unit = unitFor(savedRhythm)
+  const cyclesFrom = savedRhythm === 2 && board.cadence.start ? board.cadence.start : thisMonday
+
   function enterEdit() {
     setValues(Object.fromEntries(sorted.map((r) => [r.id, String(r.target_value)])))
+    setRhythm(savedRhythm)
     setError(null)
     setEditing(true)
   }
@@ -170,7 +200,7 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
     setError(null)
   }
 
-  function saveAll() {
+  async function saveAll() {
     setError(null)
     const changed = sorted.filter(r => {
       const v = values[r.id]
@@ -183,9 +213,31 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
       setError(`${BAD_TARGET} Check ${listNames(bad)}.`)
       return
     }
-    if (changed.length === 0) { setEditing(false); return }
+    const rhythmChanged = rhythm !== savedRhythm
+    if (changed.length === 0 && !rhythmChanged) { setEditing(false); return }
+
+    // A new rhythm changes what every number on the card means, so it asks first.
+    if (rhythmChanged) {
+      const yes = await confirm(rhythm === 2
+        ? {
+          title: `Count ${abbr} every 2 weeks?`,
+          body: `Its targets become pages per two-week cycle, from ${mondayLong(thisMonday)}. Weeks before then are not counted for this board.`,
+          action: 'Count every 2 weeks',
+        }
+        : {
+          title: `Count ${abbr} every week?`,
+          body: 'Its targets become pages per week again, from this week.',
+          action: 'Count every week',
+        })
+      if (!yes) return
+    }
 
     start(async () => {
+      if (rhythmChanged) {
+        const res = await saveTargetRhythm({ boardId: board.id, weeks: rhythm })
+        if (!res.ok) { setError(res.error ?? 'Not saved. Try again in a moment.'); return }
+        if (changed.length === 0) { setEditing(false); router.refresh(); return }
+      }
       // Row by row, as the server saves them. When one fails part way, the
       // message says which went in and which did not, rather than a single
       // "failed" over a list that is in fact half saved (audit, 10 October 2026).
@@ -204,7 +256,7 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
           ? `Saved ${listNames(saved)}. Not saved: ${listNames(failed)}. ${reason}`
           : `Not saved: ${listNames(failed)}. ${reason}`)
       }
-      if (saved.length) router.refresh()
+      if (saved.length || rhythmChanged) router.refresh()
     })
   }
 
@@ -234,7 +286,10 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
         <span className={`inline-flex w-9 h-9 items-center justify-center rounded-[9px] font-(family-name:--font-display) font-extrabold text-[12px] shrink-0 ${boardBadge(abbr)}`}>{abbr}</span>
         <div className="min-w-0">
           <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink truncate">{board.name}</div>
-          <div className="text-[12px] text-muted">{sorted.length} {sorted.length === 1 ? 'language' : 'languages'}</div>
+          <div className="text-[12px] text-muted">
+            {sorted.length} {sorted.length === 1 ? 'language' : 'languages'}
+            {savedRhythm === 2 && <> · every 2 weeks</>}
+          </div>
         </div>
       </div>
 
@@ -253,15 +308,15 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
                   value={values[row.id] ?? String(row.target_value)}
                   onChange={(e) => setValues((v) => ({ ...v, [row.id]: e.target.value }))}
                   className={paceInput}
-                  aria-label={`${row.language} weekly target`}
+                  aria-label={savedRhythm === 2 ? `${row.language} target per 2 weeks` : `${row.language} weekly target`}
                 />
-                <span className="text-[12px] text-muted">/wk</span>
+                <span className="text-[12px] text-muted whitespace-nowrap">{unit}</span>
                 <button type="button" onClick={() => removeRow(row)} disabled={pending} className={iconBtn} title={`Remove ${row.language}`} aria-label={`Remove the weekly target for ${row.language}`}><Trash /></button>
               </>
             ) : (
               <>
                 <span className="font-semibold text-tn-ink tabular-nums text-sm">{row.target_value}</span>
-                <span className="text-[12px] text-muted">/wk</span>
+                <span className="text-[12px] text-muted whitespace-nowrap">{unit}</span>
               </>
             )}
           </div>
@@ -269,8 +324,19 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
         {sorted.length === 0 && <p className="py-2 text-[13px] text-muted">No languages yet.</p>}
       </div>
 
+      {/* The rhythm: per board, not per language (15 October 2026). */}
+      {editing && (
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          <div className={fieldLabel} aria-hidden="true">Rhythm</div>
+          <Segmented<Rhythm> options={RHYTHMS} value={rhythm} onChange={setRhythm} label={`Rhythm for ${abbr}`} disabled={pending} />
+          {rhythm === 2 && (
+            <p className="mt-2 mb-0 text-[12.5px] text-muted">Cycles start on {mondayLong(cyclesFrom)} and run two weeks each.</p>
+          )}
+        </div>
+      )}
+
       {editing && (addable.length > 0
-        ? <AddTargetForm boardId={board.id} boardShort={abbr} languages={addable} />
+        ? <AddTargetForm boardId={board.id} boardShort={abbr} languages={addable} rhythm={savedRhythm} />
         : <p className="mt-3 pt-3 border-t border-slate-100 text-[12.5px] text-muted">Every language this site publishes has a target.</p>)}
 
       {error && <p role="alert" className={errorText}>{error}</p>}
@@ -299,7 +365,7 @@ function BoardTargets({ board, rows, canEdit }: { board: TargetsBoardInfo; rows:
   )
 }
 
-function AddTargetForm({ boardId, boardShort, languages }: { boardId: string; boardShort: string; languages: string[] }) {
+function AddTargetForm({ boardId, boardShort, languages, rhythm }: { boardId: string; boardShort: string; languages: string[]; rhythm: Rhythm }) {
   const router = useRouter()
   const ids = useId()
   const [language, setLanguage] = useState('')
@@ -342,7 +408,7 @@ function AddTargetForm({ boardId, boardShort, languages }: { boardId: string; bo
           />
         </div>
         <div>
-          <label htmlFor={`${ids}-value`} className={fieldLabel}>Weekly target</label>
+          <label htmlFor={`${ids}-value`} className={fieldLabel}>{rhythm === 2 ? 'Target per 2 weeks' : 'Weekly target'}</label>
           <input
             id={`${ids}-value`}
             type="number"
@@ -465,9 +531,16 @@ function actorFrom(email: string | null): string {
   return name || email
 }
 
+const rhythmName = (weeks: unknown) => (weeks === 2 ? 'every 2 weeks' : 'every week')
+
 function describeAudit(e: AuditLogRow): { subject: string; change: Change } {
-  const row = (e.after ?? e.before ?? {}) as { board_short?: string; language?: string; target_value?: number }
+  const row = (e.after ?? e.before ?? {}) as { board_short?: string; language?: string; target_value?: number; target_cycle_weeks?: number }
   const subject = [row.language, shortAbbr(row.board_short)].filter(Boolean).join(' · ')
+  // A rhythm change (saveTargetRhythm), not a target row.
+  if (row.target_cycle_weeks !== undefined) {
+    const before = (e.before as { target_cycle_weeks?: number } | null)?.target_cycle_weeks
+    return { subject, change: { label: 'Rhythm', kind: 'teal', summary: `${rhythmName(before)} to ${rhythmName(row.target_cycle_weeks)}` } }
+  }
   if (e.action === 'update') {
     const before = (e.before as { target_value?: number } | null)?.target_value
     const after = (e.after as { target_value?: number } | null)?.target_value

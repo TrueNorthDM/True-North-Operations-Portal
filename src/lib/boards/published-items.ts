@@ -28,7 +28,8 @@ import type { SnapshotBoard } from './types'
  * How far back the stored facts reach.
  *
  * The card shows the last four complete weeks, whose first day is at most 34 days
- * ago. Seventy days leaves five weeks of margin, so a snapshot that has not been
+ * ago, or the last two complete two-week cycles, at most 41 days ago (15 October
+ * 2026). Seventy days leaves four weeks of margin, so a snapshot that has not been
  * refreshed for a month still covers the whole window. Anything older is left
  * out because nothing reads it.
  */

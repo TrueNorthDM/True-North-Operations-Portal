@@ -6,18 +6,22 @@ import { fakeDb, type Fake } from '@/lib/directory/__fakes__/db'
 let fake: Fake
 let granted = true
 const AAAF = '462251934'
+const BM = '1764094550'
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 vi.mock('@/lib/access/resolve', () => ({ allowedTo: async () => granted }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => fake.db }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { email: 'ben@tn.org' } } }) } }) }))
 
-const { addTarget, saveTargetValue, deleteTarget, addPublisher, removePublisher } = await import('./targets-actions')
+const { addTarget, saveTargetValue, deleteTarget, addPublisher, removePublisher, saveTargetRhythm } = await import('./targets-actions')
 
 beforeEach(() => {
   granted = true
   fake = fakeDb({
-    sites: [{ monday_board_id: AAAF, languages: ['en', 'pt', 'es', 'sw'] }],
+    sites: [
+      { id: 's-aaaf', monday_board_id: AAAF, languages: ['en', 'pt', 'es', 'sw'], target_cycle_weeks: 1, target_cycle_start: null },
+      { id: 's-bm', monday_board_id: BM, languages: ['en'], target_cycle_weeks: 1, target_cycle_start: null },
+    ],
     publishing_targets: [{ id: 't1', board_id: AAAF, board_short: 'AAAF-P', language: 'English', period_type: 'weekly', target_value: 2 }],
     publishing_publishers: [{ name: 'Samuel Manzi' }],
   }, { rpc: { publishing_set_target: () => null, publishing_remove_target: () => true } })
@@ -65,5 +69,43 @@ describe('the publishers list', () => {
 
   it('refuses something that is not a name', async () => {
     expect((await addPublisher({ name: '<script>' })).ok).toBe(false)
+  })
+})
+
+// The rhythm: every week or every two weeks (15 October 2026).
+describe('a board\'s rhythm', () => {
+  const bm = () => fake.tables.sites.find(s => s.id === 's-bm')!
+  const history = () => fake.writes.filter(w => w.table === 'audit_log').flatMap(w => w.rows)
+
+  it('counts in two-week cycles from this week\'s Monday, under the name of who changed it', async () => {
+    expect(await saveTargetRhythm({ boardId: BM, weeks: 2 })).toEqual({ ok: true })
+    expect(bm().target_cycle_weeks).toBe(2)
+    const start = String(bm().target_cycle_start)
+    expect(new Date(`${start}T12:00:00Z`).getUTCDay()).toBe(1)
+    expect(history()).toMatchObject([{
+      user_email: 'ben@tn.org', action: 'update', entity_id: 's-bm',
+      before: { board_short: 'BM-P', target_cycle_weeks: 1, target_cycle_start: null },
+      after: { board_short: 'BM-P', target_cycle_weeks: 2, target_cycle_start: start },
+    }])
+  })
+
+  it('goes back to every week and clears the start', async () => {
+    Object.assign(bm(), { target_cycle_weeks: 2, target_cycle_start: '2026-10-12' })
+    expect(await saveTargetRhythm({ boardId: BM, weeks: 1 })).toEqual({ ok: true })
+    expect(bm()).toMatchObject({ target_cycle_weeks: 1, target_cycle_start: null })
+    expect(history()[0]).toMatchObject({ after: { target_cycle_weeks: 1, target_cycle_start: null } })
+  })
+
+  it('changes nothing when the rhythm is already the one asked for', async () => {
+    expect(await saveTargetRhythm({ boardId: BM, weeks: 1 })).toEqual({ ok: true })
+    expect(fake.writes).toEqual([])
+  })
+
+  it('refuses another rhythm, a board that is not a publishing board, and anyone without Publishing targets', async () => {
+    expect((await saveTargetRhythm({ boardId: BM, weeks: 3 })).ok).toBe(false)
+    expect((await saveTargetRhythm({ boardId: '123', weeks: 2 })).ok).toBe(false)
+    granted = false
+    expect((await saveTargetRhythm({ boardId: BM, weeks: 2 })).error).toMatch(/not open to your access/)
+    expect(fake.writes).toEqual([])
   })
 })

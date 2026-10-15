@@ -1,5 +1,7 @@
 /**
- * The last four complete weeks of publishing, per board, for the Home widget.
+ * The last four complete weeks of publishing, per board, for the Home widget;
+ * the last two complete cycles for a board counted in two-week cycles
+ * (Bessemeters, 15 October 2026; publishing-cycles.ts).
  *
  * Week by week rather than four weeks added together, because a month that hits
  * its target can hide a week that missed badly, and the target is set per week.
@@ -23,22 +25,31 @@
  *
  * A read that fails throws: the card says it could not read, rather than
  * showing "no target" or nothing (audit, 10 October 2026).
+ *
+ * The counting itself is boardRows, pure and tested; loadPublishingWeeks only
+ * reads and hands it the facts.
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { addDays } from '@/lib/notifications/schedule'
-import { BOARDS } from './config'
+import { BOARDS, PUBLISHING_BOARD_IDS } from './config'
 import { computePublishingMetrics, enrichPublishingBoard } from './publishing'
 import type { PublishedItem } from './publishing'
 import { isCompactList, toPublishedItems } from './published-items'
-import { loadPublishingRules, publisherTest, targetsForWeek, weekBounds, weekStartDay } from './publishing-rules'
+import {
+  cycleBounds, loadPublishingRules, PUBLISHING_ZONE, publisherTest, targetsForWeek, weekBounds, weekStartDay,
+  type PublishingRules,
+} from './publishing-rules'
+import { cycleLabel, cycleOf, firstCycleEnd, isCycled, lastCompleteCycles, WEEKLY, type Cadence } from './publishing-cycles'
 import type { SnapshotBoard } from './types'
 import { MONTH_SHORT } from '@/lib/format/months'
+import { zoneDate } from '@/lib/notifications/schedule'
 
+/** One row of the card: a week, or a two-week cycle on a board counted in cycles. */
 export interface PublishingWeek {
-  /** The Monday, as YYYY-MM-DD. */
+  /** The Monday, as YYYY-MM-DD: the week's, or the cycle's first. */
   start: string
-  /** "Aug 10-16", what the widget prints. */
+  /** "Aug 10-16" for a week, "Sep 29 to Oct 12" for a cycle: what the widget prints. */
   label: string
   done: number
   target: number
@@ -59,14 +70,23 @@ export interface PublishingBoardWeeks {
   boardId: string
   /** The client, not the board: "AskAnAdventistFriend", not "AAAF · Publishing". */
   name: string
-  perWeek: number
-  /** The English slice of `perWeek`, 0 when the board has no English target. */
-  enPerWeek: number
+  /** 1: the rows are weeks and the target is per week. 2: they are two-week cycles, and it is per cycle. */
+  cycleWeeks: 1 | 2
+  /** The target per row (per week, or per cycle). */
+  perPeriod: number
+  /** The English slice of `perPeriod`, 0 when the board has no English target. */
+  enPerPeriod: number
+  /** Oldest first: four weeks, or up to two cycles. */
   weeks: PublishingWeek[]
-  /** How many of the four met their target, all languages together. */
+  /** How many of the rows met their target, all languages together. */
   hits: number
-  /** How many of the four met the English target alone. */
+  /** How many of the rows met the English target alone. */
   enHits: number
+  /**
+   * A board counted in cycles whose first cycle has not ended yet: the Sunday
+   * it ends, YYYY-MM-DD, for "First cycle ends Oct 26". Null otherwise.
+   */
+  firstCycleEnds: string | null
 }
 
 /**
@@ -119,14 +139,106 @@ export function weekLabel(start: Date, end: Date): string {
 const weekDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 
 /**
- * `ranges` counts other weeks than the last four complete ones. The
- * notifications pass the week still running, to ask whether a client is behind
+ * Which rows: "complete" is the card (the last four complete weeks, or the
+ * last two complete cycles); "current" is the week or cycle still running,
+ * up to now, which the behind-pace notification asks about.
+ */
+export type RowsMode = 'complete' | 'current'
+
+interface Span { start: Date; end: Date; label: string; monday: string }
+
+/** The spans a board is counted over, by its cadence. */
+export function boardSpans(cadence: Cadence, now: Date, mode: RowsMode): Span[] {
+  const today = zoneDate(now, PUBLISHING_ZONE)
+  if (isCycled(cadence)) {
+    if (mode === 'current') {
+      const cy = cycleOf(cadence, today)
+      return cy ? [{ start: cycleBounds(cy).start, end: now, label: cycleLabel(cy), monday: cy.start }] : []
+    }
+    return lastCompleteCycles(cadence, today, 2).map(cy => ({ ...cycleBounds(cy), label: cycleLabel(cy), monday: cy.start }))
+  }
+  if (mode === 'current') {
+    const monday = weekStartDay(now)
+    const { start, end } = weekBounds(monday)
+    return [{ start, end: now, label: weekLabel(start, end), monday }]
+  }
+  return lastFourWeeks(now).map(({ start, end }) => ({ start, end, label: weekLabel(start, end), monday: weekStartDay(start) }))
+}
+
+/**
+ * One board's rows, counted. Pure: the items, the rules and the clock in, the
+ * card's figures out. Each row is judged against the targets in force in its
+ * first week, which for a cycle is the cycle's first week.
+ */
+export function boardRows(input: {
+  boardId: string
+  name: string
+  items: PublishedItem[]
+  rules: Pick<PublishingRules, 'periods' | 'paused' | 'cadence'>
+  isPublisher: (name: string | null | undefined) => boolean
+  now: Date
+  mode?: RowsMode
+}): PublishingBoardWeeks {
+  const { boardId, items, rules, isPublisher, now, mode = 'complete' } = input
+  const cadence = rules.cadence[boardId] ?? WEEKLY
+  const spans = boardSpans(cadence, now, mode)
+
+  // Summed across the targeted languages, which is the dashboard's own board
+  // total: the widget answers "did the client's week land". English is the
+  // one language pulled back out, because it is the one that goes missing
+  // unnoticed.
+  const counted: PublishingWeek[] = spans.map(({ start, end, label, monday }) => {
+    const langTargets = targetsForWeek(rules, monday)[boardId]
+    const target = Object.values(langTargets ?? {}).reduce((sum, n) => sum + n, 0)
+    const enTarget = langTargets?.[ENGLISH] ?? 0
+    // A board with no targets that row gets no stat at all, which is not
+    // the same as a bad row: the widget says so instead of drawing a miss.
+    const stat = langTargets
+      ? computePublishingMetrics(items, { [boardId]: langTargets }, start, end, isPublisher, rules.paused).boards[0]
+      : undefined
+    const en = stat?.langs.find(l => l.lang === ENGLISH)
+    return {
+      start: monday,
+      label,
+      done: stat?.done ?? 0,
+      target,
+      en: enTarget > 0 ? { done: en?.done ?? 0, target: enTarget } : null,
+      untargeted: stat?.untargeted ?? 0,
+    }
+  })
+  const latest = counted[counted.length - 1]
+
+  // No cycle has ended yet, so the card names the day the first one will.
+  let firstCycleEnds: string | null = null
+  if (isCycled(cadence) && mode === 'complete' && counted.length === 0) {
+    const today = zoneDate(now, PUBLISHING_ZONE)
+    firstCycleEnds = cycleOf(cadence, today)?.end ?? firstCycleEnd(cadence)
+  }
+
+  return {
+    boardId,
+    name: input.name,
+    cycleWeeks: isCycled(cadence) ? 2 : 1,
+    // The targets in force in the latest row shown, which is what "per week"
+    // (or "per cycle") means to a reader today.
+    perPeriod: latest?.target ?? 0,
+    enPerPeriod: latest?.en?.target ?? 0,
+    weeks: counted,
+    hits: counted.filter(w => w.target > 0 && w.done >= w.target).length,
+    enHits: counted.filter(w => w.en && w.en.done >= w.en.target).length,
+    firstCycleEnds,
+  }
+}
+
+/**
+ * Every publishing board's rows. `mode` "current" counts the week or cycle
+ * still running, for the notifications, which ask whether a client is behind
  * for the days that have gone; the widget never does.
  */
 export async function loadPublishingWeeks(
-  now = new Date(), ranges?: { start: Date; end: Date }[],
+  now = new Date(), mode: RowsMode = 'complete',
 ): Promise<{ boards: PublishingBoardWeeks[]; updatedAt: string | null }> {
-  const boardIds = Object.keys(BOARDS).filter(id => BOARDS[id].publishingMode)
+  const boardIds = PUBLISHING_BOARD_IDS
   if (boardIds.length === 0) return { boards: [], updatedAt: null }
 
   const supabase = createAdminClient()
@@ -136,8 +248,6 @@ export async function loadPublishingWeeks(
   ])
   if (factRes.error) throw new Error(`Publishing goals could not read the boards: ${factRes.error.message}`)
   const isPublisher = publisherTest(rules.publishers)
-
-  const weeks = ranges ?? lastFourWeeks(now)
 
   // One flat list, the shape the counting takes. It does its own per-board
   // filtering, so there is nothing to keep separated here.
@@ -173,52 +283,11 @@ export async function loadPublishingWeeks(
     }
   }
 
-  // Each week against the targets in force that week.
-  const perWeek = weeks.map(({ start, end }) => {
-    const targets = targetsForWeek(rules, weekStartDay(start))
-    const m = computePublishingMetrics(items, targets, start, end, isPublisher, rules.paused)
-    return { targets, stats: Object.fromEntries(m.boards.map(b => [b.boardId, b])) }
-  })
-
-  const out: PublishingBoardWeeks[] = []
-  for (const boardId of Object.keys(names)) {
-    // Summed across the targeted languages, which is the dashboard's own board
-    // total: the widget answers "did the client's week land". English is the
-    // one language pulled back out, because it is the one that goes missing
-    // unnoticed.
-    const counted = weeks.map(({ start, end }, i) => {
-      const langTargets = perWeek[i].targets[boardId] ?? {}
-      const target = Object.values(langTargets).reduce((s, n) => s + n, 0)
-      const enTarget = langTargets[ENGLISH] ?? 0
-      // A board with no targets that week gets no stat at all, which is not
-      // the same as a bad week: the widget says so instead of drawing a miss.
-      const stat = perWeek[i].stats[boardId]
-      const en = stat?.langs.find(l => l.lang === ENGLISH)
-      return {
-        start: weekStartDay(start),
-        label: weekLabel(start, end),
-        done: stat?.done ?? 0,
-        target,
-        en: enTarget > 0 ? { done: en?.done ?? 0, target: enTarget } : null,
-        untargeted: stat?.untargeted ?? 0,
-      }
-    })
-    const latest = counted[counted.length - 1]
-
-    out.push({
-      boardId,
-      name: names[boardId],
-      // The targets in force in the latest week shown, which is what "per
-      // week" means to a reader today.
-      perWeek: latest?.target ?? 0,
-      enPerWeek: latest?.en?.target ?? 0,
-      weeks: counted,
-      hits: counted.filter(w => w.target > 0 && w.done >= w.target).length,
-      enHits: counted.filter(w => w.en && w.en.done >= w.en.target).length,
-    })
-  }
-
-  // The order the boards are configured in, so the widget does not reshuffle
-  // itself when one board happens to be written to the store first.
-  return { boards: out.sort((a, b) => boardIds.indexOf(a.boardId) - boardIds.indexOf(b.boardId)), updatedAt }
+  // The order the boards are configured in (PUBLISHING_BOARD_IDS), so the
+  // widget does not reshuffle itself when one board happens to be written to
+  // the store first. A board the ingest has not read yet is left out.
+  const boards = boardIds
+    .filter(id => names[id])
+    .map(boardId => boardRows({ boardId, name: names[boardId], items, rules, isPublisher, now, mode }))
+  return { boards, updatedAt }
 }

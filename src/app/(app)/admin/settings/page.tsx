@@ -37,6 +37,7 @@ import { ChangeHistory } from '@/components/tsheets/settings/HistoryTab'
 import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import { TargetsEditor } from '@/components/settings/TargetsEditor'
 import { ROUTES } from '@/lib/nav/routes'
+import { isSiteCode } from '@/lib/href-links/rules'
 
 interface SiteData {
   id: string
@@ -105,7 +106,11 @@ export default async function SettingsPage() {
       .order('code')
     : { data: [], error: null }
   if (sitesRead.error) throw new Error(`Settings could not read the sites: ${sitesRead.error.message}`)
-  const sites = sitesRead.data ?? []
+  // The Href Links sites only. Bessemeters has a sites row for its language
+  // and its two-week rhythm (migration 111), but no domain, no hreflang pages
+  // and no WordPress links: its rhythm is set on Publishing targets
+  // (15 October 2026).
+  const sites = (sitesRead.data ?? []).filter(r => isSiteCode(r.code))
   const pausedByCode = new Map<string, string[]>(
     sites.map(r => [r.code, ((r as { paused_languages?: string[] | null }).paused_languages) ?? []]))
 
@@ -148,7 +153,7 @@ export default async function SettingsPage() {
       id: s.id,
       code: s.code as 'aaaf' | 'hfa',
       name: s.name,
-      domain: s.domain,
+      domain: s.domain ?? '',
       languages: s.languages as string[],
       paused_languages: pausedByCode.get(s.code) ?? [],
       language_paths: s.language_paths as Record<string, string>,
@@ -329,7 +334,7 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div className="space-y-5">
-          <SectionHead title="Publishing targets" desc="The weekly pace goal per site & language. These drive the Publishing Goals dashboard." />
+          <SectionHead title="Publishing targets" desc="The pace goal per site & language, per week or per two-week cycle. These drive the Publishing Goals dashboard." />
           <TargetsEditor {...targetsData} canEdit={can.targets} grid />
         </div>
       ),

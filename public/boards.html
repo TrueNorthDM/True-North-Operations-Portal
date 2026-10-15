@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Publishing Goals</title>
-  <meta name="description" content="Publishing pace versus weekly targets for the AAAF and HFA Publishing boards, read from Monday.com" />
+  <meta name="description" content="Publishing pace versus targets for the AAAF, HFA and Bessemeters Publishing boards, read from Monday.com" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800;900&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1949,6 +1949,22 @@
       justify-content: space-between;
       align-items: baseline;
     }
+    /* "Cycle Oct 12 to Oct 25, in progress", beside a board counted in
+       two-week cycles (15 October 2026). */
+    .pub-board-title .pub-cycle-chip {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: var(--bg-card-2);
+      color: var(--text-soft);
+      font-family: var(--font-body);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+      vertical-align: 1px;
+    }
     .pub-board-title .pub-board-meta {
       font-size: 10px;
       font-weight: 500;
@@ -2464,7 +2480,7 @@
         <div class="hero">
           <div class="hero-text">
             <h1>Publishing Goals</h1>
-            <p>Publishing pace versus target for the AAAF and HFA Publishing boards over the selected timeframe, tracked from the Publishing column in Monday.</p>
+            <p>Publishing pace versus target for the AAAF, HFA and Bessemeters Publishing boards over the selected timeframe, tracked from the Publishing column in Monday.</p>
             <!-- Linha sob o subtítulo: frescor do store + filtro de período (descido
                  pra cá). position:relative ancora o custom-date-range (absolute). -->
             <div class="hero-meta" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:20px; position:relative;">
@@ -2937,8 +2953,44 @@
         publishedCol: 'status31',
         publishedLabel: 'Done',
         excludedGroups: ['Published']
+      },
+      // Approved 15 October 2026. English only, so no language column: every
+      // item is fixedLanguage. Its target is counted in two-week cycles
+      // (CADENCE, from /api/targets). A copy of src/lib/boards/config.ts.
+      "1764094550": {
+        name: "Bessemeters · Publishing", short: "BM-P",
+        stages: [
+          { col: 'status5',   name: 'Kick-start' },
+          { col: 'status4',   name: 'Media' },
+          { col: 'status__1', name: 'Media Approval' },
+          { col: 'status7',   name: 'Staging' },
+          { col: 'status41',  name: 'Assigning' },
+          { col: 'status1',   name: 'Proof/Meta/Tags' },
+          { col: 'status11',  name: 'Implementation' },
+          { col: 'status85',  name: 'On-Page SEO' },
+          { col: 'status43',  name: 'Internal Linking' },
+          { col: 'status67',  name: 'Publishing' }
+        ],
+        peopleCols: ['people', 'people_1__1', 'people2', 'people1', 'people39', 'people5', 'people26', 'people4', 'people9'],
+        dateCol: 'date8',
+        publishingMode: true,
+        fixedLanguage: 'English',
+        publisherCol: 'people9',
+        publishedCol: 'status67',
+        publishedLabel: 'Done',
+        excludedGroups: ['Published']
       }
     };
+
+    /* The order the boards are shown in: AAAF, HFA, then Bessemeters, then the
+       translation boards. Object.keys alone puts number-like keys in numeric
+       order, which slotted Bessemeters between the two older clients
+       (15 October 2026). Same order as PUBLISHING_BOARD_IDS in config.ts. */
+    const BOARD_ORDER = ["462251934", "6691665827", "1764094550"];
+    function orderedBoardIds() {
+      const rank = (bid) => { const i = BOARD_ORDER.indexOf(bid); return i < 0 ? BOARD_ORDER.length : i; };
+      return Object.keys(BOARDS).sort((a, b) => rank(a) - rank(b));
+    }
 
     /* ---------- TARGETS, PERIODS, PAUSED LANGUAGES, PUBLISHERS ----------
        All of it comes from GET /api/targets, and nothing is hardcoded here
@@ -2953,11 +3005,15 @@
                              week is judged against the target it had then
          PAUSED              boardId -> Set of lowercased languages that are
                              paused on the site: left out of every count
-         PUBLISHERS          who counts as publisher on Monday */
+         PUBLISHERS          who counts as publisher on Monday
+         CADENCE             boardId -> { weeks: 2, start } for a board counted
+                             in two-week cycles (CYCLES below); weekly boards
+                             are not in it */
     let PUBLISHING_TARGETS = {};
     let TARGET_PERIODS = new Map();   // "boardId|language" (lowercased) -> [{ from, to, target }]
     let PAUSED = {};
     let PUBLISHERS = [];
+    let CADENCE = {};
     let TARGETS_STATE = 'loading';    // 'loading' | 'ok' | 'failed'
 
     const TARGETS_ERROR = 'Publishing targets could not be read. Try again in a moment.';
@@ -3010,6 +3066,12 @@
         }
 
         PUBLISHERS = data.publishers.map(n => String(n || '').trim()).filter(Boolean);
+
+        CADENCE = {};
+        for (const [bid, c] of Object.entries(data.cadence || {})) {
+          const cad = toCadence(c);
+          if (cad) CADENCE[bid] = cad;
+        }
         TARGETS_STATE = 'ok';
         setPageAlert('targetsError', '');
       } catch (err) {
@@ -3018,6 +3080,7 @@
         TARGET_PERIODS = new Map();
         PAUSED = {};
         PUBLISHERS = [];
+        CADENCE = {};
         TARGETS_STATE = 'failed';
         setPageAlert('targetsError', TARGETS_ERROR);
       }
@@ -3218,6 +3281,66 @@
       return `${p.y}-${pad2(p.m)}-${pad2(p.d)}_${pad2(p.hh)}${pad2(p.mi)}`;
     }
     const initials = (name = '') => name.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+
+    /* ---------- CYCLES ----------
+       A copy of src/lib/boards/publishing-cycles.ts (approved 15 October
+       2026): change both together. A board whose target is set per two
+       weeks (Bessemeters) is counted cycle by cycle:
+         cycles   Monday to the Sunday thirteen days later, New York calendar
+                  days, from the start Monday: [start + 14k, start + 14k + 13].
+                  There is no cycle before the start.
+         target   a whole number of pages per cycle: the one in force in the
+                  cycle's first week (the target history stays by week).
+         periods  a period counts every cycle it touches, whole: the targets of
+                  those cycles added up, and every page published inside them,
+                  even on days outside the period. A cycle not yet ended is in
+                  progress. */
+    const CYCLE_DAYS = 14;
+
+    /* { weeks: 2, start: its Monday } from what /api/targets sends, or null
+       for a weekly board. A start that is not a Monday goes back to its
+       Monday, as on the server. */
+    function toCadence(c) {
+      if (!c || Number(c.weeks) !== 2 || typeof c.start !== 'string') return null;
+      const day = c.start.slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || isNaN(Date.parse(day + 'T00:00:00Z'))) return null;
+      return { weeks: 2, start: mondayOf(day) };
+    }
+
+    /* The cycle a calendar day falls in, or null before the first. */
+    function cycleOf(c, day) {
+      if (!c || !c.start || day < c.start) return null;
+      const k = Math.floor(Math.round((ymdToUtc(day) - ymdToUtc(c.start)) / 86400000) / CYCLE_DAYS);
+      const start = addDays(c.start, k * CYCLE_DAYS);
+      return { start, end: addDays(start, CYCLE_DAYS - 1) };
+    }
+
+    /* Every cycle a span of calendar days touches, whole, oldest first.
+       first null is from the very first cycle ("all time"). */
+    function cyclesTouching(c, first, last) {
+      if (!c || !c.start) return [];
+      const from = (first == null || first < c.start) ? c.start : first;
+      if (last < from) return [];
+      const out = [];
+      for (let cy = cycleOf(c, from); cy && cy.start <= last; cy = { start: addDays(cy.start, CYCLE_DAYS), end: addDays(cy.end, CYCLE_DAYS) }) {
+        out.push(cy);
+      }
+      return out;
+    }
+
+    const cycleInProgress = (cy, today) => cy.end >= today;
+
+    /* "Cycle Oct 12 to Oct 25, in progress" for one cycle, "2 cycles, Oct 12
+       to Nov 8" for more, and the first cycle's start when the period comes
+       before it. */
+    function cycleChipText(c, cycles, today) {
+      if (!cycles.length) return `First cycle starts ${fmtShort(c.start)}`;
+      if (cycles.length === 1) {
+        const cy = cycles[0];
+        return `Cycle ${fmtShort(cy.start)} to ${fmtShort(cy.end)}${cycleInProgress(cy, today) ? ', in progress' : ''}`;
+      }
+      return `${cycles.length} cycles, ${fmtShort(cycles[0].start)} to ${fmtShort(cycles[cycles.length - 1].end)}`;
+    }
 
     /* Nome do projeto pra exibição: tira o sufixo "-P" (Publishing) ou
        "-T" (Translation) da sigla do board. Ex.: "AAAF-P" → "AAAF".
@@ -3482,11 +3605,12 @@
         const board = BOARDS[bid];
         if (!board) return '';
         let subtotal = 0;
+        const cycled = !!(snap.cycles && snap.cycles[bid]);
         const rows = plan[bid].map(({ lang, target, parts }) => {
           subtotal += target;
-          const calc = parts.length
-            ? parts.map(pt => `${pt.perWeek}/wk × ${fmtTarget(pt.weeks)}`).join(' + ')
-            : 'no target in these weeks';
+          const calc = !parts.length ? (cycled ? 'no target in these cycles' : 'no target in these weeks')
+            : cycled ? parts.map(pt => `${pt.perWeek} per 2 weeks × ${pt.weeks} ${pt.weeks === 1 ? 'cycle' : 'cycles'}`).join(' + ')
+            : parts.map(pt => `${pt.perWeek}/wk × ${fmtTarget(pt.weeks)}`).join(' + ');
           return `
             <tr>
               <td class="lang">${escapeHtml(lang)}</td>
@@ -3514,6 +3638,8 @@
           Each language's <strong>weekly target</strong> is added up for every week of the selected period
           (<strong>${escapeHtml(periodLabel)}</strong>), using the target that was in force that week.
           Weeks run Monday to Sunday, New York time. Paused languages are left out.
+          A board counted in <strong>two-week cycles</strong> adds the target of every cycle the period
+          touches, whole, and counts every page published inside those cycles.
         </p>
         ${blocks || '<p style="color:var(--text-dim);font-style:italic;">No targets to display.</p>'}
         ${boardIds.length > 1 ? `
@@ -4089,8 +4215,8 @@
        o /api/snapshot disponível. Browser faz dezenas de chamadas direto pro
        Monday usando o token colado. */
     async function loadAllLegacy(since, silent, pushBatch) {
-      const publishingBids = Object.keys(BOARDS).filter(bid => BOARDS[bid].publishingMode);
-      const otherBids      = Object.keys(BOARDS).filter(bid => !BOARDS[bid].publishingMode);
+      const publishingBids = orderedBoardIds().filter(bid => BOARDS[bid].publishingMode);
+      const otherBids      = orderedBoardIds().filter(bid => !BOARDS[bid].publishingMode);
 
       // Fase 1: Publishing boards
       for (const bid of publishingBids) {
@@ -4496,7 +4622,8 @@
       let pubMatchingEventCount = 0;     // quantos bateram com publishedLabel exato
       let pubIsDoneWithoutEvent = false; // true se status atual == 'Done' mas sem log
       if (board.publishingMode) {
-        pubLanguage = byId[board.languageCol]?.text || '-';
+        // A board with no language column names its one language.
+        pubLanguage = board.fixedLanguage || (board.languageCol ? byId[board.languageCol]?.text : null) || '-';
         if (board.publisherCol) {
           pubPublishers = [...collectPeopleNames(byId, [board.publisherCol])];
         }
@@ -4798,7 +4925,7 @@
     // Translation boards have subitemPipeline; Publishing boards do not.
     function getViewBoardIds() {
       const view = STORE.activeView;
-      return Object.keys(BOARDS).filter(bid =>
+      return orderedBoardIds().filter(bid =>
         view === 'translation' ? !!BOARDS[bid].subitemPipeline
         : view === 'publishing' ? !BOARDS[bid].subitemPipeline
         : true
@@ -5119,6 +5246,26 @@
       return [...byMonday.entries()].map(([monday, weight]) => ({ monday, weight }));
     }
 
+    /* The calendar days (New York) a period spans, for the boards counted in
+       two-week cycles (CYCLES): this week and last week Monday to Sunday,
+       this month its first day to its last (as the weekly boards take every
+       week that touches it), the rolling windows from where they start to
+       today, and "all time" from the first cycle (first null). */
+    function periodDays(periodValue, from, to) {
+      const today = nyToday();
+      const thisMonday = mondayOf(today);
+      if (periodValue === 'week')     return { first: thisMonday, last: addDays(thisMonday, 6) };
+      if (periodValue === 'lastweek') return { first: addDays(thisMonday, -7), last: addDays(thisMonday, -1) };
+      if (periodValue === 'month') {
+        const first = today.slice(0, 8) + '01';
+        const [y, m] = first.split('-').map(Number);
+        return { first, last: new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10) };
+      }
+      if (periodValue === 'all') return { first: null, last: today };
+      // 2weeks, quarter and custom: the range itself.
+      return { first: from ? nyYmd(from) : null, last: to ? nyYmd(to) : today };
+    }
+
     /* ---------- PUBLISHING METRICS ----------
        Mostra ritmo de publicação vs meta semanal, por board × idioma.
        - Só considera itens com `publishingMode` (boards HFA-P e AAAF-P).
@@ -5131,6 +5278,12 @@
          and otherwise goes in the separate "other languages" count, shown
          beside the score and never added to it (audit, 10 October 2026). The
          total is "Targeted languages"; it used to sum every language.
+       - A board counted in two-week cycles (CADENCE) is judged by the cycles
+         the period touches, whole, not by the period's own days (15 October
+         2026, CYCLES above): its target is those cycles' targets added up, its
+         pages every page published inside them, and each page is judged by
+         the target of the cycle it fell in. Its targets are added to the
+         weekly boards' in the totals.
     */
     function renderPublishingMetrics(items) {
       const body = $('pubMatrixBody');
@@ -5161,9 +5314,17 @@
 
       // Respeita o filtro de board (dropdown). 'all' = todos os goals boards.
       const boardFilter = $('filterBoard').value || 'all';
-      const boardIds = Object.keys(BOARDS)
+      const boardIds = orderedBoardIds()
         .filter(bid => BOARDS[bid].publishingMode)
         .filter(bid => boardFilter === 'all' || bid === boardFilter);
+
+      // The cycles each two-week board is judged by in this period.
+      const today = nyToday();
+      const span = periodDays(periodValue, from, to);
+      const cyclesFor = {};   // bid -> [{ start, end }], boards counted in cycles only
+      for (const bid of boardIds) {
+        if (CADENCE[bid]) cyclesFor[bid] = cyclesTouching(CADENCE[bid], span.first, span.last);
+      }
 
       // The plan: per board, every language with a target in at least one
       // week of the period, its target summed week by week, and the parts
@@ -5171,10 +5332,15 @@
       const plan = {};        // bid -> Map(langKey -> { lang, target, parts: Map(perWeek -> weeks) })
       for (const bid of boardIds) {
         plan[bid] = new Map();
+        // Each cycle whole, at the target in force in its first week; parts
+        // map a per-cycle target to how many cycles had it.
+        const units = cyclesFor[bid]
+          ? cyclesFor[bid].map(cy => ({ monday: cy.start, weight: 1 }))
+          : weeks;
         for (const [key, name] of targetLanguages(bid)) {
           let target = 0, any = false;
           const parts = new Map();
-          for (const w of weeks) {
+          for (const w of units) {
             const t = targetInForce(bid, name, w.monday);
             if (t == null) continue;
             any = true;
@@ -5198,11 +5364,22 @@
         if (!hasPublisher) { excluded.noPublisher++; continue; }
         if (isPausedLang(it.boardId, it.language)) { excluded.paused++; continue; }
         if (!it.isPublished || !it.publishedDate) { excluded.notPublished++; continue; }
-        const d = new Date(it.publishedDate);
-        if (periodFrom && d < periodFrom) { excluded.outOfPeriod++; continue; }
-        if (periodTo   && d > periodTo)   { excluded.outOfPeriod++; continue; }
-
-        const week = getWeekKey(it.publishedDate);
+        // A two-week board counts what was published inside the cycles the
+        // period touches, and judges a page by its cycle's target (the
+        // target in force in the cycle's first week).
+        let week;
+        const cycles = cyclesFor[it.boardId];
+        if (cycles) {
+          const day = nyYmd(it.publishedDate);
+          const cy = day ? cycles.find(c => day >= c.start && day <= c.end) : null;
+          if (!cy) { excluded.outOfPeriod++; continue; }
+          week = cy.start;
+        } else {
+          const d = new Date(it.publishedDate);
+          if (periodFrom && d < periodFrom) { excluded.outOfPeriod++; continue; }
+          if (periodTo   && d > periodTo)   { excluded.outOfPeriod++; continue; }
+          week = getWeekKey(it.publishedDate);
+        }
         const rawLang = String(it.language || '').trim();
         const inForce = week ? targetInForce(it.boardId, rawLang, week) : null;
         const targeted = inForce != null;
@@ -5243,6 +5420,8 @@
       for (const bid of boardIds) {
         let bTarget = 0, bDone = 0;
         const rows = [...plan[bid].values()].sort((a, b) => a.lang.localeCompare(b.lang));
+        // On a two-week board perWeek is the target per cycle and weeks the
+        // number of cycles (snap.cycles says which boards those are).
         planOut[bid] = rows.map(r => ({
           lang: r.lang,
           target: r.target,
@@ -5274,6 +5453,7 @@
         perBoardLang: data,
         untargeted,
         plan: planOut,
+        cycles: cyclesFor,
         boardStats,
         totals: { done: totalDone, target: totalTarget, other: totalOther, pct: totalPct }
       };
@@ -5315,15 +5495,21 @@
         const st = boardStats[bid];
         const stTargetRounded = Math.round(st.target * 10) / 10;
         const bPct = st.target ? Math.round(100 * st.done / st.target) : 0;
+        const cycles = cyclesFor[bid];
+        const chip = cycles
+          ? `<span class="pub-cycle-chip">${escapeHtml(cycleChipText(CADENCE[bid], cycles, today))}</span>`
+          : '';
         html += `
           <div class="pub-board-section">
             <div class="pub-board-title">
-              <span>${escapeHtml(board.name)}</span>
+              <span>${escapeHtml(board.name)}${chip}</span>
               <span class="pub-board-meta">${st.done}/${stTargetRounded} · ${bPct}%${otherNote(st.other)}</span>
             </div>
         `;
-        if (!planOut[bid].length) {
-          html += `<div class="pub-other-row"><span>No weekly target set for this board in ${escapeHtml(periodLabel)}.</span></div>`;
+        if (cycles && !cycles.length) {
+          html += `<div class="pub-other-row"><span>No cycle in ${escapeHtml(periodLabel)}.</span></div>`;
+        } else if (!planOut[bid].length) {
+          html += `<div class="pub-other-row"><span>No ${cycles ? '' : 'weekly '}target set for this board in ${escapeHtml(periodLabel)}.</span></div>`;
         }
         for (const { lang, target, parts } of planOut[bid]) {
           const targetRounded = Math.round(target * 10) / 10;
@@ -5335,13 +5521,17 @@
             : pct >= 70 ? ''
             : pct >= 40 ? 'under'
             : 'critical';
-          const base = parts.map(pt => `${pt.perWeek}/wk`).join(', then ');
+          const base = parts.map(pt => cycles ? `${pt.perWeek} per 2 weeks` : `${pt.perWeek}/wk`).join(', then ');
+          // "0 of 1 this cycle" on a two-week board.
+          const scope = !cycles ? `pages · target for ${escapeHtml(periodLabel)}`
+            : cycles.length === 1 ? 'this cycle'
+            : `in ${cycles.length} cycles`;
           // data-bid + data-lang = "punhos" pro click handler saber QUAL row foi clicada
           html += `
             <div class="pub-row pub-row-clickable" data-bid="${bid}" data-lang="${escapeHtml(lang)}" title="Click to see published items">
               <span class="pub-lang">${escapeHtml(lang)}</span>
               <div class="pub-bar-wrap">
-                <span class="pub-count"><strong>${done}</strong> of <strong>${targetRounded}</strong> pages · target for ${escapeHtml(periodLabel)} <em style="color:var(--text-dim);font-style:normal;">(${escapeHtml(base || 'no target')} base)</em></span>
+                <span class="pub-count"><strong>${done}</strong> of <strong>${targetRounded}</strong> ${scope} <em style="color:var(--text-dim);font-style:normal;">(${escapeHtml(base || 'no target')} base)</em></span>
                 <div class="pub-bar"><div class="pub-bar-fill ${cls}" style="width:${cap}%"></div></div>
               </div>
               <span class="pub-pct ${cls}">${pct}%</span>
@@ -5374,6 +5564,9 @@
       console.group(`%c[Publishing pace] ${periodLabel}`, 'color:#1E7D7F;font-weight:700;');
       console.log(`From: ${periodFrom ? periodFrom.toISOString() : 'null'} to ${periodTo.toISOString()}`);
       console.log(`Days in period: ${daysInPeriod.toFixed(2)} (${weeksFractional.toFixed(2)} weeks)`);
+      for (const [bid, cycles] of Object.entries(cyclesFor)) {
+        console.log(`${BOARDS[bid].short} in cycles: ${cycles.map(c => c.start + '..' + c.end).join(', ') || 'none in this period'}`);
+      }
       console.log(`Counted as published: ${countedItems.length} items`);
       console.log('Exclusion breakdown:', excluded);
       if (countedItems.length) console.table(countedItems);

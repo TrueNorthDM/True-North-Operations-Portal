@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { PublishingGoalsWidget, updatedLabel, otherText, GREEN, AMBER } from './PublishingGoalsWidget'
+import { PublishingGoalsWidget, updatedLabel, otherText, showsEnglish, GREEN, AMBER } from './PublishingGoalsWidget'
 import type { PublishingBoardWeeks } from '@/lib/boards/publishing-weeks'
 
 const week = (start: string, done: number, target: number, untargeted = 0) => ({
@@ -10,8 +10,10 @@ const week = (start: string, done: number, target: number, untargeted = 0) => ({
 const BOARD: PublishingBoardWeeks = {
   boardId: '462251934',
   name: 'AskAnAdventistFriend',
-  perWeek: 11,
-  enPerWeek: 2,
+  cycleWeeks: 1,
+  perPeriod: 11,
+  enPerPeriod: 2,
+  firstCycleEnds: null,
   weeks: [week('2026-09-14', 11, 11), week('2026-09-21', 9, 11, 2), week('2026-09-28', 12, 11, 1), week('2026-10-05', 4, 11)],
   hits: 2,
   enHits: 0,
@@ -65,5 +67,43 @@ describe('PublishingGoalsWidget (audit, 10 October 2026)', () => {
   it('colours its figures in shades that reach 4.5:1 on white', () => {
     expect(contrastOnWhite(GREEN)).toBeGreaterThanOrEqual(4.5)
     expect(contrastOnWhite(AMBER)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+// A board counted in two-week cycles (Bessemeters, 15 October 2026).
+describe('PublishingGoalsWidget, a two-week board', () => {
+  const cycle = (start: string, label: string, done: number) =>
+    ({ start, label, done, target: 1, untargeted: 0, en: { done, target: 1 } })
+  const BM: PublishingBoardWeeks = {
+    boardId: '1764094550', name: 'Bessemeters', cycleWeeks: 2, perPeriod: 1, enPerPeriod: 1,
+    weeks: [cycle('2026-10-12', 'Oct 12 to Oct 25', 1), cycle('2026-10-26', 'Oct 26 to Nov 8', 0)],
+    hits: 1, enHits: 1, firstCycleEnds: null,
+  }
+
+  it('shows one row per cycle, "1 of 1", and no English column when English is the whole target', () => {
+    render(<PublishingGoalsWidget data={{ boards: [BM], updatedAt: null }} />)
+    expect(screen.getByText('Oct 12 to Oct 25')).toBeInTheDocument()
+    expect(screen.getByText('Oct 26 to Nov 8')).toBeInTheDocument()
+    expect(screen.getByText('1 of 1')).toBeInTheDocument()
+    expect(screen.getByText('0 of 1')).toBeInTheDocument()
+    expect(screen.getByText('1/2')).toBeInTheDocument()   // on target, of two rows
+    expect(screen.getByText('every 2 weeks')).toBeInTheDocument()
+    expect(screen.queryByText('English')).toBeNull()
+    expect(screen.getByText('Last 4 weeks · last 2 cycles')).toBeInTheDocument()
+    expect(showsEnglish(BM)).toBe(false)
+    expect(showsEnglish(BOARD)).toBe(true)
+  })
+
+  it('says when the first cycle ends while none has', () => {
+    render(<PublishingGoalsWidget data={{ boards: [{ ...BM, weeks: [], perPeriod: 0, enPerPeriod: 0, hits: 0, enHits: 0, firstCycleEnds: '2026-10-25' }], updatedAt: null }} />)
+    expect(screen.getByText('First cycle ends Oct 25')).toBeInTheDocument()
+    expect(screen.queryByText('No target set for this board.')).toBeNull()
+  })
+
+  it('sits beside a weekly board, which keeps its four weeks and English column', () => {
+    render(<PublishingGoalsWidget data={{ boards: [BOARD, BM], updatedAt: null }} />)
+    expect(screen.getByText('2/4')).toBeInTheDocument()
+    expect(screen.getAllByText('English')).toHaveLength(1)
+    expect(screen.getByText('11/11')).toBeInTheDocument()
   })
 })

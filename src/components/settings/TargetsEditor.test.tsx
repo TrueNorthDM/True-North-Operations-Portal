@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import type { PublishingTargetRow } from '@/lib/types/database.types'
+import type { TargetsBoard } from '@/lib/boards/targets-data'
 
 const actions = vi.hoisted(() => ({
   saveTargetValue: vi.fn(),
+  saveTargetRhythm: vi.fn(),
   addTarget: vi.fn(),
   deleteTarget: vi.fn(),
   addPublisher: vi.fn(),
@@ -13,16 +15,16 @@ vi.mock('@/app/(app)/admin/settings/targets-actions', () => actions)
 const refresh = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }))
 
-import { TargetsEditor, parseTarget, listNames, checkPublisher, fmtWhen } from './TargetsEditor'
+import { TargetsEditor, parseTarget, listNames, checkPublisher, fmtWhen, mondayLong, unitFor } from './TargetsEditor'
 
 const row = (id: string, language: string, target_value: number) =>
   ({ id, board_id: '462251934', board_short: 'AAAF-P', language, target_value, period_type: 'weekly' }) as unknown as PublishingTargetRow
 
-const BOARDS = [{ id: '462251934', short: 'AAAF-P', name: 'AAAF · Publishing', languages: ['English', 'Portuguese', 'Spanish', 'Swahili'] }]
+const BOARDS = [{ id: '462251934', short: 'AAAF-P', name: 'AAAF · Publishing', languages: ['English', 'Portuguese', 'Spanish', 'Swahili'], cadence: { weeks: 1 as const, start: null } }]
 const TARGETS = [row('a', 'English', 2), row('b', 'Portuguese', 3), row('c', 'Spanish', 3)]
 
 function setup(canEdit = true) {
-  return render(<TargetsEditor targets={TARGETS} audit={[]} boards={BOARDS} publishers={['Samuel Manzi', 'Wendy Cacka']} canEdit={canEdit} />)
+  return render(<TargetsEditor targets={TARGETS} audit={[]} boards={BOARDS} publishers={['Samuel Manzi', 'Wendy Cacka']} thisMonday="2026-10-12" canEdit={canEdit} />)
 }
 
 beforeEach(() => {
@@ -126,5 +128,57 @@ describe('TargetsEditor (audit, 10 October 2026)', () => {
     expect(dialog).toHaveTextContent('Their pages stop counting toward the goals.')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(actions.removePublisher).toHaveBeenCalledWith({ name: 'Samuel Manzi' }))
+  })
+})
+
+// The rhythm: every week or every two weeks, per board (15 October 2026).
+describe('TargetsEditor, a two-week board', () => {
+  const BM_ROW = { id: 'm', board_id: '1764094550', board_short: 'BM-P', language: 'English', target_value: 1, period_type: 'weekly' } as unknown as PublishingTargetRow
+  const BM: TargetsBoard = { id: '1764094550', short: 'BM-P', name: 'Bessemeters · Publishing', languages: ['English'], cadence: { weeks: 2, start: '2026-10-12' } }
+  const show = (board: TargetsBoard = BM) => render(<TargetsEditor targets={[BM_ROW]} audit={[]} boards={[board]} publishers={[]} thisMonday="2026-10-19" canEdit />)
+
+  it('names the unit and the start day plainly', () => {
+    expect(unitFor(2)).toBe('per 2 weeks')
+    expect(unitFor(1)).toBe('/wk')
+    expect(mondayLong('2026-10-12')).toBe('Monday, Oct 12, 2026')
+  })
+
+  it('shows "per 2 weeks" instead of "/wk", and the rhythm in Edit', () => {
+    show()
+    expect(screen.getByText('per 2 weeks')).toBeInTheDocument()
+    expect(screen.queryByText('/wk')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const group = screen.getByRole('radiogroup', { name: 'Rhythm for BM' })
+    expect(within(group).getByRole('radio', { name: 'Every 2 weeks' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Cycles start on Monday, Oct 12, 2026 and run two weeks each.')).toBeInTheDocument()
+    expect(screen.getByLabelText('English target per 2 weeks')).toBeInTheDocument()
+  })
+
+  it('asks before changing the rhythm, then saves it', async () => {
+    actions.saveTargetRhythm.mockResolvedValue({ ok: true })
+    show({ ...BM, cadence: { weeks: 1, start: null } })
+    expect(screen.getByText('/wk')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Every 2 weeks' }))
+    // A new rhythm starts this week.
+    expect(screen.getByText('Cycles start on Monday, Oct 19, 2026 and run two weeks each.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent('Count BM every 2 weeks?')
+    expect(actions.saveTargetRhythm).not.toHaveBeenCalled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Count every 2 weeks' }))
+    await waitFor(() => expect(actions.saveTargetRhythm).toHaveBeenCalledWith({ boardId: '1764094550', weeks: 2 }))
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it('records a rhythm change in the history as such', () => {
+    const audit = [{
+      id: 'h1', user_email: 'ana.silva@tn.org', action: 'update', entity_id: 's-bm', created_at: '2026-10-15T14:00:00Z',
+      before: { board_short: 'BM-P', target_cycle_weeks: 1, target_cycle_start: null },
+      after: { board_short: 'BM-P', target_cycle_weeks: 2, target_cycle_start: '2026-10-12' },
+    }]
+    render(<TargetsEditor targets={[]} audit={audit as never} boards={[]} publishers={[]} thisMonday="2026-10-12" canEdit={false} />)
+    expect(screen.getByText('Rhythm')).toBeInTheDocument()
+    expect(screen.getByText('every week to every 2 weeks')).toBeInTheDocument()
   })
 })
