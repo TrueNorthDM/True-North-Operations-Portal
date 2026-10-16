@@ -239,3 +239,12 @@ clock panel when it sees `clock=open`. The email is `src/lib/email/clock-stopped
 `tc_safety_events`, bell + email), for portal clocks and clocks open from
 QuickBooks Time alike; once a day the Super Admins' line. Any action or the
 panel that finds a clock past its mark stops it the same way first.
+
+## Status (Oct 16, 2026)
+
+On staging: foundation 3f2a3d2, screens f920d34, generated types e471760;
+migrations 112 and 113 applied to the staging database only. Production is
+unchanged. Promote order: code, then 112, then 113, then reinstall the
+crontab (adds the 5-minute clocky-safety job). Design-check pages per frame:
+/design-check/clocky-clock, clocky-working, clocky-entries, clocky-approvals,
+clocky-safety, clocky-bell, clocky-periods (local dev).
