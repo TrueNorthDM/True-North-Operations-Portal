@@ -98,7 +98,7 @@ describe('the rule', () => {
     expect(lead.has('report')).toBe(false)
     expect(user.has('directory')).toBe(false)
     expect(lead.has('directory')).toBe(true)
-    expect(lead.has('my-hours')).toBe(false)
+    expect(lead.has('ck-safety')).toBe(false)
   })
 
   it('closes a tab whose page is closed, whatever its own tick says', () => {
@@ -176,7 +176,7 @@ describe('exceptions', () => {
   })
 
   it('keeps the Super-Admin-only items closed to an Admin, whatever is ticked', () => {
-    for (const key of ['d-positions', 'd-2fa', 'h-waiting', 'h-reopen']) {
+    for (const key of ['d-positions', 'd-2fa', 'ck-timeoff', 'ck-reopen']) {
       expect(ITEM.get(key)?.superOnly, key).toBe(true)
       const ticked = { ...NO_RULES, levels: new Map([[ruleKey('admin', key), true]]) }
       expect(decide(who('admin'), key, ticked, { today: T }).ok, key).toBe(false)
@@ -230,10 +230,10 @@ describe('impact', () => {
 
   it('counts nothing for modules, only what can be opened', () => {
     const people = [{ id: 'a', ...who('team_leader', [[seo, true]]) }]
-    const after = overlay(NO_RULES, new Map([[ruleKey('team_leader', 'my-hours'), true]]), new Map())
+    const after = overlay(NO_RULES, new Map([[ruleKey('team_leader', 'ck-safety'), true]]), new Map())
     const [row] = impact(people, NO_RULES, after, { today: T })
     expect(row.gained.some(k => ITEM.get(k)?.kind === 'module')).toBe(false)
-    expect(CHILDREN.get('m-hours')?.length).toBeGreaterThan(0)
+    expect(CHILDREN.get('m-clocky')?.length).toBeGreaterThan(0)
   })
 })
 

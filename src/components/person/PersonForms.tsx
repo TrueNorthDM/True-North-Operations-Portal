@@ -6,7 +6,7 @@
  * them with that tab's own action (app/(app)/directory/[id]/actions.ts).
  */
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Select } from '@/components/ui/Select'
 import type { saveHr, savePersonal, saveWork } from '@/app/(app)/directory/[id]/actions'
 import { toAddressForm, type AddressForm } from '@/lib/address'
@@ -15,6 +15,16 @@ import { MILESTONE_KINDS, MILESTONE_LABEL, toMilestoneForms, type MilestoneForm 
 import { LIFECYCLE_LABEL, LIFECYCLE_OPTIONS } from '@/lib/directory/people-types'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 import { Section, TeamsList, fieldCls } from './PersonParts'
+import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
+import type { Cadence } from '@/lib/timeclock/periods'
+import type { Result } from '@/lib/timeclock/clocky-types'
+import type { CadencePreview } from '@/lib/timeclock/clocky-periods-data'
+
+/** How someone submits, previewed and saved (app/(app)/clocky-hours/periods/actions.ts). */
+export interface CadenceActions {
+  previewCadenceChange: (input: { personIds: string[]; cadence: Cadence }) => Promise<Result<{ data: CadencePreview[] }>>
+  setCadence: (input: { personIds: string[]; cadence: Cadence }) => Promise<Result<{ changed: { personId: string; effectiveFrom: string | null; text: string }[] }>>
+}
 
 // ── Forms ───────────────────────────────────────────────────────────────────
 
@@ -109,8 +119,29 @@ export function PersonalForm({ data, pending, error, onCancel, onSave }: FormPro
   )
 }
 
-export function WorkForm({ data, pending, error, onCancel, onSave, remove }: FormProps<Parameters<typeof saveWork>[1]> & { remove: { pending: boolean; run: () => void } | null }) {
+export function WorkForm({ data, pending, error, onCancel, onSave, remove, timesheet = null, cadenceActions, startCadence, onSaveWithCadence }: FormProps<Parameters<typeof saveWork>[1]> & {
+  remove: { pending: boolean; run: () => void } | null
+  /** The Timesheet section (Clocky): its choice is saved with the rest. */
+  timesheet?: PersonTimesheetView | null
+  cadenceActions?: CadenceActions
+  /** Design check only: this cadence already picked. */
+  startCadence?: Cadence
+  onSaveWithCadence?: (input: Parameters<typeof saveWork>[1], cadence: Cadence | null) => void
+}) {
   const w = data.work!
+  const [cadence, setCadenceDraft] = useState<Cadence | null>(startCadence ?? timesheet?.cadence ?? null)
+  const [startsLine, setStartsLine] = useState<string | null>(null)
+  // When the choice differs from how they submit now: the exact dates it starts.
+  const changed = !!timesheet && !!cadence && cadence !== timesheet.cadence
+  useEffect(() => {
+    if (!changed || !cadence || !cadenceActions) return
+    let live = true
+    cadenceActions.previewCadenceChange({ personIds: [data.id], cadence })
+      .then(r => { if (live) setStartsLine(r.ok ? r.data[0]?.plan.text || null : r.error) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [changed, cadence, cadenceActions, data.id])
+  const save = (input: Parameters<typeof saveWork>[1]) => (onSaveWithCadence ? onSaveWithCadence(input, cadence) : onSave(input))
   const people = data.options?.people ?? []
   const teams = data.options?.teams ?? []
   const [d, setD] = useState({
@@ -127,7 +158,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove }: For
   )
 
   return (
-    <form onSubmit={e => { e.preventDefault(); onSave(d) }}>
+    <form onSubmit={e => { e.preventDefault(); save(d) }}>
       <div className="grid md:grid-cols-2 gap-x-12 gap-y-6">
         <Section title="Job">
           <div className="flex flex-col gap-3.5 pt-2">
@@ -143,6 +174,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove }: For
           </div>
         </Section>
         <div className="min-w-0">
+          {timesheet && <TimesheetSection t={timesheet} editing draft={cadence ?? undefined} onDraft={setCadenceDraft} startsLine={changed ? startsLine : null} />}
           <Section title="Teams">
             {!data.rights.teamsEdit ? (
               <>
@@ -198,7 +230,7 @@ export function WorkForm({ data, pending, error, onCancel, onSave, remove }: For
         <textarea id="pw-history" value={d.history} onChange={e => set('history', e.target.value)} className={`${fieldCls} min-h-[90px] resize-y leading-relaxed mt-2`} placeholder="A short summary of their time here…" />
       </Section>
       <SaveBar
-        what="Work" pending={pending} error={error} onCancel={onCancel} onSave={() => onSave(d)}
+        what="Work" pending={pending} error={error} onCancel={onCancel} onSave={() => save(d)}
         left={remove ? <button type="button" disabled={remove.pending} onClick={remove.run} className="rounded-[9px] border border-[rgba(255,255,255,.35)] text-[#ffd7d3] px-3 py-2 text-[12.5px] font-bold hover:bg-[rgba(255,255,255,.08)] disabled:opacity-50">{remove.pending ? 'Removing…' : 'Remove from the Directory'}</button> : undefined}
       />
     </form>

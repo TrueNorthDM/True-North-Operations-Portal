@@ -20,6 +20,7 @@ import { workingDays } from './absence'
 import { addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, type SubmittedPeriod } from './periods'
 import { canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
+import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
 
 /** The longest range one read covers: a month and a bit, so a month view always fits. */
 export const MAX_RANGE_DAYS = 62
@@ -186,6 +187,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     const team = person?.teamId ? dir.teams.get(person.teamId) : undefined
     const state = r.state as 'pending' | 'approved' | 'denied'
     const decides = canApproveCorrection(v, dir.target(r.person_id))
+    const goesTo = goesToLabel(teamLeadNames(r.person_id, dir.target(r.person_id).teamIds, dir.led, id => !!dir.people.get(id)?.active, id => dir.nameOf(id)))
     const f = r.fields ?? {}
     const k = catalog.keys
     rows.push({
@@ -206,7 +208,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       autoOut: null, edited: null, clockedOutBy: null, locked: false, lockWhy: null,
       canEdit: false, shortenOnly: false, canDelete: false, canContinue: false, continuesPrevious: false,
       attention: attentionReason({ kind: 'correction', pending: state === 'pending', viewerDecides: decides }),
-      correction: { state, reason: r.reason, requestedAt: r.requested_at, decidedBy: r.decided_by ? dir.nameOf(r.decided_by) : null, decidedAt: r.decided_at, decisionNote: r.decision_note, canDecide: decides && state === 'pending' },
+      correction: { state, reason: r.reason, requestedAt: r.requested_at, decidedBy: r.decided_by ? dir.nameOf(r.decided_by) : null, decidedAt: r.decided_at, decisionNote: r.decision_note, canDecide: decides && state === 'pending', goesTo },
       timeOff: null,
     })
   }
@@ -250,7 +252,8 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     return { date, label: dayLabel(date), seconds: d.filter(r => r.rowType === 'entry' && r.kind !== 'absence').reduce((s, r) => s + r.seconds, 0), people: new Set(d.map(r => r.personId)).size }
   })
   const all = q.who === 'all'
-  const attention: AttentionItem[] = rows.filter(r => r.attention).map(r => attentionItem(r, all))
+  // Oldest first, the entries before the requests, as the prototype lists its Needs attention.
+  const attention: AttentionItem[] = attentionOrder(rows.filter(r => r.attention)).map(r => attentionItem(r, all))
 
   // The viewer's own period and where it stands (the Submit button).
   const today = localDate(now, v.zone)
@@ -330,6 +333,33 @@ export async function entryHistory(v: Viewer, id: number, now: Date): Promise<Hi
   }
 }
 
+/**
+ * A time correction request's history (3G on a "Correction: Pending" or
+ * "Correction: Denied" row): who asked and what happened, and the decision.
+ * The person, their leads and the approvers see it, as they see the row.
+ */
+export async function correctionHistory(v: Viewer, id: number, now: Date): Promise<HistoryData | null> {
+  const c = db()
+  const [dir, catalog] = await Promise.all([loadDirectory(), loadCatalog()])
+  const r = must(await c.from('tc_correction_requests').select('*').eq('id', id).maybeSingle(), 'The request could not be read') as
+    { id: number; person_id: string; entry_date: string; started_at: string; ended_at: string; jobcode_id: number; reason: string; state: string; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null } | null
+  if (!r || !canView(v, dir.target(r.person_id))) return null
+  const zone = dir.zoneOf(r.person_id)
+  const owner = dir.nameOf(r.person_id)
+  const seconds = recordedSeconds(r.started_at, r.ended_at)
+  const job = catalog.pathOf(r.jobcode_id)
+  const abbr = zone !== v.zone ? ` ${zoneAbbr(zone, new Date(r.started_at ?? now))}` : ''
+  const decided = r.decided_by && r.decided_at && (r.state === 'approved' || r.state === 'denied')
+    ? { by: dir.nameOf(r.decided_by), at: r.decided_at, state: r.state as 'approved' | 'denied', note: r.decision_note }
+    : null
+  return {
+    summary: `${owner} · ${job} · ${dayLabel(r.entry_date)}, ${timeText(r.started_at, r.ended_at, false, zone)}${abbr} (${formatDuration(seconds)})`,
+    lines: requestHistoryLines({ owner, requestedAt: r.requested_at, seconds, job, reason: r.reason, decided, viewerZone: v.zone }),
+    real: { start: r.started_at, end: r.ended_at },
+    recorded: { start: r.started_at, end: r.ended_at },
+  }
+}
+
 // ── Submit (3H) ─────────────────────────────────────────────────────────────
 
 export async function loadSubmitSummary(v: Viewer, now: Date, start?: string): Promise<SubmitSummary> {
@@ -351,7 +381,7 @@ export async function loadSubmitSummary(v: Viewer, now: Date, start?: string): P
     const w = new Date(`${d}T00:00:00Z`).getUTCDay()
     if (w > 0 && w < 6 && !entries.some(e => e.entry_date === d)) noTime.push(dayLabel(d))
   }
-  const attention = work.filter(r => r.attention).map(r => attentionItem(r, false))
+  const attention = attentionOrder(work.filter(r => r.attention)).map(r => attentionItem(r, false))
   const running = work.some(r => r.running)
   const mine = (subs.get(v.personId) ?? []).find(s => s.start === period.start && s.end === period.end)
   const done = mine?.state === 'submitted' || mine?.state === 'approved'

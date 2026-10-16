@@ -15,6 +15,7 @@ import { recordedSeconds } from './rounding'
 import { workingDays } from './absence'
 import { canApproveCorrection, canDecideTimeOff, seesEveryone } from './scope'
 import type { ApprovalRow, ApprovalsData } from './clocky-types'
+import { goesToLabel, teamLeadNames, waitingOrder } from './clocky-requests'
 
 /** Decided requests shown: the last 90 days. */
 const DECIDED_DAYS = 90
@@ -67,6 +68,8 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
     }
     rows.push({
       key: `c${r.id}`, type: 'correction', id: r.id, personId: r.person_id, ...person(r.person_id),
+      date: r.entry_date,
+      goesTo: goesToLabel(teamLeadNames(r.person_id, target.teamIds, dir.led, id => !!dir.people.get(id)?.active, id => dir.nameOf(id))),
       seconds: recordedSeconds(r.started_at, r.ended_at),
       when: `${dayLabel(r.entry_date)}, ${r.entry_date.slice(0, 4)} · ${timeLabel(r.started_at, zone)} to ${timeLabel(r.ended_at, zone)}${abbr}`,
       job: `${job?.path ?? ''} · ${activity || 'No activity'}`,
@@ -87,6 +90,8 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
     const range = r.start_date === r.end_date ? dayLabel(r.start_date) : `${dayLabel(r.start_date)} to ${dayLabel(r.end_date)}`
     rows.push({
       key: `o${r.id}`, type: 'time_off', id: r.id, personId: r.person_id, ...person(r.person_id),
+      date: r.start_date,
+      goesTo: '',
       seconds: Math.round(days * Number(r.hours_per_day) * 3600),
       when: `${range}, ${r.end_date.slice(0, 4)} · ${type}`,
       job: '',
@@ -107,8 +112,10 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
     level: v.level,
     subtitle: approvalsSubtitle(level, led),
     note: "Times in each person's own time zone. Approved time becomes an entry marked Edited.",
-    waiting: rows.filter(r => r.state === 'pending').sort((a, b) => (a.askedAt < b.askedAt ? -1 : 1)),
-    decided: rows.filter(r => r.state !== 'pending').sort((a, b) => ((a.decided?.at ?? '') < (b.decided?.at ?? '') ? 1 : -1)),
+    // As the prototype lists them: waiting by the request's day, oldest first; decided in the order
+    // the requests came (corrections, then time off, each as asked), unsorted.
+    waiting: waitingOrder(rows.filter(r => r.state === 'pending')),
+    decided: rows.filter(r => r.state !== 'pending'),
   }
 }
 

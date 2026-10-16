@@ -37,9 +37,12 @@ export interface PreviewCaveat {
 
 export const PREVIEW_CAVEATS: readonly PreviewCaveat[] = [
   {
-    surfaceKey: 'my-hours',
-    label: 'My Hours',
-    shows: 'your own hours, not the previewed person’s. The rule that each person sees only their own lives in the database, and the preview cannot sign in as somebody else. The layout and what is reachable are accurate; the rows are yours.',
+    // My Hours until 16 October 2026, when it became Clocky's Time entries.
+    // Clocky reads privileged and scopes in app code, so whose hours a level
+    // reaches follows the preview; "My" is still the person signed in.
+    surfaceKey: 'clocky-hours',
+    label: 'Clocky',
+    shows: 'your own hours under My, not the previewed person’s. The preview cannot sign in as somebody else. Whose hours each level reaches, and what it can change, follow the previewed level.',
   },
 ] as const
 

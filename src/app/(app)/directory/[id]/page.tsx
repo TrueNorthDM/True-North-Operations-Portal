@@ -10,6 +10,7 @@ import { loadAccess } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds, loadPersonPage } from '@/lib/directory/person-page-data'
 import { resolvePageTab } from '@/lib/directory/page-rights'
+import { loadPersonTimesheet } from './timesheet'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,9 @@ export default async function PersonRoute({
   // Closed and missing look the same, so a closed page says nothing about who exists.
   if (!data) notFound()
   const { tab } = await searchParams
+  // The Work tab's Timesheet section (Clocky, 16 October 2026): read only with
+  // the Work tab, changed with Edit work by whoever may change the periods.
+  const sheet = data.work ? await loadPersonTimesheet(id, data.rights.workEdit && access.can('cs-periods-edit')) : null
 
   return (
     <div className="space-y-4">
@@ -43,6 +47,7 @@ export default async function PersonRoute({
         tab={resolvePageTab(tab, data.rights)}
         // Removing someone: "Add people" on the Directory, from their Work tab.
         canRemove={!data.rights.own && data.rights.workEdit && access.can('d-edit')}
+        timesheet={sheet && { ...sheet, links: { rates: access.can('directory') && access.can('d-rates'), settings: access.can('cs-periods') } }}
       />
     </div>
   )

@@ -29,7 +29,7 @@ import { db, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } 
 import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
-import { entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
+import { correctionHistory, entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
 import { correctionGoesTo } from '@/lib/timeclock/clocky-panel'
 import { announceCorrectionRequested } from '@/lib/timeclock/clocky-notify'
 import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
@@ -100,6 +100,19 @@ export async function getEntryHistory(input: { id: number }): Promise<Result<{ d
     return data ? { ok: true, data } : fail(GONE)
   } catch (e) {
     console.error('[clocky entries] history:', (e as Error).message)
+    return fail('The history could not be read. Try again in a moment.')
+  }
+}
+
+/** A time correction request's history (3G on a pending or denied correction row). */
+export async function getCorrectionHistory(input: { id: number }): Promise<Result<{ data: HistoryData }>> {
+  const v = await reader()
+  if (isFail(v)) return v
+  try {
+    const data = await correctionHistory(v, Number(input.id), new Date())
+    return data ? { ok: true, data } : fail('That request is not there any more.')
+  } catch (e) {
+    console.error('[clocky entries] request history:', (e as Error).message)
     return fail('The history could not be read. Try again in a moment.')
   }
 }

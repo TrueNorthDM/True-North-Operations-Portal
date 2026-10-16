@@ -15,6 +15,11 @@
  * states. Opening a notification marks it read, and so does "Mark all read",
  * on the server as well as here; which ones are read lives in the button, so
  * its count drops at once.
+ *
+ * Clocky's rows (16 October 2026, Clock Safety.dc.html frames N1, N3, N4) are
+ * drawn as the design draws them: a coloured symbol per kind, the source line
+ * on top, the sentence, and one button (Review, Keep going, Confirm end time,
+ * Open time entries, Open Clock safety) or, once acted on, what was done.
  */
 
 import Link from 'next/link'
@@ -26,6 +31,7 @@ import type { NavIconKey } from '@/lib/nav/nav-icons'
 import type { NotificationButton } from '@/lib/notifications/catalogue'
 import { BTN } from '@/lib/ui/buttons'
 import { markNotificationsRead, markTabRead } from '@/app/(app)/notifications/actions'
+import { keepGoing as keepGoingAction } from '@/app/(app)/clocky-hours/clock-actions'
 
 export type DrawerKind = 'bell' | 'inbox'
 
@@ -47,7 +53,15 @@ export interface NotificationItem {
   button?: NotificationButton
   /** What the person did about it ("You kept going at 12:31 PM. Clocky asks again in 4h 30m."): shown instead of the button. */
   done?: string
+  /** The notification type's key ("clocky-stopped"): Clocky's rows are drawn their own way. */
+  type?: string
 }
+
+/** What "Keep going" answers: the bell's toast, or why it was refused. */
+export type KeepGoing = () => Promise<{ ok: true; toastFromBell: string; done?: string } | { ok: false; error: string }>
+
+/** Where a clock row's "Confirm end time" goes: the top bar opens the clock panel on it. */
+export const CLOCK_PANEL_HREF = '/clocky-hours?clock=open'
 
 interface Tab { key: string; label: string; emptyTitle: string; empty: string }
 
@@ -70,7 +84,7 @@ export const DRAWERS: Record<DrawerKind, { title: string; icon: NavIconKey; tabs
   },
 }
 
-export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUnread, onClose }: {
+export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUnread, onClose, keepGoing = keepGoingAction }: {
   kind: DrawerKind
   tab: string
   onTab: (key: string) => void
@@ -81,8 +95,19 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
   /** Puts them back to unread: the server did not mark them. */
   onUnread?: (ids: string[]) => void
   onClose: () => void
+  /** Design check only: answers "Keep going" without the server. */
+  keepGoing?: KeepGoing
 }) {
   const router = useRouter()
+  const [toast, setToast] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  // What was done here before the page had the server's line for it.
+  const [doneHere, setDoneHere] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [toast])
   const d = DRAWERS[kind]
   const [onlyUnread, setOnlyUnread] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -191,6 +216,39 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
             </div>
           ) : rows.map(i => {
             const unread = isUnread(i)
+            if (i.type?.startsWith('clocky-')) {
+              return (
+                <ClockyRow
+                  key={i.id}
+                  item={i}
+                  unread={unread}
+                  done={i.done ?? doneHere[i.id]}
+                  busy={busy === i.id}
+                  onButton={() => {
+                    const b = i.button
+                    if (!b) return
+                    if (b.action === 'keep-going') {
+                      setBusy(i.id)
+                      setError(null)
+                      keepGoing().catch(() => ({ ok: false as const, error: 'Not saved. Try again in a moment.' })).then(res => {
+                        setBusy(null)
+                        if (!res.ok) { setError(res.error); return }
+                        // The server marked the row read and wrote what was done; the refresh brings it.
+                        onRead([i.id])
+                        const note = 'done' in res ? res.done : undefined
+                        if (note) setDoneHere(d => ({ ...d, [i.id]: note }))
+                        setToast(res.toastFromBell)
+                        router.refresh()
+                      })
+                      return
+                    }
+                    if (unread) markRead([i.id], () => markNotificationsRead([i.id]))
+                    onClose()
+                    router.push(withViewAs(b.action === 'open-clock' ? CLOCK_PANEL_HREF : (b.href ?? i.href)))
+                  }}
+                />
+              )
+            }
             return (
               <button
                 key={i.id}
@@ -223,6 +281,13 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
           })}
         </div>
 
+        {toast && (
+          <div role="status" className="fixed left-1/2 bottom-6 -translate-x-1/2 z-[90] flex items-center gap-3 w-max max-w-[calc(100%-32px)] bg-tn-primary text-[#ffffff] rounded-[12px] px-4 py-3 text-[13px] font-semibold shadow-[0_18px_40px_-14px_rgba(1,35,88,.6)]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0"><path d="M5 12l5 5 9-10" /></svg>
+            <p className="m-0">{toast}</p>
+          </div>
+        )}
+
         {/* Chat and Email have no settings yet: the link is the bell's alone. */}
         {kind === 'bell' && (
           <div className="px-5 py-3 border-t border-[var(--panel-border)]">
@@ -231,5 +296,74 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
         )}
       </div>
     </>
+  )
+}
+
+// ── Clocky's rows ───────────────────────────────────────────────────────────
+
+const ICON = {
+  alert: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  stop: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM9 9h6v6H9z',
+  request: 'M12 8v4l2.5 1.5M20 12a8 8 0 1 0-8 8M18 15v6M15 18h6',
+  ok: 'M5 12l5 5 9-10',
+  no: 'M6 6l12 12M18 6 6 18',
+  shield: 'M12 22s8-3 8-9V6l-8-3-8 3v7c0 6 8 9 8 9zM12 8v4M12 16h.01',
+} as const
+const WARN = { bg: 'var(--warn-bg)', fg: 'var(--warn-fg)' }
+const DANGER = { bg: '#fdeeef', fg: '#c8323d' }
+
+/** The symbol and its colours for each Clocky notification (Clock Safety.dc.html). */
+export function clockyTone(i: Pick<NotificationItem, 'type' | 'who'>): { d: string; bg: string; fg: string } {
+  switch (i.type) {
+    case 'clocky-still-working': return { d: ICON.alert, ...WARN }
+    case 'clocky-stopped': return { d: ICON.stop, ...DANGER }
+    case 'clocky-correction-requested':
+    case 'clocky-timeoff-requested': return { d: ICON.request, ...WARN }
+    // One type for both answers: the sentence says which (lib/timeclock/notify-text.ts).
+    case 'clocky-correction-decided': return / denied your /.test(i.who)
+      ? { d: ICON.no, ...DANGER }
+      : { d: ICON.ok, bg: 'var(--ok-bg)', fg: 'var(--ok-fg)' }
+    default: return { d: ICON.shield, bg: 'var(--color-tn-teal-soft)', fg: 'var(--color-tn-teal)' }
+  }
+}
+
+function ClockyRow({ item, unread, done, busy, onButton }: {
+  item: NotificationItem
+  unread: boolean
+  done?: string
+  busy: boolean
+  onButton: () => void
+}) {
+  const tone = clockyTone(item)
+  return (
+    <div className={`flex gap-[11px] px-5 py-3.5 border-b border-[var(--row-rule)] leading-[normal] ${unread ? 'bg-[#f8fbfb]' : 'bg-white'}`}>
+      <span className="w-[34px] h-[34px] rounded-[10px] shrink-0 inline-flex items-center justify-center" style={{ background: tone.bg, color: tone.fg }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={tone.d} /></svg>
+      </span>
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex justify-between gap-2">
+          <span className="font-(family-name:--font-display) font-extrabold text-[12px] text-tn-teal">{item.src}</span>
+          <span className="text-[11.5px] text-muted tabular-nums whitespace-nowrap">{item.when}</span>
+        </div>
+        <p className={`m-0 text-[13px] text-tn-ink leading-[1.45] ${unread ? 'font-semibold' : 'font-normal'}`}>
+          {unread && <span className="sr-only">Unread. </span>}{item.who}
+        </p>
+        {done ? (
+          <p className="m-0 text-[12px] font-bold text-[var(--ok-fg)]">{done}</p>
+        ) : item.button && (
+          <div className="flex gap-2 mt-1">
+            <button
+              type="button"
+              onClick={onButton}
+              disabled={busy}
+              className="inline-flex items-center gap-[7px] rounded-[9px] px-[13px] py-2 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] transition-colors hover:bg-[#0a2f6b] disabled:opacity-60"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#F2C40A" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
+              {item.button.label}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

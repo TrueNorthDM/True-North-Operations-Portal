@@ -9,11 +9,19 @@ import type { PersonPageData } from '@/lib/directory/person-page-data'
 
 export const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[10px] w-full transition-all focus:outline-none focus:border-tn-teal'
 
-export function Section({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
+export function Section({ title, right, tag, flush, children }: {
+  title: string
+  right?: ReactNode
+  /** Beside the title: the "New" tag of a section just added (Timesheet, 16 October 2026). */
+  tag?: ReactNode
+  /** No space under it: whatever wraps it keeps the space instead. */
+  flush?: boolean
+  children: ReactNode
+}) {
   return (
-    <div className="mb-6 min-w-0">
+    <div className={`${flush ? '' : 'mb-6 '}min-w-0`}>
       <h3 className="m-0 mb-1.5 pb-2.5 border-b border-[var(--panel-border)] flex justify-between font-(family-name:--font-display) font-extrabold text-[11.5px] tracking-[.1em] uppercase text-tn-teal">
-        <span>{title}</span>{right && <span className="text-muted tracking-[.04em]">{right}</span>}
+        {tag ? <span className="flex items-center gap-2">{title}{tag}</span> : <span>{title}</span>}{right && <span className="text-muted tracking-[.04em]">{right}</span>}
       </h3>
       {children}
     </div>

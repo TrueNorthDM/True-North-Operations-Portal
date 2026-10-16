@@ -46,6 +46,7 @@ export function toItems(rows: readonly Row[], now: Date, zone = DAILY_ZONE): Rec
       summary: r.timing === 'daily',
       ...(t.button ? { button: t.button } : {}),
       ...(r.done_note ? { done: r.done_note } : {}),
+      type: r.type_key,
     })
   }
   return out

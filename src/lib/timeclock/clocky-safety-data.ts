@@ -11,7 +11,7 @@
  */
 
 import { allRows, db, loadCatalog, loadDirectory, type Viewer } from './clocky-context'
-import { dateLabel, localDate, timeLabel } from './format'
+import { dayLabel, localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
 import { addDays, monthStart } from './periods'
 import { safetyAccess } from './scope'
@@ -29,6 +29,9 @@ export function safetyFrom(period: SafetyPeriod, today: string): string | null {
   const [y, m] = first.split('-').map(Number)
   return new Date(Date.UTC(y, m - 3, 1)).toISOString().slice(0, 10)
 }
+
+/** "Thu, Oct 15, 2026" */
+const lastLabel = (day: string): string => `${dayLabel(day)}, ${day.slice(0, 4)}`
 
 export async function loadClockSafety(v: Viewer, now: Date, opts: { period: SafetyPeriod; q?: string }): Promise<ClockSafetyData | null> {
   const access = safetyAccess(v)
@@ -97,7 +100,8 @@ export async function loadClockSafety(v: Viewer, now: Date, opts: { period: Safe
       team: team ? { name: team.name, color: team.color } : null,
       autoStops: stops.filter(e => e.person_id === id).length,
       keptGoing: keeps.filter(e => e.person_id === id).length,
-      last: last ? dateLabel(localDate(last, v.zone)) : null,
+      // "Thu, Oct 15, 2026", as Clock Safety.dc.html writes the last occurrence.
+      last: last ? lastLabel(localDate(last, v.zone)) : null,
       byMonth: months.map(m => ({ month: m, count: mine.filter(s => localDate(s.stopped_at ?? s.at, v.zone).startsWith(m)).length })),
     }
   }).sort((a, b) => b.autoStops - a.autoStops || b.keptGoing - a.keptGoing)

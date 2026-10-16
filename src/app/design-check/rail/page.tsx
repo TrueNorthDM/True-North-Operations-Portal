@@ -3,11 +3,12 @@
 // avatar and its menu, and the top bar's search and two notification drawers.
 // The real components, fed the real rail model for a level.
 //
-//   ?level=user | lead | admin   (admin by default)
-//   ?hub=my-work | my-hours | tools | people | admin | clocky   a panel open
+//   ?level=user | lead | admin-level | admin   (admin, a Super Admin, by default)
+//   ?hub=my-work | tools | people | admin | clocky              a panel open
 //   ?open=menu | bell | inbox | launcher                        one of those open
 //   ?page=soon | home                                           a Coming soon page, or Home, in the content
 //   ?twoStep=6                                                  someone with 6 days left to set up two-step sign-in
+//   ?approvals=3                                                Clocky's Approvals row with 3 waiting (Clock Safety.dc.html rail)
 //
 // A team leader and a user are given three tool grants (Publishing Goals, Href
 // Links and the i7 report), which is what a typical team has. Development only.
@@ -27,12 +28,13 @@ import type { AccessLevel } from '@/lib/access/catalogue'
 
 export const dynamic = 'force-dynamic'
 
-const ROLE: Record<string, AccessLevel> = { user: 'user', lead: 'team_leader', admin: 'super_admin' }
+// admin is a Super Admin here (the first checks were written as one); admin-level is the Admin level.
+const ROLE: Record<string, AccessLevel> = { user: 'user', lead: 'team_leader', admin: 'super_admin', super: 'super_admin', 'admin-level': 'admin' }
 const GRANTS = new Set(['publishing', 'href-links', 'i7-budget'])
 
-export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string; hub?: string; page?: string; twoStep?: string }> }) {
+export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string; hub?: string; page?: string; twoStep?: string; approvals?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
-  const { level = 'admin', open, hub, page, twoStep } = await searchParams
+  const { level = 'admin', open, hub, page, twoStep, approvals } = await searchParams
   const twoStepDaysLeft = twoStep ? Number(twoStep) : null
   const role = ROLE[level] ?? 'super_admin'
   const can = canAs(role, { teams: [['team', role === 'team_leader']], rules: rulesWithTools(GRANTS) })
@@ -64,6 +66,7 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
           menuOpen={open === 'menu'}
           twoStepDaysLeft={twoStepDaysLeft}
           startHub={hub ?? null}
+          startCounts={approvals ? { approvals: Number(approvals) } : {}}
           user={{ email: 'arnaldo@leveluponline.org', name: 'Arnaldo Oliveira', avatarUrl: null }}
         />
         <main className="flex-1 min-w-0">
@@ -74,7 +77,7 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
           ) : <>
           <p className="text-[11px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.14em] text-tn-teal m-0">Design check · as built</p>
           <h1 className="font-(family-name:--font-display) font-extrabold text-[24px] text-tn-ink m-0">
-            {role === 'super_admin' ? 'The shell, as a Super Admin' : role === 'team_leader' ? 'The shell, as a team leader' : 'The shell, as a user'}
+            {role === 'super_admin' ? 'The shell, as a Super Admin' : role === 'admin' ? 'The shell, as an Admin' : role === 'team_leader' ? 'The shell, as a team leader' : 'The shell, as a user'}
           </h1>
           </>}
           </div>

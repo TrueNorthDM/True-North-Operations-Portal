@@ -1,8 +1,9 @@
 // Admin > Configuration > Company settings: the settings the whole portal runs
 // on, admins only (the 'settings' surface). One left sub-nav: APIs & tokens, My
 // Work sources, Clients & budgets, the catalogue, Publishing targets, Sites &
-// languages. Until 7 October 2026 this was /settings, in the avatar menu; that
-// address now redirects here until the personal Settings takes it.
+// languages, and Timesheet periods (Clocky, 16 October 2026). Until 7 October
+// 2026 this was /settings, in the avatar menu; that address now redirects here
+// until the personal Settings takes it.
 
 import Link from 'next/link'
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
@@ -38,6 +39,12 @@ import { SyncStatus } from '@/components/tsheets/settings/SyncStatus'
 import { TargetsEditor } from '@/components/settings/TargetsEditor'
 import { ROUTES } from '@/lib/nav/routes'
 import { isSiteCode } from '@/lib/href-links/rules'
+import { TimesheetPeriodsSection } from '@/components/clocky/periods/TimesheetPeriodsSection'
+import { getTimesheetPeriods } from '@/app/(app)/clocky-hours/periods/actions'
+import { loadClockySettings } from '@/lib/timeclock/clocky-context'
+import { anchorOptions } from '@/components/clocky/periods/anchor-options'
+import type { TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
+import { localDate } from '@/lib/timeclock/format'
 
 interface SiteData {
   id: string
@@ -67,6 +74,7 @@ const ClientsIcon = <Icon paths={['M12 1v22', 'M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5
 const CatalogIcon = <Icon paths={['M3 7V5a2 2 0 0 1 2-2h2', 'M17 3h2a2 2 0 0 1 2 2v2', 'M21 17v2a2 2 0 0 1-2 2h-2', 'M7 21H5a2 2 0 0 1-2-2v-2', 'M7 8h10', 'M7 12h6', 'M7 16h8']} />
 const TargetsIcon = <Icon circles={[[12, 12, 10], [12, 12, 6], [12, 12, 2]]} />
 const SitesIcon = <Icon circles={[[12, 12, 10]]} paths={['M2 12h20', 'M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z']} />
+const PeriodsIcon = <Icon paths={['M4 5h16v16H4z', 'M4 10h16', 'M9 3v4', 'M15 3v4', 'M8 14h3', 'M8 17h6']} />
 
 function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
@@ -91,6 +99,7 @@ export default async function SettingsPage() {
     catalog: access.can('cs-catalog'),
     targets: access.can('cs-targets'),
     sites: access.can('cs-sites'),
+    periods: access.can('cs-periods'),
   }
 
   const supabase = await createClient()
@@ -178,7 +187,7 @@ export default async function SettingsPage() {
   // server drew (it used window.location in render).
   const h = await headers()
   const origin = publicOrigin(`${h.get('x-forwarded-proto') ?? 'https'}://${h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost'}`)
-  const [budget, targetsData, fullDirectory, reportNote, profile, worklistSources, stepsForReview, boardLinks] = await Promise.all([
+  const [budget, targetsData, fullDirectory, reportNote, profile, worklistSources, stepsForReview, boardLinks, periods] = await Promise.all([
     can.clients ? getBudgetUsageData({ pay: access.can('d-rates') }) : null,
     can.targets ? loadTargetsEditor() : null,
     can.catalog || can.clients ? loadProjectDirectory(noteMonth) : null,
@@ -187,6 +196,7 @@ export default async function SettingsPage() {
     can.myWork ? loadWorklistSources(createAdminClient()) : null,
     can.myWork ? loadStepsForReview(createAdminClient()) : null,
     can.myWork ? loadBoardLinks() : null,
+    can.periods ? loadPeriods() : null,
   ])
   const projectDirectory = fullDirectory && !access.can('d-rates') ? { ...fullDirectory, highestRate: 0 } : fullDirectory
 
@@ -355,6 +365,17 @@ export default async function SettingsPage() {
         </div>
       ),
     },
+    can.periods && periods && {
+      id: 'periods',
+      label: 'Timesheet periods',
+      icon: PeriodsIcon,
+      isNew: true,
+      // Its own Edit / Done: Done saves, and moving the start date asks first.
+      editable: false,
+      content: 'error' in periods
+        ? <p role="alert" className="text-[13.5px] text-[#c8323d] m-0">{periods.error}</p>
+        : <TimesheetPeriodsSection data={periods.data} anchorOptions={periods.options} />,
+    },
   ]
 
   return (
@@ -372,6 +393,17 @@ export default async function SettingsPage() {
         : <p className="text-[14px] text-muted">None of the sections here is open to your access level. A Super Admin can open them on Admin &gt; Access levels.</p>}
     </div>
   )
+}
+
+/**
+ * Timesheet periods (Clocky): the section's data and the days its start date
+ * can be set to, around today in the company's zone.
+ */
+async function loadPeriods(): Promise<{ data: TimesheetPeriodsData; options: string[] } | { error: string }> {
+  const res = await getTimesheetPeriods()
+  if (!res.ok) return { error: res.error }
+  const settings = await loadClockySettings()
+  return { data: res.data, options: anchorOptions(localDate(new Date(), settings.companyZone), res.data.anchor) }
 }
 
 /**

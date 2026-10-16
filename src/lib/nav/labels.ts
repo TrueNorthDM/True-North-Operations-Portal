@@ -19,7 +19,6 @@
 export const NAV_LABEL = {
   '/': 'Home',
   '/my-work': 'My Work',
-  '/hours': 'My Hours',
   '/clocky-hours': 'Clocky',
   '/directory': 'Directory',
   '/organization': 'Organization',

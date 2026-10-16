@@ -4,17 +4,19 @@
  * Sidebar: the navy rail, and the panel a hub opens beside it.
  *
  * The navigation redesign of 22 September 2026 (Design/Redesign Handoff,
- * "Direction B"): a solid navy band, icon only, with a gold active state. Six
- * places are hubs (My Work, My Hours, Tools, People, and for admins Admin and
- * Clocky): clicking one opens a white panel of its pages beside the rail, and
+ * "Direction B"): a solid navy band, icon only, with a gold active state. Five
+ * places are hubs (My Work, Tools, People, Clocky, and for admins Admin; My
+ * Hours went into Clocky on 16 October 2026): clicking one opens a white panel
+ * of its pages beside the rail, and
  * the hub stays lit while any of its pages is open. Plain places (Home, Chat,
  * Emails) go straight there. The avatar sits at the foot, and holds Settings.
  *
  * What the rail offers is resolved on the server for the person signed in
  * (lib/access/nav.ts, buildRail) and handed over as plain data, so hiding an
  * item and blocking its route come from the same configuration. No counts or
- * dots here: the two notification buttons in the top bar are the only place a
- * number appears.
+ * dots on the rail itself: the top bar's buttons carry those. One panel row
+ * carries a number (Clocky's Approvals, 16 October 2026: what waits for this
+ * person's decision), read when its panel opens and drawn only above zero.
  *
  * Client Component for the pathname and the open panel. Hidden on a phone
  * (md:flex); the top bar stays usable on its own there.
@@ -26,7 +28,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { UserMenu } from '@/components/UserMenu'
 import { NavIcon } from '@/components/NavIcon'
-import type { NavItem, ResolvedEntry } from '@/lib/access/nav'
+import type { NavCount, NavItem, ResolvedEntry } from '@/lib/access/nav'
+import { getApprovalsCount } from '@/app/(app)/clocky-hours/approvals/actions'
 import { onPath, pathOf } from '@/lib/nav/path'
 
 type Hub = Extract<ResolvedEntry, { kind: 'hub' }>
@@ -66,8 +69,13 @@ function PendingBar({ pending }: { pending: boolean }) {
   )
 }
 
+/** Where each row count comes from. */
+const COUNTS: Record<NavCount, () => Promise<number>> = {
+  approvals: () => getApprovalsCount().then(r => (r.ok ? r.count : 0)),
+}
+
 export function Sidebar({
-  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null, canMyTeam = true,
+  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null, canMyTeam = true, startCounts = {},
 }: {
   rail: ResolvedEntry[]
   /** The person signed in (or previewed), for the avatar at the foot of the rail. */
@@ -79,6 +87,8 @@ export function Sidebar({
   /** Days left to set up two-step sign-in, while that week runs: the avatar menu offers it. */
   twoStepDaysLeft?: number | null
   canMyTeam?: boolean
+  /** Design check only: the row counts, without asking the server. */
+  startCounts?: Partial<Record<NavCount, number>>
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -90,6 +100,18 @@ export function Sidebar({
   const aside = useRef<HTMLElement>(null)
   const openKey = open && open.path === pathname ? open.key : null
   const hub = rail.find((e): e is Hub => e.kind === 'hub' && e.key === openKey) ?? null
+  const [counts, setCounts] = useState<Partial<Record<NavCount, number>>>(startCounts)
+  // The counts an open panel shows, read each time it opens so they are current.
+  const wanted = (hub?.groups.flatMap(g => g.items.map(i => i.count)).filter((c): c is NavCount => !!c) ?? []).join('|')
+  const fixed = Object.keys(startCounts).length > 0
+  useEffect(() => {
+    if (!wanted || fixed) return
+    let live = true
+    for (const c of wanted.split('|') as NavCount[]) {
+      COUNTS[c]().then(n => { if (live) setCounts(prev => ({ ...prev, [c]: n })) }).catch(() => {})
+    }
+    return () => { live = false }
+  }, [wanted, fixed])
 
   const go = (key: string, href: string) => {
     setPendingKey(key)
@@ -234,19 +256,23 @@ export function Sidebar({
               {g.label && <div className="px-2 pt-1.5 pb-1 text-[10.5px] font-bold tracking-[.09em] uppercase text-muted">{g.label}</div>}
               {g.items.map(item => {
                 const on = rowActive(pathname, item.href)
+                const count = item.count ? counts[item.count] ?? 0 : 0
                 return (
                   <button
                     key={item.key}
                     type="button"
                     data-row
                     onClick={() => go(item.key, item.href)}
-                    aria-label={item.soon ? `${item.label}, coming soon` : undefined}
+                    aria-label={item.soon ? `${item.label}, coming soon` : count > 0 ? `${item.label}, ${count} waiting for a decision` : undefined}
                     aria-current={on ? 'page' : undefined}
                     className={`flex items-center gap-2.5 rounded-lg p-2 text-left text-[13.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${on ? 'bg-tn-teal/10 text-tn-teal' : 'text-foreground hover:bg-subtle'}`}
                   >
                     <NavIcon name={item.icon} size={17} className="shrink-0" />
                     <span className="flex-1 min-w-0 leading-snug">{item.label}</span>
                     {item.soon && <span className="shrink-0 rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
+                    {count > 0 && (
+                      <span title="Waiting for a decision" className="shrink-0 min-w-5 h-5 box-border px-1.5 rounded-full bg-[var(--warn-bg)] border border-[#e9d48a] text-[var(--warn-fg)] text-[11px] font-bold inline-flex items-center justify-center tabular-nums">{count}</span>
+                    )}
                   </button>
                 )
               })}

@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { NavIcon } from '@/components/NavIcon'
-import { DRAWERS, NotificationDrawer, type DrawerKind, type NotificationItem } from '@/components/NotificationDrawer'
+import { DRAWERS, NotificationDrawer, type DrawerKind, type KeepGoing, type NotificationItem } from '@/components/NotificationDrawer'
 
 const TAB_KEY = (kind: DrawerKind) => `tn.notifications.tab.${kind}`
 
@@ -29,12 +29,14 @@ const BADGE: Record<DrawerKind, string> = {
   inbox: 'bg-tn-teal text-[#ffffff]',
 }
 
-export function NotificationButton({ kind, items = {}, startOpen = false }: {
+export function NotificationButton({ kind, items = {}, startOpen = false, keepGoing }: {
   kind: DrawerKind
   /** Rows per tab key, from the layout. */
   items?: Record<string, NotificationItem[]>
   /** Design check only: show the drawer without a click. */
   startOpen?: boolean
+  /** Design check only: Clocky's "Keep going" without the server. */
+  keepGoing?: KeepGoing
 }) {
   const d = DRAWERS[kind]
   const [open, setOpen] = useState(startOpen)
@@ -96,7 +98,7 @@ export function NotificationButton({ kind, items = {}, startOpen = false }: {
       </button>
       {open && (
         <NotificationDrawer
-          kind={kind} tab={tab} onTab={pickTab} items={items}
+          kind={kind} tab={tab} onTab={pickTab} items={items} keepGoing={keepGoing}
           read={read} onRead={ids => setRead(prev => new Set([...prev, ...ids]))}
           onUnread={ids => setRead(prev => new Set([...prev].filter(id => !ids.includes(id))))}
           // Every way out gives focus back to the button, not only Escape.

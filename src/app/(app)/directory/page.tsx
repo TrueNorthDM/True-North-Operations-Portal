@@ -10,6 +10,7 @@ import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colo
 import { teamKeyFromName, initialsOf, teamPositionRank, teamPositionLeads, TEAM_POSITION_LABEL, cardRights, type PersonView, type PersonTeam, type TeamKey, normalPosition } from '@/lib/directory/people-types'
 import type { TeamCard } from '@/components/admin/TeamsManager'
 import { getBudgetUsageData } from '@/lib/tsheets/budget-usage-data'
+import { getTimesheetPeriods } from '@/app/(app)/clocky-hours/periods/actions'
 import { requireSurface } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds } from '@/lib/directory/person-page-data'
@@ -32,7 +33,7 @@ import { loadTwoStepByAccount } from '@/lib/auth/two-step'
 /** Loosely-typed people row, columns depend on whether migration 029 ran. */
 type PRow = Record<string, unknown> & { id: string; full_name: string }
 
-export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string; _vs?: string }> }) {
+export default async function DirectoryPage({ searchParams }: { searchParams: Promise<{ open?: string; _vs?: string; tab?: string }> }) {
   const access = await requireSurface('directory')
   // Resolved up here, not next to the view models, because it decides which
   // COLUMNS to read a few lines below and not just what to render.
@@ -46,7 +47,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   if (!user) redirect('/login')
   // ?open=<personId> opened a person's card here before their own page existed
   // (8 October 2026): old links go to the page now.
-  const { open: openId, _vs: vs } = await searchParams
+  const { open: openId, _vs: vs, tab: startTab } = await searchParams
   if (openId && /^[0-9a-f-]{36}$/i.test(openId)) redirect(personHref(openId) + (vs ? `?_vs=${encodeURIComponent(vs)}` : ''))
   // Directory is reachable by everyone; the configured directory level decides
   // the view (see access/surfaces.ts): level 3 gets the full admin tabs,
@@ -388,6 +389,12 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // People & rates). Loaded after the restricted branch so non-admins never
   // trigger it, and only with Rates & Costs (d-rates): it carries every pay rate.
   const budget = rights.rates ? await getBudgetUsageData({ pay: true }) : null
+  // Its Timesheet column (Clocky, 16 October 2026): with Company settings >
+  // Timesheet periods; changed by whoever may change the periods.
+  const periods = rights.rates && access.can('cs-periods') ? await getTimesheetPeriods() : null
+  const ratesCadence = periods?.ok
+    ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.cadence])), canEdit: periods.data.access === 'edit' }
+    : null
 
   // Access-log rows resolved to the current person (avatar/team) for the tab.
   // Resolve each access row to a person by any key we hold, most specific
@@ -431,6 +438,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         accessLog={accessLog}
         allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['rates', 'd-rates'], ['access', 'd-log'], ['portal', 'd-portal']] as const)
           .filter(([, key]) => access.can(key)).map(([tab]) => tab)}
+        ratesCadence={ratesCadence}
+        startTab={startTab}
       />
     </div>
   )

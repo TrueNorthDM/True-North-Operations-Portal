@@ -19,7 +19,7 @@ import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
 import { PortalAccessTab } from './PortalAccessTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, CardRights } from '@/lib/directory/people-types'
-import type { PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
+import type { CadenceColumn, PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
 type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access' | 'portal'
 
@@ -35,6 +35,8 @@ export function DirectoryTabs({
   ratesClients,
   accessLog,
   allowed,
+  ratesCadence = null,
+  startTab = 'people',
 }: {
   people: PersonView[]
   teamOptions: TeamOption[]
@@ -45,8 +47,12 @@ export function DirectoryTabs({
   accessLog: AccessLogEntry[]
   /** The tabs this person's access opens (People always); every tab when omitted. */
   allowed?: readonly string[]
+  /** Rates & Costs' Timesheet column (Clocky, 16 October 2026). */
+  ratesCadence?: CadenceColumn | null
+  /** The tab open at first (?tab=rates from Company settings > Timesheet periods). */
+  startTab?: string
 }) {
-  const [tab, setTab] = useState<Tab>('people')
+  const [tab, setTab] = useState<Tab>(() => (startTab === 'people' || !(['emails', 'teams', 'rates', 'access', 'portal'] as string[]).includes(startTab) || (allowed && !allowed.includes(startTab)) ? 'people' : startTab as Tab))
   // Deep-link: open a person's card on mount when ?open=<id> was passed.
   const router = useRouter()
   // The popup is for adding someone; everyone else opens on their own page.
@@ -187,7 +193,7 @@ export function DirectoryTabs({
         <EmailsTab people={activePeople} onOpen={id => router.push(withViewAs(personHref(id, 'work')))} />
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} canEdit={rights.positions} />}
-      {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} />}
+      {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} cadence={ratesCadence} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
       {tab === 'portal' && (
         <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />

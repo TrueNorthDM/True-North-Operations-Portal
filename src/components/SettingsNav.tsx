@@ -18,17 +18,22 @@ export interface SettingsSection {
   label: string
   icon: ReactNode
   content: ReactNode
-  /** When false, the Edit button is hidden on this section (nothing to toggle). */
+  /** When false, the Edit button is hidden on this section (nothing to toggle, or its own). */
   editable?: boolean
+  /** A gold "New" tag beside the label (Timesheet periods, 16 October 2026). */
+  isNew?: boolean
 }
 
 
 export function SettingsNav({
   signedIn,
   sections,
+  startSection = null,
 }: {
   signedIn: { name: string; role: string }
   sections: SettingsSection[]
+  /** Design check only: the section open at first. */
+  startSection?: string | null
 }) {
   const [editing, setEditing] = useState(false)
   // The hash read as an outside value (audit, 9 October 2026): copying it into
@@ -36,7 +41,7 @@ export function SettingsNav({
   // one, and missed back and forward. The server has no hash: '' there.
   const hash = useSyncExternalStore(subscribeHash, () => window.location.hash.slice(1), () => '')
   // replaceState fires no event: the pick also re-renders, which reads the new hash.
-  const [picked, setPicked] = useState<string | null>(null)
+  const [picked, setPicked] = useState<string | null>(startSection)
   const want = hash || picked
   const active = want && sections.some(s => s.id === want) ? want : sections[0]?.id
 
@@ -71,6 +76,7 @@ export function SettingsNav({
               >
                 <span className="inline-flex w-5 h-5 items-center justify-center shrink-0">{s.icon}</span>
                 <span className="flex-1">{s.label}</span>
+                {s.isNew && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-0.5 leading-[normal]">New</span>}
               </button>
             )
           })}

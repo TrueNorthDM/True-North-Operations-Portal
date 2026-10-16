@@ -122,8 +122,8 @@ export function RulesForm({ rules }: { rules: Rules }) {
             ariaLabel="Rounding direction" className={input} />
         </div>
         <p className="text-xs text-muted max-w-none grow pt-6 m-0">
-          Applied when producing payroll, never to what we store. QuickBooks Time rounds before
-          saving, so its raw times are gone; ours are not.
+          Not used since October 16, 2026: Clocky rounds every recorded time to the nearest 15
+          minutes and keeps the real times in each entry&apos;s history.
         </p>
       </div>
 
@@ -134,7 +134,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
             placeholder="never"
             onChange={e => set('auto_clockout_hours', e.target.value === '' ? null : Number(e.target.value))}
             className={`${input} w-28`} />
-          <span className="text-xs text-muted">Hours. Empty means never.</span>
+          <span className="text-xs text-muted">Not used: Clocky stops a clock after 5 hours without an answer.</span>
         </div>
         <label className="flex items-center gap-2 text-sm text-tn-ink pt-6">
           <input type="checkbox" checked={r.split_at_midnight} onChange={e => set('split_at_midnight', e.target.checked)} />

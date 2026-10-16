@@ -23,8 +23,12 @@ import { milestoneColor, milestoneLabel, sortMilestones } from '@/lib/milestones
 import { formatDate, lifecyclePill, roleTypePill, statusPill, timePill, typePill } from '@/lib/directory/people-types'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { useConfirm } from '@/components/ui/useConfirm'
-import { HrForm, PersonalForm, WorkForm } from './PersonForms'
+import { HrForm, PersonalForm, WorkForm, type CadenceActions } from './PersonForms'
 import { PillBadge, Section, TeamsList } from './PersonParts'
+import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
+import { useToast } from '@/components/clocky/periods/ui'
+import { previewCadenceChange, setCadence } from '@/app/(app)/clocky-hours/periods/actions'
+import type { Cadence } from '@/lib/timeclock/periods'
 import { PAGE_TABS, personHref, type PageTab } from '@/lib/directory/page-rights'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 
@@ -39,7 +43,20 @@ const PENCIL = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strok
 
 const btnNavy = 'inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[13.5px] bg-tn-primary rounded-[10px] px-4 py-2.5 shadow-[0_10px_24px_-14px_rgba(1,35,88,.7)] transition-all hover:brightness-110'
 
-export function PersonPage({ data, tab, canRemove }: { data: PersonPageData; tab: PageTab; canRemove: boolean }) {
+const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
+
+export function PersonPage({ data, tab, canRemove, timesheet = null, cadenceActions = CADENCE_ACTIONS, startEditing = null, startCadence }: {
+  data: PersonPageData
+  tab: PageTab
+  canRemove: boolean
+  /** The Work tab's Timesheet section (Clocky, 16 October 2026); null leaves it out. */
+  timesheet?: PersonTimesheetView | null
+  /** Design check only: the cadence preview and save without the server. */
+  cadenceActions?: CadenceActions
+  /** Design check only: a tab already in Edit, with this cadence picked. */
+  startEditing?: Editable | null
+  startCadence?: Cadence
+}) {
   return (
     <div className="space-y-5">
       <Cover data={data} />
@@ -66,7 +83,7 @@ export function PersonPage({ data, tab, canRemove }: { data: PersonPageData; tab
         })}
       </nav>
       {/* Keyed by tab: moving to another tab leaves any edit behind. */}
-      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} />
+      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} timesheet={timesheet} cadenceActions={cadenceActions} startEditing={startEditing} startCadence={startCadence} />
     </div>
   )
 }
@@ -142,9 +159,18 @@ function Cover({ data }: { data: PersonPageData }) {
 
 // ── One tab ─────────────────────────────────────────────────────────────────
 
-function TabPanel({ data, tab, canRemove }: { data: PersonPageData; tab: PageTab; canRemove: boolean }) {
+function TabPanel({ data, tab, canRemove, timesheet, cadenceActions, startEditing, startCadence }: {
+  data: PersonPageData
+  tab: PageTab
+  canRemove: boolean
+  timesheet: PersonTimesheetView | null
+  cadenceActions: CadenceActions
+  startEditing: Editable | null
+  startCadence?: Cadence
+}) {
   const router = useRouter()
-  const [editing, setEditing] = useState<Editable | null>(null)
+  const [editing, setEditing] = useState<Editable | null>(startEditing)
+  const [toast, showToast] = useToast()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const r = data.rights
@@ -175,14 +201,27 @@ function TabPanel({ data, tab, canRemove }: { data: PersonPageData; tab: PageTab
     })
   }
 
-  function run(save: () => Promise<{ ok: true } | { ok: false; error: string }>) {
+  function run(save: () => Promise<{ ok: true } | { ok: false; error: string }>, saved?: string) {
     setError(null)
     start(async () => {
       const res = await save().catch(e => ({ ok: false as const, error: e instanceof Error ? e.message : 'Something went wrong.' }))
       if (!res.ok) { setError(res.error); return }
       setEditing(null)
+      if (saved) showToast(saved)
       router.refresh()
     })
+  }
+
+  // Edit work saves how they submit first (Super Admins), then the rest.
+  function saveWorkTab(input: Parameters<typeof saveWork>[1], cadence: Cadence | null) {
+    const changed = !!timesheet && !!cadence && cadence !== timesheet.cadence
+    run(async () => {
+      if (changed) {
+        const r = await cadenceActions.setCadence({ personIds: [data.id], cadence: cadence! })
+        if (!r.ok) return r
+      }
+      return saveWork(data.id, input)
+    }, changed ? `Saved. ${who} now submits ${cadence === 'biweekly' ? 'every 2 weeks' : 'monthly'}; Rates & Costs shows the same.` : undefined)
   }
 
   let rule: { kind: 'edit' | 'view' | 'hidden'; text: string; edit?: { label: string; on: Editable } } | null = null
@@ -228,14 +267,16 @@ function TabPanel({ data, tab, canRemove }: { data: PersonPageData; tab: PageTab
         : <PersonalView p={data.personal} />)}
 
       {tab === 'work' && data.work && (editing === 'work'
-        ? <WorkForm data={data} pending={pending} error={error} remove={canRemove ? { pending: removing, run: remove } : null} onCancel={() => setEditing(null)} onSave={input => run(() => saveWork(data.id, input))} />
-        : <WorkView data={data} />)}
+        ? <WorkForm data={data} pending={pending} error={error} remove={canRemove ? { pending: removing, run: remove } : null} onCancel={() => setEditing(null)} onSave={input => saveWorkTab(input, null)}
+            timesheet={timesheet} cadenceActions={cadenceActions} startCadence={startCadence} onSaveWithCadence={saveWorkTab} />
+        : <WorkView data={data} timesheet={timesheet} />)}
 
       {tab === 'hr' && data.hr && (editing === 'hr'
         ? <HrForm data={data} pending={pending} error={error} onCancel={() => setEditing(null)} onSave={input => run(() => saveHr(data.id, input))} />
         : <HrView data={data} />)}
 
       {tab === 'reports' && data.reports && <ReportsView data={data} />}
+      {toast}
     </section>
   )
 }
@@ -292,7 +333,7 @@ function PersonalView({ p }: { p: NonNullable<PersonPageData['personal']> }) {
   )
 }
 
-function WorkView({ data }: { data: PersonPageData }) {
+function WorkView({ data, timesheet }: { data: PersonPageData; timesheet: PersonTimesheetView | null }) {
   const w = data.work!
   return (
     <>
@@ -323,6 +364,7 @@ function WorkView({ data }: { data: PersonPageData }) {
           </Section>
         </div>
         <div className="min-w-0">
+          {timesheet && <TimesheetSection t={timesheet} />}
           <Section title="Teams"><TeamsList teams={w.teams} /></Section>
           <Section title="Reporting">
             <dl className="m-0">

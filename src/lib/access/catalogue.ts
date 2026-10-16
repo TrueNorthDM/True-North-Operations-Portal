@@ -83,17 +83,6 @@ const TREE: Node[] = [
       { key: 'rp-export', label: 'Export (CSV, PDF and the printable page)', kind: 'action', v: [1, 0, 0] },
     ] },
   ] },
-  { key: 'm-hours', label: 'My Hours', kind: 'module', building: true, ch: [
-    { key: 'my-hours', label: 'Hours', kind: 'page', v: [1, 0, 0], note: 'Being built; QuickBooks Time is still the official record.', ch: [
-      { key: 'h-week', label: 'Week', kind: 'tab', v: [1, 1, 1] },
-      { key: 'h-month', label: 'Month submission', kind: 'tab', v: [1, 1, 1] },
-      { key: 'h-waiting', label: 'Waiting for you (approvals)', kind: 'tab', superOnly: true, note: 'Approving hours and time off: Super Admins only, for now (8 October 2026).' },
-      { key: 'h-timeoff', label: 'Time off', kind: 'tab', v: [1, 1, 1] },
-      { key: 'h-reopen', label: 'Reopen a submitted month', kind: 'action', superOnly: true },
-    ] },
-    { key: 'my-hours-reports', label: 'Reports', kind: 'page', soon: true, v: [1, 0, 0] },
-    { key: 'my-hours-approvals', label: 'Approvals and invoices', kind: 'page', soon: true, v: [1, 0, 0] },
-  ] },
   { key: 'm-chat', label: 'Chat', kind: 'module', ch: [{ key: 'chat', label: 'Chat', kind: 'page', soon: true, v: [1, 1, 1] }] },
   { key: 'm-emails', label: 'Emails', kind: 'module', ch: [{ key: 'emails', label: 'Emails', kind: 'page', soon: true, v: [1, 1, 1] }] },
   { key: 'm-tools', label: 'Tools', kind: 'module', ch: [

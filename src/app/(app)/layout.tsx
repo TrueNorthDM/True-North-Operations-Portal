@@ -19,6 +19,11 @@ import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 import { loadAccess } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
 import { loadInbox } from '@/lib/notifications/inbox'
+import { Suspense } from 'react'
+import { ClockyTopBar } from '@/components/clocky/clock/ClockyTopBar'
+import { getClockPanel } from '@/app/(app)/clocky-hours/clock-actions'
+import { getWhosWorkingCount } from '@/app/(app)/clocky-hours/whos-working/actions'
+import type { Fail } from '@/lib/timeclock/clocky-types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Nav visibility comes from the configured per-level surfaces (Admin →
@@ -49,6 +54,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // (lib/access/nav.ts), built here for this person: what each of them offers
   // is exactly what the page guards let through.
   const rail = buildRail({ can: access.can, canTool: access.canTool })
+  // Clocky in the top bar (design handoff of 16 October 2026): the clock for
+  // everyone with Time entries, Who's working for Team Leaders and up. Started
+  // here and not awaited: the bar streams them in, the page never waits.
+  const clockPromise = access.can('clocky-hours')
+    ? getClockPanel().catch((): Fail => ({ ok: false, error: 'The clock could not be read. Try again in a moment.' }))
+    : null
+  const workingPromise = access.can('ck-whos-working')
+    ? getWhosWorkingCount().catch((): Fail => ({ ok: false, error: "Who's working could not be read." }))
+    : null
 
   return (
     <>
@@ -56,10 +70,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Keeps a View Stage preview impersonating across navigation. */}
       {/* Top bar, brand on the left. On the right, since the navigation
           redesign of 22 September 2026: search (the Cmd+K launcher), Messages
-          (Chat and Email) and Notifications (Tools and System). The avatar
+          (Chat and Email), since 16 October 2026 Clocky's Who's working and
+          clock, and Notifications (Tools and System). The avatar
           lives at the foot of the rail, and only comes up here on a phone,
-          where the rail is hidden. */}
-      <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-[var(--banner-h)] z-20">
+          where the rail is hidden. On a phone the bar follows the phone frame of
+          Clock Panel.dc.html (390px): the logo at 30px, no "Operations
+          Portal", 16px sides, so the clock fits beside the icons. */}
+      <header className="border-b border-slate-200 bg-white px-4 md:px-6 py-3.5 flex items-center justify-between gap-4 sticky top-[var(--banner-h)] z-20">
         {/* True North lockup. On dark the navy wordmark sits on a white chip so
             it stays legible; on the white light bar the chip is invisible. */}
         <Link href="/" className="flex items-end gap-2.5 group" aria-label="Go to dashboard">
@@ -70,17 +87,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               width={1352}
               height={705}
               priority
-              className="h-9 w-auto"
+              className="h-[30px] md:h-9 w-auto"
             />
           </span>
-          <span className="text-sm font-semibold text-slate-500 pb-0.5 group-hover:text-slate-700 transition-colors">
+          <span className="hidden md:inline text-sm font-semibold text-slate-500 pb-0.5 group-hover:text-slate-700 transition-colors">
             Operations Portal
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <Launcher rail={rail} canPeople={access.can('directory')} />
           <NotificationButton kind="inbox" />
+          {/* Who's working (people icon) and the clock, left of the bell. */}
+          {(clockPromise || workingPromise) && (
+            <Suspense fallback={null}>
+              <ClockyTopBar clock={clockPromise} working={workingPromise} meName={me?.full_name ?? ''} />
+            </Suspense>
+          )}
           <NotificationButton kind="bell" items={inbox} />
           {/* The person's own mailbox, not the session's: in a View Stage preview
               those differ, and the menu should read as that person. */}

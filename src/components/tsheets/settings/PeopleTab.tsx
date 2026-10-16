@@ -10,11 +10,26 @@
  * editable at once; "Save changes" writes every change, client rate via a dated
  * tr_assignments row (so rate history stays intact for past-month reports) and cost
  * via people.internal_rate. Both are still audited (auto reason, no prompt).
+ *
+ * Timesheet (Clocky, 16 October 2026, Timesheet Periods.dc.html frames 5C to
+ * 5C3): how each person submits their hours, monthly or every 2 weeks, the same
+ * setting as their page's Work tab. A filter by it beside the search; in Edit,
+ * a choice per row for whoever may change it (cs-periods-edit), changed rows in
+ * amber, and Save asks first ("Change how these people submit?") with the
+ * dates each change takes effect. A name opens the person's page.
  */
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { SearchField } from '@/components/ui/SearchField'
+import { Segmented } from '@/components/ui/Segmented'
 import { useRouter } from 'next/navigation'
+import { withViewAs } from '@/components/ViewAsKeeper'
+import { personHref } from '@/lib/directory/page-rights'
+import { CadencePill, NewTag, PeriodsDialog, useToast, type DialogItem } from '@/components/clocky/periods/ui'
+import { previewCadenceChange, setCadence } from '@/app/(app)/clocky-hours/periods/actions'
+import type { CadenceActions } from '@/components/person/PersonForms'
+import type { Cadence } from '@/lib/timeclock/periods'
 import { saveTrAssignment, savePersonCostRate, savePersonBeRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
 import { initialsOf, formatDate } from '@/lib/directory/people-types'
@@ -61,10 +76,25 @@ export interface DirectoryOption {
   title: string | null
 }
 
+/** The Timesheet column: each person's cadence, and whether this viewer may change it. */
+export interface CadenceColumn {
+  byPerson: Record<string, Cadence>
+  canEdit: boolean
+}
+
 interface Props {
   people: PersonWithAssignments[]
   allClients: { id: number; name: string }[]
+  /** Null leaves the Timesheet column out (no Company settings > Timesheet periods). */
+  cadence?: CadenceColumn | null
+  /** Design check only: the previews and saves without the server, and a state to open in. */
+  cadenceActions?: CadenceActions
+  startEditing?: boolean
+  startCadences?: Record<string, Cadence>
+  startDialog?: DialogItem[] | null
 }
+
+const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
 
 const AUTO_REASON = 'Updated in Rates & Costs'
 
@@ -89,9 +119,18 @@ function monthName(iso: string): string {
 }
 
 const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px_224px] gap-3.5 items-center'
+// With the Timesheet column (Timesheet Periods.dc.html, 5C): the rates narrow to make room.
+const GRID_TS = 'grid grid-cols-[1.9fr_1fr_1.4fr_1fr_210px_150px_150px_160px_150px] gap-3.5 items-center'
 
-export function PeopleTab({ people, allClients }: Props) {
+export function PeopleTab({ people, allClients, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null }: Props) {
   const router = useRouter()
+  const grid = cadence ? GRID_TS : GRID
+  const [cadF, setCadF] = useState<'all' | Cadence>('all')
+  const [cadDraft, setCadDraft] = useState<Record<string, Cadence>>(startCadences ?? {})
+  const [cadDialog, setCadDialog] = useState<DialogItem[] | null>(startDialog)
+  const [toast, showToast] = useToast()
+  const cadOf = (id: string): Cadence => cadence?.byPerson[id] ?? 'monthly'
+  const cadChanged = cadence?.canEdit ? people.filter(p => cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) : []
   const today = new Date().toISOString().slice(0, 10)
   const firstOfThisMonth = `${today.slice(0, 7)}-01`
   // The tool is i7-locked; "Rate / client" is the person's rate on the i7 client.
@@ -106,14 +145,24 @@ export function PeopleTab({ people, allClients }: Props) {
     return p.assignments[0]?.hourlyRate ?? null
   }
 
+  /** Every rate as the edit fields start: two decimals, or empty. */
+  function draftsOf(list: PersonWithAssignments[]) {
+    const d: Record<string, { client: string; cost: string; be: string; salary: string }> = {}
+    for (const p of list) {
+      const cr = rateOf(p)
+      d[p.id] = { client: cr != null ? cr.toFixed(2) : '', cost: p.costRate != null ? p.costRate.toFixed(2) : '', be: p.beRate != null ? p.beRate.toFixed(2) : '', salary: p.monthlySalary != null ? p.monthlySalary.toFixed(2) : '' }
+    }
+    return d
+  }
+
   // When a client rate changes, the admin picks which month it starts in. A
   // rate resolves to one value per month, so "from today" reprices this whole
   // month, hours already logged included (audit finding M3-2). The choice was
   // never offered before: every save silently took the "from today" branch.
   const [pendingRates, setPendingRates] = useState<{ name: string; from: number | null; to: number }[] | null>(null)
 
-  const [editing, setEditing] = useState(false)
-  const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string; be: string; salary: string }>>({})
+  const [editing, setEditing] = useState(startEditing)
+  const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string; be: string; salary: string }>>(() => (startEditing ? draftsOf(people) : {}))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -147,19 +196,15 @@ export function PeopleTab({ people, allClients }: Props) {
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase()
-    const base = term
+    const base = (term
       ? people.filter(p => `${p.name} ${p.teamName ?? ''} ${p.managerName ?? ''}`.toLowerCase().includes(term))
-      : people
+      : people).filter(p => !cadence || cadF === 'all' || (cadence.byPerson[p.id] ?? 'monthly') === cadF)
     return applySort(applyFilters(base, filterColumns, conds), filterColumns, sort)
-  }, [people, q, conds, sort, filterColumns])
+  }, [people, q, conds, sort, filterColumns, cadence, cadF])
 
   function enterEdit() {
-    const d: Record<string, { client: string; cost: string; be: string; salary: string }> = {}
-    for (const p of people) {
-      const cr = rateOf(p)
-      d[p.id] = { client: cr != null ? cr.toFixed(2) : '', cost: p.costRate != null ? p.costRate.toFixed(2) : '', be: p.beRate != null ? p.beRate.toFixed(2) : '', salary: p.monthlySalary != null ? p.monthlySalary.toFixed(2) : '' }
-    }
-    setDrafts(d)
+    setDrafts(draftsOf(people))
+    setCadDraft({})
     setEditing(true)
     setError(null)
   }
@@ -167,6 +212,7 @@ export function PeopleTab({ people, allClients }: Props) {
   function cancel() {
     setEditing(false)
     setDrafts({})
+    setCadDraft({})
     setError(null)
   }
 
@@ -186,12 +232,52 @@ export function PeopleTab({ people, allClients }: Props) {
     return out
   }
 
-  /** Asks first when a client rate moved, since that decides which month it hits. */
-  function save() {
+  /** Asks first when someone's timesheet changes (the dates it takes effect), then about the rates. */
+  async function save() {
     setError(null)
+    if (cadChanged.length) {
+      const items = await cadenceItems()
+      if (items) setCadDialog(items)
+      return
+    }
+    saveRates()
+  }
+
+  /** Asks first when a client rate moved, since that decides which month it hits. */
+  function saveRates() {
     const rates = changedRates()
     if (rates.length > 0) { setPendingRates(rates); return }
     void commit(firstOfThisMonth)
+  }
+
+  /** Each change, old to new and the dates it starts ("Change how these people submit?"). */
+  async function cadenceItems(): Promise<DialogItem[] | null> {
+    const out: DialogItem[] = []
+    for (const to of ['monthly', 'biweekly'] as const) {
+      const ids = cadChanged.filter(p => cadDraft[p.id] === to).map(p => p.id)
+      if (!ids.length) continue
+      const r = await cadenceActions.previewCadenceChange({ personIds: ids, cadence: to })
+      if (!r.ok) { setError(r.error); return null }
+      for (const x of r.data) out.push({ name: x.name, change: x.change, eff: x.plan.text })
+    }
+    const order = new Map(cadChanged.map((p, i) => [p.name, i]))
+    return out.sort((a, b) => (order.get(a.name) ?? 0) - (order.get(b.name) ?? 0))
+  }
+
+  async function saveCadences() {
+    setSaving(true)
+    for (const to of ['monthly', 'biweekly'] as const) {
+      const ids = cadChanged.filter(p => cadDraft[p.id] === to).map(p => p.id)
+      if (!ids.length) continue
+      const r = await cadenceActions.setCadence({ personIds: ids, cadence: to })
+      if (!r.ok) { setSaving(false); setError(r.error); return }
+    }
+    const n = cadChanged.length
+    setSaving(false)
+    setCadDialog(null)
+    setCadDraft({})
+    showToast(`Saved. ${n} timesheet change${n > 1 ? 's' : ''}, also shown on each person's page.`)
+    saveRates()
   }
 
   // A rate starts on the 1st (decided 9 October 2026): "this month as well"
@@ -271,12 +357,12 @@ export function PeopleTab({ people, allClients }: Props) {
           value={val}
           onChange={e => onChange(e.target.value)}
           placeholder="-"
-          className="w-48 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink bg-white border border-slate-200 rounded-md px-3 py-1.5 outline-none"
+          className={`${cadence ? 'w-[110px]' : 'w-48'} text-right tabular-nums text-[13.5px] font-semibold text-tn-ink bg-white border border-slate-200 rounded-md px-3 py-1.5 outline-none`}
           onFocus={e => { e.currentTarget.style.borderColor = focusColor }}
           onBlur={e => { e.currentTarget.style.borderColor = '' }}
         />
       ) : (
-        <span className="w-48 text-right tabular-nums text-[13.5px] font-semibold text-tn-ink rounded-md px-3 py-1.5 bg-subtle">
+        <span className={`${cadence ? 'w-[110px]' : 'w-48'} text-right tabular-nums text-[13.5px] font-semibold text-tn-ink rounded-md px-3 py-1.5 bg-subtle`}>
           {money(val) ?? <span className="text-slate-300">-</span>}
         </span>
       )}
@@ -293,17 +379,34 @@ export function PeopleTab({ people, allClients }: Props) {
           placeholder="Search people…"
           className="flex-1 min-w-[230px] max-w-[340px]"
         />
+        {cadence && (
+          <Segmented
+            label="Timesheet"
+            options={[
+              { key: 'all', label: 'Everyone' },
+              { key: 'monthly', label: `Monthly · ${people.filter(p => cadOf(p.id) === 'monthly').length}` },
+              { key: 'biweekly', label: `Every 2 weeks · ${people.filter(p => cadOf(p.id) === 'biweekly').length}` },
+            ]}
+            value={cadF}
+            onChange={setCadF}
+          />
+        )}
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
       </div>
 
       <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-        <div className="min-w-[1404px]">
+        <div className={cadence ? 'min-w-[1420px]' : 'min-w-[1404px]'}>
           {/* header */}
-          <div className={`${GRID} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
+          <div className={`${grid} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
             <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
             <SortHeader label="Team" active={sort?.id === 'team'} dir={sort?.id === 'team' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'team'))} />
             <SortHeader label="Report to" active={sort?.id === 'reports'} dir={sort?.id === 'reports' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'reports'))} />
             <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />
+            {cadence && (
+              <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">
+                Timesheet<NewTag size={8.5} />
+              </span>
+            )}
             <SortHeader label="Rate / client" align="right" active={sort?.id === 'clientRate'} dir={sort?.id === 'clientRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'clientRate'))} />
             <SortHeader label="Rate / cost" align="right" active={sort?.id === 'costRate'} dir={sort?.id === 'costRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'costRate'))} />
             <SortHeader label="Rate / break-even" align="right" active={sort?.id === 'beRate'} dir={sort?.id === 'beRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'beRate'))} />
@@ -317,13 +420,13 @@ export function PeopleTab({ people, allClients }: Props) {
             const beVal = editing ? (d?.be ?? '') : (p.beRate != null ? String(p.beRate) : '')
             const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
             return (
-              <div key={p.id} className={`${GRID} px-[22px] py-3 border-b border-slate-100 last:border-0`}>
-                {/* Person: navy avatar + name (from Directory) */}
+              <div key={p.id} className={`${grid} px-[22px] py-3 border-b border-slate-100 last:border-0 ${editing && cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id) ? 'bg-[var(--warn-bg)]' : ''}`}>
+                {/* Person: navy avatar + name (from Directory); the name opens their page */}
                 <span className="inline-flex items-center gap-[11px] min-w-0">
                   <span className="w-[30px] h-[30px] rounded-full shrink-0 bg-tn-primary text-white inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[10.5px]">
                     {initialsOf(p.name)}
                   </span>
-                  <span className="text-[14px] font-bold text-tn-ink truncate">{p.name}</span>
+                  <Link href={withViewAs(personHref(p.id))} title={`Open ${p.name}'s page`} className="text-[14px] font-bold text-tn-ink truncate transition-colors hover:text-tn-teal">{p.name}</Link>
                   {p.inactive && (
                     <span title="No longer active, listed because they logged time this year" className="shrink-0 rounded-md bg-[var(--chip-neutral-bg)] px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[var(--chip-neutral-fg)]">Inactive</span>
                   )}
@@ -349,6 +452,22 @@ export function PeopleTab({ people, allClients }: Props) {
                   {p.hireDate ? formatDate(p.hireDate) : <span className="text-slate-300">-</span>}
                 </span>
 
+                {/* Timesheet: the pill, or in Edit the choice (changed rows amber) */}
+                {cadence && (
+                  <span className="flex flex-col gap-1 items-start">
+                    {editing && cadence.canEdit ? (
+                      <Segmented
+                        compact
+                        warn={!!cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)}
+                        label={`How ${p.name} submits`}
+                        options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: '2 weeks' }]}
+                        value={cadDraft[p.id] ?? cadOf(p.id)}
+                        onChange={c => setCadDraft(prev => ({ ...prev, [p.id]: c }))}
+                      />
+                    ) : <CadencePill cadence={cadOf(p.id)} />}
+                  </span>
+                )}
+
                 {/* Rate / client (teal focus) */}
                 {rateInput(clientVal, v => setDraft(p.id, 'client', v), '#1E7D7F')}
 
@@ -371,7 +490,9 @@ export function PeopleTab({ people, allClients }: Props) {
         {error ? (
           <span className="text-[13px] text-[var(--bdg-red-fg)] mr-auto">{error}</span>
         ) : editing ? (
-          <span className="text-[13px] text-muted mr-auto">Editing, changes apply when you save.</span>
+          <span className="text-[13px] text-muted mr-auto">
+            {cadChanged.length ? `Editing. ${cadChanged.length} timesheet change${cadChanged.length > 1 ? 's' : ''}, highlighted.` : 'Editing, changes apply when you save.'}
+          </span>
         ) : null}
 
         {editing ? (
@@ -386,7 +507,7 @@ export function PeopleTab({ people, allClients }: Props) {
             </button>
             <button
               type="button"
-              onClick={save}
+              onClick={() => void save()}
               disabled={saving}
               className="inline-flex items-center gap-2.5 font-(family-name:--font-display) font-extrabold text-[13px] text-white bg-tn-primary rounded-[10px] px-[22px] py-[11px] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-all hover:brightness-110 disabled:opacity-60"
             >
@@ -405,6 +526,20 @@ export function PeopleTab({ people, allClients }: Props) {
           </button>
         )}
       </div>
+
+      {cadDialog && (
+        <PeriodsDialog
+          title="Change how these people submit?"
+          intro="A person's current period always closes the way it started, so nobody loses or doubles a day."
+          items={cadDialog}
+          action="Save changes"
+          busy={saving}
+          error={error}
+          onCancel={() => setCadDialog(null)}
+          onConfirm={() => void saveCadences()}
+        />
+      )}
+      {toast}
 
       {/*
         Which month does the new rate start in. A rate resolves to one value per

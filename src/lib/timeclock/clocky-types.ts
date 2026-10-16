@@ -231,7 +231,11 @@ export interface EntryView {
   continuesPrevious: boolean
   attention: string | null
   /** Corrections only. */
-  correction: { state: 'pending' | 'approved' | 'denied'; reason: string; requestedAt: string; decidedBy: string | null; decidedAt: string | null; decisionNote: string | null; canDecide: boolean } | null
+  correction: {
+    state: 'pending' | 'approved' | 'denied'; reason: string; requestedAt: string; decidedBy: string | null; decidedAt: string | null; decisionNote: string | null; canDecide: boolean
+    /** Who decides it (3K-3, "Clarise Nixon · goes to Rock Kai"): the person's Team Leaders, else "the Admins and Super Admins". */
+    goesTo: string
+  } | null
   /** Time off only (pending and denied requests; approved time off is its entries). */
   timeOff: { type: string; state: string; startDate: string; endDate: string; hoursPerDay: number; note: string; canDecide: boolean } | null
 }
@@ -318,6 +322,10 @@ export interface ApprovalRow {
   name: string
   initials: string
   team: { name: string; color: string | null } | null
+  /** The request's day, YYYY-MM-DD in the person's zone (time off: its first day): "Waiting" runs oldest day first. */
+  date: string
+  /** Corrections: who decides it, as the review card says it ("goes to Rock Kai"); "" for time off. */
+  goesTo: string
   seconds: number
   /** "Tue, Oct 13, 2026 · 4:00 PM to 5:00 PM EAT" / "Fri, Oct 16, 2026 · Vacation" (the person's zone). */
   when: string

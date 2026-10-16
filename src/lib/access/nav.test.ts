@@ -18,11 +18,11 @@ const rows = (rail: ResolvedEntry[], key: string) => hub(rail, key)?.groups.flat
 
 describe('the rail', () => {
   it('gives a Super Admin everything, in the handoff order, with two rules', () => {
-    expect(keys(railFor('super_admin'))).toEqual(['home', 'my-work', 'my-hours', 'chat', 'emails', '|', 'tools', 'people', '|', 'admin', 'clocky'])
+    expect(keys(railFor('super_admin'))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', '|', 'admin', 'clocky'])
   })
 
   // Clocky is for every level (16 October 2026: Time entries and the clock),
-  // so a user sees it after the second rule; not Admin, not My Hours.
+  // so a user sees it after the second rule; not Admin. My Hours is gone.
   it('gives a user Clocky, but neither Admin nor My Hours', () => {
     expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', '|', 'clocky'])
   })
@@ -71,6 +71,33 @@ describe('the rail', () => {
     expect(rows(railFor('user'), 'people')).toEqual(['organization', 'history'])
     expect(rows(railFor('team_leader'), 'people')).toEqual(['directory', 'organization', 'history'])
     expect(rows(railFor('admin'), 'people')).toEqual(['directory', 'organization', 'human-resources', 'history'])
+  })
+
+  // The Clocky menu as the design handoff draws it (README "Clocky menu in
+  // the rail"), filtered by level.
+  it('gives each level its Clocky rows, in the designed order', () => {
+    expect(rows(railFor('super_admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-reports', 'clocky-safety', 'clocky-periods', 'clocky-import'])
+    expect(rows(railFor('admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-reports', 'clocky-safety', 'clocky-periods', 'clocky-import'])
+    expect(rows(railFor('team_leader'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-reports'])
+    expect(rows(railFor('user'), 'clocky')).toEqual(['clocky-hours', 'clocky-reports'])
+  })
+
+  it('names the Clocky rows and groups them as designed', () => {
+    const clocky = hub(railFor('super_admin'), 'clocky')!
+    expect(clocky.groups.map(g => [g.label, g.items.map(i => [i.label, i.href])])).toEqual([
+      [null, [['Time entries', '/clocky-hours'], ['Approvals', '/clocky-hours/approvals'], ["Who's working", '/clocky-hours/whos-working'], ['Reports', '/clocky-hours/reports']]],
+      ['The module', [['Clock safety', '/clocky-hours/safety'], ['Timesheet periods', '/admin/settings#periods'], ['Import', '/clocky-hours/import']]],
+    ])
+    expect(clocky.groups[0].items.find(i => i.key === 'clocky-approvals')?.count).toBe('approvals')
+    expect(clocky.groups[0].items.find(i => i.key === 'clocky-reports')?.soon).toBe(true)
+    expect(clocky.readiness).toBeUndefined()
+  })
+
+  it('tells each level what the Clocky hub holds for them', () => {
+    expect(hub(railFor('super_admin'), 'clocky')!.hint).toBe("The time module: everyone's hours, and the rules behind them.")
+    expect(hub(railFor('admin'), 'clocky')!.hint).toBe("The time module: everyone's hours, and the rules behind them.")
+    expect(hub(railFor('team_leader'), 'clocky')!.hint).toBe("Your hours and your team's. Clock in and Who's working also open from the top bar.")
+    expect(hub(railFor('user'), 'clocky')!.hint).toBe('Your own hours: what you clocked, and the corrections you asked for. Clock in opens from the top bar.')
   })
 
   it('lights a hub on every page under its rows', () => {

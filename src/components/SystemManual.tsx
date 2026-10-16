@@ -15,6 +15,9 @@
  * server: client code never imports the catalogue, see view-as-links.test)
  * and passed in, so it cannot drift from what the portal enforces. Tickets
  * is gone (retired).
+ *
+ * 16 October 2026: Clocky, the portal's own time clock, for every level (the
+ * My Hours hub is gone; /hours opens Clocky's Time entries).
  */
 
 import Link from 'next/link'
@@ -33,6 +36,7 @@ const ICONS: Record<string, React.ReactNode> = {
   book: <svg {...S}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>,
   dir: <svg {...S}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
   work: <svg {...S}><rect x="3" y="7" width="18" height="14" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>,
+  clock: <svg {...S}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2" /><path d="M9.5 2h5" /><path d="M12 2v3" /></svg>,
 }
 const Chip = ({ k, className = '' }: { k: string; className?: string }) => (
   <span className={`shrink-0 inline-flex items-center justify-center rounded-xl bg-tn-teal-soft text-tn-teal ${className}`}>
@@ -53,13 +57,12 @@ const TOC = [
 const RAIL = [
   { icon: 'home', name: 'Home', desc: 'Your landing page, My Team and My Work at a glance.', admin: false },
   { icon: 'work', name: 'My Work', desc: 'A panel of three views: My Work, Report and My Team. With only one granted, it goes straight there.', admin: false },
-  { icon: 'test', name: 'My Hours', desc: 'A panel: your own hours, and Reports and Approvals (coming soon).', admin: false },
   { icon: 'book', name: 'Chat · Emails', desc: 'Two places coming soon: the company chat, and the mailboxes you hold.', admin: false },
   { icon: 'tools', name: 'Tools', desc: 'A panel in two groups. SEO Tools: Href Links, and seven tools coming soon. Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team.', admin: false },
   { icon: 'dir', name: 'People', desc: 'A panel: the Directory, the Organization chart, History, and Human Resources (Admins, unless Access levels says otherwise).', admin: false },
   { icon: 'admin', name: 'Admin', desc: 'A panel: Access levels, View Stage, Monday accounts, Automations, Tests and this manual. Its title opens the Admin page.', admin: true },
-  { icon: 'test', name: 'Clocky', desc: 'A panel: everyone’s hours, its rules and the import from QuickBooks Time, plus Reports and Approvals (coming soon).', admin: true },
-  { icon: 'settings', name: 'Company settings', desc: 'In the Admin panel, under Configuration: sites, targets, clients and budgets, My Work sources and API tokens. Notification rules for everyone sit beside it.', admin: true },
+  { icon: 'clock', name: 'Clocky', desc: 'The time clock, for every level. A panel: Time entries, Approvals and Who’s working (Team Leaders and up, with the count of requests waiting for you), Reports (coming soon), and for Admins Clock safety, Timesheet periods and Import.', admin: false },
+  { icon: 'settings', name: 'Company settings', desc: 'In the Admin panel, under Configuration: sites, targets, clients and budgets, My Work sources, API tokens and timesheet periods. Notification rules for everyone sit beside it.', admin: true },
 ]
 
 const SRC: Record<string, { color: string; bg: string }> = {
@@ -78,7 +81,9 @@ const PAGES = [
   { icon: 'test', name: 'Tests', desc: 'A pre-launch checklist to verify the whole system end to end, walk each area, tick off what works, flag what doesn’t.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'dir', name: 'Directory', desc: 'People and teams in one place: add or edit people, who is on each team and who leads it, and who is invited to the portal. Each person has their own page (Personal, Work, HR and access, Reports). What each level can open is set in Admin, Access levels.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'book', name: 'System manual', desc: 'This page, how the portal works, who can see what, and how the data flows in.', src: 'Portal', srcKey: 'portal' as const },
-  { icon: 'settings', name: 'Company settings', desc: 'Sites & languages, publishing targets, clients & budgets, My Work sources, and API tokens. This is where connections are configured. In Admin, Configuration.', src: 'Config', srcKey: 'config' as const },
+  { icon: 'clock', name: 'Clocky', desc: 'The company’s own time clock, for every level. Clock in from the button in the top bar: pick a job, one of your saved combinations (a job with its Company, Project, Activity and Billable, under a name), or Resume the last one. Switch to another job without clocking out: one entry ends and the next starts at the same second. There are no breaks: a break is a clock out, and coming back is a new clock in. Every start, end and typed duration is recorded on the nearest 15 minutes (8:07 counts as 8:00, 8:08 as 8:15), and every total is a whole quarter hour; the real times stay in each entry’s history. Time entries shows your hours, and your team’s or everyone’s by level, as a list, a week grid and a day timeline.', src: 'Portal + QuickBooks Time', srcKey: 'mixed' as const, sub: ['Time entries', 'Who’s working', 'Reports (coming soon)'] },
+  { icon: 'clock', name: 'Clocky: safety, corrections and periods', desc: 'A clock nobody answers stops itself. At 4h 30m on the clock, counted from the clock in across every switch, it asks “Still working?” in the clock panel and the bell; Keep going starts a new 5-hour window. With no answer it stops at the 5-hour mark, the person gets one email and confirms when they really stopped, and Clock safety logs every automatic stop (Admins, read only below Super Admin). Users only shorten their own entries; for missing time they send a time correction request, which counts once their Team Leader, an Admin or a Super Admin approves it on Approvals. Every change needs a reason and is kept in the entry’s history. Each person submits their hours monthly or every 2 weeks (pay periods of 14 days from the start date in Company settings, Timesheet periods); a submitted period is locked until a Super Admin reopens it, and changing someone’s cadence never cuts a period in half.', src: 'Portal', srcKey: 'portal' as const, sub: ['Approvals', 'Clock safety', 'Timesheet periods', 'Import'] },
+  { icon: 'settings', name: 'Company settings', desc: 'Sites & languages, publishing targets, clients & budgets, My Work sources, API tokens, and timesheet periods (when pay periods start, and how new people submit). This is where connections are configured. In Admin, Configuration.', src: 'Config', srcKey: 'config' as const },
 ]
 
 const FLOWS = [
@@ -163,7 +168,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
             )
           })}
           <div className="mt-4 pt-3 px-3 border-t border-slate-200 text-xs leading-relaxed text-muted">
-            Last updated<br /><strong className="font-bold text-foreground">October 2026</strong> · v2
+            Last updated<br /><strong className="font-bold text-foreground">October 2026</strong> · v3
           </div>
         </nav>
 
@@ -192,7 +197,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
           <section id="navigation" className="scroll-mt-6">
             <Eyebrow>Getting around</Eyebrow>
             <Heading>The left rail</Heading>
-            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon; My Hours and Clocky are in progress). Your avatar sits at the foot and holds My profile (your own page in the Directory), My Team, Settings and Sign out. The top bar carries search (Cmd+K) and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts only ever appear on those two, never on the rail.</Lede>
+            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon). Your avatar sits at the foot and holds My profile (your own page in the Directory), My Team, Settings and Sign out. The top bar carries search (Cmd+K), Who’s working (Team Leaders and up), the clock button and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts appear on the top bar’s buttons and on Clocky’s Approvals row, never on the rail’s icons.</Lede>
             <div className={`${card} overflow-hidden`}>
               {RAIL.map((r, i) => (
                 <div key={r.name} className={`flex items-center gap-3.5 px-[18px] py-3.5 ${i > 0 ? 'border-t border-slate-100' : ''} ${r.admin ? 'bg-subtle' : ''}`}>

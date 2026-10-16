@@ -32,13 +32,22 @@ export interface PanelItem {
   /** Or when any of these tools is open to them (level and team list, Access levels). */
   tools?: readonly string[]
   soon?: boolean
+  /**
+   * A number shown beside the row, fetched when the panel opens: `approvals`
+   * is the corrections and time off waiting for this person (Clocky,
+   * getApprovalsCount), drawn only above zero.
+   */
+  count?: NavCount
 }
+
+/** The counts a panel row can carry. */
+export type NavCount = 'approvals'
 
 /**
  * A module that is not finished, drawn faded on the rail (asked for on 22
  * September 2026): `soon` is not built at all (Chat, Emails), `building` works
- * but is not yet the real thing (My Hours and Clocky, while QuickBooks Time is
- * still the record of hours).
+ * but is not yet the real thing. Clocky was `building` until it became the
+ * clock for every level (16 October 2026); nothing is `building` today.
  */
 export type Readiness = 'soon' | 'building'
 
@@ -50,6 +59,11 @@ export type RailEntry =
       label: string
       icon: NavIconKey
       hint: string
+      /**
+       * A hint per level, the first whose surface the person holds (Clocky,
+       * 16 October 2026: what each level finds behind the hub); `hint` otherwise.
+       */
+      hints?: readonly { surface: string; hint: string }[]
       /** The hub needs this surface as well as a visible row. */
       surface?: string
       /** A landing page of its own, reached from the panel's title. */
@@ -96,22 +110,6 @@ export const RAIL: readonly RailEntry[] = [
         { key: 'my-work', label: 'My Work', href: '/my-work', icon: 'my-work', surface: 'my-work' },
         { key: 'report', label: 'Report', href: '/report', icon: 'report', surface: 'report' },
         { key: 'my-team', label: 'My Team', href: '/my-work?tab=team', icon: 'my-team', surface: 'my-team' },
-      ],
-    }],
-  },
-  {
-    kind: 'hub',
-    key: 'my-hours',
-    label: NAV_LABEL['/hours'],
-    icon: 'my-hours',
-    hint: 'Your own time: what you logged, what it adds up to, and what was approved.',
-    readiness: 'building',
-    groups: [{
-      label: null,
-      items: [
-        { key: 'my-hours', label: 'Hours', href: '/hours', icon: 'my-hours', surface: 'my-hours' },
-        { key: 'my-hours-reports', label: 'Reports', href: '/hours/reports', icon: 'client-reports', surface: 'my-hours-reports', soon: true },
-        { key: 'my-hours-approvals', label: 'Approvals and Invoices', href: '/hours/approvals', icon: 'tests', surface: 'my-hours-approvals', soon: true },
       ],
     }],
   },
@@ -190,28 +188,36 @@ export const RAIL: readonly RailEntry[] = [
     ],
   },
   {
+    // Clocky for every level (owner's decision, 16 October 2026,
+    // docs/time-clock/05-clocky-build.md): one hub, its rows filtered by level
+    // as the design handoff's "Clocky menu in the rail" (Design/design_handoff_clocky).
+    // It replaced the My Hours hub; /hours redirects here.
     kind: 'hub',
     key: 'clocky',
     label: NAV_LABEL['/clocky-hours'],
     icon: 'clocky',
-    hint: "The time module: everyone's hours, and the rules behind them.",
-    readiness: 'building',
+    hint: 'Your own hours: what you clocked, and the corrections you asked for. Clock in opens from the top bar.',
+    hints: [
+      { surface: 'ck-all', hint: "The time module: everyone's hours, and the rules behind them." },
+      { surface: 'ck-team', hint: "Your hours and your team's. Clock in and Who's working also open from the top bar." },
+    ],
     groups: [
       {
         label: null,
         items: [
-          { key: 'clocky-hours', label: 'Hours', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
+          { key: 'clocky-hours', label: 'Time entries', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
+          { key: 'clocky-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
+          { key: 'clocky-whos-working', label: "Who's working", href: '/clocky-hours/whos-working', icon: 'my-team', surface: 'ck-whos-working' },
           { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-reports', soon: true },
-          { key: 'clocky-approvals', label: 'Approvals and Invoices', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', soon: true },
         ],
       },
       {
-        // The page stays as it was (decided 22 September 2026): Rules and
-        // Import open the same page, at their own section.
         label: 'The module',
         items: [
-          { key: 'clocky-rules', label: 'Rules', href: '/clocky-hours#rules', icon: 'settings', surface: 'ck-rules' },
-          { key: 'clocky-import', label: 'Import', href: '/clocky-hours#import', icon: 'schema-scraper', surface: 'ck-import' },
+          { key: 'clocky-safety', label: 'Clock safety', href: '/clocky-hours/safety', icon: 'admin', surface: 'ck-safety' },
+          // A section of Company settings (Admin > Configuration).
+          { key: 'clocky-periods', label: 'Timesheet periods', href: '/admin/settings#periods', icon: 'settings', surface: 'cs-periods' },
+          { key: 'clocky-import', label: 'Import', href: '/clocky-hours/import', icon: 'schema-scraper', surface: 'ck-import' },
         ],
       },
     ],
@@ -227,6 +233,7 @@ export interface NavItem {
   href: string
   icon: NavIconKey
   soon?: boolean
+  count?: NavCount
 }
 
 export type ResolvedEntry =
@@ -258,8 +265,8 @@ function rowVisible(i: PanelItem, ctx: NavContext): boolean {
   return !i.surface || ctx.can(i.surface)
 }
 
-const toItem = (i: { key: string; label: string; href: string; icon: NavIconKey; soon?: boolean }): NavItem =>
-  ({ key: i.key, label: i.label, href: i.href, icon: i.icon, ...(i.soon ? { soon: true } : {}) })
+const toItem = (i: { key: string; label: string; href: string; icon: NavIconKey; soon?: boolean; count?: NavCount }): NavItem =>
+  ({ key: i.key, label: i.label, href: i.href, icon: i.icon, ...(i.soon ? { soon: true } : {}), ...(i.count ? { count: i.count } : {}) })
 
 /**
  * The rail this person gets. A page shows when its surface is granted (Home
@@ -291,7 +298,7 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
       key: e.key,
       label: e.label,
       icon: e.icon,
-      hint: e.hint,
+      hint: e.hints?.find(h => ctx.can(h.surface))?.hint ?? e.hint,
       ...(landing ? { landing } : {}),
       ...(e.skipWhenSingle && rows.length === 1 ? { direct: rows[0].href } : {}),
       ...(e.readiness ? { readiness: e.readiness } : {}),
