@@ -3,14 +3,12 @@
 // Phase 2: people can track time here, in parallel with QuickBooks Time, which
 // is still the system of record. Nothing on this page writes anywhere else.
 //
-// Scoped to the signed-in person twice over, and both are needed. Migration
-// 058's policy is the floor nobody can get under. The explicit person_id filter
-// below is what the page MEANS: policies combine with OR, so an admin's blanket
-// policy from 057 also satisfies the read, and without the filter this page
-// showed the whole company's week under the title "My Time".
+// Scoped to the signed-in person by the explicit person_id filters below:
+// "My Time" means mine by definition. Read with the privileged client since
+// Clocky's migration 113 (16 October 2026), after the page guard; the Clocky
+// UI step replaces this page.
 
 import { requireSurface } from '@/lib/access/resolve'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadApprovers } from '@/lib/timeclock/approvers'
 import { dateInZone, weekBounds } from '@/lib/timeclock/clock'
@@ -81,7 +79,9 @@ export default async function MyHoursPage({
     waiting: access.can('h-waiting'),
     timeOff: access.can('h-timeoff'),
   }
-  const supabase = await createClient()
+  // Read with the privileged client (migration 113): the page is guarded above,
+  // and every read below is scoped to this person or to what h-waiting opens.
+  const supabase = createAdminClient()
   const me = await getCurrentPerson()
 
   if (!me) {

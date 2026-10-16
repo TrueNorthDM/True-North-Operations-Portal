@@ -76,6 +76,18 @@ export interface NotificationType {
   blockedBy?: string
   /** Where the admin rule starts, when it differs from "on, default timing, people may change both". */
   rule?: Partial<Rule>
+  /**
+   * The one button a bell row carries (Clocky, 16 October 2026: N1, N3, N4):
+   * a link, or something the bell does itself ("keep-going" calls Clocky's
+   * keepGoing; "open-clock" opens the clock panel).
+   */
+  button?: NotificationButton
+}
+
+export interface NotificationButton {
+  label: string
+  href?: string
+  action?: 'keep-going' | 'open-clock'
 }
 
 /** The admin's rule for one notification, for everyone it reaches. */
@@ -176,6 +188,63 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     title: 'Late steps piling up on your team',
     description: `People on a team you lead with ${LATE_PILE} or more late steps. Checked once a week, one notification per team, in that day's summary.`,
     who: 'Team leaders', audience: { kind: 'leaders' },
+  },
+
+  // ── Clocky (16 October 2026, design handoff Design/design_handoff_clocky) ──
+  // The row's text is its title, exact copy from the design; the body is empty.
+  {
+    key: 'clocky-still-working', src: 'Clocky', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Clock safety', stat: 'still working?',
+    example: { title: 'Still working?', body: 'Your clock has been running 4h 30m since you clocked in at 8:00 AM. It stops at 5h 00m unless you keep it going.' },
+    title: 'Still working? (your clock at 4h 30m)',
+    description: 'Your clock has run 4h 30m since you clocked in, across every switch. Keep going, or it stops by itself at 5h 00m. In the bell only, never by email.',
+    who: 'You', audience: { kind: 'everyone' },
+    button: { label: 'Keep going', action: 'keep-going' },
+  },
+  {
+    key: 'clocky-stopped', src: 'Clocky', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Clock safety', stat: 'clocks stopped', statOne: 'clock stopped', alarm: true,
+    example: { title: 'Your clock stopped by itself at 1:00 PM.', body: 'Confirm when you really stopped.' },
+    title: 'Your clock stopped by itself',
+    description: 'Nobody answered "Still working?", so Clocky stopped your clock at 5h 00m. In the bell, and the one Clocky email: "Your clock stopped by itself".',
+    who: 'You', audience: { kind: 'everyone' },
+    button: { label: 'Confirm end time', action: 'open-clock' },
+  },
+  {
+    key: 'clocky-correction-requested', src: 'Clocky · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Time corrections', stat: 'time corrections to review', statOne: 'time correction to review',
+    example: { title: 'Samuel Manzi asked for a time correction', body: '1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM.' },
+    title: 'Someone asked for a time correction',
+    description: "A person you approve for asked for time they have no entry for. It counts only once approved. In the bell only.",
+    who: "The person's Team Leader, Admins and Super Admins", audience: { kind: 'tool', tool: 'clocky-approvals' },
+    button: { label: 'Review', href: '/clocky-hours/approvals' },
+  },
+  {
+    key: 'clocky-correction-decided', src: 'Clocky · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Your requests', stat: 'requests decided', statOne: 'request decided',
+    example: { title: 'Rock Kai approved your time correction', body: '1h 30m on Wed, Oct 14. It now counts in your hours.' },
+    title: 'Your time correction was approved or denied',
+    description: 'Approved, it counts in your hours; denied, with the reason. In the bell only.',
+    who: 'You', audience: { kind: 'everyone' },
+    button: { label: 'Open time entries', href: '/clocky-hours' },
+  },
+  {
+    key: 'clocky-timeoff-requested', src: 'Clocky · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Time off', stat: 'time off requests', statOne: 'time off request',
+    example: { title: 'Olivia Hale asked for time off', body: 'Vacation, Fri, Oct 16 (8h 00m).' },
+    title: 'Someone asked for time off',
+    description: 'A request for time off, waiting for a Super Admin. In the bell only.',
+    who: 'Super Admins', audience: { kind: 'tool', tool: 'ck-timeoff' },
+    button: { label: 'Review', href: '/clocky-hours/approvals' },
+  },
+  {
+    key: 'clocky-auto-stops', src: 'Clocky · daily summary', block: 'tools', icon: 'clocky', defaultTiming: 'daily', available: true,
+    timings: 'daily', section: 'Clock safety', stat: 'automatic clock-outs', statOne: 'automatic clock-out',
+    example: { title: '2 automatic clock-outs yesterday', body: 'Wendy Cacka, Justus Tsofa.' },
+    title: 'Automatic clock-outs yesterday',
+    description: 'One line a day: how many clocks Clocky stopped by itself yesterday, and whose.',
+    who: 'Super Admins', audience: { kind: 'tool', tool: 'access-levels' },
+    button: { label: 'Open Clock safety', href: '/clocky-hours/safety' },
   },
 
   // ── System ───────────────────────────────────────────────────────────────

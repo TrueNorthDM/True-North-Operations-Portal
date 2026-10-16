@@ -1361,6 +1361,7 @@ export type Database = {
           timing: string
           title: string
           type_key: string
+          done_note: string | null
         }
         Insert: {
           body: string
@@ -1375,6 +1376,7 @@ export type Database = {
           timing: string
           title: string
           type_key: string
+          done_note?: string | null
         }
         Update: {
           body?: string
@@ -1389,6 +1391,7 @@ export type Database = {
           timing?: string
           title?: string
           type_key?: string
+          done_note?: string | null
         }
         Relationships: [
           {
@@ -2100,6 +2103,134 @@ export type Database = {
           },
         ]
       }
+      tc_combinations: {
+        Row: {
+          created_at: string
+          fields: Json
+          id: number
+          jobcode_id: number
+          name: string
+          notes: string | null
+          person_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fields?: Json
+          id?: number
+          jobcode_id: number
+          name: string
+          notes?: string | null
+          person_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fields?: Json
+          id?: number
+          jobcode_id?: number
+          name?: string
+          notes?: string | null
+          person_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tc_combinations_jobcode_id_fkey"
+            columns: ["jobcode_id"]
+            referencedRelation: "tc_jobcodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_combinations_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tc_correction_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          ended_at: string
+          entry_date: string
+          entry_id: number | null
+          fields: Json
+          id: number
+          jobcode_id: number
+          notes: string | null
+          person_id: string
+          reason: string
+          requested_at: string
+          started_at: string
+          state: string
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          ended_at: string
+          entry_date: string
+          entry_id?: number | null
+          fields?: Json
+          id?: number
+          jobcode_id: number
+          notes?: string | null
+          person_id: string
+          reason: string
+          requested_at?: string
+          started_at: string
+          state?: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          ended_at?: string
+          entry_date?: string
+          entry_id?: number | null
+          fields?: Json
+          id?: number
+          jobcode_id?: number
+          notes?: string | null
+          person_id?: string
+          reason?: string
+          requested_at?: string
+          started_at?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tc_correction_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_correction_requests_entry_id_fkey"
+            columns: ["entry_id"]
+            referencedRelation: "tc_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_correction_requests_jobcode_id_fkey"
+            columns: ["jobcode_id"]
+            referencedRelation: "tc_jobcodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_correction_requests_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tc_entries: {
         Row: {
           created_at: string
@@ -2120,6 +2251,18 @@ export type Database = {
           started_at: string | null
           state: string
           updated_at: string
+          auto_stopped_at: string | null
+          changed_here_at: string | null
+          clocked_out_by: string | null
+          edited_at: string | null
+          edited_by: string | null
+          end_confirmed_at: string | null
+          end_confirmed_by: string | null
+          end_flagged: boolean
+          ended_at_real: string | null
+          session_started_at: string | null
+          started_at_real: string | null
+          window_started_at: string | null
         }
         Insert: {
           created_at?: string
@@ -2140,6 +2283,18 @@ export type Database = {
           started_at?: string | null
           state?: string
           updated_at?: string
+          auto_stopped_at?: string | null
+          changed_here_at?: string | null
+          clocked_out_by?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          end_confirmed_at?: string | null
+          end_confirmed_by?: string | null
+          end_flagged?: boolean
+          ended_at_real?: string | null
+          session_started_at?: string | null
+          started_at_real?: string | null
+          window_started_at?: string | null
         }
         Update: {
           created_at?: string
@@ -2160,6 +2315,18 @@ export type Database = {
           started_at?: string | null
           state?: string
           updated_at?: string
+          auto_stopped_at?: string | null
+          changed_here_at?: string | null
+          clocked_out_by?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          end_confirmed_at?: string | null
+          end_confirmed_by?: string | null
+          end_flagged?: boolean
+          ended_at_real?: string | null
+          session_started_at?: string | null
+          started_at_real?: string | null
+          window_started_at?: string | null
         }
         Relationships: [
           {
@@ -2191,6 +2358,7 @@ export type Database = {
           changed_by: string | null
           entry_id: number | null
           id: number
+          reason: string | null
         }
         Insert: {
           action: string
@@ -2200,6 +2368,7 @@ export type Database = {
           changed_by?: string | null
           entry_id?: number | null
           id?: number
+          reason?: string | null
         }
         Update: {
           action?: string
@@ -2209,6 +2378,7 @@ export type Database = {
           changed_by?: string | null
           entry_id?: number | null
           id?: number
+          reason?: string | null
         }
         Relationships: [
           {
@@ -2374,24 +2544,101 @@ export type Database = {
           },
         ]
       }
+      tc_pay_period_anchors: {
+        Row: {
+          anchor: string
+          effective_from: string | null
+          id: number
+          set_at: string
+          set_by: string | null
+        }
+        Insert: {
+          anchor: string
+          effective_from?: string | null
+          id?: number
+          set_at?: string
+          set_by?: string | null
+        }
+        Update: {
+          anchor?: string
+          effective_from?: string | null
+          id?: number
+          set_at?: string
+          set_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tc_pay_period_anchors_set_by_fkey"
+            columns: ["set_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tc_person_cadence: {
+        Row: {
+          cadence: string
+          effective_from: string
+          id: number
+          one_period: boolean
+          person_id: string
+          set_at: string
+          set_by: string | null
+        }
+        Insert: {
+          cadence: string
+          effective_from: string
+          id?: number
+          one_period?: boolean
+          person_id: string
+          set_at?: string
+          set_by?: string | null
+        }
+        Update: {
+          cadence?: string
+          effective_from?: string
+          id?: number
+          one_period?: boolean
+          person_id?: string
+          set_at?: string
+          set_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tc_person_cadence_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_person_cadence_set_by_fkey"
+            columns: ["set_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tc_periods: {
         Row: {
           closed_at: string | null
           end_date: string
           id: number
           start_date: string
+          kind: string
         }
         Insert: {
           closed_at?: string | null
           end_date: string
           id?: number
           start_date: string
+          kind?: string
         }
         Update: {
           closed_at?: string | null
           end_date?: string
           id?: number
           start_date?: string
+          kind?: string
         }
         Relationships: []
       }
@@ -2593,6 +2840,70 @@ export type Database = {
         }
         Relationships: []
       }
+      tc_safety_events: {
+        Row: {
+          at: string
+          confirmed_at: string | null
+          confirmed_end_at: string | null
+          entry_id: number | null
+          flagged: boolean
+          id: number
+          jobcode_id: number | null
+          kind: string
+          person_id: string
+          session_started_at: string | null
+          stopped_at: string | null
+          window_started_at: string
+        }
+        Insert: {
+          at?: string
+          confirmed_at?: string | null
+          confirmed_end_at?: string | null
+          entry_id?: number | null
+          flagged?: boolean
+          id?: number
+          jobcode_id?: number | null
+          kind: string
+          person_id: string
+          session_started_at?: string | null
+          stopped_at?: string | null
+          window_started_at: string
+        }
+        Update: {
+          at?: string
+          confirmed_at?: string | null
+          confirmed_end_at?: string | null
+          entry_id?: number | null
+          flagged?: boolean
+          id?: number
+          jobcode_id?: number | null
+          kind?: string
+          person_id?: string
+          session_started_at?: string | null
+          stopped_at?: string | null
+          window_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tc_safety_events_entry_id_fkey"
+            columns: ["entry_id"]
+            referencedRelation: "tc_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_safety_events_jobcode_id_fkey"
+            columns: ["jobcode_id"]
+            referencedRelation: "tc_jobcodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_safety_events_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tc_settings: {
         Row: {
           auto_clockout_hours: number | null
@@ -2609,6 +2920,8 @@ export type Database = {
           updated_at: string
           week_start: number
           weekly_regular_hours: number
+          default_cadence: string
+          pay_period_anchor: string | null
         }
         Insert: {
           auto_clockout_hours?: number | null
@@ -2625,6 +2938,8 @@ export type Database = {
           updated_at?: string
           week_start?: number
           weekly_regular_hours?: number
+          default_cadence?: string
+          pay_period_anchor?: string | null
         }
         Update: {
           auto_clockout_hours?: number | null
@@ -2641,6 +2956,8 @@ export type Database = {
           updated_at?: string
           week_start?: number
           weekly_regular_hours?: number
+          default_cadence?: string
+          pay_period_anchor?: string | null
         }
         Relationships: []
       }
@@ -3165,6 +3482,10 @@ export type Database = {
       set_person_teams: {
         Args: { p_person: string; p_teams: Json }
         Returns: undefined
+      }
+      tc_job_field_defaults: {
+        Args: { p_keys: string[]; p_since: string }
+        Returns: Json
       }
       tc_approves_for: { Args: { target: string }; Returns: boolean }
       tc_i_approve_hours: { Args: never; Returns: boolean }

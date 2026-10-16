@@ -29,7 +29,12 @@ import { deliver, type Draft, type DeliverResult, type Row } from './deliver'
 import {
   accessChangeDrafts, firstLoginDrafts, i7Drafts, integrationDrafts, levelDrafts, makeCtx, publishingDrafts,
   syncDrafts, teamOrderDrafts, unlinkedDrafts, unlinkedSeen, workDrafts, UNLINKED_SEEN, type Ctx,
+  clockyAutoStopDrafts, clockyCorrectionDecidedDrafts, clockyCorrectionRequestedDrafts, clockyStillWorkingDrafts,
+  clockyStoppedDrafts, clockyTimeOffRequestedDrafts, CLOCK_PANEL_HREF,
 } from './generators'
+import { sendEmail } from '@/lib/email/resend'
+import { renderClockStopped } from '@/lib/email/clock-stopped'
+import { zoneDate, zoneHour } from './schedule'
 import { loadRules, readState, writeState } from './store'
 
 /**
@@ -141,3 +146,64 @@ export const notifyAccessChange = (change: { changeId: number; summary: string; 
 
 export const notifyLevelChange = (change: { personId: string; name: string; from: string; to: string; actorProfileId: string | null }) =>
   simple('level', ctx => levelDrafts(ctx, change))
+
+// ── Clocky (16 October 2026) ────────────────────────────────────────────────
+
+export const notifyClockyStillWorking = (x: { personId: string; windowStartedAt: string; text: string }, db?: Client) =>
+  simple('clocky-still-working', ctx => clockyStillWorkingDrafts(ctx, x), db)
+
+export const notifyClockyCorrectionRequested = (x: { requestId: number; personId: string; teamIds: readonly string[]; text: string }) =>
+  simple('clocky-correction-requested', ctx => clockyCorrectionRequestedDrafts(ctx, x))
+
+export const notifyClockyCorrectionDecided = (x: { requestId: number; personId: string; text: string }) =>
+  simple('clocky-correction-decided', ctx => clockyCorrectionDecidedDrafts(ctx, x))
+
+export const notifyClockyTimeOffRequested = (x: { requestId: number; personId: string; text: string }) =>
+  simple('clocky-timeoff-requested', ctx => clockyTimeOffRequestedDrafts(ctx, x))
+
+/**
+ * N2: the bell row, and with it the one email Clocky sends, "Your clock
+ * stopped by itself". The email goes only with a bell row actually written
+ * (the type on for this person), once: the row's emailed_at marks it sent, and
+ * Resend's idempotency key covers a retry.
+ */
+export async function notifyClockyStopped(
+  x: { personId: string; entryId: number; text: string; stoppedAt: string; clockedInAt: string; origin: string },
+  db: Client = createAdminClient(),
+): Promise<RunReport & { emailed?: boolean; emailError?: string }> {
+  const res = await simple('clocky-stopped', ctx => clockyStoppedDrafts(ctx, x), db)
+  try {
+    const { data: row, error } = await db.from('notifications').select('id, emailed_at')
+      .eq('person_id', x.personId).eq('type_key', 'clocky-stopped').eq('dedupe_key', `stop:${x.entryId}`).maybeSingle()
+    if (error) throw new Error(error.message)
+    const r = row as { id: string; emailed_at: string | null } | null
+    if (!r || r.emailed_at) return res
+    const aud = await loadAudience(db)
+    const to = aud.byId.get(x.personId)?.email
+    if (!to) return { ...res, emailed: false, emailError: 'no address to send to' }
+    const msg = renderClockStopped({ stoppedAt: x.stoppedAt, clockedInAt: x.clockedInAt, url: `${x.origin}${CLOCK_PANEL_HREF}`, origin: x.origin })
+    const sent = await sendEmail({ to, ...msg, idempotencyKey: `clocky-stopped-${x.entryId}` })
+    // Sent, or never possible here (staging, no email service): either way it is not tried again.
+    if (sent.sent || sent.blocked) await db.from('notifications').update({ emailed_at: new Date().toISOString() }).eq('id', r.id)
+    if (!sent.sent) console.error('[notifications] clock stopped email:', sent.reason)
+    return { ...res, emailed: sent.sent, ...(sent.sent ? {} : { emailError: sent.reason }) }
+  } catch (e) {
+    console.error('[notifications] clock stopped email:', (e as Error).message)
+    return { ...res, emailError: (e as Error).message }
+  }
+}
+
+/** The state key that remembers which day's automatic clock-outs were summarised. */
+const AUTO_STOPS_DAY = 'clocky-auto-stops-day'
+
+/**
+ * The Super Admins' daily line about yesterday's automatic clock-outs. Asked
+ * on every safety run, done once a day: after 1:00 in New York (yesterday's
+ * last stops are in by then), and not again for the same day.
+ */
+export async function notifyClockyAutoStops(now = new Date(), db: Client = createAdminClient()): Promise<RunReport | null> {
+  if (zoneHour(now) < 1) return null
+  const today = zoneDate(now)
+  if ((await readState<string>(db, AUTO_STOPS_DAY)) === today) return null
+  return simple('clocky-auto-stops', clockyAutoStopDrafts, db, async ctx => writeState(ctx.db, AUTO_STOPS_DAY, ctx.today))
+}

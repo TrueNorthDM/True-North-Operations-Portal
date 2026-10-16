@@ -1,12 +1,13 @@
 'use server'
 
-// Writing time.
+// Writing time (My Hours, before Clocky; the Clocky UI step replaces this page).
 //
-// Every one of these runs on the CALLER's Supabase client, never the service
-// role, so migration 058's policies decide what lands: your own person, your
-// own open entries, and nothing that is already submitted. The checks below are
-// there to give a person a sentence they can act on, not to be the security.
-// The database is the security.
+// Since migration 113 (16 October 2026) the signed-in role writes none of the
+// time tables: every write here goes through the privileged client, after the
+// access item (allowedTo) and the filters below, which carry what migrations
+// 058 to 061's row rules used to enforce: your own person, your own open
+// portal entries, and nothing already submitted. Clocky's own actions are in
+// app/(app)/clocky-hours.
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
@@ -18,6 +19,7 @@ import { allowedTo } from '@/lib/access/resolve'
 import { dateInZone, durationSeconds, validateDraft, wallToInstant, type Draft } from '@/lib/timeclock/clock'
 import { periodFor } from '@/lib/timeclock/periods'
 import { workingDays, validateAbsence, absenceOverlaps } from '@/lib/timeclock/absence'
+import { announceTimeOffRequested } from '@/lib/timeclock/clocky-notify'
 
 export interface Result { ok: boolean; error?: string }
 
@@ -25,11 +27,13 @@ const OK: Result = { ok: true }
 const fail = (error: string): Result => ({ ok: false, error })
 
 async function context() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const session = await createClient()
+  const { data: { user } } = await session.auth.getUser()
   // The person really signed in, never a View Stage preview: these write.
-  const me = await loadCurrentPerson(supabase, user, { real: true })
+  const me = await loadCurrentPerson(session, user, { real: true })
   if (!me) return null
+  // Decided above and by the caller's allowedTo; the filters below scope each write.
+  const supabase = createAdminClient()
 
   const [{ data: settings }, { data: fields }] = await Promise.all([
     supabase.from('tc_settings').select('timezone').eq('singleton_id', 1).maybeSingle(),
@@ -127,6 +131,7 @@ export async function stopClock(): Promise<Result> {
     .eq('person_id', ctx.me.id)
     .is('ended_at', null)
     .eq('kind', 'clock')
+    .eq('source', 'portal')
     .maybeSingle()
 
   const running = open as { id: number; started_at: string } | null
@@ -139,7 +144,7 @@ export async function stopClock(): Promise<Result> {
     ended_at: now,
     duration_seconds: seconds,
     updated_at: now,
-  }).eq('id', running.id)
+  }).eq('id', running.id).eq('person_id', ctx.me.id).is('ended_at', null)
   if (error) return fail(error.message)
 
   await audit(ctx, 'update', running.id, { ended_at: null }, { ended_at: now, duration_seconds: seconds })
@@ -205,7 +210,7 @@ export async function saveEntry(input: {
         .from('tc_entries').select('*').eq('id', input.id).eq('person_id', ctx.me.id).maybeSingle()
     const { error, count } = await ctx.supabase
       .from('tc_entries').update(row, { count: 'exact' })
-      .eq('id', input.id).eq('person_id', ctx.me.id)
+      .eq('id', input.id).eq('person_id', ctx.me.id).eq('state', 'open').eq('source', 'portal')
     if (error) return fail(error.message)
     // RLS does not raise on an update that matches nothing, it just changes
     // nothing. Without this check, editing a submitted entry would look like it
@@ -231,7 +236,7 @@ export async function deleteEntry(id: number): Promise<Result> {
   const { data: before } = await ctx.supabase
     .from('tc_entries').select('*').eq('id', id).eq('person_id', ctx.me.id).maybeSingle()
   const { error, count } = await ctx.supabase
-    .from('tc_entries').delete({ count: 'exact' }).eq('id', id).eq('person_id', ctx.me.id)
+    .from('tc_entries').delete({ count: 'exact' }).eq('id', id).eq('person_id', ctx.me.id).eq('state', 'open').eq('source', 'portal')
   if (error) return fail(error.message)
   if (!count) return fail('That entry can no longer be deleted. It has been submitted or approved.')
 
@@ -304,7 +309,7 @@ export async function submitPeriod(month: string): Promise<Result> {
   if (row) {
     const { error, count: hit } = await ctx.supabase
       .from('tc_submissions').update({ state: 'submitted', submitted_at: now }, { count: 'exact' })
-      .eq('id', row.id)
+      .eq('id', row.id).eq('person_id', ctx.me.id).in('state', ['draft', 'returned'])
     if (error) return fail(error.message)
     if (!hit) return fail('That month can no longer be sent.')
   } else {
@@ -495,7 +500,7 @@ export async function requestAbsence(input: {
     ))
   if (clash) return fail(`You already have time off booked from ${clash.start_date} to ${clash.end_date}.`)
 
-  const { error } = await ctx.supabase.from('tc_absence_requests').insert({
+  const { data: made, error } = await ctx.supabase.from('tc_absence_requests').insert({
     person_id: ctx.me.id,
     jobcode_id: input.jobcodeId,
     start_date: input.startDate,
@@ -503,9 +508,16 @@ export async function requestAbsence(input: {
     hours_per_day: input.hoursPerDay,
     state: 'pending',
     reason: input.reason || null,
-  })
+  }).select('id').single()
   if (error) return fail(error.message)
 
+  // The Super Admins who decide it hear of it in the bell (Clocky, 16 October 2026).
+  const { data: code } = await ctx.supabase.from('tc_jobcodes').select('name').eq('id', input.jobcodeId).maybeSingle()
+  await announceTimeOffRequested({
+    id: (made as { id: number }).id, person_id: ctx.me.id, start_date: input.startDate, end_date: input.endDate,
+    kind: (code as { name: string } | null)?.name ?? 'Time off',
+    seconds: Math.round(workingDays(input.startDate, input.endDate).length * input.hoursPerDay * 3600),
+  })
   revalidatePath('/hours')
   return OK
 }
@@ -556,7 +568,7 @@ export async function cancelAbsence(id: number): Promise<Result> {
 
   const { error, count } = await ctx.supabase
     .from('tc_absence_requests').update({ state: 'cancelled' }, { count: 'exact' })
-    .eq('id', id).eq('person_id', ctx.me.id)
+    .eq('id', id).eq('person_id', ctx.me.id).in('state', ['pending', 'approved'])
   if (error) return fail(error.message)
   if (!count) return fail('That request can no longer be cancelled.')
 

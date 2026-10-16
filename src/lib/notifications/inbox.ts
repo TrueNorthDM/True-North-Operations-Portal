@@ -17,7 +17,7 @@ import { zoneDate, addDays } from './schedule'
 /** The most the drawer holds. Older ones stay in the table until retention clears them. */
 const LIMIT = 80
 
-export type Row = { id: string; type_key: string; title: string; body: string; href: string | null; timing: string; deliver_at: string; read_at: string | null }
+export type Row = { id: string; type_key: string; title: string; body: string; href: string | null; timing: string; deliver_at: string; read_at: string | null; done_note?: string | null }
 
 /** "9:40 AM" today, "Yesterday", then "Sep 20", in the person's calendar (New York unless they chose another zone). */
 export function whenLabel(at: Date, now: Date, zone = DAILY_ZONE): string {
@@ -44,6 +44,8 @@ export function toItems(rows: readonly Row[], now: Date, zone = DAILY_ZONE): Rec
       href: r.href ?? '/settings#notifications',
       unread: !r.read_at,
       summary: r.timing === 'daily',
+      ...(t.button ? { button: t.button } : {}),
+      ...(r.done_note ? { done: r.done_note } : {}),
     })
   }
   return out
@@ -52,15 +54,16 @@ export function toItems(rows: readonly Row[], now: Date, zone = DAILY_ZONE): Rec
 export async function loadInbox(personId: string, now = new Date()): Promise<Record<string, NotificationItem[]>> {
   const db = createAdminClient()
   // Side by side: the bell is read on every page, so its zone must not add a round trip.
-  const [{ data, error }, delivery] = await Promise.all([
-    db.from('notifications')
-      .select('id, type_key, title, body, href, timing, deliver_at, read_at')
-      .eq('person_id', personId)
-      .lte('deliver_at', now.toISOString())
-      .order('deliver_at', { ascending: false })
-      .limit(LIMIT),
-    loadDelivery(db, [personId]),
-  ])
+  const read = (cols: string) => db.from('notifications')
+    .select(cols)
+    .eq('person_id', personId)
+    .lte('deliver_at', now.toISOString())
+    .order('deliver_at', { ascending: false })
+    .limit(LIMIT)
+  const COLS = 'id, type_key, title, body, href, timing, deliver_at, read_at'
+  const [first, delivery] = await Promise.all([read(`${COLS}, done_note`), loadDelivery(db, [personId])])
+  // done_note arrives with migration 112: until it runs, the bell reads without it.
+  const { data, error } = first.error ? await read(COLS) : first
   if (error) return {}
-  return toItems((data ?? []) as Row[], now, delivery.get(personId)?.zone)
+  return toItems((data ?? []) as unknown as Row[], now, delivery.get(personId)?.zone)
 }

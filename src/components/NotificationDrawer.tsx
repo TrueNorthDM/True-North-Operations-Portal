@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavIcon } from '@/components/NavIcon'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
+import type { NotificationButton } from '@/lib/notifications/catalogue'
 import { BTN } from '@/lib/ui/buttons'
 import { markNotificationsRead, markTabRead } from '@/app/(app)/notifications/actions'
 
@@ -42,6 +43,10 @@ export interface NotificationItem {
   unread: boolean
   /** Arrived with the daily summary rather than as it happened. */
   summary?: boolean
+  /** The type's one button (Clocky: Review, Keep going, Confirm end time...), from the catalogue. */
+  button?: NotificationButton
+  /** What the person did about it ("You kept going at 12:31 PM. Clocky asks again in 4h 30m."): shown instead of the button. */
+  done?: string
 }
 
 interface Tab { key: string; label: string; emptyTitle: string; empty: string }

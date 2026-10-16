@@ -14,3 +14,5 @@ PORTAL_DIR=/opt/tnportal/app
 45 1,5,9,13,17,21 * * *  $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-delta
 15 1,5,9,13,17,21 * * *  $PORTAL_DIR/deploy/cron/run.sh /api/cron/monday-worklist
 */15 * * * *             $PORTAL_DIR/deploy/cron/run.sh /api/cron/daily-summary
+# Clocky's safety net: "Still working?" at 4h 30m, the automatic stop at 5h 00m.
+*/5 * * * *              $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-safety

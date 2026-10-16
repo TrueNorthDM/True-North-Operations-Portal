@@ -294,7 +294,8 @@ export async function importMonth(
   const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
 
   const source = await fetchTimesheetRange(token, start, end, modifiedSince)
-  const rows = source.map(t => toEntry(t, maps, jobcodeKinds)).filter(Boolean) as NonNullable<ReturnType<typeof toEntry>>[]
+  const all = source.map(t => toEntry(t, maps, jobcodeKinds)).filter(Boolean) as NonNullable<ReturnType<typeof toEntry>>[]
+  const rows = await keepClockyChanges(supabase, all)
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const { error } = await supabase
@@ -356,7 +357,7 @@ export async function reconcileMonth(
   if (error) throw new Error(`reconcile write (${month}): ${error.message}`)
 }
 
-/** Entries deleted upstream, removed here so we do not keep an hour that is gone. */
+/** Entries deleted upstream, removed here so we do not keep an hour that is gone (unless Clocky has changed them since). */
 export async function applyDeletions(supabase: Client, token: string, since: string): Promise<number> {
   const ids = await fetchDeletedIds(token, since)
   if (!ids.length) return 0
@@ -364,11 +365,55 @@ export async function applyDeletions(supabase: Client, token: string, since: str
   for (let i = 0; i < ids.length; i += BATCH) {
     const chunk = ids.slice(i, i + BATCH)
     const { error, count } = await supabase
-      .from('tc_entries').delete({ count: 'exact' }).in('external_id', chunk)
+      .from('tc_entries').delete({ count: 'exact' }).in('external_id', chunk).is('changed_here_at', null)
     if (error) throw new Error(`delete: ${error.message}`)
     removed += count ?? 0
   }
   return removed
+}
+
+/**
+ * What the import may write, now that Clocky runs beside it (16 October 2026):
+ *
+ *   - an entry Clocky has changed (changed_here_at: stopped by the safety net
+ *     at 5h 00m, its end confirmed, edited with a reason) is the portal's from
+ *     then on, and the import leaves it as it is; otherwise the next import
+ *     would open a stopped clock again, or undo a fix (audit finding C1);
+ *   - a clock still open in QuickBooks Time for someone already running a
+ *     clock in the portal waits: one running clock per person is a unique
+ *     index, and writing it would fail the whole month. It comes in once it
+ *     is closed there.
+ */
+export async function keepClockyChanges<T extends { external_id: number; person_id: string; ended_at: string | null; kind: string }>(
+  supabase: Client, rows: readonly T[],
+): Promise<T[]> {
+  if (!rows.length) return []
+  const changed = new Set<number>()
+  const known = new Map<number, string | null>()
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const ids = rows.slice(i, i + BATCH).map(r => r.external_id)
+    const { data, error } = await supabase.from('tc_entries').select('external_id, changed_here_at, ended_at').in('external_id', ids)
+    if (error) throw new Error(`tc_entries read: ${error.message}`)
+    for (const r of (data ?? []) as { external_id: number | null; changed_here_at: string | null; ended_at: string | null }[]) {
+      if (r.external_id == null) continue
+      if (r.changed_here_at) changed.add(r.external_id)
+      known.set(r.external_id, r.ended_at)
+    }
+  }
+  const open = rows.filter(r => r.kind === 'clock' && r.ended_at === null && !changed.has(r.external_id))
+  const busy = new Set<string>()
+  if (open.length) {
+    const people = [...new Set(open.map(r => r.person_id))]
+    const { data, error } = await supabase.from('tc_entries').select('person_id, external_id')
+      .in('person_id', people).eq('kind', 'clock').is('ended_at', null)
+    if (error) throw new Error(`tc_entries read: ${error.message}`)
+    const openIds = new Set(open.map(r => r.external_id))
+    for (const r of (data ?? []) as { person_id: string; external_id: number | null }[]) {
+      if (r.external_id == null || !openIds.has(r.external_id)) busy.add(r.person_id)
+    }
+  }
+  return rows.filter(r => !changed.has(r.external_id)
+    && !(r.kind === 'clock' && r.ended_at === null && busy.has(r.person_id) && known.get(r.external_id) !== null))
 }
 
 /** Every month from the first with data up to the cutoff, oldest first. */

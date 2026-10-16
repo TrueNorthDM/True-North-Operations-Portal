@@ -461,3 +461,89 @@ export async function unlinkedDrafts(ctx: Ctx, unlinked: readonly { id: number; 
     dedupeKey: String(u.id),
   })))
 }
+
+// ── Clocky (16 October 2026) ────────────────────────────────────────────────
+//
+// The text of each is decided by Clocky (lib/timeclock), in each person's own
+// time zone, as the design writes it; the whole sentence is the title and the
+// body is empty. The bell row's button comes from the catalogue (`button`).
+
+/** The clock panel, opened from a bell row or an email link (the top bar reads `clock=open`). */
+export const CLOCK_PANEL_HREF = '/clocky-hours?clock=open'
+
+/**
+ * N1: "Still working?" at 4h 30m, once per window. Keyed by the window's
+ * start, as tc_entries holds it, so "Keep going" finds the row to mark done.
+ */
+export function clockyStillWorkingDrafts(ctx: Ctx, x: { personId: string; windowStartedAt: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-still-working', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: CLOCK_PANEL_HREF, dedupeKey: x.windowStartedAt,
+  })
+}
+
+/** N2: the clock stopped by itself (the email goes with it, run.ts). */
+export function clockyStoppedDrafts(ctx: Ctx, x: { personId: string; entryId: number; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-stopped', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: CLOCK_PANEL_HREF, dedupeKey: `stop:${x.entryId}`,
+  })
+}
+
+/**
+ * N3: a time correction to review, to everyone who may approve it: the Team
+ * Lead of a team the person is on (with "the teams they lead"), Admins and
+ * Super Admins (with "everyone's hours"), each with Approvals open; never the
+ * person (lib/timeclock/scope.ts, canApproveCorrection).
+ */
+export function clockyCorrectionRequestedDrafts(ctx: Ctx, x: { requestId: number; personId: string; teamIds: readonly string[]; text: string }): Draft[] {
+  return ctx.aud.people
+    .filter(r => r.personId !== x.personId && r.canTool('clocky-approvals') && r.canTool('clocky-hours')
+      && (r.canTool('ck-all') || (r.canTool('ck-team') && x.teamIds.some(t => r.teams.get(t) === true))))
+    .flatMap(r => draftFor(ctx, 'clocky-correction-requested', r, {
+      title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.requestId),
+    }))
+}
+
+/** N4: the requester hears the decision either way. */
+export function clockyCorrectionDecidedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-correction-decided', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: '/clocky-hours', dedupeKey: String(x.requestId),
+  })
+}
+
+/** Time off asked for: to the Super Admins who decide it, never the person. */
+export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string }): Draft[] {
+  return ctx.aud.withTool('ck-timeoff').filter(r => r.personId !== x.personId)
+    .flatMap(r => draftFor(ctx, 'clocky-timeoff-requested', r, {
+      title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.requestId),
+    }))
+}
+
+/** The line in the Super Admins' daily summary: "2 automatic clock-outs yesterday: Wendy Cacka, Justus Tsofa." */
+export function autoStopsLine(names: readonly string[]): string {
+  const n = names.length
+  return `${n} automatic clock-out${n === 1 ? '' : 's'} yesterday: ${names.join(', ')}.`
+}
+
+/**
+ * Yesterday's automatic clock-outs (New York's calendar, as the summaries),
+ * one line per Super Admin, once a day. Nothing on a day with none.
+ */
+export async function clockyAutoStopDrafts(ctx: Ctx): Promise<Draft[]> {
+  const yesterday = addDays(ctx.today, -1)
+  const from = new Date(Date.parse(`${yesterday}T00:00:00Z`) - 36 * 3_600_000).toISOString()
+  const { data, error } = await ctx.db.from('tc_safety_events')
+    .select('person_id, stopped_at').eq('kind', 'auto_stop').gte('stopped_at', from).order('stopped_at')
+  if (error) throw new Error(`Clock safety could not be read: ${error.message}`)
+  const rows = ((data ?? []) as { person_id: string; stopped_at: string | null }[])
+    .filter(r => r.stopped_at && zoneDate(new Date(r.stopped_at)) === yesterday)
+  if (!rows.length) return []
+  const { data: people, error: pe } = await ctx.db.from('people').select('id, full_name').in('id', [...new Set(rows.map(r => r.person_id))])
+  if (pe) throw new Error(`People could not be read: ${pe.message}`)
+  const nameOf = new Map(((people ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
+  // One name per person, in the order their clocks stopped; the count is every stop.
+  const names = [...new Set(rows.map(r => nameOf.get(r.person_id) ?? 'Someone'))]
+  const title = rows.length === names.length ? autoStopsLine(names) : `${rows.length} automatic clock-outs yesterday: ${names.join(', ')}.`
+  return ctx.aud.withTool('access-levels').flatMap(r => draftFor(ctx, 'clocky-auto-stops', r, {
+    title, body: '', href: '/clocky-hours/safety', dedupeKey: yesterday,
+  }))
+}

@@ -175,6 +175,8 @@ const TREE: Node[] = [
       { key: 'cs-catalog', label: 'Clients, Projects & Job Codes', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-targets', label: 'Publishing targets', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-sites', label: 'Sites & languages', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-periods', label: 'Timesheet periods', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-periods-edit', label: 'Change the timesheet periods: the pay period start, the default for new people, and who submits how', kind: 'action', superOnly: true },
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },
     { key: 'tests', label: 'Tests', kind: 'page', v: [1, 0, 0] },
@@ -183,14 +185,26 @@ const TREE: Node[] = [
       { key: 'man-runs', label: 'How it runs', kind: 'tab', superOnly: true, note: 'Shows the server and where its key files live: Super Admins only (10 October 2026).' },
     ] },
   ] },
+  // Clocky for everyone (design handoff of 16 October 2026, README "Who sees
+  // what"; owner's decisions in docs/time-clock/05-clocky-build.md). Who sees
+  // and changes whose hours is lib/timeclock/scope.ts.
   { key: 'm-clocky', label: 'Clocky', kind: 'module', building: true, ch: [
-    { key: 'clocky-hours', label: 'Hours', kind: 'page', v: [0, 0, 0], ch: [
-      { key: 'ck-rules', label: 'Rules in force', kind: 'tab', v: [0, 0, 0] },
-      { key: 'ck-import', label: 'Migration', kind: 'tab', v: [0, 0, 0] },
-      { key: 'ck-recon', label: 'Reconciliation', kind: 'tab', v: [0, 0, 0] },
+    { key: 'clocky-hours', label: 'Time entries, and the clock in the top bar', kind: 'page', v: [1, 1, 1], note: 'Their own hours. A User only shortens their own entries; more time comes through a time correction request.', ch: [
+      { key: 'ck-team', label: 'See and change the hours of the teams they lead', kind: 'action', v: [1, 1, 0] },
+      { key: 'ck-all', label: "See and change everyone's hours", kind: 'action', v: [1, 0, 0] },
+      { key: 'ck-reopen', label: 'Reopen a submitted period', kind: 'action', superOnly: true },
+      { key: 'ck-rules', label: 'Rules in force', kind: 'tab', v: [1, 0, 0] },
+      { key: 'ck-import', label: 'Import from QuickBooks Time', kind: 'tab', v: [1, 0, 0] },
+      { key: 'ck-recon', label: 'Reconciliation', kind: 'tab', v: [1, 0, 0] },
     ] },
-    { key: 'clocky-reports', label: 'Reports', kind: 'page', soon: true, v: [0, 0, 0] },
-    { key: 'clocky-approvals', label: 'Approvals', kind: 'page', soon: true, v: [0, 0, 0] },
+    { key: 'clocky-approvals', label: 'Approvals: time corrections in their scope', kind: 'page', v: [1, 1, 0], ch: [
+      { key: 'ck-timeoff', label: 'Decide time off', kind: 'action', superOnly: true, note: 'Approving hours and time off: Super Admins only (8 October 2026).' },
+    ] },
+    { key: 'ck-whos-working', label: "Who's working, in their scope", kind: 'page', v: [1, 1, 0], ch: [
+      { key: 'ck-clock-out-for', label: 'Clock out for them', kind: 'action', superOnly: true },
+    ] },
+    { key: 'clocky-reports', label: 'Reports', kind: 'page', soon: true, v: [1, 1, 1] },
+    { key: 'ck-safety', label: 'Clock safety', kind: 'page', v: [1, 0, 0], note: 'Every automatic clock-out. Read only below Super Admin.' },
   ] },
   { key: 'm-you', label: 'Your own', kind: 'module', ch: [
     { key: 'profile', label: 'My profile: their own page in the Directory', kind: 'page', always: true },

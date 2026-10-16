@@ -18,11 +18,16 @@ describe('the catalogue', () => {
     expect(rule('step-late').fixEnabled || rule('step-late').fixTiming).toBe(false)
   })
 
+  // Clocky's (16 October 2026): the bell only, as it happens, but the daily
+  // line about automatic clock-outs.
   it('follows the table of 7 October 2026 for when each one may arrive', () => {
     const by = (w: string) => NOTIFICATION_TYPES.filter(t => t.timings === w).map(t => t.key).sort()
     expect(by('both')).toEqual(['first-login', 'i7-budget', 'step-assigned', 'sync-incomplete', 'team-order-changed'])
-    expect(by('daily')).toEqual(['monday-account-unlinked', 'publishing-behind', 'step-due-tomorrow', 'step-late', 'team-late-pile'])
-    expect(by('instant')).toEqual(['access-rules-changed', 'integration-failed', 'level-changed', 'step-released'])
+    expect(by('daily')).toEqual(['clocky-auto-stops', 'monday-account-unlinked', 'publishing-behind', 'step-due-tomorrow', 'step-late', 'team-late-pile'])
+    expect(by('instant')).toEqual([
+      'access-rules-changed', 'clocky-correction-decided', 'clocky-correction-requested', 'clocky-still-working',
+      'clocky-stopped', 'clocky-timeoff-requested', 'integration-failed', 'level-changed', 'step-released',
+    ])
   })
 
   it("starts every type on a timing it allows, with where following when", () => {
@@ -193,3 +198,37 @@ describe('the generators', () => {
   })
 })
 
+
+describe("Clocky's notifications (16 October 2026)", () => {
+  const T = (k: string) => TYPE_BY_KEY.get(k)!
+
+  it('are in the bell only, as it happens, but the daily line for Super Admins', () => {
+    for (const k of ['clocky-still-working', 'clocky-stopped', 'clocky-correction-requested', 'clocky-correction-decided', 'clocky-timeoff-requested']) {
+      expect(T(k).timings, k).toBe('instant')
+      expect(defaultRule(T(k)).channel, k).toBe('app')
+    }
+    expect(T('clocky-auto-stops').timings).toBe('daily')
+  })
+
+  it('each carry the one button the bell shows', () => {
+    expect(T('clocky-still-working').button).toEqual({ label: 'Keep going', action: 'keep-going' })
+    expect(T('clocky-stopped').button).toEqual({ label: 'Confirm end time', action: 'open-clock' })
+    expect(T('clocky-correction-requested').button).toEqual({ label: 'Review', href: '/clocky-hours/approvals' })
+    expect(T('clocky-timeoff-requested').button).toEqual({ label: 'Review', href: '/clocky-hours/approvals' })
+    expect(T('clocky-correction-decided').button).toEqual({ label: 'Open time entries', href: '/clocky-hours' })
+    expect(T('clocky-auto-stops').button).toEqual({ label: 'Open Clock safety', href: '/clocky-hours/safety' })
+  })
+
+  it('reach the right people', () => {
+    expect(T('clocky-still-working').audience).toEqual({ kind: 'everyone' })
+    expect(T('clocky-correction-requested').audience).toEqual({ kind: 'tool', tool: 'clocky-approvals' })
+    expect(T('clocky-timeoff-requested').audience).toEqual({ kind: 'tool', tool: 'ck-timeoff' })
+    expect(T('clocky-auto-stops').audience).toEqual({ kind: 'tool', tool: 'access-levels' })
+  })
+
+  it('use no dashes as punctuation', () => {
+    for (const t of NOTIFICATION_TYPES.filter(x => x.key.startsWith('clocky-'))) {
+      expect(JSON.stringify(t), t.key).not.toMatch(/[—–]/)
+    }
+  })
+})

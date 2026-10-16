@@ -1,0 +1,633 @@
+'use server'
+
+/**
+ * Time entries (design handoff of 16 October 2026, SPEC sections 8 and 9,
+ * Time Entries.dc.html): the list of a period, an entry's history, adding,
+ * editing and deleting hours, the overlap fix, the week grid, the time
+ * correction request, and submitting and reopening a period.
+ *
+ * The rules, enforced here and not only on the screen (README "Rules"):
+ *   - every time saved is on the quarter hour; a typed duration rounds too;
+ *   - every change needs a reason, kept in the entry's history;
+ *   - a User only shortens their own entries (start later, end earlier) and
+ *     fixes their details; more time comes through a time correction request;
+ *   - Team Leaders change their teams' hours, Admins and Super Admins anyone's
+ *     (lib/timeclock/scope.ts);
+ *   - no overlaps, no entry over 24 hours;
+ *   - a submitted or approved period is locked for everyone; a Super Admin
+ *     reopens it first.
+ *
+ * Writes are for the person really signed in (writerAccess: a verified
+ * session, never a View Stage preview) and go through the privileged client.
+ * Each returns { ok: true, ... } or { ok: false, error } with a sentence.
+ */
+
+import { revalidatePath } from 'next/cache'
+import { loadAccess, writerAccess } from '@/lib/access/resolve'
+import { getViewAs } from '@/lib/auth/view-as-server'
+import { db, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } from '@/lib/timeclock/clocky-context'
+import {
+  audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
+} from '@/lib/timeclock/clocky-store'
+import { entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
+import { correctionGoesTo } from '@/lib/timeclock/clocky-panel'
+import { announceCorrectionRequested } from '@/lib/timeclock/clocky-notify'
+import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
+import { formatDuration, parseDuration, recordedSeconds, roundIso, roundSeconds } from '@/lib/timeclock/rounding'
+import {
+  DAY_SECONDS, DURATION_FORMAT, END_AFTER_START, NOTHING_LEFT, OVER_24H, REASON_REQUIRED, correctionOverlapLine, instantOf,
+  overlapLine, reasonOf, trimOther, trimThis,
+} from '@/lib/timeclock/entry-rules'
+import { changesBetween } from '@/lib/timeclock/history'
+import { addDays, lockedMessage } from '@/lib/timeclock/periods'
+import { SHORTEN_ONLY, canAddFor, canReopen, changeRight, onlyShorter } from '@/lib/timeclock/scope'
+import { loadApprovers } from '@/lib/timeclock/approvers'
+import type { EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
+
+const NOT_SAVED = 'Not saved. Try again in a moment.'
+const PREVIEW = 'View Stage is only a preview. Close it to change hours.'
+const SIGN_IN = 'Sign in again to save.'
+const NO_ACCESS = 'Clocky is not open to your access.'
+const NOT_YOURS = "That person's hours are not yours to change."
+const GONE = 'That entry is not there any more.'
+const PICK_JOB = 'Pick a job code.'
+/** The week grid's note for a User (exact copy), also the refusal of "Add time" to a User. */
+const USER_NO_ADD = 'Hours come from your clock. To add time, ask your Team Leader.'
+
+const fail = (error: string, extra: Omit<Fail, 'ok' | 'error'> = {}): Fail => ({ ok: false, error, ...extra })
+function notSaved(e: unknown): Fail {
+  console.error('[clocky entries]', e instanceof Error ? e.message : e)
+  return fail(NOT_SAVED)
+}
+const isFail = (x: unknown): x is Fail => !!x && typeof x === 'object' && (x as Fail).ok === false
+const refresh = () => { revalidatePath('/clocky-hours'); revalidatePath('/hours') }
+
+async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
+  if (await getViewAs()) return fail(PREVIEW)
+  const access = await writerAccess()
+  if (!access) return fail(SIGN_IN)
+  if (!access.can(key)) return fail(NO_ACCESS)
+  return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
+}
+
+async function reader(key = 'clocky-hours'): Promise<Viewer | Fail> {
+  const access = await loadAccess()
+  if (!access.can(key)) return fail(NO_ACCESS)
+  return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
+}
+
+
+// ── Reading ─────────────────────────────────────────────────────────────────
+
+/** The list, the totals and Needs attention for a period and the viewer's scope (3A, 3D). */
+export async function getEntries(query: EntriesQuery): Promise<Result<{ data: EntriesData }>> {
+  const v = await reader()
+  if (isFail(v)) return v
+  try {
+    return { ok: true, data: await loadEntries(v, query, new Date()) }
+  } catch (e) {
+    console.error('[clocky entries] list:', (e as Error).message)
+    return fail('The entries could not be read. Try again in a moment.')
+  }
+}
+
+/** An entry's history, newest first (3G). */
+export async function getEntryHistory(input: { id: number }): Promise<Result<{ data: HistoryData }>> {
+  const v = await reader()
+  if (isFail(v)) return v
+  try {
+    const data = await entryHistory(v, Number(input.id), new Date())
+    return data ? { ok: true, data } : fail(GONE)
+  } catch (e) {
+    console.error('[clocky entries] history:', (e as Error).message)
+    return fail('The history could not be read. Try again in a moment.')
+  }
+}
+
+/** The viewer's own period to submit (3H): the current one, or the one holding `start`. */
+export async function getSubmitSummary(input: { start?: string } = {}): Promise<Result<{ data: SubmitSummary }>> {
+  const v = await reader()
+  if (isFail(v)) return v
+  try {
+    return { ok: true, data: await loadSubmitSummary(v, new Date(), input.start) }
+  } catch (e) {
+    console.error('[clocky entries] submit summary:', (e as Error).message)
+    return fail('The period could not be read. Try again in a moment.')
+  }
+}
+
+// ── Times as a form sends them ──────────────────────────────────────────────
+
+export interface TimesInput {
+  /** YYYY-MM-DD, in the entry owner's time zone. */
+  date: string
+  mode: 'range' | 'duration'
+  /** "HH:MM" on a 24-hour clock, the owner's zone (15-minute steps; rounded anyway). */
+  start?: string
+  /** "HH:MM", or "now" to keep a running entry running. */
+  end?: string
+  /** "2h 30m", "2:30" or "2.5". */
+  duration?: string
+}
+
+export interface EntryInput extends TimesInput {
+  jobcodeId: number
+  fields?: Record<string, string>
+  notes?: string
+  reason: string
+  /** 3F: save anyway by trimming the other entry, or this one. */
+  fix?: { otherId: number; trim: 'other' | 'this' }
+}
+
+type Span = { kind: 'range'; start: string; end: string | null } | { kind: 'duration'; seconds: number }
+
+const hhmm = (t: string | undefined) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t ?? '').trim())
+  return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? `${m[1].padStart(2, '0')}:${m[2]}` : null
+}
+
+function parseTimes(t: TimesInput, zone: string, now: Date, allowNow: boolean): Span | Fail {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date ?? ''))) return fail('Pick a date.')
+  if (t.mode === 'duration') {
+    const raw = parseDuration(String(t.duration ?? ''))
+    if (Number.isNaN(raw) || raw <= 0) return fail(DURATION_FORMAT)
+    const seconds = roundSeconds(raw)
+    if (seconds <= 0) return fail(DURATION_FORMAT)
+    if (seconds > DAY_SECONDS) return fail(OVER_24H)
+    return { kind: 'duration', seconds }
+  }
+  const s = hhmm(t.start)
+  const startAt = s ? instantOf(t.date, s, zone) : null
+  if (!startAt) return fail('Pick a start time.')
+  const start = roundIso(startAt)
+  if (t.end === 'now') {
+    if (!allowNow) return fail('Pick an end time.')
+    if (Date.parse(start) > now.getTime()) return fail('It cannot be later than now.')
+    return { kind: 'range', start, end: null }
+  }
+  const e = hhmm(t.end)
+  const endAt = e ? instantOf(t.date, e, zone) : null
+  if (!endAt) return fail('Pick an end time.')
+  const end = roundIso(endAt)
+  if (Date.parse(end) <= Date.parse(start)) return fail(END_AFTER_START)
+  if (recordedSeconds(start, end) > DAY_SECONDS) return fail(OVER_24H)
+  return { kind: 'range', start, end }
+}
+
+const overlapInfo = (o: Awaited<ReturnType<typeof overlapFor>>, catalog: Catalog): OverlapInfo | undefined =>
+  o ? {
+    entryId: o.other.row.id, name: catalog.jobs.get(o.other.row.jobcode_id ?? -1)?.short ?? '',
+    start: o.other.row.started_at!, end: o.other.row.ended_at, sharedStart: o.start, sharedEnd: o.end,
+  } : undefined
+
+/**
+ * The overlap check (3E's red line), and 3F's fix when one was chosen: trim
+ * the other entry (saved here, with the same reason) or this one (the span
+ * that comes back). Never saves an overlap.
+ */
+async function resolveOverlap(
+  v: Viewer, personId: string, span: { start: string; end: string | null }, exclude: number[],
+  fix: EntryInput['fix'], reason: string, now: Date,
+): Promise<{ start: string; end: string | null } | Fail> {
+  const c = db()
+  const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
+  const zone = dir.zoneOf(personId)
+  const o = await overlapFor(c, personId, span, exclude, now)
+  if (!o) return span
+  const seconds = recordedSeconds(span.start, span.end ?? roundIso(now))
+  const refuse = (x: typeof o) => fail(overlapLine(seconds, x!, overlapInfo(x, catalog)!.name, zone), { overlap: overlapInfo(x, catalog) })
+  if (!fix || Number(fix.otherId) !== o.other.row.id) return refuse(o)
+
+  const other = o.other.row
+  if (fix.trim === 'this') {
+    if (!span.end) return refuse(o)
+    const r = trimThis({ start: span.start, end: span.end }, { start: other.started_at!, end: other.ended_at ?? roundIso(now) })
+    if (!r) return fail(NOTHING_LEFT)
+    const again = await overlapFor(c, personId, r, exclude, now)
+    return again ? refuse(again) : r
+  }
+  // Trim the other: it must be finished, open to the viewer, and not locked.
+  if (!other.ended_at || !span.end) return refuse(o)
+  if (changeRight(v, dir.target(personId)) === 'none') return fail(NOT_YOURS)
+  const lock = lockOn([other.entry_date], (await loadSubmissions(c, [personId])).get(personId) ?? [], other.state)
+  if (lock) return fail(lockedMessage(lock))
+  const r = trimOther({ start: span.start, end: span.end }, { start: other.started_at!, end: other.ended_at })
+  if (!r) return fail(NOTHING_LEFT)
+  const at = new Date().toISOString()
+  await rewriteSpan(c, other, r.start, r.end, zone, {
+    edited_by: v.personId, edited_at: at, ...(other.source === 'tsheets' ? { changed_here_at: at } : {}),
+  })
+  await audit(c, [{
+    entryId: other.id, action: 'trim', by: v.personId, reason,
+    before: snapshot(other, catalog), after: snapshot({ ...other, started_at: r.start, ended_at: r.end, duration_seconds: recordedSeconds(r.start, r.end) }, catalog),
+  }])
+  const again = await overlapFor(c, personId, span, exclude, now)
+  return again ? refuse(again) : span
+}
+
+// ── Add, edit, delete (3E, 3F, 3I) ──────────────────────────────────────────
+
+/** "Add time": Team Leaders (their teams, themselves included), Admins and Super Admins, with a reason. */
+export async function addTime(input: EntryInput & { personId: string }): Promise<Result<{ entryId: number; toast: string }>> {
+  const v = await actor()
+  if (isFail(v)) return v
+  try {
+    const now = new Date()
+    const c = db()
+    const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
+    const personId = String(input.personId ?? '')
+    if (!dir.people.has(personId)) return fail(NOT_YOURS)
+    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? USER_NO_ADD : NOT_YOURS)
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail(REASON_REQUIRED)
+    const job = catalog.jobs.get(Number(input.jobcodeId))
+    if (!job?.selectable) return fail(PICK_JOB)
+    const f = cleanFields(input.fields, catalog, job)
+    if ('error' in f) return fail(f.error)
+    const zone = dir.zoneOf(personId)
+    const times = parseTimes(input, zone, now, false)
+    if (isFail(times)) return times
+
+    const lock = lockOn([input.date], (await loadSubmissions(c, [personId])).get(personId) ?? [])
+    if (lock) return fail(lockedMessage(lock))
+
+    let start: string | null = null
+    let end: string | null = null
+    let seconds: number
+    if (times.kind === 'range') {
+      const r = await resolveOverlap(v, personId, { start: times.start, end: times.end }, [], input.fix, reason, now)
+      if (isFail(r)) return r
+      start = r.start
+      end = r.end
+      seconds = recordedSeconds(start, end!)
+    } else {
+      seconds = times.seconds
+    }
+    const at = now.toISOString()
+    const { data, error } = await c.from('tc_entries').insert({
+      person_id: personId, jobcode_id: job.id, started_at: start, ended_at: end, duration_seconds: seconds,
+      entry_date: start ? localDate(start, zone) : input.date, kind: start ? 'clock' : 'manual', state: 'open', source: 'portal',
+      fields: f.fields, notes: cleanNotes(input.notes), created_by: v.personId,
+      ...(personId !== v.personId ? { edited_by: v.personId, edited_at: at } : {}),
+    }).select('*').single()
+    if (error) return notSaved(error)
+    const e = data as EntryRow
+    await audit(c, [{ entryId: e.id, action: 'add', by: v.personId, reason, after: snapshot(e, catalog) }])
+    refresh()
+    return { ok: true, entryId: e.id, toast: `Added ${formatDuration(seconds)} on ${dayLabel(e.entry_date)}.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/**
+ * "Edit entry", with a reason. A User on their own entry: the date and the
+ * kind stay, the times only move inward (SHORTEN_ONLY). Editing an automatic
+ * stop that was not confirmed confirms it. A running entry stays running
+ * (end "now").
+ */
+export async function editEntry(input: EntryInput & { id: number }): Promise<Result<{ entryId: number; changes: number; toast: string }>> {
+  const v = await actor()
+  if (isFail(v)) return v
+  try {
+    const now = new Date()
+    const c = db()
+    const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
+    const e = await loadEntry(c, Number(input.id))
+    if (!e) return fail(GONE)
+    if (e.kind === 'absence') return fail('Time off changes through its request.')
+    const right = changeRight(v, dir.target(e.person_id))
+    if (right === 'none') return fail(NOT_YOURS)
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail(REASON_REQUIRED)
+    const zone = dir.zoneOf(e.person_id)
+    const running = e.ended_at === null && e.kind === 'clock' && !!e.started_at
+
+    const subs = (await loadSubmissions(c, [e.person_id])).get(e.person_id) ?? []
+    const lock = lockOn([e.entry_date, input.date], subs, e.state)
+    if (lock) return fail(lockedMessage(lock))
+
+    const jobId = Number(input.jobcodeId)
+    const job = catalog.jobs.get(jobId)
+    if (!job || (jobId !== e.jobcode_id && !job.selectable)) return fail(PICK_JOB)
+    const current = (e.fields ?? {}) as Record<string, string>
+    const f = cleanFields(input.fields, catalog, job, current)
+    if ('error' in f) return fail(f.error)
+
+    const times = parseTimes(input, zone, now, running)
+    if (isFail(times)) return times
+    if (running && (times.kind !== 'range' || times.end !== null)) return fail('Clock out first. Your clock is running.')
+
+    const before = { start: e.started_at, end: e.ended_at, seconds: e.duration_seconds }
+    const after = times.kind === 'range'
+      ? { start: times.start, end: times.end, seconds: times.end ? recordedSeconds(times.start, times.end) : 0 }
+      : { start: null, end: null, seconds: times.seconds }
+    if (right === 'shorten' && (input.date !== e.entry_date || !onlyShorter(before, after))) return fail(SHORTEN_ONLY)
+
+    let start = after.start
+    let end = after.end
+    if (times.kind === 'range') {
+      const r = await resolveOverlap(v, e.person_id, { start: times.start, end: times.end }, [e.id], input.fix, reason, now)
+      if (isFail(r)) return r
+      start = r.start
+      end = r.end
+      if (right === 'shorten' && !onlyShorter(before, { start, end, seconds: end ? recordedSeconds(start, end) : 0 })) return fail(SHORTEN_ONLY)
+    }
+    const next: Partial<EntryRow> = {
+      started_at: start,
+      ended_at: end,
+      duration_seconds: start && end ? recordedSeconds(start, end) : start ? 0 : after.seconds,
+      entry_date: start ? localDate(start, zone) : input.date,
+      jobcode_id: job.id,
+      fields: f.fields,
+      notes: cleanNotes(input.notes),
+      kind: start ? 'clock' : 'manual',
+    }
+    const changes = changesBetween(snapshot(e, catalog), snapshot({ ...e, ...next }, catalog), catalog.keys, zone)
+    if (!changes.length) return { ok: true, entryId: e.id, changes: 0, toast: 'Saved. Nothing changed.' }
+
+    const at = now.toISOString()
+    const confirm = e.auto_stopped_at && !e.end_confirmed_at ? { end_confirmed_at: at, end_confirmed_by: v.personId } : {}
+    const { error } = await c.from('tc_entries').update({
+      ...next, updated_at: at, edited_by: v.personId, edited_at: at, ...confirm,
+      ...(e.source === 'tsheets' ? { changed_here_at: at } : {}),
+    }).eq('id', e.id)
+    if (error) return error.code === '23505' ? fail('You are already clocked in. Stop that one first.') : notSaved(error)
+    if ('end_confirmed_at' in confirm) {
+      await c.from('tc_safety_events').update({ confirmed_end_at: end, confirmed_at: at }).eq('entry_id', e.id).eq('kind', 'auto_stop')
+    }
+    await audit(c, [{ entryId: e.id, action: 'edit', by: v.personId, reason, before: snapshot(e, catalog), after: snapshot({ ...e, ...next }, catalog) }])
+    refresh()
+    const n = changes.length
+    return { ok: true, entryId: e.id, changes: n, toast: `Saved. ${n} change${n > 1 ? 's' : ''} kept in the history.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/** "Delete this entry?" with a reason (3I), kept in the trail with the entry as it was. */
+export async function deleteEntry(input: { id: number; reason: string }): Promise<Result<{ toast: string }>> {
+  const v = await actor()
+  if (isFail(v)) return v
+  try {
+    const c = db()
+    const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
+    const e = await loadEntry(c, Number(input.id))
+    if (!e) return fail(GONE)
+    if (e.kind === 'absence') return fail('Time off changes through its request.')
+    if (changeRight(v, dir.target(e.person_id)) === 'none') return fail(NOT_YOURS)
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail(REASON_REQUIRED)
+    const lock = lockOn([e.entry_date], (await loadSubmissions(c, [e.person_id])).get(e.person_id) ?? [], e.state)
+    if (lock) return fail(lockedMessage(lock))
+    const { error, count } = await c.from('tc_entries').delete({ count: 'exact' }).eq('id', e.id)
+    if (error) return notSaved(error)
+    if (!count) return fail(GONE)
+    await audit(c, [{ entryId: null, action: 'delete', by: v.personId, reason, before: { ...snapshot(e, catalog), id: e.id, person_id: e.person_id } }])
+    refresh()
+    return { ok: true, toast: 'Entry deleted. The reason is kept in the change log.' }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+// ── The week grid (3B) ──────────────────────────────────────────────────────
+
+export interface GridRowInput {
+  jobcodeId: number
+  /** The row's fields (Activity names the row with the job). */
+  fields?: Record<string, string>
+  /** YYYY-MM-DD -> what was typed ("2:30", "2.5", "" to clear). Only the cells changed. */
+  cells: Record<string, string>
+}
+
+/**
+ * Save the hours typed in the week grid (leaders, for the people they manage),
+ * with a reason. A cell is a duration-only entry for its row (job and
+ * Activity) and day, rounded to the quarter hour; saving a cell replaces what
+ * the grid saved there before. Cells with clocked entries, imported ones and
+ * locked days cannot be typed into; no day may pass 24 hours.
+ */
+export async function saveWeekGrid(input: { personId: string; weekStart: string; rows: GridRowInput[]; reason: string }): Promise<Result<{ weekSeconds: number; toast: string }>> {
+  const v = await actor()
+  if (isFail(v)) return v
+  try {
+    const now = new Date()
+    const c = db()
+    const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
+    const personId = String(input.personId ?? '')
+    if (!dir.people.has(personId)) return fail(NOT_YOURS)
+    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? USER_NO_ADD : NOT_YOURS)
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail(REASON_REQUIRED)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.weekStart ?? ''))) return fail('Pick a week.')
+    const days = Array.from({ length: 7 }, (_, i) => addDays(input.weekStart, i))
+    const { data, error } = await c.from('tc_entries').select('*').eq('person_id', personId).gte('entry_date', days[0]).lte('entry_date', days[6])
+    if (error) return notSaved(error)
+    const week = (data ?? []) as EntryRow[]
+    const subs = (await loadSubmissions(c, [personId])).get(personId) ?? []
+    const k = catalog.keys
+    const keyOf = (jobcode: number | null, fields: Record<string, string>) => `${jobcode}|${k.activity ? fields[k.activity] ?? '' : ''}`
+    const gridOwned = (e: EntryRow) => e.kind === 'manual' && e.source === 'portal' && !e.manual_batch
+
+    type Change = { day: string; key: string; seconds: number; jobcodeId: number; fields: Record<string, string>; replace: EntryRow[] }
+    const changes: Change[] = []
+    for (const row of input.rows ?? []) {
+      const job = catalog.jobs.get(Number(row.jobcodeId))
+      if (!job) return fail(PICK_JOB)
+      // A row's fields come from an entry of the week (or a combination): values it already carries stay valid.
+      const typedKey = keyOf(job.id, (row.fields ?? {}) as Record<string, string>)
+      const source = week.find(e => keyOf(e.jobcode_id, (e.fields ?? {}) as Record<string, string>) === typedKey)
+      const f = cleanFields(row.fields, catalog, job, (source?.fields ?? {}) as Record<string, string>)
+      if ('error' in f) return fail(f.error)
+      const key = keyOf(job.id, f.fields)
+      for (const [day, typed] of Object.entries(row.cells ?? {})) {
+        if (!days.includes(day)) continue
+        const raw = parseDuration(String(typed ?? ''))
+        if (Number.isNaN(raw)) return fail(`Use "2:30" or "2.5" in ${weekdayShort(day)}.`)
+        const seconds = roundSeconds(raw)
+        const here = week.filter(e => e.entry_date === day && keyOf(e.jobcode_id, (e.fields ?? {}) as Record<string, string>) === key)
+        const mine = here.filter(gridOwned)
+        if (mine.reduce((s, e) => s + e.duration_seconds, 0) === seconds) continue
+        if (here.some(e => !gridOwned(e))) {
+          return fail('Cells with a clock come from clocked entries; change those in the List or the Day timeline.')
+        }
+        const lock = lockOn([day], subs, null)
+        if (lock || mine.some(e => lockOn([day], subs, e.state))) return fail(lockedMessage(lock ?? { start: day, end: day }))
+        if (seconds > 0 && !job.selectable) return fail(PICK_JOB)
+        changes.push({ day, key, seconds, jobcodeId: job.id, fields: f.fields, replace: mine })
+      }
+    }
+    // No day over 24 hours, counting everything else already there.
+    for (const day of days) {
+      const replaced = new Set(changes.filter(ch => ch.day === day).flatMap(ch => ch.replace.map(e => e.id)))
+      const total = week.filter(e => e.entry_date === day && !replaced.has(e.id) && e.kind !== 'absence').reduce((s, e) => s + e.duration_seconds, 0)
+        + changes.filter(ch => ch.day === day).reduce((s, ch) => s + ch.seconds, 0)
+      if (total > DAY_SECONDS) return fail(`More than 24 hours on ${weekdayShort(day)}. A day has 24 hours; fix the cells in red.`)
+    }
+
+    const at = now.toISOString()
+    for (const ch of changes) {
+      if (ch.replace.length) {
+        const { error: delErr } = await c.from('tc_entries').delete().in('id', ch.replace.map(e => e.id))
+        if (delErr) return notSaved(delErr)
+        await audit(c, ch.replace.map(e => ({ entryId: null, action: 'delete', by: v.personId, reason, before: { ...snapshot(e, catalog), id: e.id, person_id: e.person_id } })))
+      }
+      if (ch.seconds > 0) {
+        const { data: ins, error: insErr } = await c.from('tc_entries').insert({
+          person_id: personId, jobcode_id: ch.jobcodeId, started_at: null, ended_at: null, duration_seconds: ch.seconds,
+          entry_date: ch.day, kind: 'manual', state: 'open', source: 'portal', fields: ch.fields, created_by: v.personId,
+          ...(personId !== v.personId ? { edited_by: v.personId, edited_at: at } : {}),
+        }).select('*').single()
+        if (insErr) return notSaved(insErr)
+        await audit(c, [{ entryId: (ins as EntryRow).id, action: 'grid', by: v.personId, reason, after: snapshot(ins as EntryRow, catalog) }])
+      }
+    }
+    const { data: after } = await c.from('tc_entries').select('duration_seconds, kind, ended_at, started_at').eq('person_id', personId)
+      .gte('entry_date', days[0]).lte('entry_date', days[6]).neq('kind', 'absence')
+    const weekSeconds = ((after ?? []) as { duration_seconds: number }[]).reduce((s, e) => s + e.duration_seconds, 0)
+    refresh()
+    return { ok: true, weekSeconds, toast: `Saved. Week total ${formatDuration(weekSeconds)}.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+// ── Time correction request (3K) ────────────────────────────────────────────
+
+/**
+ * "Request a time correction": a day of this week, a start and an end (on the
+ * quarter hour, the person's zone), the job and Activity, and "What happened".
+ * It may not overlap an entry. It counts in no total until approved; the
+ * person's Team Lead, Admins and Super Admins are told in the bell.
+ */
+export async function requestCorrection(input: { date: string; start: string; end: string; jobcodeId: number; fields?: Record<string, string>; notes?: string; reason: string }): Promise<Result<{ requestId: number; goesTo: string; toast: string }>> {
+  const v = await actor()
+  if (isFail(v)) return v
+  try {
+    const now = new Date()
+    const c = db()
+    const catalog = await loadCatalog()
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail('Say what happened.')
+    const today = localDate(now, v.zone)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.date ?? '')) || input.date > today || input.date < addDays(today, -6)) return fail('Pick a day of this week.')
+    const job = catalog.jobs.get(Number(input.jobcodeId))
+    if (!job?.selectable) return fail(PICK_JOB)
+    const f = cleanFields(input.fields, catalog, job)
+    if ('error' in f) return fail(f.error)
+    const times = parseTimes({ date: input.date, mode: 'range', start: input.start, end: input.end }, v.zone, now, false)
+    if (isFail(times)) return times
+    if (times.kind !== 'range' || !times.end) return fail(END_AFTER_START)
+    const lock = lockOn([input.date], (await loadSubmissions(c, [v.personId])).get(v.personId) ?? [])
+    if (lock) return fail(lockedMessage(lock))
+    const o = await overlapFor(c, v.personId, { start: times.start, end: times.end }, [], now)
+    if (o) return fail(correctionOverlapLine(o, overlapInfo(o, catalog)!.name, v.zone), { overlap: overlapInfo(o, catalog) })
+
+    const { data, error } = await c.from('tc_correction_requests').insert({
+      person_id: v.personId, entry_date: input.date, started_at: times.start, ended_at: times.end, jobcode_id: job.id,
+      fields: f.fields, notes: cleanNotes(input.notes), reason, state: 'pending',
+    }).select('id, person_id, started_at, ended_at, entry_date').single()
+    if (error) return notSaved(error)
+    const r = data as { id: number; person_id: string; started_at: string; ended_at: string; entry_date: string }
+    await announceCorrectionRequested(r)
+    const goesTo = await correctionGoesTo(v.personId)
+    const lead = /^Goes to (.+), your Team Leader\./.exec(goesTo)?.[1]
+    refresh()
+    return {
+      ok: true, requestId: r.id, goesTo,
+      toast: lead ? `Request sent to ${lead}. It counts once it is approved.` : 'Request sent. It counts once it is approved.',
+    }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+// ── Submit and reopen (3H) ──────────────────────────────────────────────────
+
+/**
+ * Submit the viewer's own period (a month, or a pay period, by their cadence).
+ * Refused while the clock is running in it, while anything needs attention,
+ * when there is nothing in it, or when nobody could approve it. Its entries
+ * lock with it.
+ */
+export async function submitPeriod(input: { start: string; end: string }): Promise<Result<{ toast: string; locked: number }>> {
+  const v = await actor()
+  if (isFail(v)) return v
+  try {
+    const now = new Date()
+    const c = db()
+    const s = await loadSubmitSummary(v, now, input.start)
+    if (s.start !== input.start || s.end !== input.end) return fail('That period has changed. Reload and try again.')
+    if (s.running) return fail('Clock out first. Your clock is running.')
+    if (s.state === 'submitted') return fail('That period has already been sent.')
+    if (s.state === 'approved') return fail('That period is already approved.')
+    if (s.attention.length) return fail('Fix the entries that need attention first.', { attention: s.attention })
+    const { count } = await c.from('tc_entries').select('id', { count: 'exact', head: true })
+      .eq('person_id', v.personId).gte('entry_date', s.start).lte('entry_date', s.end)
+    if (!count) return fail('There is nothing logged in that period yet.')
+    if (!(await loadApprovers(c, v.personId)).length) {
+      return fail('Nobody is set up to approve hours yet, so this would go nowhere. Ask a Super Admin.')
+    }
+
+    const kind = s.kind
+    const { data: found, error: findErr } = await c.from('tc_periods').select('id').eq('start_date', s.start).eq('end_date', s.end).maybeSingle()
+    if (findErr) return notSaved(findErr)
+    let periodId = (found as { id: number } | null)?.id
+    if (!periodId) {
+      const { data: made, error: makeErr } = await c.from('tc_periods').insert({ start_date: s.start, end_date: s.end, kind }).select('id').single()
+      if (makeErr) return notSaved(makeErr)
+      periodId = (made as { id: number }).id
+    }
+    const at = now.toISOString()
+    const { data: sub, error: subErr } = await c.from('tc_submissions').select('id, state').eq('person_id', v.personId).eq('period_id', periodId).maybeSingle()
+    if (subErr) return notSaved(subErr)
+    const row = sub as { id: number; state: string } | null
+    if (row) {
+      const { error } = await c.from('tc_submissions').update({ state: 'submitted', submitted_at: at }).eq('id', row.id).in('state', ['draft', 'returned'])
+      if (error) return notSaved(error)
+    } else {
+      const { error } = await c.from('tc_submissions').insert({ person_id: v.personId, period_id: periodId, state: 'submitted', submitted_at: at })
+      if (error) return notSaved(error)
+    }
+    // The portal's own rows freeze with it (imported ones keep QuickBooks Time's state).
+    await c.from('tc_entries').update({ state: 'submitted', updated_at: at })
+      .eq('person_id', v.personId).eq('state', 'open').eq('source', 'portal').gte('entry_date', s.start).lte('entry_date', s.end)
+    refresh()
+    return { ok: true, locked: count, toast: `${s.label} submitted. ${count} entries are now locked.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/**
+ * Reopen a submitted or approved period (Super Admins): the submission goes
+ * back to draft and the portal's rows in it to open. Imported rows keep the
+ * state QuickBooks Time gave them (audit finding N6: reopening used to take
+ * them out of the reports for good).
+ */
+export async function reopenPeriod(input: { personId: string; start: string; end: string; reason?: string }): Promise<Result> {
+  const v = await actor('ck-reopen')
+  if (isFail(v)) return v
+  if (!canReopen(v)) return fail('Only a Super Admin can reopen a period.')
+  try {
+    const c = db()
+    const { data: period, error } = await c.from('tc_periods').select('id').eq('start_date', input.start).eq('end_date', input.end).maybeSingle()
+    if (error) return notSaved(error)
+    if (!period) return fail('That period was never submitted.')
+    const pid = (period as { id: number }).id
+    const { data: sub, error: subErr } = await c.from('tc_submissions').update({ state: 'draft', submitted_at: null, approved_at: null, approved_by: null })
+      .eq('person_id', input.personId).eq('period_id', pid).in('state', ['submitted', 'approved']).select('id')
+    if (subErr) return notSaved(subErr)
+    if (!sub?.length) return fail('That period is not submitted.')
+    const at = new Date().toISOString()
+    await c.from('tc_entries').update({ state: 'open', updated_at: at })
+      .eq('person_id', input.personId).in('state', ['submitted', 'approved']).eq('source', 'portal')
+      .gte('entry_date', input.start).lte('entry_date', input.end)
+    await audit(c, [{ entryId: null, action: 'reopen', by: v.personId, reason: reasonOf(input.reason), after: { person_id: input.personId, start: input.start, end: input.end } }])
+    refresh()
+    return { ok: true }
+  } catch (e) {
+    return notSaved(e)
+  }
+}

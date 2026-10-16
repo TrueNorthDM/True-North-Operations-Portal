@@ -21,23 +21,27 @@ describe('the rail', () => {
     expect(keys(railFor('super_admin'))).toEqual(['home', 'my-work', 'my-hours', 'chat', 'emails', '|', 'tools', 'people', '|', 'admin', 'clocky'])
   })
 
-  // A rule with nothing after it is not drawn, so a user sees one rule, not two.
-  it('gives a user one rule, and neither Admin, Clocky nor My Hours', () => {
-    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people'])
+  // Clocky is for every level (16 October 2026: Time entries and the clock),
+  // so a user sees it after the second rule; not Admin, not My Hours.
+  it('gives a user Clocky, but neither Admin nor My Hours', () => {
+    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', '|', 'clocky'])
   })
 
+  // A rule with nothing on one side is not drawn, and never two in a row.
   it('leaves Tools off for someone with no tool open, and draws no rule for it', () => {
     const k = keys(railFor('user'))
     expect(k).not.toContain('tools')
-    expect(k.filter(x => x === '|')).toHaveLength(1)
+    expect(k.some((x, i) => x === '|' && k[i + 1] === '|')).toBe(false)
+    expect(k[0]).not.toBe('|')
+    expect(k[k.length - 1]).not.toBe('|')
   })
 
-  it('gives an Admin the Admin area, but not Access levels, View Stage or Clocky', () => {
+  it('gives an Admin the Admin area and Clocky, but not Access levels or View Stage', () => {
     const rail = railFor('admin')
     expect(rows(rail, 'admin')).not.toContain('access-levels')
     expect(rows(rail, 'admin')).not.toContain('view-stage')
     expect(rows(rail, 'admin')).toContain('company-settings')
-    expect(keys(rail)).not.toContain('clocky')
+    expect(keys(rail)).toContain('clocky')
   })
 
   // Settings is in the avatar menu, never on the rail.
