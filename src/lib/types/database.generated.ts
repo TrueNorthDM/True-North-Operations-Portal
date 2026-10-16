@@ -1353,6 +1353,7 @@ export type Database = {
           created_at: string
           dedupe_key: string
           deliver_at: string
+          done_note: string | null
           emailed_at: string | null
           href: string | null
           id: string
@@ -1361,13 +1362,13 @@ export type Database = {
           timing: string
           title: string
           type_key: string
-          done_note: string | null
         }
         Insert: {
           body: string
           created_at?: string
           dedupe_key: string
           deliver_at?: string
+          done_note?: string | null
           emailed_at?: string | null
           href?: string | null
           id?: string
@@ -1376,13 +1377,13 @@ export type Database = {
           timing: string
           title: string
           type_key: string
-          done_note?: string | null
         }
         Update: {
           body?: string
           created_at?: string
           dedupe_key?: string
           deliver_at?: string
+          done_note?: string | null
           emailed_at?: string | null
           href?: string | null
           id?: string
@@ -1391,7 +1392,6 @@ export type Database = {
           timing?: string
           title?: string
           type_key?: string
-          done_note?: string | null
         }
         Relationships: [
           {
@@ -2233,10 +2233,19 @@ export type Database = {
       }
       tc_entries: {
         Row: {
+          auto_stopped_at: string | null
+          changed_here_at: string | null
+          clocked_out_by: string | null
           created_at: string
           created_by: string | null
           duration_seconds: number
+          edited_at: string | null
+          edited_by: string | null
+          end_confirmed_at: string | null
+          end_confirmed_by: string | null
+          end_flagged: boolean
           ended_at: string | null
+          ended_at_real: string | null
           entry_date: string
           external_id: number | null
           fields: Json
@@ -2247,28 +2256,28 @@ export type Database = {
           manual_line: number | null
           notes: string | null
           person_id: string
+          session_started_at: string | null
           source: string
           started_at: string | null
+          started_at_real: string | null
           state: string
           updated_at: string
-          auto_stopped_at: string | null
-          changed_here_at: string | null
-          clocked_out_by: string | null
-          edited_at: string | null
-          edited_by: string | null
-          end_confirmed_at: string | null
-          end_confirmed_by: string | null
-          end_flagged: boolean
-          ended_at_real: string | null
-          session_started_at: string | null
-          started_at_real: string | null
           window_started_at: string | null
         }
         Insert: {
+          auto_stopped_at?: string | null
+          changed_here_at?: string | null
+          clocked_out_by?: string | null
           created_at?: string
           created_by?: string | null
           duration_seconds?: number
+          edited_at?: string | null
+          edited_by?: string | null
+          end_confirmed_at?: string | null
+          end_confirmed_by?: string | null
+          end_flagged?: boolean
           ended_at?: string | null
+          ended_at_real?: string | null
           entry_date: string
           external_id?: number | null
           fields?: Json
@@ -2279,28 +2288,28 @@ export type Database = {
           manual_line?: number | null
           notes?: string | null
           person_id: string
+          session_started_at?: string | null
           source?: string
           started_at?: string | null
+          started_at_real?: string | null
           state?: string
           updated_at?: string
+          window_started_at?: string | null
+        }
+        Update: {
           auto_stopped_at?: string | null
           changed_here_at?: string | null
           clocked_out_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
           edited_at?: string | null
           edited_by?: string | null
           end_confirmed_at?: string | null
           end_confirmed_by?: string | null
           end_flagged?: boolean
-          ended_at_real?: string | null
-          session_started_at?: string | null
-          started_at_real?: string | null
-          window_started_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          duration_seconds?: number
           ended_at?: string | null
+          ended_at_real?: string | null
           entry_date?: string
           external_id?: number | null
           fields?: Json
@@ -2311,27 +2320,36 @@ export type Database = {
           manual_line?: number | null
           notes?: string | null
           person_id?: string
+          session_started_at?: string | null
           source?: string
           started_at?: string | null
+          started_at_real?: string | null
           state?: string
           updated_at?: string
-          auto_stopped_at?: string | null
-          changed_here_at?: string | null
-          clocked_out_by?: string | null
-          edited_at?: string | null
-          edited_by?: string | null
-          end_confirmed_at?: string | null
-          end_confirmed_by?: string | null
-          end_flagged?: boolean
-          ended_at_real?: string | null
-          session_started_at?: string | null
-          started_at_real?: string | null
           window_started_at?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "tc_entries_clocked_out_by_fkey"
+            columns: ["clocked_out_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tc_entries_created_by_fkey"
             columns: ["created_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_entries_edited_by_fkey"
+            columns: ["edited_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_entries_end_confirmed_by_fkey"
+            columns: ["end_confirmed_by"]
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -2575,6 +2593,30 @@ export type Database = {
           },
         ]
       }
+      tc_periods: {
+        Row: {
+          closed_at: string | null
+          end_date: string
+          id: number
+          kind: string
+          start_date: string
+        }
+        Insert: {
+          closed_at?: string | null
+          end_date: string
+          id?: number
+          kind?: string
+          start_date: string
+        }
+        Update: {
+          closed_at?: string | null
+          end_date?: string
+          id?: number
+          kind?: string
+          start_date?: string
+        }
+        Relationships: []
+      }
       tc_person_cadence: {
         Row: {
           cadence: string
@@ -2617,30 +2659,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      tc_periods: {
-        Row: {
-          closed_at: string | null
-          end_date: string
-          id: number
-          start_date: string
-          kind: string
-        }
-        Insert: {
-          closed_at?: string | null
-          end_date: string
-          id?: number
-          start_date: string
-          kind?: string
-        }
-        Update: {
-          closed_at?: string | null
-          end_date?: string
-          id?: number
-          start_date?: string
-          kind?: string
-        }
-        Relationships: []
       }
       tc_project_donations: {
         Row: {
@@ -2909,7 +2927,9 @@ export type Database = {
           auto_clockout_hours: number | null
           calculate_overtime: boolean
           daily_regular_hours: number
+          default_cadence: string
           import_cutoff_date: string | null
+          pay_period_anchor: string | null
           period_type: string
           round_direction: string
           round_enabled: boolean
@@ -2920,14 +2940,14 @@ export type Database = {
           updated_at: string
           week_start: number
           weekly_regular_hours: number
-          default_cadence: string
-          pay_period_anchor: string | null
         }
         Insert: {
           auto_clockout_hours?: number | null
           calculate_overtime?: boolean
           daily_regular_hours?: number
+          default_cadence?: string
           import_cutoff_date?: string | null
+          pay_period_anchor?: string | null
           period_type?: string
           round_direction?: string
           round_enabled?: boolean
@@ -2938,14 +2958,14 @@ export type Database = {
           updated_at?: string
           week_start?: number
           weekly_regular_hours?: number
-          default_cadence?: string
-          pay_period_anchor?: string | null
         }
         Update: {
           auto_clockout_hours?: number | null
           calculate_overtime?: boolean
           daily_regular_hours?: number
+          default_cadence?: string
           import_cutoff_date?: string | null
+          pay_period_anchor?: string | null
           period_type?: string
           round_direction?: string
           round_enabled?: boolean
@@ -2956,8 +2976,6 @@ export type Database = {
           updated_at?: string
           week_start?: number
           weekly_regular_hours?: number
-          default_cadence?: string
-          pay_period_anchor?: string | null
         }
         Relationships: []
       }
@@ -3483,12 +3501,12 @@ export type Database = {
         Args: { p_person: string; p_teams: Json }
         Returns: undefined
       }
+      tc_approves_for: { Args: { target: string }; Returns: boolean }
+      tc_i_approve_hours: { Args: never; Returns: boolean }
       tc_job_field_defaults: {
         Args: { p_keys: string[]; p_since: string }
         Returns: Json
       }
-      tc_approves_for: { Args: { target: string }; Returns: boolean }
-      tc_i_approve_hours: { Args: never; Returns: boolean }
       tc_people_i_approve: { Args: never; Returns: string[] }
     }
     Enums: {
