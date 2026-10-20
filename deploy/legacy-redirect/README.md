@@ -11,4 +11,7 @@ Deploy it (only needed to change the redirect), from this folder:
     VERCEL_ORG_ID=team_MGtTHRyqww5d9HxsLNDe3tUU VERCEL_PROJECT_ID=prj_2uLEz5NtJpXpO1azEnsiwZYOjr6S \
       npx vercel@53 deploy --prod --yes
 
-The uptime check (`.github/workflows/uptime.yml`) makes sure it keeps answering 308.
+**Gone since 20 October 2026.** The Vercel project was deleted and the owner
+chose not to recreate it, so the old address answers DEPLOYMENT_NOT_FOUND and
+links to it in old PDFs no longer lead to the portal. The uptime check no longer
+looks at it. These files stay in case the redirect is ever wanted again.

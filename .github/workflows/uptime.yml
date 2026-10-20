@@ -4,8 +4,9 @@
 # emails arnaldo.oliveira@me.com through Resend (secret RESEND_API_KEY).
 #
 # Run it by hand with "test" ticked to check the email path.
-# Since the switch-over (5 October 2026) the portal is truenorthportal.online;
-# the old Vercel address must keep redirecting there (308), for links in PDFs.
+# Since the switch-over (5 October 2026) the portal is truenorthportal.online.
+# The old Vercel address is no longer checked: its redirect project was deleted
+# and the owner chose to let it go (20 October 2026).
 
 name: Uptime check
 
@@ -33,7 +34,6 @@ jobs:
           CHECKS=(
             "Portal|https://truenorthportal.online/login|^200$"
             "Database API|https://db.truenorthportal.online/auth/v1/health|^(200|401)$"
-            "Old address redirect (Vercel)|https://truenorthoperationsportal.vercel.app/login|^308$"
           )
 
           run_checks() {
