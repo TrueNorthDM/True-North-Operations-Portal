@@ -1,0 +1,59 @@
+/**
+ * Google Calendar for the outbox (Clocky part 2: approved time off on the team
+ * calendar, 7D; the Agenda's Good News calendar later). A Google Cloud service
+ * account, entered by a Super Admin in Company settings > Integrations (13A),
+ * signs a short-lived token itself (RS256, OAuth 2.0 JWT bearer grant); the
+ * calendar must be shared with the service account's address.
+ *
+ * Only the server reads the key; it never reaches a browser.
+ */
+
+import { createSign } from 'node:crypto'
+
+interface ServiceAccount { client_email: string; private_key: string; token_uri?: string }
+
+const SCOPE = 'https://www.googleapis.com/auth/calendar'
+const b64url = (s: string | Buffer) => Buffer.from(s).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+
+export function parseServiceAccount(json: string): ServiceAccount {
+  let sa: Partial<ServiceAccount>
+  try { sa = JSON.parse(json) as Partial<ServiceAccount> } catch { throw new Error('The Google service account is not valid JSON.') }
+  if (!sa.client_email || !sa.private_key) throw new Error('The Google service account has no client_email or private_key.')
+  return { client_email: sa.client_email, private_key: sa.private_key, token_uri: sa.token_uri }
+}
+
+/** An access token for the calendar scope, from the service account's key. */
+export async function accessToken(sa: ServiceAccount, now = Date.now()): Promise<string> {
+  const aud = sa.token_uri || 'https://oauth2.googleapis.com/token'
+  const iat = Math.floor(now / 1000)
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const claims = b64url(JSON.stringify({ iss: sa.client_email, scope: SCOPE, aud, iat, exp: iat + 3600 }))
+  const signer = createSign('RSA-SHA256')
+  signer.update(`${header}.${claims}`)
+  const jwt = `${header}.${claims}.${b64url(signer.sign(sa.private_key))}`
+  const res = await fetch(aud, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }) })
+  const body = await res.json().catch(() => null) as { access_token?: string; error_description?: string; error?: string } | null
+  if (!res.ok || !body?.access_token) throw new Error(`Google refused the service account: ${body?.error_description ?? body?.error ?? res.status}`)
+  return body.access_token
+}
+
+/** An all-day event from start to end (both included). Returns its id. */
+export async function insertAllDay(token: string, calendarId: string, e: { summary: string; start: string; end: string }): Promise<string> {
+  const endExclusive = new Date(Date.parse(`${e.end}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ summary: e.summary, start: { date: e.start }, end: { date: endExclusive }, transparency: 'transparent' }),
+  })
+  const body = await res.json().catch(() => null) as { id?: string; error?: { message?: string } } | null
+  if (!res.ok || !body?.id) throw new Error(`Google Calendar refused the event: ${body?.error?.message ?? res.status}`)
+  return body.id
+}
+
+/** Removes an event; one already gone counts as removed. */
+export async function deleteEvent(token: string, calendarId: string, eventId: string): Promise<void> {
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    const body = await res.json().catch(() => null) as { error?: { message?: string } } | null
+    throw new Error(`Google Calendar refused to remove the event: ${body?.error?.message ?? res.status}`)
+  }
+}

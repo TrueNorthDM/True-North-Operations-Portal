@@ -24,7 +24,8 @@ import type { ApprovalRow, HistoryData } from '@/lib/timeclock/clocky-types'
 import type { QueueData, QueueRow, QueueType, Tone } from '@/lib/timeclock/approval-queue'
 import type { DecideBody } from '../entries/api'
 import type { Result } from '@/lib/timeclock/clocky-types'
-import { CorrectionReview, TimeOffCard } from '../entries/Dialogs'
+import { CorrectionReview } from '../entries/Dialogs'
+import { RequestCard } from './RequestCard'
 import { HistoryDrawer } from '../entries/HistoryDrawer'
 import { Toast, type ToastState } from '../entries/ui'
 
@@ -33,6 +34,9 @@ export interface QueueApi {
   getEntryHistory(i: { id: number }): Promise<Result<{ data: HistoryData }>>
   decideCorrection(i: DecideBody): Promise<Result<{ entryId?: number; toast: string }>>
   decideTimeOff(i: DecideBody): Promise<Result>
+  decideTimeOffCancel(i: DecideBody): Promise<Result<{ toast: string }>>
+  decideReimbursement(i: DecideBody): Promise<Result<{ toast: string }>>
+  decideExtraHours(i: DecideBody): Promise<Result<{ toast: string }>>
 }
 
 type Tab = 'wait' | 'others' | 'done'
@@ -63,13 +67,14 @@ export function ApprovalsList({ initialData, api, initial }: {
   initialData: QueueData
   api: QueueApi
   /** The design checks open a frame's state. */
-  initial?: { tab?: Tab; filter?: Filter }
+  initial?: { tab?: Tab; filter?: Filter; request?: string }
 }) {
   const router = useRouter()
   const [data, setData] = useState(initialData)
   const [tab, setTab] = useState<Tab>(initial?.tab ?? 'wait')
   const [filter, setFilter] = useState<Filter>(initial?.filter ?? 'all')
   const [card, setCard] = useState<{ row: ApprovalRow; deny: boolean } | null>(null)
+  const [req, setReq] = useState<{ row: QueueRow; deny: boolean } | null>(initial?.request ? { row: [...initialData.wait, ...initialData.others, ...initialData.done].find(r => r.key === initial.request)!, deny: false } : null)
   const [drawer, setDrawer] = useState<number | null>(null)
   const [history, setHistory] = useState<{ id: number; data: HistoryData | null; error: string | null } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -122,29 +127,46 @@ export function ApprovalsList({ initialData, api, initial }: {
     }
   }
 
+  // Time off, reimbursements and extra hours: decided on their card (7C, 9C, 10D).
+  const decideRequest = async (r: QueueRow, decision: 'approve' | 'deny', note?: string) => {
+    const k = r.request?.kind
+    if (!k) return
+    setBusy(true)
+    try {
+      const body = { id: r.id, decision, note }
+      const res = k === 'off' ? await api.decideTimeOff(body) : k === 'off-cancel' ? await api.decideTimeOffCancel(body) : k === 'rmb' ? await api.decideReimbursement(body) : await api.decideExtraHours(body)
+      if (!res.ok) return say(res.error, true)
+      setReq(null)
+      const first = r.name.split(' ')[0]
+      say('toast' in res && typeof res.toast === 'string' ? res.toast : decision === 'approve' ? `Time off approved. ${first} gets a notification.` : `Time off denied. ${first} gets the reason.`)
+      void reload()
+      router.refresh()
+    } catch {
+      say('That did not go through. Check your connection and try again.', true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const list = tab === 'wait' ? data.wait : tab === 'others' ? data.others : data.done
   const shown = list.filter(r => filter === 'all' || r.type === filter)
   const count = (k: Filter) => list.filter(r => k === 'all' || r.type === k).length
 
   const open = (r: QueueRow) => {
+    if (r.request && !(r.done && r.href)) return setReq({ row: r, deny: false })
     if (r.href) return router.push(withViewAs(r.href))
     if (r.card) {
       if (r.card.type === 'correction' && r.card.state === 'approved' && r.card.entryId !== null) return setDrawer(r.card.entryId)
       setCard({ row: r.card, deny: false })
     }
   }
-  const openable = (r: QueueRow) => !!r.href || !!r.card
+  const openable = (r: QueueRow) => !!r.href || !!r.card || !!r.request
 
   let dialog = null
   if (card) {
     const m = card.row
     const canDecide = m.canDecide && tab === 'wait'
-    if (m.type === 'time_off') {
-      const [dates, type] = split(m.when)
-      dialog = <TimeOffCard key={m.key} who={m.name} state={m.state} type={type} dates={dates} hours={formatDuration(m.seconds)} note={m.reason}
-        canDecide={canDecide} denyFirst={card.deny} busy={busy} onClose={() => setCard(null)}
-        onApprove={() => void decide(m, 'approve')} onDeny={note => void decide(m, 'deny', note)} />
-    } else {
+    {
       const [date, time] = split(m.when)
       dialog = <CorrectionReview key={m.key} who={m.name} goesTo={m.goesTo} state={m.state} date={date} time={`${time} (${formatDuration(m.seconds)})`} job={m.job} reason={m.reason}
         overlap={m.state === 'pending' ? m.overlap : null} canDecide={canDecide} denyFirst={card.deny} busy={busy}
@@ -215,6 +237,16 @@ export function ApprovalsList({ initialData, api, initial }: {
                     <span className="text-[11.5px] text-muted">{r.asked}</span>
                   </div>
                   <div className="min-w-0 flex items-center justify-end gap-2">
+                    {tab === 'wait' && r.request?.canDecide && (
+                      <>
+                        <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setReq({ row: r, deny: true }) }}
+                          className={`${BTN_WHITE} text-[#c8323d] hover:border-[#c8323d]`}>{r.request.denyLabel}</button>
+                        <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setReq({ row: r, deny: false }) }}
+                          className="inline-flex items-center gap-[7px] border-0 rounded-[10px] px-[15px] py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:bg-[#0a2f6b]">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Review
+                        </button>
+                      </>
+                    )}
                     {tab === 'wait' && r.type !== 'ts' && r.card && (
                       <>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setCard({ row: r.card!, deny: true }) }}
@@ -256,6 +288,11 @@ export function ApprovalsList({ initialData, api, initial }: {
       )}
 
       {dialog}
+      {req?.row.request && (
+        <RequestCard key={req.row.key} card={req.row.request} who={req.row.name} initials={req.row.initials} team={req.row.team} asked={req.row.asked}
+          busy={busy} denyFirst={req.deny} onClose={() => setReq(null)}
+          onApprove={() => void decideRequest(req.row, 'approve')} onDeny={note => void decideRequest(req.row, 'deny', note)} />
+      )}
       {drawer !== null && (
         <HistoryDrawer history={history?.id === drawer ? history.data : null} error={history?.id === drawer ? history.error : null} onClose={() => setDrawer(null)} />
       )}

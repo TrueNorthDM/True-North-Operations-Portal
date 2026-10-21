@@ -150,6 +150,8 @@ export interface ClockPanelData {
   todayLabel: string
   todaySeconds: number
   weekSeconds: number
+  /** The hours allowance this week or month (Clocky part 2, 10B); null without one. */
+  allowance: (import('./allowance').AllowanceStatus & { period: 'week' | 'month'; hours: number }) | null
   running: RunningEntry | null
   safety: SafetyView | null
   toConfirm: ToConfirm[]
@@ -403,6 +405,8 @@ export interface WorkingPerson {
   weekSeconds: number
   /** On the clock 4h 30m or more since they clocked in, across switches. */
   over: boolean
+  /** Over their hours allowance without approval: the tag's tip (Clocky part 2); null otherwise. */
+  allowanceOver: string | null
   /** The last time they answered "Still working?" in this session. */
   keptGoingAt: string | null
   canClockOut: boolean

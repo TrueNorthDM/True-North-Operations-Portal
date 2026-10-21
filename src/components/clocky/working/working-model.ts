@@ -67,6 +67,7 @@ export function rowOf(p: WorkingPerson, o: { nowMs: number; dataNowMs: number; v
   const week = Math.max(0, p.weekSeconds + g)
   const tags: WorkingTag[] = []
   if (p.autoOutToday) tags.push({ text: 'Auto out', bg: '#fdeeef', fg: '#c8323d', tip: `Clocky stopped this clock at ${timeLabel(p.autoOutToday.at, o.viewerZone)} after 5h 00m` })
+  if (p.allowanceOver) tags.push({ text: 'Over', bg: '#fdeeef', fg: '#c8323d', tip: p.allowanceOver })
   if (p.clockedOutBy) tags.push({ text: `Clocked out by ${p.clockedOutBy.name}`, bg: '#f1f3f6', fg: '#5b6b82', tip: p.clockedOutBy.reason ?? '' })
   if (warn && p.keptGoingAt) tags.push({ text: 'Kept going', bg: '#f1f3f6', fg: '#5b6b82', tip: `Answered "Still working?" at ${timeLabel(p.keptGoingAt, o.viewerZone)}` })
   const status = on ? 'On the clock' : p.autoOutToday || p.clockedOutBy ? 'Auto out' : 'Off'

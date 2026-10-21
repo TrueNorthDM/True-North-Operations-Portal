@@ -13,7 +13,7 @@ import { overlapFor } from './clocky-store'
 import { approveOverlapLine } from './entry-rules'
 import { dayLabel, initials, stampLabel, timeLabel, zoneAbbr } from './format'
 import { recordedSeconds } from './rounding'
-import { workingDays } from './absence'
+import { holidaysBetween, offDays } from './time-off'
 import { canApproveCorrection, canDecideTimeOff, seesEveryone } from './scope'
 import { loadInvoiceSettings, loadRoutes } from './pay-terms'
 import { currentStep, invoiceApprover, type TimesheetState } from './routing'
@@ -89,7 +89,7 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
   for (const r of timeOff) {
     if (!canDecideTimeOff(v, dir.target(r.person_id))) continue
     const type = catalog.jobs.get(r.jobcode_id)?.name ?? 'Time off'
-    const days = workingDays(r.start_date, r.end_date).length
+    const days = offDays(r.start_date, r.end_date, holidaysBetween(r.start_date, r.end_date)).days.length
     const range = r.start_date === r.end_date ? dayLabel(r.start_date) : `${dayLabel(r.start_date)} to ${dayLabel(r.end_date)}`
     rows.push({
       key: `o${r.id}`, type: 'time_off', id: r.id, personId: r.person_id, ...person(r.person_id),

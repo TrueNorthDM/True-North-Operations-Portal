@@ -22,6 +22,8 @@ import { roundIso, runningSeconds } from './rounding'
 import { endOptions, safetyState, sessionStart, stillWorkingPanelText, stopWhen, windowStart } from './safety'
 import { missingFields, type FieldKeys } from './entry-rules'
 import { weekBounds } from './clock'
+import { allowanceRange, allowanceStatus } from './allowance'
+import { loadPayTerms } from './pay-terms'
 import { addDays, lockedMessage, periodContaining, periodLabel } from './periods'
 import type { ClockChoice, ClockPanelData, PanelFolder, PanelJob, RunningEntry, ToConfirm } from './clocky-types'
 
@@ -117,6 +119,17 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const counted = (e: EntryRow) => entrySeconds(e, now)
   const todaySeconds = work.filter(e => e.entry_date === today).reduce((s, e) => s + counted(e), 0)
   const weekSeconds = work.filter(e => e.entry_date >= week.start && e.entry_date <= week.end).reduce((s, e) => s + counted(e), 0)
+
+  // The hours allowance (Clocky part 2, 10B): this week or month against the allowance plus the extra hours approved.
+  let allowance: ClockPanelData['allowance'] = null
+  const terms = (await loadPayTerms([me])).get(me)
+  if (terms?.allowance) {
+    const r = allowanceRange(today, terms.allowance.period, settings.weekStart)
+    const { data: extra } = await c.from('extra_hours_requests').select('hours').eq('person_id', me).eq('state', 'approved').lte('period_start', r.to).gte('period_end', r.from)
+    const used = work.filter(e => e.entry_date >= r.from && e.entry_date <= r.to).reduce((s, e) => s + counted(e), 0)
+    const st = allowanceStatus(used, terms.allowance.hours, (extra ?? []).reduce((n, x) => n + Number(x.hours), 0))
+    allowance = { ...st, period: terms.allowance.period, hours: terms.allowance.hours }
+  }
 
   // The running entry.
   let runningView: RunningEntry | null = null
@@ -232,6 +245,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     todayLabel: dayLabel(today),
     todaySeconds,
     weekSeconds,
+    allowance,
     running: runningView,
     safety,
     toConfirm,

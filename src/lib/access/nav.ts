@@ -34,7 +34,8 @@ export interface PanelItem {
   soon?: boolean
   /**
    * Also needs a fact about the person, not their level: `invoices` is for
-   * contractors, Super Admins, Admins and Finance (an employee gets no invoice).
+   * contractors, Super Admins, Admins and Finance (an employee gets no invoice);
+   * `employee` is for US employees (time off goes to Rippling payroll).
    */
   needs?: NavFact
   /**
@@ -49,7 +50,7 @@ export interface PanelItem {
 export type NavCount = 'approvals'
 
 /** Facts about the person a row can need (NavContext.facts). */
-export type NavFact = 'invoices'
+export type NavFact = 'invoices' | 'employee'
 
 /**
  * A module that is not finished, drawn faded on the rail (asked for on 22
@@ -227,6 +228,30 @@ export const RAIL: readonly RailEntry[] = [
           // A section of Company settings (Admin > Configuration).
           { key: 'clocky-periods', label: 'Timesheet periods', href: '/admin/settings#periods', icon: 'settings', surface: 'cs-periods' },
           { key: 'clocky-import', label: 'Import', href: '/clocky-hours/import', icon: 'schema-scraper', surface: 'ck-import' },
+        ],
+      },
+    ],
+  },
+  {
+    // Clocky part 2 (Requests.dc.html): what people ask for, in one place.
+    kind: 'hub',
+    key: 'requests',
+    label: NAV_LABEL['/requests'],
+    icon: 'requests',
+    hint: 'Time off, reimbursements and extra hours. Everyone sees their own; Super Admins decide.',
+    groups: [
+      {
+        label: null,
+        items: [
+          { key: 'requests-time-off', label: 'Time off', href: '/requests/time-off', icon: 'calendar', surface: 'rq-time-off', needs: 'employee' },
+          { key: 'requests-reimbursements', label: 'Reimbursements', href: '/requests/reimbursements', icon: 'receipt', surface: 'rq-reimbursements' },
+          { key: 'requests-extra-hours', label: 'Extra hours', href: '/requests/extra-hours', icon: 'clock-plus', surface: 'rq-extra-hours' },
+        ],
+      },
+      {
+        label: 'Decisions',
+        items: [
+          { key: 'requests-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
         ],
       },
     ],

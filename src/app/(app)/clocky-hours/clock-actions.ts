@@ -26,14 +26,11 @@ import {
   runningOf, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
 import { entrySeconds, labelFor, loadClockPanel, loadCombos, stopOwnIfDue, choiceOf } from '@/lib/timeclock/clocky-panel'
-import { localDate, minutesLabel, localMinutes, timeLabel, dayLabel } from '@/lib/timeclock/format'
+import { localDate, minutesLabel, localMinutes, timeLabel } from '@/lib/timeclock/format'
 import { formatDuration, roundIso } from '@/lib/timeclock/rounding'
 import { FIELD_LABEL, END_AFTER_START, gateText, missingFields, overlapLine } from '@/lib/timeclock/entry-rules'
 import { KEEP_GOING_TOAST_BELL, KEEP_GOING_TOAST_PANEL, keptGoingNote, sessionStart, windowStart } from '@/lib/timeclock/safety'
 import { lockedMessage } from '@/lib/timeclock/periods'
-import { validateAbsence, workingDays, absenceOverlaps } from '@/lib/timeclock/absence'
-import { loadApprovers } from '@/lib/timeclock/approvers'
-import { announceTimeOffRequested } from '@/lib/timeclock/clocky-notify'
 import type { ClockChoice, ClockPanelData, Fail, Result } from '@/lib/timeclock/clocky-types'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
@@ -548,46 +545,3 @@ export async function reorderCombinations(input: { ids: number[] }): Promise<Res
   }
 }
 
-// ── Time off ────────────────────────────────────────────────────────────────
-
-/**
- * Ask for time off. No screen calls it yet: the panel's "Request time off" link
- * is out until the form is designed (owner, 20 October 2026). Only a time off code
- * (Vacation, Sick, Holiday, Jury duty: audit finding C7), never a day already
- * booked, and only while somebody can approve it. The Super Admins hear of it
- * in the bell.
- */
-export async function requestTimeOff(input: { jobcodeId: number; startDate: string; endDate: string; hoursPerDay: number; reason?: string }): Promise<Result<{ requestId: number }>> {
-  const v = await actor()
-  if (isFail(v)) return v
-  try {
-    const c = db()
-    const catalog = await loadCatalog()
-    const code = catalog.jobs.get(Number(input.jobcodeId))
-    if (!code || !code.active || (code.kind !== 'pto' && code.kind !== 'unpaid')) return fail('Pick a kind of time off.')
-    const draft = { jobcodeId: code.id, startDate: input.startDate, endDate: input.endDate, hoursPerDay: Number(input.hoursPerDay), reason: String(input.reason ?? '') }
-    const problem = validateAbsence(draft)
-    if (problem) return fail(problem)
-    if (!(await loadApprovers(c, v.personId)).length) return fail('Nobody is set up to approve time off yet. Ask a Super Admin.')
-    const { data: mine, error: readErr } = await c.from('tc_absence_requests').select('start_date, end_date')
-      .eq('person_id', v.personId).in('state', ['pending', 'approved'])
-    if (readErr) return notSaved(readErr)
-    const clash = ((mine ?? []) as { start_date: string; end_date: string }[])
-      .find(r => absenceOverlaps({ startDate: r.start_date, endDate: r.end_date }, draft))
-    if (clash) return fail(`You already have time off booked from ${dayLabel(clash.start_date)} to ${dayLabel(clash.end_date)}.`)
-    const { data, error } = await c.from('tc_absence_requests').insert({
-      person_id: v.personId, jobcode_id: code.id, start_date: draft.startDate, end_date: draft.endDate,
-      hours_per_day: draft.hoursPerDay, state: 'pending', reason: draft.reason.trim() || null,
-    }).select('id').single()
-    if (error) return notSaved(error)
-    const id = (data as { id: number }).id
-    await announceTimeOffRequested({
-      id, person_id: v.personId, start_date: draft.startDate, end_date: draft.endDate, kind: code.name,
-      seconds: Math.round(workingDays(draft.startDate, draft.endDate).length * draft.hoursPerDay * 3600),
-    })
-    refresh()
-    return { ok: true, requestId: id }
-  } catch (e) {
-    return notSaved(e)
-  }
-}

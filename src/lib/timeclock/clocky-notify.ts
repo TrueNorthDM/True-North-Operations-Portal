@@ -15,13 +15,14 @@ import {
   notifyClockyStopped, notifyClockyTimeOffRequested, notifyClockyTimeOffDecided, notifyClockyClockedOutFor,
   notifyClockyTimesheetSubmitted, notifyClockyTimesheetDecided,
   notifyClockyInvoiceMade, notifyClockyInvoiceApproved, notifyClockyInvoicePaid,
+  notifyClockyReimbursementRequested, notifyClockyReimbursementDecided, notifyClockyRmbReady, notifyClockyRmbPaid, notifyClockyExtraRequested, notifyClockyExtraDecided,
 } from '@/lib/notifications/run'
 import type { Db } from '@/lib/supabase/types'
 import { loadDirectory } from './clocky-context'
 import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
 import {
-  clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText,
+  clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText, timeOffCancelDecidedText, timeOffCancelAskedText,
   timesheetDecidedText, timesheetSubmittedText, invoiceMadeText, invoiceApprovedText, invoicePaidText,
   hoursApprovedForApproverText, hoursApprovedForPersonText,
 } from './notify-text'
@@ -92,24 +93,40 @@ export async function announceCorrectionDecided(r: { id: number; person_id: stri
   })
 }
 
-export async function announceTimeOffRequested(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; seconds: number }): Promise<void> {
+export async function announceTimeOffRequested(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; seconds: number; teamLeader?: string | null }): Promise<void> {
   await quiet('time off requested', async () => {
     const dir = await loadDirectory()
     await notifyClockyTimeOffRequested({
       requestId: r.id,
       personId: r.person_id,
+      also: r.teamLeader ? [r.teamLeader] : [],
       text: timeOffRequestedText(dir.nameOf(r.person_id), r.kind, r.start_date, r.end_date, r.seconds),
     })
   })
 }
 
-export async function announceTimeOffDecided(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; seconds: number }, deciderId: string, approved: boolean, note: string | null): Promise<void> {
+/** 7E: approved time off its person asks to cancel; the Super Admins decide. */
+export async function announceTimeOffCancelAsked(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; reason: string }): Promise<void> {
+  await quiet('time off cancel asked', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyTimeOffRequested({
+      requestId: r.id, personId: r.person_id, key: `${r.id}:cancel`,
+      text: timeOffCancelAskedText(dir.nameOf(r.person_id), r.kind, r.start_date, r.end_date, r.reason),
+    })
+  })
+}
+
+export async function announceTimeOffDecided(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; seconds: number }, deciderId: string, approved: boolean, note: string | null, how: 'decide' | 'cancel' = 'decide'): Promise<void> {
   await quiet('time off decided', async () => {
     const dir = await loadDirectory()
     await notifyClockyTimeOffDecided({
       requestId: r.id,
       personId: r.person_id,
-      text: timeOffDecidedText(dir.nameOf(deciderId), r.kind, r.start_date, r.end_date, r.seconds, approved, note),
+      // A decision on cancelling it is a second bell row, never folded into the first.
+      key: how === 'cancel' ? `${r.id}:cancel` : undefined,
+      text: how === 'cancel'
+        ? timeOffCancelDecidedText(dir.nameOf(deciderId), r.kind, r.start_date, r.end_date, approved, note)
+        : timeOffDecidedText(dir.nameOf(deciderId), r.kind, r.start_date, r.end_date, r.seconds, approved, note),
     })
   })
 }
@@ -167,5 +184,58 @@ export async function announceHoursApproved(x: { submissionId: number; at: strin
     const by = dir.nameOf(x.hoursBy)
     await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.at, personId: x.personId, to: [x.invoiceBy], text: hoursApprovedForApproverText(by, dir.nameOf(x.personId), x.month, x.number, x.total) })
     await notifyClockyTimesheetDecided({ submissionId: x.submissionId, at: x.at, personId: x.personId, text: hoursApprovedForPersonText(by, x.month, x.number, dir.nameOf(x.invoiceBy)) })
+  })
+}
+
+// ── Requests: reimbursements and extra hours (Requests.dc.html bell lines) ──
+
+const money = (n: number, currency: string) => (currency === 'USD' ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${n.toFixed(2)} ${currency}`)
+
+/** "Wendy Cacka asked for a reimbursement: Software, $45.00 (Figma Professional, Oct to Dec)." */
+export async function announceReimbursementRequested(x: { id: number; personId: string; category: string; amount: number; currency: string; purpose: string }): Promise<void> {
+  await quiet('reimbursement requested', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyReimbursementRequested({ id: x.id, personId: x.personId, text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${x.category}, ${money(x.amount, x.currency)} (${x.purpose}).` })
+  })
+}
+
+/** "Arnaldo Oliveira approved "Internet, October" ($35.00). It goes on your next invoice." or denied, with the reason. */
+export async function announceReimbursementDecided(x: { id: number; personId: string; deciderId: string; purpose: string; amount: number; currency: string; approved: boolean; where: string; note: string | null }): Promise<void> {
+  await quiet('reimbursement decided', async () => {
+    const dir = await loadDirectory()
+    const head = `${dir.nameOf(x.deciderId)} ${x.approved ? 'approved' : 'denied'} "${x.purpose}" (${money(x.amount, x.currency)}).`
+    await notifyClockyReimbursementDecided({ id: x.id, personId: x.personId, text: x.approved ? `${head} ${x.where}` : `${head} Reason: "${(x.note ?? '').trim()}"` })
+  })
+}
+
+/** "RMB-2026-0030 (Dave Sharpe, $86.40) was approved. Ready to pay." */
+export async function announceRmbReady(x: { documentId: number; itemId: number; number: string; personId: string; total: number; finance: readonly string[] }): Promise<void> {
+  await quiet('rmb ready', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyRmbReady({ documentId: x.documentId, itemId: x.itemId, to: x.finance, text: `${x.number} (${dir.nameOf(x.personId)}, ${money(x.total, 'USD')}) was approved. Ready to pay.` })
+  })
+}
+
+/** "RMB-2026-0031 was paid on Nov 3, 2026. Ref. ACH-20261103." */
+export async function announceRmbPaid(x: { documentId: number; number: string; personId: string; paidOn: string; ref: string | null }): Promise<void> {
+  await quiet('rmb paid', () => notifyClockyRmbPaid({ documentId: x.documentId, personId: x.personId, text: `${x.number} was paid on ${x.paidOn}.${x.ref ? ` Ref. ${x.ref}.` : ''}` }))
+}
+
+/** "Cheyenne Wilson asked for 8h extra in November, for 2 - i7 Marketing." */
+export async function announceExtraRequested(x: { id: number; personId: string; askedBy: string; hours: string; when: string; client: string | null }): Promise<void> {
+  await quiet('extra hours requested', async () => {
+    const dir = await loadDirectory()
+    const by = x.askedBy !== x.personId ? ` ${dir.nameOf(x.askedBy)} asked for them.` : ''
+    await notifyClockyExtraRequested({ id: x.id, personId: x.personId, text: `${dir.nameOf(x.personId)} asked for ${x.hours} extra in ${x.when}${x.client ? `, for ${x.client}` : ''}.${by}` })
+  })
+}
+
+/** "Arnaldo Oliveira approved 8h extra in October, for 2 - i7 Marketing." or denied, with the reason. */
+export async function announceExtraDecided(x: { id: number; personId: string; askedBy: string | null; deciderId: string; hours: string; when: string; client: string | null; approved: boolean; note: string | null }): Promise<void> {
+  await quiet('extra hours decided', async () => {
+    const dir = await loadDirectory()
+    const who = x.askedBy && x.askedBy !== x.personId ? ` for ${dir.nameOf(x.personId)}` : ''
+    const head = `${dir.nameOf(x.deciderId)} ${x.approved ? 'approved' : 'denied'} ${x.hours} extra${who} in ${x.when}${x.client ? `, for ${x.client}` : ''}.`
+    await notifyClockyExtraDecided({ id: x.id, to: [x.personId, ...(x.askedBy ? [x.askedBy] : [])], text: x.approved ? head : `${head} Reason: "${(x.note ?? '').trim()}"` })
   })
 }

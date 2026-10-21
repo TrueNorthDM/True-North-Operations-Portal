@@ -511,10 +511,13 @@ export function clockyCorrectionDecidedDrafts(ctx: Ctx, x: { requestId: number; 
 }
 
 /** Time off asked for: to the Super Admins who decide it, never the person. */
-export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string }): Draft[] {
-  return ctx.aud.withTool('ck-timeoff').filter(r => r.personId !== x.personId)
+export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string; also?: readonly string[]; key?: string }): Draft[] {
+  // The Super Admins decide; the Team Leader the person reports to is told too (Requests.dc.html 7A).
+  const deciders = ctx.aud.withTool('ck-timeoff')
+  const told = (x.also ?? []).map(id => ctx.aud.byId.get(id)).filter((r): r is NonNullable<typeof r> => !!r && !deciders.some(d => d.personId === r.personId))
+  return [...deciders, ...told].filter(r => r.personId !== x.personId)
     .flatMap(r => draftFor(ctx, 'clocky-timeoff-requested', r, {
-      title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.requestId),
+      title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: x.key ?? String(x.requestId),
     }))
 }
 
@@ -554,10 +557,52 @@ export function clockyInvoicePaidDrafts(ctx: Ctx, x: { invoiceId: number; person
   })
 }
 
+/** A reimbursement asked for: to the Super Admins who decide (rq-decide), never the person. */
+export function clockyReimbursementRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; text: string }): Draft[] {
+  return ctx.aud.withTool('rq-decide').filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-reimbursement-requested', r, {
+    title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.id),
+  }))
+}
+
+/** A reimbursement decided: to its person. */
+export function clockyReimbursementDecidedDrafts(ctx: Ctx, x: { id: number; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-reimbursement-decided', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: '/requests/reimbursements', dedupeKey: String(x.id),
+  })
+}
+
+/** A reimbursement document with a new approved item: to Finance, once per item. */
+export function clockyRmbReadyDrafts(ctx: Ctx, x: { documentId: number; itemId: number; to: readonly string[]; text: string }): Draft[] {
+  return x.to.map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-rmb-ready', r, {
+    title: x.text, body: '', href: `/requests/reimbursements/${x.documentId}`, dedupeKey: `${x.documentId}:${x.itemId}`,
+  }))
+}
+
+/** A reimbursement document paid: to its person. */
+export function clockyRmbPaidDrafts(ctx: Ctx, x: { documentId: number; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-rmb-paid', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: `/requests/reimbursements/${x.documentId}`, dedupeKey: String(x.documentId),
+  })
+}
+
+/** Extra hours asked for: to the Super Admins who decide (rq-decide). */
+export function clockyExtraRequestedDrafts(ctx: Ctx, x: { id: number; personId: string; text: string }): Draft[] {
+  return ctx.aud.withTool('rq-decide').filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-extra-requested', r, {
+    title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: String(x.id),
+  }))
+}
+
+/** Extra hours decided: to the person, and to the Team Leader who asked for them. */
+export function clockyExtraDecidedDrafts(ctx: Ctx, x: { id: number; to: readonly string[]; text: string }): Draft[] {
+  return [...new Set(x.to)].map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-extra-decided', r, {
+    title: x.text, body: '', href: '/requests/extra-hours', dedupeKey: String(x.id),
+  }))
+}
+
 /** Time off approved or denied: to the person who asked. */
-export function clockyTimeOffDecidedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string }): Draft[] {
+export function clockyTimeOffDecidedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string; key?: string }): Draft[] {
   return draftFor(ctx, 'clocky-timeoff-decided', ctx.aud.byId.get(x.personId), {
-    title: x.text, body: '', href: '/clocky-hours', dedupeKey: String(x.requestId),
+    title: x.text, body: '', href: '/requests/time-off', dedupeKey: x.key ?? String(x.requestId),
   })
 }
 

@@ -18,13 +18,13 @@ const rows = (rail: ResolvedEntry[], key: string) => hub(rail, key)?.groups.flat
 
 describe('the rail', () => {
   it('gives a Super Admin everything, in the handoff order, with two rules', () => {
-    expect(keys(railFor('super_admin'))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', '|', 'admin', 'clocky'])
+    expect(keys(railFor('super_admin'))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', '|', 'admin', 'clocky', 'requests'])
   })
 
   // Clocky is for every level (16 October 2026: Time entries and the clock),
   // so a user sees it after the second rule; not Admin. My Hours is gone.
   it('gives a user Clocky, but neither Admin nor My Hours', () => {
-    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', '|', 'clocky'])
+    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', '|', 'clocky', 'requests'])
   })
 
   // A rule with nothing on one side is not drawn, and never two in a row.

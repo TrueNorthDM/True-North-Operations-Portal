@@ -29,15 +29,20 @@ const shown = (d: Date) => `${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
 /** 6G: Mark <number> paid? The day, a reference, a note; paid once. */
-export function MarkPaidDialog({ target, onClose, save, onSaved }: {
+export function MarkPaidDialog({ target, onClose, save, onSaved, refPlaceholder = 'e.g. WISE-88412', notePlaceholder = 'Anything the contractor should know', note }: {
   target: PayTarget
+  /** The reimbursement document's (Requests.dc.html 9D) differs from the invoice's. */
+  refPlaceholder?: string
+  notePlaceholder?: string
+  /** The line under the fields; null leaves it out (9D has none). */
+  note?: string | null
   onClose: () => void
   save: (i: { id: number; paidOn: string; ref?: string; note?: string }) => Promise<Result<{ toast: string }>>
   onSaved: (toast: string) => void
 }) {
   const [on, setOn] = useState(() => shown(new Date()))
   const [ref, setRef] = useState('')
-  const [note, setNote] = useState('')
+  const [noteText, setNoteText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +51,7 @@ export function MarkPaidDialog({ target, onClose, save, onSaved }: {
     if (!day) { setError('Write the day it was paid, like Nov 3, 2026.'); return }
     setBusy(true)
     setError(null)
-    const r = await save({ id: target.id, paidOn: day, ref, note })
+    const r = await save({ id: target.id, paidOn: day, ref, note: noteText })
     setBusy(false)
     if (r.ok) onSaved(r.toast)
     else setError(r.error)
@@ -68,13 +73,13 @@ export function MarkPaidDialog({ target, onClose, save, onSaved }: {
       </label>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel>Reference (optional)</FieldLabel>
-        <input value={ref} onChange={e => setRef(e.target.value)} placeholder="e.g. WISE-88412" maxLength={120} className={INPUT} />
+        <input value={ref} onChange={e => setRef(e.target.value)} placeholder={refPlaceholder} maxLength={120} className={INPUT} />
       </label>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel>Note (optional)</FieldLabel>
-        <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Anything the contractor should know" maxLength={1000} className={TEXTAREA_PLAIN} />
+        <textarea value={noteText} onChange={e => setNoteText(e.target.value)} rows={2} placeholder={notePlaceholder} maxLength={1000} className={TEXTAREA_PLAIN} />
       </label>
-      <div className="text-[12px] text-muted leading-[1.5]">{target.who} sees &quot;Paid&quot; with this date and reference. Paid once: the action goes away after this.</div>
+      {note !== null && <div className="text-[12px] text-muted leading-[1.5]">{note ?? `${target.who} sees "Paid" with this date and reference. Paid once: the action goes away after this.`}</div>}
       {error && <div role="alert" className="text-[12.5px] font-semibold text-[#c8323d]">{error}</div>}
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>

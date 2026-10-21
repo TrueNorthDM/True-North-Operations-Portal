@@ -10,7 +10,7 @@ const NOW = et(10, 59)
 const person = (o: Partial<WorkingPerson> & { name: string }): WorkingPerson => ({
   personId: o.name.toLowerCase().replace(/\s+/g, '-'), initials: '', avatarUrl: null, team: null,
   zone: 'America/New_York', zoneAbbr: 'EDT', status: 'off', autoOutToday: null, clockedOutBy: null, current: null,
-  lastOut: null, daySeconds: 0, weekSeconds: 0, over: false, keptGoingAt: null, canClockOut: false, ...o,
+  lastOut: null, daySeconds: 0, weekSeconds: 0, over: false, allowanceOver: null, keptGoingAt: null, canClockOut: false, ...o,
 })
 const AFRICA = { id: 'af', name: 'Africa', color: '#F0A35E' }
 const WEB = { id: 'web', name: 'Web', color: '#A99BD4' }

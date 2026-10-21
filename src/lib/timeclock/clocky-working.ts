@@ -12,7 +12,10 @@
 import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, type Viewer } from './clocky-context'
 import type { EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
-import { dayLabel, initials, localDate, timeLabel, weekdayShort, zoneAbbr } from './format'
+import { dayLabel, initials, localDate, monthLong, timeLabel, weekdayShort, zoneAbbr } from './format'
+import { formatDuration } from './rounding'
+import { loadPayTerms } from './pay-terms'
+import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { weekBounds } from './clock'
 import { addDays, daysBetween } from './periods'
 import { WARN_AFTER_SECONDS, sessionStart } from './safety'
@@ -52,6 +55,11 @@ export async function loadWhosWorking(v: Viewer, now: Date): Promise<WhosWorking
     allRows<{ person_id: string; at: string }>((a, b) => c.from('tc_safety_events').select('person_id, at').in('person_id', ids)
       .eq('kind', 'keep_going').gte('at', new Date(now.getTime() - 2 * 86_400_000).toISOString()).order('at').range(a, b), 'Clock safety could not be read'),
   ]) : [[], [], []]
+
+  // Over the hours allowance without approval (Clocky part 2, Who's Working.dc.html "Over").
+  const terms = ids.length ? await loadPayTerms(ids) : new Map()
+  const today = localDate(now, v.zone)
+  const allowance = ids.length ? await loadAllowanceUse(terms, now, await loadApprovedExtra(ids, addDays(today, -40), addDays(today, 40))) : new Map()
 
   const people: WorkingPerson[] = ids.map(id => {
     const p = dir.people.get(id)!
@@ -99,6 +107,12 @@ export async function loadWhosWorking(v: Viewer, now: Date): Promise<WhosWorking
       daySeconds: day,
       weekSeconds: wk,
       over,
+      allowanceOver: (() => {
+        const u = allowance.get(id)
+        if (!u || u.over <= 0) return null
+        const extra = u.limit - u.hours * 3600
+        return `Over the allowance without approval: ${formatDuration(u.used)} of ${u.hours}h ${u.period === 'month' ? `in ${monthLong(u.from)}` : 'this week'}${extra > 0 ? ` (${formatDuration(extra)} approved in advance)` : ''}`
+      })(),
       keptGoingAt: keptAt,
       canClockOut: !!run && canClockOutFor(v, dir.target(id)),
     }

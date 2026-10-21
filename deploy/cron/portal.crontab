@@ -21,3 +21,6 @@ PORTAL_DIR=/opt/tnportal/app
 # production (owner, 20 October 2026: nothing of Clocky goes to production
 # until asked); uncomment it in the same promotion.
 # 0 11 1 * *               $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-invoices
+# Clocky part 2, every 5 minutes: the outbox (Rippling and Google Calendar).
+# Off until Clocky part 2 is in production, like the line above.
+# */5 * * * *              $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-outbox

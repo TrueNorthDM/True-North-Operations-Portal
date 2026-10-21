@@ -20,6 +20,7 @@ export const NAV_LABEL = {
   '/': 'Home',
   '/my-work': 'My Work',
   '/clocky-hours': 'Clocky',
+  '/requests': 'Requests',
   '/directory': 'Directory',
   '/organization': 'Organization',
   '/human-resources': 'Human Resources',

@@ -42,7 +42,7 @@ const running = (o: Partial<RunningEntry> = {}): RunningEntry => ({
 
 const data = (o: Partial<ClockPanelData> = {}): ClockPanelData => ({
   me: { personId: 'p', name: 'Arnaldo Oliveira', zone: 'America/New_York', zoneAbbr: 'EDT', level: 'super_admin', leader: true },
-  now: et(11, 50, 34), today: '2026-10-15', todayLabel: 'Thu, Oct 15', todaySeconds: 0, weekSeconds: 31.25 * 3600,
+  now: et(11, 50, 34), today: '2026-10-15', todayLabel: 'Thu, Oct 15', todaySeconds: 0, weekSeconds: 31.25 * 3600, allowance: null,
   running: null, safety: null, toConfirm: [], resume: WEB, combinations: [WEB, HFA], recents: [RECENT], todayByCombination: [],
   jobs: JOBS, folders: FOLDERS, fields: FIELDS, defaults: { 22: { 1: 'True North', 2: 'In-House', 4: 'yes', 5: 'i7-WEBDVT' } },
   locked: null, period: { start: '2026-10-01', end: '2026-10-31', kind: 'month', label: 'October', full: 'October 2026' },

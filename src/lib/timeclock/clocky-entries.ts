@@ -16,7 +16,7 @@ import { clientOf, dayLabel, initials, localDate, timeLabel, zoneAbbr } from './
 import { formatDuration, recordedSeconds } from './rounding'
 import { attentionReason, missingFields, overlapsAmong } from './entry-rules'
 import { historyLines, type AuditRow } from './history'
-import { workingDays } from './absence'
+import { holidaysBetween, offDays } from './time-off'
 import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
 import { canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
@@ -221,7 +221,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     const team = person?.teamId ? dir.teams.get(person.teamId) : undefined
     const decides = canDecideTimeOff(v, dir.target(r.person_id))
     const type = catalog.jobs.get(r.jobcode_id)?.name ?? 'Time off'
-    for (const day of workingDays(r.start_date, r.end_date).filter(d => d >= q.from && d <= q.to)) {
+    for (const day of offDays(r.start_date, r.end_date, holidaysBetween(r.start_date, r.end_date)).days.filter(d => d >= q.from && d <= q.to)) {
       rows.push({
         key: `o${r.id}:${day}`, rowType: 'time_off', id: r.id, personId: r.person_id,
         personName: person?.name ?? 'Someone', initials: initials(person?.name ?? ''),

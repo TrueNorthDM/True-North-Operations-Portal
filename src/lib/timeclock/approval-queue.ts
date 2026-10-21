@@ -29,6 +29,7 @@ import { loadInvoiceSettings, loadPayTerms, seesMoney } from './pay-terms'
 import { periodLabel } from './periods'
 import { currentStep, hoursApprover, invoiceApprover, oneStep, type TimesheetState } from './routing'
 import type { ApprovalRow } from './clocky-types'
+import { loadRequestRows, type RequestCard } from './request-cards'
 
 export type QueueType = 'ts' | 'off' | 'rmb' | 'xh' | 'cor'
 export type Tone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal'
@@ -58,8 +59,10 @@ export interface QueueRow {
   done: { label: string; tone: Tone; by: string } | null
   /** Timesheets open their page; the rest their card. */
   href: string | null
-  /** Time corrections and time off keep their part 1 card. */
+  /** Time corrections keep their part 1 card. */
   card: ApprovalRow | null
+  /** Time off, reimbursements and extra hours: their card (7C, 9C, 10D). */
+  request: RequestCard | null
 }
 
 export interface QueueData {
@@ -83,8 +86,8 @@ type InvRow = { id: number; number: string; submission_id: number | null; person
 export async function loadQueue(v: Viewer, now = new Date()): Promise<QueueData> {
   const c = db()
   const since = new Date(now.getTime() - DECIDED_DAYS * 86_400_000).toISOString()
-  const [dir, settings, legacy, subs, noTs] = await Promise.all([
-    loadDirectory(),
+  const dir = await loadDirectory()
+  const [settings, legacy, subs, noTs, requests] = await Promise.all([
     loadInvoiceSettings(),
     loadApprovals(v, now),
     allRows<SubRow>((a, b) => c.from('tc_submissions').select('id, person_id, state, submitted_at, approved_at, approved_by, hours_approved_at, hours_approved_by, note, tc_periods(start_date, end_date)')
@@ -93,6 +96,7 @@ export async function loadQueue(v: Viewer, now = new Date()): Promise<QueueData>
     // Fixed, no timesheet: the invoice alone is the request.
     allRows<InvRow>((a, b) => c.from('invoices').select('id, number, submission_id, person_id, total, kind, state, period_start, period_end, created_at, approved_by, approved_at')
       .eq('kind', 'fixed_no_timesheet').or(`state.eq.waiting,approved_at.gte.${since}`).order('id').range(a, b), 'Invoices could not be read'),
+    loadRequestRows(v, dir, since, now),
   ])
   const subIds = subs.map(s => s.id)
   const { data: invRows } = subIds.length
@@ -169,6 +173,7 @@ export async function loadQueue(v: Viewer, now = new Date()): Promise<QueueData>
       done,
       href: `/clocky-hours/approvals/timesheet/${s.id}`,
       card: null,
+      request: null,
     }, step?.owner ?? null, who.teamId)
   }
 
@@ -192,29 +197,36 @@ export async function loadQueue(v: Viewer, now = new Date()): Promise<QueueData>
       done: i.state === 'approved' || i.state === 'paid' ? { label: 'Approved', tone: 'ok', by: `${nameOf(i.approved_by)}, ${shortStamp(i.approved_at!, v.zone)}` } : i.state === 'draft' ? { label: 'Returned', tone: 'bad', by: `${nameOf(i.approved_by)}` } : null,
       href: `/clocky-hours/approvals/invoice/${i.id}`,
       card: null,
+      request: null,
     }, i.state === 'waiting' ? ib : null, who.teamId)
   }
 
-  // Time corrections and time off, as part 1 reads them, in the new shape.
+  // Time corrections, as part 1 reads them, in the new shape.
   for (const r of [...legacy.waiting, ...legacy.decided]) {
-    if (r.type === 'timesheet') continue
+    if (r.type !== 'correction') continue
     const who = person(r.personId)
-    const isOff = r.type === 'time_off'
     const [first, rest] = r.when.includes(' · ') ? [r.when.slice(0, r.when.indexOf(' · ')), r.when.slice(r.when.indexOf(' · ') + 3)] : [r.when, '']
     push({
-      key: r.key, type: isOff ? 'off' : 'cor', id: r.id, personId: r.personId, name: r.name, initials: r.initials, team: r.team,
-      main: isOff ? `${rest} · ${formatDuration(r.seconds)}` : `Time correction · ${formatDuration(r.seconds)}`,
-      sub: isOff ? first : `${first} · ${rest}`,
+      key: r.key, type: 'cor', id: r.id, personId: r.personId, name: r.name, initials: r.initials, team: r.team,
+      main: `Time correction · ${formatDuration(r.seconds)}`,
+      sub: `${first} · ${rest}`,
       flag: null,
       why: r.reason ? `"${r.reason}"` : null,
       asked: r.asked.replace(/, \d{4},/, ','),
       askedAt: r.askedAt,
-      ownerName: isOff ? 'a Super Admin' : r.goesTo || 'a Team Leader',
+      ownerName: r.goesTo || 'a Team Leader',
       own: r.personId === v.personId,
       done: r.state === 'pending' ? null : { label: r.state === 'approved' ? 'Approved' : 'Denied', tone: r.state === 'approved' ? 'ok' : 'bad', by: r.decided ? `${r.decided.by}, ${r.decided.when.replace(/, \d{4},/, ',')}${r.decided.note ? `: "${r.decided.note}"` : ''}` : '' },
       href: null,
       card: r,
+      request: null,
     }, r.canDecide ? v.personId : null, who.teamId)
+  }
+
+  // Time off, reimbursements and extra hours, with their cards (7C, 9C, 10D).
+  for (const r of requests) {
+    const { owner, teamId, request, ...row } = r
+    push({ ...row, card: null, request }, owner, teamId)
   }
 
   const open = rows.filter(r => !r.done)

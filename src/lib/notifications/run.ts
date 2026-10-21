@@ -31,7 +31,8 @@ import {
   syncDrafts, teamOrderDrafts, unlinkedDrafts, unlinkedSeen, workDrafts, UNLINKED_SEEN, type Ctx,
   clockyAutoStopDrafts, clockyCorrectionDecidedDrafts, clockyCorrectionRequestedDrafts, clockyStillWorkingDrafts,
   clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts,
-  clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, clockyInvoiceMadeDrafts, clockyInvoiceApprovedDrafts, clockyInvoicePaidDrafts, CLOCK_PANEL_HREF,
+  clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, clockyInvoiceMadeDrafts, clockyInvoiceApprovedDrafts, clockyInvoicePaidDrafts,
+  clockyReimbursementRequestedDrafts, clockyReimbursementDecidedDrafts, clockyRmbReadyDrafts, clockyRmbPaidDrafts, clockyExtraRequestedDrafts, clockyExtraDecidedDrafts, CLOCK_PANEL_HREF,
 } from './generators'
 import { sendEmail } from '@/lib/email/resend'
 import { renderClockStopped } from '@/lib/email/clock-stopped'
@@ -159,10 +160,10 @@ export const notifyClockyCorrectionRequested = (x: { requestId: number; personId
 export const notifyClockyCorrectionDecided = (x: { requestId: number; personId: string; text: string }) =>
   simple('clocky-correction-decided', ctx => clockyCorrectionDecidedDrafts(ctx, x))
 
-export const notifyClockyTimeOffRequested = (x: { requestId: number; personId: string; text: string }) =>
+export const notifyClockyTimeOffRequested = (x: { requestId: number; personId: string; text: string; also?: readonly string[]; key?: string }) =>
   simple('clocky-timeoff-requested', ctx => clockyTimeOffRequestedDrafts(ctx, x))
 
-export const notifyClockyTimeOffDecided = (x: { requestId: number; personId: string; text: string }) =>
+export const notifyClockyTimeOffDecided = (x: { requestId: number; personId: string; text: string; key?: string }) =>
   simple('clocky-timeoff-decided', ctx => clockyTimeOffDecidedDrafts(ctx, x))
 
 export const notifyClockyClockedOutFor = (x: { entryId: number; personId: string; text: string }) =>
@@ -173,6 +174,24 @@ export const notifyClockyTimesheetSubmitted = (x: { submissionId: number; sentAt
 
 export const notifyClockyTimesheetDecided = (x: { submissionId: number; at: string; personId: string; text: string }) =>
   simple('clocky-timesheet-decided', ctx => clockyTimesheetDecidedDrafts(ctx, x))
+
+export const notifyClockyReimbursementRequested = (x: { id: number; personId: string; text: string }) =>
+  simple('clocky-reimbursement-requested', ctx => clockyReimbursementRequestedDrafts(ctx, x))
+
+export const notifyClockyReimbursementDecided = (x: { id: number; personId: string; text: string }) =>
+  simple('clocky-reimbursement-decided', ctx => clockyReimbursementDecidedDrafts(ctx, x))
+
+export const notifyClockyRmbReady = (x: { documentId: number; itemId: number; to: readonly string[]; text: string }) =>
+  simple('clocky-rmb-ready', ctx => clockyRmbReadyDrafts(ctx, x))
+
+export const notifyClockyRmbPaid = (x: { documentId: number; personId: string; text: string }) =>
+  simple('clocky-rmb-paid', ctx => clockyRmbPaidDrafts(ctx, x))
+
+export const notifyClockyExtraRequested = (x: { id: number; personId: string; text: string }) =>
+  simple('clocky-extra-requested', ctx => clockyExtraRequestedDrafts(ctx, x))
+
+export const notifyClockyExtraDecided = (x: { id: number; to: readonly string[]; text: string }) =>
+  simple('clocky-extra-decided', ctx => clockyExtraDecidedDrafts(ctx, x))
 
 export const notifyClockyInvoiceMade = (x: { invoiceId: number; at: string; personId: string; text: string }) =>
   simple('clocky-invoice-made', ctx => clockyInvoiceMadeDrafts(ctx, x))

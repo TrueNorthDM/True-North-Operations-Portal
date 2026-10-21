@@ -26,7 +26,8 @@ describe('the catalogue', () => {
     expect(by('daily')).toEqual(['clocky-auto-stops', 'monday-account-unlinked', 'publishing-behind', 'step-due-tomorrow', 'step-late', 'team-late-pile'])
     expect(by('instant')).toEqual([
       'access-rules-changed', 'clocky-clocked-out-for', 'clocky-correction-decided', 'clocky-correction-requested',
-      'clocky-invoice-approved', 'clocky-invoice-made', 'clocky-invoice-paid', 'clocky-still-working',
+      'clocky-extra-decided', 'clocky-extra-requested', 'clocky-invoice-approved', 'clocky-invoice-made', 'clocky-invoice-paid',
+      'clocky-reimbursement-decided', 'clocky-reimbursement-requested', 'clocky-rmb-paid', 'clocky-rmb-ready', 'clocky-still-working',
       'clocky-stopped', 'clocky-timeoff-decided', 'clocky-timeoff-requested', 'clocky-timesheet-decided', 'clocky-timesheet-submitted',
       'integration-failed', 'level-changed', 'step-released',
     ])

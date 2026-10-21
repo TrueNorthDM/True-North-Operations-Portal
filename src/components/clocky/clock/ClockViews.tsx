@@ -12,7 +12,7 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
 import type { FieldName, MissingName } from '@/lib/timeclock/entry-rules'
 import { timeLabel } from '@/lib/timeclock/format'
-import { formatClock, formatTimer } from '@/lib/timeclock/rounding'
+import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
   FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, fieldByKey, keysFor, liveTotals,
   overWarn, resumeCard, roundNoteText, searchJobs, switchChoices, timerStart, valueOf, type Draft,
@@ -315,6 +315,7 @@ export function OnView({
           <span className="text-[12px] text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[11px] py-[5px] tabular-nums lining-nums">Today <b className="text-tn-ink">{formatClock(totals.today)}</b></span>
           <span className="text-[12px] text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[11px] py-[5px] tabular-nums lining-nums">Week <b className="text-tn-ink">{formatClock(totals.week)}</b></span>
         </div>
+        {data.allowance && <AllowanceLine a={data.allowance} />}
       </div>
 
       <div className="border border-[var(--panel-border)] rounded-[14px] p-3.5 flex flex-col gap-[11px]">
@@ -443,4 +444,30 @@ export function AutoView({ item, zone, later, end, busy, onLater, onEnd, onKeep,
       <div className="text-[12px] text-muted leading-[1.5] px-0.5">The entry is marked Auto clocked out in Time entries, and the occurrence is logged in Clock safety.</div>
     </>
   )
+}
+
+// ── The hours allowance (Clocky part 2, Clock Panel.dc.html 10B) ────────────
+
+/** "128h", "12h 30m": whole hours when they are whole. */
+const hrs = (seconds: number) => (seconds % 3600 === 0 ? `${seconds / 3600}h` : formatDuration(seconds))
+
+/** Quiet under 90%, a warning pill from 90%, an alert with the way to ask once over. */
+function AllowanceLine({ a }: { a: NonNullable<ClockPanelData['allowance']> }) {
+  const period = a.period === 'month' ? 'this month' : 'this week'
+  if (a.state === 'over') {
+    return (
+      <div role="alert" className="w-full box-border flex items-center gap-2.5 justify-between flex-wrap text-[12.5px] text-[#c8323d] bg-[#fdeeef] border border-[#f3c6ca] rounded-[11px] px-3 py-[9px] tabular-nums lining-nums">
+        <span className="font-bold">{hrs(a.over)} over your allowance, not approved. Ask for extra hours.</span>
+        <a href="/requests/extra-hours" className="font-extrabold font-(family-name:--font-display) text-tn-ink whitespace-nowrap">Ask for extra hours</a>
+      </div>
+    )
+  }
+  if (a.state === 'near') {
+    return (
+      <span className="flex items-center gap-[7px] text-[12.5px] font-bold text-[#8a6d1a] bg-[var(--warn-bg)] border border-[#f0e2a8] rounded-full px-3 py-[5px] tabular-nums lining-nums">
+        <span className="w-[7px] h-[7px] rounded-full bg-[#d4a017]" />{hrs(a.left)} left {period} ({hrs(a.used)} of {hrs(a.limit)})
+      </span>
+    )
+  }
+  return <span className="text-[12.5px] text-muted tabular-nums lining-nums">{period === 'this month' ? 'This month' : 'This week'} <b className="text-foreground">{hrs(a.used)}</b> of {hrs(a.limit)}</span>
 }

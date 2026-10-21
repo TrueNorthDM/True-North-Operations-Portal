@@ -4,6 +4,7 @@
 // Sharpe, Admin). The same ownership rule as the prototype's lists().
 
 import type { QueueData, QueueRow, QueueType, Tone } from '@/lib/timeclock/approval-queue'
+import type { RequestCard } from '@/lib/timeclock/request-cards'
 
 const TEAMC: Record<string, string> = { Africa: '#F0A35E', Leadership: '#1E40AF', Operations: '#92400E', SEO: '#F4C24A', 'Social Media': '#DC2626', 'Special Projects': '#6D5EF5', Web: '#A99BD4', Writers: '#86C06A', Graphics: '#C026D3' }
 const TEAM: Record<string, string> = {
@@ -50,6 +51,43 @@ const DONE: (Seed & { st: string; tone: Tone; by: string })[] = [
   { id: 'd8', type: 'cor', who: 'Stephanie Aguirre', main: 'Time correction · 0h 45m', sub: 'Mon, Oct 12, 5:30 PM to 6:15 PM', st: 'Approved', tone: 'ok', by: 'Rock Kai, Oct 13', asked: '', owner: '' },
 ]
 
+// The cards of 7C, 9C, 10D (Approvals.dc.html CARD).
+const CARD: Record<string, Omit<RequestCard, 'canDecide' | 'roText'>> = {
+  r6: {
+    kind: 'off', id: 6, type: 'Time off', title: 'Vacation, 24h 00m', width: 720, twoCols: false, receipt: null,
+    facts: [{ k: 'Dates', v: 'Mon, Nov 23 to Wed, Nov 25, 2026' }, { k: 'Counted', v: '3 working days, 8h a day, 24h 00m' }, { k: 'Balance in Rippling', v: 'Vacation: 64h available, 40h after this' }, { k: 'Note', v: '"Family trip for Thanksgiving."' }],
+    allow: null,
+    cal: { label: 'Team calendar, Nov 23 to 27', days: ['Mon 23', 'Tue 24', 'Wed 25', 'Thu 26', 'Fri 27'], rows: [
+      { name: 'Tina Gennette', sub: 'This request', color: '#92400E', cells: ['req', 'req', 'req', null, null] },
+      { name: 'Wendy Cacka', sub: 'Out (approved), Web', color: '#A99BD4', cells: [null, null, 'out', 'out', 'out'] },
+      { name: 'Thanksgiving', sub: 'Company holiday', color: '#e4e7ec', cells: [null, null, null, 'hol', 'hol'] },
+    ] },
+    after: 'On approval, by itself: Rippling gets 24h of Vacation, the team calendar gets "Tina Gennette, out" on Nov 23 to 25, and Clocky writes 8h a day into her time entries.',
+    approveLabel: 'Approve', denyLabel: 'Deny',
+  },
+  r7: {
+    kind: 'rmb', id: 7, type: 'Reimbursement', title: 'Software, $45.00', width: 760, twoCols: true, receipt: { id: 7, file: 'figma-receipt-oct.pdf', sub: 'PDF, 1 page, 84 KB' },
+    facts: [{ k: 'Date of the expense', v: 'Fri, Oct 30, 2026' }, { k: 'Amount', v: '$45.00 (USD)' }, { k: 'What it was for', v: 'Figma Professional for Oct to Dec, for the web team mockups.' }, { k: 'Client or project', v: 'None, not billable to a client' }],
+    allow: null, cal: null,
+    after: 'Wendy Cacka is an employee. Approving puts it on reimbursement document RMB-2026-0031 for Finance to pay, with her approved USB-C hub ($12.99).',
+    approveLabel: 'Approve', denyLabel: 'Deny',
+  },
+  r8: {
+    kind: 'rmb', id: 8, type: 'Reimbursement', title: 'Equipment, $48.00', width: 760, twoCols: true, receipt: { id: 8, file: 'headset-receipt.jpg', sub: 'Photo from the phone camera, 1.2 MB' },
+    facts: [{ k: 'Date of the expense', v: 'Thu, Oct 29, 2026' }, { k: 'Amount', v: '$48.00 (USD)' }, { k: 'What it was for', v: 'USB headset for client calls (the old one broke).' }, { k: 'Client or project', v: 'Adventist Messengers/HFA, billable to the client' }],
+    allow: null, cal: null,
+    after: 'Joy Inyele is a contractor. Her October invoice is already approved, so approving puts it on her November invoice by itself.',
+    approveLabel: 'Approve', denyLabel: 'Deny',
+  },
+  r9: {
+    kind: 'xh', id: 9, type: 'Extra hours', title: '8h 00m in November', width: 620, twoCols: false, receipt: null,
+    facts: [{ k: 'When', v: 'November 2026' }, { k: 'Client or project', v: '2 - i7 Marketing' }, { k: 'Why', v: '"Six extra i7 blog posts for the Q4 push, asked by the i7 team."' }],
+    allow: 'Allowance: 140h a month. November so far: 18h 30m. October: 151h 15m, with 8h approved in advance and 3h 15m over without approval.', cal: null,
+    after: "Approved, her November allowance becomes 148h. Hours past that are flagged again, in the clock panel, Who's working and this queue.",
+    approveLabel: 'Approve', denyLabel: 'Deny',
+  },
+}
+
 const ME = { super: 'Arnaldo Oliveira', admin: 'Dave Sharpe', lead: 'Wendy Cacka' } as const
 
 export function sampleQueue(level: 'super' | 'admin' | 'lead'): QueueData {
@@ -67,6 +105,7 @@ export function sampleQueue(level: 'super' | 'admin' | 'lead'): QueueData {
       why: s.why ?? null, asked: s.asked, askedAt: s.asked,
       ownerName: ownerOf(s) === 'super' ? 'a Super Admin' : ownerOf(s), own: s.who === me, done,
       href: s.ts ? `/design-check/clocky-app?frame=6C` : null, card: null,
+      request: CARD[s.id] ? { ...CARD[s.id], canDecide: !done && sup && s.who !== me, roText: done || (sup && s.who !== me) ? null : 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' } : null,
     }
   }
   const mine = (s: Seed) => s.who !== me && (ownerOf(s) === me || (ownerOf(s) === 'super' && sup) || (s.type === 'cor' && sup))

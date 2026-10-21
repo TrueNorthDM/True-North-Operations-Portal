@@ -196,6 +196,15 @@ const TREE: Node[] = [
     { key: 'clocky-reports', label: 'Reports', kind: 'page', soon: true, v: [1, 1, 1] },
     { key: 'ck-safety', label: 'Clock safety', kind: 'page', v: [1, 0, 0], note: 'Every automatic clock-out. Read only below Super Admin.' },
   ] },
+  // Requests (Clocky part 2, Requests.dc.html): everyone asks for their own;
+  // Super Admins decide (time off with ck-timeoff, the rest with rq-decide).
+  { key: 'm-requests', label: 'Requests', kind: 'module', ch: [
+    { key: 'rq-time-off', label: 'Time off: ask for days off', kind: 'page', v: [1, 1, 1], note: 'US employees only: approved days go to Rippling payroll and the team calendar. Contractors do not see it.' },
+    { key: 'rq-reimbursements', label: 'Reimbursements: ask for money spent for work', kind: 'page', v: [1, 1, 1], note: 'With the receipt. A contractor\'s goes on their next invoice; an employee\'s on a reimbursement document Finance pays.', ch: [
+      { key: 'rq-decide', label: 'Decide reimbursements and extra hours', kind: 'action', superOnly: true },
+    ] },
+    { key: 'rq-extra-hours', label: 'Extra hours: ask before going over the allowance', kind: 'page', v: [1, 1, 1], note: 'Team Leaders can ask for someone on their team.' },
+  ] },
   { key: 'm-you', label: 'Your own', kind: 'module', ch: [
     { key: 'profile', label: 'My profile: their own page in the Directory', kind: 'page', always: true },
     { key: 'personal-settings', label: 'Settings', kind: 'page', always: true },

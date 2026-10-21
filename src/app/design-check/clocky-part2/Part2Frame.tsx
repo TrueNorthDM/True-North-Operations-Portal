@@ -14,6 +14,8 @@ import { reviewFrame } from './review-sample'
 import { InvoicesCheck } from './InvoicesCheck'
 import { invoiceDetailFrame, invoiceListFrame, submitFrame } from './invoice-sample'
 import { PaymentsCheck } from './PaymentsCheck'
+import { RequestsCheck } from './RequestsCheck'
+import { extraFrame, reimbursementsFrame, rmbDocFrame, rmbSheet, timeOffFrame } from './requests-sample'
 import { contractorDocs, contractorPayments, employeeDocs, employeePayments, invoice0134 } from './payments-sample'
 
 /** Cheyenne Wilson as the prototype has her (Writers, Writer, contractor, Los Angeles). */
@@ -39,7 +41,7 @@ function cheyenne(): PersonPageData {
 }
 
 /** The part 2 frames this route draws (the rest come as they are built). */
-export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx|6A|6B|6Ec|6Es|6Ef|6F|6Fp|6G|10P1|10P2|10P3)$/
+export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx|6A|6B|6Ec|6Es|6Ef|6F|6Fp|6G|10P1|10P2|10P3|7A|7Ap|7B|7D|7Dx|7E|9A|9Ap|9B|9D|9Dp|10E|10C)$/
 
 export function Part2Frame({ frame }: { frame: string }) {
   if (frame.startsWith('10A1')) {
@@ -61,6 +63,10 @@ export function Part2Frame({ frame }: { frame: string }) {
       </div>
     )
   }
+  if (/^7/.test(frame)) return <RequestsCheck frame={frame} timeOff={timeOffFrame(frame)} />
+  if (frame === '9A' || frame === '9Ap' || frame === '9B') return <RequestsCheck frame={frame} rmb={reimbursementsFrame(frame)} />
+  if (frame === '9D' || frame === '9Dp') return <RequestsCheck frame={frame} doc={rmbDocFrame()} sheet={rmbSheet()} />
+  if (frame === '10E' || frame === '10C') return <RequestsCheck frame={frame} extra={extraFrame(frame)} />
   if (frame === '6A' || frame === '6B') return <InvoicesCheck frame={frame} submit={submitFrame(frame)} />
   if (frame === '6F' || frame === '6Fp') return <InvoicesCheck frame={frame} detail={invoiceDetailFrame(frame)} />
   if (/^6[EG]/.test(frame)) return <InvoicesCheck frame={frame} list={invoiceListFrame(frame)} pdf={invoiceDetailFrame(frame)} />

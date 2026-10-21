@@ -63,6 +63,8 @@ function person(p: Proto, now: number, superAdmin: boolean): WorkingPerson {
     daySeconds: day,
     weekSeconds: p.wk0 + day,
     over: on && now - session! >= H(4, 30),
+    // Clocky part 2 (Who's Working.dc.html): Cheyenne is over her allowance.
+    allowanceOver: p.n === 'Cheyenne Wilson' ? 'Over the allowance without approval: 151h 15m of 140h in October (8h 00m approved in advance)' : null,
     keptGoingAt: p.kept != null ? at(p.kept) : null,
     canClockOut: superAdmin && on,
   }

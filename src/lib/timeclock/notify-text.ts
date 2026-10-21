@@ -75,3 +75,17 @@ export const hoursApprovedForApproverText = (by: string, name: string, month: st
   `${by} approved ${name}'s ${month} hours. Invoice ${number} (${total}) is waiting for you.`
 export const hoursApprovedForPersonText = (by: string, month: string, number: string, approver: string): string =>
   `${by} approved your ${month} hours. Invoice ${number} is now with ${approver}.`
+
+/** Cancelling approved time off (7E), decided: "Arnaldo Oliveira cancelled your time off: Vacation, Mon, Dec 28 to Thu, Dec 31." or kept, with the reason. */
+export function timeOffCancelDecidedText(decider: string, kind: string, startDate: string, endDate: string, approved: boolean, note: string | null): string {
+  const days = startDate === endDate ? dayLabel(startDate) : `${dayLabel(startDate)} to ${dayLabel(endDate)}`
+  return approved
+    ? `${decider} cancelled your time off: ${kind}, ${days}. It came off Rippling, the team calendar and your time entries.`
+    : `${decider} kept your time off: ${kind}, ${days}. Reason: "${(note ?? '').trim()}"`
+}
+
+/** "Tina Gennette asked to cancel approved time off: Vacation, Mon, Dec 28 to Thu, Dec 31. Reason: "...""  */
+export function timeOffCancelAskedText(name: string, kind: string, startDate: string, endDate: string, reason: string): string {
+  const days = startDate === endDate ? dayLabel(startDate) : `${dayLabel(startDate)} to ${dayLabel(endDate)}`
+  return `${name} asked to cancel approved time off: ${kind}, ${days}. Reason: "${reason.trim()}"`
+}
