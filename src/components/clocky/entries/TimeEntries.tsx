@@ -162,13 +162,15 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     return () => { off = true }
   }, [ui.drawer, api])
   const submitOpen = ui.modal?.kind === 'submit'
+  // The period on the button (maybe one left behind, not today's).
+  const submitStart = data.submit.start
   useEffect(() => {
     if (!submitOpen) return
     let off = false
-    api.getSubmitSummary().then(r => { if (!off) setSubmit(r.ok ? { summary: r.data, error: null } : { summary: null, error: r.error }) },
+    api.getSubmitSummary({ start: submitStart }).then(r => { if (!off) setSubmit(r.ok ? { summary: r.data, error: null } : { summary: null, error: r.error }) },
       () => { if (!off) setSubmit({ summary: null, error: 'The period could not be read. Try again in a moment.' }) })
     return () => { off = true }
-  }, [submitOpen, api])
+  }, [submitOpen, submitStart, api])
 
   // The timeline draws one day and the grid one week: another period goes back to the list.
   const tabFor = (p: PeriodKind, t: EntriesUi['tab']): EntriesUi['tab'] => ((t === 'timeline' && p !== 'day') || (t === 'grid' && p !== 'week') ? 'list' : t)

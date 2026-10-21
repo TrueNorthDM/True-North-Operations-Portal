@@ -16,9 +16,8 @@ import type { FieldName } from '@/lib/timeclock/entry-rules'
 import type { ClockApi } from './clock-api'
 import { choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
 import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon, byWidth, type Phone } from './ClockParts'
-import { AutoView, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, TIME_ENTRIES_HREF, type NoteStatus } from './ClockViews'
+import { AutoView, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, type NoteStatus } from './ClockViews'
 import { ManageCombosModal, SaveComboModal } from './ComboModals'
-import Link from 'next/link'
 import { BTN_ICON } from '@/lib/ui/buttons'
 
 export type Gate = { kind: 'switch'; to: ClockChoice } | { kind: 'out' }
@@ -337,7 +336,10 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   const gateLabel = ui.gate?.kind === 'switch' ? ui.gate.to.label : ''
   const isOffLike = mode === 'off' || mode === 'choose' || mode === 'details'
   const lockedLine = data.locked && isOffLike ? data.locked : null
-  const footer = mode === 'off' || mode === 'on'
+  // Off the clock the footer holds only the phone's Resume ("Request time off" is
+  // out until it has a form, owner 20 October 2026); on a desktop it is not drawn.
+  const offFooter = mode === 'off' && phone !== false && !!data.resume
+  const footer = mode === 'on' || offFooter
 
   return (
     <>
@@ -402,7 +404,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
       </Body>
 
       {footer && (
-        <div className={`shrink-0 border-t border-[var(--row-rule)] flex flex-col gap-2.5 bg-white ${byWidth(phone, 'pt-3.5 px-4 pb-[30px]', 'py-3.5 px-[18px]', 'pt-3.5 px-4 pb-[30px] md:py-3.5 md:px-[18px]')}`}>
+        <div className={`${mode === 'off' && phone === 'css' ? 'md:hidden ' : ''}shrink-0 border-t border-[var(--row-rule)] flex flex-col gap-2.5 bg-white ${byWidth(phone, 'pt-3.5 px-4 pb-[30px]', 'py-3.5 px-[18px]', 'pt-3.5 px-4 pb-[30px] md:py-3.5 md:px-[18px]')}`}>
           {mode === 'off' && (
             <>
               {phone !== false && data.resume && (
@@ -411,13 +413,6 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
                   <PlayIcon size={15} color={BTN_ICON.navy} />{`Clock in · ${data.resume.name || data.resume.path}`}
                 </button>
               )}
-              {/* Centred on desktop and phone (owner, 19 October 2026). */}
-              <div className="flex items-center justify-center gap-2.5">
-                <Link href={TIME_ENTRIES_HREF}
-                  className={`inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] whitespace-nowrap hover:border-tn-teal ${FOCUS}`}>
-                  <Icon d={ICON.calendar} size={15} stroke={BTN_ICON.white} sw={2} />Request time off
-                </Link>
-              </div>
             </>
           )}
           {mode === 'on' && (

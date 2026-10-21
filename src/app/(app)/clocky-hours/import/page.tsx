@@ -107,7 +107,7 @@ export default async function ClockyImportPage() {
       {/* Phase 0: the rules, as imported. Read only until the clock exists. */}
       {can.rules && <section className="space-y-3">
         <h2 id="rules" className="scroll-mt-24 font-(family-name:--font-display) font-extrabold text-lg text-tn-ink m-0">Rules in force</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className={card}>
             <div className={label}>Timezone</div>
             <div className="mt-1 font-semibold text-tn-ink">{s?.timezone}</div>
@@ -119,15 +119,10 @@ export default async function ClockyImportPage() {
             <div className="text-xs text-muted mt-0.5">Every recorded time and total; the real times stay in each entry&apos;s history</div>
           </div>
           <div className={card}>
-            <div className={label}>Overtime</div>
-            <div className="mt-1 font-semibold text-tn-ink">{s?.calculate_overtime ? 'Calculated' : 'Not calculated'}</div>
-            <div className="text-xs text-muted mt-0.5">Same as QuickBooks Time today</div>
-          </div>
-          <div className={card}>
-            <div className={label}>Pay period</div>
-            <div className="mt-1 font-semibold text-tn-ink capitalize">{s?.period_type}</div>
+            <div className={label}>Clock safety</div>
+            <div className="mt-1 font-semibold text-tn-ink">Stops after 5h</div>
             <div className="text-xs text-muted mt-0.5">
-              Clocky stops a clock after 5h without an answer
+              Without an answer to &quot;Still working?&quot;
               {s?.import_cutoff_date ? ` · import stops at ${s.import_cutoff_date}` : ''}
             </div>
           </div>

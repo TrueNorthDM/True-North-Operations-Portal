@@ -8,7 +8,6 @@
  * panel (ClockPanel.tsx) holds the state and calls the server.
  */
 
-import Link from 'next/link'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
 import type { FieldName, MissingName } from '@/lib/timeclock/entry-rules'
@@ -20,8 +19,6 @@ import {
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
 
-/** Where "Request time off" leads: Time entries (the prototype links the Time Entries file). */
-export const TIME_ENTRIES_HREF = '/clocky-hours'
 
 // ── Alerts at the top of the body ───────────────────────────────────────────
 
@@ -174,10 +171,6 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
         </div>
         <div className="flex flex-col items-stretch gap-2.5 pt-0.5 px-0.5">
           <span className="text-[12px] text-muted leading-[1.5] whitespace-nowrap">Vacation, Sick, Holiday and Jury duty are not clocked.</span>
-          <Link href={TIME_ENTRIES_HREF}
-            className={`w-full box-border flex items-center justify-center gap-[9px] rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] whitespace-nowrap shadow-[0_8px_18px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b] ${FOCUS} ${byWidth(phone, 'h-[58px]', 'h-[46px]', 'h-[58px] md:h-[46px]')}`}>
-            <Icon d={ICON.calendar} size={16} stroke={BTN_ICON.navy} sw={2.2} />Request time off
-          </Link>
         </div>
       </div>
     </>

@@ -551,7 +551,8 @@ export async function reorderCombinations(input: { ids: number[] }): Promise<Res
 // ── Time off ────────────────────────────────────────────────────────────────
 
 /**
- * Ask for time off (the panel's "Request time off"). Only a time off code
+ * Ask for time off. No screen calls it yet: the panel's "Request time off" link
+ * is out until the form is designed (owner, 20 October 2026). Only a time off code
  * (Vacation, Sick, Holiday, Jury duty: audit finding C7), never a day already
  * booked, and only while somebody can approve it. The Super Admins hear of it
  * in the bell.

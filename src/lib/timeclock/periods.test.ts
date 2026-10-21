@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { periodFor, shiftMonth, monthName, whatCanIDo } from './periods'
 import {
   anchorMove, cadenceChange, cadenceLine, cadenceOn, companyPayPeriods, gridPeriod, isLocked, lockedBy, lockedMessage,
-  payPeriodStart, periodContaining, periodLabel, periodsBetween, type AnchorChange, type CadenceRules,
+  payPeriodStart, periodContaining, periodLabel, periodsBetween, periodToSubmit, type AnchorChange, type CadenceRules,
 } from './periods'
 
 describe('periodFor', () => {
@@ -263,5 +263,34 @@ describe('locked periods (README "Rules" 9)', () => {
   it('says which period, in the words of 1N', () => {
     expect(lockedMessage(lockedBy('2026-10-15', subs)!)).toBe('October is submitted. Ask a Super Admin to reopen it.')
     expect(lockedMessage({ start: '2026-10-04', end: '2026-10-17' })).toBe('Oct 4 to 17 is submitted. Ask a Super Admin to reopen it.')
+  })
+})
+
+describe('periodToSubmit (the Submit button)', () => {
+  const monthly: CadenceRules = { changes: [], fallback: 'monthly', anchors: [] }
+  const days = (...d: string[]) => new Set(d)
+
+  it('is this month when nothing earlier is waiting', () => {
+    expect(periodToSubmit('2026-11-03', monthly, [], days())).toMatchObject({ start: '2026-11-01', end: '2026-11-30' })
+  })
+
+  it('is last month while it has Clocky time and was never sent', () => {
+    expect(periodToSubmit('2026-11-03', monthly, [], days('2026-10-20'))).toMatchObject({ start: '2026-10-01', end: '2026-10-31' })
+  })
+
+  it('moves on once that month is submitted or approved', () => {
+    const subs = [{ start: '2026-10-01', end: '2026-10-31', state: 'submitted' }]
+    expect(periodToSubmit('2026-11-03', monthly, subs, days('2026-10-20'))).toMatchObject({ start: '2026-11-01' })
+    expect(periodToSubmit('2026-11-03', monthly, [{ ...subs[0], state: 'approved' }], days('2026-10-20'))).toMatchObject({ start: '2026-11-01' })
+  })
+
+  it('a returned period is waiting again', () => {
+    const subs = [{ start: '2026-10-01', end: '2026-10-31', state: 'returned' }]
+    expect(periodToSubmit('2026-11-03', monthly, subs, days('2026-10-20'))).toMatchObject({ start: '2026-10-01' })
+  })
+
+  it('the oldest first, and never further back than the lookback', () => {
+    expect(periodToSubmit('2026-11-03', monthly, [], days('2026-09-10', '2026-10-20'))).toMatchObject({ start: '2026-09-01' })
+    expect(periodToSubmit('2026-11-03', monthly, [], days('2017-03-01'))).toMatchObject({ start: '2026-11-01' })
   })
 })

@@ -13,18 +13,12 @@ import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { saveRules } from './actions'
 
+// Only what Clocky and the import read (audit of 20 October 2026). Rounding,
+// the auto clock-out and overtime are Clocky's own fixed rules, and how often
+// each person submits lives in Company settings > Timesheet periods.
 export interface Rules {
   timezone: string
   week_start: number
-  period_type: string
-  round_enabled: boolean
-  round_minutes: number
-  round_direction: string
-  auto_clockout_hours: number | null
-  split_at_midnight: boolean
-  calculate_overtime: boolean
-  daily_regular_hours: number
-  weekly_regular_hours: number
   import_cutoff_date: string | null
 }
 
@@ -51,7 +45,7 @@ export function RulesForm({ rules }: { rules: Rules }) {
   function save() {
     setMsg(null)
     startTransition(async () => {
-      const res = await saveRules(r)
+      const res = await saveRules({ timezone: r.timezone, week_start: r.week_start, import_cutoff_date: r.import_cutoff_date })
       setMsg(res.ok ? { ok: true, text: 'Saved.' } : { ok: false, text: res.error ?? 'Something went wrong.' })
       if (res.ok) { setOpen(false); router.refresh() }
     })
@@ -86,75 +80,6 @@ export function RulesForm({ rules }: { rules: Rules }) {
           <Select id="ws" value={String(r.week_start)} onChange={v => set('week_start', Number(v))}
             options={WEEKDAYS.map((d, i) => ({ value: String(i), label: d }))}
             ariaLabel="Week starts" className={input} />
-        </div>
-        <div className="flex flex-col gap-1 min-w-[150px]">
-          <label className={label} htmlFor="pt">Pay period</label>
-          <Select id="pt" value={r.period_type} onChange={v => set('period_type', v)}
-            options={[
-              { value: 'monthly', label: 'Monthly' },
-              { value: 'semimonthly', label: 'Twice a month' },
-              { value: 'biweekly', label: 'Every two weeks' },
-              { value: 'weekly', label: 'Weekly' },
-            ]}
-            ariaLabel="Pay period" className={input} />
-        </div>
-      </div>
-
-      <div className="flex gap-4 flex-wrap items-start border-t border-slate-100 pt-4">
-        <label className="flex items-center gap-2 text-sm text-tn-ink pt-6">
-          <input type="checkbox" checked={r.round_enabled} onChange={e => set('round_enabled', e.target.checked)} />
-          Round for payroll
-        </label>
-        <div className="flex flex-col gap-1">
-          <label className={label} htmlFor="rm">To the nearest</label>
-          <input id="rm" type="number" min="1" max="60" value={r.round_minutes}
-            onChange={e => set('round_minutes', Number(e.target.value))}
-            disabled={!r.round_enabled} className={`${input} w-24`} />
-        </div>
-        <div className="flex flex-col gap-1 min-w-[150px]">
-          <label className={label} htmlFor="rd">Direction</label>
-          <Select id="rd" value={r.round_direction} onChange={v => set('round_direction', v)}
-            options={[
-              { value: 'nearest', label: 'Nearest' },
-              { value: 'up', label: 'Up' },
-              { value: 'down', label: 'Down' },
-            ]}
-            ariaLabel="Rounding direction" className={input} />
-        </div>
-        <p className="text-xs text-muted max-w-none grow pt-6 m-0">
-          Not used since October 16, 2026: Clocky rounds every recorded time to the nearest 15
-          minutes and keeps the real times in each entry&apos;s history.
-        </p>
-      </div>
-
-      <div className="flex gap-4 flex-wrap items-start border-t border-slate-100 pt-4">
-        <div className="flex flex-col gap-1">
-          <label className={label} htmlFor="ac">Auto clock-out after</label>
-          <input id="ac" type="number" min="0" max="24" value={r.auto_clockout_hours ?? ''}
-            placeholder="never"
-            onChange={e => set('auto_clockout_hours', e.target.value === '' ? null : Number(e.target.value))}
-            className={`${input} w-28`} />
-          <span className="text-xs text-muted">Not used: Clocky stops a clock after 5 hours without an answer.</span>
-        </div>
-        <label className="flex items-center gap-2 text-sm text-tn-ink pt-6">
-          <input type="checkbox" checked={r.split_at_midnight} onChange={e => set('split_at_midnight', e.target.checked)} />
-          Split an entry at midnight
-        </label>
-        <label className="flex items-center gap-2 text-sm text-tn-ink pt-6">
-          <input type="checkbox" checked={r.calculate_overtime} onChange={e => set('calculate_overtime', e.target.checked)} />
-          Calculate overtime
-        </label>
-        <div className="flex flex-col gap-1">
-          <label className={label} htmlFor="dh">Regular hours a day</label>
-          <input id="dh" type="number" step="0.5" min="0" max="24" value={r.daily_regular_hours}
-            onChange={e => set('daily_regular_hours', Number(e.target.value))}
-            disabled={!r.calculate_overtime} className={`${input} w-24`} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className={label} htmlFor="wh">A week</label>
-          <input id="wh" type="number" step="0.5" min="0" max="168" value={r.weekly_regular_hours}
-            onChange={e => set('weekly_regular_hours', Number(e.target.value))}
-            disabled={!r.calculate_overtime} className={`${input} w-24`} />
         </div>
       </div>
 

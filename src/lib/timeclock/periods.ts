@@ -419,3 +419,29 @@ export function companyPayPeriods(today: string, anchors: readonly AnchorChange[
   for (let i = 0; i < after && p; i++) { p = gridPeriod(addDays(p.end, 1), anchors); if (p) out.push({ ...p, state: 'next' }) }
   return out
 }
+
+/** How far back the Submit button looks for a period still to send. */
+export const SUBMIT_LOOKBACK = 6
+
+/**
+ * The period the Submit button sends (audit of 20 October 2026): the oldest of
+ * the last few that holds time recorded in Clocky and was never submitted or
+ * approved, else today's. So once a month or pay period rolls over, the one
+ * left behind can still be sent. Time imported from QuickBooks Time never
+ * needs sending from here, so `recordedDays` lists only Clocky's own days.
+ */
+export function periodToSubmit(
+  today: string, rules: CadenceRules, submissions: readonly SubmittedPeriod[], recordedDays: ReadonlySet<string>,
+  lookback = SUBMIT_LOOKBACK,
+): Period {
+  const current = periodContaining(today, rules)
+  const earlier: Period[] = []
+  let p = current
+  for (let i = 0; i < lookback; i++) {
+    p = periodContaining(addDays(p.start, -1), rules)
+    earlier.unshift(p)
+  }
+  const sent = (x: Period) => submissions.some(s => s.start === x.start && s.end === x.end && (s.state === 'submitted' || s.state === 'approved'))
+  const hasTime = (x: Period) => [...recordedDays].some(d => x.start <= d && d <= x.end)
+  return earlier.find(x => hasTime(x) && !sent(x)) ?? current
+}

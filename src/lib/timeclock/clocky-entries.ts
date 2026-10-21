@@ -17,7 +17,7 @@ import { formatDuration, recordedSeconds } from './rounding'
 import { attentionReason, missingFields, overlapsAmong } from './entry-rules'
 import { historyLines, type AuditRow } from './history'
 import { workingDays } from './absence'
-import { addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, type SubmittedPeriod } from './periods'
+import { SUBMIT_LOOKBACK, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
 import { canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
 import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
@@ -258,7 +258,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
   // The viewer's own period and where it stands (the Submit button).
   const today = localDate(now, v.zone)
   const myRules = rulesFor(v.personId, changes, settings)
-  const period = periodContaining(today, myRules)
+  const period = await submitTarget(c, v.personId, today, myRules, subs.get(v.personId) ?? [])
   const mine = (subs.get(v.personId) ?? []).find(s => s.start === period.start && s.end === period.end)
 
   const peopleList = [...dir.people.values()]
@@ -367,7 +367,8 @@ export async function loadSubmitSummary(v: Viewer, now: Date, start?: string): P
   const [dir, catalog, settings] = await Promise.all([loadDirectory(), loadCatalog(), loadClockySettings()])
   const today = localDate(now, v.zone)
   const [changes, subs] = await Promise.all([loadCadenceChanges(c, [v.personId]), loadSubmissions(c, [v.personId])])
-  const period = periodContaining(start ?? today, rulesFor(v.personId, changes, settings))
+  const rules = rulesFor(v.personId, changes, settings)
+  const period = start ? periodContaining(start, rules) : await submitTarget(c, v.personId, today, rules, subs.get(v.personId) ?? [])
   const entries = await allRows<EntryRow>((a, b) => c.from('tc_entries').select('*').eq('person_id', v.personId)
     .gte('entry_date', period.start).lte('entry_date', period.end).order('id').range(a, b), 'Your entries could not be read')
   const x: Ctx = { v, dir, catalog, now, subs }
@@ -402,6 +403,19 @@ export async function loadSubmitSummary(v: Viewer, now: Date, start?: string): P
     attention,
     canSubmit: !running && !attention.length && !done && entries.length > 0,
   }
+}
+
+/**
+ * The period the person's Submit button sends: the oldest recent one with
+ * Clocky time that was never sent, else today's (periodToSubmit).
+ */
+async function submitTarget(c: Db, personId: string, today: string, rules: CadenceRules, subs: readonly SubmittedPeriod[]): Promise<Period> {
+  let from = periodContaining(today, rules).start
+  for (let i = 0; i < SUBMIT_LOOKBACK; i++) from = periodContaining(addDays(from, -1), rules).start
+  const { data, error } = await c.from('tc_entries').select('entry_date').eq('person_id', personId).eq('source', 'portal')
+    .gte('entry_date', from).lt('entry_date', periodContaining(today, rules).start).limit(1000)
+  if (error) throw new Error(`Your periods could not be read: ${error.message}`)
+  return periodToSubmit(today, rules, subs, new Set(((data ?? []) as { entry_date: string }[]).map(r => r.entry_date)))
 }
 
 /** The person's lock for a set of days, read fresh (for an action about to write). */
