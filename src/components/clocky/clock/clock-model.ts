@@ -94,6 +94,11 @@ export type JobRow =
   | { type: 'job'; key: string; job: PanelJob; label: string; sub: string; bold: boolean }
   | { type: 'folder'; key: string; folder: PanelFolder; label: string; sub: string }
 
+/** The job catalogue's line under a row (11C), and the billable pill that comes with it. */
+export const lineOf = (r: JobRow): { use: string; billable: boolean | null } | null =>
+  r.type === 'job' ? (r.job.use ? { use: r.job.use, billable: r.job.billable } : null)
+    : r.type === 'folder' ? (r.folder.use ? { use: r.folder.use, billable: null } : null) : null
+
 /**
  * Search: every word must appear in the path ("i7 web" finds "2 - i7
  * Marketing › Web Dev"), best match first, grouped under their folder's grey
@@ -129,11 +134,12 @@ export function browseJobs(jobs: readonly PanelJob[], folders: readonly PanelFol
     return (f?.jobIds ?? []).map(id => jobs.find(j => j.id === id)).filter((j): j is PanelJob => !!j)
       .map(j => ({ type: 'job', key: `j${j.id}`, job: j, label: j.name, sub: '', bold: false }))
   }
-  const top: { name: string; row: JobRow }[] = [
-    ...folders.map(f => ({ name: f.name, row: { type: 'folder', key: `f${f.id}`, folder: f, label: f.name, sub: `${f.jobIds.length} jobs` } as JobRow })),
-    ...jobs.filter(j => j.folderId == null).map(j => ({ name: j.name, row: { type: 'job', key: `j${j.id}`, job: j, label: j.name, sub: '', bold: false } as JobRow })),
+  // In the job catalogue's order, then by name.
+  const top: { name: string; order: number; row: JobRow }[] = [
+    ...folders.map(f => ({ name: f.name, order: f.order, row: { type: 'folder', key: `f${f.id}`, folder: f, label: f.name, sub: `${f.jobIds.length} jobs` } as JobRow })),
+    ...jobs.filter(j => j.folderId == null).map(j => ({ name: j.name, order: j.order, row: { type: 'job', key: `j${j.id}`, job: j, label: j.name, sub: '', bold: false } as JobRow })),
   ]
-  return top.sort((a, b) => a.name.localeCompare(b.name)).map(x => x.row)
+  return top.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)).map(x => x.row)
 }
 
 // ── Totals and the live timer ───────────────────────────────────────────────

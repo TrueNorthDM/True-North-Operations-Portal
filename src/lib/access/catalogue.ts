@@ -173,6 +173,8 @@ const TREE: Node[] = [
       { key: 'cs-periods', label: 'Timesheet periods', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-periods-edit', label: 'Change the timesheet periods: the pay period start and who submits how', kind: 'action', superOnly: true },
       // Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C): Admins read them; Super Admins change them.
+      { key: 'cs-jobs', label: 'Job catalogue: the jobs, their fields and the clients', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-jobs-edit', label: 'Change the job catalogue', kind: 'action', superOnly: true },
       { key: 'cs-integrations', label: 'Integrations: Rippling and Google Calendar', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-integrations-edit', label: 'Connect Rippling and Google Calendar, and try failed items again', kind: 'action', superOnly: true },
       { key: 'cs-invoices', label: 'Invoices: numbering and billing details', kind: 'tab', v: [1, 0, 0] },
@@ -207,6 +209,7 @@ const TREE: Node[] = [
     ] },
     { key: 'clocky-invoices', label: 'Invoices', kind: 'page', v: [1, 1, 1], note: 'Contractors see their own invoices; Super Admins, Admins and Finance see every one. Employees get no invoice, and Team Leaders never see anyone else\'s. Only Finance (Company settings, Invoices) marks one paid.' },
     { key: 'clocky-reports', label: 'Reports', kind: 'page', soon: true, v: [1, 1, 1] },
+    { key: 'ck-which-job', label: 'Which job?: every job and when to use it', kind: 'page', always: true },
     { key: 'ck-safety', label: 'Clock safety', kind: 'page', v: [1, 0, 0], note: 'Every automatic clock-out. Read only below Super Admin.' },
   ] },
   // Requests (Clocky part 2, Requests.dc.html): everyone asks for their own;

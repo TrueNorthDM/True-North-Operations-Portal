@@ -39,21 +39,49 @@ const shortOf = (path: string) => {
   return (a.startsWith('2') ? 'i7' : 'TN') + ' › ' + b
 }
 
+/** Clock Panel.dc.html's "When to use" lines and billable defaults (11C). */
+export const WHEN: Record<string, [string, string]> = {
+    '1 - True North': ['Work for True North itself: our own site, admin, meetings, our marketing.', 'no'],
+    '1 - True North › Administrative': ['Email, scheduling, paperwork and internal tools for True North.', 'no'],
+    '1 - True North › Content': ["Writing and editing for True North's own channels.", 'no'],
+    '1 - True North › Management': ['Managing people and the team: 1:1s, reviews, hiring.', 'no'],
+    '1 - True North › Marketing': ["Promoting True North: campaigns, social posts about us, proposals.", 'no'],
+    '1 - True North › Meetings': ['Internal meetings with no client: status, all-hands, team syncs.', 'no'],
+    '1 - True North › Project Management': ['Planning and tracking internal projects (Monday boards, the portal).', 'no'],
+    '1 - True North › SEO': ["SEO for True North's own site.", 'no'],
+    '1 - True North › Web Dev': ['Building and fixing our own sites and the Operations Portal.', 'no'],
+    '2 - i7 Marketing': ['Work for i7 itself. Bessemeters or Wagner work goes under its i7 Code (BE-MKTG, WM-ADMIN).', 'yes'],
+    '2 - i7 Marketing › Administrative': ['i7 admin: reports, invoices, client email. Pick the i7 Code of the brand.', 'yes'],
+    '2 - i7 Marketing › Content': ['Writing and editing for i7 itself. Bessemeters or Wagner work goes under its i7 Code: BE-MKTG, WM-ADMIN.', 'yes'],
+    '2 - i7 Marketing › Management': ['Leading the i7 account: client calls, priorities, approvals.', 'yes'],
+    '2 - i7 Marketing › Marketing': ['i7 campaigns, ads and social. Use the i7 Code of the brand.', 'yes'],
+    '2 - i7 Marketing › Meetings': ['Meetings with i7 or about i7 work.', 'yes'],
+    '2 - i7 Marketing › Project Management': ['Planning and tracking i7 projects.', 'yes'],
+    '2 - i7 Marketing › SEO': ['SEO for i7 sites: audits, schema, keyword work.', 'yes'],
+    '2 - i7 Marketing › Strategy Sprint': ['Only during a booked i7 strategy sprint.', 'yes'],
+    '2 - i7 Marketing › Web Dev': ['Building and fixing i7 sites. Pick the i7 Code of the site (i7-WEBDVT).', 'yes'],
+    'A.org Job': ['Adventist.org work booked under the A.org contract.', 'yes'],
+    'Adventist Messengers/HFA': ['Hope for Africa and Adventist Messengers: translation, content, video.', 'yes'],
+    'DDI': ['DDI client work.', 'yes'],
+    'GNA': ['Good News for All: writing, editing and social for GNA and GYC.', 'yes'],
+    'Rwanda-Incidental': ['Small Rwanda tasks outside a project. Ask your Team Leader if it should be a project.', 'no']
+}
+
 export const FOLDERS: PanelFolder[] = []
 export const JOBS: PanelJob[] = []
 {
   let id = 100
   TREE.forEach((t, i) => {
     if (t.f) {
-      const folder: PanelFolder = { id: i + 1, name: t.f, jobIds: [] }
+      const folder: PanelFolder = { id: i + 1, name: t.f, jobIds: [], use: WHEN[t.f]?.[0] ?? null, order: i }
       for (const k of t.kids!) {
         const path = `${t.f} › ${k}`
-        JOBS.push({ id: ++id, name: k, path, short: shortOf(path), folderId: folder.id, isI7: t.f.startsWith('2 - i7') })
+        JOBS.push({ id: ++id, name: k, path, short: shortOf(path), folderId: folder.id, isI7: t.f.startsWith('2 - i7'), use: WHEN[path]?.[0] ?? null, billable: WHEN[path]?.[1] === 'yes', order: id })
         folder.jobIds.push(id)
       }
       FOLDERS.push(folder)
     } else {
-      JOBS.push({ id: ++id, name: t.j!, path: t.j!, short: shortOf(t.j!), folderId: null, isI7: false })
+      JOBS.push({ id: ++id, name: t.j!, path: t.j!, short: shortOf(t.j!), folderId: null, isI7: false, use: WHEN[t.j!]?.[0] ?? null, billable: WHEN[t.j!]?.[1] === 'yes', order: i })
     }
   })
 }
@@ -203,6 +231,7 @@ export const FRAMES: ClockFrame[] = [
   { code: '1B', title: 'First time', data: base({ combinations: [], recents: [], resume: null, firstTime: true }) },
   { code: '1C', title: 'Search', data: base(), ui: { view: 'choose', query: 'i7 web' } },
   { code: '1Cb', title: 'Browse', data: base(), ui: { view: 'choose', browse: FOLDERS[1].id } },
+  { code: '11C', title: 'Browse, When to use', data: base(), ui: { view: 'choose', browse: FOLDERS[1].id } },
   { code: '1D', title: 'Details', data: base(), ui: { view: 'details', draft: draftFor({ defaults: DEFAULTS, fields: FIELDS }, job('2 - i7 Marketing › Web Dev')) } },
   { code: '1E', title: 'On the clock', data: on() },
   // Clocky part 2, 10B: the allowance lines (Clock Panel.dc.html 10B0, 10B1, 10B2).

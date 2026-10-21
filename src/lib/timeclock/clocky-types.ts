@@ -55,9 +55,14 @@ export interface PanelJob {
   /** The folder (client) it sits in, or null for a top-level job. */
   folderId: number | null
   isI7: boolean
+  /** The job catalogue's "When to use" line (11C), and its billable default. */
+  use: string | null
+  billable: boolean
+  /** Its place in the job catalogue's order. */
+  order: number
 }
 
-export interface PanelFolder { id: number; name: string; jobIds: number[] }
+export interface PanelFolder { id: number; name: string; jobIds: number[]; use: string | null; order: number }
 
 export interface PanelField {
   key: FieldName

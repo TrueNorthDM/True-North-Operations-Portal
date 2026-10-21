@@ -226,6 +226,8 @@ export const RAIL: readonly RailEntry[] = [
       {
         label: 'The module',
         items: [
+          // Clocky part 2 (Job Catalogue.dc.html 11D): for everyone.
+          { key: 'clocky-which-job', label: 'Which job?', href: '/clocky-hours/which-job', icon: 'manual', surface: 'ck-which-job' },
           { key: 'clocky-safety', label: 'Clock safety', href: '/clocky-hours/safety', icon: 'admin', surface: 'ck-safety' },
           // A section of Company settings (Admin > Configuration).
           { key: 'clocky-periods', label: 'Timesheet periods', href: '/admin/settings#periods', icon: 'settings', surface: 'cs-periods' },

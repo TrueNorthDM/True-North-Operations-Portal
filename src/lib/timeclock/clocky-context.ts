@@ -185,6 +185,15 @@ export interface Job {
   isFolder: boolean
   /** Offered in the clock and the forms: active, work (not time off), not a folder. */
   selectable: boolean
+  /** The job catalogue (Job Catalogue.dc.html 11A): the line under it, billable by default, the default Company and Project, the order. */
+  whenToUse: string | null
+  billable: boolean
+  defaultCompany: string | null
+  defaultProject: string | null
+  sortOrder: number | null
+  /** Came from QuickBooks Time (the import may still add to it). */
+  imported: boolean
+  editedInPortal: boolean
 }
 
 export interface FieldDef { key: FieldName; id: string; label: string; options: string[]; required: 'always' | 'i7' }
@@ -199,8 +208,8 @@ export interface Catalog {
 export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> {
   const c = db()
   const [rows, keys] = await Promise.all([
-    allRows<{ id: number; name: string; parent_id: number | null; external_id: number | null; kind: string; active: boolean }>(
-      (a, b) => c.from('tc_jobcodes').select('id, name, parent_id, external_id, kind, active').order('id').range(a, b), 'Job codes could not be read'),
+    allRows<{ id: number; name: string; parent_id: number | null; external_id: number | null; kind: string; active: boolean; billable: boolean; when_to_use: string | null; default_company: string | null; default_project: string | null; sort_order: number | null; folder: boolean; edited_in_portal_at: string | null }>(
+      (a, b) => c.from('tc_jobcodes').select('id, name, parent_id, external_id, kind, active, billable, when_to_use, default_company, default_project, sort_order, folder, edited_in_portal_at').order('id').range(a, b), 'Job codes could not be read'),
     loadEntryFieldKeys(c),
   ])
   const byId = new Map(rows.map(r => [r.id, r]))
@@ -222,7 +231,8 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
   const jobs = new Map<number, Job>()
   for (const r of rows) {
     const root = top(r.id)
-    const isFolder = (children.get(r.id) ?? []).some(k => k.active && k.kind === 'regular')
+    // A folder made in the portal is one from the start; an imported one while it holds active jobs.
+    const isFolder = r.folder || (children.get(r.id) ?? []).some(k => k.active && k.kind === 'regular')
     const path = pathOfRow(r)
     jobs.set(r.id, {
       id: r.id,
@@ -236,6 +246,13 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
       isI7: root.external_id === I7_PARENT_JOBCODE_ID,
       isFolder,
       selectable: r.active && r.kind === 'regular' && !isFolder,
+      whenToUse: r.when_to_use?.trim() || null,
+      billable: r.billable,
+      defaultCompany: r.default_company,
+      defaultProject: r.default_project,
+      sortOrder: r.sort_order,
+      imported: r.external_id != null,
+      editedInPortal: !!r.edited_in_portal_at,
     })
   }
 

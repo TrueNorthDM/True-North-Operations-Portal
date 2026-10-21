@@ -43,6 +43,9 @@ import { TimesheetPeriodsSection } from '@/components/clocky/periods/TimesheetPe
 import { getTimesheetPeriods } from '@/app/(app)/clocky-hours/periods/actions'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { loadIntegrations, loadInvoiceSettingsData, loadReminders } from '@/lib/timeclock/company-settings'
+import { loadCatalogueData } from '@/lib/timeclock/job-catalogue'
+import { JobCatalogue } from '@/components/settings/JobCatalogue'
+import { addFolder, addJob, addOption, renameOption, reorderJobs, saveJob, setOptionShown } from './catalogue-actions'
 import { IntegrationsSettings, InvoiceSettings, RemindersSettings } from '@/components/settings/ClockySettings'
 import { removeGoogle, removeRipplingToken, retryIntegrationJob, saveGoogle, saveInvoiceSettings, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
@@ -80,6 +83,7 @@ const TargetsIcon = <Icon circles={[[12, 12, 10], [12, 12, 6], [12, 12, 2]]} />
 const SitesIcon = <Icon circles={[[12, 12, 10]]} paths={['M2 12h20', 'M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z']} />
 const PeriodsIcon = <Icon paths={['M4 5h16v16H4z', 'M4 10h16', 'M9 3v4', 'M15 3v4', 'M8 14h3', 'M8 17h6']} />
 // Clocky part 2 (Company Settings.dc.html CS): Invoices, Integrations, Reminders.
+const JobsIcon = <Icon paths={['M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z']} />
 const InvoicesIcon = <Icon paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M8 13h8', 'M8 17h5']} />
 const IntegrationsIcon = <Icon paths={['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1', 'M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1']} />
 const RemindersIcon = <Icon paths={['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0']} />
@@ -108,6 +112,7 @@ export default async function SettingsPage() {
     targets: access.can('cs-targets'),
     sites: access.can('cs-sites'),
     periods: access.can('cs-periods'),
+    jobs: access.can('cs-jobs'),
     integrations: access.can('cs-integrations'),
     invoices: access.can('cs-invoices'),
     reminders: access.can('cs-reminders'),
@@ -211,10 +216,11 @@ export default async function SettingsPage() {
   ])
   // Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C).
   const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
-  const [integrations, invoiceSettings, reminders] = await Promise.all([
+  const [integrations, invoiceSettings, reminders, jobCatalogue] = await Promise.all([
     can.integrations ? loadIntegrations(zone) : null,
     can.invoices ? loadInvoiceSettingsData() : null,
     can.reminders ? loadReminders() : null,
+    can.jobs ? loadCatalogueData() : null,
   ])
   const projectDirectory = fullDirectory && !access.can('d-rates') ? { ...fullDirectory, highestRate: 0 } : fullDirectory
 
@@ -393,6 +399,19 @@ export default async function SettingsPage() {
       content: 'error' in periods
         ? <p role="alert" className="text-[13.5px] text-[#c8323d] m-0">{periods.error}</p>
         : <TimesheetPeriodsSection data={periods.data} anchorOptions={periods.options} />,
+    },
+    can.jobs && jobCatalogue && {
+      id: 'jobs',
+      label: 'Job catalogue',
+      icon: JobsIcon,
+      isNew: true,
+      editable: false,
+      content: (
+        <div>
+          <SectionHead title="Job catalogue" desc="The jobs people pick in Clocky, their fields and the clients. The portal keeps them now; QuickBooks Time no longer changes what is edited here. A change shows in the clock panel right away." />
+          <JobCatalogue data={jobCatalogue} canEdit={access.can('cs-jobs-edit')} api={{ saveJob, addFolder, addJob, reorderJobs, setOptionShown, renameOption, addOption }} />
+        </div>
+      ),
     },
     can.invoices && invoiceSettings && {
       id: 'invoices',

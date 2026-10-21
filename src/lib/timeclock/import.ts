@@ -12,6 +12,9 @@
 // modified_since cannot see, hence /timesheets_deleted).
 //
 // Rows born in the portal have no external_id and are never touched here.
+// Neither are jobs and field options a Super Admin changed in the job
+// catalogue (edited_in_portal_at, Clocky part 2): the portal keeps those now,
+// and the import only adds what is new in QuickBooks Time.
 
 import type { Db } from '@/lib/supabase/types'
 import {
@@ -46,7 +49,8 @@ function jobcodeKind(type: string): 'regular' | 'pto' | 'unpaid' {
  * and a self-referencing foreign key does not forgive that.
  */
 export async function importJobcodes(supabase: Client, token: string): Promise<number> {
-  const source = await fetchAllJobcodes(token)
+  const edited = await editedExternals(supabase, 'tc_jobcodes')
+  const source = (await fetchAllJobcodes(token)).filter(j => !edited.has(j.id))
 
   for (let i = 0; i < source.length; i += BATCH) {
     const rows = source.slice(i, i + BATCH).map(j => ({
@@ -82,6 +86,13 @@ export async function importJobcodes(supabase: Client, token: string): Promise<n
   return source.length
 }
 
+/** The QuickBooks Time ids of rows changed in the job catalogue, which the import leaves alone. */
+async function editedExternals(supabase: Client, table: 'tc_jobcodes' | 'tc_field_options'): Promise<Set<number>> {
+  const { data, error } = await supabase.from(table).select('external_id').not('edited_in_portal_at', 'is', null).not('external_id', 'is', null).limit(5000)
+  if (error) throw new Error(`${table} edited read: ${error.message}`)
+  return new Set((data ?? []).map(r => Number(r.external_id)))
+}
+
 /** The entry form: the six custom fields and every one of their values. */
 export async function importFields(supabase: Client, token: string): Promise<number> {
   const fields = await fetchFields(token)
@@ -103,11 +114,12 @@ export async function importFields(supabase: Client, token: string): Promise<num
     if (r.external_id != null) idByExternal.set(r.external_id, r.id)
   }
 
+  const edited = await editedExternals(supabase, 'tc_field_options')
   let options = 0
   for (const f of fields) {
     const fieldId = idByExternal.get(f.id)
     if (!fieldId) continue
-    const items = await fetchFieldOptions(token, f.id)
+    const items = (await fetchFieldOptions(token, f.id)).filter(o => !edited.has(o.id))
     if (!items.length) continue
     const { error: optErr } = await supabase.from('tc_field_options').upsert(
       items.map((o, i) => ({

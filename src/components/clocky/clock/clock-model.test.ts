@@ -16,14 +16,14 @@ const FIELDS: PanelField[] = [
   { key: 'billable', id: '4', label: '4 Billable', options: ['yes', 'no'], required: 'always' },
   { key: 'code', id: '5', label: '1 - i7 Code', options: ['i7-WEBDVT'], required: 'i7' },
 ]
-const FOLDERS: PanelFolder[] = [{ id: 1, name: '1 - True North', jobIds: [11, 12] }, { id: 2, name: '2 - i7 Marketing', jobIds: [21, 22] }]
+const FOLDERS: PanelFolder[] = [{ id: 1, name: '1 - True North', jobIds: [11, 12], use: null, order: 0 }, { id: 2, name: '2 - i7 Marketing', jobIds: [21, 22], use: null, order: 0 }]
 const JOBS: PanelJob[] = [
-  { id: 11, name: 'Administrative', path: '1 - True North › Administrative', short: 'TN › Administrative', folderId: 1, isI7: false },
-  { id: 12, name: 'Web Dev', path: '1 - True North › Web Dev', short: 'TN › Web Dev', folderId: 1, isI7: false },
-  { id: 21, name: 'Content', path: '2 - i7 Marketing › Content', short: 'i7 › Content', folderId: 2, isI7: true },
-  { id: 22, name: 'Web Dev', path: '2 - i7 Marketing › Web Dev', short: 'i7 › Web Dev', folderId: 2, isI7: true },
-  { id: 30, name: 'Adventist Messengers/HFA', path: 'Adventist Messengers/HFA', short: 'HFA', folderId: null, isI7: false },
-  { id: 31, name: 'A.org Job', path: 'A.org Job', short: 'A.org Job', folderId: null, isI7: false },
+  { id: 11, name: 'Administrative', path: '1 - True North › Administrative', short: 'TN › Administrative', folderId: 1, isI7: false, use: null, billable: false, order: 0 },
+  { id: 12, name: 'Web Dev', path: '1 - True North › Web Dev', short: 'TN › Web Dev', folderId: 1, isI7: false, use: null, billable: false, order: 0 },
+  { id: 21, name: 'Content', path: '2 - i7 Marketing › Content', short: 'i7 › Content', folderId: 2, isI7: true, use: null, billable: false, order: 0 },
+  { id: 22, name: 'Web Dev', path: '2 - i7 Marketing › Web Dev', short: 'i7 › Web Dev', folderId: 2, isI7: true, use: null, billable: false, order: 0 },
+  { id: 30, name: 'Adventist Messengers/HFA', path: 'Adventist Messengers/HFA', short: 'HFA', folderId: null, isI7: false, use: null, billable: false, order: 0 },
+  { id: 31, name: 'A.org Job', path: 'A.org Job', short: 'A.org Job', folderId: null, isI7: false, use: null, billable: false, order: 0 },
 ]
 
 const choice = (o: Partial<ClockChoice> & { jobcodeId: number }): ClockChoice => {

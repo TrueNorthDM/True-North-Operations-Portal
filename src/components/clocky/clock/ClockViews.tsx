@@ -14,7 +14,7 @@ import type { FieldName, MissingName } from '@/lib/timeclock/entry-rules'
 import { timeLabel } from '@/lib/timeclock/format'
 import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
-  FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, fieldByKey, keysFor, liveTotals,
+  FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, keysFor, liveTotals,
   overWarn, resumeCard, roundNoteText, searchJobs, switchChoices, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
@@ -161,7 +161,11 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
                 <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <span className={`font-(family-name:--font-display) text-[13.5px] text-tn-ink ${r.type === 'folder' ? 'font-bold' : 'font-semibold'}`}>{r.label}</span>
                   {r.sub && <span className="text-[12px] text-muted">{r.sub}</span>}
+                  {lineOf(r) && <span className="text-[12px] text-foreground leading-[1.45] [text-wrap:pretty]">{lineOf(r)!.use}</span>}
                 </span>
+                {lineOf(r)?.billable != null && (
+                  <span className={`shrink-0 self-start mt-px text-[10.5px] font-bold rounded-full px-2 py-[3px] ${lineOf(r)!.billable ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{lineOf(r)!.billable ? 'Billable' : 'Not billable'}</span>
+                )}
                 {r.type === 'folder' && <Icon d={ICON.chevronRight} size={16} stroke="#8593a4" sw={2} className="shrink-0" />}
               </button>
             ))}
@@ -171,6 +175,7 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
         </div>
         <div className="flex flex-col items-stretch gap-2.5 pt-0.5 px-0.5">
           <span className="text-[12px] text-muted leading-[1.5] whitespace-nowrap">Vacation, Sick, Holiday and Jury duty are not clocked.</span>
+          <a href="/clocky-hours/which-job" className={`text-[12.5px] font-bold self-start text-tn-teal hover:text-tn-ink ${FOCUS}`}>Which job? See every job and when to use it</a>
         </div>
       </div>
     </>

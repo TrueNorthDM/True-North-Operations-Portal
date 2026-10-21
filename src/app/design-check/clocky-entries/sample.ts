@@ -129,7 +129,7 @@ export const FIELDS: PanelField[] = [
   { key: 'billable', id: '4', label: '4 Billable', options: ['yes', 'no'], required: 'always' },
   { key: 'code', id: '5', label: '1 - i7 Code', options: CODES, required: 'i7' },
 ]
-const JOB_LIST: PanelJob[] = JOBS.map((path, i) => ({ id: i + 1, name: path.split(' › ').pop()!, path, short: shortOf(path), folderId: path.includes(' › ') ? (path.startsWith('1') ? 100 : 200) : null, isI7: isI7(path) }))
+const JOB_LIST: PanelJob[] = JOBS.map((path, i) => ({ id: i + 1, name: path.split(' › ').pop()!, path, short: shortOf(path), folderId: path.includes(' › ') ? (path.startsWith('1') ? 100 : 200) : null, isI7: isI7(path), use: null, billable: false, order: i }))
 function defaultsOf(j: string): Partial<K> {
   if (isI7(j)) { const k = j.split(' › ')[1]; return { co: 'True North', prj: 'In-House', bill: 'yes', code: k === 'Web Dev' ? 'i7-WEBDVT' : k === 'Administrative' ? 'i7-ADMIN' : 'i7-MKTG' } }
   if (j.startsWith('1 -')) return { co: 'True North', prj: 'In-House', bill: 'no', code: '' }

@@ -111,7 +111,7 @@ export function LabeledSelect({ label, value, options, onChange, placeholder = '
       <div className="flex items-center gap-1.5 min-h-4">
         <FieldLabel>{label}</FieldLabel>
         {auto && !!value && (
-          <span title="Filled from this job's history. You can change it."
+          <span title="Filled for this job, from your history or the job catalogue. You can change it."
             className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.06em] uppercase text-tn-teal bg-tn-teal-soft rounded-full px-[7px] py-0.5">auto</span>
         )}
       </div>

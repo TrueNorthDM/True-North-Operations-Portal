@@ -26,6 +26,7 @@ import { allowanceRange, allowanceStatus } from './allowance'
 import { loadPayTerms } from './pay-terms'
 import { addDays, lockedMessage, periodContaining, periodLabel } from './periods'
 import type { ClockChoice, ClockPanelData, PanelFolder, PanelJob, RunningEntry, ToConfirm } from './clocky-types'
+import { catalogueRows } from './job-catalogue'
 
 export interface ComboRow { id: number; name: string; jobcode_id: number; fields: Record<string, string>; notes: string | null; position: number }
 
@@ -224,19 +225,40 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const todayByCombination = [...byLabel.entries()].map(([label, v]) => ({ label, ...v })).sort((a, b) => b.seconds - a.seconds)
 
   // Jobs and folders: time off is requested, not clocked; folders are not clocked into.
+  // In the job catalogue's order (Company settings > Job catalogue), then by name.
+  const rank = new Map(catalogueRows(catalog).map((r, i) => [r.id, i]))
+  const byRank = (a: { id: number; path: string }, b: { id: number; path: string }) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9) || a.path.localeCompare(b.path)
   const jobs: PanelJob[] = [...catalog.jobs.values()].filter(j => j.selectable)
-    .map(j => ({ id: j.id, name: j.name, path: j.path, short: j.short, folderId: j.folderId, isI7: j.isI7 }))
-    .sort((a, b) => a.path.localeCompare(b.path))
+    .map(j => ({ id: j.id, name: j.name, path: j.path, short: j.short, folderId: j.folderId, isI7: j.isI7, use: j.whenToUse, billable: j.billable, order: rank.get(j.id) ?? 1e9 }))
+    .sort(byRank)
   const folderIds = [...new Set(jobs.map(j => j.folderId).filter((x): x is number => x != null))]
-  const folders: PanelFolder[] = folderIds.map(id => ({ id, name: catalog.jobs.get(id)?.name ?? '', jobIds: jobs.filter(j => j.folderId === id).map(j => j.id) }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const folders: PanelFolder[] = folderIds.map(id => ({ id, name: catalog.jobs.get(id)?.name ?? '', jobIds: jobs.filter(j => j.folderId === id).map(j => j.id), use: catalog.jobs.get(id)?.whenToUse ?? null, order: rank.get(id) ?? 1e9 }))
+    .sort((a, b) => byRank({ id: a.id, path: a.name }, { id: b.id, path: b.name }))
 
   // Today's period, and whether it is locked (1N).
   const rules = rulesFor(me, changes, settings)
   const period = periodContaining(today, rules)
   const lock = lockOn([today], subs.get(me) ?? [])
 
-  const defaults = (defaultsRes.data ?? {}) as Record<string, Record<string, string>>
+  // What each job fills in: the person's own history first, then the job
+  // catalogue's defaults (Company, Project, billable by default; 11A).
+  const history = (defaultsRes.data ?? {}) as Record<string, Record<string, string>>
+  const optionOf = (key: string | null, want: string | null) => {
+    if (!key || !want) return null
+    const f = catalog.fields.find(x => x.id === key)
+    return f?.options.find(o => o.toLowerCase() === want.toLowerCase()) ?? null
+  }
+  const defaults: Record<string, Record<string, string>> = {}
+  for (const j of jobs) {
+    const cj = catalog.jobs.get(j.id)!
+    const fromCatalogue = Object.fromEntries(([
+      [keys.company, optionOf(keys.company, cj.defaultCompany)],
+      [keys.project, optionOf(keys.project, cj.defaultProject)],
+      [keys.billable, optionOf(keys.billable, cj.billable ? 'yes' : 'no')],
+    ] as const).filter((x): x is readonly [string, string] => !!x[0] && !!x[1]))
+    const mine = history[String(j.id)] ?? {}
+    if (Object.keys(fromCatalogue).length || Object.keys(mine).length) defaults[String(j.id)] = { ...fromCatalogue, ...mine }
+  }
 
   return {
     me: { personId: me, name: viewer.name, zone, zoneAbbr: zoneAbbr(zone, now), level: viewer.level, leader: viewer.leader },

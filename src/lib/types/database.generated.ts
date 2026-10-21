@@ -3304,6 +3304,7 @@ export type Database = {
       tc_field_options: {
         Row: {
           active: boolean
+          edited_in_portal_at: string | null
           external_id: number | null
           field_id: number
           id: number
@@ -3312,6 +3313,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          edited_in_portal_at?: string | null
           external_id?: number | null
           field_id: number
           id?: number
@@ -3320,6 +3322,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          edited_in_portal_at?: string | null
           external_id?: number | null
           field_id?: number
           id?: number
@@ -3412,34 +3415,52 @@ export type Database = {
           active: boolean
           billable: boolean
           created_at: string
+          default_company: string | null
+          default_project: string | null
+          edited_in_portal_at: string | null
           external_id: number | null
+          folder: boolean
           id: number
           imported_at: string | null
           kind: string
           name: string
           parent_id: number | null
+          sort_order: number | null
+          when_to_use: string | null
         }
         Insert: {
           active?: boolean
           billable?: boolean
           created_at?: string
+          default_company?: string | null
+          default_project?: string | null
+          edited_in_portal_at?: string | null
           external_id?: number | null
+          folder?: boolean
           id?: number
           imported_at?: string | null
           kind?: string
           name: string
           parent_id?: number | null
+          sort_order?: number | null
+          when_to_use?: string | null
         }
         Update: {
           active?: boolean
           billable?: boolean
           created_at?: string
+          default_company?: string | null
+          default_project?: string | null
+          edited_in_portal_at?: string | null
           external_id?: number | null
+          folder?: boolean
           id?: number
           imported_at?: string | null
           kind?: string
           name?: string
           parent_id?: number | null
+          sort_order?: number | null
+          when_to_use?: string | null
         }
         Relationships: [
           {
@@ -4403,12 +4424,23 @@ export type Database = {
         Returns: undefined
       }
       tc_approves_for: { Args: { target: string }; Returns: boolean }
+      tc_field_option_use: {
+        Args: { p_field_id: number }
+        Returns: {
+          entries: number
+          label: string
+        }[]
+      }
       tc_i_approve_hours: { Args: never; Returns: boolean }
       tc_job_field_defaults: {
         Args: { p_keys: string[]; p_since: string }
         Returns: Json
       }
       tc_people_i_approve: { Args: never; Returns: string[] }
+      tc_rename_field_option: {
+        Args: { p_label: string; p_option_id: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

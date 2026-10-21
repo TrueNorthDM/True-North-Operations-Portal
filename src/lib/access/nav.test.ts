@@ -78,22 +78,22 @@ describe('the rail', () => {
   // Invoices.dc.html: an employee gets no invoice, so the row is not in their menu.
   it('leaves Invoices out for someone without the invoices fact (an employee)', () => {
     const can = canAs('user', { teams: [['t1', false]], rules: rulesWithTools([]) })
-    expect(rows(buildRail({ can, canTool: can, facts: new Set() }), 'clocky')).toEqual(['clocky-hours', 'clocky-reports'])
-    expect(rows(buildRail({ can, canTool: can, facts: new Set(['invoices']) }), 'clocky')).toEqual(['clocky-hours', 'clocky-invoices', 'clocky-reports'])
+    expect(rows(buildRail({ can, canTool: can, facts: new Set() }), 'clocky')).toEqual(['clocky-hours', 'clocky-reports', 'clocky-which-job'])
+    expect(rows(buildRail({ can, canTool: can, facts: new Set(['invoices']) }), 'clocky')).toEqual(['clocky-hours', 'clocky-invoices', 'clocky-reports', 'clocky-which-job'])
   })
 
   it('gives each level its Clocky rows, in the designed order', () => {
-    expect(rows(railFor('super_admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-safety', 'clocky-periods', 'clocky-import'])
-    expect(rows(railFor('admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-safety', 'clocky-periods', 'clocky-import'])
-    expect(rows(railFor('team_leader'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports'])
-    expect(rows(railFor('user'), 'clocky')).toEqual(['clocky-hours', 'clocky-invoices', 'clocky-reports'])
+    expect(rows(railFor('super_admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-periods', 'clocky-import'])
+    expect(rows(railFor('admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-periods', 'clocky-import'])
+    expect(rows(railFor('team_leader'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job'])
+    expect(rows(railFor('user'), 'clocky')).toEqual(['clocky-hours', 'clocky-invoices', 'clocky-reports', 'clocky-which-job'])
   })
 
   it('names the Clocky rows and groups them as designed', () => {
     const clocky = hub(railFor('super_admin'), 'clocky')!
     expect(clocky.groups.map(g => [g.label, g.items.map(i => [i.label, i.href])])).toEqual([
       [null, [['Time entries', '/clocky-hours'], ['Approvals', '/clocky-hours/approvals'], ["Who's working", '/clocky-hours/whos-working'], ['Invoices', '/clocky-hours/invoices'], ['Reports', '/clocky-hours/reports']]],
-      ['The module', [['Clock safety', '/clocky-hours/safety'], ['Timesheet periods', '/admin/settings#periods'], ['Import', '/clocky-hours/import']]],
+      ['The module', [['Which job?', '/clocky-hours/which-job'], ['Clock safety', '/clocky-hours/safety'], ['Timesheet periods', '/admin/settings#periods'], ['Import', '/clocky-hours/import']]],
     ])
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-approvals')?.count).toBe('approvals')
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-reports')?.soon).toBe(true)
