@@ -46,12 +46,14 @@ export function DocPdfModal({ kind, id, doc, onClose, onDownloaded }: {
   )
 }
 
-function PdfWindow({ name, href, onClose, onDownloaded, children }: {
+export function PdfWindow({ name, href, onClose, onDownloaded, children, landscape = false }: {
   name: string
   href: string
   onClose: () => void
   onDownloaded?: (name: string) => void
   children: ReactNode
+  /** The Clocky report (Reports.dc.html 12C): one landscape page, a wider window. */
+  landscape?: boolean
 }) {
   const box = useRef<HTMLDivElement>(null)
   useModal(true, box, onClose)
@@ -81,14 +83,14 @@ function PdfWindow({ name, href, onClose, onDownloaded, children }: {
 
   return (
     <div onMouseDown={e => { if (e.target === e.currentTarget) onClose() }} className="fixed inset-0 z-[80] bg-[rgba(1,35,88,.32)] flex items-center justify-center p-6">
-      <div ref={box} role="dialog" aria-modal="true" aria-label="PDF preview" className="w-full max-w-[900px] h-full max-h-[860px] bg-white rounded-[16px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] flex flex-col overflow-hidden leading-[normal]">
+      <div ref={box} role="dialog" aria-modal="true" aria-label="PDF preview" className={`w-full h-full bg-white rounded-[16px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] flex flex-col overflow-hidden leading-[normal] ${landscape ? 'max-w-[980px] max-h-[880px]' : 'max-w-[900px] max-h-[860px]'}`}>
         <div className="flex items-center gap-3 px-[18px] py-3.5 border-b border-[var(--row-rule)]">
           <span className="w-[34px] h-[34px] rounded-[10px] bg-tn-teal-soft text-tn-teal flex items-center justify-center flex-none">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6" /></svg>
           </span>
           <div className="flex-1 min-w-0">
             <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{name}</div>
-            <div className={`text-[12px] ${error ? 'text-[#c8323d] font-semibold' : 'text-muted'}`}>{error ?? 'Preview, 1 page. Nothing downloads until you press Download.'}</div>
+            <div className={`text-[12px] ${error ? 'text-[#c8323d] font-semibold' : 'text-muted'}`}>{error ?? `Preview, 1 page${landscape ? ', landscape' : ''}. Nothing downloads until you press Download.`}</div>
           </div>
           <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-[15px] py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Close</button>
           <button type="button" disabled={busy} onClick={() => void download()} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-4 py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">

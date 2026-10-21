@@ -96,7 +96,7 @@ describe('the rail', () => {
       ['The module', [['Which job?', '/clocky-hours/which-job'], ['Clock safety', '/clocky-hours/safety'], ['Timesheet periods', '/admin/settings#periods'], ['Import', '/clocky-hours/import']]],
     ])
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-approvals')?.count).toBe('approvals')
-    expect(clocky.groups[0].items.find(i => i.key === 'clocky-reports')?.soon).toBe(true)
+    expect(clocky.groups[0].items.find(i => i.key === 'clocky-reports')?.soon).toBeUndefined()
     expect(clocky.readiness).toBeUndefined()
   })
 
