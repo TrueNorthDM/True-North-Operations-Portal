@@ -1,6 +1,6 @@
 /**
  * Google Calendar for the outbox (Clocky part 2: approved time off on the team
- * calendar, 7D; the Agenda's Good News calendar later). A Google Cloud service
+ * calendar, 7D; Agenda events, 8E; the Good News Calendar read in). A Google Cloud service
  * account, entered by a Super Admin in Company settings > Integrations (13A),
  * signs a short-lived token itself (RS256, OAuth 2.0 JWT bearer grant); the
  * calendar must be shared with the service account's address.
@@ -37,16 +37,47 @@ export async function accessToken(sa: ServiceAccount, now = Date.now()): Promise
   return body.access_token
 }
 
-/** An all-day event from start to end (both included). Returns its id. */
-export async function insertAllDay(token: string, calendarId: string, e: { summary: string; start: string; end: string }): Promise<string> {
-  const endExclusive = new Date(Date.parse(`${e.end}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+type Extra = { location?: string | null; description?: string | null }
+const extra = (e: Extra) => ({ ...(e.location ? { location: e.location } : {}), ...(e.description ? { description: e.description } : {}) })
+
+async function insert(token: string, calendarId: string, event: Record<string, unknown>): Promise<string> {
   const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ summary: e.summary, start: { date: e.start }, end: { date: endExclusive }, transparency: 'transparent' }),
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(event),
   })
   const body = await res.json().catch(() => null) as { id?: string; error?: { message?: string } } | null
   if (!res.ok || !body?.id) throw new Error(`Google Calendar refused the event: ${body?.error?.message ?? res.status}`)
   return body.id
+}
+
+/** An all-day event from start to end (both included). Returns its id. */
+export async function insertAllDay(token: string, calendarId: string, e: { summary: string; start: string; end: string; transparent?: boolean } & Extra): Promise<string> {
+  const endExclusive = new Date(Date.parse(`${e.end}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+  return insert(token, calendarId, { summary: e.summary, start: { date: e.start }, end: { date: endExclusive }, ...(e.transparent === false ? {} : { transparency: 'transparent' }), ...extra(e) })
+}
+
+/** An event at a time (instants), shown in its own zone. Returns its id. */
+export async function insertTimed(token: string, calendarId: string, e: { summary: string; startAt: string; endAt: string; timeZone: string } & Extra): Promise<string> {
+  return insert(token, calendarId, { summary: e.summary, start: { dateTime: e.startAt, timeZone: e.timeZone }, end: { dateTime: e.endAt, timeZone: e.timeZone }, ...extra(e) })
+}
+
+export interface CalendarEvent {
+  id: string; summary?: string; description?: string; htmlLink?: string; status?: string
+  start?: { date?: string; dateTime?: string }; end?: { date?: string; dateTime?: string }
+}
+
+/** The events of a calendar between two instants, repeating ones one by one. */
+export async function listEvents(token: string, calendarId: string, timeMin: string, timeMax: string): Promise<CalendarEvent[]> {
+  const out: CalendarEvent[] = []
+  let pageToken: string | undefined
+  do {
+    const q = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '250', ...(pageToken ? { pageToken } : {}) })
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${q}`, { headers: { Authorization: `Bearer ${token}` } })
+    const body = await res.json().catch(() => null) as { items?: CalendarEvent[]; nextPageToken?: string; error?: { message?: string } } | null
+    if (!res.ok || !body) throw new Error(`Google Calendar could not be read: ${body?.error?.message ?? res.status}`)
+    out.push(...(body.items ?? []))
+    pageToken = body.nextPageToken
+  } while (pageToken && out.length < 5000)
+  return out
 }
 
 /** Removes an event; one already gone counts as removed. */

@@ -377,6 +377,16 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open Time entries', href: '/clocky-hours' },
   },
   {
+    // Agenda.dc.html (8D, the bell's "Agenda" line) and Company settings 13C.
+    key: 'agenda-birthday', src: 'Agenda', block: 'tools', icon: 'agenda', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Agenda', stat: 'birthdays', statOne: 'birthday',
+    example: { title: "Today: Joy Inyele's birthday", body: 'From the Directory: the day and month, never the year.' },
+    title: "Today: someone's birthday",
+    description: 'At 7:00 AM in your time zone, on the day. Each person can hide their own birthday in their settings; Super Admins turn this on or off for everyone in Company settings. In the bell only.',
+    who: 'You', audience: { kind: 'everyone' },
+    button: { label: 'Open Agenda', href: '/agenda' },
+  },
+  {
     key: 'clocky-late', src: 'Clocky · reminders', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Timesheets', stat: 'timesheets late', statOne: 'timesheet late',
     example: { title: 'Submit October: it is 3 days late', body: 'Saheed Fidimaye has not submitted.' },

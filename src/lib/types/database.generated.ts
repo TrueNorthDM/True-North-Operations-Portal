@@ -260,9 +260,122 @@ export type Database = {
           },
         ]
       }
+      agenda_events: {
+        Row: {
+          add_to_google: boolean
+          audience_team_ids: string[] | null
+          calendar_state: string | null
+          client: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string
+          ends_at: string | null
+          google_event_id: string | null
+          id: number
+          kind: string
+          place: string | null
+          start_date: string
+          starts_at: string | null
+          team_id: string | null
+          time_zone: string | null
+          title: string
+        }
+        Insert: {
+          add_to_google?: boolean
+          audience_team_ids?: string[] | null
+          calendar_state?: string | null
+          client?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          ends_at?: string | null
+          google_event_id?: string | null
+          id?: number
+          kind: string
+          place?: string | null
+          start_date: string
+          starts_at?: string | null
+          team_id?: string | null
+          time_zone?: string | null
+          title: string
+        }
+        Update: {
+          add_to_google?: boolean
+          audience_team_ids?: string[] | null
+          calendar_state?: string | null
+          client?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          ends_at?: string | null
+          google_event_id?: string | null
+          id?: number
+          kind?: string
+          place?: string | null
+          start_date?: string
+          starts_at?: string | null
+          team_id?: string | null
+          time_zone?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_events_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_events_team_id_fkey"
+            columns: ["team_id"]
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agenda_good_news: {
+        Row: {
+          description: string | null
+          end_date: string
+          ends_at: string | null
+          google_event_id: string
+          html_link: string | null
+          start_date: string
+          starts_at: string | null
+          synced_at: string
+          title: string
+        }
+        Insert: {
+          description?: string | null
+          end_date: string
+          ends_at?: string | null
+          google_event_id: string
+          html_link?: string | null
+          start_date: string
+          starts_at?: string | null
+          synced_at?: string
+          title: string
+        }
+        Update: {
+          description?: string | null
+          end_date?: string
+          ends_at?: string | null
+          google_event_id?: string
+          html_link?: string | null
+          start_date?: string
+          starts_at?: string | null
+          synced_at?: string
+          title?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           clocky_reminders: Json
+          good_news_synced_at: string | null
           google_checked_at: string | null
           google_connected_at: string | null
           google_connected_by: string | null
@@ -285,6 +398,7 @@ export type Database = {
         }
         Insert: {
           clocky_reminders?: Json
+          good_news_synced_at?: string | null
           google_checked_at?: string | null
           google_connected_at?: string | null
           google_connected_by?: string | null
@@ -307,6 +421,7 @@ export type Database = {
         }
         Update: {
           clocky_reminders?: Json
+          good_news_synced_at?: string | null
           google_checked_at?: string | null
           google_connected_at?: string | null
           google_connected_by?: string | null

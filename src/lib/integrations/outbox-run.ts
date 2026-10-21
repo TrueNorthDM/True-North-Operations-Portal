@@ -3,7 +3,8 @@
  * queued in integration_jobs and writes the answer back on the request, so the
  * screens say "Sent to Rippling" or "Rippling refused it" with Try again.
  *
- *   gcal_upsert, gcal_delete   the team calendar (google-calendar.ts)
+ *   gcal_upsert, gcal_delete   the team calendar (google-calendar.ts): time
+ *                              off, and Agenda events and milestones
  *   rippling_*                 not sent yet: what the portal must call in
  *                              Rippling is an open question for the owner, so
  *                              these fail with that sentence instead of
@@ -14,7 +15,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { accessToken, deleteEvent, insertAllDay, parseServiceAccount } from './google-calendar'
+import { accessToken, deleteEvent, insertAllDay, insertTimed, parseServiceAccount } from './google-calendar'
 import { notifyClockyTimeOffRefused } from '@/lib/notifications/run'
 import { dayLabel } from '@/lib/timeclock/format'
 
@@ -50,11 +51,23 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
     try {
       if (j.kind === 'gcal_upsert') {
         const g = await google()
-        const p = j.payload as { who?: string; start?: string; end?: string }
-        if (!p.who || !p.start || !p.end) throw new Final('The job has no person or days.')
-        // The type of time off stays private (Super Admins and the person): the calendar says only "out".
-        const id = await insertAllDay(g.token, g.calendar, { summary: `${p.who}, out`, start: p.start, end: p.end })
-        if (j.ref_table === 'tc_absence_requests') await c.from('tc_absence_requests').update({ calendar_state: 'done', calendar_event_id: id }).eq('id', j.ref_id)
+        if (j.ref_table === 'agenda_events') {
+          // An Agenda event or milestone (8E): at a time in its zone, or all day.
+          const p = j.payload as { summary?: string; start?: string; end?: string; startAt?: string; endAt?: string; timeZone?: string; location?: string | null; description?: string | null }
+          if (!p.summary) throw new Final('The job has no title.')
+          const id = p.startAt && p.endAt && p.timeZone
+            ? await insertTimed(g.token, g.calendar, { summary: p.summary, startAt: p.startAt, endAt: p.endAt, timeZone: p.timeZone, location: p.location, description: p.description })
+            : p.start && p.end ? await insertAllDay(g.token, g.calendar, { summary: p.summary, start: p.start, end: p.end, transparent: false, location: p.location, description: p.description })
+            : null
+          if (!id) throw new Final('The job has no days.')
+          await c.from('agenda_events').update({ calendar_state: 'done', google_event_id: id }).eq('id', j.ref_id)
+        } else {
+          const p = j.payload as { who?: string; start?: string; end?: string }
+          if (!p.who || !p.start || !p.end) throw new Final('The job has no person or days.')
+          // The type of time off stays private (Super Admins and the person): the calendar says only "out".
+          const id = await insertAllDay(g.token, g.calendar, { summary: `${p.who}, out`, start: p.start, end: p.end })
+          if (j.ref_table === 'tc_absence_requests') await c.from('tc_absence_requests').update({ calendar_state: 'done', calendar_event_id: id }).eq('id', j.ref_id)
+        }
       } else if (j.kind === 'gcal_delete') {
         const g = await google()
         const eventId = (j.payload as { event_id?: string | null }).event_id
@@ -83,6 +96,10 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
   return report
 
   async function markRefused(j: Job, msg: string) {
+    if (j.ref_table === 'agenda_events') {
+      if (j.kind === 'gcal_upsert') await c.from('agenda_events').update({ calendar_state: 'failed' }).eq('id', j.ref_id)
+      return
+    }
     if (j.ref_table !== 'tc_absence_requests') return
     if (j.kind === 'rippling_pto') {
       await c.from('tc_absence_requests').update({ rippling_state: 'refused', rippling_error: msg }).eq('id', j.ref_id)

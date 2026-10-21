@@ -33,7 +33,7 @@ import {
   clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts,
   clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, clockyInvoiceMadeDrafts, clockyInvoiceApprovedDrafts, clockyInvoicePaidDrafts,
   clockyReimbursementRequestedDrafts, clockyReimbursementDecidedDrafts, clockyRmbReadyDrafts, clockyRmbPaidDrafts, clockyExtraRequestedDrafts, clockyExtraDecidedDrafts,
-  clockyTimeOffRefusedDrafts, clockyTypeChangeDrafts, clockyReminderDrafts, clockyLateDrafts, clockyAllowanceDrafts, clockyAllowanceOverDrafts, CLOCK_PANEL_HREF,
+  clockyTimeOffRefusedDrafts, clockyTypeChangeDrafts, clockyReminderDrafts, clockyLateDrafts, clockyAllowanceDrafts, clockyAllowanceOverDrafts, agendaBirthdayDrafts, CLOCK_PANEL_HREF,
 } from './generators'
 import { sendEmail } from '@/lib/email/resend'
 import { renderClockStopped } from '@/lib/email/clock-stopped'
@@ -203,7 +203,9 @@ export const notifyClockyReminders = (x: {
   late: { personId: string; key: string; text: string }[]
   allowance: { personId: string; key: string; text: string }[]
   over: { personId: string; key: string; to: readonly string[]; text: string }[]
+  birthdays: { to: string; key: string; text: string }[]
 }) => simple('clocky-reminders', ctx => [
+  ...x.birthdays.flatMap(r => agendaBirthdayDrafts(ctx, r)),
   ...x.reminders.flatMap(r => clockyReminderDrafts(ctx, r)),
   ...x.late.flatMap(r => clockyLateDrafts(ctx, r)),
   ...x.allowance.flatMap(r => clockyAllowanceDrafts(ctx, r)),

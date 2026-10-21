@@ -28,6 +28,11 @@ import { loadNavFacts } from '@/lib/access/nav-facts'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadSettings } from '@/lib/settings/person'
 import { resolveFavourites } from '@/lib/settings/pages'
+import { ThisWeekCard } from '@/components/home/ThisWeekCard'
+import { agendaViewer, loadAgendaItems } from '@/lib/agenda/data'
+import { thisWeek, viewDays } from '@/lib/agenda/model'
+import { localDate } from '@/lib/timeclock/format'
+import { addDays } from '@/lib/timeclock/periods'
 
 export default async function HomePage() {
   const perf = perfRun('home')
@@ -59,7 +64,15 @@ export default async function HomePage() {
   const meP = getCurrentPerson()
   const favouritesP = Promise.all([accessP, meP.then(m => (m ? loadSettings(createAdminClient(), m.id) : null))])
     .then(async ([a, s]) => (s ? resolveFavourites(buildRail({ can: a.can, canTool: a.canTool, facts: await loadNavFacts(a) }), s.favourites) : []))
-  const [org, access, me, celebPeople, publishing, i7Carryover, favourites] = await Promise.all([
+  // This week (Agenda.dc.html 8F): the Agenda's own items, this week and the
+  // next event within a month. A read that fails leaves the card out.
+  const weekP = accessP.then(async a => {
+    const v = await agendaViewer(a)
+    if (!v) return null
+    const today = localDate(new Date(), v.zone), { from } = viewDays('week', today)
+    return thisWeek(await loadAgendaItems(v, from, addDays(today, 31)), today)
+  }).catch(e => { console.error('[home] this week:', (e as Error).message); return null })
+  const [org, access, me, celebPeople, publishing, i7Carryover, favourites, week] = await Promise.all([
     perf.time('org', getOrgChart()),
     perf.time('access', accessP),
     perf.time('person', meP),
@@ -72,6 +85,7 @@ export default async function HomePage() {
     })),
     perf.time('i7', carryoverP),
     perf.time('favourites', favouritesP),
+    perf.time('this-week', weekP),
   ])
   perf.done({ budget: i7Carryover !== null })
 
@@ -99,9 +113,13 @@ export default async function HomePage() {
           so it runs as tall as the two short celebration cards stacked, and the
           three of them fill the row without leaving a column of white.
           Its figures are for everyone; only those who can open the page behind
-          it get a card that links. */}
+          it get a card that links. "This week" (the Agenda, 8F) opens the
+          first column, for everyone. */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <PublishingGoalsWidget data={publishing} linked={access.canTool('publishing')} />
+        <div className="space-y-6">
+          {week && <ThisWeekCard week={week} />}
+          <PublishingGoalsWidget data={publishing} linked={access.canTool('publishing')} />
+        </div>
         <div className="space-y-6">
           <Birthdays people={celebPeople} />
           <Anniversaries people={celebPeople} />

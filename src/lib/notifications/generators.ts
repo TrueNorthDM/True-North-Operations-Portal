@@ -611,6 +611,11 @@ export function clockyReminderDrafts(ctx: Ctx, x: { personId: string; key: strin
   return draftFor(ctx, 'clocky-reminder', ctx.aud.byId.get(x.personId), { title: x.text, body: '', href: '/clocky-hours', dedupeKey: x.key })
 }
 
+/** Someone's birthday today (Agenda): to one person, once per birthday. */
+export function agendaBirthdayDrafts(ctx: Ctx, x: { to: string; key: string; text: string }): Draft[] {
+  return draftFor(ctx, 'agenda-birthday', ctx.aud.byId.get(x.to), { title: x.text, body: '', href: '/agenda', dedupeKey: x.key })
+}
+
 /** Someone 3 days late or more: to the Super Admins (ck-reopen), once a day per person. */
 export function clockyLateDrafts(ctx: Ctx, x: { personId: string; key: string; text: string }): Draft[] {
   return ctx.aud.withTool('ck-reopen').filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-late', r, { title: x.text, body: '', href: '/clocky-hours', dedupeKey: x.key }))

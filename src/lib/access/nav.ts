@@ -154,6 +154,8 @@ export const RAIL: readonly RailEntry[] = [
       ],
     }],
   },
+  // Clocky part 2 (Agenda.dc.html): one calendar for the company, for everyone.
+  { kind: 'page', key: 'agenda', href: '/agenda', icon: 'agenda', surface: 'agenda' },
   { kind: 'rule' },
   {
     kind: 'hub',

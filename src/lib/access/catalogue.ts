@@ -149,6 +149,12 @@ const TREE: Node[] = [
     { key: 'history', label: 'History', kind: 'page', always: true },
     { key: 'human-resources', label: 'Human Resources', kind: 'page', v: [1, 0, 0] },
   ] },
+  { key: 'm-agenda', label: 'Agenda', kind: 'module', ch: [
+    { key: 'agenda', label: 'Agenda: time off, birthdays, events and milestones', kind: 'page', always: true, ch: [
+      { key: 'ag-company', label: 'Create company events and milestones', kind: 'action', v: [1, 0, 0] },
+      { key: 'ag-team', label: 'Create events for the teams they lead', kind: 'action', v: [1, 1, 0] },
+    ] },
+  ] },
   { key: 'm-admin', label: 'Admin', kind: 'module', ch: [
     { key: 'admin', label: 'Admin', kind: 'page', v: [1, 0, 0], note: 'The landing page of the Admin area.' },
     { key: 'access-levels', label: 'Access levels, with Check a person, Exceptions and the change log', kind: 'page', superOnly: true },

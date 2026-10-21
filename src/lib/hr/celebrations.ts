@@ -2,6 +2,7 @@
 // and birthdays): active people with their primary team, plus the rolling
 // last / this / next month window.
 
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { loadBirthDates } from '@/lib/hr/contact'
 import { primaryTeamByPerson } from '@/lib/directory/primary-team'
@@ -45,7 +46,8 @@ export function monthWindow(now: Date): MonthTarget[] {
   })
 }
 
-export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
+// Once per request: Home's cards and the Agenda's This week both read it.
+export const loadCelebrationPeople = cache(async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
   const supabase = await createClient()
   // date_of_birth is no longer readable by the signed-in role (migration 056),
   // so it comes from the privileged reader and is merged in below. Everything
@@ -88,4 +90,4 @@ export async function loadCelebrationPeople(): Promise<CelebrationPerson[]> {
         color: colourOf(colours, tn),
       }
     })
-}
+})

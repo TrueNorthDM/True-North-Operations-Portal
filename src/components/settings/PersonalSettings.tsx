@@ -11,7 +11,7 @@
  *   Time and region       their time zone and the hour of the daily summary.
  *   Home and start        the page they land on after signing in, and up to
  *                         five favourite pages at the top of Home.
- *   Privacy               whether Home shows their birthday and anniversary.
+ *   Privacy               whether Home and the Agenda show their birthday and anniversary.
  *
  * Every change saves on its own (saveSettings). The two server-drawn parts
  * (the notification table and two-step sign-in) come in as nodes.
@@ -277,12 +277,12 @@ export function PersonalSettings({
           </div>
         </Section>
 
-        <Section id="privacy" title="Privacy" intro="What Home shows the team about you.">
-          <Row label="Show my birthday on Home" hint="The day and month only, never the year." status={statusFor('birthday')}>
-            <Switch on={s.showBirthday} label="Show my birthday on Home" onChange={v => set('birthday', 'showBirthday', v, { showBirthday: v })} />
+        <Section id="privacy" title="Privacy" intro="What Home and the Agenda show the team about you.">
+          <Row label="Show my birthday on Home and in the Agenda" hint="The day and month only, never the year. Off, nobody gets the birthday bell for you either." status={statusFor('birthday')}>
+            <Switch on={s.showBirthday} label="Show my birthday on Home and in the Agenda" onChange={v => set('birthday', 'showBirthday', v, { showBirthday: v })} />
           </Row>
-          <Row label="Show my work anniversary on Home" hint="How many years you have been with True North." status={statusFor('anniversary')}>
-            <Switch on={s.showAnniversary} label="Show my work anniversary on Home" onChange={v => set('anniversary', 'showAnniversary', v, { showAnniversary: v })} />
+          <Row label="Show my work anniversary on Home and in the Agenda" hint="How many years you have been with True North." status={statusFor('anniversary')}>
+            <Switch on={s.showAnniversary} label="Show my work anniversary on Home and in the Agenda" onChange={v => set('anniversary', 'showAnniversary', v, { showAnniversary: v })} />
           </Row>
         </Section>
       </div>

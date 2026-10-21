@@ -41,6 +41,8 @@ export const NAV_ICON = {
   'requests': 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
   'receipt': 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3',
   'calendar': 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4',
+  // Clocky part 2 (Agenda.dc.html): the calendar with its days.
+  'agenda': 'M4 5h16v16H4zM4 10h16M9 3v4M15 3v4M8 14h2M14 14h2M8 17h2',
   'clock-plus': 'M12 8v4l2.5 1.5M20 12a8 8 0 1 0-8 8M18 15v6M15 18h6',
   'bell': 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
   'messages': 'M21 11.5a8.4 8.4 0 0 1-9 8.3 9 9 0 0 1-3.6-.7L3 21l1.9-4.6A8.4 8.4 0 1 1 21 11.5zM8 11h8M8 14h5',

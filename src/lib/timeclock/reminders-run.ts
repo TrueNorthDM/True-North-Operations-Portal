@@ -11,6 +11,9 @@
  *                     morning; the Super Admins from the 3rd day
  *   allowance         90% and over to the person; over without approval also to
  *                     the Team Leader and the Super Admins
+ *   birthday          "Today: Joy Inyele's birthday." to everyone else, 7:00 AM
+ *                     in their time zone (Agenda); never for someone who hides
+ *                     their birthday in their settings
  *
  * It also turns contractors into US employees on the day a Super Admin
  * scheduled (type-change.ts).
@@ -31,8 +34,10 @@ import { addDays, daysBetween, isSent, periodContaining, periodLabel, rangeText 
 import { formatDuration } from './rounding'
 import { notifyClockyReminders } from '@/lib/notifications/run'
 import { applyTypeChanges } from './type-change'
+import { loadBirthDates } from '@/lib/hr/contact'
+import { loadCelebrationOptOuts } from '@/lib/settings/person'
 
-export interface RemindersReport { reminders: number; late: number; allowance: number; over: number }
+export interface RemindersReport { reminders: number; late: number; allowance: number; over: number; birthdays: number }
 
 const dow = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay()
 const hrs = (s: number) => (s % 3600 === 0 ? `${s / 3600}h` : formatDuration(s))
@@ -105,6 +110,25 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
     }
   }
 
-  if (reminders.length || late.length || allowance.length || over.length) await notifyClockyReminders({ reminders, late, allowance, over })
-  return { reminders: reminders.length, late: late.length, allowance: allowance.length, over: over.length }
+  // ── 7:00 AM in each person's zone: today's birthdays (Agenda) ────────────
+  const birthdays: { to: string; key: string; text: string }[] = []
+  const atSeven = people.filter(p => Math.floor(localMinutes(now, p.zone) / 60) === 7)
+  if (on.birthday && atSeven.length) {
+    const [dobs, optOut] = await Promise.all([loadBirthDates(), loadCelebrationOptOuts(c)])
+    for (const r of atSeven) {
+      const today = localDate(now, r.zone), y = Number(today.slice(0, 4))
+      const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
+      for (const p of people) {
+        const md = dobs.get(p.id)?.slice(5, 10)
+        if (!md || p.id === r.id || optOut.birthday.has(p.id)) continue
+        // Feb 29 birthdays are kept on Feb 28 in other years, as in the Agenda.
+        if (md === today.slice(5) || (md === '02-29' && !leap && today.slice(5) === '02-28')) {
+          birthdays.push({ to: r.id, key: `bday:${p.id}:${y}`, text: `Today: ${p.name}'s birthday.` })
+        }
+      }
+    }
+  }
+
+  if (reminders.length || late.length || allowance.length || over.length || birthdays.length) await notifyClockyReminders({ reminders, late, allowance, over, birthdays })
+  return { reminders: reminders.length, late: late.length, allowance: allowance.length, over: over.length, birthdays: birthdays.length }
 }
