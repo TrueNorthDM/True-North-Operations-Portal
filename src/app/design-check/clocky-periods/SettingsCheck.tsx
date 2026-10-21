@@ -7,9 +7,9 @@
 import { Breadcrumb, adminCrumb } from '@/components/ui/Breadcrumb'
 import { SettingsNav, type SettingsSection } from '@/components/SettingsNav'
 import { TimesheetPeriodsSection, type PeriodsActions } from '@/components/clocky/periods/TimesheetPeriodsSection'
-import { ANCHOR_OPTIONS, periodsData, previewAnchorMove, setDefaultCadence, setPayPeriodAnchor } from './sample'
+import { ANCHOR_OPTIONS, periodsData, previewAnchorMove, setPayPeriodAnchor } from './sample'
 
-const ACTIONS: PeriodsActions = { previewAnchorMove, setPayPeriodAnchor, setDefaultCadence }
+const ACTIONS: PeriodsActions = { previewAnchorMove, setPayPeriodAnchor }
 
 const icon = (paths: string[]) => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -45,11 +45,11 @@ export function SettingsCheck({ frame, level }: { frame: string; level: 'super' 
     },
   ]
   return (
-    <div className="space-y-6">
+    <div className="space-y-[22px]">
       <div>
         <Breadcrumb parents={[adminCrumb(true)]} self="/admin/settings" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Company settings</h1>
-        <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink m-0 leading-[normal]" style={{ letterSpacing: '-.01em' }}>Company settings</h1>
+        <p className="mt-1.5 text-[15px] text-muted leading-normal">
           Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens, the shared settings the whole portal runs on. Changes apply everywhere.
         </p>
       </div>

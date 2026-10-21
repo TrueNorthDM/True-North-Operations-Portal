@@ -1,6 +1,9 @@
 /**
  * Pieces shared by a person's page (PersonPage) and its edit forms
  * (PersonForms): the section heading, the teams list and the field style.
+ * Drawn as the Clocky design handoff draws the page (Timesheet Periods.dc.html
+ * 5B, owner 20 October 2026): grey 11px section titles on a light rule, 22px
+ * between sections, and Raleway 10.5px uppercase pills.
  */
 
 import type { ReactNode } from 'react'
@@ -19,8 +22,8 @@ export function Section({ title, right, tag, flush, children }: {
   children: ReactNode
 }) {
   return (
-    <div className={`${flush ? '' : 'mb-6 '}min-w-0`}>
-      <h3 className="m-0 mb-1.5 pb-2.5 border-b border-[var(--panel-border)] flex justify-between font-(family-name:--font-display) font-extrabold text-[11.5px] tracking-[.1em] uppercase text-tn-teal">
+    <div className={`${flush ? '' : 'mb-[22px] '}min-w-0`}>
+      <h3 className="m-0 pb-1.5 border-b border-[var(--row-rule)] flex justify-between items-center font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.08em] uppercase text-muted leading-[normal]" style={{ letterSpacing: '.08em' }}>
         {tag ? <span className="flex items-center gap-2">{title}{tag}</span> : <span>{title}</span>}{right && <span className="text-muted tracking-[.04em]">{right}</span>}
       </h3>
       {children}
@@ -28,8 +31,14 @@ export function Section({ title, right, tag, flush, children }: {
   )
 }
 
+// The handoff's blue (US Employee, Full-Time) and green (Active); the rest keep the Directory's.
+const PAGE_PILL: Partial<Record<Pill['kind'], string>> = {
+  blue: 'bg-[#e8effa] text-[#1e40af]',
+  green: 'bg-[var(--ok-bg)] text-[var(--ok-fg)]',
+}
+
 export const PillBadge = ({ pill }: { pill: Pill }) => (
-  <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[11px] rounded-[7px] px-3 py-[5px] whitespace-nowrap ${PILL_CLASS[pill.kind]}`}>{pill.label}</span>
+  <span className={`inline-flex items-center font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.05em] uppercase rounded-full px-2.5 py-[3px] whitespace-nowrap leading-[normal] ${PAGE_PILL[pill.kind] ?? PILL_CLASS[pill.kind]}`}>{pill.label}</span>
 )
 
 export function TeamsList({ teams }: { teams: NonNullable<PersonPageData['work']>['teams'] }) {

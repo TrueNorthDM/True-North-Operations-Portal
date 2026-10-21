@@ -15,7 +15,6 @@ import { useRouter } from 'next/navigation'
 import { Avatar } from '@/components/Avatar'
 import { Segmented } from '@/components/ui/Segmented'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { BTN } from '@/lib/ui/buttons'
 import type { WhosWorkingData, WorkingPerson } from '@/lib/timeclock/clocky-types'
 import { ClockField, ClockToast, FOCUS, HeadButton, ICON, Icon, SearchInput, StopIcon } from '../clock/ClockParts'
 import { ClockOutForDialog } from './ClockOutForDialog'
@@ -130,7 +129,7 @@ export function WhosWorkingPanel({
 
   const place = page
     ? `relative bg-white border border-[var(--panel-border)] rounded-[16px] ${fill ? 'h-full' : 'h-[calc(100dvh-var(--chrome-top)-92px)] min-h-[480px]'}`
-    : `${contained ? 'absolute' : 'fixed'} right-0 bottom-0 ${contained ? '' : 'top-[var(--chrome-top)]'} w-[480px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[35]`
+    : `${contained ? 'absolute' : 'fixed'} right-0 bottom-0 ${contained ? '' : 'top-[var(--chrome-top)]'} w-[481px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[35]`
 
   return (
     <>
@@ -157,7 +156,7 @@ export function WhosWorkingPanel({
             )}
           </div>
           <div className="flex flex-wrap gap-2 items-center">
-            <Segmented label="Show" value={ui.filter} onChange={k => set({ filter: k })}
+            <Segmented label="Show" display="px-[11px] py-1.5 text-[12.5px]" value={ui.filter} onChange={k => set({ filter: k })}
               options={[{ key: 'on', label: 'On the clock' }, { key: 'all', label: 'Everyone today' }]} />
             <div className="w-[150px]">
               <ClockField value={ui.sort} options={[...SORTS]} onChange={v => set({ sort: v as WorkingSort })} compact ariaLabel="Sort" />
@@ -200,7 +199,7 @@ export function WhosWorkingPanel({
               <Icon d={ICON.clock} size={34} stroke="#cbd2da" sw={1.8} />
               <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{emptyTitle(ui.filter, ui.query)}</div>
               {ui.filter === 'on' && !ui.query.trim() && (
-                <button type="button" onClick={() => set({ filter: 'all' })} className={`${BTN.white} ${FOCUS}`}>See everyone today</button>
+                <button type="button" onClick={() => set({ filter: 'all' })} className={`inline-flex items-center border border-slate-200 rounded-[10px] px-[15px] py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal ${FOCUS}`}>See everyone today</button>
               )}
             </div>
           )}

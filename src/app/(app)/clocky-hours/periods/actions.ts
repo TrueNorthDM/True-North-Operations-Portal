@@ -6,17 +6,19 @@
  * Work tab and Directory > Rates & Costs share these.
  *
  * Reading: whoever has Company settings > Timesheet periods (cs-periods).
- * Changing the pay period start, the default for new people, or how someone
- * submits: Super Admins (cs-periods-edit). Every change keeps the past as it
- * was (lib/timeclock/periods.ts): a person's current period closes the way it
- * started, and periods already submitted keep their dates. The previews give
- * the exact dates for the confirm dialogs before anything is saved.
+ * Changing the pay period start or how someone submits: Super Admins
+ * (cs-periods-edit). There is no default for new people (owner, 20 October
+ * 2026): the cadence is required when someone is added to the Directory.
+ * Every change keeps the past as it was (lib/timeclock/periods.ts): a
+ * person's current period closes the way it started, and periods already
+ * submitted keep their dates. The previews give the exact dates for the
+ * confirm dialogs before anything is saved.
  */
 
 import { revalidatePath } from 'next/cache'
 import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { allRows, db, loadClockySettings, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
+import { db, loadClockySettings, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { lastSubmittedPayEnd, loadTimesheetPeriods, previewAnchor, previewCadence, type AnchorPreview, type CadencePreview } from '@/lib/timeclock/clocky-periods-data'
 import { localDate } from '@/lib/timeclock/format'
 import { anchorMove, type Cadence } from '@/lib/timeclock/periods'
@@ -107,37 +109,6 @@ export async function setPayPeriodAnchor(input: { anchor: string }): Promise<Res
     if (sErr) return notSaved(sErr)
     refresh()
     return { ok: true, effectiveFrom: plan.effectiveFrom }
-  } catch (e) {
-    return notSaved(e)
-  }
-}
-
-/**
- * The cadence new people start with (5A). Everyone with no cadence of their
- * own is first pinned to the old default, so changing it moves nobody already
- * here (and so never cuts anyone's period in half).
- */
-export async function setDefaultCadence(input: { cadence: Cadence }): Promise<Result> {
-  const v = await editor()
-  if (isFail(v)) return v
-  const cadence = asCadence(input.cadence)
-  if (!cadence) return fail('Choose Monthly or Every 2 weeks.')
-  try {
-    const c = db()
-    const [settings, dir] = await Promise.all([loadClockySettings(), loadDirectory()])
-    if (cadence === settings.defaultCadence) return { ok: true }
-    if (cadence === 'biweekly' && !settings.anchor) return fail('Set the day pay periods start first.')
-    const pinned = new Set((await allRows<{ person_id: string }>((a, b) => c.from('tc_person_cadence').select('person_id').order('id').range(a, b), 'How people submit could not be read')).map(r => r.person_id))
-    const pins = [...dir.people.keys()].filter(id => !pinned.has(id))
-      .map(id => ({ person_id: id, cadence: settings.defaultCadence, effective_from: '2017-01-01', set_by: v.personId }))
-    for (let i = 0; i < pins.length; i += 500) {
-      const { error } = await c.from('tc_person_cadence').insert(pins.slice(i, i + 500))
-      if (error) return notSaved(error)
-    }
-    const { error } = await c.from('tc_settings').update({ default_cadence: cadence, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
-    if (error) return notSaved(error)
-    refresh()
-    return { ok: true }
   } catch (e) {
     return notSaved(e)
   }

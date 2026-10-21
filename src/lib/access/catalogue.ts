@@ -165,7 +165,7 @@ const TREE: Node[] = [
       { key: 'cs-targets', label: 'Publishing targets', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-sites', label: 'Sites & languages', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-periods', label: 'Timesheet periods', kind: 'tab', v: [1, 0, 0] },
-      { key: 'cs-periods-edit', label: 'Change the timesheet periods: the pay period start, the default for new people, and who submits how', kind: 'action', superOnly: true },
+      { key: 'cs-periods-edit', label: 'Change the timesheet periods: the pay period start and who submits how', kind: 'action', superOnly: true },
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },
     { key: 'tests', label: 'Tests', kind: 'page', v: [1, 0, 0] },

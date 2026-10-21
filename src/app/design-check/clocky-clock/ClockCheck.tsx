@@ -34,6 +34,8 @@ function Bell() {
 }
 
 export function ClockCheck({ frame, device, frozen }: { frame: string; device: 'desktop' | 'phone'; frozen: boolean }) {
+  // TB: only the top-bar button's four states, at the top (as the overview's TB card).
+  const tbOnly = frame === 'TB'
   const f = FRAMES.find(x => x.code === frame) ?? FRAMES[0]
   const [open, setOpen] = useState(true)
   const api = sampleApi(f.data)
@@ -50,7 +52,7 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
         <div className="flex flex-col gap-3.5">
           <div>
             <h1 className="m-0 font-(family-name:--font-display) font-black text-[24px] text-tn-ink">Clocky, painel do relógio (build)</h1>
-            <p className="m-0 mt-1 text-[13.5px] text-muted">{`Compare com Clock Panel.dc.html?frame=${f.code}${phone ? '&device=phone' : ''}. Os componentes são os reais; o servidor é simulado com os dados do protótipo.`}</p>
+            <p className="m-0 mt-1 text-[13.5px] text-muted">{tbOnly ? 'Compare com o card TB de Clocky (todas as telas).dc.html. Os componentes são os reais; o servidor é simulado com os dados do protótipo.' : `Compare com Clock Panel.dc.html?frame=${f.code}${phone ? '&device=phone' : ''}. Os componentes são os reais; o servidor é simulado com os dados do protótipo.`}</p>
           </div>
           <div className="flex gap-4 items-center flex-wrap">
             <Link href={`/design-check/clocky-working`} className="text-[13px] font-semibold text-tn-teal">Who&apos;s working</Link>
@@ -61,13 +63,14 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
             </div>
           </div>
           <div className="flex flex-wrap bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 self-start">
+            <Link href={q({ frame: 'TB' })} className={`rounded-[8px] px-[11px] py-[7px] text-[12.5px] font-semibold ${tbOnly ? 'bg-tn-primary text-[#ffffff]' : 'text-foreground'}`}>TB Top bar</Link>
             {FRAMES.map(x => (
-              <Link key={x.code} href={q({ frame: x.code })} className={`rounded-[8px] px-[11px] py-[7px] text-[12.5px] font-semibold ${x.code === f.code ? 'bg-tn-primary text-[#ffffff]' : 'text-foreground'}`}>{`${x.code} ${x.title}`}</Link>
+              <Link key={x.code} href={q({ frame: x.code })} className={`rounded-[8px] px-[11px] py-[7px] text-[12.5px] font-semibold ${!tbOnly && x.code === f.code ? 'bg-tn-primary text-[#ffffff]' : 'text-foreground'}`}>{`${x.code} ${x.title}`}</Link>
             ))}
           </div>
         </div>
 
-        {phone ? (
+        {tbOnly ? null : phone ? (
           <div className="relative w-[390px] h-[844px] mx-auto my-3.5 rounded-[46px] overflow-hidden bg-white flex flex-col shadow-[0_0_0_10px_#10203a,0_40px_80px_-30px_rgba(1,35,88,.55)]">
             <div className="h-11 shrink-0 flex items-center justify-between px-7 font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink tabular-nums">
               <span>11:50</span>
@@ -115,6 +118,7 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
               </div>
             ))}
           </div>
+          <p className="m-0 text-[12.5px] text-muted">Com o relógio rodando, a aba do navegador mostra: <b className="text-foreground">1:58 · i7 › Web Dev · True North</b></p>
         </div>
       </div>
     </div>

@@ -11,9 +11,9 @@
  *
  * The company settings were a row here from 22 September to 7 October 2026;
  * they now live in Admin, Configuration (/admin/settings), and the row is each
- * person's own Settings (/settings). On the navy rail the avatar is a gold
- * circle with a faint white ring, the ring
- * going solid while the menu is open.
+ * person's own Settings (/settings). On the navy rail the avatar is a white
+ * circle with navy initials and a faint white ring (the Clocky handoff, 20
+ * October 2026), the ring going solid while the menu is open.
  *
  * Since 28 September 2026 (two-step sign-in), someone whose week to set it up is
  * running gets a "Two-step sign-in" row under My profile, straight to the setup
@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { signOut } from '@/app/auth/actions'
 import { Avatar } from '@/components/Avatar'
+import { initialsOf } from '@/lib/directory/people-types'
 import { ShieldIcon, SETUP_HREF } from '@/components/mfa/TwoStepBanner'
 
 export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', startOpen = false, twoStepDaysLeft = null, canMyTeam = true }: {
@@ -88,11 +89,15 @@ export function UserMenu({ userEmail, userName, avatarUrl, placement = 'bar', st
         aria-label="Account menu"
         title={userName ?? userEmail ?? 'Account'}
         className={placement === 'rail'
-          ? `relative inline-flex items-center justify-center rounded-full ring-2 transition-shadow focus:outline-none focus-visible:ring-white ${open ? 'ring-white' : 'ring-white/25 hover:ring-white/60'}`
+          ? `relative inline-flex items-center justify-center rounded-full ring-2 transition-shadow focus:outline-none focus-visible:ring-white ${open ? 'ring-white' : 'ring-white/35 hover:ring-white/60'}`
           : 'relative inline-flex items-center justify-center rounded-full hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-tn-primary/40'}
       >
         {placement === 'rail'
-          ? <Avatar name={initialsName} avatarUrl={avatarUrl} size={36} color="#F2C40A" ink="#012358" />
+          // The handoff's rail avatar (owner, 20 October 2026): 38px, white, navy
+          // initials in Open Sans 700 12px, inside a 35% white ring.
+          ? (avatarUrl
+            ? <Avatar name={initialsName} avatarUrl={avatarUrl} size={38} />
+            : <span className="shrink-0 inline-flex items-center justify-center w-[38px] h-[38px] rounded-full bg-white text-tn-ink font-sans font-bold text-[12px]">{initialsOf(initialsName)}</span>)
           : <Avatar name={initialsName} avatarUrl={avatarUrl} size={36} color="#012358" />}
         {twoStepDaysLeft !== null && (
           <span aria-hidden="true" className={`absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-[#e8a317] ring-2 ${placement === 'rail' ? 'ring-[#012358]' : 'ring-white'}`} />

@@ -8,10 +8,10 @@
  */
 
 import { useState } from 'react'
-import { BTN } from '@/lib/ui/buttons'
 import type { WorkingPerson } from '@/lib/timeclock/clocky-types'
 import { BTN_DANGER, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, SectionLabel, StopIcon } from '../clock/ClockParts'
 import { ClockWindow } from '../clock/ComboModals'
+import { BTN_MODAL_WHITE } from '../entries/ui'
 import { currentEntryLine, endTimeOptions } from './working-model'
 
 export function ClockOutForDialog({ person, meName, viewerZone, nowMs, busy, contained, initialReason = '', onClose, onConfirm }: {
@@ -50,7 +50,7 @@ export function ClockOutForDialog({ person, meName, viewerZone, nowMs, busy, con
         </label>
         <div className="text-[12px] text-muted leading-[1.5]">{`The entry is marked "Clocked out by ${meName}". The reason is kept in its history, and ${first} gets a notification.`}</div>
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className={`${BTN.white} ${FOCUS}`}>Cancel</button>
+          <button type="button" onClick={onClose} className={`${BTN_MODAL_WHITE} ${FOCUS}`}>Cancel</button>
           <button type="button" onClick={() => ready && onConfirm(end, reason.trim())} disabled={!ready}
             className={`${BTN_DANGER} disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}>
             <StopIcon size={12} color="#ffffff" />Clock out

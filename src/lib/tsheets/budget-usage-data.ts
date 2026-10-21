@@ -102,7 +102,7 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
       .eq('tsheets_only', false)
       .order('full_name'),
     supabase.from('team_members').select('person_id, team_id'),
-    supabase.from('teams').select('id, name'),
+    supabase.from('teams').select('id, name, color'),
     supabase.from('tr_project_budgets').select('client_id, project, hours_allocated').is('effective_to', null),
     supabase.from('i7_monthly_budget').select('month, budget_amount, extra_amount').order('month'),
     supabase.from('i7_project_month_hours').select('project, month, hours_allocated').order('month'),
@@ -131,6 +131,8 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
   }
 
   const teamNameById = new Map((teamRows ?? []).map(t => [t.id, t.name]))
+  // Each team's own colour (teams.color), for the team chip in Rates & Costs.
+  const teamColorByName = new Map((teamRows ?? []).map(t => [t.name, (t as { color?: string | null }).color ?? null]))
   const teamsByPerson = new Map<string, string[]>()
   for (const m of (memberRows ?? [])) {
     const name = teamNameById.get(m.team_id)
@@ -194,6 +196,7 @@ export async function getBudgetUsageData({ pay }: { pay: boolean }): Promise<Bud
       title: p.title ?? null,
       teams,
       teamName: teams[0] ?? null,
+      teamColor: teams[0] ? teamColorByName.get(teams[0]) ?? null : null,
       managerName: managerId ? nameById.get(managerId) ?? null : null,
       managerTeam: managerId ? teamsByPerson.get(managerId)?.[0] ?? null : null,
       hireDate: (p as { hire_date?: string | null }).hire_date ?? null,

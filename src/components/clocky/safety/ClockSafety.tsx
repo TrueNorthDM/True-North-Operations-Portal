@@ -16,7 +16,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Segmented } from '@/components/ui/Segmented'
-import { SearchField } from '@/components/ui/SearchField'
+import { SearchInput } from '@/components/clocky/clock/ClockParts'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { getClockSafety } from '@/app/(app)/clocky-hours/safety/actions'
 import { dayLabel, initials } from '@/lib/timeclock/format'
@@ -35,7 +35,9 @@ const CARD_PERIOD: Record<SafetyPeriod, string> = { month: 'this month', '3m': '
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
 const PERSON_GRID = 'grid grid-cols-[minmax(200px,1.4fr)_150px_150px_180px_130px]'
-const OCC_GRID = 'grid grid-cols-[110px_160px_minmax(210px,1fr)_110px_120px_150px_90px_110px_90px]'
+// The prototype's columns, with "Stopped by Clocky" and "Kept going earlier" at 150px:
+// at its 120px and 110px those headings ran into the next one.
+const OCC_GRID = 'grid grid-cols-[110px_160px_minmax(210px,1fr)_110px_150px_150px_90px_150px_90px]'
 
 /** "New York" from "America/New_York". */
 const zoneCity = (zone: string) => (zone.split('/').pop() ?? zone).replace(/_/g, ' ')
@@ -99,14 +101,14 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
         {cards.map(c => (
           <div key={c.label} className="bg-white border border-[var(--panel-border)] rounded-[14px] px-[18px] py-4 flex flex-col gap-1.5">
             <span className={LABEL}>{c.label}</span>
-            <span className="font-(family-name:--font-display) font-black text-[28px] tabular-nums" style={{ color: c.color }}>{c.value}</span>
+            <span className="font-(family-name:--font-display) font-black text-[28px] tabular-nums lining-nums" style={{ color: c.color }}>{c.value}</span>
           </div>
         ))}
       </div>
 
       <div className="flex flex-wrap gap-2.5 items-center">
-        <Segmented label="Period" options={PERIODS} value={period} onChange={setPeriod} />
-        <SearchField value={q} onChange={setQ} placeholder="Search people" className="w-[240px]" />
+        <Segmented label="Period" display="px-3 py-1.5 text-[12.5px]" options={PERIODS} value={period} onChange={setPeriod} />
+        <div className="w-[240px]"><SearchInput value={q} onChange={setQ} placeholder="Search people" height={38} iconTop={11} iconLeft={11} iconSize={15} padLeft={33} fontSize={13} /></div>
         {data.access === 'read' && (
           <span className="text-[12px] text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[11px] py-[5px]">Read only at the Admin level</span>
         )}
@@ -143,9 +145,9 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
                         )}
                       </span>
                     </div>
-                    <div className="px-3.5 py-2.5 text-right font-(family-name:--font-display) font-extrabold text-[15px] tabular-nums" style={{ color: p.autoStops ? '#c8323d' : 'var(--faint)' }}>{p.autoStops}</div>
-                    <div className="px-3.5 py-2.5 text-right font-semibold text-[13.5px] text-foreground tabular-nums">{p.keptGoing}</div>
-                    <div className="px-3.5 py-2.5 text-[13px] text-foreground tabular-nums">{p.last ?? 'Never'}</div>
+                    <div className="px-3.5 py-2.5 text-right font-(family-name:--font-display) font-extrabold text-[15px] tabular-nums lining-nums" style={{ color: p.autoStops ? '#c8323d' : 'var(--faint)' }}>{p.autoStops}</div>
+                    <div className="px-3.5 py-2.5 text-right font-semibold text-[13.5px] text-foreground tabular-nums lining-nums">{p.keptGoing}</div>
+                    <div className="px-3.5 py-2.5 text-[13px] text-foreground tabular-nums lining-nums">{p.last ?? 'Never'}</div>
                     <div
                       title={p.byMonth.map(m => `${MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]} ${m.count}`).join(' · ')}
                       className="px-3.5 py-2.5 h-7 box-content flex items-end gap-1"
@@ -172,7 +174,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
           <section className="flex flex-col gap-2.5">
             <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Every occurrence</h2>
             <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
-              <div className="min-w-[1040px]">
+              <div className="min-w-[1110px]">
                 <div className={`${OCC_GRID} bg-subtle border-b border-[var(--panel-border)]`}>
                   {['Date', 'Person', 'Job', 'Clock started', 'Stopped by Clocky', 'Real end confirmed', 'Difference', 'Kept going earlier', 'Entry'].map(h => (
                     <div key={h} className={`px-3 py-2.5 whitespace-nowrap ${LABEL}`}>{h}</div>
@@ -181,7 +183,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
                 {occ.map(o => {
                   const diff = diffText(o.diffMinutes)
                   return (
-                    <div key={o.eventId} className={`${OCC_GRID} items-center border-b border-[var(--row-rule)] text-[13px] tabular-nums hover:bg-[var(--row-hover)]`}>
+                    <div key={o.eventId} className={`${OCC_GRID} items-center border-b border-[var(--row-rule)] text-[13px] tabular-nums lining-nums hover:bg-[var(--row-hover)]`}>
                       <div className="px-3 py-2.5 text-tn-ink font-semibold whitespace-nowrap">{dayLabel(o.date)}</div>
                       <div className="px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-bold whitespace-nowrap">{o.name}</div>
                       <div className="px-3 py-2.5 text-foreground truncate" title={o.job}>{o.job}</div>

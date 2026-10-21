@@ -7,7 +7,7 @@
  * counts only once approved; the line at the foot says who it goes to.
  */
 
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import { wallToInstant } from '@/lib/timeclock/clock'
 import { addDays } from '@/lib/timeclock/periods'
 import { dayLabel, minutesLabel } from '@/lib/timeclock/format'
@@ -17,7 +17,7 @@ import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
 import { overlapAmong, withCombination, withJob, type RequestState } from './form'
 import { QUARTERS, hhmmOf, nameFor } from './model'
-import { CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, TEXTAREA_WARN } from './ui'
+import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, TEXTAREA_WARN } from './ui'
 
 /** The check line of 3K-1, from the rows on screen. */
 export function requestCheck(q: RequestState, personId: string, zone: string, rows: readonly EntryView[], catalog: Pick<Catalog, 'combinations'>, nowMs: number): { text: string; bad: boolean } {
@@ -64,7 +64,7 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
         <LabeledSelect label="Start" value={String(rq.start)} options={times} search onChange={v => setRq({ start: Number(v), error: null })} />
         <LabeledSelect label="End" value={String(rq.end)} options={times} search onChange={v => setRq({ end: Number(v), error: null })} />
       </div>
-      <div role={check.bad ? 'alert' : undefined} className={`-mt-1 text-[12.5px] font-semibold tabular-nums ${check.bad ? 'text-[#c8323d]' : 'text-muted'}`}>{check.text}</div>
+      <div role={check.bad ? 'alert' : undefined} className={`-mt-1 text-[12.5px] font-semibold tabular-nums lining-nums ${check.bad ? 'text-[#c8323d]' : 'text-muted'}`}>{check.text}</div>
       <div className="grid grid-cols-2 gap-3">
         <LabeledSelect label="Use a combination" value={rq.combo} options={comboOptions} placeholder="Fills job and Activity"
           onChange={v => {
@@ -92,9 +92,9 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
         <Icon d={ICON.send} size={14} /><span>{catalog.correctionGoesTo}</span>
       </div>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
         <button type="button" disabled={disabled} onClick={onSend}
-          className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0`}>
+          className={`${BTN_MODAL_NAVY} disabled:opacity-45 disabled:cursor-not-allowed`}>
           <Icon d={ICON.send} size={14} color={BTN_ICON.navy} width={2.4} />Send request
         </button>
       </div>

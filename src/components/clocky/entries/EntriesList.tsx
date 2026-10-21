@@ -8,11 +8,11 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import { COLUMNS, gridTemplate, groupByDay, liveSeconds, minWidth, overTen, visibleColumns, type ColumnKey } from './model'
-import { BTN_SMALL, Icon, ICON, LABEL, MENU, Pill } from './ui'
+import { BTN_MODAL_NAVY, BTN_PAGE_WHITE, BTN_SMALL, Icon, ICON, LABEL, MENU, Pill } from './ui'
 
 /** Closes a menu on a press outside it. */
 export function useOutside(open: boolean, close: () => void) {
@@ -29,7 +29,7 @@ export function useOutside(open: boolean, close: () => void) {
 }
 
 const DASH = <span className="text-[var(--faint)]">–</span>
-const CELL = 'px-3 py-2.5 min-w-0 text-[13px] leading-[1.35] tabular-nums overflow-hidden text-ellipsis whitespace-nowrap'
+const CELL = 'px-3 py-2.5 min-w-0 text-[13px] leading-[1.35] tabular-nums lining-nums overflow-hidden text-ellipsis whitespace-nowrap'
 
 function Cell({ k, r, all, nowMs, onEdit }: { k: ColumnKey; r: EntryView; all: boolean; nowMs: number; onEdit: () => void }) {
   if (k === 'person') return <div className={`${CELL} text-tn-ink font-bold`}>{r.personName}</div>
@@ -151,7 +151,7 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
             return (
               <div key={g.date}>
                 <button type="button" onClick={() => toggleDay(g.date)} aria-expanded={open}
-                  className="w-full flex items-center gap-2 whitespace-nowrap border-0 border-b border-[var(--row-rule)] bg-[var(--row-hover)] px-3 py-[9px] text-left font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink tabular-nums">
+                  className="w-full flex items-center gap-2 whitespace-nowrap border-0 border-b border-[var(--row-rule)] bg-[var(--row-hover)] px-3 py-[9px] text-left font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink tabular-nums lining-nums">
                   <Icon d={ICON.down} size={13} color="var(--muted)" width={2.6} style={{ transform: `rotate(${open ? 0 : -90}deg)` }} />
                   {g.label}
                   <span className="font-sans font-semibold text-[12px] text-muted">· {formatDuration(g.seconds)}{all ? ` · ${g.people} people` : ''}</span>
@@ -200,13 +200,13 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
               <Icon d={ICON.clock} size={34} color="var(--faint)" width={1.8} />
               <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{emptyText}</div>
               {canAdd ? (
-                <button type="button" onClick={onAdd} className={BTN.navy}>
+                <button type="button" onClick={onAdd} className={BTN_MODAL_NAVY}>
                   <Icon d={ICON.plus} size={14} color={BTN_ICON.navy} width={3} />Add time
                 </button>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <div className="text-[13px] text-muted">Hours come from your clock. Missing time?</div>
-                  <button type="button" onClick={onRequest} className={BTN.white}>
+                  <button type="button" onClick={onRequest} className={BTN_PAGE_WHITE}>
                     <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request a time correction
                   </button>
                 </div>

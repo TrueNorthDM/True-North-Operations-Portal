@@ -15,7 +15,7 @@ import type { ClockChoice, ClockPanelData, Fail } from '@/lib/timeclock/clocky-t
 import type { FieldName } from '@/lib/timeclock/entry-rules'
 import type { ClockApi } from './clock-api'
 import { choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
-import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon } from './ClockParts'
+import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon, byWidth, type Phone } from './ClockParts'
 import { AutoView, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, TIME_ENTRIES_HREF, type NoteStatus } from './ClockViews'
 import { ManageCombosModal, SaveComboModal } from './ComboModals'
 import Link from 'next/link'
@@ -66,7 +66,7 @@ interface PanelProps {
   loadError: string | null
   api: ClockApi
   nowMs: number
-  phone: boolean
+  phone: Phone
   /** Design check: drawn inside a frame, this far below its top, instead of fixed to the window. */
   frameTop?: number
   initialUi?: Partial<PanelUi>
@@ -402,16 +402,17 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
       </Body>
 
       {footer && (
-        <div className={`shrink-0 border-t border-[var(--row-rule)] flex flex-col gap-2.5 bg-white ${phone ? 'pt-3.5 px-4 pb-[30px]' : 'py-3.5 px-[18px]'}`}>
+        <div className={`shrink-0 border-t border-[var(--row-rule)] flex flex-col gap-2.5 bg-white ${byWidth(phone, 'pt-3.5 px-4 pb-[30px]', 'py-3.5 px-[18px]', 'pt-3.5 px-4 pb-[30px] md:py-3.5 md:px-[18px]')}`}>
           {mode === 'off' && (
             <>
-              {phone && data.resume && (
+              {phone !== false && data.resume && (
                 <button type="button" onClick={() => data.resume && startWith(data.resume)} disabled={busy}
-                  className={`w-full h-[58px] flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] cursor-pointer shadow-[0_8px_18px_-8px_rgba(1,35,88,.55)] disabled:opacity-60 ${FOCUS}`}>
+                  className={`${phone === 'css' ? 'md:hidden ' : ''}w-full h-[58px] flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] cursor-pointer shadow-[0_8px_18px_-8px_rgba(1,35,88,.55)] disabled:opacity-60 ${FOCUS}`}>
                   <PlayIcon size={15} color={BTN_ICON.navy} />{`Clock in · ${data.resume.name || data.resume.path}`}
                 </button>
               )}
-              <div className="flex items-center justify-between gap-2.5">
+              {/* Centred on desktop and phone (owner, 19 October 2026). */}
+              <div className="flex items-center justify-center gap-2.5">
                 <Link href={TIME_ENTRIES_HREF}
                   className={`inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] whitespace-nowrap hover:border-tn-teal ${FOCUS}`}>
                   <Icon d={ICON.calendar} size={15} stroke={BTN_ICON.white} sw={2} />Request time off
@@ -422,7 +423,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
           {mode === 'on' && (
             <div className="flex gap-2.5">
               <button type="button" onClick={clockOut} disabled={busy}
-                className={`flex-1 flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] cursor-pointer shadow-[0_8px_18px_-8px_rgba(200,50,61,.6)] hover:bg-[#b02a34] disabled:opacity-60 ${FOCUS} ${phone ? 'h-[58px]' : 'h-[46px]'}`}>
+                className={`flex-1 flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] cursor-pointer shadow-[0_8px_18px_-8px_rgba(200,50,61,.6)] hover:bg-[#b02a34] disabled:opacity-60 ${FOCUS} ${byWidth(phone, 'h-[58px]', 'h-[46px]', 'h-[58px] md:h-[46px]')}`}>
                 <StopIcon size={14} color="#ffffff" />Clock out
               </button>
             </div>
@@ -453,7 +454,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
 // ── The drawer ──────────────────────────────────────────────────────────────
 
 function Shell({ phone, frameTop, box, header, onBack, onClose, live, children }: {
-  phone: boolean
+  phone: Phone
   frameTop?: number
   box: React.RefObject<HTMLDivElement | null>
   header: { title: string; sub: string; dot: 'green' | 'red' | null; back: boolean }
@@ -463,9 +464,15 @@ function Shell({ phone, frameTop, box, header, onBack, onClose, live, children }
   children: React.ReactNode
 }) {
   const contained = frameTop != null
-  const place = phone
-    ? `${contained ? 'absolute' : 'fixed'} left-0 right-0 bottom-0 ${contained ? '' : 'top-0'} z-[45]`
-    : `${contained ? 'absolute' : 'fixed'} right-0 bottom-0 ${contained ? '' : 'top-[var(--chrome-top)]'} w-[420px] max-w-full border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[35]`
+  // In the app the place follows the window width in CSS (full screen under
+  // 768px, the 420px drawer, plus its 1px edge, from md up), so a phone gets the full-screen sheet
+  // from the first paint instead of the drawer first and the sheet once the
+  // width is read in the browser.
+  const place = !contained
+    ? 'fixed inset-0 z-[45] md:left-auto md:top-[var(--chrome-top)] md:w-[421px] md:max-w-full md:border-l md:border-[var(--panel-border)] md:shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] md:z-[35]'
+    : phone
+      ? 'absolute left-0 right-0 bottom-0 z-[45]'
+      : 'absolute right-0 bottom-0 w-[421px] max-w-full border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[35]'
   return (
     <div ref={box} role="dialog" aria-label="Clocky" tabIndex={-1} style={contained ? { top: frameTop } : undefined}
       className={`${place} bg-white flex flex-col outline-none leading-[normal]`}>

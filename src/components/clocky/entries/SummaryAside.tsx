@@ -28,7 +28,7 @@ export function SummaryAside({ totals, attention, onAttention }: {
           <div key={c.client} className="flex flex-col gap-[5px]">
             <div className="flex justify-between text-[12.5px]">
               <span className="font-semibold text-tn-ink">{c.client}</span>
-              <span className="text-foreground tabular-nums">{formatDuration(c.seconds)}</span>
+              <span className="text-foreground tabular-nums lining-nums">{formatDuration(c.seconds)}</span>
             </div>
             <div className="h-[5px] rounded-[3px] bg-[var(--row-rule)] overflow-hidden">
               <div className="h-full rounded-[3px]" style={{ width: `${Math.max(3, (c.seconds / max) * 100)}%`, background: clientColor(c.client) }} />
@@ -40,7 +40,7 @@ export function SummaryAside({ totals, attention, onAttention }: {
       <div className={`${CARD} gap-2.5`}>
         <div className={`${LABEL} text-muted`}>Billable vs not</div>
         <div className="flex h-2 rounded-[4px] overflow-hidden bg-[var(--row-rule)]"><div className="bg-tn-teal" style={{ width: `${billPct}%` }} /></div>
-        <div className="flex justify-between text-[12.5px] tabular-nums">
+        <div className="flex justify-between text-[12.5px] tabular-nums lining-nums">
           <span><b className="text-tn-teal">Billable</b> {formatDuration(totals.billable)}</span>
           <span><b className="text-[var(--chip-neutral-fg)]">Not</b> {formatDuration(totals.nonBillable)}</span>
         </div>
@@ -54,7 +54,7 @@ export function SummaryAside({ totals, attention, onAttention }: {
           <button key={a.key} type="button" onClick={() => onAttention(a)}
             className="flex flex-col gap-0.5 border border-[#f0e2a8] bg-[var(--warn-bg)] rounded-[10px] px-[11px] py-[9px] text-left whitespace-normal transition-colors hover:border-[var(--warn-fg)]">
             <span className="text-[12.5px] font-bold text-tn-ink">{a.reason}</span>
-            <span className="text-[11.5px] text-foreground leading-[1.4] tabular-nums">{a.sub}</span>
+            <span className="text-[11.5px] text-foreground leading-[1.4] tabular-nums lining-nums">{a.sub}</span>
             <span className="text-[11.5px] font-bold text-tn-teal">{a.cta}</span>
           </button>
         ))}

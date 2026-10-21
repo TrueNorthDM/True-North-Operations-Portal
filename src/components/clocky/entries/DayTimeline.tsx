@@ -37,6 +37,25 @@ const LEGEND = [
   { label: 'Overlap', bg: '#fdeeef', border: '#c8323d' },
 ]
 
+/**
+ * 3C4: the block let go on another entry, both as drawn (the dragged one where
+ * it was dropped). Null while nothing overlaps. Needs attention lists the two
+ * the way the prototype does, until the overlap is fixed or undone.
+ */
+export function droppedOverlap(rows: readonly EntryView[], day: string, zone: string, drag: Drag | null, nowMs: number): { moved: EntryView; other: EntryView } | null {
+  if (!drag?.warn) return null
+  const midnight = wallToInstant(day, '00:00', zone) ?? `${day}T00:00:00Z`
+  const iso = (s: number) => new Date(Date.parse(midnight) + s * 1000).toISOString()
+  const dayRows = rows
+    .filter(r => r.date === day && isWork(r) && r.start)
+    .map(r => (r.key === drag.key ? { ...r, start: iso(drag.s), end: iso(drag.e), timeText: `${timeLabel(iso(drag.s), r.zone)} to ${timeLabel(iso(drag.e), r.zone)}` } : r))
+  const overlapping = overlapsAmong(dayRows.map(r => ({ id: r.key, personId: r.personId, start: r.start, end: r.end })), new Date(nowMs))
+  const moved = dayRows.find(r => r.key === drag.key)
+  const otherId = moved ? overlapping.get(moved.key)?.id : undefined
+  const other = otherId ? dayRows.find(r => r.key === otherId) : undefined
+  return moved && other ? { moved, other } : null
+}
+
 function blockStyle(client: string, overlap: boolean) {
   if (overlap) return { bg: '#fdeeef', border: '#c8323d', fg: '#c8323d' }
   if (client === 'True North') return { bg: '#2b4f86', border: '#2b4f86', fg: '#ffffff' }
@@ -100,7 +119,8 @@ export function DayTimeline({
   } else {
     lanes.push({ head: false, key: viewer.personId, personId: viewer.personId })
   }
-  const laneH = all ? 52 : 76
+  // The prototype's rows are 76 / 52 / 34 / 30px plus their 1px bottom rule.
+  const laneH = all ? 53 : 77
 
   const laneRows = (p: string) => dayRows.filter(r => r.personId === p).sort((a, b) => Date.parse(a.start!) - Date.parse(b.start!))
   const editable = (p: string) => canAdd && canChange(p) && !rows.some(r => r.personId === p && r.date === day && r.locked)
@@ -164,9 +184,9 @@ export function DayTimeline({
   }
 
   // 3C4: the block let go on another entry.
-  const moved = drag?.warn ? dayRows.find(r => r.key === drag.key) : undefined
-  const other = moved ? overlapping.get(moved.key) : undefined
-  const otherRow = other ? dayRows.find(r => r.key === other.id) : undefined
+  const dropped = droppedOverlap(rows, day, viewer.zone, drag, nowMs)
+  const moved = dropped?.moved
+  const otherRow = dropped?.other
   let warnText = ''
   if (moved && otherRow) {
     const shared = Math.min(Date.parse(moved.end!), Date.parse(otherRow.end ?? nowIso)) - Math.max(Date.parse(moved.start!), Date.parse(otherRow.start!))
@@ -185,11 +205,11 @@ export function DayTimeline({
     <>
       <div className="flex flex-wrap items-center gap-2.5">
         <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{dayLabel(day)}{all ? ` · everyone, drawn in your time (${zoneCity(viewer.zone)})` : ''}</span>
-        <Segmented label="Hours shown" options={[{ key: 'day', label: '6 AM to 10 PM' }, { key: 'full', label: '24 h' }]} value={full ? 'full' : 'day'} onChange={k => setFull(k === 'full')} />
+        <Segmented label="Hours shown" display="px-[11px] py-[5px] text-[12px]" options={[{ key: 'day', label: '6 AM to 10 PM' }, { key: 'full', label: '24 h' }]} value={full ? 'full' : 'day'} onChange={k => setFull(k === 'full')} />
         <span className="flex-1" />
         {LEGEND.map(l => (
           <span key={l.label} className="flex items-center gap-1.5 text-[12px] text-foreground whitespace-nowrap">
-            <span className="w-3.5 h-2.5 rounded-[3px] border" style={{ background: l.bg, borderColor: l.border }} />{l.label}
+            <span className="w-4 h-3 rounded-[3px] border" style={{ background: l.bg, borderColor: l.border }} />{l.label}
           </span>
         ))}
       </div>
@@ -205,11 +225,11 @@ export function DayTimeline({
 
       <div className="flex bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
         <div className="w-[191px] flex-none border-r border-[var(--row-rule)]">
-          <div className="h-[34px] border-b border-[var(--row-rule)] bg-subtle" />
+          <div className="h-[35px] border-b border-[var(--row-rule)] bg-subtle" />
           {lanes.map(l => {
             if (l.head) {
               return (
-                <div key={l.key} className="h-[30px] flex items-center gap-[7px] px-3 bg-[var(--row-hover)] border-b border-[var(--row-rule)]">
+                <div key={l.key} className="h-[31px] flex items-center gap-[7px] px-3 bg-[var(--row-hover)] border-b border-[var(--row-rule)]">
                   <span className="w-2 h-2 rounded-full" style={{ background: l.color }} />
                   <span className="font-(family-name:--font-display) font-extrabold text-[12px] text-tn-ink">{l.name}</span>
                 </div>
@@ -223,20 +243,21 @@ export function DayTimeline({
             return (
               <div key={l.key} style={{ height: laneH }} className="flex flex-col justify-center gap-0.5 px-3 border-b border-[var(--row-rule)]">
                 <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink truncate">{nameOf(l.personId)}</span>
-                <span className="text-[11px] text-muted tabular-nums">{hours}</span>
+                <span className="text-[11px] text-muted tabular-nums lining-nums">{hours}</span>
               </div>
             )
           })}
         </div>
-        <div className="flex-1 min-w-0 overflow-x-auto">
+        {/* Keyed by the day and the view: a new day, My/All or 24 h starts at the left edge. */}
+        <div key={`${day}-${all ? 'all' : 'my'}-${full ? '24' : 'day'}`} className="flex-1 min-w-0 overflow-x-auto">
           <div className="relative select-none" style={{ width: xOf(ax.to, ax.from) }}>
-            <div className="h-[34px] relative border-b border-[var(--row-rule)] bg-subtle">
+            <div className="h-[35px] relative border-b border-[var(--row-rule)] bg-subtle">
               {hourTicks(ax).map(t => (
-                <span key={t.x} style={{ left: t.x }} className="absolute top-0 bottom-0 border-l border-[var(--panel-border)] pt-[9px] pl-[5px] text-[11px] font-semibold text-muted whitespace-nowrap tabular-nums">{t.label}</span>
+                <span key={t.x} style={{ left: t.x }} className="absolute top-0 bottom-0 border-l border-[var(--panel-border)] pt-[9px] pl-[5px] text-[11px] font-semibold text-muted whitespace-nowrap tabular-nums lining-nums">{t.label}</span>
               ))}
             </div>
             {lanes.map(l => {
-              if (l.head) return <div key={l.key} className="h-[30px] bg-[var(--row-hover)] border-b border-[var(--row-rule)]" />
+              if (l.head) return <div key={l.key} className="h-[31px] bg-[var(--row-hover)] border-b border-[var(--row-rule)]" />
               const can = editable(l.personId)
               const g = ghost && ghost.personId === l.personId ? ghost : null
               const zone = laneRows(l.personId)[0]?.zone ?? viewer.zone
@@ -266,7 +287,7 @@ export function DayTimeline({
                           boxShadow: ov ? '0 0 0 2px rgba(200,50,61,.25)' : 'none',
                         }}>
                         <span className="font-(family-name:--font-display) font-extrabold text-[11.5px] whitespace-nowrap overflow-hidden text-ellipsis">{nameFor(r, combos)}</span>
-                        <span className="text-[10.5px] whitespace-nowrap overflow-hidden text-ellipsis opacity-90 tabular-nums">{sub}</span>
+                        <span className="text-[10.5px] whitespace-nowrap overflow-hidden text-ellipsis opacity-90 tabular-nums lining-nums">{sub}</span>
                         {r.running && <span className="absolute right-0 top-0 bottom-0 w-1 bg-tn-green" />}
                       </div>
                     )
@@ -274,7 +295,7 @@ export function DayTimeline({
                   {g && (
                     <div className="absolute top-[7px] bottom-[7px] rounded-[8px] border-2 border-dashed border-tn-teal bg-[rgba(30,125,127,.12)] flex flex-col justify-center px-2 box-border pointer-events-none"
                       style={{ left: xOf(g.s, ax.from), width: Math.max(8, xOf(g.e, ax.from) - xOf(g.s, ax.from)) }}>
-                      <span className="font-(family-name:--font-display) font-extrabold text-[11.5px] text-tn-teal whitespace-nowrap tabular-nums">{timeLabel(iso(g.s), zone)} to {timeLabel(iso(g.e), zone)} · {formatDuration(g.e - g.s)}</span>
+                      <span className="font-(family-name:--font-display) font-extrabold text-[11.5px] text-tn-teal whitespace-nowrap tabular-nums lining-nums">{timeLabel(iso(g.s), zone)} to {timeLabel(iso(g.e), zone)} · {formatDuration(g.e - g.s)}</span>
                       <span className="text-[10.5px] text-tn-teal whitespace-nowrap">Release to add time</span>
                     </div>
                   )}
@@ -283,7 +304,7 @@ export function DayTimeline({
             })}
             {showNow && (
               <div className="absolute top-0 bottom-0 w-0.5 bg-[#c8323d] pointer-events-none z-[4]" style={{ left: xOf(nowSec, ax.from) }}>
-                <span className="absolute top-1.5 left-1 text-[10.5px] font-bold text-[#ffffff] bg-[#c8323d] rounded-[5px] px-[5px] py-0.5 whitespace-nowrap tabular-nums">{timeLabel(nowIso, viewer.zone)}</span>
+                <span className="absolute top-1.5 left-1 text-[10.5px] font-bold text-[#ffffff] bg-[#c8323d] rounded-[5px] px-[5px] py-0.5 whitespace-nowrap tabular-nums lining-nums">{timeLabel(nowIso, viewer.zone)}</span>
               </div>
             )}
           </div>

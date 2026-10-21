@@ -9,7 +9,7 @@
  */
 
 import Link from 'next/link'
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
 import type { FieldName, MissingName } from '@/lib/timeclock/entry-rules'
 import { timeLabel } from '@/lib/timeclock/format'
@@ -18,7 +18,7 @@ import {
   FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, fieldByKey, keysFor, liveTotals,
   overWarn, resumeCard, roundNoteText, searchJobs, switchChoices, timerStart, valueOf, type Draft,
 } from './clock-model'
-import { BTN_DANGER, BTN_WHITE_DANGER, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
+import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
 
 /** Where "Request time off" leads: Time entries (the prototype links the Time Entries file). */
 export const TIME_ENTRIES_HREF = '/clocky-hours'
@@ -48,7 +48,7 @@ export function ErrorBanner({ text }: { text: string }) {
 
 export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore, onResume, onStart, onSave, onManage, onBrowse }: {
   data: ClockPanelData
-  phone: boolean
+  phone: Phone
   more: boolean
   busy: boolean
   query: string
@@ -71,8 +71,8 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
             <div className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink">{resume.title}</div>
             <div className="text-[12.5px] text-foreground mt-1 leading-[1.45]">{resume.line}</div>
           </div>
-          {!phone && (
-            <button type="button" onClick={onResume} disabled={busy} className={`${BTN.navy} self-start disabled:opacity-60 ${FOCUS}`}>
+          {phone !== true && (
+            <button type="button" onClick={onResume} disabled={busy} className={`${CK_BTN_NAVY} self-start disabled:opacity-60 ${FOCUS}${phone === 'css' ? ' max-md:hidden' : ''}`}>
               <PlayIcon size={14} color={BTN_ICON.navy} />Clock in
             </button>
           )}
@@ -122,7 +122,7 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
 
 export function ChooseView({ data, phone, first, query, browse, onQuery, onBrowse, onPick }: {
   data: ClockPanelData
-  phone: boolean
+  phone: Phone
   first: boolean
   query: string
   browse: number | null
@@ -133,7 +133,7 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
   const q = query.trim()
   const rows = q ? searchJobs(data.jobs, data.folders, q) : browseJobs(data.jobs, data.folders, browse)
   const folder = browse != null ? data.folders.find(f => f.id === browse) : null
-  const rowPad = phone ? 'py-[13px] px-2.5' : 'py-[9px] px-2'
+  const rowPad = byWidth(phone, 'py-[13px] px-2.5', 'py-[9px] px-2', 'py-[13px] px-2.5 md:py-[9px] md:px-2')
   return (
     <>
       {first && (
@@ -175,7 +175,7 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
         <div className="flex flex-col items-stretch gap-2.5 pt-0.5 px-0.5">
           <span className="text-[12px] text-muted leading-[1.5] whitespace-nowrap">Vacation, Sick, Holiday and Jury duty are not clocked.</span>
           <Link href={TIME_ENTRIES_HREF}
-            className={`w-full box-border flex items-center justify-center gap-[9px] rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] whitespace-nowrap shadow-[0_8px_18px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b] ${FOCUS} ${phone ? 'h-[58px]' : 'h-[46px]'}`}>
+            className={`w-full box-border flex items-center justify-center gap-[9px] rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] whitespace-nowrap shadow-[0_8px_18px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b] ${FOCUS} ${byWidth(phone, 'h-[58px]', 'h-[46px]', 'h-[58px] md:h-[46px]')}`}>
             <Icon d={ICON.calendar} size={16} stroke={BTN_ICON.navy} sw={2.2} />Request time off
           </Link>
         </div>
@@ -226,10 +226,10 @@ export function DetailsView({ data, draft, switching, busy, onChangeJob, onField
       </div>
       <div className="text-[12px] text-muted leading-[1.5]">Activity and notes can wait: you can fill them while the clock runs. You will need them to clock out.</div>
       <div className="flex items-center gap-2 flex-wrap">
-        <button type="button" onClick={onGo} disabled={busy} className={`${BTN.navy} disabled:opacity-60 ${FOCUS}`}>
+        <button type="button" onClick={onGo} disabled={busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
           <PlayIcon size={14} color={BTN_ICON.navy} />{switching ? 'Switch' : 'Clock in'}
         </button>
-        <button type="button" onClick={onSave} className={`${BTN.white} ${FOCUS}`}>
+        <button type="button" onClick={onSave} className={`${CK_BTN_WHITE} ${FOCUS}`}>
           <Icon d={ICON.star} size={15} stroke={BTN_ICON.white} sw={2} cap="butt" />Save as combination
         </button>
         <button type="button" onClick={onCancel} className={`border-0 bg-transparent cursor-pointer p-2 text-[13px] font-semibold text-muted hover:text-tn-ink ${FOCUS}`}>Cancel</button>
@@ -251,7 +251,7 @@ export function OnView({
   /** The running entry's fields with what was just picked laid over them. */
   values: Record<string, string>
   nowMs: number
-  phone: boolean
+  phone: Phone
   busy: boolean
   editKey: FieldName | null
   gate: { kind: 'switch' | 'out' } | null
@@ -307,7 +307,7 @@ export function OnView({
             <button type="button" onClick={onClockOut} disabled={busy} className={`${BTN_WHITE_DANGER} disabled:opacity-60 ${FOCUS}`}>
               <StopIcon size={13} color="#c8323d" />Clock out now
             </button>
-            <button type="button" onClick={onKeepGoing} disabled={busy} className={`${BTN.navy} disabled:opacity-60 ${FOCUS}`}>
+            <button type="button" onClick={onKeepGoing} disabled={busy} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
               <PlayIcon size={14} color={BTN_ICON.navy} />Keep going
             </button>
           </div>
@@ -364,9 +364,9 @@ export function OnView({
               className={`w-full box-border h-10 px-[11px] border border-[#e9d48a] rounded-[10px] text-[13px] text-tn-ink bg-white placeholder:text-muted ${INPUT_FOCUS}`} />
           )}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onGateCancel} className={`${BTN.white} ${FOCUS}`}>Cancel</button>
+            <button type="button" onClick={onGateCancel} className={`${CK_BTN_WHITE} ${FOCUS}`}>Cancel</button>
             <button type="button" onClick={onGateGo} disabled={missing.length > 0 || busy}
-              className={`${gateOut ? BTN_DANGER : BTN.navy} disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}>{gateOut ? 'Clock out' : 'Switch'}</button>
+              className={`${gateOut ? BTN_DANGER : CK_BTN_NAVY_FLAT} disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}>{gateOut ? 'Clock out' : 'Switch'}</button>
           </div>
         </div>
       )}
@@ -441,8 +441,8 @@ export function AutoView({ item, zone, later, end, busy, onLater, onEnd, onKeep,
         </button>
         {later && <div className="text-[12px] text-[#8a6d1a] font-semibold -mt-1.5">{`A time after ${stop} is flagged for the approver.`}</div>}
         <div className="flex justify-end gap-2 flex-wrap">
-          <button type="button" onClick={onKeep} disabled={busy} className={`${BTN.white} tabular-nums lining-nums disabled:opacity-60 ${FOCUS}`}>{`Keep ${stop}`}</button>
-          <button type="button" onClick={onConfirm} disabled={busy || !end} className={`${BTN.navy} disabled:opacity-60 ${FOCUS}`}>
+          <button type="button" onClick={onKeep} disabled={busy} className={`${CK_BTN_WHITE} tabular-nums lining-nums disabled:opacity-60 ${FOCUS}`}>{`Keep ${stop}`}</button>
+          <button type="button" onClick={onConfirm} disabled={busy || !end} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
             <Icon d={ICON.check} size={14} stroke={BTN_ICON.navy} sw={3} />Confirm
           </button>
         </div>

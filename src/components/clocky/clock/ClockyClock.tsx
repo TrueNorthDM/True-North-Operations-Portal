@@ -18,7 +18,7 @@ import type { ClockApi } from './clock-api'
 import { tabTitle, topBarState } from './clock-model'
 import { ClockButton } from './ClockButton'
 import { ClockPanel, type PanelUi, type Toast } from './ClockPanel'
-import { ClockToast } from './ClockParts'
+import { ClockToast, type Phone } from './ClockParts'
 import { useLiveNow, usePhone } from './hooks'
 
 /** The tab title Clocky writes, so it knows its own from the page's. */
@@ -47,7 +47,11 @@ export function ClockyClock({
   const [state, setState] = useState<{ data: ClockPanelData | null; error: string | null }>(() =>
     initial.ok ? { data: initial.data, error: null } : { data: null, error: initial.error })
   const data = state.data
-  const phone = usePhone(device)
+  const narrow = usePhone(device)
+  // In the app ('auto', not inside a design-check frame) the phone and desktop
+  // differences are CSS, right from the first paint; a fixed frame uses the
+  // size it was given.
+  const phone: Phone = device === 'auto' && frameTop == null ? 'css' : narrow
   const ticking = !frozen && !!(data?.running || data?.toConfirm.length)
   const nowMs = useLiveNow(data?.now ?? null, ticking)
   const tb = topBarState(data, nowMs)

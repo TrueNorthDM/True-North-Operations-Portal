@@ -17,7 +17,7 @@ export function SortHeader({ label, active, dir, align, onClick }: {
     <button
       type="button"
       onClick={onClick}
-      className={`group flex w-full items-center gap-1 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase transition-colors ${
+      className={`group flex w-full items-center gap-1 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] leading-[normal] uppercase transition-colors ${
         align === 'right' ? 'justify-end' : 'justify-start'
       } ${active ? 'text-tn-teal' : 'text-muted hover:text-tn-ink'}`}
     >

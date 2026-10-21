@@ -9,11 +9,11 @@
 
 import { useRef, useState, type ReactNode } from 'react'
 import { useModal } from '@/components/ui/useModal'
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData } from '@/lib/timeclock/clocky-types'
 import type { FieldName } from '@/lib/timeclock/entry-rules'
 import { SHOWN_COMBINATIONS, fieldByKey, keysFor, suggestName, valueOf, type SaveDraft } from './clock-model'
-import { ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, LINK_BTN, SectionLabel } from './ClockParts'
+import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, LINK_BTN, SectionLabel } from './ClockParts'
 
 /** Escape inside an open dropdown closes the dropdown, not the window under it. */
 const unlessMenuOpen = (close: () => void) => () => { if (!document.querySelector('[role="listbox"]')) close() }
@@ -113,8 +113,8 @@ export function SaveComboModal({ data, save, busy, contained, onChange, onClose,
             className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
         </label>
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className={`${BTN.white} ${FOCUS}`}>Cancel</button>
-          <button type="button" onClick={onSave} disabled={busy || !save.name.trim()} className={`${BTN.navy} disabled:opacity-60 ${FOCUS}`}>
+          <button type="button" onClick={onClose} className={`${CK_BTN_WHITE} ${FOCUS}`}>Cancel</button>
+          <button type="button" onClick={onSave} disabled={busy || !save.name.trim()} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill={BTN_ICON.navy} aria-hidden="true"><path d={ICON.star} /></svg>Save combination
           </button>
         </div>
@@ -195,7 +195,7 @@ export function ManageCombosModal({ combinations, contained, onReorder, onEdit, 
           {rows.length === 0 && <div className="p-4 text-[13px] text-muted">No combinations yet. Star a recent one to save it.</div>}
         </div>
         <div className="flex justify-end">
-          <button type="button" onClick={onClose} className={`${BTN.navy} ${FOCUS}`}>Done</button>
+          <button type="button" onClick={onClose} className={`rounded-[10px] px-5 py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b] ${FOCUS}`}>Done</button>
         </div>
       </div>
     </ClockWindow>

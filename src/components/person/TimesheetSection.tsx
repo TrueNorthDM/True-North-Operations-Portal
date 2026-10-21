@@ -18,7 +18,8 @@ import type { Cadence } from '@/lib/timeclock/periods'
 import { PillBadge, Section } from './PersonParts'
 
 export interface PersonTimesheetView {
-  cadence: Cadence
+  /** Null: not set yet (added before the cadence became required); they submit monthly meanwhile. */
+  cadence: Cadence | null
   currentPeriod: string
   periodIf: Record<Cadence, string>
   /** May change it here (cs-periods-edit, with Edit work). */
@@ -55,20 +56,20 @@ export function TimesheetSection({ t, editing = false, draft, onDraft, startsLin
   const shown = choosing && draft ? draft : t.cadence
   return (
     // While it can be changed, a soft teal ring around it says where the change is.
-    <div className={`mb-6 ${choosing ? 'rounded-[14px] outline-2 outline-[#cfe5e5] outline-offset-8' : ''}`}>
+    <div className={`mb-[22px] ${choosing ? 'rounded-[14px] outline-2 outline-[#cfe5e5] outline-offset-8' : ''}`}>
       <Section title="Timesheet" tag={<NewTag />} flush>
         <dl className="m-0">
           <Row label="Submits hours">
             {choosing
-              ? <Segmented label="Submits hours" options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: 'Every 2 weeks' }]} value={shown} onChange={c => onDraft?.(c)} />
-              : <PillBadge pill={t.cadence === 'biweekly' ? { kind: 'teal', label: CADENCE.biweekly } : { kind: 'grey', label: CADENCE.monthly }} />}
+              ? <Segmented label="Submits hours" display="px-3 py-1.5 text-[12.5px]" options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: 'Every 2 weeks' }]} value={shown} onChange={c => onDraft?.(c)} />
+              : <PillBadge pill={t.cadence === null ? { kind: 'amber', label: 'Not set' } : t.cadence === 'biweekly' ? { kind: 'teal', label: CADENCE.biweekly } : { kind: 'grey', label: CADENCE.monthly }} />}
           </Row>
         </dl>
         {choosing && startsLine && (
           <p className="m-0 mt-2 text-[12.5px] text-[var(--warn-fg)] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2 leading-[1.45]">{startsLine}</p>
         )}
         <dl className="m-0">
-          <Row label="Current period"><span className="tabular-nums">{choosing ? t.periodIf[shown] : t.currentPeriod}</span></Row>
+          <Row label="Current period"><span className="tabular-nums">{choosing && shown ? t.periodIf[shown] : t.currentPeriod}</span></Row>
         </dl>
         <p className="m-0 pt-2 text-[12px] text-muted leading-normal">
           Also set in {place(t.links.rates, '/directory?tab=rates', 'Directory › Rates & Costs')}. Pay period dates come from {place(t.links.settings, '/admin/settings#periods', 'Company settings')}.

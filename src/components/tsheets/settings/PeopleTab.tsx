@@ -21,7 +21,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { SearchField } from '@/components/ui/SearchField'
+import { SearchInput } from '@/components/clocky/clock/ClockParts'
 import { Segmented } from '@/components/ui/Segmented'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
@@ -49,6 +49,8 @@ export interface PersonWithAssignments {
   title: string | null
   teams: string[]
   teamName: string | null
+  /** The first team's colour (teams.color); null falls back to the name's. */
+  teamColor?: string | null
   managerName: string | null
   managerTeam: string | null
   hireDate: string | null
@@ -76,9 +78,9 @@ export interface DirectoryOption {
   title: string | null
 }
 
-/** The Timesheet column: each person's cadence, and whether this viewer may change it. */
+/** The Timesheet column: each person's cadence (null: not set yet), and whether this viewer may change it. */
 export interface CadenceColumn {
-  byPerson: Record<string, Cadence>
+  byPerson: Record<string, Cadence | null>
   canEdit: boolean
 }
 
@@ -99,12 +101,12 @@ const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
 const AUTO_REASON = 'Updated in Rates & Costs'
 
 // Team pill, tinted from the shared team-colour system.
-function TeamBadge({ team }: { team: string | null }) {
+function TeamBadge({ team, color: own }: { team: string | null; color?: string | null }) {
   if (!team) return <span className="text-slate-300">-</span>
-  const color = teamColour(null, team)
+  const color = teamColour(own ?? null, team)
   return (
     <span
-      className="inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-wide rounded-[6px] px-2 py-0.5 whitespace-nowrap"
+      className="inline-flex items-center text-[10px] font-(family-name:--font-display) font-extrabold uppercase tracking-[.05em] leading-[normal] rounded-[6px] px-2 py-0.5 whitespace-nowrap"
       style={{ color, background: `${color}1a` }}
     >
       {team}
@@ -125,11 +127,11 @@ const GRID_TS = 'grid grid-cols-[1.9fr_1fr_1.4fr_1fr_210px_150px_150px_160px_150
 export function PeopleTab({ people, allClients, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null }: Props) {
   const router = useRouter()
   const grid = cadence ? GRID_TS : GRID
-  const [cadF, setCadF] = useState<'all' | Cadence>('all')
+  const [cadF, setCadF] = useState<'all' | Cadence | 'unset'>('all')
   const [cadDraft, setCadDraft] = useState<Record<string, Cadence>>(startCadences ?? {})
   const [cadDialog, setCadDialog] = useState<DialogItem[] | null>(startDialog)
   const [toast, showToast] = useToast()
-  const cadOf = (id: string): Cadence => cadence?.byPerson[id] ?? 'monthly'
+  const cadOf = (id: string): Cadence | null => (cadence ? cadence.byPerson[id] ?? null : 'monthly')
   const cadChanged = cadence?.canEdit ? people.filter(p => cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) : []
   const today = new Date().toISOString().slice(0, 10)
   const firstOfThisMonth = `${today.slice(0, 7)}-01`
@@ -198,7 +200,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
     const term = q.trim().toLowerCase()
     const base = (term
       ? people.filter(p => `${p.name} ${p.teamName ?? ''} ${p.managerName ?? ''}`.toLowerCase().includes(term))
-      : people).filter(p => !cadence || cadF === 'all' || (cadence.byPerson[p.id] ?? 'monthly') === cadF)
+      : people).filter(p => !cadence || cadF === 'all' || (cadence.byPerson[p.id] ?? 'unset') === cadF)
     return applySort(applyFilters(base, filterColumns, conds), filterColumns, sort)
   }, [people, q, conds, sort, filterColumns, cadence, cadF])
 
@@ -373,12 +375,9 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
     <div>
       {/* toolbar */}
       <div className="flex items-center gap-3.5 flex-wrap mb-[18px]">
-        <SearchField
-          value={q}
-          onChange={setQ}
-          placeholder="Search people…"
-          className="flex-1 min-w-[230px] max-w-[340px]"
-        />
+        <div className="flex-1 min-w-[230px] max-w-[340px]">
+          <SearchInput value={q} onChange={setQ} placeholder="Search people…" height={40} iconTop={12} iconLeft={12} iconSize={15} padLeft={35} fontSize={13.5} />
+        </div>
         {cadence && (
           <Segmented
             label="Timesheet"
@@ -386,7 +385,10 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
               { key: 'all', label: 'Everyone' },
               { key: 'monthly', label: `Monthly · ${people.filter(p => cadOf(p.id) === 'monthly').length}` },
               { key: 'biweekly', label: `Every 2 weeks · ${people.filter(p => cadOf(p.id) === 'biweekly').length}` },
+              // Only while someone has none yet: they were added before it became required.
+              ...(people.some(p => cadOf(p.id) === null) ? [{ key: 'unset' as const, label: `Not set · ${people.filter(p => cadOf(p.id) === null).length}` }] : []),
             ]}
+            display="px-3 py-[7px] text-[12.5px]"
             value={cadF}
             onChange={setCadF}
           />
@@ -394,7 +396,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
       </div>
 
-      <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)]">
+      <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)] leading-[normal]">
         <div className={cadence ? 'min-w-[1420px]' : 'min-w-[1404px]'}>
           {/* header */}
           <div className={`${grid} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
@@ -433,7 +435,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
                 </span>
 
                 {/* Team */}
-                <span><TeamBadge team={p.teamName} /></span>
+                <span><TeamBadge team={p.teamName} color={p.teamColor} /></span>
 
                 {/* Report to */}
                 <span className="inline-flex items-center gap-2 min-w-0">
@@ -458,6 +460,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
                     {editing && cadence.canEdit ? (
                       <Segmented
                         compact
+                        display="px-2.5 py-[5px] text-[12px]"
                         warn={!!cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)}
                         label={`How ${p.name} submits`}
                         options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: '2 weeks' }]}
@@ -486,7 +489,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
       </div>
 
       {/* save bar */}
-      <div className="flex items-center justify-end gap-3.5 mt-6 pt-5 border-t border-slate-200">
+      <div className="flex items-center justify-end gap-3.5 mt-6 pt-5 border-t border-slate-200 leading-[normal]">
         {error ? (
           <span className="text-[13px] text-[var(--bdg-red-fg)] mr-auto">{error}</span>
         ) : editing ? (

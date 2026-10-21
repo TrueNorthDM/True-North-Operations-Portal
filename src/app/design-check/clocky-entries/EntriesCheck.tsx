@@ -36,3 +36,10 @@ export function EntriesCheck({ frame }: { frame: string }) {
     </div>
   )
 }
+
+/** Only the page, for a frame shown inside the portal's real shell (design-check/clocky-app). */
+export function EntriesFrame({ frame }: { frame: string }) {
+  const [f] = useState(() => buildFrame(frame))
+  const [api] = useState(() => makeApi(f.store))
+  return <TimeEntries key={frame} initialData={f.data} catalog={catalogFor(f.level)} api={api} initial={f.initial} clock={{ now: NOW_ISO, frozen: true }} clockHref="#" />
+}

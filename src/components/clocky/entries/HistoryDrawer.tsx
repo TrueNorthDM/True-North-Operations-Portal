@@ -33,7 +33,7 @@ export function HistoryDrawer({ history, error, onClose }: {
       <div className="px-[18px] pt-[18px] pb-3.5 border-b border-[var(--row-rule)] flex gap-2.5 items-start">
         <div className="flex-1 min-w-0">
           <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink" style={{ letterSpacing: 'normal' }}>Entry history</h2>
-          <div className="text-[12.5px] text-foreground mt-[5px] leading-[1.45] tabular-nums">{history?.summary ?? ''}</div>
+          <div className="text-[12.5px] text-foreground mt-[5px] leading-[1.45] tabular-nums lining-nums">{history?.summary ?? ''}</div>
         </div>
         <CloseButton onClick={onClose} />
       </div>
@@ -46,10 +46,10 @@ export function HistoryDrawer({ history, error, onClose }: {
               <span className="flex-1 w-0.5 bg-[var(--row-rule)] my-1" />
             </div>
             <div className="pb-[18px] flex flex-col gap-1">
-              <div className="text-[11.5px] text-muted tabular-nums">{h.when}</div>
+              <div className="text-[11.5px] text-muted tabular-nums lining-nums">{h.when}</div>
               <div className="text-[13px] text-tn-ink font-bold leading-[1.4]">{h.text}</div>
               {h.changes.map((c, j) => (
-                <div key={j} className="text-[12.5px] text-foreground tabular-nums">
+                <div key={j} className="text-[12.5px] text-foreground tabular-nums lining-nums">
                   {c.field}: <s className="text-muted">{c.old}</s> → <b className="text-tn-ink">{c.new}</b>
                 </div>
               ))}

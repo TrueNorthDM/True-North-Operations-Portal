@@ -79,7 +79,7 @@ describe('Add person takes name and Work only (P4)', () => {
   }
 
   it('adds them with Work columns only, and no team without d-positions', async () => {
-    const r = await createPerson({ ...work, phone: '+1 555', date_of_birth: '1990-01-01', onboarding_status: 'completed' } as never)
+    const r = await createPerson({ ...work, phone: '+1 555', date_of_birth: '1990-01-01', onboarding_status: 'completed' } as never, 'monthly')
     expect(r.ok).toBe(true)
     const row = fake.writes.find(w => w.op === 'insert' && w.table === 'people')!.rows[0]
     expect(row.full_name).toBe('Cy New')
@@ -91,19 +91,55 @@ describe('Add person takes name and Work only (P4)', () => {
 
   it('sets their teams with d-positions', async () => {
     granted = new Set(['d-edit', 'd-positions'])
-    const r = await createPerson(work)
+    const r = await createPerson(work, 'monthly')
     expect(r.ok).toBe(true)
     expect(fake.rpcs.map(x => x.fn)).toEqual(['set_person_teams'])
   })
 
   it("refuses a company address that is someone else's, adding nobody", async () => {
-    const r = await createPerson({ ...work, emails: { trueNorth: '', goodnews: 'ANA@goodnewsadvocates.org', coe: '' } })
+    const r = await createPerson({ ...work, emails: { trueNorth: '', goodnews: 'ANA@goodnewsadvocates.org', coe: '' } }, 'monthly')
     expect(r).toEqual({ ok: false, error: 'ana@goodnewsadvocates.org already belongs to someone else in the Directory.' })
     expect(fake.writes).toEqual([])
   })
 
   it('refuses without the item', async () => {
     granted = new Set()
-    expect(await createPerson(work)).toEqual({ ok: false, error: 'That is not open to your access.' })
+    expect(await createPerson(work, 'monthly')).toEqual({ ok: false, error: 'That is not open to your access.' })
+  })
+})
+
+describe('Add person needs how they submit their hours (owner, 20 October 2026)', () => {
+  const work = {
+    fullName: 'Cy New', title: '', employmentType: 'us', schedule: 'full', weeklyHours: '40', status: 'active' as const,
+    emails: { trueNorth: '', goodnews: '', coe: '' }, teams: [],
+    managerId: '', alsoReportsToId: '', hireDate: '', leftOn: '', milestones: [], history: '',
+  }
+
+  it('refuses without a cadence, adding nobody', async () => {
+    expect(await createPerson(work)).toEqual({ ok: false, error: 'Choose how they submit their hours: Monthly or Every 2 weeks.' })
+    expect(await createPerson(work, 'weekly')).toEqual({ ok: false, error: 'Choose how they submit their hours: Monthly or Every 2 weeks.' })
+    expect(fake.writes).toEqual([])
+  })
+
+  it('keeps the cadence from the start of the records, set by whoever added them', async () => {
+    const r = await createPerson(work, 'monthly')
+    expect(r.ok).toBe(true)
+    const row = fake.writes.find(w => w.op === 'insert' && w.table === 'tc_person_cadence')!.rows[0]
+    expect(row).toMatchObject({ person_id: (r as { id: string }).id, cadence: 'monthly', effective_from: '2017-01-01', set_by: 'admin' })
+  })
+
+  it('refuses every 2 weeks while pay periods have no start day', async () => {
+    fake.tables.tc_settings = [{ singleton_id: 1, pay_period_anchor: null }]
+    expect((await createPerson(work, 'biweekly')).ok).toBe(false)
+    expect(fake.writes).toEqual([])
+    fake.tables.tc_settings = [{ singleton_id: 1, pay_period_anchor: '2026-10-04' }]
+    expect((await createPerson(work, 'biweekly')).ok).toBe(true)
+  })
+
+  it('takes the person back out if the cadence cannot be kept', async () => {
+    fake = fakeDb({ people: [], tc_settings: [] }, { fail: ['tc_person_cadence'] })
+    const r = await createPerson(work, 'monthly')
+    expect(r).toEqual({ ok: false, error: 'The person could not be added. Try again in a moment.' })
+    expect(fake.tables.people).toEqual([])
   })
 })

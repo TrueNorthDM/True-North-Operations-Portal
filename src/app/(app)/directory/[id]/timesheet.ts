@@ -16,8 +16,8 @@ import { gridPeriod, periodContaining, periodLabel, type Cadence } from '@/lib/t
 import { localDate, monthYear } from '@/lib/timeclock/format'
 
 export interface PersonTimesheet {
-  /** How they submit; the one scheduled to follow, when there is one (what the pill shows). */
-  cadence: Cadence
+  /** How they submit; the one scheduled to follow, when there is one (what the pill shows). Null: not set yet. */
+  cadence: Cadence | null
   /** Their current period, "October 2026" / "Oct 4 to 17, 2026". */
   currentPeriod: string
   /** The current period on each cadence, for the row while Edit work picks one (5B2). */
@@ -34,7 +34,7 @@ export async function loadPersonTimesheet(personId: string, canEdit: boolean, no
     const cn = cadenceNow(today, rules.changes, rules.fallback)
     const pay = gridPeriod(today, rules.anchors)
     return {
-      cadence: cn.scheduled?.cadence ?? cn.now,
+      cadence: rules.changes.length ? cn.scheduled?.cadence ?? cn.now : null,
       currentPeriod: periodLabel(periodContaining(today, rules)).full,
       periodIf: { monthly: monthYear(today), biweekly: pay ? periodLabel(pay).full : '-' },
       canEdit,

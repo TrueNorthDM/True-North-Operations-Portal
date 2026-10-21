@@ -205,10 +205,9 @@ instead." when nothing would remain.
 
 | Function | Input | Returns |
 |---|---|---|
-| `getTimesheetPeriods()` | | `data: TimesheetPeriodsData`: `access`, `anchor`, `anchorLabel`, `defaultCadence`, `counts`, `periods` (one closed, current, next four), `people` (`cadence`, `scheduled`, `currentPeriod`). |
+| `getTimesheetPeriods()` | | `data: TimesheetPeriodsData`: `access`, `anchor`, `anchorLabel`, `defaultCadence`, `counts` (`monthly`, `biweekly`, `notSet`), `periods` (one closed, current, next four), `people` (`cadence`, `scheduled`, `notSet`, `currentPeriod`). |
 | `previewAnchorMove({ anchor })` | | `data: AnchorPreview`: `movedText` (5A amber line), `dialog` ("Move the pay periods?"), `oldCurrent`, `newCurrent`, `gap`, `effectiveFrom`. |
 | `setPayPeriodAnchor({ anchor })` | Super Admins | `effectiveFrom` |
-| `setDefaultCadence({ cadence: 'monthly' or 'biweekly' })` | Super Admins | `{}` |
 | `previewCadenceChange({ personIds, cadence })` | | `data: CadencePreview[]`: `change` ("Monthly → Every 2 weeks"), `plan.text` (5B starts line, 5C dialog), `plan.effectiveFrom`. |
 | `setCadence({ personIds, cadence })` | Super Admins, one or many | `changed: [{ personId, effectiveFrom, text }]` |
 
@@ -240,11 +239,47 @@ clock panel when it sees `clock=open`. The email is `src/lib/email/clock-stopped
 QuickBooks Time alike; once a day the Super Admins' line. Any action or the
 panel that finds a clock past its mark stops it the same way first.
 
+### No default cadence (owner, Oct 20, 2026)
+
+There is no "New people" setting any more. The cadence is a required field on
+Directory > Add person (`createPerson(input, cadence)`), kept from 2017-01-01 so
+every period of theirs follows it. Someone with no cadence of their own shows
+"Not set" (Rates & Costs pill and filter, the person's Timesheet section) and
+closes monthly meanwhile (`tc_settings.default_cadence`, no longer editable).
+
+Pay periods count from Sunday, Sep 27, 2026, every 14 days, Sunday to Saturday;
+pay day is the Saturday a week after each period ends (not modelled).
+
 ## Status (Oct 16, 2026)
 
 On staging: foundation 3f2a3d2, screens f920d34, generated types e471760;
 migrations 112 and 113 applied to the staging database only. Production is
-unchanged. Promote order: code, then 112, then 113, then reinstall the
-crontab (adds the 5-minute clocky-safety job). Design-check pages per frame:
+unchanged. Promote order: code, then 112, then 113, then the timesheet setup
+below, then reinstall the crontab (adds the 5-minute clocky-safety job).
+
+Timesheet setup (applied to staging Oct 20, 2026; run on production right
+after 113, then check `db_protections_check()` is `{}`): the pay period start,
+and everyone's cadence by the owner's rule, US Employees and Arnaldo Oliveira
+every 2 weeks, the other contractors monthly, anyone with no type (Ed Wagner,
+no salary) left not set.
+
+```sql
+BEGIN;
+INSERT INTO tc_pay_period_anchors (anchor, effective_from, set_by)
+SELECT DATE '2026-09-27', NULL, (SELECT id FROM people WHERE full_name = 'Arnaldo Oliveira')
+WHERE NOT EXISTS (SELECT 1 FROM tc_pay_period_anchors)
+  AND (SELECT pay_period_anchor FROM tc_settings WHERE singleton_id = 1) IS NULL;
+UPDATE tc_settings SET pay_period_anchor = DATE '2026-09-27', updated_at = now()
+WHERE singleton_id = 1 AND pay_period_anchor IS NULL;
+INSERT INTO tc_person_cadence (person_id, cadence, effective_from, set_by)
+SELECT p.id,
+       CASE WHEN p.employment_type = 'us' OR p.full_name = 'Arnaldo Oliveira' THEN 'biweekly' ELSE 'monthly' END,
+       DATE '2017-01-01', (SELECT id FROM people WHERE full_name = 'Arnaldo Oliveira')
+FROM people p
+WHERE coalesce(p.status, 'active') <> 'inactive'
+  AND p.employment_type IN ('us', 'contractor')
+  AND NOT EXISTS (SELECT 1 FROM tc_person_cadence c WHERE c.person_id = p.id);
+COMMIT;
+``` Design-check pages per frame:
 /design-check/clocky-clock, clocky-working, clocky-entries, clocky-approvals,
 clocky-safety, clocky-bell, clocky-periods (local dev).

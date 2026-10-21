@@ -3,8 +3,10 @@
 /**
  * Company settings > Timesheet periods (design handoff of 16 October 2026,
  * Timesheet Periods.dc.html frames 5A and 5A2): the day pay periods start and
- * the periods it makes, the people on each cadence, and the cadence new people
- * start with. Edit / Done like the other sections; Done saves, and moving the
+ * the periods it makes and the people on each cadence. There is no company
+ * default for new people (owner, 20 October 2026): the cadence is a required
+ * field when someone is added to the Directory. Edit / Done like the other
+ * sections; Done saves, and moving the
  * start date asks first ("Move the pay periods?") with the old and new current
  * period. Super Admins change it (cs-periods-edit); Admins read it.
  *
@@ -16,22 +18,25 @@ import Link from 'next/link'
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
-import { Segmented } from '@/components/ui/Segmented'
 import { withViewAs } from '@/components/ViewAsKeeper'
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
-import { previewAnchorMove, setDefaultCadence, setPayPeriodAnchor } from '@/app/(app)/clocky-hours/periods/actions'
-import { addDays, type Cadence } from '@/lib/timeclock/periods'
+import { BTN_ICON } from '@/lib/ui/buttons'
+import { previewAnchorMove, setPayPeriodAnchor } from '@/app/(app)/clocky-hours/periods/actions'
+import { addDays } from '@/lib/timeclock/periods'
 import { dayLabel, longDateLabel } from '@/lib/timeclock/format'
 import type { Result, TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
 import type { AnchorPreview } from '@/lib/timeclock/clocky-periods-data'
 import { FIELD_LABEL, PeriodsDialog, useToast } from './ui'
 
+// The Edit / Done button (Timesheet Periods.dc.html 5A): Edit navy 11px 20px with
+// its shadow, Done white 10px 18px; 8px gap, no letter spacing.
+const PERIODS_EDIT = 'inline-flex items-center gap-2 rounded-[10px] px-5 py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_8px_20px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b] disabled:opacity-60'
+const PERIODS_DONE = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[18px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal disabled:opacity-60'
+
 export interface PeriodsActions {
   previewAnchorMove: (input: { anchor: string }) => Promise<Result<{ data: AnchorPreview }>>
   setPayPeriodAnchor: (input: { anchor: string }) => Promise<Result<{ effectiveFrom: string | null }>>
-  setDefaultCadence: (input: { cadence: Cadence }) => Promise<Result>
 }
-const SERVER: PeriodsActions = { previewAnchorMove, setPayPeriodAnchor, setDefaultCadence }
+const SERVER: PeriodsActions = { previewAnchorMove, setPayPeriodAnchor }
 
 const CARD = 'bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col'
 const TAG = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-[3px]'
@@ -56,7 +61,6 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
   const [editing, setEditing] = useState(startEditing && canEdit)
   const [anchorDraft, setAnchorDraft] = useState<string | null>(startAnchor)
   const [preview, setPreview] = useState<AnchorPreview | null>(null)
-  const [cadenceDraft, setCadenceDraft] = useState<Cadence>(data.defaultCadence)
   const [dialog, setDialog] = useState(startDialog)
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
@@ -103,12 +107,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
   function done() {
     setError(null)
     if (anchorDraft && anchorDraft !== data.anchor) { setDialog(true); return }
-    if (cadenceDraft === data.defaultCadence) { finish('Saved.'); return }
-    start(async () => {
-      const r = await actions.setDefaultCadence({ cadence: cadenceDraft })
-      if (!r.ok) { setError(r.error); return }
-      finish('Saved.')
-    })
+    finish('Saved.')
   }
 
   function move() {
@@ -116,10 +115,6 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
     start(async () => {
       const r = await actions.setPayPeriodAnchor({ anchor: anchorDraft })
       if (!r.ok) { setError(r.error); return }
-      if (cadenceDraft !== data.defaultCadence) {
-        const c = await actions.setDefaultCadence({ cadence: cadenceDraft })
-        if (!c.ok) { setError(c.error); return }
-      }
       finish(`Saved. Pay periods start ${longDateLabel(anchorDraft)}, every 2 weeks.`)
     })
   }
@@ -157,13 +152,13 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
                   options={options}
                   placeholder="Choose"
                   ariaLabel="A pay period starts on"
-                  className="h-10 px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] tabular-nums transition-colors hover:border-tn-teal aria-expanded:border-tn-teal aria-expanded:shadow-[0_0_0_3px_rgba(30,125,127,.15)]"
+                  className="h-10 px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] tabular-nums lining-nums transition-colors hover:border-tn-teal aria-expanded:border-tn-teal aria-expanded:shadow-[0_0_0_3px_rgba(30,125,127,.15)]"
                 />
               </div>
             ) : (
               <>
                 <span className={FIELD_LABEL}>A pay period starts on</span>
-                <div className={`${READ_BOX} tabular-nums`}>{data.anchorLabel ?? 'Not set'}</div>
+                <div className={`${READ_BOX} tabular-nums lining-nums`}>{data.anchorLabel ?? 'Not set'}</div>
               </>
             )}
             <span className="text-[12px] text-muted">Any date. The next periods follow every 14 days from it.</span>
@@ -186,7 +181,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
               const now = p.state === 'current'
               const past = p.state === 'closed'
               return (
-                <div key={p.start} className={`grid grid-cols-[minmax(0,1fr)_150px] items-center gap-2.5 px-3.5 py-[9px] border-b border-[var(--row-rule)] tabular-nums ${now ? 'bg-tn-teal-soft' : 'bg-white'}`}>
+                <div key={p.start} className={`grid grid-cols-[minmax(0,1fr)_150px] items-center gap-2.5 px-3.5 py-[9px] border-b border-[var(--row-rule)] tabular-nums lining-nums ${now ? 'bg-tn-teal-soft' : 'bg-white'}`}>
                   <span className={`text-[13px] ${now ? 'font-bold' : 'font-normal'} ${past ? 'text-muted' : 'text-tn-ink'}`}>{p.label}</span>
                   <span className="justify-self-end">
                     {past && <span className={`${TAG} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]`}>Closed</span>}
@@ -199,36 +194,21 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-[18px]">
-        <section className={`${CARD} gap-2.5`} aria-label="Monthly">
-          <div className="flex items-center gap-2.5">
-            <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Monthly</span>
-            <span className={`${TAG} text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)]`}>Every month</span>
-          </div>
-          <p className="m-0 text-[13.5px] text-foreground leading-[1.55]">From the 1st to the last day of each month, in each person&apos;s own time zone. Nothing to set.</p>
-          <p className="m-0 text-[12.5px] text-muted">{data.counts.monthly} people submit monthly</p>
-        </section>
-        <section className={`${CARD} gap-3`} aria-label="New people">
-          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">New people</span>
-          <p className="m-0 text-[13.5px] text-foreground leading-[1.55]">Someone added to the Directory starts with:</p>
-          {/* Read: shown, not changeable, a little faded (the design's .85). */}
-          <div className={`self-start ${editing ? '' : 'opacity-[.85] pointer-events-none'}`} aria-disabled={!editing || undefined}>
-            <Segmented
-              label="New people start with"
-              options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: 'Every 2 weeks' }]}
-              value={cadenceDraft}
-              onChange={k => { if (editing) setCadenceDraft(k) }}
-            />
-          </div>
-        </section>
-      </div>
+      <section className={`${CARD} gap-2.5`} aria-label="Monthly">
+        <div className="flex items-center gap-2.5">
+          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Monthly</span>
+          <span className={`${TAG} text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)]`}>Every month</span>
+        </div>
+        <p className="m-0 text-[13.5px] text-foreground leading-[1.55]">From the 1st to the last day of each month, in each person&apos;s own time zone. Nothing to set.</p>
+        <p className="m-0 text-[12.5px] text-muted">{data.counts.monthly} people submit monthly</p>
+      </section>
 
       {error && <p role="alert" className="m-0 text-[13px] text-[#c8323d]">{error}</p>}
 
       {canEdit && (
         <div className="flex justify-end items-center gap-2.5 mt-1.5 pt-5 border-t border-slate-200">
           {editing && <span className="text-[13px] text-muted mr-auto">Editing. Changes apply when you press Done.</span>}
-          <button type="button" aria-pressed={editing} disabled={pending} onClick={() => (editing ? done() : setEditing(true))} className={editing ? BTN.white : BTN.navy}>
+          <button type="button" aria-pressed={editing} disabled={pending} onClick={() => (editing ? done() : setEditing(true))} className={editing ? PERIODS_DONE : PERIODS_EDIT}>
             {editing ? (
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
             ) : (

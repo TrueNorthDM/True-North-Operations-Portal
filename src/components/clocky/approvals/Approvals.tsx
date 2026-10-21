@@ -110,7 +110,7 @@ export function Approvals({ initialData, api, initial }: {
         <p className="m-0 mt-1 text-[13.5px] text-muted">{data.subtitle}</p>
       </div>
       <div className="flex items-center gap-3 flex-wrap">
-        <Segmented label="Requests" value={tab} onChange={setTab}
+        <Segmented label="Requests" display="px-3 py-1.5 text-[12.5px] tabular-nums lining-nums" value={tab} onChange={setTab}
           options={[{ key: 'wait', label: `Waiting · ${data.waiting.length}` }, { key: 'done', label: `Decided · ${data.decided.length}` }]} />
         <span className="text-[12.5px] text-muted">{data.note}</span>
       </div>
@@ -136,9 +136,9 @@ export function Approvals({ initialData, api, initial }: {
                       style={isOff ? { background: '#eef1fb', color: '#3b4fa8' } : { background: 'var(--color-tn-teal-soft)', color: 'var(--color-tn-teal)' }}>
                       {isOff ? 'Time off' : 'Time correction'}
                     </span>
-                    <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap tabular-nums">{formatDuration(r.seconds)}</span>
+                    <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{formatDuration(r.seconds)}</span>
                   </div>
-                  <span className="text-[13px] text-foreground tabular-nums">{r.when}</span>
+                  <span className="text-[13px] text-foreground tabular-nums lining-nums">{r.when}</span>
                   {!isOff && <span className="text-[12.5px] text-muted truncate">{r.job}</span>}
                 </div>
                 <div className="flex-[1.5_1_240px] min-w-0 flex flex-col gap-1">

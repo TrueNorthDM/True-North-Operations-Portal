@@ -1,8 +1,10 @@
 /**
  * Timesheet periods (design handoff of 16 October 2026, SPEC 11A, Timesheet
  * Periods.dc.html frames 5A to 5C): the pay period start and the periods it
- * makes, the default for new people, who submits how, and the exact dates a
- * change takes effect, for the confirm dialogs before saving.
+ * makes, who submits how, and the exact dates a change takes effect, for the
+ * confirm dialogs before saving. defaultCadence is only what someone with no
+ * cadence of their own follows (people from before 20 October 2026, when the
+ * cadence became required on Add person); it is no longer set anywhere.
  *
  * Not a "use server" file: app/(app)/clocky-hours/periods/actions.ts serves it.
  */
@@ -40,6 +42,7 @@ export async function loadTimesheetPeriods(v: Viewer, now: Date): Promise<Timesh
       name: p.name,
       cadence: cn.scheduled?.cadence ?? cn.now,
       scheduled: cn.scheduled,
+      notSet: rules.changes.length === 0,
       currentPeriod: periodLabel(periodContaining(t, rules)).full,
     }
   }).sort((a, b) => a.name.localeCompare(b.name))
@@ -48,7 +51,11 @@ export async function loadTimesheetPeriods(v: Viewer, now: Date): Promise<Timesh
     anchor: settings.anchor,
     anchorLabel: settings.anchor ? longDateLabel(settings.anchor) : null,
     defaultCadence: settings.defaultCadence,
-    counts: { monthly: people.filter(p => p.cadence === 'monthly').length, biweekly: people.filter(p => p.cadence === 'biweekly').length },
+    counts: {
+      monthly: people.filter(p => !p.notSet && p.cadence === 'monthly').length,
+      biweekly: people.filter(p => !p.notSet && p.cadence === 'biweekly').length,
+      notSet: people.filter(p => p.notSet).length,
+    },
     periods: companyPayPeriods(today, settings.anchors).map(p => ({
       start: p.start, end: p.end, state: p.state,
       label: `${dayLabel(p.start)} to ${dayLabel(p.end)}, ${p.end.slice(0, 4)}`,
@@ -119,7 +126,7 @@ export async function previewCadence(now: Date, personIds: readonly string[], to
       name: dir.nameOf(id),
       from,
       to,
-      change: `${CADENCE_LABEL[from]} → ${CADENCE_LABEL[to]}`,
+      change: `${rules.changes.length ? CADENCE_LABEL[from] : 'Not set'} → ${CADENCE_LABEL[to]}`,
       plan: cadenceChange(today, to, rules),
     }
   })

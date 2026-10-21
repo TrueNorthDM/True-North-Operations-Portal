@@ -93,7 +93,7 @@ export function FieldLabel({ children, warn = false }: { children: ReactNode; wa
   return <span className={`${LABEL} ${warn ? 'text-[var(--warn-fg)]' : 'text-muted'}`}>{children}</span>
 }
 
-const TRIGGER = 'h-10 px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] tabular-nums transition-colors hover:border-tn-teal aria-expanded:border-tn-teal aria-expanded:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
+const TRIGGER = 'h-10 px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] tabular-nums lining-nums transition-colors hover:border-tn-teal aria-expanded:border-tn-teal aria-expanded:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
 /** A labelled dropdown: the prototype's field (label, "auto" hint) on the portal's Select. */
 export function LabeledSelect({ label, value, options, onChange, placeholder = 'Choose', search = false, auto = false, disabled = false }: {
@@ -183,8 +183,19 @@ export function Modal({ label, width, onClose, children, alert = false, gap = 14
 export const MODAL_TITLE = 'font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0'
 /** Headings carry -0.015em from globals.css, outside the utilities' layer: the modal titles are drawn without it. */
 
+/** The page's buttons (toolbar, empty list): white 10px 15px, navy with a small shadow; 8px gap, no letter spacing. */
+export const BTN_PAGE_WHITE = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal'
+export const BTN_PAGE_NAVY = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
+
+/** The entry form's Save (3E): 11px 20px with the small shadow. */
+export const BTN_FORM_SAVE = 'inline-flex items-center gap-2 rounded-[10px] px-5 py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
+/** The week grid's Save (3B-2): 10px 18px with the small shadow. */
+export const BTN_GRID_SAVE = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-2.5 bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
+
 /** The modals' white button (Cancel, Close): the prototype's 10px 16px. */
 export const BTN_MODAL_WHITE = 'inline-flex items-center border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal'
+/** The modals' navy button (Submit, Approve, Save): 8px gap, no letter spacing, no shadow. */
+export const BTN_MODAL_NAVY = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-white font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:bg-[#0a2f6b]'
 /** The white button with red words (Deny). */
 export const BTN_MODAL_DANGER = 'inline-flex items-center border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-[#c8323d]'
 

@@ -12,7 +12,8 @@ const nunito = Nunito({ variable: '--font-nunito', subsets: ['latin'], weight: [
 const openSans = Open_Sans({ variable: '--font-open-sans', subsets: ['latin'], weight: ['400', '600', '700'] })
 const bebas = Bebas_Neue({ variable: '--font-bebas-neue', subsets: ['latin'], weight: ['400'] })
 // Portal display face, Raleway (True North brand; headings via globals.css h1–h3).
-const raleway = Raleway({ variable: '--font-raleway', subsets: ['latin'], weight: ['700', '800', '900'] })
+// 600 is the Clocky handoff's weight for fields and selects; without it they drew at 700.
+const raleway = Raleway({ variable: '--font-raleway', subsets: ['latin'], weight: ['600', '700', '800', '900'] })
 
 export const metadata: Metadata = {
   title: 'True North Operations Portal',

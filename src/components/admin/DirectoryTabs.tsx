@@ -83,7 +83,7 @@ export function DirectoryTabs({
       {/* heading row */}
       <div className="flex items-start justify-between gap-5 flex-wrap">
         <div className="max-w-[880px]">
-          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink">Directory</h1>
+          <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink leading-[normal]" style={{ letterSpacing: '-.01em' }}>Directory</h1>
           <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
             Add or edit people, and manage teams and who is in them.
           </p>

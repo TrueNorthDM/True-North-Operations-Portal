@@ -11,7 +11,7 @@
 import { forwardRef } from 'react'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { TopBarState } from './clock-model'
-import { ClockDot, FOCUS, ICON, Icon } from './ClockParts'
+import { ClockDot, FOCUS, ICON, Icon, type Phone } from './ClockParts'
 
 const LOOK: Record<TopBarState['kind'], string> = {
   off: 'bg-tn-primary border-tn-primary text-[#ffffff]',
@@ -22,7 +22,7 @@ const LOOK: Record<TopBarState['kind'], string> = {
 
 export const ClockButton = forwardRef<HTMLButtonElement, {
   state: TopBarState
-  phone: boolean
+  phone: Phone
   open: boolean
   onClick: () => void
 }>(function ClockButton({ state, phone, open, onClick }, ref) {
@@ -39,11 +39,11 @@ export const ClockButton = forwardRef<HTMLButtonElement, {
         <>
           <ClockDot color={state.kind === 'auto' ? '#c8323d' : '#1E9E6A'} pulse={state.kind !== 'auto'} />
           <span className="text-[14px] tabular-nums lining-nums">{state.text}</span>
-          {!phone && state.job && (
-            <span className={`font-sans font-semibold text-[12.5px] ${state.kind === 'over' ? 'text-[#8a6d1a]' : 'text-tn-teal'}`}>{state.job}</span>
+          {phone !== true && state.job && (
+            <span className={`${phone === 'css' ? 'max-md:hidden ' : ''}font-sans font-semibold text-[12.5px] ${state.kind === 'over' ? 'text-[#8a6d1a]' : 'text-tn-teal'}`}>{state.job}</span>
           )}
-          {!phone && state.kind === 'over' && (
-            <span aria-hidden="true" className="w-[17px] h-[17px] rounded-full bg-[#8a6d1a] text-[#ffffff] text-[11px] font-black flex items-center justify-center">!</span>
+          {phone !== true && state.kind === 'over' && (
+            <span aria-hidden="true" className={`${phone === 'css' ? 'max-md:hidden ' : ''}w-[17px] h-[17px] rounded-full bg-[#8a6d1a] text-[#ffffff] text-[11px] font-black flex items-center justify-center`}>!</span>
           )}
         </>
       )}

@@ -115,6 +115,8 @@ export function buildFrame(code: string): Frame {
     case '3K3': sa(); recs = [...recs, reqSeed()]; initial = { ...initial, anchor: '2026-10-14', modal: { kind: 'review', key: 'c8001', deny: false } }; break
     case '3K4': level = 'lead'; initial = { ...initial, who: 'all', attnOnly: true }; break
     case 'E': initial.anchor = '2026-10-22'; break
+    // The shell's N3: a Team Leader's own list, where Clock safety's address sends them.
+    case 'L': level = 'lead'; break
     // Who's working, "Their time entries": /clocky-hours?person=<id> opens All with them picked.
     case 'P': level = 'super'; initial = { ...initial, who: 'all', member: pid('Justus Tsofa') }; break
   }

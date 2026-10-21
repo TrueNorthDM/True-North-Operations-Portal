@@ -7,7 +7,9 @@
  * its own access item, which is where this opens once they are saved.
  *
  * The draft is the WorkInput the server checks (lib/directory/person-validate),
- * so the form holds no field the server would quietly drop.
+ * so the form holds no field the server would quietly drop. Beside it, how they
+ * submit their hours (Clocky's timesheet cadence): required, nothing picked
+ * until someone chooses (owner, 20 October 2026: there is no company default).
  */
 
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
@@ -57,6 +59,7 @@ export function PersonModal({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<Draft>(EMPTY)
+  const [cadence, setCadence] = useState<'' | 'monthly' | 'biweekly'>('')
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft(d => ({ ...d, [k]: v }))
 
   // A dialog: Escape closes it, and focus goes back to where it was.
@@ -77,7 +80,7 @@ export function PersonModal({
     setError(null)
     const input: WorkInput = { ...draft, teams: draft.teams.filter(t => t.teamId) }
     startTransition(async () => {
-      const res = await createPerson(input)
+      const res = await createPerson(input, cadence)
       if (!res.ok) { setError(res.error); return }
       // Their page is where everything else about them is seen and changed.
       setState(null)
@@ -115,7 +118,7 @@ export function PersonModal({
 
         {/* body */}
         <div className="flex-1 overflow-y-auto px-8 pt-6 pb-2">
-          <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={people} teamOptions={teamOptions} canTeams={canTeams} />
+          <EditBody draft={draft} set={set} setDraft={setDraft} managerOptions={people} teamOptions={teamOptions} canTeams={canTeams} cadence={cadence} setCadence={setCadence} />
           <p className="text-[12.5px] text-muted mt-4">Personal details and HR are filled in on their page, which opens once they are added.</p>
           {error && <p role="alert" className="text-sm text-red-600 mt-2">{error}</p>}
         </div>
@@ -123,7 +126,7 @@ export function PersonModal({
         {/* footer */}
         <div className="shrink-0 flex items-center gap-2.5 px-8 py-4 border-t border-slate-200 bg-subtle">
           <button type="button" onClick={() => setState(null)} className="ml-auto font-(family-name:--font-display) font-extrabold text-[13.5px] text-foreground border border-slate-200 rounded-[10px] px-[18px] py-2.5 transition-all hover:border-tn-ink hover:text-tn-ink">Cancel</button>
-          <button type="button" disabled={pending || !draft.fullName.trim()} onClick={save} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-50">
+          <button type="button" disabled={pending || !draft.fullName.trim() || !cadence} onClick={save} className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-white bg-tn-primary rounded-[10px] px-5 py-[11px] shadow-[0_10px_24px_-12px_rgba(1,35,88,.7)] transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-50">
             <span className="text-[#ffffff]">{pending ? 'Saving…' : 'Add person'}</span>
           </button>
         </div>
@@ -163,9 +166,11 @@ function GroupTitle({ children, right, className = '' }: { children: ReactNode; 
 const fieldCls = 'text-sm text-tn-ink bg-subtle border border-slate-200 rounded-[10px] px-3.5 py-[11px] w-full transition-all focus:outline-none focus:border-tn-teal'
 
 function EditBody({
-  draft, set, setDraft, managerOptions, teamOptions, canTeams,
+  draft, set, setDraft, managerOptions, teamOptions, canTeams, cadence, setCadence,
 }: {
   canTeams: boolean
+  cadence: '' | 'monthly' | 'biweekly'
+  setCadence: (c: 'monthly' | 'biweekly') => void
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
   setDraft: (fn: (d: Draft) => Draft) => void
@@ -237,6 +242,12 @@ function EditBody({
             {field('Type', seg(draft.employmentType, [{ v: 'us', l: 'US Employee' }, { v: 'contractor', l: 'Contractor' }], v => set('employmentType', v)))}
             {field('Time', seg(draft.schedule, [{ v: 'full', l: 'Full-Time' }, { v: 'part', l: 'Part-Time' }], v => set('schedule', v)))}
             {field('Weekly hours', <input type="number" value={draft.weeklyHours} onChange={e => set('weeklyHours', e.target.value)} className={fieldCls} placeholder="40" />)}
+            {field('Timesheet (required)', (
+              <div className="flex flex-col gap-1.5">
+                {seg(cadence, [{ v: 'monthly', l: 'Monthly' }, { v: 'biweekly', l: 'Every 2 weeks' }], v => setCadence(v as 'monthly' | 'biweekly'))}
+                <span className="text-[12px] text-muted leading-snug">How often they submit their hours for approval.</span>
+              </div>
+            ))}
           </div>
         </div>
         {canTeams && <div className="break-inside-avoid mb-6">

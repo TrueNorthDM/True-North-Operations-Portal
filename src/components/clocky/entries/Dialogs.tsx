@@ -7,13 +7,12 @@
  */
 
 import { useState } from 'react'
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { PillTone, SubmitSummary } from '@/lib/timeclock/clocky-types'
-import { CloseButton, FieldLabel, Icon, ICON, LABEL, MODAL_TITLE, Modal, Pill, TEXTAREA_PLAIN, TEXTAREA_WARN } from './ui'
+import { BTN_MODAL_DANGER, BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LABEL, MODAL_TITLE, Modal, Pill, TEXTAREA_PLAIN, TEXTAREA_WARN } from './ui'
 
 const DISABLED = 'disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0'
-const DANGER_WHITE = BTN.white.replace('text-tn-ink', 'text-[#c8323d]').replace('hover:border-tn-teal', 'hover:border-[#c8323d]')
 
 // ── 3I ──────────────────────────────────────────────────────────────────────
 
@@ -29,15 +28,15 @@ export function DeleteDialog({ text, busy, onClose, onDelete }: {
   return (
     <Modal label="Delete entry" width={440} onClose={onClose} alert gap={12}>
       <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>Delete this entry?</h2>
-      <p className="m-0 text-[13.5px] text-foreground leading-[1.55] tabular-nums">{text} This cannot be undone.</p>
+      <p className="m-0 text-[13.5px] text-foreground leading-[1.55] tabular-nums lining-nums">{text} This cannot be undone.</p>
       <label className="flex flex-col gap-[5px]">
         <FieldLabel warn>Reason (required)</FieldLabel>
         <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder="Why are you deleting this entry?" className={TEXTAREA_WARN} />
       </label>
       <div className="flex justify-end gap-2 mt-1">
-        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
         <button type="button" disabled={!ok} onClick={() => onDelete(reason.trim())}
-          className="inline-flex items-center rounded-[10px] px-[18px] py-[11px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">
+          className="inline-flex items-center rounded-[10px] px-[18px] py-[11px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">
           Delete
         </button>
       </div>
@@ -76,8 +75,8 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
             <Icon d={ICON.clock} size={17} />Clock out first. Your clock is running.
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className={BTN.white}>Close</button>
-            <a href={clockHref} className={BTN.navy}>Open the clock</a>
+            <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Close</button>
+            <a href={clockHref} className={BTN_MODAL_NAVY}>Open the clock</a>
           </div>
         </>
       )}
@@ -86,7 +85,7 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
           <div className="grid grid-cols-2 gap-2.5">
             <div className={CARD}>
               <div className={`${LABEL} text-muted`}>Total</div>
-              <div className="font-(family-name:--font-display) font-black text-[22px] text-tn-ink mt-1 tabular-nums">{formatDuration(s.totalSeconds)}</div>
+              <div className="font-(family-name:--font-display) font-black text-[22px] text-tn-ink mt-1 tabular-nums lining-nums">{formatDuration(s.totalSeconds)}</div>
             </div>
             <div className={CARD}>
               <div className={`${LABEL} text-muted`}>Days with no time</div>
@@ -98,7 +97,7 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
             {s.byClient.map(c => (
               <div key={c.client} className="flex justify-between text-[13px] border-b border-[var(--row-rule)] pb-1.5">
                 <span className="text-tn-ink font-semibold">{c.client}</span>
-                <span className="tabular-nums">{formatDuration(c.seconds)}</span>
+                <span className="tabular-nums lining-nums">{formatDuration(c.seconds)}</span>
               </div>
             ))}
           </div>
@@ -107,7 +106,7 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
               <div className="text-[13px] font-bold text-tn-ink">Fix these first ({s.attention.length}):</div>
               {s.attention.map(a => (
                 <div key={a.key} className="flex justify-between items-center gap-2.5 text-[12.5px] text-foreground">
-                  <span className="min-w-0 tabular-nums"><b className="text-tn-ink">{a.reason}</b> · {a.sub}</span>
+                  <span className="min-w-0 tabular-nums lining-nums"><b className="text-tn-ink">{a.reason}</b> · {a.sub}</span>
                   <button type="button" onClick={() => onFix(a.key)} className="border-0 bg-transparent p-0 text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">Fix</button>
                 </div>
               ))}
@@ -115,8 +114,8 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
           )}
           <div className="text-[12px] text-muted leading-normal">{s.lockNote}</div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
-            <button type="button" disabled={disabled} onClick={onSubmit} className={`${BTN.navy} ${DISABLED}`}>
+            <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
+            <button type="button" disabled={disabled} onClick={onSubmit} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>
               <Icon d={ICON.send} size={14} color={BTN_ICON.navy} width={2.4} />Submit {s.label}
             </button>
           </div>
@@ -133,7 +132,7 @@ const stateText = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 function DetailGrid({ rows }: { rows: [string, string, boolean?][] }) {
   return (
-    <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2 text-[13px] tabular-nums">
+    <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2 text-[13px] tabular-nums lining-nums">
       {rows.map(([k, v, soft]) => (
         <div key={k} className="contents">
           <span className="text-muted">{k}</span>
@@ -188,12 +187,12 @@ export function CorrectionReview({ who, goesTo, state, date, time, job, reason, 
       )}
       {canDecide && <div className="text-[12px] text-muted leading-normal">Approving adds the time to {first}&apos;s entries, marked Edited, with this request in its history.</div>}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className={BTN.white}>Close</button>
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Close</button>
         {canDecide && (
           <>
             <button type="button" disabled={busy} onClick={() => { if (!deny) setDeny(true); else if (note.trim()) onDeny(note.trim()) }}
-              style={{ opacity: deny && !note.trim() ? 0.5 : 1 }} className={DANGER_WHITE}>Deny</button>
-            <button type="button" disabled={busy || !!overlap} onClick={onApprove} className={`${BTN.navy} ${DISABLED}`}>
+              style={{ opacity: deny && !note.trim() ? 0.5 : 1 }} className={BTN_MODAL_DANGER}>Deny</button>
+            <button type="button" disabled={busy || !!overlap} onClick={onApprove} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>
               <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Approve
             </button>
           </>
@@ -232,7 +231,7 @@ export function TimeOffCard({ who, state, type, dates, hours, note, canDecide, d
       <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2 text-[13px]">
         <span className="text-muted">Type</span><span className="text-tn-ink font-semibold">{type}</span>
         <span className="text-muted">Dates</span><span className="text-tn-ink font-semibold">{dates}</span>
-        <span className="text-muted">Hours</span><span className="text-tn-ink font-semibold tabular-nums">{hours}</span>
+        <span className="text-muted">Hours</span><span className="text-tn-ink font-semibold tabular-nums lining-nums">{hours}</span>
         <span className="text-muted">Note</span><span className="text-foreground">{note}</span>
       </div>
       {deny && canDecide && (
@@ -242,12 +241,12 @@ export function TimeOffCard({ who, state, type, dates, hours, note, canDecide, d
         </label>
       )}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className={BTN.white}>Close</button>
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Close</button>
         {canDecide && (
           <>
             <button type="button" disabled={busy} onClick={() => { if (!deny) setDeny(true); else if (reason.trim()) onDeny(reason.trim()) }}
-              style={{ opacity: deny && !reason.trim() ? 0.5 : 1 }} className={DANGER_WHITE}>Deny</button>
-            <button type="button" disabled={busy} onClick={onApprove} className={`${BTN.navy} ${DISABLED}`}>
+              style={{ opacity: deny && !reason.trim() ? 0.5 : 1 }} className={BTN_MODAL_DANGER}>Deny</button>
+            <button type="button" disabled={busy} onClick={onApprove} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>
               <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Approve
             </button>
           </>
@@ -274,8 +273,8 @@ export function GridReasonDialog({ busy, onClose, onSave }: { busy: boolean; onC
         <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder="Why are you changing these hours?" className={TEXTAREA_WARN} />
       </label>
       <div className="flex justify-end gap-2 mt-1">
-        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
-        <button type="button" disabled={!ok} onClick={() => onSave(reason.trim())} className={`${BTN.navy} ${DISABLED}`}>
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
+        <button type="button" disabled={!ok} onClick={() => onSave(reason.trim())} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>
           <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Save
         </button>
       </div>

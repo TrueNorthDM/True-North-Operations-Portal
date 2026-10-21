@@ -17,11 +17,12 @@ export const CADENCE_LABEL: Record<Cadence, string> = { monthly: 'Monthly', biwe
 /** The small uppercase label above a value ("A pay period starts on", "Length"). */
 export const FIELD_LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
 
-/** Monthly in neutral, Every 2 weeks in teal (5B, 5C). */
-export function CadencePill({ cadence, size = 10 }: { cadence: Cadence; size?: 10 | 10.5 }) {
+/** Monthly in neutral, Every 2 weeks in teal (5B, 5C); "Not set" in amber, for someone with no cadence of their own yet. */
+export function CadencePill({ cadence, size = 10 }: { cadence: Cadence | null; size?: 10 | 10.5 }) {
+  const tone = cadence === null ? 'bg-[var(--warn-bg)] text-[var(--warn-fg)]' : cadence === 'biweekly' ? 'bg-tn-teal-soft text-tn-teal' : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'
   return (
-    <span className={`inline-flex font-(family-name:--font-display) font-extrabold tracking-[.05em] uppercase rounded-full px-2.5 py-[3px] whitespace-nowrap leading-[normal] ${size === 10 ? 'text-[10px]' : 'text-[10.5px]'} ${cadence === 'biweekly' ? 'bg-tn-teal-soft text-tn-teal' : 'bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-fg)]'}`}>
-      {CADENCE_LABEL[cadence]}
+    <span className={`inline-flex font-(family-name:--font-display) font-extrabold tracking-[.05em] uppercase rounded-full px-2.5 py-[3px] whitespace-nowrap leading-[normal] ${size === 10 ? 'text-[10px]' : 'text-[10.5px]'} ${tone}`}>
+      {cadence === null ? 'Not set' : CADENCE_LABEL[cadence]}
     </span>
   )
 }
@@ -62,7 +63,7 @@ export function PeriodsDialog({ title, intro, items, action, busy, error, onCanc
           {items.map(d => (
             <div key={`${d.name}-${d.change}`} className="border border-[var(--row-rule)] rounded-[11px] px-[13px] py-2.5 flex flex-col gap-[3px]">
               <span className="text-[13.5px] text-tn-ink"><b>{d.name}</b> {d.change}</span>
-              <span className="text-[12.5px] text-muted leading-[1.45] tabular-nums">{d.eff}</span>
+              <span className="text-[12.5px] text-muted leading-[1.45] tabular-nums lining-nums">{d.eff}</span>
             </div>
           ))}
         </div>

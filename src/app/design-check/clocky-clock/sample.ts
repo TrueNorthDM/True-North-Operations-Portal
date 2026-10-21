@@ -284,3 +284,13 @@ export function sampleApi(data: ClockPanelData): ClockApi {
     reorderCombinations: () => ok({}),
   }
 }
+
+/**
+ * The clock as the Time entries frames have it (Thu, Oct 15, 1:20 PM): on the
+ * clock since 10:45 AM on 2 - i7 Marketing > Content, as the list's running row.
+ */
+export const ENTRIES_CLOCK: ClockPanelData = on({
+  now: et(13, 20),
+  running: runningOf(COMBOS.find(c => c.name === 'i7 Social') ?? COMBOS[0], { real: et(10, 45), session: et(10, 45), now: et(13, 20) }),
+  safety: safetyOf(et(10, 45), 'i7 Social'),
+})

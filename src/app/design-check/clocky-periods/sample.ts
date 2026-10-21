@@ -48,7 +48,7 @@ export function currentPeriod(cadence: Cadence): string {
 export function people(cadences: Record<string, Cadence> = {}): CadencePerson[] {
   return SEED.map(r => {
     const cadence = cadences[r[0]] ?? r[9]
-    return { personId: idOf(r[0]), name: r[0], cadence, scheduled: null, currentPeriod: currentPeriod(cadence) }
+    return { personId: idOf(r[0]), name: r[0], cadence, scheduled: null, notSet: false, currentPeriod: currentPeriod(cadence) }
   })
 }
 
@@ -59,7 +59,7 @@ export function periodsData(access: 'edit' | 'read' = 'edit'): TimesheetPeriodsD
     anchor: ANCHOR,
     anchorLabel: longDateLabel(ANCHOR),
     defaultCadence: 'monthly',
-    counts: { monthly: list.filter(p => p.cadence === 'monthly').length, biweekly: list.filter(p => p.cadence === 'biweekly').length },
+    counts: { monthly: list.filter(p => p.cadence === 'monthly').length, biweekly: list.filter(p => p.cadence === 'biweekly').length, notSet: 0 },
     periods: companyPayPeriods(TODAY, anchors(ANCHOR)).map(p => ({ start: p.start, end: p.end, state: p.state, label: `${dayLabel(p.start)} to ${dayLabel(p.end)}, ${p.end.slice(0, 4)}` })),
     people: list,
   }
@@ -95,7 +95,6 @@ export async function previewAnchorMove({ anchor }: { anchor: string }): Promise
 }
 
 export const setPayPeriodAnchor = async (): Promise<Result<{ effectiveFrom: string | null }>> => ({ ok: true, effectiveFrom: TODAY })
-export const setDefaultCadence = async (): Promise<Result> => ({ ok: true })
 
 const LABEL: Record<Cadence, string> = { monthly: 'Monthly', biweekly: 'Every 2 weeks' }
 
@@ -117,9 +116,12 @@ export async function setCadence({ personIds }: { personIds: string[]; cadence: 
 
 const num = (v: string) => (v === '' ? null : Number(v))
 
+// The prototype's team colours (Timesheet Periods.dc.html TEAMS), as teams.color holds them.
+const TEAM_COLORS: Record<string, string> = { Africa: '#F0A35E', Web: '#A99BD4', Leadership: '#1E40AF', Operations: '#92400E', 'Fund Raising': '#CA8A04', Writers: '#86C06A', 'Social Media': '#DC2626', SEO: '#F4C24A', Graphics: '#C026D3' }
+
 export function ratesPeople(): PersonWithAssignments[] {
   return SEED.map(([name, team, title, mgr, joined, client, cost, be, salary], i) => ({
-    id: idOf(name), name, title, teams: team ? [team] : [], teamName: team || null, managerName: mgr || null, managerTeam: null,
+    id: idOf(name), name, title, teams: team ? [team] : [], teamName: team || null, teamColor: team ? TEAM_COLORS[team] ?? null : null, managerName: mgr || null, managerTeam: null,
     hireDate: joined, costRate: num(cost), beRate: num(be), monthlySalary: num(salary), projects: [],
     tsheetsUserId: i + 1, tsheetsOnly: false,
     assignments: [{ id: i + 1, clientId: 1, clientName: 'i7 Marketing', hourlyRate: Number(client), effectiveFrom: '2026-01-01' }],

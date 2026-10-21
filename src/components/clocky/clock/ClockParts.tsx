@@ -10,7 +10,6 @@
 
 import type { ReactNode, RefObject } from 'react'
 import { Select } from '@/components/ui/Select'
-import { BTN } from '@/lib/ui/buttons'
 
 // ── Icons ───────────────────────────────────────────────────────────────────
 
@@ -104,11 +103,20 @@ export const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 foc
 /** An input's focus: a teal border and a soft teal ring. */
 export const INPUT_FOCUS = 'outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
-/** The red-filled confirm, as the portal's own confirm dialog draws it. */
-export const BTN_DANGER = 'inline-flex items-center gap-2.5 bg-[#c8323d] text-[#ffffff] rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] tracking-[.02em] hover:brightness-110'
+/** The red-filled confirm (Clock out): the prototype's 11px 18px, 8px gap, no letter spacing. */
+export const BTN_DANGER = 'inline-flex items-center gap-2 bg-[#c8323d] text-[#ffffff] rounded-[10px] px-[18px] py-[11px] font-(family-name:--font-display) font-extrabold text-[13px] hover:brightness-110'
+
+/** The panel's white button (Cancel, Save as combination, Keep): 10px 16px, 8px gap, no letter spacing. */
+export const CK_BTN_WHITE = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal'
+
+/** The panel's navy button (Clock in, Keep going, Confirm, Save combination): 11px 18px with the small shadow. */
+export const CK_BTN_NAVY = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] transition-colors hover:bg-[#0a2f6b]'
+
+/** The navy button of a confirm step (Switch beside Cancel): no shadow. */
+export const CK_BTN_NAVY_FLAT = 'inline-flex items-center gap-2 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:bg-[#0a2f6b]'
 
 /** The white button with red words and a red symbol (Clock out now). */
-export const BTN_WHITE_DANGER = BTN.white.replace('text-tn-ink', 'text-[#c8323d]').replace('hover:border-tn-teal', 'hover:border-[#c8323d]')
+export const BTN_WHITE_DANGER = CK_BTN_WHITE.replace('text-tn-ink', 'text-[#c8323d]').replace('hover:border-tn-teal', 'hover:border-[#c8323d]')
 
 /** The small round close / back / refresh buttons in a panel header. */
 export function HeadButton({ label, onClick, size = 30, title, children, className = '' }: {
@@ -208,11 +216,21 @@ export function SearchInput({ value, onChange, placeholder, height, iconTop, ico
  * job, and the action symbol. The whole row clocks in (or switches); the star
  * is its own button.
  */
+/**
+ * Whether the screen is a phone. 'css' in the app: the phone and desktop
+ * differences are written as responsive classes (under 768px vs md up), so
+ * the first paint is already right; true/false where a frame fixes the size
+ * (design checks). byWidth picks the class string for each case.
+ */
+export type Phone = boolean | 'css'
+export const byWidth = (phone: Phone, onPhone: string, onDesktop: string, css: string) =>
+  phone === 'css' ? css : phone ? onPhone : onDesktop
+
 export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, onGo, onStar, disabled }: {
   title: string
   sub: string
   saved: boolean
-  phone: boolean
+  phone: Phone
   action: 'play' | 'swap'
   actionLabel: string
   onGo: () => void
@@ -220,7 +238,7 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
   disabled?: boolean
 }) {
   return (
-    <div className={`group relative flex items-center gap-2.5 rounded-[11px] hover:bg-[var(--row-hover)] ${phone ? 'py-[13px] px-2.5' : 'py-[9px] px-2'}`}>
+    <div className={`group relative flex items-center gap-2.5 rounded-[11px] hover:bg-[var(--row-hover)] ${byWidth(phone, 'py-[13px] px-2.5', 'py-[9px] px-2', 'py-[13px] px-2.5 md:py-[9px] md:px-2')}`}>
       <button type="button" onClick={onStar} title={saved ? 'Saved combination' : 'Save as combination'} aria-label={saved ? `${title}, saved combination` : `Save ${title} as a combination`}
         className={`relative z-[1] shrink-0 w-[26px] h-[26px] border-0 bg-transparent p-0 rounded-[7px] flex items-center justify-center hover:bg-subtle ${saved ? 'cursor-default' : 'cursor-pointer'} ${FOCUS}`}>
         <Icon d={ICON.star} size={16} fill={saved ? '#F2C40A' : 'none'} stroke={saved ? '#d9a400' : '#8593a4'} sw={1.8} cap="butt" />
@@ -241,10 +259,14 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
 
 // ── The toast ───────────────────────────────────────────────────────────────
 
-export function ClockToast({ text, onUndo, contained, phone }: { text: string; onUndo?: () => void; contained?: boolean; phone?: boolean }) {
+export function ClockToast({ text, onUndo, contained, phone }: { text: string; onUndo?: () => void; contained?: boolean; phone?: Phone }) {
   return (
-    <div role="status" style={{ bottom: phone ? 120 : 24 }}
-      className={`${contained ? 'absolute' : 'fixed'} left-1/2 -translate-x-1/2 z-[80] flex items-center gap-3 bg-tn-primary text-[#ffffff] rounded-[12px] px-4 py-3 text-[13px] font-semibold leading-[1.4] shadow-[0_18px_40px_-14px_rgba(1,35,88,.6)] w-max max-w-[calc(100%-32px)] tabular-nums lining-nums`}>
+    // In the app the height follows the window width in CSS, so it is right
+    // from the first paint. On a phone it sits about 8px above the big Clock in
+    // button and is wider than it, so the two read as two things (owner,
+    // 19 October 2026); 24px from the bottom from md up.
+    <div role="status" style={contained ? { bottom: phone === true ? 140 : 24 } : undefined}
+      className={`${contained ? 'absolute' : 'fixed bottom-[140px] md:bottom-6'} left-1/2 -translate-x-1/2 z-[80] flex items-center gap-3 bg-tn-primary text-[#ffffff] rounded-[12px] px-4 py-3 text-[13px] font-semibold leading-[1.4] shadow-[0_18px_40px_-14px_rgba(1,35,88,.6)] w-max max-w-[calc(100%-16px)] md:max-w-[calc(100%-32px)] tabular-nums lining-nums`}>
       <Icon d={ICON.check} size={16} stroke="#1E9E6A" sw={3} className="shrink-0" />
       <span>{text}</span>
       {onUndo && (

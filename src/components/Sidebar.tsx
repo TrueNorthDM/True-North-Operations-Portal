@@ -43,8 +43,12 @@ const RAIL_BUTTON = 'group relative flex w-11 h-11 items-center justify-center r
  * up to full strength while it is the page open, so it never looks off when
  * someone is actually using it.
  */
-const railTone = (on: boolean, faded = false) => (on
+// As Design/design_handoff_clocky draws the rail (owner, 20 October 2026): the
+// page you are on is a white icon on a 14% white square; a hub whose panel is
+// open turns its icon gold; the rest are 62% white.
+const railTone = (state: 'open' | 'current' | 'off', faded = false) => (state === 'open'
   ? 'bg-white/[.14] text-[#F2C40A]'
+  : state === 'current' ? 'bg-white/[.14] text-white'
   : faded ? 'bg-transparent text-white/[.40] hover:bg-white/10 hover:text-white/60' : 'bg-transparent text-white/[.62] hover:bg-white/10')
 const READINESS_NOTE = { soon: 'Coming soon', building: 'In progress' } as const
 
@@ -75,7 +79,7 @@ const COUNTS: Record<NavCount, () => Promise<number>> = {
 }
 
 export function Sidebar({
-  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null, canMyTeam = true, startCounts = {},
+  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null, canMyTeam = true, startCounts = {}, activePath,
 }: {
   rail: ResolvedEntry[]
   /** The person signed in (or previewed), for the avatar at the foot of the rail. */
@@ -89,8 +93,11 @@ export function Sidebar({
   canMyTeam?: boolean
   /** Design check only: the row counts, without asking the server. */
   startCounts?: Partial<Record<NavCount, number>>
+  /** Design check only: the page the rail marks as current, instead of the address. */
+  activePath?: string
 }) {
-  const pathname = usePathname()
+  const realPath = usePathname()
+  const pathname = activePath ?? realPath
   const router = useRouter()
   const [pending, start] = useTransition()
   // The panel belongs to the page it was opened on, so moving to another page
@@ -179,7 +186,7 @@ export function Sidebar({
         aria-label={readiness ? `${item.label}, ${READINESS_NOTE[readiness].toLowerCase()}` : item.label}
         aria-current={on ? 'page' : undefined}
         aria-busy={(pending && pendingKey === item.key) || undefined}
-        className={`${RAIL_BUTTON} ${railTone(on, !!readiness)}`}
+        className={`${RAIL_BUTTON} ${railTone(on ? 'current' : 'off', !!readiness)}`}
       >
         <NavIcon name={item.icon} />
         <PendingBar pending={pending && pendingKey === item.key} />
@@ -190,7 +197,7 @@ export function Sidebar({
 
   const hubButton = (h: Hub) => {
     const isOpen = openKey === h.key
-    const on = isOpen || h.matches.some(m => onPath(pathname, m))
+    const here = h.matches.some(m => onPath(pathname, m))
     return (
       <button
         key={h.key}
@@ -204,7 +211,7 @@ export function Sidebar({
         aria-expanded={h.direct ? undefined : isOpen}
         aria-controls={h.direct || !isOpen ? undefined : 'rail-panel'}
         aria-busy={(pending && pendingKey === h.key) || undefined}
-        className={`${RAIL_BUTTON} ${railTone(on, !!h.readiness)}`}
+        className={`${RAIL_BUTTON} ${railTone(isOpen ? 'open' : here ? 'current' : 'off', !!h.readiness)}`}
       >
         <NavIcon name={h.icon} />
         <PendingBar pending={pending && pendingKey === h.key} />

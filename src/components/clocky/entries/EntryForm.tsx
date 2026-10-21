@@ -8,7 +8,7 @@
  * and an overlap the server finds opens 3F.
  */
 
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import { Segmented } from '@/components/ui/Segmented'
 import { dayLabel, minutesLabel } from '@/lib/timeclock/format'
 import { overlapLine } from '@/lib/timeclock/entry-rules'
@@ -19,7 +19,7 @@ import { FIELD_ORDER, formSpan, overlapAmong, withCombination, withJob, type For
 import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
 import { addDays } from '@/lib/timeclock/periods'
 import {
-  CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, ReadOnlyField, TEXTAREA_PLAIN, TEXTAREA_WARN,
+  BTN_FORM_SAVE, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LabeledSelect, MODAL_TITLE, Modal, ReadOnlyField, TEXTAREA_PLAIN, TEXTAREA_WARN,
 } from './ui'
 
 const timeOption = (m: number) => ({ value: String(m), label: minutesLabel(m) })
@@ -107,7 +107,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
 
       <div className="flex items-center gap-2.5">
         <FieldLabel>Type</FieldLabel>
-        <Segmented label="Type" options={types} value={f.type} onChange={k => setForm({ type: k, error: null, fix: null, fixNote: null })} />
+        <Segmented label="Type" display="px-3 py-1.5 text-[12.5px]" options={types} value={f.type} onChange={k => setForm({ type: k, error: null, fix: null, fixNote: null })} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -125,7 +125,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
           </label>
         )}
       </div>
-      <div role={check.bad ? 'alert' : undefined} className={`-mt-1 text-[12.5px] font-semibold tabular-nums ${check.bad ? 'text-[#c8323d]' : 'text-muted'}`}>{check.text}</div>
+      <div role={check.bad ? 'alert' : undefined} className={`-mt-1 text-[12.5px] font-semibold tabular-nums lining-nums ${check.bad ? 'text-[#c8323d]' : 'text-muted'}`}>{check.text}</div>
       {!leader && check.shortenOnly && (
         <button type="button" onClick={onRequestInstead} className="self-start -mt-2 border-0 bg-transparent p-0 text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">
           Request a time correction instead
@@ -171,9 +171,9 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
           </button>
         )}
         <span className="flex-1" />
-        <button type="button" onClick={onClose} className={BTN.white}>Cancel</button>
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Cancel</button>
         <button type="button" onClick={onSave} disabled={disabled}
-          className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0`}>
+          className={`${BTN_FORM_SAVE} disabled:opacity-45 disabled:cursor-not-allowed`}>
           <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Save
         </button>
       </div>

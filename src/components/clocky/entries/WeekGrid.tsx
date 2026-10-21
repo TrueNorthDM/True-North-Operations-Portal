@@ -9,13 +9,13 @@
  * turns red and stops Save. No "Copy last week" (removed 16 October 2026).
  */
 
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import { dayLabel, weekdayShort } from '@/lib/timeclock/format'
 import { formatClock } from '@/lib/timeclock/rounding'
 import type { ClockChoice } from '@/lib/timeclock/clocky-types'
 import { useOutside } from './EntriesList'
 import { gridEditKey, gridRowKey, type GridModel, type GridSource } from './model'
-import { BTN_SMALL, Icon, ICON, LABEL, MENU } from './ui'
+import { BTN_GRID_SAVE, BTN_SMALL, Icon, ICON, LABEL, MENU } from './ui'
 
 const COLS = 'minmax(250px,1fr) repeat(7,86px) 90px'
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -67,7 +67,7 @@ export function WeekGrid({ who, days, today, model, editable, combos, addRowOpen
             </div>
             <span className="flex-1" />
             <button type="button" onClick={onSave} disabled={anyBad}
-              className={`${BTN.navy} disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0`}>
+              className={`${BTN_GRID_SAVE} disabled:opacity-45 disabled:cursor-not-allowed`}>
               <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Save
             </button>
           </>
@@ -96,7 +96,7 @@ export function WeekGrid({ who, days, today, model, editable, combos, addRowOpen
                   <span className={`flex items-center gap-1 ${LABEL}`} style={{ color: fg }}>
                     {locked && <Icon d={ICON.lock} size={11} width={2.4} />}{weekdayShort(d)}
                   </span>
-                  <span className="text-[11.5px] tabular-nums" style={{ color: fg }}>{md(d)}</span>
+                  <span className="text-[11.5px] tabular-nums lining-nums" style={{ color: fg }}>{md(d)}</span>
                 </div>
               )
             })}
@@ -115,26 +115,26 @@ export function WeekGrid({ who, days, today, model, editable, combos, addRowOpen
                   <div key={c.date} className="px-1.5 py-[5px]" style={{ background: bg }}>
                     {c.ro ? (
                       <div title={c.locked ? 'Locked' : 'From clocked entries'}
-                        className={`h-[34px] flex items-center justify-end gap-[5px] px-2 text-[13px] font-semibold tabular-nums ${c.locked ? 'text-muted' : 'text-foreground'}`}>
+                        className={`h-[34px] flex items-center justify-end gap-[5px] px-2 text-[13px] font-semibold tabular-nums lining-nums ${c.locked ? 'text-muted' : 'text-foreground'}`}>
                         {c.clock && <Icon d={ICON.clock} size={12} color="var(--muted)" width={2.4} />}{c.text}
                       </div>
                     ) : (
                       <input value={c.text} onChange={e => onType(gridEditKey(r.key, c.date), e.target.value)}
                         aria-label={`${r.source.path}, ${dayLabel(c.date)}`} placeholder="0:00"
-                        className={`w-full box-border h-[34px] text-right px-2 border rounded-[8px] font-sans text-[13px] font-semibold text-tn-ink outline-none bg-white tabular-nums focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] ${c.invalid || over ? 'border-[#c8323d]' : 'border-[var(--panel-border)]'}`} />
+                        className={`w-full box-border h-[34px] text-right px-2 border rounded-[8px] font-sans text-[13px] font-semibold text-tn-ink outline-none bg-white tabular-nums lining-nums focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] ${c.invalid || over ? 'border-[#c8323d]' : 'border-[var(--panel-border)]'}`} />
                     )}
                   </div>
                 )
               })}
-              <div className="px-3 py-[9px] text-right font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink tabular-nums">{formatClock(r.total)}</div>
+              <div className="px-3 py-[9px] text-right font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink tabular-nums lining-nums">{formatClock(r.total)}</div>
             </div>
           ))}
           <div className="grid items-center bg-[var(--row-hover)]" style={{ gridTemplateColumns: COLS }}>
             <div className="px-3 py-[11px] font-(family-name:--font-display) font-extrabold text-[12px] text-tn-ink">Day total</div>
             {model.dayTotals.map((t, i) => (
-              <div key={days[i]} className="px-3 py-[11px] text-right font-bold text-[13px] tabular-nums" style={{ color: model.bad[i] === 'over' ? '#c8323d' : 'var(--color-tn-ink)' }}>{formatClock(t)}</div>
+              <div key={days[i]} className="px-3 py-[11px] text-right font-bold text-[13px] tabular-nums lining-nums" style={{ color: model.bad[i] === 'over' ? '#c8323d' : 'var(--color-tn-ink)' }}>{formatClock(t)}</div>
             ))}
-            <div className="px-3 py-[11px] text-right font-(family-name:--font-display) font-black text-[14px] text-tn-ink tabular-nums">{formatClock(model.week)}</div>
+            <div className="px-3 py-[11px] text-right font-(family-name:--font-display) font-black text-[14px] text-tn-ink tabular-nums lining-nums">{formatClock(model.week)}</div>
           </div>
         </div>
       </div>

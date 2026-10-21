@@ -49,13 +49,26 @@ function revalidate() {
  * HR are filled in on their own page, each under its own access item, so
  * "Add people" never writes a birth date or an onboarding status. Teams and
  * positions only with d-positions (Super Admin).
+ *
+ * How they submit their hours (Clocky's timesheet cadence) is required: there
+ * is no company default (owner, 20 October 2026). It is kept from the start of
+ * the records, so every period of theirs follows it until a Super Admin
+ * changes it on their page or in Rates & Costs.
  */
-export async function createPerson(input: WorkInput): Promise<Result<{ id: string }>> {
+export async function createPerson(input: WorkInput, cadence?: string): Promise<Result<{ id: string }>> {
   if (!(await allowedTo('d-edit'))) return fail(NOT_ALLOWED)
+  if (cadence !== 'monthly' && cadence !== 'biweekly') return fail('Choose how they submit their hours: Monthly or Every 2 weeks.')
   const clean = cleanWork(input, null)
   if (!clean.ok) return fail(clean.error)
   const { cols } = clean
   const db = createAdminClient()
+
+  if (cadence === 'biweekly') {
+    const { data: s } = await db.from('tc_settings').select('pay_period_anchor').eq('singleton_id', 1).maybeSingle()
+    if (!(s as { pay_period_anchor: string | null } | null)?.pay_period_anchor) {
+      return fail('Pay periods have no start day yet. Set it in Company settings, Timesheet periods, or choose Monthly.')
+    }
+  }
 
   const taken = await takenMailbox(db, [cols.email_goodnews, cols.email_true_north, cols.email_coe], null)
   if (taken) return fail(`${taken} already belongs to someone else in the Directory.`)
@@ -70,6 +83,14 @@ export async function createPerson(input: WorkInput): Promise<Result<{ id: strin
     .select('id').single()
   if (error || !data) return fail(mapPersonError(error?.message ?? 'The person could not be added.'))
   const id = (data as { id: string }).id
+
+  // Never a person without a cadence: if it cannot be kept, they are not added.
+  const { error: cadErr } = await db.from('tc_person_cadence')
+    .insert({ person_id: id, cadence, effective_from: '2017-01-01', set_by: (await getRealPerson())?.id ?? null })
+  if (cadErr) {
+    await db.from('people').delete().eq('id', id)
+    return fail('The person could not be added. Try again in a moment.')
+  }
 
   if (clean.teams.length && (await allowedTo('d-positions'))) {
     const ids = [...new Set(clean.teams.map(t => t.teamId))]

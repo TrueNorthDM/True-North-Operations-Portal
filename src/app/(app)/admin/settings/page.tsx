@@ -379,11 +379,11 @@ export default async function SettingsPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[22px]">
       <div>
         <Breadcrumb parents={[adminCrumb(access.can('admin'))]} self="/admin/settings" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] tracking-tight text-tn-ink m-0">Company settings</h1>
-        <p className="mt-1.5 text-[15px] text-muted leading-relaxed">
+        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink m-0 leading-[normal]" style={{ letterSpacing: '-.01em' }}>Company settings</h1>
+        <p className="mt-1.5 text-[15px] text-muted leading-normal">
           Sites &amp; languages, publishing targets, clients &amp; budgets, and API tokens, the shared settings the whole portal runs on. Changes apply everywhere.
         </p>
       </div>

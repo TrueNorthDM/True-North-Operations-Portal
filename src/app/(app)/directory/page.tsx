@@ -393,7 +393,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // Timesheet periods; changed by whoever may change the periods.
   const periods = rights.rates && access.can('cs-periods') ? await getTimesheetPeriods() : null
   const ratesCadence = periods?.ok
-    ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.cadence])), canEdit: periods.data.access === 'edit' }
+    ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
     : null
 
   // Access-log rows resolved to the current person (avatar/team) for the tab.

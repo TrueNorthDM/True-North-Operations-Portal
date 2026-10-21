@@ -430,6 +430,8 @@ export interface CadencePerson {
   /** How they submit now, and what is scheduled (the pill shows the latest). */
   cadence: Cadence
   scheduled: { cadence: Cadence; from: string } | null
+  /** No cadence of their own (added before it became required): shown as "Not set", submits monthly meanwhile. */
+  notSet: boolean
   /** "October 2026" / "Oct 4 to 17, 2026" */
   currentPeriod: string
 }
@@ -440,7 +442,8 @@ export interface TimesheetPeriodsData {
   /** "Sunday, Oct 4, 2026" */
   anchorLabel: string | null
   defaultCadence: Cadence
-  counts: { monthly: number; biweekly: number }
+  /** People with a cadence of their own on each, and those with none yet ("Not set"). */
+  counts: { monthly: number; biweekly: number; notSet: number }
   /** The one before, the current one and the next four (5A). */
   periods: { start: string; end: string; label: string; state: 'closed' | 'current' | 'next' }[]
   people: CadencePerson[]

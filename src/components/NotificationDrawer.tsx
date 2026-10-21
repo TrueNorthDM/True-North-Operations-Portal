@@ -154,36 +154,38 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
   return (
     <>
       <div aria-hidden="true" onClick={onClose} className="fixed inset-x-0 bottom-0 top-[var(--chrome-top)] z-40 bg-[rgba(1,35,88,.16)]" />
-      <div ref={box} role="dialog" aria-modal="true" aria-label={d.title} onKeyDown={onKeyDown} className="fixed right-0 bottom-0 top-[var(--chrome-top)] z-40 w-[416px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-14px_0_40px_rgba(1,35,88,.14)] flex flex-col">
-        <div className="px-5 pt-[18px] pb-3.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-[9px] bg-[rgba(30,125,127,.1)] text-tn-teal inline-flex items-center justify-center"><NavIcon name={d.icon} size={17} /></span>
-            <h2 className="font-(family-name:--font-display) font-extrabold text-[17px] text-tn-ink m-0">{d.title}</h2>
+      <div ref={box} role="dialog" aria-modal="true" aria-label={d.title} onKeyDown={onKeyDown} className="fixed right-0 bottom-0 top-[var(--chrome-top)] z-40 w-[421px] max-w-full bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] flex flex-col">
+        {/* The head and the tabs as the Clocky handoff draws the bell (Clock Safety.dc.html N1). */}
+        <div className="pt-4 pr-4 pl-[18px] flex flex-col gap-3 border-b border-[var(--row-rule)] leading-[normal]">
+          <div className="flex items-center justify-between">
+            <h2 className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink m-0" style={{ letterSpacing: 'normal' }}>{d.title}</h2>
+            <button type="button" onClick={onClose} aria-label="Close" className="w-[30px] h-[30px] rounded-[8px] text-muted hover:bg-subtle inline-flex items-center justify-center">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            </button>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg text-muted hover:bg-subtle text-[19px] leading-none">×</button>
-        </div>
 
-        <div role="tablist" aria-label={d.title} onKeyDown={onTabKey} className="flex gap-0.5 px-4 border-b border-[var(--panel-border)]">
-          {d.tabs.map(t => {
-            const on = t.key === current.key
-            const count = (items[t.key] ?? []).filter(isUnread).length
-            return (
-              <button
-                key={t.key}
-                type="button"
-                role="tab"
-                id={`drawer-tab-${t.key}`}
-                aria-selected={on}
-                aria-controls="drawer-panel"
-                tabIndex={on ? 0 : -1}
-                onClick={() => onTab(t.key)}
-                className={`flex items-center gap-[7px] px-3 py-2.5 -mb-px border-b-2 text-[13.5px] font-bold whitespace-nowrap transition-colors ${on ? 'text-tn-ink border-tn-primary' : 'text-muted border-transparent hover:text-tn-ink'}`}
-              >
-                {t.label}
-                <span className={`min-w-[18px] h-[18px] rounded-full px-[5px] inline-flex items-center justify-center text-[10.5px] font-bold ${on ? 'bg-tn-primary text-[#ffffff]' : 'bg-[var(--chip-neutral-bg)] text-muted'}`}>{count}</span>
-              </button>
-            )
-          })}
+          <div role="tablist" aria-label={d.title} onKeyDown={onTabKey} className="flex gap-1">
+            {d.tabs.map(t => {
+              const on = t.key === current.key
+              const count = (items[t.key] ?? []).filter(isUnread).length
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  id={`drawer-tab-${t.key}`}
+                  aria-selected={on}
+                  aria-controls="drawer-panel"
+                  tabIndex={on ? 0 : -1}
+                  onClick={() => onTab(t.key)}
+                  className={`flex items-center gap-[7px] px-3 py-2 -mb-px border-b-[2.5px] font-(family-name:--font-display) font-extrabold text-[13px] whitespace-nowrap transition-colors ${on ? 'text-tn-ink border-tn-teal' : 'text-muted border-transparent hover:text-tn-ink'}`}
+                >
+                  {t.label}
+                  <span className={`min-w-[18px] h-[18px] rounded-full px-[5px] inline-flex items-center justify-center text-[10.5px] font-bold ${on ? 'bg-tn-primary text-[#ffffff]' : 'bg-[var(--chip-neutral-bg)] text-muted'}`}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         <div className="flex items-center justify-between px-5 py-2.5 border-b border-[var(--row-rule)]">
@@ -207,7 +209,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
 
         {error && <p role="alert" className="m-0 px-5 py-2 text-[12.5px] text-[#b3271f] border-b border-[var(--row-rule)]">{error}</p>}
 
-        <div id="drawer-panel" role="tabpanel" aria-labelledby={`drawer-tab-${current.key}`} className="flex-1 overflow-y-auto">
+        <div id="drawer-panel" role="tabpanel" aria-labelledby={`drawer-tab-${current.key}`} className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-0.5">
           {rows.length === 0 ? (
             <div className="px-8 py-14 text-center flex flex-col items-center gap-2">
               <span className="w-11 h-11 rounded-xl bg-subtle text-muted inline-flex items-center justify-center"><NavIcon name={d.icon} size={20} /></span>
@@ -258,7 +260,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
                   onClose()
                   router.push(withViewAs(i.href))
                 }}
-                className={`w-full flex gap-3 px-5 py-3.5 border-b border-[var(--row-rule)] text-left transition-colors hover:bg-subtle ${unread ? 'bg-[#f8fbfb]' : 'bg-white'}`}
+                className={`w-full flex gap-3 px-2.5 py-3 rounded-[11px] text-left transition-colors hover:bg-subtle ${unread ? 'bg-[#f8f7f3]' : 'bg-white'}`}
               >
                 <span className={`w-[34px] h-[34px] rounded-[10px] shrink-0 inline-flex items-center justify-center ${unread ? 'bg-[rgba(30,125,127,.12)] text-tn-teal' : 'bg-subtle text-muted'}`}><NavIcon name={i.icon} size={17} /></span>
                 <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
@@ -268,7 +270,7 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
                       {/* Wraps rather than truncates: a notification's title is its message. */}
                       <span className="text-[13.5px] font-bold text-tn-ink leading-snug">{i.who}</span>
                     </span>
-                    <span className="text-[11.5px] text-muted whitespace-nowrap">{i.when}</span>
+                    <span className="text-[11.5px] text-muted tabular-nums lining-nums whitespace-nowrap">{i.when}</span>
                   </span>
                   <span className="text-[12.5px] text-foreground leading-normal">{i.what}</span>
                   <span className="flex items-center gap-1.5 mt-0.5">
@@ -336,14 +338,14 @@ function ClockyRow({ item, unread, done, busy, onButton }: {
 }) {
   const tone = clockyTone(item)
   return (
-    <div className={`flex gap-[11px] px-5 py-3.5 border-b border-[var(--row-rule)] leading-[normal] ${unread ? 'bg-[#f8fbfb]' : 'bg-white'}`}>
+    <div className={`flex gap-[11px] px-2.5 py-3 rounded-[11px] leading-[normal] ${unread ? 'bg-[#f8f7f3]' : 'bg-white'}`}>
       <span className="w-[34px] h-[34px] rounded-[10px] shrink-0 inline-flex items-center justify-center" style={{ background: tone.bg, color: tone.fg }}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={tone.d} /></svg>
       </span>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex justify-between gap-2">
           <span className="font-(family-name:--font-display) font-extrabold text-[12px] text-tn-teal">{item.src}</span>
-          <span className="text-[11.5px] text-muted tabular-nums whitespace-nowrap">{item.when}</span>
+          <span className="text-[11.5px] text-muted tabular-nums lining-nums whitespace-nowrap">{item.when}</span>
         </div>
         <p className={`m-0 text-[13px] text-tn-ink leading-[1.45] ${unread ? 'font-semibold' : 'font-normal'}`}>
           {unread && <span className="sr-only">Unread. </span>}{item.who}

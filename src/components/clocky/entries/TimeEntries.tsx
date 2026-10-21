@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { BTN, BTN_ICON } from '@/lib/ui/buttons'
+import { BTN_ICON } from '@/lib/ui/buttons'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Segmented } from '@/components/ui/Segmented'
 import { dayLabel, localDate, localMinutes, timeLabel } from '@/lib/timeclock/format'
@@ -26,7 +26,7 @@ import { formatDuration } from '@/lib/timeclock/rounding'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, OverlapInfo, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import type { Catalog, EntriesApi, EntryInputBody } from './api'
 import { CorrectionRequest } from './CorrectionRequest'
-import { DayTimeline, type Drag, type Ghost } from './DayTimeline'
+import { DayTimeline, droppedOverlap, type Drag, type Ghost } from './DayTimeline'
 import { CorrectionReview, DeleteDialog, GridReasonDialog, SubmitDialog, TimeOffCard } from './Dialogs'
 import { EntriesList, useOutside } from './EntriesList'
 import { EntryForm } from './EntryForm'
@@ -38,7 +38,7 @@ import {
 } from './model'
 import { OverlapFix, overlapModel } from './OverlapFix'
 import { SummaryAside } from './SummaryAside'
-import { BTN_SMALL, ICON_BTN, Icon, ICON, MENU, Toast, type ToastState } from './ui'
+import { BTN_PAGE_NAVY, BTN_PAGE_WHITE, BTN_SMALL, ICON_BTN, Icon, ICON, MENU, Toast, type ToastState } from './ui'
 import { WeekGrid } from './WeekGrid'
 import { addDays } from '@/lib/timeclock/periods'
 
@@ -193,6 +193,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   }
   const openRequest = (pre?: Partial<RequestState>) => setModal({ kind: 'request', rq: blankRequest({ date: today, ...pre }) })
   const openAttention = async (a: AttentionItem) => {
+    if (dropped && (a.key === dropped.moved.key || a.key === dropped.other.key)) return fixDropped()
     const r = rowByKey(a.key)
     if (r) return openRow(r)
     // From the submit window: the entry sits in the period, maybe outside the view.
@@ -353,7 +354,22 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   ]
   const memberName = ui.member ? data.people.find(p => p.id === ui.member)?.name ?? '' : ''
   const submitLabel = data.submit.submitted ? `${data.submit.label} submitted` : `Submit ${data.submit.label}`
-  const attnN = data.attention.length
+  // 3C4: a block dropped on another entry puts both in Needs attention until
+  // the overlap is fixed or undone (it is never saved).
+  const dropped = ui.tab === 'timeline' ? droppedOverlap(rows, ui.anchor, viewer.zone, ui.drag, nowMs) : null
+  const droppedItems: AttentionItem[] = dropped
+    ? [dropped.moved, dropped.other]
+      .sort((a, b) => Date.parse(a.start!) - Date.parse(b.start!))
+      .map(r => ({ key: r.key, reason: 'Overlaps another entry', sub: `${all ? `${r.personName} · ` : ''}${dayLabel(r.date)} · ${r.timeText} · ${r.short}`, cta: 'Fix' as const }))
+    : []
+  const fixOverlap = (r: EntryView, other: EntryView, start: string, end: string) => setModal({
+    kind: 'overlap', from: 'tl', a: { start, end },
+    form: { ...formFromRow(r), date: localDate(start, r.zone), start: localMinutes(start, r.zone), end: localMinutes(end, r.zone) },
+    other: { id: other.id, key: other.key, name: nameFor(other, catalog.combinations), start: other.start!, end: other.end },
+  })
+  const fixDropped = () => { if (dropped) fixOverlap(dropped.moved, dropped.other, dropped.moved.start!, dropped.moved.end!) }
+  const attention = [...droppedItems, ...data.attention.filter(a => !droppedItems.some(d => d.key === a.key))]
+  const attnN = attention.length
 
   // ── The open modal ────────────────────────────────────────────────────────
 
@@ -433,26 +449,26 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
 
       <div className="flex flex-wrap items-center gap-2.5">
         {leader ? (
-          <button type="button" onClick={() => openAdd()} className={`${BTN.navy} whitespace-nowrap`}>
+          <button type="button" onClick={() => openAdd()} className={`${BTN_PAGE_NAVY} whitespace-nowrap`}>
             <Icon d={ICON.plus} size={14} color={BTN_ICON.navy} width={3} />Add time
           </button>
         ) : (
-          <button type="button" onClick={() => openRequest()} className={`${BTN.white} whitespace-nowrap`}>
+          <button type="button" onClick={() => openRequest()} className={`${BTN_PAGE_WHITE} whitespace-nowrap`}>
             <Icon d={ICON.correction} size={15} color={BTN_ICON.white} width={2.2} />Request a time correction
           </button>
         )}
-        <button type="button" onClick={() => { setSubmit(null); setModal({ kind: 'submit' }) }} className={`${BTN.white} whitespace-nowrap`}>
+        <button type="button" onClick={() => { setSubmit(null); setModal({ kind: 'submit' }) }} className={`${BTN_PAGE_WHITE} whitespace-nowrap`}>
           <Icon d={ICON.send} size={15} color={BTN_ICON.white} width={2.2} />{submitLabel}
         </button>
         <span className="w-px h-[26px] bg-[var(--panel-border)] mx-1" />
-        <Segmented label="Period" options={periods} value={ui.period}
+        <Segmented label="Period" display="px-3 py-1.5 text-[12.5px]" options={periods} value={ui.period}
           onChange={k => go({ period: k, tab: k !== 'day' && ui.tab === 'timeline' ? 'list' : ui.tab })} />
         <button type="button" onClick={() => go({ anchor: today })} className={BTN_SMALL}>Today</button>
         <div className="flex items-center gap-0.5 text-tn-ink">
           <button type="button" aria-label="Previous" onClick={() => go({ anchor: shiftAnchor(ui.period, ui.anchor, -1, data.anchors) })} className={ICON_BTN}><Icon d={ICON.left} size={16} width={2.4} /></button>
           <button type="button" aria-label="Next" onClick={() => go({ anchor: shiftAnchor(ui.period, ui.anchor, 1, data.anchors) })} className={ICON_BTN}><Icon d={ICON.right} size={16} width={2.4} /></button>
         </div>
-        <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink tabular-nums whitespace-nowrap">{rangeText(ui.period, range.from, range.to)}</span>
+        <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink tabular-nums lining-nums whitespace-nowrap">{rangeText(ui.period, range.from, range.to)}</span>
         <div className="relative" ref={calRef}>
           <button type="button" aria-label="Jump to a week" aria-expanded={ui.calOpen} onClick={() => setUi(u => ({ ...u, calOpen: !u.calOpen }))} className={`${ICON_BTN} text-tn-green`}>
             <Icon d={ICON.calendar} size={17} />
@@ -461,7 +477,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
             <div className={`${MENU} top-[38px] left-0 w-[214px] p-1.5 gap-px`}>
               {calendarWeeks(today).map(w => (
                 <button key={w.anchor} type="button" onClick={() => go({ anchor: w.anchor, period: 'week', calOpen: false })}
-                  className={`border-0 text-left whitespace-nowrap rounded-[8px] px-2.5 py-2 font-(family-name:--font-display) font-semibold text-[13px] tabular-nums ${w.current ? 'bg-tn-teal-soft text-tn-teal' : 'bg-transparent text-tn-ink hover:bg-subtle'}`}>
+                  className={`border-0 text-left whitespace-nowrap rounded-[8px] px-2.5 py-2 font-(family-name:--font-display) font-semibold text-[13px] tabular-nums lining-nums ${w.current ? 'bg-tn-teal-soft text-tn-teal' : 'bg-transparent text-tn-ink hover:bg-subtle'}`}>
                   {w.label}
                 </button>
               ))}
@@ -471,7 +487,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         <span className="flex-1" />
         {viewer.who && (
           <>
-            <Segmented label="Whose hours" options={[{ key: 'my', label: 'My' }, { key: 'all', label: viewer.who === 'team' ? 'My team' : 'All' }]}
+            <Segmented label="Whose hours" display="px-3 py-1.5 text-[12.5px]" options={[{ key: 'my', label: 'My' }, { key: 'all', label: viewer.who === 'team' ? 'My team' : 'All' }]}
               value={ui.who} onChange={k => go({ who: k, member: k === 'my' ? null : ui.member })} />
             <div className="relative" ref={memberRef}>
               <button type="button" aria-expanded={ui.memberOpen} onClick={() => setUi(u => ({ ...u, memberOpen: !u.memberOpen }))}
@@ -481,7 +497,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               {ui.memberOpen && (
                 <div className={`${MENU} top-[42px] right-0 w-[308px] p-2 gap-1.5`}>
                   <input value={ui.memberQ} onChange={e => setUi(u => ({ ...u, memberQ: e.target.value }))} autoFocus placeholder="Search people" aria-label="Search people"
-                    className="h-[34px] border border-[var(--panel-border)] rounded-[9px] px-2.5 font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal" />
+                    className="h-9 border border-[var(--panel-border)] rounded-[9px] px-2.5 font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal" />
                   <div className="flex flex-wrap gap-1">
                     {[{ id: null as string | null, name: 'All teams', color: 'var(--faint)' }, ...data.teams.map(t => ({ id: t.id as string | null, name: t.name, color: t.color ?? 'var(--faint)' }))].map(t => {
                       const on = ui.teamF === t.id
@@ -499,7 +515,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
                       return (
                         <button key={p.id ?? 'everyone'} type="button" onClick={() => go({ member: p.id, who: 'all', memberOpen: false })}
                           className={`flex items-center justify-between gap-2 border-0 text-left whitespace-nowrap rounded-[8px] px-2.5 py-2 font-(family-name:--font-display) font-semibold text-[13px] ${on ? 'bg-tn-teal-soft text-tn-teal' : 'bg-transparent text-tn-ink hover:bg-subtle'}`}>
-                          <span>{p.name}</span><span className="font-sans text-[11.5px] text-muted font-normal">{p.sub}</span>
+                          <span>{p.name}</span><span className="font-sans text-[11.5px] text-muted">{p.sub}</span>
                         </button>
                       )
                     })}
@@ -521,7 +537,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap pb-2 text-[12.5px] text-foreground tabular-nums whitespace-nowrap">
+        <div className="flex items-center gap-1.5 flex-wrap pb-2 text-[12.5px] text-foreground tabular-nums lining-nums whitespace-nowrap">
           <span><b className="text-tn-ink">{totalsLabel(ui.period, ui.anchor, range.from, range.to, today)}:</b> {formatDuration(totals.seconds)}</span>
           <span className="text-[var(--faint)]">·</span>
           <span>Billable {formatDuration(totals.billable)}</span>
@@ -570,14 +586,10 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               }}
               onMoved={(r, start, end) => setUi(u => ({ ...u, drag: null, modal: { kind: 'edit', form: { ...formFromRow(r), date: localDate(start, r.zone), start: localMinutes(start, r.zone), end: localMinutes(end, r.zone) } } }))}
               onUndo={() => setUi(u => ({ ...u, drag: null }))}
-              onFix={(r, other, start, end) => setModal({
-                kind: 'overlap', from: 'tl', a: { start, end },
-                form: { ...formFromRow(r), date: localDate(start, r.zone), start: localMinutes(start, r.zone), end: localMinutes(end, r.zone) },
-                other: { id: other.id, key: other.key, name: nameFor(other, catalog.combinations), start: other.start!, end: other.end },
-              })} />
+              onFix={fixOverlap} />
           )}
         </div>
-        <SummaryAside totals={totals} attention={data.attention} onAttention={a => void openAttention(a)} />
+        <SummaryAside totals={totals} attention={attention} onAttention={a => void openAttention(a)} />
       </div>
 
       {modalView}

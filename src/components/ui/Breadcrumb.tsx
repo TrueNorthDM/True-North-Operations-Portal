@@ -13,6 +13,9 @@
  * Teams and Permissions", and a page repeating a name the table already holds
  * is the same drift one level down.
  *
+ * The look is the Clocky design handoff's (16 October 2026): 12.5px, 6px apart and 6px above the title,
+ * the slashes in the same grey as the trail.
+ *
  * Every trail starts at Home. It is not in `parents` because leaving it to each
  * caller is exactly how three pages ended up starting somewhere else.
  */
@@ -56,11 +59,11 @@ export function Breadcrumb({ parents = [], now, self }: Props) {
   ]
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-muted mb-1">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[12.5px] leading-[normal] text-muted mb-1.5">
       {trail.map(c => (
-        <span key={c.href} className="flex items-center gap-2">
+        <span key={c.href} className="flex items-center gap-1.5">
           {c.link === false ? <span>{c.label}</span> : <Link href={c.href} className="hover:text-tn-ink transition-colors">{c.label}</Link>}
-          <span className="text-slate-300">/</span>
+          <span>/</span>
         </span>
       ))}
       <span aria-current="page" className="text-foreground font-semibold">{here}</span>

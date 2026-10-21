@@ -56,7 +56,7 @@ export function SettingsNav({
   return (
       <div className="grid grid-cols-1 lg:grid-cols-[232px_1fr] gap-6 items-start">
         {/* sub-nav */}
-        <nav className="flex flex-col gap-[3px] lg:sticky lg:top-[81px]">
+        <nav className="flex flex-col gap-[3px] leading-[normal] lg:sticky lg:top-[81px]">
           <div className="mb-5 px-[15px] py-3.5 border border-slate-200 rounded-[12px] bg-white">
             <div className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.09em] uppercase text-muted">Signed in as</div>
             <div className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink mt-1.5 truncate">{signedIn.name}</div>
@@ -74,7 +74,7 @@ export function SettingsNav({
                   on ? 'bg-tn-teal-soft text-tn-teal' : 'text-foreground hover:bg-subtle'
                 }`}
               >
-                <span className="inline-flex w-5 h-5 items-center justify-center shrink-0">{s.icon}</span>
+                <span className="inline-flex w-[17px] h-[17px] items-center justify-center shrink-0">{s.icon}</span>
                 <span className="flex-1">{s.label}</span>
                 {s.isNew && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-0.5 leading-[normal]">New</span>}
               </button>

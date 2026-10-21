@@ -7,10 +7,9 @@
  * never saved.
  */
 
-import { BTN } from '@/lib/ui/buttons'
 import { minutesLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
-import { MODAL_TITLE, Modal } from './ui'
+import { BTN_MODAL_WHITE, MODAL_TITLE, Modal } from './ui'
 
 /** A span in seconds of the person's day. */
 export interface DaySpan { s: number; e: number }
@@ -51,30 +50,30 @@ export function OverlapFix({ a, b, onTrim, onCancel, busy }: {
   return (
     <Modal label="Overlap" width={500} onClose={onCancel} alert>
       <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>This overlaps another entry.</h2>
-      <p className="m-0 text-[13px] text-foreground leading-normal tabular-nums">{m.text}</p>
-      <div className="relative h-24 border border-[var(--row-rule)] rounded-[12px] bg-[var(--row-hover)] overflow-hidden" aria-hidden="true">
+      <p className="m-0 text-[13px] text-foreground leading-normal tabular-nums lining-nums">{m.text}</p>
+      <div className="relative h-[98px] border border-[var(--row-rule)] rounded-[12px] bg-[var(--row-hover)] overflow-hidden" aria-hidden="true">
         {m.ticks.map(t => (
-          <span key={t.x} style={{ left: t.x }} className="absolute top-0 bottom-0 border-l border-dashed border-[var(--panel-border)] pt-1 pl-1 text-[10px] text-muted tabular-nums">{t.label}</span>
+          <span key={t.x} style={{ left: t.x }} className="absolute top-0 bottom-0 border-l border-dashed border-[var(--panel-border)] pt-1 pl-1 text-[10px] text-muted tabular-nums lining-nums">{t.label}</span>
         ))}
         <div style={{ left: m.a.x, width: m.a.w }}
           className="absolute top-6 h-[26px] rounded-[7px] bg-tn-teal-soft border-2 border-tn-teal box-border px-[7px] flex items-center font-(family-name:--font-display) font-extrabold text-[11px] text-tn-teal whitespace-nowrap overflow-hidden">This one</div>
         <div style={{ left: m.b.x, width: m.b.w }}
           className="absolute top-[58px] h-[26px] rounded-[7px] bg-tn-primary box-border px-[7px] flex items-center font-(family-name:--font-display) font-extrabold text-[11px] text-[#ffffff] whitespace-nowrap overflow-hidden">{b.name}</div>
         <div style={{ left: m.shared.x, width: m.shared.w, background: 'repeating-linear-gradient(135deg,rgba(200,50,61,.28) 0 5px,rgba(200,50,61,.08) 5px 10px)' }}
-          className="absolute top-[18px] bottom-2 border-l-[1.5px] border-r-[1.5px] border-[#c8323d]" />
+          className="absolute box-content top-[18px] bottom-2 border-l-[1.5px] border-r-[1.5px] border-[#c8323d]" />
       </div>
       <div className="flex flex-col gap-2">
         <button type="button" disabled={busy} onClick={() => onTrim('other')} className={CHOICE}>
           <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Trim the other entry</span>
-          <span className="text-[12px] text-muted tabular-nums">{m.otherSub}</span>
+          <span className="text-[12px] text-muted tabular-nums lining-nums">{m.otherSub}</span>
         </button>
         <button type="button" disabled={busy} onClick={() => onTrim('this')} className={CHOICE}>
           <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Trim this one</span>
-          <span className="text-[12px] text-muted tabular-nums">{m.thisSub}</span>
+          <span className="text-[12px] text-muted tabular-nums lining-nums">{m.thisSub}</span>
         </button>
       </div>
       <div className="flex justify-end">
-        <button type="button" onClick={onCancel} className={BTN.white}>Cancel</button>
+        <button type="button" onClick={onCancel} className={BTN_MODAL_WHITE}>Cancel</button>
       </div>
     </Modal>
   )
