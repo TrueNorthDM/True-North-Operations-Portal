@@ -20,13 +20,14 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { audit, loadSubmissions, lockOn, overlapFor, snapshot, type EntryRow } from '@/lib/timeclock/clocky-store'
 import { countWaiting, loadApprovals } from '@/lib/timeclock/clocky-approvals'
-import { announceCorrectionDecided, announceTimeOffDecided } from '@/lib/timeclock/clocky-notify'
+import { announceCorrectionDecided, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
+import { loadPeriodSummary } from '@/lib/timeclock/clocky-entries'
 import { REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
 import { formatDuration, recordedSeconds, roundSeconds } from '@/lib/timeclock/rounding'
 import { workingDays } from '@/lib/timeclock/absence'
-import { lockedMessage } from '@/lib/timeclock/periods'
-import { canApproveCorrection, canDecideTimeOff } from '@/lib/timeclock/scope'
-import type { ApprovalsData, Fail, Result } from '@/lib/timeclock/clocky-types'
+import { lockedMessage, periodLabel } from '@/lib/timeclock/periods'
+import { canApproveCorrection, canDecideTimeOff, canReopen } from '@/lib/timeclock/scope'
+import type { ApprovalsData, Fail, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to decide.'
@@ -195,6 +196,102 @@ export async function decideTimeOff(input: { id: number; decision: 'approve' | '
     }, v.personId, input.decision === 'approve', note)
     refresh()
     return { ok: true }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+// ── Timesheets (owner's mockup of 20 October 2026) ─────────────────────────
+//
+// A person's sent month or pay period. Super Admins (ck-reopen) approve it,
+// return it with a reason (it unlocks as "returned" and can be sent again), or
+// reopen an approved one with a reason. approved_by and approved_at keep
+// whoever decided last, also when it went back; note keeps the reason.
+
+type SentRow = { id: number; person_id: string; state: string; tc_periods: { start_date: string; end_date: string } | null }
+
+async function loadSent(id: number): Promise<{ id: number; personId: string; state: string; start: string; end: string } | null> {
+  const { data, error } = await db().from('tc_submissions').select('id, person_id, state, tc_periods(start_date, end_date)').eq('id', Number(id)).maybeSingle()
+  if (error) throw new Error(error.message)
+  const r = data as SentRow | null
+  return r?.tc_periods ? { id: r.id, personId: r.person_id, state: r.state, start: r.tc_periods.start_date, end: r.tc_periods.end_date } : null
+}
+
+/** The card: the sent period as its person's Submit window read it. */
+export async function getTimesheet(input: { id: number }): Promise<Result<{ data: SubmitSummary }>> {
+  const access = await loadAccess()
+  if (!access.can('ck-reopen')) return fail(NO_ACCESS)
+  const v = await viewerFor(access)
+  if (!v || !canReopen(v)) return fail(NO_ACCESS)
+  try {
+    const t = await loadSent(input.id)
+    if (!t) return fail('That timesheet could not be found.')
+    return { ok: true, data: await loadPeriodSummary(v, t.personId, new Date(), t.start) }
+  } catch (e) {
+    console.error('[clocky approvals] timesheet:', (e as Error).message)
+    return fail('That timesheet could not be read. Try again in a moment.')
+  }
+}
+
+/** Approve a sent timesheet, or return it with a reason. */
+export async function decideTimesheet(input: { id: number; decision: 'approve' | 'return'; note?: string }): Promise<Result<{ toast: string }>> {
+  const v = await actor('ck-reopen')
+  if (isFail(v)) return v
+  if (!canReopen(v)) return fail('Only a Super Admin can approve a timesheet.')
+  try {
+    const c = db()
+    const t = await loadSent(input.id)
+    if (!t || t.state !== 'submitted') return fail(NOT_WAITING)
+    const note = reasonOf(input.note)
+    if (input.decision === 'return' && !note) return fail(REASON_REQUIRED)
+    const at = new Date().toISOString()
+    const approve = input.decision === 'approve'
+    // Claimed first: two Super Admins can't both decide it.
+    const { data: done, error } = await c.from('tc_submissions')
+      .update({ state: approve ? 'approved' : 'returned', approved_at: at, approved_by: v.personId, note: approve ? null : note })
+      .eq('id', t.id).eq('state', 'submitted').select('id')
+    if (error) return notSaved(error)
+    if (!done?.length) return fail(NOT_WAITING)
+    // The portal's own rows follow (imported ones keep QuickBooks Time's state).
+    await c.from('tc_entries').update({ state: approve ? 'approved' : 'open', updated_at: at })
+      .eq('person_id', t.personId).eq('state', 'submitted').eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
+    await audit(c, [{ entryId: null, action: approve ? 'approve_period' : 'return_period', by: v.personId, reason: note, after: { person_id: t.personId, start: t.start, end: t.end } }])
+    const dir = await loadDirectory()
+    const label = periodLabel(t).full
+    await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: approve ? 'approve' : 'return', note })
+    refresh()
+    const who = dir.nameOf(t.personId)
+    return { ok: true, toast: approve ? `${who}'s timesheet for ${label} is approved.` : `${label} went back to ${first(who)} with your reason.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/** Reopen an approved timesheet, with a reason: it unlocks and can be sent again. */
+export async function reopenTimesheet(input: { id: number; note?: string }): Promise<Result<{ toast: string }>> {
+  const v = await actor('ck-reopen')
+  if (isFail(v)) return v
+  if (!canReopen(v)) return fail('Only a Super Admin can reopen a period.')
+  try {
+    const c = db()
+    const t = await loadSent(input.id)
+    if (!t || t.state !== 'approved') return fail('That timesheet is not approved, so there is nothing to reopen.')
+    const note = reasonOf(input.note)
+    if (!note) return fail(REASON_REQUIRED)
+    const at = new Date().toISOString()
+    const { data: done, error } = await c.from('tc_submissions')
+      .update({ state: 'returned', approved_at: at, approved_by: v.personId, note })
+      .eq('id', t.id).eq('state', 'approved').select('id')
+    if (error) return notSaved(error)
+    if (!done?.length) return fail('That timesheet is not approved, so there is nothing to reopen.')
+    await c.from('tc_entries').update({ state: 'open', updated_at: at })
+      .eq('person_id', t.personId).in('state', ['submitted', 'approved']).eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
+    await audit(c, [{ entryId: null, action: 'reopen', by: v.personId, reason: note, after: { person_id: t.personId, start: t.start, end: t.end } }])
+    const label = periodLabel(t).full
+    await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: 'reopen', note })
+    refresh()
+    const dir = await loadDirectory()
+    return { ok: true, toast: `${label} is open again for ${first(dir.nameOf(t.personId))}.` }
   } catch (e) {
     return notSaved(e)
   }

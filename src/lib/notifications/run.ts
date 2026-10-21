@@ -30,7 +30,8 @@ import {
   accessChangeDrafts, firstLoginDrafts, i7Drafts, integrationDrafts, levelDrafts, makeCtx, publishingDrafts,
   syncDrafts, teamOrderDrafts, unlinkedDrafts, unlinkedSeen, workDrafts, UNLINKED_SEEN, type Ctx,
   clockyAutoStopDrafts, clockyCorrectionDecidedDrafts, clockyCorrectionRequestedDrafts, clockyStillWorkingDrafts,
-  clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts, CLOCK_PANEL_HREF,
+  clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts,
+  clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, CLOCK_PANEL_HREF,
 } from './generators'
 import { sendEmail } from '@/lib/email/resend'
 import { renderClockStopped } from '@/lib/email/clock-stopped'
@@ -166,6 +167,12 @@ export const notifyClockyTimeOffDecided = (x: { requestId: number; personId: str
 
 export const notifyClockyClockedOutFor = (x: { entryId: number; personId: string; text: string }) =>
   simple('clocky-clocked-out-for', ctx => clockyClockedOutForDrafts(ctx, x))
+
+export const notifyClockyTimesheetSubmitted = (x: { submissionId: number; sentAt: string; personId: string; text: string }) =>
+  simple('clocky-timesheet-submitted', ctx => clockyTimesheetSubmittedDrafts(ctx, x))
+
+export const notifyClockyTimesheetDecided = (x: { submissionId: number; at: string; personId: string; text: string }) =>
+  simple('clocky-timesheet-decided', ctx => clockyTimesheetDecidedDrafts(ctx, x))
 
 /**
  * N2: the bell row, and with it the one email Clocky sends, "Your clock

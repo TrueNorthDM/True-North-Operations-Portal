@@ -50,6 +50,10 @@ export interface ApprovalsApi {
   getEntryHistory(i: { id: number }): Promise<Result<{ data: HistoryData }>>
   decideCorrection(i: DecideBody): Promise<Result<{ entryId?: number; toast: string }>>
   decideTimeOff(i: DecideBody): Promise<Result>
+  /** Timesheets (Super Admins): the card's summary, approve or return, reopen an approved one. */
+  getTimesheet(i: { id: number }): Promise<Result<{ data: SubmitSummary }>>
+  decideTimesheet(i: { id: number; decision: 'approve' | 'return'; note?: string }): Promise<Result<{ toast: string }>>
+  reopenTimesheet(i: { id: number; note?: string }): Promise<Result<{ toast: string }>>
 }
 
 /**

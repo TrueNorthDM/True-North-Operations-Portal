@@ -11,7 +11,7 @@
 //   ?frame=3A1 ... 3K4 | E                      Time entries (the frame's own level)
 //   ?frame=5A ... 5C3                        Timesheet periods (settings, a person's page, Rates & Costs)
 //   ?frame=4A | 4B                           Clock safety, with data or empty (Super Admin)
-//   ?frame=3L | 3L2                          Approvals (Super Admin, Team Leader of Web)
+//   ?frame=3L | 3L2 | 3L3                    Approvals (Super Admin, Team Leader of Web, Super Admin with timesheets)
 //   ?frame=2A ... 2E | 2P                       Who's working, the drawer open (2B as Wendy
 //                                               Cacka, Team Leader of Web) or the page
 //
@@ -48,7 +48,7 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
   if (process.env.NODE_ENV === 'production') notFound()
   const { frame = '1A', level = 'admin', closed } = await searchParams
   const bell = BELL[frame as keyof typeof BELL] ?? null
-  const approvals = frame === '3L' || frame === '3L2' ? frame : null
+  const approvals = frame === '3L' || frame === '3L2' || frame === '3L3' ? frame : null
   const safety = frame === '4A' || frame === '4B'
   const periods = /^5[ABC]/.test(frame)
   const entries = !approvals && /^3|^E$/.test(frame)

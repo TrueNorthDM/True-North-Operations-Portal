@@ -363,13 +363,22 @@ export async function correctionHistory(v: Viewer, id: number, now: Date): Promi
 // ── Submit (3H) ─────────────────────────────────────────────────────────────
 
 export async function loadSubmitSummary(v: Viewer, now: Date, start?: string): Promise<SubmitSummary> {
+  return loadPeriodSummary(v, v.personId, now, start)
+}
+
+/**
+ * One person's period as the Submit window reads it: their own (the viewer's),
+ * or someone's sent timesheet on the Approvals card (Super Admins). The caller
+ * decides who may read whose.
+ */
+export async function loadPeriodSummary(v: Viewer, personId: string, now: Date, start?: string): Promise<SubmitSummary> {
   const c = db()
   const [dir, catalog, settings] = await Promise.all([loadDirectory(), loadCatalog(), loadClockySettings()])
   const today = localDate(now, v.zone)
-  const [changes, subs] = await Promise.all([loadCadenceChanges(c, [v.personId]), loadSubmissions(c, [v.personId])])
-  const rules = rulesFor(v.personId, changes, settings)
-  const period = start ? periodContaining(start, rules) : await submitTarget(c, v.personId, today, rules, subs.get(v.personId) ?? [])
-  const entries = await allRows<EntryRow>((a, b) => c.from('tc_entries').select('*').eq('person_id', v.personId)
+  const [changes, subs] = await Promise.all([loadCadenceChanges(c, [personId]), loadSubmissions(c, [personId])])
+  const rules = rulesFor(personId, changes, settings)
+  const period = start ? periodContaining(start, rules) : await submitTarget(c, personId, today, rules, subs.get(personId) ?? [])
+  const entries = await allRows<EntryRow>((a, b) => c.from('tc_entries').select('*').eq('person_id', personId)
     .gte('entry_date', period.start).lte('entry_date', period.end).order('id').range(a, b), 'Your entries could not be read')
   const x: Ctx = { v, dir, catalog, now, subs }
   const overlapping = overlapsAmong(entries.filter(e => e.started_at).map(e => ({ id: e.id, personId: e.person_id, start: e.started_at, end: e.ended_at })), now)
@@ -384,7 +393,7 @@ export async function loadSubmitSummary(v: Viewer, now: Date, start?: string): P
   }
   const attention = attentionOrder(work.filter(r => r.attention)).map(r => attentionItem(r, false))
   const running = work.some(r => r.running)
-  const mine = (subs.get(v.personId) ?? []).find(s => s.start === period.start && s.end === period.end)
+  const mine = (subs.get(personId) ?? []).find(s => s.start === period.start && s.end === period.end)
   const done = mine?.state === 'submitted' || mine?.state === 'approved'
   const label = periodLabel(period)
   return {

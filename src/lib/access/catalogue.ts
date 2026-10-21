@@ -181,7 +181,7 @@ const TREE: Node[] = [
     { key: 'clocky-hours', label: 'Time entries, and the clock in the top bar', kind: 'page', v: [1, 1, 1], note: 'Their own hours. A User only shortens their own entries; more time comes through a time correction request.', ch: [
       { key: 'ck-team', label: 'See and change the hours of the teams they lead', kind: 'action', v: [1, 1, 0] },
       { key: 'ck-all', label: "See and change everyone's hours", kind: 'action', v: [1, 0, 0] },
-      { key: 'ck-reopen', label: 'Reopen a submitted period', kind: 'action', superOnly: true },
+      { key: 'ck-reopen', label: 'Approve, return or reopen a sent timesheet', kind: 'action', superOnly: true },
       { key: 'ck-rules', label: 'Rules in force', kind: 'tab', v: [1, 0, 0] },
       { key: 'ck-import', label: 'Import from QuickBooks Time', kind: 'tab', v: [1, 0, 0] },
       { key: 'ck-recon', label: 'Reconciliation', kind: 'tab', v: [1, 0, 0] },

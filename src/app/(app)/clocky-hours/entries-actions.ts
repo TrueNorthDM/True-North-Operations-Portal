@@ -31,7 +31,7 @@ import {
 } from '@/lib/timeclock/clocky-store'
 import { correctionHistory, entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
 import { correctionGoesTo } from '@/lib/timeclock/clocky-panel'
-import { announceCorrectionRequested } from '@/lib/timeclock/clocky-notify'
+import { announceCorrectionRequested, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
 import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
 import { formatDuration, parseDuration, recordedSeconds, roundIso, roundSeconds } from '@/lib/timeclock/rounding'
 import {
@@ -39,8 +39,8 @@ import {
   overlapLine, reasonOf, trimOther, trimThis,
 } from '@/lib/timeclock/entry-rules'
 import { changesBetween } from '@/lib/timeclock/history'
-import { addDays, lockedMessage } from '@/lib/timeclock/periods'
-import { SHORTEN_ONLY, canAddFor, canReopen, changeRight, onlyShorter } from '@/lib/timeclock/scope'
+import { addDays, lockedMessage, periodLabel } from '@/lib/timeclock/periods'
+import { SHORTEN_ONLY, canAddFor, changeRight, onlyShorter } from '@/lib/timeclock/scope'
 import { loadApprovers } from '@/lib/timeclock/approvers'
 import type { EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 
@@ -615,18 +615,24 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     const { data: sub, error: subErr } = await c.from('tc_submissions').select('id, state').eq('person_id', v.personId).eq('period_id', periodId).maybeSingle()
     if (subErr) return notSaved(subErr)
     const row = sub as { id: number; state: string } | null
+    let sentId = row?.id ?? 0
     if (row) {
-      const { data: moved, error } = await c.from('tc_submissions').update({ state: 'submitted', submitted_at: at }).eq('id', row.id).in('state', ['draft', 'returned']).select('id')
+      // Sent again after a return: the last decision and its reason go.
+      const { data: moved, error } = await c.from('tc_submissions').update({ state: 'submitted', submitted_at: at, approved_at: null, approved_by: null, note: null })
+        .eq('id', row.id).in('state', ['draft', 'returned']).select('id')
       if (error) return notSaved(error)
       // Sent or approved in another tab since the summary was read: nothing changed here.
       if (!moved?.length) return fail('That period has already been sent. Reload to see where it stands.')
     } else {
-      const { error } = await c.from('tc_submissions').insert({ person_id: v.personId, period_id: periodId, state: 'submitted', submitted_at: at })
+      const { data: made, error } = await c.from('tc_submissions').insert({ person_id: v.personId, period_id: periodId, state: 'submitted', submitted_at: at }).select('id').single()
       if (error) return notSaved(error)
+      sentId = (made as { id: number }).id
     }
     // The portal's own rows freeze with it (imported ones keep QuickBooks Time's state).
     await c.from('tc_entries').update({ state: 'submitted', updated_at: at })
       .eq('person_id', v.personId).eq('state', 'open').eq('source', 'portal').gte('entry_date', s.start).lte('entry_date', s.end)
+    // The Super Admins who approve it hear of it.
+    await announceTimesheetSubmitted({ submissionId: sentId, sentAt: at, personId: v.personId, period: periodLabel(s).full, seconds: s.totalSeconds })
     refresh()
     return { ok: true, locked: count, toast: `${s.label} submitted. ${count} entries are now locked.` }
   } catch (e) {
@@ -634,34 +640,3 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
   }
 }
 
-/**
- * Reopen a submitted or approved period (Super Admins): the submission goes
- * back to draft and the portal's rows in it to open. Imported rows keep the
- * state QuickBooks Time gave them (audit finding N6: reopening used to take
- * them out of the reports for good).
- */
-export async function reopenPeriod(input: { personId: string; start: string; end: string; reason?: string }): Promise<Result> {
-  const v = await actor('ck-reopen')
-  if (isFail(v)) return v
-  if (!canReopen(v)) return fail('Only a Super Admin can reopen a period.')
-  try {
-    const c = db()
-    const { data: period, error } = await c.from('tc_periods').select('id').eq('start_date', input.start).eq('end_date', input.end).maybeSingle()
-    if (error) return notSaved(error)
-    if (!period) return fail('That period was never submitted.')
-    const pid = (period as { id: number }).id
-    const { data: sub, error: subErr } = await c.from('tc_submissions').update({ state: 'draft', submitted_at: null, approved_at: null, approved_by: null })
-      .eq('person_id', input.personId).eq('period_id', pid).in('state', ['submitted', 'approved']).select('id')
-    if (subErr) return notSaved(subErr)
-    if (!sub?.length) return fail('That period is not submitted.')
-    const at = new Date().toISOString()
-    await c.from('tc_entries').update({ state: 'open', updated_at: at })
-      .eq('person_id', input.personId).in('state', ['submitted', 'approved']).eq('source', 'portal')
-      .gte('entry_date', input.start).lte('entry_date', input.end)
-    await audit(c, [{ entryId: null, action: 'reopen', by: v.personId, reason: reasonOf(input.reason), after: { person_id: input.personId, start: input.start, end: input.end } }])
-    refresh()
-    return { ok: true }
-  } catch (e) {
-    return notSaved(e)
-  }
-}

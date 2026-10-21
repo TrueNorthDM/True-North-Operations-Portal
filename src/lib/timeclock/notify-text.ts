@@ -36,6 +36,17 @@ export function clockedOutForText(by: string, at: string, reason: string): strin
   return `${by} clocked you out at ${at}. Reason: "${reason.trim()}"`
 }
 
+/** "Samuel Manzi submitted October 2026 (168h 30m)." to the Super Admins who approve it. */
+export function timesheetSubmittedText(name: string, period: string, seconds: number): string {
+  return `${name} submitted ${period} (${formatDuration(seconds)}).`
+}
+
+/** To the person: approved, returned with the reason, or reopened with the reason. */
+export function timesheetDecidedText(decider: string, period: string, how: 'approve' | 'return' | 'reopen', note: string | null): string {
+  if (how === 'approve') return `${decider} approved your ${period} timesheet.`
+  return `${decider} ${how === 'return' ? 'returned' : 'reopened'} your ${period} timesheet. Reason: "${(note ?? '').trim()}"`
+}
+
 /** "Olivia Hale asked for time off: Vacation, Fri, Oct 16 (8h 00m)." (a range names both days). */
 export function timeOffRequestedText(name: string, kind: string, startDate: string, endDate: string, seconds: number): string {
   const days = startDate === endDate ? dayLabel(startDate) : `${dayLabel(startDate)} to ${dayLabel(endDate)}`

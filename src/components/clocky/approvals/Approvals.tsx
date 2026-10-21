@@ -4,12 +4,14 @@
  * Approvals (design handoff of 16 October 2026, README "Time correction
  * requests and approvals", Time Entries.dc.html frames 3L and 3L2): the time
  * corrections waiting for the viewer's decision, in their scope, and for
- * Super Admins the time off too; "Waiting · n | Decided · n".
+ * Super Admins the time off and the timesheets people sent (owner's mockup of
+ * 20 October 2026); "Waiting · n | Decided · n".
  *
  * A waiting row has Deny (opens the review with the reason field) and Approve
  * (direct; when the time now runs into an entry it opens the review with the
  * overlap instead). Clicking a row opens its card, or the entry's history once
- * approved.
+ * approved. A timesheet has Return (opens its card with the reason field) and
+ * Approve; once approved, Reopen (the card, with the reason field).
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -17,13 +19,25 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Segmented } from '@/components/ui/Segmented'
 import { formatDuration } from '@/lib/timeclock/rounding'
-import type { ApprovalRow, ApprovalsData, HistoryData } from '@/lib/timeclock/clocky-types'
+import type { ApprovalRow, ApprovalsData, HistoryData, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import type { ApprovalsApi } from '../entries/api'
-import { CorrectionReview, TimeOffCard } from '../entries/Dialogs'
+import { CorrectionReview, TimeOffCard, TimesheetCard } from '../entries/Dialogs'
 import { HistoryDrawer } from '../entries/HistoryDrawer'
 import { Icon, ICON, Pill, Toast, type ToastState } from '../entries/ui'
 
-export type ApprovalsModal = { kind: 'review' | 'off'; key: string; deny: boolean }
+export type ApprovalsModal =
+  | { kind: 'review' | 'off'; key: string; deny: boolean }
+  | { kind: 'sheet'; key: string; mode: 'return' | 'reopen' | null }
+
+/** The type pill's colours: corrections teal, time off and timesheets in their own blues. */
+const TYPE_PILL: Record<ApprovalRow['type'], { text: string; style: React.CSSProperties }> = {
+  correction: { text: 'Time correction', style: { background: 'var(--color-tn-teal-soft)', color: 'var(--color-tn-teal)' } },
+  time_off: { text: 'Time off', style: { background: '#eef1fb', color: '#3b4fa8' } },
+  timesheet: { text: 'Timesheet', style: { background: '#e8effa', color: '#1e40af' } },
+}
+const STATE_PILL: Record<string, { text: string; tone: 'ok' | 'bad' }> = {
+  approved: { text: 'Approved', tone: 'ok' }, denied: { text: 'Denied', tone: 'bad' }, returned: { text: 'Returned', tone: 'bad' },
+}
 
 const first = (name: string) => name.split(' ')[0]
 /** "Tue, Oct 13, 2026 · 4:00 PM to 5:00 PM EAT": the day, and the rest. */
@@ -41,6 +55,8 @@ export function Approvals({ initialData, api, initial }: {
   const [drawer, setDrawer] = useState<number | null>(initial?.drawer ?? null)
   const [history, setHistory] = useState<{ id: number; data: HistoryData | null; error: string | null } | null>(null)
   const [busy, setBusy] = useState(false)
+  // The open timesheet card's summary, read when it opens.
+  const [sheet, setSheet] = useState<{ id: number; data: SubmitSummary | null; error: string | null } | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
@@ -88,8 +104,35 @@ export function Approvals({ initialData, api, initial }: {
       setBusy(false)
     }
   }
-  const approve = (r: ApprovalRow) => (r.overlap ? setModal({ kind: 'review', key: r.key, deny: false }) : void decide(r, 'approve'))
+  // Timesheets: approve or return (from the row or the card), reopen an approved one.
+  const sheetCall = async (call: () => Promise<{ ok: true; toast: string } | { ok: false; error: string }>) => {
+    setBusy(true)
+    try {
+      const res = await call()
+      if (!res.ok) return say(res.error, true)
+      setModal(null)
+      say(res.toast)
+      void reload()
+    } catch {
+      say('That did not go through. Check your connection and try again.', true)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const decideSheet = (r: ApprovalRow, decision: 'approve' | 'return', note?: string) => sheetCall(() => api.decideTimesheet({ id: r.id, decision, note }))
+  const reopenSheet = (r: ApprovalRow, note: string) => sheetCall(() => api.reopenTimesheet({ id: r.id, note }))
+  const openSheet = (r: ApprovalRow, mode: 'return' | 'reopen' | null) => {
+    setModal({ kind: 'sheet', key: r.key, mode })
+    setSheet({ id: r.id, data: null, error: null })
+    api.getTimesheet({ id: r.id }).then(
+      res => setSheet(cur => (cur?.id === r.id ? { id: r.id, data: res.ok ? res.data : null, error: res.ok ? null : res.error } : cur)),
+      () => setSheet(cur => (cur?.id === r.id ? { id: r.id, data: null, error: 'That timesheet could not be read. Try again in a moment.' } : cur)),
+    )
+  }
+
+  const approve = (r: ApprovalRow) => (r.type === 'timesheet' ? void decideSheet(r, 'approve') : r.overlap ? setModal({ kind: 'review', key: r.key, deny: false }) : void decide(r, 'approve'))
   const open = (r: ApprovalRow) => {
+    if (r.type === 'timesheet') return openSheet(r, null)
     if (r.state === 'approved' && r.entryId !== null) return setDrawer(r.entryId)
     setModal({ kind: r.type === 'time_off' ? 'off' : 'review', key: r.key, deny: false })
   }
@@ -101,6 +144,11 @@ export function Approvals({ initialData, api, initial }: {
     card = <CorrectionReview key={m.key} who={m.name} goesTo={m.goesTo} state={m.state} date={date} time={`${time} (${formatDuration(m.seconds)})`} job={m.job} reason={m.reason}
       overlap={m.state === 'pending' ? m.overlap : null} canDecide={m.canDecide} denyFirst={modal.deny} busy={busy}
       onClose={() => setModal(null)} onApprove={() => void decide(m, 'approve')} onDeny={note => void decide(m, 'deny', note)} />
+  } else if (modal && m && modal.kind === 'sheet') {
+    card = <TimesheetCard key={`${m.key}-${modal.mode ?? ''}`} who={m.name} period={m.when} state={m.state} sent={m.asked}
+      summary={sheet?.id === m.id ? sheet.data : null} error={sheet?.id === m.id ? sheet.error : null}
+      entriesHref={`/clocky-hours?person=${m.personId}`} mode={modal.mode} busy={busy} onClose={() => setModal(null)}
+      onApprove={() => void decideSheet(m, 'approve')} onReturn={note => void decideSheet(m, 'return', note)} onReopen={note => void reopenSheet(m, note)} />
   } else if (modal && m && modal.kind === 'off') {
     const [dates, type] = split(m.when)
     card = <TimeOffCard key={m.key} who={m.name} state={m.state} type={type} dates={dates} hours={formatDuration(m.seconds)} note={m.reason}
@@ -124,8 +172,10 @@ export function Approvals({ initialData, api, initial }: {
         <div className="flex flex-col gap-px bg-[var(--row-rule)] border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
           {rows.map(r => {
             const isOff = r.type === 'time_off'
+            const isSheet = r.type === 'timesheet'
+            const pill = TYPE_PILL[r.type]
             return (
-              <div key={r.key} role="button" tabIndex={0} aria-label={`${r.name}, ${isOff ? 'time off' : 'time correction'}: open`} onClick={() => open(r)}
+              <div key={r.key} role="button" tabIndex={0} aria-label={`${r.name}, ${pill.text.toLowerCase()}: open`} onClick={() => open(r)}
                 onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(r) } }}
                 className="flex flex-wrap gap-x-[22px] gap-y-3 items-center px-[18px] py-4 bg-white cursor-pointer hover:bg-[var(--row-hover)] focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2">
                 <div className="flex-[1_1_180px] flex items-center gap-[11px] min-w-0">
@@ -139,9 +189,8 @@ export function Approvals({ initialData, api, initial }: {
                 </div>
                 <div className="flex-[1.3_1_230px] min-w-0 flex flex-col gap-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap"
-                      style={isOff ? { background: '#eef1fb', color: '#3b4fa8' } : { background: 'var(--color-tn-teal-soft)', color: 'var(--color-tn-teal)' }}>
-                      {isOff ? 'Time off' : 'Time correction'}
+                    <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap" style={pill.style}>
+                      {pill.text}
                     </span>
                     <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{formatDuration(r.seconds)}</span>
                   </div>
@@ -155,19 +204,25 @@ export function Approvals({ initialData, api, initial }: {
                 <div className="flex-none ml-auto flex items-center justify-end gap-2">
                   {tab === 'wait' ? (
                     <>
-                      <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setModal({ kind: isOff ? 'off' : 'review', key: r.key, deny: true }) }}
-                        className="whitespace-nowrap border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[12.5px] hover:border-[#c8323d]">Deny</button>
+                      <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); if (isSheet) openSheet(r, 'return'); else setModal({ kind: isOff ? 'off' : 'review', key: r.key, deny: true }) }}
+                        className="whitespace-nowrap border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[12.5px] hover:border-[#c8323d]">{isSheet ? 'Return' : 'Deny'}</button>
                       <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); approve(r) }}
                         className="inline-flex items-center gap-[7px] whitespace-nowrap border-0 rounded-[10px] px-[15px] py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] hover:bg-[#0a2f6b]">
                         <Icon d={ICON.check} size={13} color={BTN_ICON.navy} width={3} />Approve
                       </button>
                     </>
                   ) : (
-                    <div className="flex flex-col items-end gap-1 max-w-[260px] text-right">
-                      <Pill text={r.state === 'approved' ? 'Approved' : 'Denied'} tone={r.state === 'approved' ? 'ok' : 'bad'} size="md" />
-                      <span className="text-[11.5px] text-muted leading-[1.4] [text-wrap:pretty]">
-                        {r.decided ? `By ${r.decided.by}, ${r.decided.when}${r.decided.note ? `. "${r.decided.note}"` : ''}` : ''}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-end gap-1 max-w-[260px] text-right">
+                        <Pill text={STATE_PILL[r.state]?.text ?? ''} tone={STATE_PILL[r.state]?.tone ?? 'bad'} size="md" />
+                        <span className="text-[11.5px] text-muted leading-[1.4] [text-wrap:pretty]">
+                          {r.decided ? `By ${r.decided.by}, ${r.decided.when}${r.decided.note ? `. "${r.decided.note}"` : ''}` : ''}
+                        </span>
+                      </div>
+                      {isSheet && r.state === 'approved' && (
+                        <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); openSheet(r, 'reopen') }}
+                          className="whitespace-nowrap border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] hover:border-tn-teal">Reopen</button>
+                      )}
                     </div>
                   )}
                 </div>

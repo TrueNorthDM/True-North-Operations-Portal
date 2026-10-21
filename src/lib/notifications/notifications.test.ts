@@ -26,7 +26,8 @@ describe('the catalogue', () => {
     expect(by('daily')).toEqual(['clocky-auto-stops', 'monday-account-unlinked', 'publishing-behind', 'step-due-tomorrow', 'step-late', 'team-late-pile'])
     expect(by('instant')).toEqual([
       'access-rules-changed', 'clocky-clocked-out-for', 'clocky-correction-decided', 'clocky-correction-requested', 'clocky-still-working',
-      'clocky-stopped', 'clocky-timeoff-decided', 'clocky-timeoff-requested', 'integration-failed', 'level-changed', 'step-released',
+      'clocky-stopped', 'clocky-timeoff-decided', 'clocky-timeoff-requested', 'clocky-timesheet-decided', 'clocky-timesheet-submitted',
+      'integration-failed', 'level-changed', 'step-released',
     ])
   })
 
@@ -203,7 +204,7 @@ describe("Clocky's notifications (16 October 2026)", () => {
   const T = (k: string) => TYPE_BY_KEY.get(k)!
 
   it('are in the bell only, as it happens, but the daily line for Super Admins', () => {
-    for (const k of ['clocky-still-working', 'clocky-stopped', 'clocky-correction-requested', 'clocky-correction-decided', 'clocky-timeoff-requested', 'clocky-timeoff-decided', 'clocky-clocked-out-for']) {
+    for (const k of ['clocky-still-working', 'clocky-stopped', 'clocky-correction-requested', 'clocky-correction-decided', 'clocky-timeoff-requested', 'clocky-timeoff-decided', 'clocky-clocked-out-for', 'clocky-timesheet-submitted', 'clocky-timesheet-decided']) {
       expect(T(k).timings, k).toBe('instant')
       expect(defaultRule(T(k)).channel, k).toBe('app')
     }
@@ -219,6 +220,10 @@ describe("Clocky's notifications (16 October 2026)", () => {
     expect(T('clocky-timeoff-decided').button).toEqual({ label: 'Open time entries', href: '/clocky-hours' })
     // No address of its own: the row's, that entry's history.
     expect(T('clocky-clocked-out-for').button).toEqual({ label: 'Open entry' })
+    expect(T('clocky-timesheet-submitted').button).toEqual({ label: 'Review', href: '/clocky-hours/approvals' })
+    expect(T('clocky-timesheet-decided').button).toEqual({ label: 'Open time entries', href: '/clocky-hours' })
+    // Sent timesheets reach whoever may approve them.
+    expect(T('clocky-timesheet-submitted').audience).toEqual({ kind: 'tool', tool: 'ck-reopen' })
     expect(T('clocky-auto-stops').button).toEqual({ label: 'Open Clock safety', href: '/clocky-hours/safety' })
   })
 

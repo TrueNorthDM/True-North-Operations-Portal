@@ -3,7 +3,8 @@
 /**
  * The smaller windows of Time entries and Approvals (Time Entries.dc.html):
  * 3H submit the period, 3I delete an entry, 3J a time off request, 3K-3 a
- * time correction under review, and the reason the week grid asks for on Save.
+ * time correction under review, the reason the week grid asks for on Save,
+ * and on Approvals a sent timesheet (owner's mockup of 20 October 2026).
  */
 
 import { useState } from 'react'
@@ -127,7 +128,7 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
 
 // ── 3K-3 and 3J: a request under review ─────────────────────────────────────
 
-const STATE_TONE: Record<string, PillTone> = { pending: 'warn', approved: 'ok', denied: 'bad' }
+const STATE_TONE: Record<string, PillTone> = { pending: 'warn', approved: 'ok', denied: 'bad', returned: 'bad' }
 const stateText = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 function DetailGrid({ rows }: { rows: [string, string, boolean?][] }) {
@@ -250,6 +251,97 @@ export function TimeOffCard({ who, state, type, dates, hours, note, canDecide, d
               <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Approve
             </button>
           </>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
+// ── A sent timesheet (Approvals) ────────────────────────────────────────────
+
+/**
+ * A person's sent month or pay period, as their Submit window read it: the
+ * total, hours by client, weekdays with no time and what needs attention.
+ * Waiting: Return (asks the reason first) and Approve. Approved: Reopen (asks
+ * the reason first).
+ */
+export function TimesheetCard({ who, period, state, sent, summary, error, entriesHref, mode, busy, onClose, onApprove, onReturn, onReopen }: {
+  who: string
+  /** "October 2026" or "Oct 4 to 17, 2026" */
+  period: string
+  state: 'pending' | 'approved' | 'returned' | 'denied'
+  /** "Submitted Nov 2, 2026, 9:14 AM" */
+  sent: string
+  summary: SubmitSummary | null
+  error: string | null
+  entriesHref: string
+  /** Opened from the row's Return or Reopen: the reason field shows at once. */
+  mode: 'return' | 'reopen' | null
+  busy: boolean
+  onClose: () => void
+  onApprove: () => void
+  onReturn: (note: string) => void
+  onReopen: (note: string) => void
+}) {
+  const [asking, setAsking] = useState(mode !== null)
+  const [reason, setReason] = useState('')
+  const waiting = state === 'pending'
+  const canReopen = state === 'approved'
+  const pill = waiting ? 'Waiting' : stateText(state)
+  return (
+    <Modal label="Timesheet" width={470} onClose={onClose}>
+      <div className="flex items-start justify-between gap-2.5">
+        <div>
+          <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>{`${who}'s timesheet`}</h2>
+          <div className="text-[13px] text-muted mt-1">{`${period} · ${sent}`}</div>
+        </div>
+        <Pill text={pill} tone={STATE_TONE[state] ?? 'neutral'} size="md" />
+      </div>
+      {error && <div role="alert" className="text-[12.5px] font-bold text-[#c8323d]">{error}</div>}
+      {!summary && !error && <div className="text-[13px] text-muted">Reading the timesheet…</div>}
+      {summary && (
+        <>
+          {/* The person's cadence in the third person: the Submit window's line says "You". */}
+          <div className="text-[12.5px] text-muted">{`${who.split(' ')[0]} submits ${summary.kind === 'month' ? 'monthly' : 'every 2 weeks, by pay period'}.`}</div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-subtle rounded-[10px] px-3 py-2.5">
+              <div className={LABEL}>Total</div>
+              <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink tabular-nums lining-nums mt-0.5">{formatDuration(summary.totalSeconds)}</div>
+            </div>
+            <div className="bg-subtle rounded-[10px] px-3 py-2.5">
+              <div className={LABEL}>Needs attention</div>
+              <div className={`font-(family-name:--font-display) font-extrabold text-[15px] mt-0.5 ${summary.attention.length ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{summary.attention.length || 'None'}</div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 text-[13px] tabular-nums lining-nums">
+            {summary.byClient.map(c => (
+              <div key={c.client} className="flex justify-between gap-3"><span className="text-foreground">{c.client}</span><span className="font-semibold text-tn-ink">{formatDuration(c.seconds)}</span></div>
+            ))}
+            <div className="text-[12.5px] text-muted">{`Weekdays with no time: ${summary.noTime}`}</div>
+          </div>
+        </>
+      )}
+      <a href={entriesHref} className="self-start text-[12.5px] font-bold text-tn-teal hover:text-tn-ink">Open their time entries</a>
+      {asking && (waiting || canReopen) && (
+        <label className="flex flex-col gap-[5px]">
+          <FieldLabel>{waiting ? 'Reason for returning it (required)' : 'Reason for reopening it (required)'}</FieldLabel>
+          <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className={TEXTAREA_PLAIN} />
+        </label>
+      )}
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onClose} className={BTN_MODAL_WHITE}>Close</button>
+        {waiting && (
+          <>
+            <button type="button" disabled={busy} onClick={() => { if (!asking) setAsking(true); else if (reason.trim()) onReturn(reason.trim()) }}
+              style={{ opacity: asking && !reason.trim() ? 0.5 : 1 }} className={BTN_MODAL_DANGER}>Return</button>
+            <button type="button" disabled={busy} onClick={onApprove} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>
+              <Icon d={ICON.check} size={14} color={BTN_ICON.navy} width={3} />Approve
+            </button>
+          </>
+        )}
+        {canReopen && (
+          <button type="button" disabled={busy} onClick={() => { if (!asking) setAsking(true); else if (reason.trim()) onReopen(reason.trim()) }}
+            style={{ opacity: asking && !reason.trim() ? 0.5 : 1 }} className={`${BTN_MODAL_NAVY} ${DISABLED}`}>Reopen</button>
         )}
       </div>
     </Modal>

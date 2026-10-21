@@ -71,8 +71,16 @@ describe('locked periods (Rules 9)', () => {
     expect(body(read('approvals/actions.ts'), 'decideCorrection')).toMatch(/lockedMessage\(/)
     expect(body(read('approvals/actions.ts'), 'decideTimeOff')).toMatch(/lockedMessage\(/)
   })
-  it('only Super Admins reopen', () => {
-    expect(body(e, 'reopenPeriod')).toMatch(/actor\('ck-reopen'\)/)
+  it('only Super Admins approve, return or reopen a timesheet', () => {
+    const a = read('approvals/actions.ts')
+    for (const name of ['decideTimesheet', 'reopenTimesheet']) {
+      expect(body(a, name), name).toMatch(/actor\('ck-reopen'\)/)
+      expect(body(a, name), name).toMatch(/canReopen\(v\)/)
+    }
+    expect(body(a, 'getTimesheet')).toMatch(/can\('ck-reopen'\)/)
+    // Returning and reopening need the reason the person reads.
+    expect(body(a, 'decideTimesheet')).toMatch(/fail\(REASON_REQUIRED\)/)
+    expect(body(a, 'reopenTimesheet')).toMatch(/fail\(REASON_REQUIRED\)/)
   })
 })
 

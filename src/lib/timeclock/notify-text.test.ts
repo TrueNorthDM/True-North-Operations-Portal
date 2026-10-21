@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText } from './notify-text'
+import { clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText, timesheetDecidedText, timesheetSubmittedText } from './notify-text'
 import { autoStopsLine } from '@/lib/notifications/generators'
 
 // The bell rows of Clock Safety.dc.html (N3, N4) and the Super Admins' daily line.
@@ -37,6 +37,15 @@ describe("Clocky's bell rows", () => {
   it('clocked out by someone else, with the reason', () => {
     expect(clockedOutForText('Dave Sharpe', '3:45 PM', 'Forgot to clock out.'))
       .toBe('Dave Sharpe clocked you out at 3:45 PM. Reason: "Forgot to clock out."')
+  })
+
+  it('a timesheet sent, and what was decided', () => {
+    expect(timesheetSubmittedText('Samuel Manzi', 'October 2026', 168.5 * 3600)).toBe('Samuel Manzi submitted October 2026 (168h 30m).')
+    expect(timesheetDecidedText('Arnaldo Oliveira', 'October 2026', 'approve', null)).toBe('Arnaldo Oliveira approved your October 2026 timesheet.')
+    expect(timesheetDecidedText('Arnaldo Oliveira', 'Oct 4 to 17, 2026', 'return', ' Oct 12 is empty. '))
+      .toBe('Arnaldo Oliveira returned your Oct 4 to 17, 2026 timesheet. Reason: "Oct 12 is empty."')
+    expect(timesheetDecidedText('Arnaldo Oliveira', 'October 2026', 'reopen', 'Wrong client on Oct 30.'))
+      .toBe('Arnaldo Oliveira reopened your October 2026 timesheet. Reason: "Wrong client on Oct 30."')
   })
 
   it("the Super Admins' daily line", () => {

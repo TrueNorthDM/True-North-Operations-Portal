@@ -22,7 +22,7 @@
  *   ck-all             see and change everyone's hours
  *   clocky-approvals   Approvals: decide time corrections in their scope
  *   ck-timeoff         decide time off (Super Admin only)
- *   ck-reopen          reopen a submitted period (Super Admin only)
+ *   ck-reopen          approve, return or reopen a sent timesheet (Super Admin only)
  *   ck-whos-working    Who's working, in their scope
  *   ck-clock-out-for   "Clock out for them" (Super Admin only)
  *   ck-safety          Clock safety (read only below Super Admin)

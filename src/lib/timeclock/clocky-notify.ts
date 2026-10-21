@@ -13,12 +13,16 @@ import { headers } from 'next/headers'
 import {
   notifyClockyCorrectionDecided, notifyClockyCorrectionRequested, notifyClockyStillWorking,
   notifyClockyStopped, notifyClockyTimeOffRequested, notifyClockyTimeOffDecided, notifyClockyClockedOutFor,
+  notifyClockyTimesheetSubmitted, notifyClockyTimesheetDecided,
 } from '@/lib/notifications/run'
 import type { Db } from '@/lib/supabase/types'
 import { loadDirectory } from './clocky-context'
 import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
-import { clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText } from './notify-text'
+import {
+  clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText,
+  timesheetDecidedText, timesheetSubmittedText,
+} from './notify-text'
 import { stillWorkingText, stopWhen, stoppedText } from './safety'
 import type { AutoStop } from './clocky-store'
 
@@ -117,5 +121,21 @@ export async function announceClockedOutFor(x: { entryId: number; personId: stri
       personId: x.personId,
       text: clockedOutForText(dir.nameOf(x.byId), timeLabel(x.endedAt, dir.zoneOf(x.personId)), x.reason),
     })
+  })
+}
+
+/** A period sent (3H): the Super Admins who approve timesheets hear of it. */
+export async function announceTimesheetSubmitted(x: { submissionId: number; sentAt: string; personId: string; period: string; seconds: number }): Promise<void> {
+  await quiet('timesheet submitted', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyTimesheetSubmitted({ ...x, text: timesheetSubmittedText(dir.nameOf(x.personId), x.period, x.seconds) })
+  })
+}
+
+/** Approved, returned or reopened: the person hears who did it, and why when it went back. */
+export async function announceTimesheetDecided(x: { submissionId: number; at: string; personId: string; deciderId: string; period: string; how: 'approve' | 'return' | 'reopen'; note: string | null }): Promise<void> {
+  await quiet('timesheet decided', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyTimesheetDecided({ submissionId: x.submissionId, at: x.at, personId: x.personId, text: timesheetDecidedText(dir.nameOf(x.deciderId), x.period, x.how, x.note) })
   })
 }

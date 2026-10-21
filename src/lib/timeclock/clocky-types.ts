@@ -317,7 +317,8 @@ export interface SubmitSummary {
 
 export interface ApprovalRow {
   key: string
-  type: 'correction' | 'time_off'
+  /** A timesheet is a person's sent period (Super Admins approve, return or reopen it). */
+  type: 'correction' | 'time_off' | 'timesheet'
   id: number
   personId: string
   name: string
@@ -330,15 +331,18 @@ export interface ApprovalRow {
   seconds: number
   /** "Tue, Oct 13, 2026 · 4:00 PM to 5:00 PM EAT" / "Fri, Oct 16, 2026 · Vacation" (the person's zone). */
   when: string
-  /** "1 - True North › Web Dev · WebDev" (corrections). */
+  /** "1 - True North › Web Dev · WebDev" (corrections); a timesheet's hours by client. */
   job: string
   /** The reason, unquoted (the page quotes it). */
   reason: string
   askedAt: string
   /** "Asked Oct 15, 2026, 8:40 AM" */
   asked: string
-  state: 'pending' | 'approved' | 'denied'
+  /** A timesheet waiting is "pending"; sent back with a reason, "returned". */
+  state: 'pending' | 'approved' | 'denied' | 'returned'
   decided: { by: string; at: string; when: string; note: string | null } | null
+  /** Timesheets: the period, for the card and the decision. */
+  period?: { start: string; end: string }
   /** Approved corrections open the entry's history. */
   entryId: number | null
   /** The time now runs into an entry: Approve opens the review with this. */

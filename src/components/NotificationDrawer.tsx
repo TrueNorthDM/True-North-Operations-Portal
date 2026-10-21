@@ -322,6 +322,10 @@ export function clockyTone(i: Pick<NotificationItem, 'type' | 'who'>): { d: stri
     case 'clocky-timeoff-requested': return { d: ICON.request, ...WARN }
     // One type for both answers: the sentence says which (lib/timeclock/notify-text.ts).
     case 'clocky-clocked-out-for': return { d: ICON.stop, ...WARN }
+    case 'clocky-timesheet-submitted': return { d: ICON.request, ...WARN }
+    case 'clocky-timesheet-decided': return / approved your /.test(i.who)
+      ? { d: ICON.ok, bg: 'var(--ok-bg)', fg: 'var(--ok-fg)' }
+      : { d: ICON.alert, ...WARN }
     case 'clocky-timeoff-decided':
     case 'clocky-correction-decided': return / denied your /.test(i.who)
       ? { d: ICON.no, ...DANGER }

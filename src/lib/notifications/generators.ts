@@ -518,6 +518,21 @@ export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; p
     }))
 }
 
+/** A timesheet sent: to the Super Admins who approve it (ck-reopen), never the person. */
+export function clockyTimesheetSubmittedDrafts(ctx: Ctx, x: { submissionId: number; sentAt: string; personId: string; text: string }): Draft[] {
+  return ctx.aud.withTool('ck-reopen').filter(r => r.personId !== x.personId)
+    .flatMap(r => draftFor(ctx, 'clocky-timesheet-submitted', r, {
+      title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: `${x.submissionId}:${x.sentAt}`,
+    }))
+}
+
+/** A timesheet approved, returned or reopened: to its person. */
+export function clockyTimesheetDecidedDrafts(ctx: Ctx, x: { submissionId: number; at: string; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-timesheet-decided', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: '/clocky-hours', dedupeKey: `${x.submissionId}:${x.at}`,
+  })
+}
+
 /** Time off approved or denied: to the person who asked. */
 export function clockyTimeOffDecidedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string }): Draft[] {
   return draftFor(ctx, 'clocky-timeoff-decided', ctx.aud.byId.get(x.personId), {

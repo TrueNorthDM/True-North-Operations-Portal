@@ -139,6 +139,8 @@ Import) and removes the My Hours hub. Pages guard with `requireSurface(key)`.
   `tc_entries`, `tc_submissions`, `tc_absence_requests`, `tc_entry_audit`,
   `tc_periods`, `tc_settings` (the admin blanket rule becomes read only);
   `db_protections_check()` watches all of it.
+- 114: two more history actions, `approve_period` and `return_period`
+  (Super Admins approve a sent timesheet, or return it with a reason).
 
 ### Clock panel: `src/app/(app)/clocky-hours/clock-actions.ts`
 
@@ -253,9 +255,18 @@ pay day is the Saturday a week after each period ends (not modelled).
 ## Status (Oct 16, 2026)
 
 On staging: foundation 3f2a3d2, screens f920d34, generated types e471760;
-migrations 112 and 113 applied to the staging database only. Production is
-unchanged. Promote order: code, then 112, then 113, then the timesheet setup
-below, then reinstall the crontab (adds the 5-minute clocky-safety job).
+migrations 112, 113 and 114 applied to the staging database only. Production is
+unchanged. Promote order: code, then 112, then 113, then 114, then the timesheet
+setup below, then reinstall the crontab (adds the 5-minute clocky-safety job).
+
+Full audit of Oct 20, 2026 (bca40ae, b9833c9 and the timesheet commit): about 30
+fixes; "Request time off" is out of the panel until its form is designed;
+Clocky > Import "Change the rules" keeps only time zone, week start and the
+import cutoff; Submit sends the oldest recent period with Clocky time not yet
+sent (periodToSubmit); Approvals shows sent timesheets to Super Admins
+(Approve, Return with a reason, Reopen with a reason; ck-reopen). New bell
+types: clocky-timeoff-decided, clocky-clocked-out-for,
+clocky-timesheet-submitted, clocky-timesheet-decided.
 
 Timesheet setup (applied to staging Oct 20, 2026; run on production right
 after 113, then check `db_protections_check()` is `{}`): the pay period start,
