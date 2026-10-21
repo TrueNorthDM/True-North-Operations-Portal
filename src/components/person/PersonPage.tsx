@@ -212,15 +212,14 @@ function TabPanel({ data, tab, canRemove, timesheet, cadenceActions, startEditin
     })
   }
 
-  // Edit work saves how they submit first (Super Admins), then the rest.
+  // Edit work saves the work details first, then how they submit (Super Admins):
+  // saving the details again is harmless, so a retry never records the cadence twice.
   function saveWorkTab(input: Parameters<typeof saveWork>[1], cadence: Cadence | null) {
     const changed = !!timesheet && !!cadence && cadence !== timesheet.cadence
     run(async () => {
-      if (changed) {
-        const r = await cadenceActions.setCadence({ personIds: [data.id], cadence: cadence! })
-        if (!r.ok) return r
-      }
-      return saveWork(data.id, input)
+      const w = await saveWork(data.id, input)
+      if (!w.ok || !changed) return w
+      return cadenceActions.setCadence({ personIds: [data.id], cadence: cadence! })
     }, changed ? `Saved. ${who} now submits ${cadence === 'biweekly' ? 'every 2 weeks' : 'monthly'}; Rates & Costs shows the same.` : undefined)
   }
 

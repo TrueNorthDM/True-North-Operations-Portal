@@ -99,3 +99,31 @@ describe('writes go through the server only (migration 113)', () => {
     }
   })
 })
+
+describe('the full audit of 20 October 2026', () => {
+  const entries = read('entries-actions.ts')
+
+  it('trims the other entry only after its own write went through', () => {
+    const add = body(entries, 'addTime')
+    expect(add.indexOf('trimOther?.()')).toBeGreaterThan(add.indexOf(".from('tc_entries').insert("))
+    const edit = body(entries, 'editEntry')
+    expect(edit.indexOf('await trimOther?.()')).toBeGreaterThan(edit.indexOf(".from('tc_entries').update("))
+    // A User's longer edit is refused before anything is written.
+    expect(edit.indexOf('fail(SHORTEN_ONLY)')).toBeLessThan(edit.indexOf('await trimOther?.()'))
+  })
+
+  it('submitting checks that the period really moved', () => {
+    expect(body(entries, 'submitPeriod')).toMatch(/if \(!moved\?\.length\)/)
+  })
+
+  it('the person hears when their time off is decided, or someone clocks them out', () => {
+    expect(body(read('approvals/actions.ts'), 'decideTimeOff')).toMatch(/announceTimeOffDecided\(/)
+    expect(body(read('whos-working/actions.ts'), 'clockOutFor')).toMatch(/announceClockedOutFor\(/)
+  })
+
+  it('a confirmed stop marks its bell row done, and Keep going names its row', () => {
+    const clock = read('clock-actions.ts')
+    expect(body(clock, 'confirmEnd')).toMatch(/type_key', 'clocky-stopped'\)\.eq\('dedupe_key', `stop:\$\{e\.id\}`\)/)
+    expect(body(clock, 'keepGoing')).toMatch(/input\?\.notificationId/)
+  })
+})

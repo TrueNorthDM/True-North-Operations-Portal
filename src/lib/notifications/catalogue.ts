@@ -238,6 +238,25 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {
+    key: 'clocky-timeoff-decided', src: 'Clocky · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Your requests', stat: 'requests decided', statOne: 'request decided',
+    example: { title: 'Dave Sharpe approved your time off', body: 'Vacation, Fri, Oct 16 (8h 00m).' },
+    title: 'Your time off was approved or denied',
+    description: 'A Super Admin decided your time off: approved, or denied with the reason. In the bell only.',
+    who: 'You', audience: { kind: 'everyone' },
+    button: { label: 'Open time entries', href: '/clocky-hours' },
+  },
+  {
+    key: 'clocky-clocked-out-for', src: 'Clocky · Who\'s working', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    timings: 'instant', section: 'Clock safety', stat: 'clocks ended for you', statOne: 'clock ended for you',
+    example: { title: 'Dave Sharpe clocked you out at 3:45 PM', body: 'Reason: "Forgot to clock out."' },
+    title: 'Someone clocked you out',
+    description: "A Super Admin ended your running clock from Who's working, with the reason. In the bell only.",
+    who: 'You', audience: { kind: 'everyone' },
+    // No address of its own: the row's, that entry's history.
+    button: { label: 'Open entry' },
+  },
+  {
     key: 'clocky-auto-stops', src: 'Clocky · daily summary', block: 'tools', icon: 'clocky', defaultTiming: 'daily', available: true,
     timings: 'daily', section: 'Clock safety', stat: 'automatic clock-outs', statOne: 'automatic clock-out',
     example: { title: '2 automatic clock-outs yesterday', body: 'Wendy Cacka, Justus Tsofa.' },

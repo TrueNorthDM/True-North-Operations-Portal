@@ -110,6 +110,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     ...initial,
   }))
   const [busy, setBusy] = useState(false)
+  // An entry opened from the submit window that sits outside the view: its form, delete and history still find it.
+  const [outside, setOutside] = useState<EntryView | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const [history, setHistory] = useState<{ key: string; data: HistoryData | null; error: string | null } | null>(null)
   const [submit, setSubmit] = useState<{ summary: SubmitSummary | null; error: string | null } | null>(null)
@@ -155,24 +157,28 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     const key = ui.drawer
     const id = Number(key.slice(1))
     const read = key.startsWith('c') ? api.getCorrectionHistory({ id }) : api.getEntryHistory({ id })
-    read.then(r => { if (!off) setHistory(r.ok ? { key, data: r.data, error: null } : { key, data: null, error: r.error }) })
+    read.then(r => { if (!off) setHistory(r.ok ? { key, data: r.data, error: null } : { key, data: null, error: r.error }) },
+      () => { if (!off) setHistory({ key, data: null, error: 'The history could not be read. Try again in a moment.' }) })
     return () => { off = true }
   }, [ui.drawer, api])
   const submitOpen = ui.modal?.kind === 'submit'
   useEffect(() => {
     if (!submitOpen) return
     let off = false
-    api.getSubmitSummary().then(r => { if (!off) setSubmit(r.ok ? { summary: r.data, error: null } : { summary: null, error: r.error }) })
+    api.getSubmitSummary().then(r => { if (!off) setSubmit(r.ok ? { summary: r.data, error: null } : { summary: null, error: r.error }) },
+      () => { if (!off) setSubmit({ summary: null, error: 'The period could not be read. Try again in a moment.' }) })
     return () => { off = true }
   }, [submitOpen, api])
 
+  // The timeline draws one day and the grid one week: another period goes back to the list.
+  const tabFor = (p: PeriodKind, t: EntriesUi['tab']): EntriesUi['tab'] => ((t === 'timeline' && p !== 'day') || (t === 'grid' && p !== 'week') ? 'list' : t)
   const today = localDate(new Date(nowMs), viewer.zone)
   const range = periodRange(ui.period, ui.anchor, data.anchors)
   const all = ui.who === 'all' && viewer.who !== null
   const rows = data.rows
   const shown = ui.attnOnly ? rows.filter(r => r.attention) : rows
   const totals = totalsOf(rows, nowMs)
-  const rowByKey = (k: string) => rows.find(r => r.key === k)
+  const rowByKey = (k: string) => rows.find(r => r.key === k) ?? (outside?.key === k ? outside : undefined)
   const me = { personId: viewer.personId, name: catalog.me.name, zone: viewer.zone }
 
   // ── Opening things ────────────────────────────────────────────────────────
@@ -199,9 +205,11 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     // From the submit window: the entry sits in the period, maybe outside the view.
     const s = submit?.summary
     if (!s) return
-    const res = await api.getEntries({ from: s.start, to: s.end, who: 'my' })
-    const found = res.ok ? res.data.rows.find(x => x.key === a.key) : undefined
-    if (found) openRow(found)
+    const res = await api.getEntries({ from: s.start, to: s.end, who: 'my' }).catch(() => null)
+    const found = res?.ok ? res.data.rows.find(x => x.key === a.key) : undefined
+    if (!found) return setSubmit({ summary: s, error: res && !res.ok ? res.error : 'That entry could not be found. Reload the page and try again.' })
+    setOutside(found)
+    openRow(found)
   }
 
   // ── Writing ───────────────────────────────────────────────────────────────
@@ -219,11 +227,16 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       ...(f.fix ? { fix: f.fix } : {}),
     }
   }
-  const saveForm = async (f: FormState) => {
+  // Every write: busy while it runs, and back again however it ends (a
+  // network error or a deploy mid-request rejects instead of answering).
+  const call = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     setBusy(true)
+    try { return await fn() } catch { say('That did not go through. Check your connection and try again.', true); return null } finally { setBusy(false) }
+  }
+  const saveForm = async (f: FormState) => {
     const body = bodyOf(f)
-    const r = f.id === null ? await api.addTime({ ...body, personId: f.personId }) : await api.editEntry({ ...body, id: f.id })
-    setBusy(false)
+    const r = await call(() => (f.id === null ? api.addTime({ ...body, personId: f.personId }) : api.editEntry({ ...body, id: f.id })))
+    if (!r) return
     if (r.ok) {
       setUi(u => ({ ...u, modal: null, drag: null }))
       say(r.toast)
@@ -244,9 +257,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const del = async (key: string, reason: string) => {
     const r = rowByKey(key)
     if (!r) return
-    setBusy(true)
-    const res = await api.deleteEntry({ id: r.id, reason })
-    setBusy(false)
+    const res = await call(() => api.deleteEntry({ id: r.id, reason }))
+    if (!res) return
     if (!res.ok) return say(res.error, true)
     setUi(u => ({ ...u, modal: null, drawer: null }))
     say(res.toast)
@@ -256,37 +268,36 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     const running = catalog.running ?? rows.find(x => x.personId === viewer.personId && x.running)
     const prev = rows.find(x => x.personId === viewer.personId && x.running)
     const input = { jobcodeId: r.jobcodeId!, fields: r.fields, notes: r.notes }
-    const res = running ? await api.switchTo(input) : await api.clockIn(input)
+    if (busy) return
+    const res = await call(async () => (running ? await api.switchTo(input) : await api.clockIn(input)))
+    if (!res) return
     if (!res.ok) return say(res.error, true)
     say(`Clock running: ${nameFor(r, catalog.combinations)}.${prev ? ` Switched from ${nameFor(prev, catalog.combinations)}.` : ''}`)
     reload()
   }
   const sendRequest = async (q: RequestState) => {
     const job = catalog.jobs.find(j => j.id === q.jobcodeId)
-    setBusy(true)
-    const r = await api.requestCorrection({
+    const r = await call(() => api.requestCorrection({
       date: q.date, start: hhmmOf(q.start), end: hhmmOf(q.end), jobcodeId: q.jobcodeId!,
       fields: fieldsOf(q.values, catalog.fields, !!job?.isI7), reason: q.reason.trim(),
-    })
-    setBusy(false)
+    }))
+    if (!r) return
     if (!r.ok) return setModal({ kind: 'request', rq: { ...q, error: r.error } })
     setModal(null)
     say(r.toast)
     reload()
   }
   const decideCorrection = async (r: EntryView, decision: 'approve' | 'deny', note?: string) => {
-    setBusy(true)
-    const res = await api.decideCorrection({ id: r.id, decision, note })
-    setBusy(false)
+    const res = await call(() => api.decideCorrection({ id: r.id, decision, note }))
+    if (!res) return
     if (!res.ok) return say(res.error, true)
     setModal(null)
     say(res.toast)
     reload()
   }
   const decideTimeOff = async (r: EntryView, decision: 'approve' | 'deny', note?: string) => {
-    setBusy(true)
-    const res = await api.decideTimeOff({ id: r.id, decision, note })
-    setBusy(false)
+    const res = await call(() => api.decideTimeOff({ id: r.id, decision, note }))
+    if (!res) return
     if (!res.ok) return say(res.error, true)
     setModal(null)
     say(decision === 'approve' ? `Time off approved. ${r.personName} gets a notification.` : `Time off denied. ${r.personName} gets the reason.`)
@@ -295,9 +306,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const doSubmit = async () => {
     const s = submit?.summary
     if (!s) return
-    setBusy(true)
-    const r = await api.submitPeriod({ start: s.start, end: s.end })
-    setBusy(false)
+    const r = await call(() => api.submitPeriod({ start: s.start, end: s.end }))
+    if (!r) return
     if (!r.ok) return setSubmit({ summary: r.attention ? { ...s, attention: r.attention } : s, error: r.error })
     setModal(null)
     say(r.toast)
@@ -324,12 +334,11 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   })
   const saveGrid = async (reason: string) => {
     const changes = gridChanges(grid, ui.gEdits).filter(c => c.source.jobcodeId !== null)
-    setBusy(true)
-    const r = await api.saveWeekGrid({
+    const r = await call(() => api.saveWeekGrid({
       personId: gridWho, weekStart: gridDays[0], reason,
       rows: changes.map(c => ({ jobcodeId: c.source.jobcodeId!, fields: c.source.fields, cells: c.cells })),
-    })
-    setBusy(false)
+    }))
+    if (!r) return
     if (!r.ok) { setModal(null); return say(r.error, true) }
     setUi(u => ({ ...u, modal: null, gEdits: {}, gExtra: [] }))
     say(r.toast)
@@ -386,7 +395,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           onRequestInstead={() => {
             const r = rowByKey(`e${m.form.id}`)
             const end = r?.end ? localMinutes(r.end, r.zone) : 15 * 60
-            openRequest({ date: m.form.date, start: r?.end ? end : 15 * 60, end: r?.end ? Math.min(end + 60, 23 * 60 + 45) : 16 * 60, jobcodeId: m.form.jobcodeId, values: m.form.values })
+            // Requests cover this week only (the server's rule): an older entry asks for today.
+            openRequest({ date: m.form.date >= addDays(today, -6) ? m.form.date : today, start: r?.end ? end : 15 * 60, end: r?.end ? Math.min(end + 60, 23 * 60 + 45) : 16 * 60, jobcodeId: m.form.jobcodeId, values: m.form.values })
           }} />
       )
     }
@@ -462,7 +472,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
         </button>
         <span className="w-px h-[26px] bg-[var(--panel-border)] mx-1" />
         <Segmented label="Period" display="px-3 py-1.5 text-[12.5px]" options={periods} value={ui.period}
-          onChange={k => go({ period: k, tab: k !== 'day' && ui.tab === 'timeline' ? 'list' : ui.tab })} />
+          onChange={k => go({ period: k, tab: tabFor(k, ui.tab) })} />
         <button type="button" onClick={() => go({ anchor: today })} className={BTN_SMALL}>Today</button>
         <div className="flex items-center gap-0.5 text-tn-ink">
           <button type="button" aria-label="Previous" onClick={() => go({ anchor: shiftAnchor(ui.period, ui.anchor, -1, data.anchors) })} className={ICON_BTN}><Icon d={ICON.left} size={16} width={2.4} /></button>
@@ -476,7 +486,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
           {ui.calOpen && (
             <div className={`${MENU} top-[38px] left-0 w-[214px] p-1.5 gap-px`}>
               {calendarWeeks(today).map(w => (
-                <button key={w.anchor} type="button" onClick={() => go({ anchor: w.anchor, period: 'week', calOpen: false })}
+                <button key={w.anchor} type="button" onClick={() => go({ anchor: w.anchor, period: 'week', tab: tabFor('week', ui.tab), calOpen: false })}
                   className={`border-0 text-left whitespace-nowrap rounded-[8px] px-2.5 py-2 font-(family-name:--font-display) font-semibold text-[13px] tabular-nums lining-nums ${w.current ? 'bg-tn-teal-soft text-tn-teal' : 'bg-transparent text-tn-ink hover:bg-subtle'}`}>
                   {w.label}
                 </button>
@@ -571,7 +581,11 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               addRowOpen={ui.addRowOpen} setAddRowOpen={open => setUi(u => ({ ...u, addRowOpen: open }))}
               onAddRow={s => setUi(u => ({ ...u, gExtra: [...u.gExtra, s], addRowOpen: false }))}
               onType={(k, text) => setUi(u => ({ ...u, gEdits: { ...u.gEdits, [k]: text } }))}
-              onSave={() => { if (!grid.error) setModal({ kind: 'grid-reason' }) }} />
+              onSave={() => {
+                if (grid.error) return
+                if (!gridChanges(grid, ui.gEdits).some(c => c.source.jobcodeId !== null)) return say('Nothing changed yet. Type the hours first.')
+                setModal({ kind: 'grid-reason' })
+              }} />
           )}
           {ui.tab === 'timeline' && (
             <DayTimeline day={ui.anchor} today={today} rows={rows} all={all} viewer={me} teams={data.teams} canAdd={leader}

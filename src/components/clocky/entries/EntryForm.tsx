@@ -45,7 +45,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   setForm: (patch: Partial<FormState>) => void
   catalog: Catalog
   /** The Person picker (Add time in All): everyone the viewer may add for. */
-  people: { id: string; name: string }[]
+  people: { id: string; name: string; zone: string }[]
   pickPerson: boolean
   leader: boolean
   viewerId: string
@@ -94,7 +94,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
       <div className="grid grid-cols-2 gap-3">
         {pickPerson && f.id === null
           ? <LabeledSelect label="Person" value={f.personId} search options={people.map(p => ({ value: p.id, label: p.name }))}
-              onChange={v => setForm({ personId: v, personName: people.find(p => p.id === v)?.name ?? '', error: null })} />
+              onChange={v => { const p = people.find(x => x.id === v); setForm({ personId: v, personName: p?.name ?? '', zone: p?.zone ?? f.zone, error: null }) }} />
           : <ReadOnlyField label="Person" value={f.personName} />}
         <LabeledSelect label="Use a combination" value={f.combo} options={comboOptions} placeholder="Fills the fields below"
           onChange={v => {

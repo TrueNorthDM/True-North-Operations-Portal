@@ -20,7 +20,7 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { audit, loadSubmissions, lockOn, overlapFor, snapshot, type EntryRow } from '@/lib/timeclock/clocky-store'
 import { countWaiting, loadApprovals } from '@/lib/timeclock/clocky-approvals'
-import { announceCorrectionDecided } from '@/lib/timeclock/clocky-notify'
+import { announceCorrectionDecided, announceTimeOffDecided } from '@/lib/timeclock/clocky-notify'
 import { REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
 import { formatDuration, recordedSeconds, roundSeconds } from '@/lib/timeclock/rounding'
 import { workingDays } from '@/lib/timeclock/absence'
@@ -187,6 +187,12 @@ export async function decideTimeOff(input: { id: number; decision: 'approve' | '
         return notSaved(e3)
       }
     }
+    // The person hears of it (the card's toast promises so).
+    await announceTimeOffDecided({
+      id: r.id, person_id: r.person_id, start_date: r.start_date, end_date: r.end_date,
+      kind: (await loadCatalog()).jobs.get(r.jobcode_id)?.short ?? 'Time off',
+      seconds: Math.round(days.length * Number(r.hours_per_day) * 3600),
+    }, v.personId, input.decision === 'approve', note)
     refresh()
     return { ok: true }
   } catch (e) {

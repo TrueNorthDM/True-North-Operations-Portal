@@ -15,6 +15,7 @@ import { countOnTheClock, loadWhosWorking } from '@/lib/timeclock/clocky-working
 import { timeLabel } from '@/lib/timeclock/format'
 import { END_AFTER_START, REASON_REQUIRED, reasonOf } from '@/lib/timeclock/entry-rules'
 import { canClockOutFor } from '@/lib/timeclock/scope'
+import { announceClockedOutFor } from '@/lib/timeclock/clocky-notify'
 import type { Fail, Result, WhosWorkingData } from '@/lib/timeclock/clocky-types'
 
 const NO_ACCESS = "Who's working is not open to your access."
@@ -86,6 +87,8 @@ export async function clockOutFor(input: { personId: string; end?: string; reaso
       entryId: closed.lastId, action: 'clocked_out_for', by: v.personId, reason, before: snapshot(e, catalog),
       after: snapshot({ ...e, ended_at: closed.recordedEnd, ended_at_real: closed.realEnd }, catalog, { split_ids: closed.ids }),
     }])
+    // The dialog says they get a notification: who, when and why.
+    await announceClockedOutFor({ entryId: closed.lastId, personId, byId: v.personId, endedAt: closed.recordedEnd, reason })
     revalidatePath('/clocky-hours')
     return { ok: true, toast: `${dir.nameOf(personId)} clocked out at ${timeLabel(end, v.zone)}. Marked "Clocked out by ${v.name}".` }
   } catch (e) {

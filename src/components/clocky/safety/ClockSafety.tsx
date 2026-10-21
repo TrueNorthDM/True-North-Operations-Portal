@@ -119,7 +119,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
       {occ.length === 0 ? (
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-14 flex flex-col items-center gap-2.5 text-center">
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-3 8-9V6l-8-3-8 3v7c0 6 8 9 8 9zM9 12l2 2 4-4" /></svg>
-          <p className="m-0 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">No automatic clock-outs in this period.</p>
+          <p className="m-0 font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{q.trim() ? `Nobody matches "${q.trim()}" in this period.` : 'No automatic clock-outs in this period.'}</p>
         </div>
       ) : (
         <>

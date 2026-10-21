@@ -236,9 +236,12 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
 
   /** Asks first when someone's timesheet changes (the dates it takes effect), then about the rates. */
   async function save() {
+    if (saving) return
     setError(null)
     if (cadChanged.length) {
-      const items = await cadenceItems()
+      setSaving(true)
+      const items = await cadenceItems().catch(() => { setError('The changes could not be checked. Try again in a moment.'); return null })
+      setSaving(false)
       if (items) setCadDialog(items)
       return
     }
@@ -273,6 +276,8 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
       if (!ids.length) continue
       const r = await cadenceActions.setCadence({ personIds: ids, cadence: to })
       if (!r.ok) { setSaving(false); setError(r.error); return }
+      // Saved: out of the draft, so Confirm again only sends what is left.
+      setCadDraft(d => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.includes(id))))
     }
     const n = cadChanged.length
     setSaving(false)
@@ -386,7 +391,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
               { key: 'monthly', label: `Monthly · ${people.filter(p => cadOf(p.id) === 'monthly').length}` },
               { key: 'biweekly', label: `Every 2 weeks · ${people.filter(p => cadOf(p.id) === 'biweekly').length}` },
               // Only while someone has none yet: they were added before it became required.
-              ...(people.some(p => cadOf(p.id) === null) ? [{ key: 'unset' as const, label: `Not set · ${people.filter(p => cadOf(p.id) === null).length}` }] : []),
+              ...(people.some(p => cadOf(p.id) === null) || cadF === 'unset' ? [{ key: 'unset' as const, label: `Not set · ${people.filter(p => cadOf(p.id) === null).length}` }] : []),
             ]}
             display="px-3 py-[7px] text-[12.5px]"
             value={cadF}

@@ -62,6 +62,8 @@ export function WhosWorkingPanel({
   const [closed, setClosed] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A successful Refresh here answers the parent's failed first read too.
+  const [readSince, setReadSince] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const set = (patch: Partial<WorkingUi>) => setUi(u => ({ ...u, ...patch }))
@@ -105,7 +107,7 @@ export function WhosWorkingPanel({
   const reload = async (): Promise<boolean> => {
     try {
       const r = await api.load()
-      if (r.ok) { onData(r.data); setError(null); return true }
+      if (r.ok) { onData(r.data); setError(null); setReadSince(true); return true }
       setError(r.error)
     } catch {
       setError("Who's working could not be read. Try again in a moment.")
@@ -172,7 +174,7 @@ export function WhosWorkingPanel({
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto pt-1.5 px-2.5 pb-4">
-          {(error || loadError) && (
+          {(error || (loadError && !readSince)) && (
             <div role="alert" className="mx-2 mt-2 rounded-[11px] bg-[#fdeeef] border border-[#f3c6ca] px-3 py-2.5 text-[12.5px] text-[#c8323d] font-bold leading-[1.4]">{error ?? loadError}</div>
           )}
           {groups.map(g => {

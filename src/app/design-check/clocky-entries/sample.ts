@@ -374,7 +374,7 @@ export function entriesData(store: Store, q: { from: string; to: string; who: 'm
   for (const r of work) byClient.set(r.client, (byClient.get(r.client) ?? 0) + r.seconds)
   const all = q.who === 'all'
   const attention = attentionOrder(rows.filter(r => r.attention)).map(r => attentionItem(r, all))
-  const people = PEOPLE.filter(p => level !== 'user' && inScope(p.n)).map(p => ({ id: pid(p.n), name: p.n, teamIds: p.t ? [tid(p.t)] : [], cadence: ((store.cad[p.n] ?? (CAD.has(p.n) ? 'biweekly' : 'monthly')) === 'biweekly' ? 'biweekly' : 'monthly') as 'biweekly' | 'monthly' })).sort((a, b) => a.name.localeCompare(b.name))
+  const people = PEOPLE.filter(p => level !== 'user' && inScope(p.n)).map(p => ({ id: pid(p.n), name: p.n, zone: zoneOf(p.n), teamIds: p.t ? [tid(p.t)] : [], cadence: ((store.cad[p.n] ?? (CAD.has(p.n) ? 'biweekly' : 'monthly')) === 'biweekly' ? 'biweekly' : 'monthly') as 'biweekly' | 'monthly' })).sort((a, b) => a.name.localeCompare(b.name))
   const teamIds = new Set(people.flatMap(p => p.teamIds))
   const sp = submitPeriodOf(level, store.cad)
   const mine = store.recs.filter(x => x.who === me && x.kind === 'work' && x.date >= sp.start && x.date <= sp.end)

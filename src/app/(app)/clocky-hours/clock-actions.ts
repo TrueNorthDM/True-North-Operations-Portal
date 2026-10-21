@@ -345,16 +345,28 @@ export async function saveRunningDetails(input: Finish): Promise<Result<{ missin
   }
 }
 
-/** "Keep going" (1I, N1): a new 5-hour window from now. The bell's row says so. */
-export async function keepGoing(): Promise<Result<{ windowStartedAt: string; toast: string; toastFromBell: string }>> {
+/**
+ * "Keep going" (1I, N1): a new 5-hour window from now. The bell's row says so.
+ * From the bell it names its row: an older "Still working?" (its clock already
+ * stopped or went on) is only marked read, never applied to today's clock.
+ */
+export async function keepGoing(input?: { notificationId?: string }): Promise<Result<{ windowStartedAt: string; toast: string; toastFromBell: string; done: string }>> {
   const v = await actor()
   if (isFail(v)) return v
   try {
     const now = new Date()
     const c = db()
     const cur = await running(v, now)
-    if (isFail(cur)) return cur
-    const old = windowStart(cur) ?? cur.started_at!
+    const old = isFail(cur) ? null : windowStart(cur) ?? cur.started_at!
+    if (input?.notificationId) {
+      const { data: row } = await c.from('notifications').select('dedupe_key')
+        .eq('id', input.notificationId).eq('person_id', v.personId).eq('type_key', 'clocky-still-working').maybeSingle()
+      if (!row || (row as { dedupe_key: string | null }).dedupe_key !== old) {
+        await c.from('notifications').update({ read_at: now.toISOString() }).eq('id', input.notificationId).eq('person_id', v.personId)
+        return fail('That reminder is for an earlier clock, so there is nothing to keep going.')
+      }
+    }
+    if (isFail(cur) || !old) return isFail(cur) ? cur : fail(NOT_CLOCKED_IN)
     const { error, data } = await c.from('tc_entries').update({ window_started_at: now.toISOString(), updated_at: now.toISOString() })
       .eq('id', cur.id).is('ended_at', null).select('id')
     if (error) return notSaved(error)
@@ -370,7 +382,7 @@ export async function keepGoing(): Promise<Result<{ windowStartedAt: string; toa
       .eq('person_id', v.personId).eq('type_key', 'clocky-still-working').eq('dedupe_key', old)
     if (note.error) console.error('[clocky clock] still working row:', note.error.message)
     refresh()
-    return { ok: true, windowStartedAt: now.toISOString(), toast: KEEP_GOING_TOAST_PANEL, toastFromBell: KEEP_GOING_TOAST_BELL }
+    return { ok: true, windowStartedAt: now.toISOString(), toast: KEEP_GOING_TOAST_PANEL, toastFromBell: KEEP_GOING_TOAST_BELL, done: keptGoingNote(now, v.zone) }
   } catch (e) {
     return notSaved(e)
   }
@@ -421,6 +433,11 @@ export async function confirmEnd(input: { entryId: number; end: string; stillWor
     const ev = await c.from('tc_safety_events').update({ confirmed_end_at: new Date(t).toISOString(), confirmed_at: at, flagged: later })
       .eq('entry_id', e.id).eq('kind', 'auto_stop')
     if (ev.error) console.error('[clocky clock] safety confirm:', ev.error.message)
+    // The "clock stopped" row in the bell shows it is done, and its button goes.
+    const toastText = `End time confirmed: ${timeLabel(new Date(t), v.zone)}.`
+    const note = await c.from('notifications').update({ done_note: toastText, read_at: at })
+      .eq('person_id', v.personId).eq('type_key', 'clocky-stopped').eq('dedupe_key', `stop:${e.id}`)
+    if (note.error) console.error('[clocky clock] stopped row:', note.error.message)
     await audit(c, [{
       entryId: e.id, action: 'confirm_end', by: v.personId, before: snapshot(e, catalog),
       after: snapshot({ ...e, ended_at: end, ended_at_real: new Date(t).toISOString() }, catalog, { split_ids: ids }),
@@ -430,7 +447,7 @@ export async function confirmEnd(input: { entryId: number; end: string; stillWor
     refresh()
     return {
       ok: true, recordedEnd: end, flagged: later,
-      toast: `End time confirmed: ${timeLabel(new Date(t), v.zone)}. Today ${formatDuration(day)}.${later ? ' Flagged for the approver.' : ''}`,
+      toast: `${toastText} Today ${formatDuration(day)}.${later ? ' Flagged for the approver.' : ''}`,
     }
   } catch (e) {
     return notSaved(e)
@@ -503,18 +520,23 @@ export async function deleteCombination(input: { id: number }): Promise<Result<{
   }
 }
 
-/** The person's order (1K, drag to reorder): every one of their combinations, once. */
+/**
+ * The person's order (1K, drag to reorder): the combinations the panel shows,
+ * each once. One whose job is no longer selectable is not shown there, so it
+ * keeps its place after the others instead of blocking the save.
+ */
 export async function reorderCombinations(input: { ids: number[] }): Promise<Result> {
   const v = await actor()
   if (isFail(v)) return v
   try {
     const c = db()
     const mine = await loadCombos(c, v.personId)
-    const ids = (input.ids ?? []).map(Number)
+    const shown = (input.ids ?? []).map(Number)
     const known = new Set(mine.map(x => x.id))
-    if (ids.length !== known.size || new Set(ids).size !== ids.length || ids.some(id => !known.has(id))) {
+    if (!shown.length || new Set(shown).size !== shown.length || shown.some(id => !known.has(id))) {
       return fail('Your combinations changed in the meantime. Reload and try again.')
     }
+    const ids = [...shown, ...mine.map(x => x.id).filter(id => !shown.includes(id))]
     for (let i = 0; i < ids.length; i++) {
       const { error } = await c.from('tc_combinations').update({ position: i }).eq('id', ids[i]).eq('person_id', v.personId)
       if (error) return notSaved(error)

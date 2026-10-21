@@ -50,7 +50,7 @@ export const PANEL_UI: PanelUi = {
   modal: null, save: null, back: false, later: false, autoEnd: null,
 }
 
-export interface Toast { text: string; undo?: number }
+export interface Toast { text: string; undo?: number; error?: boolean }
 
 const subscribeOnline = (cb: () => void) => {
   window.addEventListener('online', cb)
@@ -268,7 +268,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   }
 
   const openSave = (src: { jobId: number; values: Record<string, string>; notes: string; name?: string | null; editing?: number | null }, back = false) =>
-    set({ modal: 'save', save: saveDraftFrom(data, src), back })
+    { setError(null); set({ modal: 'save', save: saveDraftFrom(data, src), back }) }
 
   const saveCombo = () => {
     const s = ui.save
@@ -348,13 +348,13 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
         {error && error !== lockedLine && <ErrorBanner text={error} />}
 
         {mode === 'off' && (
-          <OffView data={data} phone={phone} more={ui.more} busy={busy} query={ui.query}
+          <OffView data={data} phone={phone} more={ui.more} busy={busy || !!lockedLine} query={ui.query}
             onQuery={q => set({ query: q, view: 'choose', browse: null })}
             onToggleMore={() => set({ more: !ui.more })}
             onResume={() => data.resume && startWith(data.resume)}
             onStart={c => startWith(c)}
             onSave={c => openSave({ jobId: c.jobcodeId, values: c.fields, notes: c.notes })}
-            onManage={() => set({ modal: 'manage' })}
+            onManage={() => { setError(null); set({ modal: 'manage' }) }}
             onBrowse={() => set({ view: 'choose', browse: null, query: '' })} />
         )}
 
@@ -366,7 +366,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
         )}
 
         {mode === 'details' && ui.draft && (
-          <DetailsView data={data} draft={ui.draft} switching={ui.ret === 'switch'} busy={busy}
+          <DetailsView data={data} draft={ui.draft} switching={ui.ret === 'switch'} busy={busy || !!lockedLine}
             onChangeJob={() => set({ view: 'choose', draft: null })}
             onField={setDraftField}
             onNotes={v => ui.draft && set({ draft: { ...ui.draft, notes: v } })}
@@ -381,7 +381,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
             notes={notes} noteStatus={noteStatus} noteError={noteSt?.error ?? null}
             onKeepGoing={() => void run(() => api.keepGoing(), async r => { toast({ text: r.toast }); await refresh() })}
             onClockOut={clockOut}
-            onEditKey={k => set({ editKey: k })}
+            onEditKey={k => set({ editKey: ui.editKey === k ? null : k })}
             onField={onField}
             onNotes={onNotes}
             onNotesCommit={onNotesBlur}
@@ -406,7 +406,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
           {mode === 'off' && (
             <>
               {phone !== false && data.resume && (
-                <button type="button" onClick={() => data.resume && startWith(data.resume)} disabled={busy}
+                <button type="button" onClick={() => data.resume && startWith(data.resume)} disabled={busy || !!lockedLine}
                   className={`${phone === 'css' ? 'md:hidden ' : ''}w-full h-[58px] flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] cursor-pointer shadow-[0_8px_18px_-8px_rgba(1,35,88,.55)] disabled:opacity-60 ${FOCUS}`}>
                   <PlayIcon size={15} color={BTN_ICON.navy} />{`Clock in · ${data.resume.name || data.resume.path}`}
                 </button>
@@ -434,17 +434,17 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     </Shell>
       {/* Over the whole window (or the design check's frame), not only the panel. */}
       {ui.modal === 'save' && ui.save && (
-        <SaveComboModal data={data} save={ui.save} busy={busy} contained={contained}
+        <SaveComboModal data={data} save={ui.save} busy={busy} error={error} contained={contained}
           onChange={s => set({ save: s })}
-          onClose={() => set({ modal: ui.back ? 'manage' : null, save: null, back: false })}
+          onClose={() => { setError(null); set({ modal: ui.back ? 'manage' : null, save: null, back: false }) }}
           onSave={saveCombo} />
       )}
       {ui.modal === 'manage' && (
-        <ManageCombosModal combinations={data.combinations} contained={contained}
-          onReorder={ids => void run(() => api.reorderCombinations({ ids }), async () => { await refresh() })}
+        <ManageCombosModal combinations={data.combinations} busy={busy} error={error} contained={contained}
+          onReorder={ids => run(() => api.reorderCombinations({ ids }), async () => { await refresh() }).then(r => r.ok)}
           onEdit={c => openSave({ jobId: c.jobcodeId, values: c.fields, notes: c.notes, name: c.name, editing: c.combinationId }, true)}
           onDelete={c => void deleteCombo(c)}
-          onClose={() => set({ modal: null })} />
+          onClose={() => { setError(null); set({ modal: null }) }} />
       )}
       {confirmDialog}
     </>

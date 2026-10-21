@@ -63,25 +63,30 @@ export function Approvals({ initialData, api, initial }: {
 
   const decide = async (r: ApprovalRow, decision: 'approve' | 'deny', note?: string, fromCard = false) => {
     setBusy(true)
-    if (r.type === 'correction') {
-      const res = await api.decideCorrection({ id: r.id, decision, note })
-      setBusy(false)
-      if (!res.ok) {
-        // The time ran into an entry since the list was read: the review says so.
-        if (res.overlap) { setModal({ kind: 'review', key: r.key, deny: false }); setData(d => ({ ...d, waiting: d.waiting.map(x => (x.key === r.key ? { ...x, overlap: res.error } : x)) })); return }
-        return say(res.error, true)
+    try {
+      if (r.type === 'correction') {
+        const res = await api.decideCorrection({ id: r.id, decision, note })
+        if (!res.ok) {
+          // The time ran into an entry since the list was read: the review says so.
+          if (res.overlap) { setModal({ kind: 'review', key: r.key, deny: false }); setData(d => ({ ...d, waiting: d.waiting.map(x => (x.key === r.key ? { ...x, overlap: res.error } : x)) })); return }
+          return say(res.error, true)
+        }
+        setModal(null)
+        say(res.toast)
+      } else {
+        const res = await api.decideTimeOff({ id: r.id, decision, note })
+        if (!res.ok) return say(res.error, true)
+        setModal(null)
+        const who = fromCard ? r.name : first(r.name)
+        say(decision === 'approve' ? `Time off approved. ${who} gets a notification.` : `Time off denied. ${who} gets the reason.`)
       }
-      setModal(null)
-      say(res.toast)
-    } else {
-      const res = await api.decideTimeOff({ id: r.id, decision, note })
+      void reload()
+    } catch {
+      // A network error or a deploy mid-request: the buttons must come back.
+      say('That did not go through. Check your connection and try again.', true)
+    } finally {
       setBusy(false)
-      if (!res.ok) return say(res.error, true)
-      setModal(null)
-      const who = fromCard ? r.name : first(r.name)
-      say(decision === 'approve' ? `Time off approved. ${who} gets a notification.` : `Time off denied. ${who} gets the reason.`)
     }
-    void reload()
   }
   const approve = (r: ApprovalRow) => (r.overlap ? setModal({ kind: 'review', key: r.key, deny: false }) : void decide(r, 'approve'))
   const open = (r: ApprovalRow) => {
@@ -120,7 +125,9 @@ export function Approvals({ initialData, api, initial }: {
           {rows.map(r => {
             const isOff = r.type === 'time_off'
             return (
-              <div key={r.key} onClick={() => open(r)} className="flex flex-wrap gap-x-[22px] gap-y-3 items-center px-[18px] py-4 bg-white cursor-pointer hover:bg-[var(--row-hover)]">
+              <div key={r.key} role="button" tabIndex={0} aria-label={`${r.name}, ${isOff ? 'time off' : 'time correction'}: open`} onClick={() => open(r)}
+                onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(r) } }}
+                className="flex flex-wrap gap-x-[22px] gap-y-3 items-center px-[18px] py-4 bg-white cursor-pointer hover:bg-[var(--row-hover)] focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2">
                 <div className="flex-[1_1_180px] flex items-center gap-[11px] min-w-0">
                   <span className="flex-none w-9 h-9 rounded-full bg-tn-primary text-[#ffffff] text-[12px] font-bold flex items-center justify-center">{r.initials}</span>
                   <div className="min-w-0 flex flex-col gap-[3px]">

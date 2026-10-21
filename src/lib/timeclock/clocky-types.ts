@@ -272,7 +272,8 @@ export interface EntriesData {
   }
   attention: AttentionItem[]
   /** The Team member picker, in scope, with each person's cadence. */
-  people: { id: string; name: string; teamIds: string[]; cadence: Cadence }[]
+  /** The people the viewer may see, each with their own time zone (a form for them reads in it). */
+  people: { id: string; name: string; zone: string; teamIds: string[]; cadence: Cadence }[]
   teams: { id: string; name: string; color: string | null }[]
   /** The viewer's own current period and where it stands (the Submit button). */
   submit: { start: string; end: string; kind: Period['kind']; label: string; full: string; state: string | null; submitted: boolean }

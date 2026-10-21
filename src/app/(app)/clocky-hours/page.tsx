@@ -52,8 +52,11 @@ export default async function TimeEntriesPage({ searchParams }: { searchParams: 
     )
   }
   const { me, now, jobs, fields, defaults, combinations, correctionGoesTo, running } = panel.data
+  // Keyed by the address: a link to another person or entry, followed from this
+  // page (the Who's working drawer, the bell), starts the screen afresh.
   return (
     <TimeEntriesLive
+      key={`${member ?? 'me'}-${openEntry ?? ''}`}
       initialData={entries.data}
       openEntry={openEntry}
       member={member}

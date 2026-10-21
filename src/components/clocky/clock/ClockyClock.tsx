@@ -88,9 +88,9 @@ export function ClockyClock({
     showToast(null)
     try {
       const r = await api.undoClockOut({ entryId })
-      if (!r.ok) showToast({ text: r.error })
+      if (!r.ok) showToast({ text: r.error, error: true })
     } catch {
-      showToast({ text: 'Not saved yet. Will retry when you are back online.' })
+      showToast({ text: 'Not saved yet. Will retry when you are back online.', error: true })
     }
     await refresh()
   }
@@ -136,7 +136,7 @@ export function ClockyClock({
           initialUi={initialUi} forceOffline={forceOffline} onClose={() => onOpenChange(false)} refresh={refresh} toast={showToast} closeRef={btn} />
       )}
       {toast && (
-        <ClockToast text={toast.text} contained={frameTop != null} phone={phone}
+        <ClockToast text={toast.text} error={toast.error} contained={frameTop != null} phone={phone}
           onUndo={toast.undo != null ? () => void undo(toast.undo!) : undefined} />
       )}
     </>

@@ -58,7 +58,7 @@ export interface NotificationItem {
 }
 
 /** What "Keep going" answers: the bell's toast, or why it was refused. */
-export type KeepGoing = () => Promise<{ ok: true; toastFromBell: string; done?: string } | { ok: false; error: string }>
+export type KeepGoing = (input: { notificationId: string }) => Promise<{ ok: true; toastFromBell: string; done: string } | { ok: false; error: string }>
 
 /** Where a clock row's "Confirm end time" goes: the top bar opens the clock panel on it. */
 export const CLOCK_PANEL_HREF = '/clocky-hours?clock=open'
@@ -232,13 +232,12 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
                     if (b.action === 'keep-going') {
                       setBusy(i.id)
                       setError(null)
-                      keepGoing().catch(() => ({ ok: false as const, error: 'Not saved. Try again in a moment.' })).then(res => {
+                      keepGoing({ notificationId: i.id }).catch(() => ({ ok: false as const, error: 'Not saved. Try again in a moment.' })).then(res => {
                         setBusy(null)
                         if (!res.ok) { setError(res.error); return }
                         // The server marked the row read and wrote what was done; the refresh brings it.
                         onRead([i.id])
-                        const note = 'done' in res ? res.done : undefined
-                        if (note) setDoneHere(d => ({ ...d, [i.id]: note }))
+                        setDoneHere(d => ({ ...d, [i.id]: res.done }))
                         setToast(res.toastFromBell)
                         router.refresh()
                       })
@@ -322,6 +321,8 @@ export function clockyTone(i: Pick<NotificationItem, 'type' | 'who'>): { d: stri
     case 'clocky-correction-requested':
     case 'clocky-timeoff-requested': return { d: ICON.request, ...WARN }
     // One type for both answers: the sentence says which (lib/timeclock/notify-text.ts).
+    case 'clocky-clocked-out-for': return { d: ICON.stop, ...WARN }
+    case 'clocky-timeoff-decided':
     case 'clocky-correction-decided': return / denied your /.test(i.who)
       ? { d: ICON.no, ...DANGER }
       : { d: ICON.ok, bg: 'var(--ok-bg)', fg: 'var(--ok-fg)' }

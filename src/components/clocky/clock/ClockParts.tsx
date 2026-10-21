@@ -234,15 +234,23 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
   action: 'play' | 'swap'
   actionLabel: string
   onGo: () => void
-  onStar: () => void
+  /** Recent rows only: save it as a combination. */
+  onStar?: () => void
   disabled?: boolean
 }) {
   return (
     <div className={`group relative flex items-center gap-2.5 rounded-[11px] hover:bg-[var(--row-hover)] ${byWidth(phone, 'py-[13px] px-2.5', 'py-[9px] px-2', 'py-[13px] px-2.5 md:py-[9px] md:px-2')}`}>
-      <button type="button" onClick={onStar} title={saved ? 'Saved combination' : 'Save as combination'} aria-label={saved ? `${title}, saved combination` : `Save ${title} as a combination`}
-        className={`relative z-[1] shrink-0 w-[26px] h-[26px] border-0 bg-transparent p-0 rounded-[7px] flex items-center justify-center hover:bg-subtle ${saved ? 'cursor-default' : 'cursor-pointer'} ${FOCUS}`}>
-        <Icon d={ICON.star} size={16} fill={saved ? '#F2C40A' : 'none'} stroke={saved ? '#d9a400' : '#8593a4'} sw={1.8} cap="butt" />
-      </button>
+      {/* A saved combination's star is only a mark (Manage changes it); a recent row's star saves it. */}
+      {saved ? (
+        <span title="Saved combination" className="relative z-[1] shrink-0 w-[26px] h-[26px] rounded-[7px] flex items-center justify-center">
+          <Icon d={ICON.star} size={16} fill="#F2C40A" stroke="#d9a400" sw={1.8} cap="butt" />
+        </span>
+      ) : (
+        <button type="button" onClick={onStar} title="Save as combination" aria-label={`Save ${title} as a combination`}
+          className={`relative z-[1] shrink-0 w-[26px] h-[26px] border-0 bg-transparent p-0 rounded-[7px] flex items-center justify-center hover:bg-subtle cursor-pointer ${FOCUS}`}>
+          <Icon d={ICON.star} size={16} fill="none" stroke="#8593a4" sw={1.8} cap="butt" />
+        </button>
+      )}
       <button type="button" onClick={onGo} disabled={disabled} title={action === 'play' ? 'Clock in with this' : 'Switch to this'} aria-label={`${actionLabel} ${title}`}
         className={`flex-1 min-w-0 flex items-center gap-2.5 border-0 bg-transparent p-0 text-left cursor-pointer disabled:cursor-wait after:absolute after:inset-0 after:rounded-[11px] after:content-[''] ${FOCUS}`}>
         <span className="flex-1 min-w-0">
@@ -259,7 +267,7 @@ export function ChoiceRowView({ title, sub, saved, phone, action, actionLabel, o
 
 // ── The toast ───────────────────────────────────────────────────────────────
 
-export function ClockToast({ text, onUndo, contained, phone }: { text: string; onUndo?: () => void; contained?: boolean; phone?: Phone }) {
+export function ClockToast({ text, error, onUndo, contained, phone }: { text: string; error?: boolean; onUndo?: () => void; contained?: boolean; phone?: Phone }) {
   return (
     // In the app the height follows the window width in CSS, so it is right
     // from the first paint. On a phone it sits about 8px above the big Clock in
@@ -267,7 +275,10 @@ export function ClockToast({ text, onUndo, contained, phone }: { text: string; o
     // 19 October 2026); 24px from the bottom from md up.
     <div role="status" style={contained ? { bottom: phone === true ? 140 : 24 } : undefined}
       className={`${contained ? 'absolute' : 'fixed bottom-[140px] md:bottom-6'} left-1/2 -translate-x-1/2 z-[80] flex items-center gap-3 bg-tn-primary text-[#ffffff] rounded-[12px] px-4 py-3 text-[13px] font-semibold leading-[1.4] shadow-[0_18px_40px_-14px_rgba(1,35,88,.6)] w-max max-w-[calc(100%-16px)] md:max-w-[calc(100%-32px)] tabular-nums lining-nums`}>
-      <Icon d={ICON.check} size={16} stroke="#1E9E6A" sw={3} className="shrink-0" />
+      {/* A failure (an Undo refused) never wears the green check. */}
+      {error
+        ? <Icon d={ICON.warn} size={16} stroke="#F2C40A" sw={2.4} className="shrink-0" />
+        : <Icon d={ICON.check} size={16} stroke="#1E9E6A" sw={3} className="shrink-0" />}
       <span>{text}</span>
       {onUndo && (
         <button type="button" onClick={onUndo} className={`border-0 bg-transparent text-[#F2C40A] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer pl-1 ${FOCUS}`}>Undo</button>

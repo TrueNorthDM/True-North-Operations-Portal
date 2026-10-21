@@ -12,13 +12,13 @@
 import { headers } from 'next/headers'
 import {
   notifyClockyCorrectionDecided, notifyClockyCorrectionRequested, notifyClockyStillWorking,
-  notifyClockyStopped, notifyClockyTimeOffRequested,
+  notifyClockyStopped, notifyClockyTimeOffRequested, notifyClockyTimeOffDecided, notifyClockyClockedOutFor,
 } from '@/lib/notifications/run'
 import type { Db } from '@/lib/supabase/types'
 import { loadDirectory } from './clocky-context'
 import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
-import { correctionDecidedText, correctionRequestedText, timeOffRequestedText } from './notify-text'
+import { clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText } from './notify-text'
 import { stillWorkingText, stopWhen, stoppedText } from './safety'
 import type { AutoStop } from './clocky-store'
 
@@ -93,6 +93,29 @@ export async function announceTimeOffRequested(r: { id: number; person_id: strin
       requestId: r.id,
       personId: r.person_id,
       text: timeOffRequestedText(dir.nameOf(r.person_id), r.kind, r.start_date, r.end_date, r.seconds),
+    })
+  })
+}
+
+export async function announceTimeOffDecided(r: { id: number; person_id: string; start_date: string; end_date: string; kind: string; seconds: number }, deciderId: string, approved: boolean, note: string | null): Promise<void> {
+  await quiet('time off decided', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyTimeOffDecided({
+      requestId: r.id,
+      personId: r.person_id,
+      text: timeOffDecidedText(dir.nameOf(deciderId), r.kind, r.start_date, r.end_date, r.seconds, approved, note),
+    })
+  })
+}
+
+/** 2E: the person whose clock someone else ended hears who, when (in their own zone) and why. */
+export async function announceClockedOutFor(x: { entryId: number; personId: string; byId: string; endedAt: string; reason: string }): Promise<void> {
+  await quiet('clocked out for', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyClockedOutFor({
+      entryId: x.entryId,
+      personId: x.personId,
+      text: clockedOutForText(dir.nameOf(x.byId), timeLabel(x.endedAt, dir.zoneOf(x.personId)), x.reason),
     })
   })
 }

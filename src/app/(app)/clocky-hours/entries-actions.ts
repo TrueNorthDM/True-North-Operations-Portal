@@ -179,7 +179,8 @@ function parseTimes(t: TimesInput, zone: string, now: Date, allowNow: boolean): 
     return { kind: 'range', start, end: null }
   }
   const e = hhmm(t.end)
-  const endAt = e ? instantOf(t.date, e, zone) : null
+  // An end of 12:00 AM is the midnight that closes the day, as the form reads it (formSpan).
+  const endAt = e ? instantOf(e === '00:00' ? addDays(t.date, 1) : t.date, e, zone) : null
   if (!endAt) return fail('Pick an end time.')
   const end = roundIso(endAt)
   if (Date.parse(end) <= Date.parse(start)) return fail(END_AFTER_START)
@@ -195,13 +196,15 @@ const overlapInfo = (o: Awaited<ReturnType<typeof overlapFor>>, catalog: Catalog
 
 /**
  * The overlap check (3E's red line), and 3F's fix when one was chosen: trim
- * the other entry (saved here, with the same reason) or this one (the span
- * that comes back). Never saves an overlap.
+ * the other entry or this one (the span that comes back). Trimming the other
+ * comes back as `trimOther`, which the caller runs, with the same reason, only
+ * once its own write went through: a refused or failed save leaves the other
+ * entry as it was. Never saves an overlap.
  */
 async function resolveOverlap(
   v: Viewer, personId: string, span: { start: string; end: string | null }, exclude: number[],
   fix: EntryInput['fix'], reason: string, now: Date,
-): Promise<{ start: string; end: string | null } | Fail> {
+): Promise<{ start: string; end: string | null; trimOther?: () => Promise<void> } | Fail> {
   const c = db()
   const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
   const zone = dir.zoneOf(personId)
@@ -226,16 +229,22 @@ async function resolveOverlap(
   if (lock) return fail(lockedMessage(lock))
   const r = trimOther({ start: span.start, end: span.end }, { start: other.started_at!, end: other.ended_at })
   if (!r) return fail(NOTHING_LEFT)
-  const at = new Date().toISOString()
-  await rewriteSpan(c, other, r.start, r.end, zone, {
-    edited_by: v.personId, edited_at: at, ...(other.source === 'tsheets' ? { changed_here_at: at } : {}),
-  })
-  await audit(c, [{
-    entryId: other.id, action: 'trim', by: v.personId, reason,
-    before: snapshot(other, catalog), after: snapshot({ ...other, started_at: r.start, ended_at: r.end, duration_seconds: recordedSeconds(r.start, r.end) }, catalog),
-  }])
-  const again = await overlapFor(c, personId, span, exclude, now)
-  return again ? refuse(again) : span
+  // Trimmed, the other no longer meets this span: anything else still would.
+  const again = await overlapFor(c, personId, span, [...exclude, other.id], now)
+  if (again) return refuse(again)
+  return {
+    ...span,
+    trimOther: async () => {
+      const at = new Date().toISOString()
+      await rewriteSpan(c, other, r.start, r.end, zone, {
+        edited_by: v.personId, edited_at: at, ...(other.source === 'tsheets' ? { changed_here_at: at } : {}),
+      })
+      await audit(c, [{
+        entryId: other.id, action: 'trim', by: v.personId, reason,
+        before: snapshot(other, catalog), after: snapshot({ ...other, started_at: r.start, ended_at: r.end, duration_seconds: recordedSeconds(r.start, r.end) }, catalog),
+      }])
+    },
+  }
 }
 
 // ── Add, edit, delete (3E, 3F, 3I) ──────────────────────────────────────────
@@ -267,11 +276,13 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     let start: string | null = null
     let end: string | null = null
     let seconds: number
+    let trimOther: (() => Promise<void>) | undefined
     if (times.kind === 'range') {
       const r = await resolveOverlap(v, personId, { start: times.start, end: times.end }, [], input.fix, reason, now)
       if (isFail(r)) return r
       start = r.start
       end = r.end
+      trimOther = r.trimOther
       seconds = recordedSeconds(start, end!)
     } else {
       seconds = times.seconds
@@ -285,6 +296,7 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     }).select('*').single()
     if (error) return notSaved(error)
     const e = data as EntryRow
+    await trimOther?.()
     await audit(c, [{ entryId: e.id, action: 'add', by: v.personId, reason, after: snapshot(e, catalog) }])
     refresh()
     return { ok: true, entryId: e.id, toast: `Added ${formatDuration(seconds)} on ${dayLabel(e.entry_date)}.` }
@@ -339,11 +351,13 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
 
     let start = after.start
     let end = after.end
+    let trimOther: (() => Promise<void>) | undefined
     if (times.kind === 'range') {
       const r = await resolveOverlap(v, e.person_id, { start: times.start, end: times.end }, [e.id], input.fix, reason, now)
       if (isFail(r)) return r
       start = r.start
       end = r.end
+      trimOther = r.trimOther
       if (right === 'shorten' && !onlyShorter(before, { start, end, seconds: end ? recordedSeconds(start, end) : 0 })) return fail(SHORTEN_ONLY)
     }
     const next: Partial<EntryRow> = {
@@ -357,7 +371,11 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
       kind: start ? 'clock' : 'manual',
     }
     const changes = changesBetween(snapshot(e, catalog), snapshot({ ...e, ...next }, catalog), catalog.keys, zone)
-    if (!changes.length) return { ok: true, entryId: e.id, changes: 0, toast: 'Saved. Nothing changed.' }
+    if (!changes.length) {
+      // This entry stays, but the other was picked to give way: that still happens.
+      if (trimOther) { await trimOther(); refresh() }
+      return { ok: true, entryId: e.id, changes: 0, toast: 'Saved. Nothing changed.' }
+    }
 
     const at = now.toISOString()
     const confirm = e.auto_stopped_at && !e.end_confirmed_at ? { end_confirmed_at: at, end_confirmed_by: v.personId } : {}
@@ -366,6 +384,7 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
       ...(e.source === 'tsheets' ? { changed_here_at: at } : {}),
     }).eq('id', e.id)
     if (error) return error.code === '23505' ? fail('You are already clocked in. Stop that one first.') : notSaved(error)
+    await trimOther?.()
     if ('end_confirmed_at' in confirm) {
       await c.from('tc_safety_events').update({ confirmed_end_at: end, confirmed_at: at }).eq('entry_id', e.id).eq('kind', 'auto_stop')
     }
@@ -597,8 +616,10 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     if (subErr) return notSaved(subErr)
     const row = sub as { id: number; state: string } | null
     if (row) {
-      const { error } = await c.from('tc_submissions').update({ state: 'submitted', submitted_at: at }).eq('id', row.id).in('state', ['draft', 'returned'])
+      const { data: moved, error } = await c.from('tc_submissions').update({ state: 'submitted', submitted_at: at }).eq('id', row.id).in('state', ['draft', 'returned']).select('id')
       if (error) return notSaved(error)
+      // Sent or approved in another tab since the summary was read: nothing changed here.
+      if (!moved?.length) return fail('That period has already been sent. Reload to see where it stands.')
     } else {
       const { error } = await c.from('tc_submissions').insert({ person_id: v.personId, period_id: periodId, state: 'submitted', submitted_at: at })
       if (error) return notSaved(error)

@@ -23,6 +23,19 @@ export function correctionDecidedText(decider: string, r: { started_at: string; 
     : `${decider} denied your time correction for ${dayLabel(r.entry_date)} (${d}). Reason: "${(note ?? '').trim()}"`
 }
 
+/** "Dave Sharpe approved your time off: Vacation, Fri, Oct 16 (8h 00m)." or denied, with the reason. */
+export function timeOffDecidedText(decider: string, kind: string, startDate: string, endDate: string, seconds: number, approved: boolean, note: string | null): string {
+  const days = startDate === endDate ? dayLabel(startDate) : `${dayLabel(startDate)} to ${dayLabel(endDate)}`
+  return approved
+    ? `${decider} approved your time off: ${kind}, ${days} (${formatDuration(seconds)}).`
+    : `${decider} denied your time off: ${kind}, ${days}. Reason: "${(note ?? '').trim()}"`
+}
+
+/** "Dave Sharpe clocked you out at 3:45 PM. Reason: "Forgot to clock out."" */
+export function clockedOutForText(by: string, at: string, reason: string): string {
+  return `${by} clocked you out at ${at}. Reason: "${reason.trim()}"`
+}
+
 /** "Olivia Hale asked for time off: Vacation, Fri, Oct 16 (8h 00m)." (a range names both days). */
 export function timeOffRequestedText(name: string, kind: string, startDate: string, endDate: string, seconds: number): string {
   const days = startDate === endDate ? dayLabel(startDate) : `${dayLabel(startDate)} to ${dayLabel(endDate)}`

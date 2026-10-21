@@ -518,6 +518,20 @@ export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; p
     }))
 }
 
+/** Time off approved or denied: to the person who asked. */
+export function clockyTimeOffDecidedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-timeoff-decided', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: '/clocky-hours', dedupeKey: String(x.requestId),
+  })
+}
+
+/** Someone else ended the person's running clock (Who's working, 2E): to that person. */
+export function clockyClockedOutForDrafts(ctx: Ctx, x: { entryId: number; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-clocked-out-for', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: `/clocky-hours?entry=${x.entryId}`, dedupeKey: String(x.entryId),
+  })
+}
+
 /** The line in the Super Admins' daily summary: "2 automatic clock-outs yesterday: Wendy Cacka, Justus Tsofa." */
 export function autoStopsLine(names: readonly string[]): string {
   const n = names.length

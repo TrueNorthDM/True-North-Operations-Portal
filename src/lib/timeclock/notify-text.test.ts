@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { correctionDecidedText, correctionRequestedText, timeOffRequestedText } from './notify-text'
+import { clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText } from './notify-text'
 import { autoStopsLine } from '@/lib/notifications/generators'
 
 // The bell rows of Clock Safety.dc.html (N3, N4) and the Super Admins' daily line.
@@ -25,6 +25,18 @@ describe("Clocky's bell rows", () => {
   it('time off asked for', () => {
     expect(timeOffRequestedText('Olivia Hale', 'Vacation', '2026-10-16', '2026-10-16', 8 * 3600))
       .toBe('Olivia Hale asked for time off: Vacation, Fri, Oct 16 (8h 00m).')
+  })
+
+  it('time off decided, to the person who asked', () => {
+    expect(timeOffDecidedText('Dave Sharpe', 'Vacation', '2026-10-16', '2026-10-16', 8 * 3600, true, null))
+      .toBe('Dave Sharpe approved your time off: Vacation, Fri, Oct 16 (8h 00m).')
+    expect(timeOffDecidedText('Dave Sharpe', 'Sick', '2026-10-15', '2026-10-16', 16 * 3600, false, ' Not this week. '))
+      .toBe('Dave Sharpe denied your time off: Sick, Thu, Oct 15 to Fri, Oct 16. Reason: "Not this week."')
+  })
+
+  it('clocked out by someone else, with the reason', () => {
+    expect(clockedOutForText('Dave Sharpe', '3:45 PM', 'Forgot to clock out.'))
+      .toBe('Dave Sharpe clocked you out at 3:45 PM. Reason: "Forgot to clock out."')
   })
 
   it("the Super Admins' daily line", () => {

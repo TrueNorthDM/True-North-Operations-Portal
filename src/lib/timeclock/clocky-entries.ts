@@ -263,7 +263,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
 
   const peopleList = [...dir.people.values()]
     .filter(p => p.active && canView(v, dir.target(p.id)))
-    .map(p => ({ id: p.id, name: p.name, teamIds: p.teamIds, cadence: cadenceOn(today, rulesFor(p.id, changes, settings)).cadence }))
+    .map(p => ({ id: p.id, name: p.name, zone: dir.zoneOf(p.id), teamIds: p.teamIds, cadence: cadenceOn(today, rulesFor(p.id, changes, settings)).cadence }))
     .sort((a, b) => a.name.localeCompare(b.name))
   const teamIds = new Set(peopleList.flatMap(p => p.teamIds))
 

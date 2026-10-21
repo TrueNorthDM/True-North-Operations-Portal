@@ -87,7 +87,7 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
           </div>
           {combos.map(c => {
             const r = choiceRow(c, true)
-            return <ChoiceRowView key={`c${c.combinationId}`} {...r} saved phone={phone} action="play" actionLabel="Clock in with" onGo={() => onStart(c)} onStar={() => {}} disabled={busy} />
+            return <ChoiceRowView key={`c${c.combinationId}`} {...r} saved phone={phone} action="play" actionLabel="Clock in with" onGo={() => onStart(c)} disabled={busy} />
           })}
           {data.combinations.length > SHOWN_COMBINATIONS && (
             <button type="button" onClick={onToggleMore} className={`self-start border-0 bg-transparent cursor-pointer px-2 py-1 text-[12.5px] font-semibold text-tn-teal hover:text-tn-ink ${FOCUS}`}>
@@ -338,7 +338,7 @@ export function OnView({
             const v = f ? values[f.id] ?? '' : ''
             return v
               ? <span key={k} className="text-[11.5px] font-semibold text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[9px] py-1">{k === 'billable' ? billableText(v) : v}</span>
-              : <button key={k} type="button" onClick={() => onEditKey(k)} className={`text-[11.5px] font-bold text-[#8a6d1a] bg-[#fdf8e7] border border-dashed border-[#e9d48a] rounded-full px-[9px] py-[3px] cursor-pointer hover:border-solid ${FOCUS}`}>+ Add {FIELD_SHORT[k]}</button>
+              : <button key={k} type="button" onClick={() => onEditKey(k)} aria-expanded={editKey === k} className={`text-[11.5px] font-bold text-[#8a6d1a] bg-[#fdf8e7] border border-dashed border-[#e9d48a] rounded-full px-[9px] py-[3px] cursor-pointer hover:border-solid ${FOCUS}`}>+ Add {FIELD_SHORT[k]}</button>
           })}
         </div>
         {running.roundNote && <div className="text-[12px] text-muted leading-[1.45] -mt-[3px]">{roundNoteText(running.roundNote)}</div>}

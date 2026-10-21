@@ -30,7 +30,7 @@ import {
   accessChangeDrafts, firstLoginDrafts, i7Drafts, integrationDrafts, levelDrafts, makeCtx, publishingDrafts,
   syncDrafts, teamOrderDrafts, unlinkedDrafts, unlinkedSeen, workDrafts, UNLINKED_SEEN, type Ctx,
   clockyAutoStopDrafts, clockyCorrectionDecidedDrafts, clockyCorrectionRequestedDrafts, clockyStillWorkingDrafts,
-  clockyStoppedDrafts, clockyTimeOffRequestedDrafts, CLOCK_PANEL_HREF,
+  clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts, CLOCK_PANEL_HREF,
 } from './generators'
 import { sendEmail } from '@/lib/email/resend'
 import { renderClockStopped } from '@/lib/email/clock-stopped'
@@ -160,6 +160,12 @@ export const notifyClockyCorrectionDecided = (x: { requestId: number; personId: 
 
 export const notifyClockyTimeOffRequested = (x: { requestId: number; personId: string; text: string }) =>
   simple('clocky-timeoff-requested', ctx => clockyTimeOffRequestedDrafts(ctx, x))
+
+export const notifyClockyTimeOffDecided = (x: { requestId: number; personId: string; text: string }) =>
+  simple('clocky-timeoff-decided', ctx => clockyTimeOffDecidedDrafts(ctx, x))
+
+export const notifyClockyClockedOutFor = (x: { entryId: number; personId: string; text: string }) =>
+  simple('clocky-clocked-out-for', ctx => clockyClockedOutForDrafts(ctx, x))
 
 /**
  * N2: the bell row, and with it the one email Clocky sends, "Your clock

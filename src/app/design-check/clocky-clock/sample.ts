@@ -276,7 +276,7 @@ export function sampleApi(data: ClockPanelData): ClockApi {
     clockOut: () => ok({ entryId: 901, endedAt: data.now, recordedEnd: data.now, todaySeconds: H(8, 15), undoUntil: data.now, toast: 'Clocked out at 5:10 PM, recorded as 5:15 PM. Today 8h 15m.' }),
     undoClockOut: () => ok({}),
     saveRunningDetails: () => new Promise(r => setTimeout(() => r({ ok: true as const, missing: [] }), 450)),
-    keepGoing: () => ok({ windowStartedAt: data.now, toast: 'Got it. Your clock runs another 5h from now.', toastFromBell: 'Keep going. Your clock runs another 5h from now.' }),
+    keepGoing: () => ok({ windowStartedAt: data.now, toast: 'Got it. Your clock runs another 5h from now.', toastFromBell: 'Keep going. Your clock runs another 5h from now.', done: 'You kept going at 12:31 PM. Clocky asks again in 4h 30m.' }),
     confirmEnd: () => ok({ recordedEnd: et(13), flagged: false, toast: 'End time confirmed: 1:00 PM. Today 5h 00m.' }),
     createCombination: i => ok({ combination: COMBOS[0], toast: `Saved ${i.name}.` }),
     updateCombination: i => ok({ combination: COMBOS[0], toast: `Saved ${i.name}.` }),

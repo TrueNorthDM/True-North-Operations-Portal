@@ -4,7 +4,8 @@
  * The two windows over the clock panel (Clock Panel.dc.html): 1J, save a
  * combination (or edit one), and 1K, manage them (drag to reorder, edit,
  * delete). Keyboard as every portal window: focus in, Tab kept inside, Escape
- * closes, focus back (useModal).
+ * closes, focus back (useModal). A refusal from the server shows inside the
+ * window, since the panel's own banner sits under it.
  */
 
 import { useRef, useState, type ReactNode } from 'react'
@@ -13,6 +14,7 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData } from '@/lib/timeclock/clocky-types'
 import type { FieldName } from '@/lib/timeclock/entry-rules'
 import { SHOWN_COMBINATIONS, fieldByKey, keysFor, suggestName, valueOf, type SaveDraft } from './clock-model'
+import { ErrorBanner } from './ClockViews'
 import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, LINK_BTN, SectionLabel } from './ClockParts'
 
 /** Escape inside an open dropdown closes the dropdown, not the window under it. */
@@ -47,10 +49,11 @@ export function WindowHead({ title, onClose }: { title: string; onClose: () => v
 
 // ── 1J Save a combination ───────────────────────────────────────────────────
 
-export function SaveComboModal({ data, save, busy, contained, onChange, onClose, onSave }: {
+export function SaveComboModal({ data, save, busy, error, contained, onChange, onClose, onSave }: {
   data: ClockPanelData
   save: SaveDraft
   busy: boolean
+  error: string | null
   contained?: boolean
   onChange: (s: SaveDraft) => void
   onClose: () => void
@@ -112,6 +115,7 @@ export function SaveComboModal({ data, save, busy, contained, onChange, onClose,
           <input value={save.notes} onChange={e => onChange({ ...save, notes: e.target.value })} placeholder="e.g. i7 LinkedIn Project"
             className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink placeholder:text-muted ${INPUT_FOCUS}`} />
         </label>
+        {error && <ErrorBanner text={error} />}
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className={`${CK_BTN_WHITE} ${FOCUS}`}>Cancel</button>
           <button type="button" onClick={onSave} disabled={busy || !save.name.trim()} className={`${CK_BTN_NAVY} disabled:opacity-60 ${FOCUS}`}>
@@ -125,10 +129,13 @@ export function SaveComboModal({ data, save, busy, contained, onChange, onClose,
 
 // ── 1K Manage combinations ──────────────────────────────────────────────────
 
-export function ManageCombosModal({ combinations, contained, onReorder, onEdit, onDelete, onClose }: {
+export function ManageCombosModal({ combinations, busy, error, contained, onReorder, onEdit, onDelete, onClose }: {
   combinations: ClockChoice[]
+  busy: boolean
+  error: string | null
   contained?: boolean
-  onReorder: (ids: number[]) => void
+  /** Resolves false when the server refused the order: the list goes back to its own. */
+  onReorder: (ids: number[]) => Promise<boolean>
   onEdit: (c: ClockChoice) => void
   onDelete: (c: ClockChoice) => void
   onClose: () => void
@@ -143,18 +150,19 @@ export function ManageCombosModal({ combinations, contained, onReorder, onEdit, 
     : combinations
   const move = (from: number | null, to: number) => {
     setOver(null)
-    if (from == null || from === to || to < 0 || to >= rows.length) return
+    if (busy || from == null || from === to || to < 0 || to >= rows.length) return
     const ids = rows.map(c => c.combinationId!)
     const [x] = ids.splice(from, 1)
     ids.splice(to, 0, x)
     setOrder(ids)
-    onReorder(ids)
+    void onReorder(ids).then(ok => { if (!ok) setOrder(null) })
   }
   return (
     <ClockWindow label="Manage combinations" width={544} contained={contained} onClose={onClose}>
       <div className="flex flex-col gap-3.5">
         <WindowHead title="Manage combinations" onClose={onClose} />
         <div className="text-[12.5px] text-muted leading-[1.5]">Drag to reorder. The panel shows the first 6; the rest sit under More.</div>
+        {error && <ErrorBanner text={error} />}
         <div className="flex flex-col border border-[var(--panel-border)] rounded-[12px] overflow-hidden">
           {rows.map((c, i) => (
             <div key={c.combinationId} draggable
@@ -182,12 +190,12 @@ export function ManageCombosModal({ combinations, contained, onReorder, onEdit, 
                 </div>
                 <div className="text-[12px] text-muted mt-0.5 truncate">{`${c.path} · ${c.activity || 'No activity'}`}</div>
               </div>
-              <button type="button" onClick={() => onEdit(c)} aria-label="Edit" title="Edit"
-                className={`w-8 h-8 border-0 bg-transparent rounded-[8px] cursor-pointer text-tn-green flex items-center justify-center hover:bg-subtle ${FOCUS}`}>
+              <button type="button" onClick={() => onEdit(c)} disabled={busy} aria-label="Edit" title="Edit"
+                className={`w-8 h-8 disabled:opacity-60 border-0 bg-transparent rounded-[8px] cursor-pointer text-tn-green flex items-center justify-center hover:bg-subtle ${FOCUS}`}>
                 <Icon d={ICON.pencil} size={16} sw={2} />
               </button>
-              <button type="button" onClick={() => onDelete(c)} aria-label="Delete" title="Delete"
-                className={`w-8 h-8 border-0 bg-transparent rounded-[8px] cursor-pointer text-[#c8323d] flex items-center justify-center hover:bg-[#fdeeef] ${FOCUS}`}>
+              <button type="button" onClick={() => onDelete(c)} disabled={busy} aria-label="Delete" title="Delete"
+                className={`w-8 h-8 disabled:opacity-60 border-0 bg-transparent rounded-[8px] cursor-pointer text-[#c8323d] flex items-center justify-center hover:bg-[#fdeeef] ${FOCUS}`}>
                 <Icon d={ICON.trash} size={16} sw={2} />
               </button>
             </div>

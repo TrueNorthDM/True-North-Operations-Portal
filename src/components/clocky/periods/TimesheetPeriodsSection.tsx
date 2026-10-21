@@ -15,7 +15,7 @@
  */
 
 import Link from 'next/link'
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select } from '@/components/ui/Select'
 import { withViewAs } from '@/components/ViewAsKeeper'
@@ -64,6 +64,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
   const [dialog, setDialog] = useState(startDialog)
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const asked = useRef<string | null>(null)
   const [toast, showToast] = useToast()
 
   // The design check opens on a picked date: ask for its preview once.
@@ -89,25 +90,34 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
     if (iso === data.anchor) { setAnchorDraft(null); setPreview(null); return }
     setAnchorDraft(iso)
     setPreview(null)
+    asked.current = iso
     actions.previewAnchorMove({ anchor: iso }).then(r => {
+      // Two picks in a row: only the latest one's answer counts.
+      if (asked.current !== iso) return
       if (r.ok) setPreview(r.data)
       else setError(r.error)
-    })
+    }, () => { if (asked.current === iso) setError('The new periods could not be worked out. Try again in a moment.') })
   }
 
-  function finish(text: string) {
+  function finish(text: string | null) {
     setEditing(false)
     setAnchorDraft(null)
     setPreview(null)
     setDialog(false)
-    showToast(text)
-    router.refresh()
+    if (text) { showToast(text); router.refresh() }
   }
 
   function done() {
+    if (anchorDraft && anchorDraft !== data.anchor) {
+      // The dialog needs the new date's preview: still coming, or it failed (the error says so).
+      if (!preview) { if (!error) setError('Still working out the new periods. Try Done again in a moment.'); return }
+      setError(null)
+      setDialog(true)
+      return
+    }
+    // Nothing picked: close the editor without claiming a save.
     setError(null)
-    if (anchorDraft && anchorDraft !== data.anchor) { setDialog(true); return }
-    finish('Saved.')
+    finish(null)
   }
 
   function move() {
