@@ -8,6 +8,8 @@ import { pageRights } from '@/lib/directory/page-rights'
 import { nextMilestone, type PersonPageData } from '@/lib/directory/person-page-data'
 import { formatTenure, milestoneOf, tenureSince } from '@/lib/tenure'
 import { PersonPayCheck } from './PersonPayCheck'
+import { SettingsCheck } from './SettingsCheck'
+import { typeChangeOptions } from '@/lib/timeclock/type-change'
 import { RatesPayCheck } from './RatesPayCheck'
 import { ReviewCheck } from './ReviewCheck'
 import { reviewFrame } from './review-sample'
@@ -41,9 +43,39 @@ function cheyenne(): PersonPageData {
 }
 
 /** The part 2 frames this route draws (the rest come as they are built). */
-export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx|6A|6B|6Ec|6Es|6Ef|6F|6Fp|6G|10P1|10P2|10P3|7A|7Ap|7B|7D|7Dx|7E|9A|9Ap|9B|9D|9Dp|10E|10C)$/
+export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx|6A|6B|6Ec|6Es|6Ef|6F|6Fp|6G|10P1|10P2|10P3|10A3|10A4|13A|13B|13C|7A|7Ap|7B|7D|7Dx|7E|9A|9Ap|9B|9D|9Dp|10E|10C)$/
 
 export function Part2Frame({ frame }: { frame: string }) {
+  if (/^13[ABC]$/.test(frame)) {
+    return <SettingsCheck frame={frame} invoices={{
+      prefix: 'INV', nextNumber: '0150', rmbPrefix: 'RMB', nextInvoice: 'INV-2026-0150', nextRmb: 'RMB-2026-0032',
+      approvers: [{ name: 'Arnaldo Oliveira', who: 'Everyone, except the people who report to Dave Sharpe' }, { name: 'Dave Sharpe', who: 'The people who report to him, Arnaldo Oliveira included' }],
+      billing: { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163', country: 'United States', email: 'billing@truenorthdm.org' }, paymentDays: 14,
+    }} integrations={{
+      rippling: { tokenSaved: true, tokenEnd: '9f2c', who: "Token saved by Arnaldo Oliveira, Sep 30, 2026. Nothing is sent until the portal's Rippling calls are written.",
+        facts: [{ k: 'Sends', v: 'Approved PTO, and approved employee hours by day' }, { k: 'Reads', v: 'PTO balances (Vacation, Sick, Holiday)' }, { k: 'Waiting to send', v: '2 items, sent by themselves once it works' }],
+        errors: [{ id: 1, when: 'Nov 2, 11:18 AM', what: 'Time off', text: 'Dave Sharpe, Sick, Oct 29: "Sick balance is 0h."', failed: true, doneText: null }, { id: 2, when: 'Oct 19, 9:58 AM', what: 'Hours', text: 'Wendy Cacka, Oct 4 to 17: "No pay schedule for Oct 4 to 17."', failed: false, doneText: 'Sent Oct 19, 10:02 AM' }] },
+      google: { connected: true, saved: true, account: 'calendar@truenorthdm.org', who: 'Connected as calendar@truenorthdm.org by Arnaldo Oliveira, Sep 30, 2026.',
+        teamCalendarId: 'c_truenorth.team@group.calendar.google.com', goodNewsCalendarId: 'c_goodnews.truenorth@group.calendar.google.com',
+        facts: [{ k: 'Last sync', v: 'Nov 3, 9:15 AM: 3 PTO events written today' }, { k: 'Writes', v: 'Approved PTO ("Name, out") and events marked for the team calendar' }, { k: 'Reads', v: 'The Good News Calendar, shown in Agenda (read only)' }], errors: [] },
+    }} />
+  }
+  if (frame === '10A3' || frame === '10A4') {
+    // Rock Kai, Social Media, contractor, reports to Dave Sharpe (Company Settings.dc.html 10A-3, 10A-4).
+    const base = cheyenne()
+    const rock = { ...base, id: '00000000-0000-4000-8000-0000000000c3', name: 'Rock Kai', title: 'Team Leader', color: '#DC2626', cover: { ...base.cover, teams: [{ teamId: 't-sm', teamName: 'Social Media', color: '#DC2626', position: 'lead' as const, primary: true }], location: 'United States' }, work: base.work && { ...base.work, fullName: 'Rock Kai', managerId: 'm-ds', managerName: 'Dave Sharpe' } }
+    const options = typeChangeOptions('2026-11-03', '2026-10-04', 'Dave Sharpe')
+    return (
+      <div className="space-y-4">
+        <Breadcrumb parents={['/directory']} now="Rock Kai" />
+        <PersonPayCheck data={rock} editing={false} typeChange={{
+          name: 'Rock Kai', canMigrate: frame === '10A3', canCancel: frame === '10A4', options, startOpen: frame === '10A3',
+          scheduled: frame === '10A4' ? { date: 'Tue, Dec 1, 2026', text: 'November closes as a contractor, with their last invoice; then pay periods and Rippling. It goes in their history on the day.' } : null,
+          stays: "Reports to Dave Sharpe, who keeps approving Rock's hours. Their team, their allowance, their time entries and every past invoice and decision.",
+        }} />
+      </div>
+    )
+  }
   if (frame.startsWith('10A1')) {
     return (
       <div className="space-y-4">

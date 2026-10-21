@@ -10,6 +10,11 @@ import { loadDirectory } from '@/lib/timeclock/clocky-context'
 import { loadInvoiceSettings, loadPayTerms, seesMoney } from '@/lib/timeclock/pay-terms'
 import { hoursApprover, invoiceApprover, isRecordedOnly, oneStep } from '@/lib/timeclock/routing'
 import type { ApprovalsView, PayView } from '@/components/person/PayApprovalsSections'
+import type { TypeChangeView } from '@/components/person/TypeChange'
+import { loadClockySettings } from '@/lib/timeclock/clocky-context'
+import { localDate, monthLong } from '@/lib/timeclock/format'
+import { addDays, anchorOn } from '@/lib/timeclock/periods'
+import { loadTypeChange, typeChangeOptions } from '@/lib/timeclock/type-change'
 
 export interface PersonPay {
   approvals: ApprovalsView
@@ -17,6 +22,8 @@ export interface PersonPay {
   pay: PayView | null
   /** The Timesheet section's "Invoices" line, for whoever sees money. */
   invoicesLine: string | null
+  /** Contractor to employee (10A-3, 10A-4): the change waiting, and the days a Super Admin can pick. */
+  typeChange: TypeChangeView | null
 }
 
 export async function loadPersonPay(personId: string, access: Access): Promise<PersonPay | null> {
@@ -47,7 +54,22 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
     }
 
     const money = seesMoney(access, personId, settings)
+    // Contractor to employee: shown to whoever sees money; scheduled by Super Admins only.
+    let typeChange: TypeChangeView | null = null
+    if (money && p.isContractor) {
+      const [scheduled, clocky] = await Promise.all([loadTypeChange(personId), loadClockySettings()])
+      const today = localDate(new Date(), 'America/New_York')
+      const first = name(personId).split(' ')[0]
+      typeChange = {
+        name: name(personId), canMigrate: access.isSuperAdmin && !scheduled,
+        scheduled: scheduled ? { date: scheduled.label, text: `${monthLong(addDays(scheduled.effectiveOn, -1))} closes as a contractor, with their last invoice; then pay periods and Rippling. It goes in their history on the day.` } : null,
+        canCancel: access.isSuperAdmin && !!scheduled,
+        options: typeChangeOptions(today, anchorOn(today, clocky.anchors)?.anchor ?? null, ib ? name(ib) : 'the invoice approver'),
+        stays: `Reports to ${name(p.reportsTo)}, who keeps approving ${first}'s hours. Their team, their allowance, their time entries and every past invoice and decision.`,
+      }
+    }
     return {
+      typeChange,
       approvals: { rows, note },
       pay: money ? {
         isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance,

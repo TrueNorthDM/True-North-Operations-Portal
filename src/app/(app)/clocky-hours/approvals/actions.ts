@@ -341,7 +341,7 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
       const { data: open } = await c.from('reimbursement_documents').select('id, number').eq('person_id', r.person_id).eq('state', 'approved').order('created_at', { ascending: false }).limit(1).maybeSingle()
       let doc = open
       if (!doc) {
-        const { data: number, error: nErr } = await c.rpc('next_document_number', { p_kind: 'rmb' })
+        const { data: number, error: nErr } = await c.rpc('next_document_number', { p_kind: 'reimbursement' })
         if (nErr || !number) return notSaved(nErr ?? new Error('No document number'))
         const { data: made, error: mErr } = await c.from('reimbursement_documents').insert({ number: number as string, person_id: r.person_id, total: 0, state: 'approved' }).select('id, number').single()
         if (mErr) return notSaved(mErr)

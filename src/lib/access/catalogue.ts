@@ -166,6 +166,13 @@ const TREE: Node[] = [
       { key: 'cs-sites', label: 'Sites & languages', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-periods', label: 'Timesheet periods', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-periods-edit', label: 'Change the timesheet periods: the pay period start and who submits how', kind: 'action', superOnly: true },
+      // Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C): Admins read them; Super Admins change them.
+      { key: 'cs-integrations', label: 'Integrations: Rippling and Google Calendar', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-integrations-edit', label: 'Connect Rippling and Google Calendar, and try failed items again', kind: 'action', superOnly: true },
+      { key: 'cs-invoices', label: 'Invoices: numbering and billing details', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-invoices-edit', label: 'Change the invoice numbering and billing details', kind: 'action', superOnly: true },
+      { key: 'cs-reminders', label: 'Reminders: the timesheet reminders and bell lines', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-reminders-edit', label: 'Turn the reminders on or off', kind: 'action', superOnly: true },
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },
     { key: 'tests', label: 'Tests', kind: 'page', v: [1, 0, 0] },

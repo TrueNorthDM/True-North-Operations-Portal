@@ -7,8 +7,9 @@
 
 import { PersonPage } from '@/components/person/PersonPage'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
+import type { TypeChangeView } from '@/components/person/TypeChange'
 
-export function PersonPayCheck({ data, editing }: { data: PersonPageData; editing: boolean }) {
+export function PersonPayCheck({ data, editing, typeChange = null }: { data: PersonPageData; editing: boolean; typeChange?: TypeChangeView | null }) {
   return (
     <PersonPage
       data={data}
@@ -34,6 +35,11 @@ export function PersonPayCheck({ data, editing }: { data: PersonPageData; editin
         invoicesLine: 'Made when they submit',
         save: async () => ({ ok: true }),
         startEditing: editing,
+        typeChange,
+        typeApi: {
+          schedule: async () => ({ ok: true, toast: 'Scheduled. Rock Kai becomes an employee on Tue, Dec 1, 2026. Dave Sharpe and Finance were told.' }),
+          cancel: async () => ({ ok: true, toast: 'Change cancelled. Rock Kai stays a contractor.' }),
+        },
       }}
     />
   )

@@ -599,6 +599,40 @@ export function clockyExtraDecidedDrafts(ctx: Ctx, x: { id: number; to: readonly
   }))
 }
 
+/** Rippling refused an approved time off: to the Super Admins who decide time off. */
+export function clockyTimeOffRefusedDrafts(ctx: Ctx, x: { requestId: number; text: string; body: string }): Draft[] {
+  return ctx.aud.withTool('ck-timeoff').flatMap(r => draftFor(ctx, 'clocky-timeoff-refused', r, {
+    title: x.text, body: x.body, href: '/requests/time-off', dedupeKey: String(x.requestId),
+  }))
+}
+
+/** A timesheet reminder (13C): to its person, once per period and kind (late: once a day). */
+export function clockyReminderDrafts(ctx: Ctx, x: { personId: string; key: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-reminder', ctx.aud.byId.get(x.personId), { title: x.text, body: '', href: '/clocky-hours', dedupeKey: x.key })
+}
+
+/** Someone 3 days late or more: to the Super Admins (ck-reopen), once a day per person. */
+export function clockyLateDrafts(ctx: Ctx, x: { personId: string; key: string; text: string }): Draft[] {
+  return ctx.aud.withTool('ck-reopen').filter(r => r.personId !== x.personId).flatMap(r => draftFor(ctx, 'clocky-late', r, { title: x.text, body: '', href: '/clocky-hours', dedupeKey: x.key }))
+}
+
+/** The allowance at 90% or over: to the person, once per period and step. */
+export function clockyAllowanceDrafts(ctx: Ctx, x: { personId: string; key: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-allowance', ctx.aud.byId.get(x.personId), { title: x.text, body: '', href: '/requests/extra-hours', dedupeKey: x.key })
+}
+
+/** Over the allowance without approval: to the Team Leaders and Super Admins named, once per period. */
+export function clockyAllowanceOverDrafts(ctx: Ctx, x: { personId: string; key: string; to: readonly string[]; text: string }): Draft[] {
+  return [...new Set(x.to)].filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-allowance-over', r, { title: x.text, body: '', href: '/requests/extra-hours', dedupeKey: x.key }))
+}
+
+/** A contractor scheduled to become an employee: to whoever they report to and Finance. */
+export function clockyTypeChangeDrafts(ctx: Ctx, x: { changeId: number; personId: string; to: readonly string[]; text: string; body: string }): Draft[] {
+  return [...new Set(x.to)].filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-type-change', r, {
+    title: x.text, body: x.body, href: `/directory/${x.personId}`, dedupeKey: String(x.changeId),
+  }))
+}
+
 /** Time off approved or denied: to the person who asked. */
 export function clockyTimeOffDecidedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string; key?: string }): Draft[] {
   return draftFor(ctx, 'clocky-timeoff-decided', ctx.aud.byId.get(x.personId), {

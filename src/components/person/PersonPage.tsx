@@ -27,6 +27,7 @@ import { HrForm, PersonalForm, WorkForm, type CadenceActions } from './PersonFor
 import { PillBadge, Section, TeamsList } from './PersonParts'
 import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
 import { ApprovalsSection, PayHoursSection, type ApprovalsView, type PayView, type SavePay } from './PayApprovalsSections'
+import { TypeChangeBanner, TypeChangeButton, type TypeChangeApi, type TypeChangeView } from './TypeChange'
 import { useToast } from '@/components/clocky/periods/ui'
 import { previewCadenceChange, setCadence } from '@/app/(app)/clocky-hours/periods/actions'
 import type { Cadence } from '@/lib/timeclock/periods'
@@ -56,7 +57,7 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
   /** The Work tab's Timesheet section (Clocky, 16 October 2026); null leaves it out. */
   timesheet?: PersonTimesheetView | null
   /** The Work tab's Approvals and Pay and hours (Clocky part 2, 10A-1); pay is null for those who see no money. */
-  pay?: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
+  pay?: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean; typeChange?: TypeChangeView | null; typeApi?: TypeChangeApi } | null
   /** The Payments tab (Clocky part 2, 10P): null when it is not open, or not the tab shown. */
   payments?: PaymentsProp | null
   /** Design check only: the cadence preview and save without the server. */
@@ -68,6 +69,7 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
   return (
     <div className="space-y-[22px]">
       <Cover data={data} />
+      {pay?.typeChange?.scheduled && pay.typeApi && <TypeChangeBanner view={pay.typeChange} api={pay.typeApi} />}
       {/* The rule under the tabs is a shadow, not a border the active tab overlaps:
           an overlap inside a sideways-scrolling row shows a scroll bar. */}
       <nav aria-label="Profile" className="flex gap-1 overflow-x-auto [scrollbar-width:none] leading-[normal] shadow-[inset_0_-1px_0_var(--panel-border)]">
@@ -172,7 +174,7 @@ function TabPanel({ data, tab, canRemove, timesheet, pay, payments, cadenceActio
   tab: PageTab
   canRemove: boolean
   timesheet: PersonTimesheetView | null
-  pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
+  pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean; typeChange?: TypeChangeView | null; typeApi?: TypeChangeApi } | null
   payments: PaymentsProp | null
   cadenceActions: CadenceActions
   startEditing: Editable | null
@@ -352,7 +354,7 @@ function PersonalView({ p }: { p: NonNullable<PersonPageData['personal']> }) {
 function WorkView({ data, timesheet, pay }: {
   data: PersonPageData
   timesheet: PersonTimesheetView | null
-  pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
+  pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean; typeChange?: TypeChangeView | null; typeApi?: TypeChangeApi } | null
 }) {
   const w = data.work!
   return (
@@ -386,7 +388,8 @@ function WorkView({ data, timesheet, pay }: {
         <div className="min-w-0">
           {timesheet && <TimesheetSection t={timesheet} invoicesLine={pay?.invoicesLine ?? null} />}
           {pay && <ApprovalsSection view={pay.approvals} />}
-          {pay?.pay && <PayHoursSection view={pay.pay} save={pay.save} startEditing={pay.startEditing} />}
+          {pay?.pay && <PayHoursSection view={pay.pay} save={pay.save} startEditing={pay.startEditing}
+            after={pay.typeChange && pay.typeApi ? <TypeChangeButton view={pay.typeChange} api={pay.typeApi} /> : undefined} />}
           <Section title="Teams"><TeamsList teams={w.teams} /></Section>
           <Section title="Reporting">
             <dl className="m-0">

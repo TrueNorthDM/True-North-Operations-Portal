@@ -15,6 +15,8 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { accessToken, deleteEvent, insertAllDay, parseServiceAccount } from './google-calendar'
+import { notifyClockyTimeOffRefused } from '@/lib/notifications/run'
+import { dayLabel } from '@/lib/timeclock/format'
 
 export interface OutboxReport { sent: number; failed: number; retried: number; errors: string[] }
 
@@ -82,7 +84,12 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
 
   async function markRefused(j: Job, msg: string) {
     if (j.ref_table !== 'tc_absence_requests') return
-    if (j.kind === 'rippling_pto') await c.from('tc_absence_requests').update({ rippling_state: 'refused', rippling_error: msg }).eq('id', j.ref_id)
+    if (j.kind === 'rippling_pto') {
+      await c.from('tc_absence_requests').update({ rippling_state: 'refused', rippling_error: msg }).eq('id', j.ref_id)
+      const p = j.payload as { who?: string; kind?: string; start?: string; end?: string }
+      const days = p.start && p.end ? (p.start === p.end ? dayLabel(p.start) : `${dayLabel(p.start)} to ${dayLabel(p.end)}`) : ''
+      await notifyClockyTimeOffRefused({ requestId: j.ref_id, text: `Rippling refused ${p.who ?? 'someone'}'s time off (${[p.kind, days].filter(Boolean).join(', ')})`, body: `"${msg}"` })
+    }
     if (j.kind === 'gcal_upsert') await c.from('tc_absence_requests').update({ calendar_state: 'failed' }).eq('id', j.ref_id)
   }
 }

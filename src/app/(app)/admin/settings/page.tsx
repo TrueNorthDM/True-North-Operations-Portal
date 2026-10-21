@@ -41,6 +41,10 @@ import { ROUTES } from '@/lib/nav/routes'
 import { isSiteCode } from '@/lib/href-links/rules'
 import { TimesheetPeriodsSection } from '@/components/clocky/periods/TimesheetPeriodsSection'
 import { getTimesheetPeriods } from '@/app/(app)/clocky-hours/periods/actions'
+import { viewerFor } from '@/lib/timeclock/clocky-context'
+import { loadIntegrations, loadInvoiceSettingsData, loadReminders } from '@/lib/timeclock/company-settings'
+import { IntegrationsSettings, InvoiceSettings, RemindersSettings } from '@/components/settings/ClockySettings'
+import { removeGoogle, removeRipplingToken, retryIntegrationJob, saveGoogle, saveInvoiceSettings, saveRipplingToken, setReminder, testGoogle } from './clocky-actions'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { anchorOptions } from '@/components/clocky/periods/anchor-options'
 import type { TimesheetPeriodsData } from '@/lib/timeclock/clocky-types'
@@ -75,6 +79,10 @@ const CatalogIcon = <Icon paths={['M3 7V5a2 2 0 0 1 2-2h2', 'M17 3h2a2 2 0 0 1 2
 const TargetsIcon = <Icon circles={[[12, 12, 10], [12, 12, 6], [12, 12, 2]]} />
 const SitesIcon = <Icon circles={[[12, 12, 10]]} paths={['M2 12h20', 'M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z']} />
 const PeriodsIcon = <Icon paths={['M4 5h16v16H4z', 'M4 10h16', 'M9 3v4', 'M15 3v4', 'M8 14h3', 'M8 17h6']} />
+// Clocky part 2 (Company Settings.dc.html CS): Invoices, Integrations, Reminders.
+const InvoicesIcon = <Icon paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M8 13h8', 'M8 17h5']} />
+const IntegrationsIcon = <Icon paths={['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1', 'M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1']} />
+const RemindersIcon = <Icon paths={['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0']} />
 
 function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
@@ -100,6 +108,9 @@ export default async function SettingsPage() {
     targets: access.can('cs-targets'),
     sites: access.can('cs-sites'),
     periods: access.can('cs-periods'),
+    integrations: access.can('cs-integrations'),
+    invoices: access.can('cs-invoices'),
+    reminders: access.can('cs-reminders'),
   }
 
   const supabase = await createClient()
@@ -197,6 +208,13 @@ export default async function SettingsPage() {
     can.myWork ? loadStepsForReview(createAdminClient()) : null,
     can.myWork ? loadBoardLinks() : null,
     can.periods ? loadPeriods() : null,
+  ])
+  // Clocky part 2 (Company Settings.dc.html 13A, 13B, 13C).
+  const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
+  const [integrations, invoiceSettings, reminders] = await Promise.all([
+    can.integrations ? loadIntegrations(zone) : null,
+    can.invoices ? loadInvoiceSettingsData() : null,
+    can.reminders ? loadReminders() : null,
   ])
   const projectDirectory = fullDirectory && !access.can('d-rates') ? { ...fullDirectory, highestRate: 0 } : fullDirectory
 
@@ -375,6 +393,45 @@ export default async function SettingsPage() {
       content: 'error' in periods
         ? <p role="alert" className="text-[13.5px] text-[#c8323d] m-0">{periods.error}</p>
         : <TimesheetPeriodsSection data={periods.data} anchorOptions={periods.options} />,
+    },
+    can.invoices && invoiceSettings && {
+      id: 'invoices',
+      label: 'Invoices',
+      icon: InvoicesIcon,
+      isNew: true,
+      editable: false,
+      content: (
+        <div>
+          <SectionHead title="Invoices" desc='How invoices and reimbursement documents are numbered, and what True North puts in the "To" block.' />
+          <InvoiceSettings data={invoiceSettings} canEdit={access.can('cs-invoices-edit')} save={saveInvoiceSettings} />
+        </div>
+      ),
+    },
+    can.integrations && integrations && {
+      id: 'integrations',
+      label: 'Integrations',
+      icon: IntegrationsIcon,
+      isNew: true,
+      editable: false,
+      content: (
+        <div>
+          <SectionHead title="Integrations" desc="Rippling for payroll and PTO, Google Calendar for the team calendar and the Good News Calendar. The portal fills them; nobody copies by hand." />
+          <IntegrationsSettings data={integrations} canEdit={access.can('cs-integrations-edit')} api={{ saveRipplingToken, removeRipplingToken, saveGoogle, removeGoogle, testGoogle, retryIntegrationJob }} />
+        </div>
+      ),
+    },
+    can.reminders && reminders && {
+      id: 'reminders',
+      label: 'Reminders',
+      icon: RemindersIcon,
+      isNew: true,
+      editable: false,
+      content: (
+        <div>
+          <SectionHead title="Reminders" desc="When the bell reminds people to submit, and the new lines it shows." />
+          <RemindersSettings on={reminders} canEdit={access.can('cs-reminders-edit')} set={setReminder} />
+        </div>
+      ),
     },
   ]
 

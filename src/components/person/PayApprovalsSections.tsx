@@ -12,7 +12,7 @@
  *                  Finance; changed by whoever keeps Rates & Costs (d-rates).
  */
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Segmented } from '@/components/ui/Segmented'
 import { NewTag } from '@/components/clocky/periods/ui'
@@ -68,9 +68,11 @@ export function ApprovalsSection({ view }: { view: ApprovalsView }) {
   )
 }
 
-export function PayHoursSection({ view, save, startEditing = false }: {
+export function PayHoursSection({ view, save, startEditing = false, after }: {
   view: PayView
   save: SavePay
+  /** Under the rows: Change to employee… (10A-3), for a contractor and a Super Admin. */
+  after?: ReactNode
   /** Design check only: open in Edit (frame 10A-1). */
   startEditing?: boolean
 }) {
@@ -126,6 +128,7 @@ export function PayHoursSection({ view, save, startEditing = false }: {
           {view.isContractor && <Row label={view.paysAs === 'hourly' ? 'Rate an hour' : 'Fixed amount a month'} value={rateText} sub={view.paysAs === 'fixed_no_timesheet' ? 'No timesheet: the invoice is made on the 1st' : undefined} />}
           <Row label="Hours allowance" value={view.allowance ? `${view.allowance.hours}h ${UNIT[view.allowance.period]}` : 'None'} />
         </dl>
+        {after}
       </Section>
     )
   }

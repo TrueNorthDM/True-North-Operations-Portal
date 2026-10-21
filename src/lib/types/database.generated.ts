@@ -262,7 +262,10 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          clocky_reminders: Json
           google_checked_at: string | null
+          google_connected_at: string | null
+          google_connected_by: string | null
           google_good_news_calendar_id: string | null
           google_service_account: string | null
           google_team_calendar_id: string | null
@@ -273,13 +276,18 @@ export type Database = {
           rippling_api_token: string | null
           rippling_checked_at: string | null
           rippling_connected_as: string | null
+          rippling_connected_at: string | null
+          rippling_connected_by: string | null
           singleton_id: number
           tsheets_api_token: string | null
           tsheets_synced_at: string | null
           updated_at: string | null
         }
         Insert: {
+          clocky_reminders?: Json
           google_checked_at?: string | null
+          google_connected_at?: string | null
+          google_connected_by?: string | null
           google_good_news_calendar_id?: string | null
           google_service_account?: string | null
           google_team_calendar_id?: string | null
@@ -290,13 +298,18 @@ export type Database = {
           rippling_api_token?: string | null
           rippling_checked_at?: string | null
           rippling_connected_as?: string | null
+          rippling_connected_at?: string | null
+          rippling_connected_by?: string | null
           singleton_id?: number
           tsheets_api_token?: string | null
           tsheets_synced_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          clocky_reminders?: Json
           google_checked_at?: string | null
+          google_connected_at?: string | null
+          google_connected_by?: string | null
           google_good_news_calendar_id?: string | null
           google_service_account?: string | null
           google_team_calendar_id?: string | null
@@ -307,12 +320,27 @@ export type Database = {
           rippling_api_token?: string | null
           rippling_checked_at?: string | null
           rippling_connected_as?: string | null
+          rippling_connected_at?: string | null
+          rippling_connected_by?: string | null
           singleton_id?: number
           tsheets_api_token?: string | null
           tsheets_synced_at?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_google_connected_by_fkey"
+            columns: ["google_connected_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_settings_rippling_connected_by_fkey"
+            columns: ["rippling_connected_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_log: {
         Row: {
@@ -720,9 +748,11 @@ export type Database = {
           finance: string[]
           invoice_approvers: string[]
           next_number: number
+          number_year: number | null
           payment_days: number
           prefix: string
           rmb_next_number: number
+          rmb_number_year: number | null
           rmb_prefix: string
           singleton_id: number
           updated_at: string
@@ -737,9 +767,11 @@ export type Database = {
           finance?: string[]
           invoice_approvers?: string[]
           next_number?: number
+          number_year?: number | null
           payment_days?: number
           prefix?: string
           rmb_next_number?: number
+          rmb_number_year?: number | null
           rmb_prefix?: string
           singleton_id?: number
           updated_at?: string
@@ -754,9 +786,11 @@ export type Database = {
           finance?: string[]
           invoice_approvers?: string[]
           next_number?: number
+          number_year?: number | null
           payment_days?: number
           prefix?: string
           rmb_next_number?: number
+          rmb_number_year?: number | null
           rmb_prefix?: string
           singleton_id?: number
           updated_at?: string
@@ -2121,6 +2155,67 @@ export type Database = {
           {
             foreignKeyName: "people_merges_winner_id_fkey"
             columns: ["winner_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_type_changes: {
+        Row: {
+          applied_at: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          effective_on: string
+          id: number
+          note: string | null
+          person_id: string
+          scheduled_at: string
+          scheduled_by: string | null
+          state: string
+          to_type: string
+        }
+        Insert: {
+          applied_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          effective_on: string
+          id?: number
+          note?: string | null
+          person_id: string
+          scheduled_at?: string
+          scheduled_by?: string | null
+          state?: string
+          to_type: string
+        }
+        Update: {
+          applied_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          effective_on?: string
+          id?: number
+          note?: string | null
+          person_id?: string
+          scheduled_at?: string
+          scheduled_by?: string | null
+          state?: string
+          to_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_type_changes_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_type_changes_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_type_changes_scheduled_by_fkey"
+            columns: ["scheduled_by"]
             referencedRelation: "people"
             referencedColumns: ["id"]
           },

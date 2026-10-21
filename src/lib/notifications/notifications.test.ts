@@ -25,10 +25,10 @@ describe('the catalogue', () => {
     expect(by('both')).toEqual(['first-login', 'i7-budget', 'step-assigned', 'sync-incomplete', 'team-order-changed'])
     expect(by('daily')).toEqual(['clocky-auto-stops', 'monday-account-unlinked', 'publishing-behind', 'step-due-tomorrow', 'step-late', 'team-late-pile'])
     expect(by('instant')).toEqual([
-      'access-rules-changed', 'clocky-clocked-out-for', 'clocky-correction-decided', 'clocky-correction-requested',
-      'clocky-extra-decided', 'clocky-extra-requested', 'clocky-invoice-approved', 'clocky-invoice-made', 'clocky-invoice-paid',
-      'clocky-reimbursement-decided', 'clocky-reimbursement-requested', 'clocky-rmb-paid', 'clocky-rmb-ready', 'clocky-still-working',
-      'clocky-stopped', 'clocky-timeoff-decided', 'clocky-timeoff-requested', 'clocky-timesheet-decided', 'clocky-timesheet-submitted',
+      'access-rules-changed', 'clocky-allowance', 'clocky-allowance-over', 'clocky-clocked-out-for', 'clocky-correction-decided',
+      'clocky-correction-requested', 'clocky-extra-decided', 'clocky-extra-requested', 'clocky-invoice-approved', 'clocky-invoice-made', 'clocky-invoice-paid',
+      'clocky-late', 'clocky-reimbursement-decided', 'clocky-reimbursement-requested', 'clocky-reminder', 'clocky-rmb-paid', 'clocky-rmb-ready', 'clocky-still-working',
+      'clocky-stopped', 'clocky-timeoff-decided', 'clocky-timeoff-refused', 'clocky-timeoff-requested', 'clocky-timesheet-decided', 'clocky-timesheet-submitted', 'clocky-type-change',
       'integration-failed', 'level-changed', 'step-released',
     ])
   })

@@ -13,6 +13,7 @@ import { resolvePageTab } from '@/lib/directory/page-rights'
 import { loadPersonTimesheet } from './timesheet'
 import { loadPersonPay } from './pay'
 import { savePayTerms } from './pay-actions'
+import { cancelEmployeeChange, scheduleEmployee } from './type-actions'
 import { getInvoiceDoc } from '@/app/(app)/clocky-hours/invoices/actions'
 import { getPayDoc } from '@/app/(app)/clocky-hours/documents/actions'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
@@ -64,7 +65,7 @@ export default async function PersonRoute({
         // Removing someone: "Add people" on the Directory, from their Work tab.
         canRemove={!data.rights.own && data.rights.workEdit && access.can('d-edit')}
         timesheet={sheet && { ...sheet, links: { rates: access.can('directory') && access.can('d-rates'), settings: access.can('cs-periods') } }}
-        pay={pay && { ...pay, save: savePayTerms.bind(null, id) }}
+        pay={pay && { ...pay, save: savePayTerms.bind(null, id), typeApi: { schedule: scheduleEmployee.bind(null, id), cancel: cancelEmployeeChange.bind(null, id) } }}
         payments={payments && { data: payments, api: { getInvoiceDoc, getPayDoc } }}
       />
     </div>
