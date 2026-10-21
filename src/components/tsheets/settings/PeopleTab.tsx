@@ -32,6 +32,9 @@ import type { CadenceActions } from '@/components/person/PersonForms'
 import type { Cadence } from '@/lib/timeclock/periods'
 import { saveTrAssignment, savePersonCostRate, savePersonBeRate, savePersonMonthlySalary } from '@/lib/tsheets/settings-actions'
 import { firstOfNextMonth } from '@/lib/tsheets/report'
+import { Select } from '@/components/ui/Select'
+import { savePaysAndAllowance } from '@/app/(app)/directory/[id]/pay-actions'
+import type { PaysAs } from '@/lib/timeclock/routing'
 import { initialsOf, formatDate } from '@/lib/directory/people-types'
 import { teamColour } from '@/lib/directory/team-colour'
 import { FilterBar } from '@/components/admin/grid/FilterBar'
@@ -84,8 +87,20 @@ export interface CadenceColumn {
   canEdit: boolean
 }
 
+/**
+ * Pays as, Allowance and Over (Clocky part 2, frame 10A-2): how each
+ * contractor is paid, their hours allowance and how far over it they are this
+ * period (before approved extra hours). Null leaves the three columns out.
+ */
+export interface PayColumn {
+  byPerson: Record<string, { isContractor: boolean; paysAs: PaysAs | null; allowance: { hours: number; period: 'week' | 'month' } | null; overSeconds: number | null }>
+  canEdit: boolean
+}
+
 interface Props {
   people: PersonWithAssignments[]
+  /** The Pays as, Allowance and Over columns (Clocky part 2). */
+  pay?: PayColumn | null
   allClients: { id: number; name: string }[]
   /** Null leaves the Timesheet column out (no Company settings > Timesheet periods). */
   cadence?: CadenceColumn | null
@@ -123,10 +138,29 @@ function monthName(iso: string): string {
 const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px_224px] gap-3.5 items-center'
 // With the Timesheet column (Timesheet Periods.dc.html, 5C): the rates narrow to make room.
 const GRID_TS = 'grid grid-cols-[1.9fr_1fr_1.4fr_1fr_210px_150px_150px_160px_150px] gap-3.5 items-center'
+// With Pays as (after Timesheet), Allowance and Over (at the end), Clocky part 2.
+const GRID_PAY = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_170px_224px_224px_224px_224px_160px_90px] gap-3.5 items-center'
+const GRID_TS_PAY = 'grid grid-cols-[1.9fr_1fr_1.4fr_1fr_210px_170px_150px_150px_160px_150px_160px_90px] gap-3.5 items-center'
 
-export function PeopleTab({ people, allClients, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null }: Props) {
+const PAYS_AS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixed monthly', fixed_no_timesheet: 'Fixed, no timesheet' }
+const ALLOWANCES = ['none', '30w', '35w', '40w', '80m', '100m', '120m', '130m', '140m', '150m', '160m', '170m', '180m']
+const alKey = (a: { hours: number; period: 'week' | 'month' } | null) => (a ? `${a.hours}${a.period === 'week' ? 'w' : 'm'}` : 'none')
+const alOf = (k: string): { hours: number; period: 'week' | 'month' } | null => (k === 'none' ? null : { hours: Number(k.slice(0, -1)), period: k.endsWith('w') ? 'week' : 'month' })
+const alText = (k: string) => (k === 'none' ? 'None' : `${k.slice(0, -1)}h ${k.endsWith('w') ? 'a week' : 'a month'}`)
+const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
+
+export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null }: Props) {
   const router = useRouter()
-  const grid = cadence ? GRID_TS : GRID
+  const grid = pay ? (cadence ? GRID_TS_PAY : GRID_PAY) : cadence ? GRID_TS : GRID
+  // Pays as and Allowance being changed (Clocky part 2): "hourly" etc., and "140m" / "40w" / "none".
+  const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; allowance?: string }>>({})
+  const payOf = (id: string) => pay?.byPerson[id] ?? null
+  const payChanged = (id: string) => {
+    const d = payDraft[id]
+    const now = payOf(id)
+    if (!d || !now) return false
+    return (d.paysAs !== undefined && d.paysAs !== now.paysAs) || (d.allowance !== undefined && d.allowance !== alKey(now.allowance))
+  }
   const [cadF, setCadF] = useState<'all' | Cadence | 'unset'>('all')
   const [cadDraft, setCadDraft] = useState<Record<string, Cadence>>(startCadences ?? {})
   const [cadDialog, setCadDialog] = useState<DialogItem[] | null>(startDialog)
@@ -207,6 +241,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
   function enterEdit() {
     setDrafts(draftsOf(people))
     setCadDraft({})
+    setPayDraft({})
     setEditing(true)
     setError(null)
   }
@@ -215,6 +250,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
     setEditing(false)
     setDrafts({})
     setCadDraft({})
+    setPayDraft({})
     setError(null)
   }
 
@@ -325,6 +361,15 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
         ops.push(savePersonMonthlySalary({ personId: p.id, monthlySalary: newSalary, justification: AUTO_REASON }))
       }
     }
+    // Pays as and the allowance (Clocky part 2), only for rows that changed.
+    if (pay?.canEdit) {
+      for (const p of people) {
+        if (!payChanged(p.id)) continue
+        const now = payOf(p.id)!
+        const d = payDraft[p.id]
+        ops.push(savePaysAndAllowance(p.id, { paysAs: d.paysAs ?? now.paysAs, allowance: d.allowance !== undefined ? alOf(d.allowance) : now.allowance }))
+      }
+    }
     if (ops.length === 0) { setEditing(false); setSaving(false); return }
     const results = await Promise.all(ops)
     setSaving(false)
@@ -332,6 +377,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
     if (failed) { setError(failed.error ?? 'Some changes could not be saved.'); return }
     setEditing(false)
     setDrafts({})
+    setPayDraft({})
     router.refresh()
   }
 
@@ -402,7 +448,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
       </div>
 
       <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)] leading-[normal]">
-        <div className={cadence ? 'min-w-[1420px]' : 'min-w-[1404px]'}>
+        <div className={pay ? (cadence ? 'min-w-[1840px]' : 'min-w-[1830px]') : cadence ? 'min-w-[1420px]' : 'min-w-[1404px]'}>
           {/* header */}
           <div className={`${grid} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
             <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
@@ -414,10 +460,21 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
                 Timesheet<NewTag size={8.5} />
               </span>
             )}
+            {pay && (
+              <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">
+                Pays as<NewTag size={8.5} />
+              </span>
+            )}
             <SortHeader label="Rate / client" align="right" active={sort?.id === 'clientRate'} dir={sort?.id === 'clientRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'clientRate'))} />
             <SortHeader label="Rate / cost" align="right" active={sort?.id === 'costRate'} dir={sort?.id === 'costRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'costRate'))} />
             <SortHeader label="Rate / break-even" align="right" active={sort?.id === 'beRate'} dir={sort?.id === 'beRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'beRate'))} />
             <SortHeader label="Month / salary" align="right" active={sort?.id === 'salary'} dir={sort?.id === 'salary' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'salary'))} />
+            {pay && (
+              <>
+                <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Allowance<NewTag size={8.5} /></span>
+                <span className="text-right font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Over</span>
+              </>
+            )}
           </div>
 
           {rows.map(p => {
@@ -427,7 +484,7 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
             const beVal = editing ? (d?.be ?? '') : (p.beRate != null ? String(p.beRate) : '')
             const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
             return (
-              <div key={p.id} className={`${grid} px-[22px] py-3 border-b border-slate-100 last:border-0 ${editing && cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id) ? 'bg-[var(--warn-bg)]' : ''}`}>
+              <div key={p.id} className={`${grid} px-[22px] py-3 border-b border-slate-100 last:border-0 ${editing && ((cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) || payChanged(p.id)) ? 'bg-[var(--warn-bg)]' : ''}`}>
                 {/* Person: navy avatar + name (from Directory); the name opens their page */}
                 <span className="inline-flex items-center gap-[11px] min-w-0">
                   <span className="w-[30px] h-[30px] rounded-full shrink-0 bg-tn-primary text-white inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[10.5px]">
@@ -476,6 +533,19 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
                   </span>
                 )}
 
+                {/* Pays as: contractors only; employees are paid through Rippling */}
+                {pay && (() => {
+                  const now = payOf(p.id)
+                  if (!now) return <span className="text-slate-300">-</span>
+                  if (!now.isContractor) return <span className="text-[13px] text-muted">Salary (Rippling)</span>
+                  const v = payDraft[p.id]?.paysAs ?? now.paysAs ?? 'hourly'
+                  return editing && pay.canEdit
+                    ? <Select value={v} ariaLabel={`How ${p.name} is paid`} className="text-[12.5px]"
+                        options={(Object.keys(PAYS_AS) as PaysAs[]).map(k => ({ value: k, label: PAYS_AS[k] }))}
+                        onChange={k => setPayDraft(prev => ({ ...prev, [p.id]: { ...prev[p.id], paysAs: k as PaysAs } }))} />
+                    : <span className="text-[13px] font-semibold text-tn-ink">{PAYS_AS[v]}</span>
+                })()}
+
                 {/* Rate / client (teal focus) */}
                 {rateInput(clientVal, v => setDraft(p.id, 'client', v), '#1E7D7F')}
 
@@ -487,6 +557,24 @@ export function PeopleTab({ people, allClients, cadence = null, cadenceActions =
 
                 {/* Month / salary (green focus) */}
                 {rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}
+
+                {/* Allowance and Over (Clocky part 2) */}
+                {pay && (() => {
+                  const now = payOf(p.id)
+                  const k = payDraft[p.id]?.allowance ?? alKey(now?.allowance ?? null)
+                  const opts = ALLOWANCES.includes(k) ? ALLOWANCES : [...ALLOWANCES, k]
+                  return editing && pay.canEdit && now
+                    ? <Select value={k} ariaLabel={`${p.name}'s hours allowance`} className="text-[12.5px]"
+                        options={opts.map(o => ({ value: o, label: alText(o) }))}
+                        onChange={o => setPayDraft(prev => ({ ...prev, [p.id]: { ...prev[p.id], allowance: o } }))} />
+                    : <span className="text-[13px] text-foreground">{alText(k)}</span>
+                })()}
+                {pay && (() => {
+                  const over = payOf(p.id)?.overSeconds ?? null
+                  return over && over > 0
+                    ? <span className="text-right font-(family-name:--font-display) font-extrabold text-[13px] text-[#c8323d] tabular-nums lining-nums">{overText(over)}</span>
+                    : <span className="text-right text-slate-300">-</span>
+                })()}
               </div>
             )
           })}

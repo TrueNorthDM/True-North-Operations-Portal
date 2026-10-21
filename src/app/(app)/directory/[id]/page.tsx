@@ -11,6 +11,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadLedMemberIds, loadPersonPage } from '@/lib/directory/person-page-data'
 import { resolvePageTab } from '@/lib/directory/page-rights'
 import { loadPersonTimesheet } from './timesheet'
+import { loadPersonPay } from './pay'
+import { savePayTerms } from './pay-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +39,8 @@ export default async function PersonRoute({
   // The Work tab's Timesheet section (Clocky, 16 October 2026): read only with
   // the Work tab, changed with Edit work by whoever may change the periods.
   const sheet = data.work ? await loadPersonTimesheet(id, data.rights.workEdit && access.can('cs-periods-edit')) : null
+  // Approvals (no money) and Pay and hours (money: the person, Super Admins, Admins, Finance) on the Work tab.
+  const pay = data.work ? await loadPersonPay(id, access) : null
 
   return (
     <div className="space-y-4">
@@ -48,6 +52,7 @@ export default async function PersonRoute({
         // Removing someone: "Add people" on the Directory, from their Work tab.
         canRemove={!data.rights.own && data.rights.workEdit && access.can('d-edit')}
         timesheet={sheet && { ...sheet, links: { rates: access.can('directory') && access.can('d-rates'), settings: access.can('cs-periods') } }}
+        pay={pay && { ...pay, save: savePayTerms.bind(null, id) }}
       />
     </div>
   )

@@ -25,6 +25,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadInvitesByPerson } from '@/lib/directory/invites'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
+import { loadRatesPay } from '@/lib/timeclock/pay-terms'
 
 // The columns the list reads, and what each row carries by access, live in
 // lib/directory/list-gates.ts, where a test holds them.
@@ -392,6 +393,8 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // Its Timesheet column (Clocky, 16 October 2026): with Company settings >
   // Timesheet periods; changed by whoever may change the periods.
   const periods = rights.rates && access.can('cs-periods') ? await getTimesheetPeriods() : null
+  // Pays as, Allowance and Over (Clocky part 2, 10A-2), with Rates & Costs.
+  const ratesPay = rights.rates && budget ? await loadRatesPay(budget.people.map(p => p.id), access.can('d-rates')) : null
   const ratesCadence = periods?.ok
     ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
     : null
@@ -439,6 +442,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['rates', 'd-rates'], ['access', 'd-log'], ['portal', 'd-portal']] as const)
           .filter(([, key]) => access.can(key)).map(([tab]) => tab)}
         ratesCadence={ratesCadence}
+        ratesPay={ratesPay}
         startTab={startTab}
       />
     </div>

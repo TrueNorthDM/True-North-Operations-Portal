@@ -43,8 +43,10 @@ const place = (on: boolean, href: string, text: string) => on
   ? <Link href={withViewAs(href)} className="font-bold text-tn-teal hover:text-tn-ink">{text}</Link>
   : <span className="font-bold">{text}</span>
 
-export function TimesheetSection({ t, editing = false, draft, onDraft, startsLine }: {
+export function TimesheetSection({ t, editing = false, draft, onDraft, startsLine, invoicesLine = null }: {
   t: PersonTimesheetView
+  /** "Made when they submit" (Clocky part 2, 10A-1), for whoever sees money; null leaves the row out. */
+  invoicesLine?: string | null
   /** In Edit work, with the right to change it. */
   editing?: boolean
   draft?: Cadence
@@ -70,6 +72,7 @@ export function TimesheetSection({ t, editing = false, draft, onDraft, startsLin
         )}
         <dl className="m-0">
           <Row label="Current period"><span className="tabular-nums">{choosing && shown ? t.periodIf[shown] : t.currentPeriod}</span></Row>
+          {invoicesLine && <Row label="Invoices">{invoicesLine}</Row>}
         </dl>
         <p className="m-0 pt-2 text-[12px] text-muted leading-normal">
           Also set in {place(t.links.rates, '/directory?tab=rates', 'Directory › Rates & Costs')}. Pay period dates come from {place(t.links.settings, '/admin/settings#periods', 'Company settings')}.

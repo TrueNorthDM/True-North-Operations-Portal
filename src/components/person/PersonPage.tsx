@@ -26,6 +26,7 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import { HrForm, PersonalForm, WorkForm, type CadenceActions } from './PersonForms'
 import { PillBadge, Section, TeamsList } from './PersonParts'
 import { TimesheetSection, type PersonTimesheetView } from './TimesheetSection'
+import { ApprovalsSection, PayHoursSection, type ApprovalsView, type PayView, type SavePay } from './PayApprovalsSections'
 import { useToast } from '@/components/clocky/periods/ui'
 import { previewCadenceChange, setCadence } from '@/app/(app)/clocky-hours/periods/actions'
 import type { Cadence } from '@/lib/timeclock/periods'
@@ -45,12 +46,14 @@ const btnNavy = 'inline-flex items-center gap-2 font-(family-name:--font-display
 
 const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
 
-export function PersonPage({ data, tab, canRemove, timesheet = null, cadenceActions = CADENCE_ACTIONS, startEditing = null, startCadence }: {
+export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null, cadenceActions = CADENCE_ACTIONS, startEditing = null, startCadence }: {
   data: PersonPageData
   tab: PageTab
   canRemove: boolean
   /** The Work tab's Timesheet section (Clocky, 16 October 2026); null leaves it out. */
   timesheet?: PersonTimesheetView | null
+  /** The Work tab's Approvals and Pay and hours (Clocky part 2, 10A-1); pay is null for those who see no money. */
+  pay?: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
   /** Design check only: the cadence preview and save without the server. */
   cadenceActions?: CadenceActions
   /** Design check only: a tab already in Edit, with this cadence picked. */
@@ -83,7 +86,7 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, cadenceActi
         })}
       </nav>
       {/* Keyed by tab: moving to another tab leaves any edit behind. */}
-      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} timesheet={timesheet} cadenceActions={cadenceActions} startEditing={startEditing} startCadence={startCadence} />
+      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} timesheet={timesheet} pay={pay} cadenceActions={cadenceActions} startEditing={startEditing} startCadence={startCadence} />
     </div>
   )
 }
@@ -159,11 +162,12 @@ function Cover({ data }: { data: PersonPageData }) {
 
 // ── One tab ─────────────────────────────────────────────────────────────────
 
-function TabPanel({ data, tab, canRemove, timesheet, cadenceActions, startEditing, startCadence }: {
+function TabPanel({ data, tab, canRemove, timesheet, pay, cadenceActions, startEditing, startCadence }: {
   data: PersonPageData
   tab: PageTab
   canRemove: boolean
   timesheet: PersonTimesheetView | null
+  pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
   cadenceActions: CadenceActions
   startEditing: Editable | null
   startCadence?: Cadence
@@ -268,7 +272,7 @@ function TabPanel({ data, tab, canRemove, timesheet, cadenceActions, startEditin
       {tab === 'work' && data.work && (editing === 'work'
         ? <WorkForm data={data} pending={pending} error={error} remove={canRemove ? { pending: removing, run: remove } : null} onCancel={() => setEditing(null)} onSave={input => saveWorkTab(input, null)}
             timesheet={timesheet} cadenceActions={cadenceActions} startCadence={startCadence} onSaveWithCadence={saveWorkTab} />
-        : <WorkView data={data} timesheet={timesheet} />)}
+        : <WorkView data={data} timesheet={timesheet} pay={pay} />)}
 
       {tab === 'hr' && data.hr && (editing === 'hr'
         ? <HrForm data={data} pending={pending} error={error} onCancel={() => setEditing(null)} onSave={input => run(() => saveHr(data.id, input))} />
@@ -332,7 +336,11 @@ function PersonalView({ p }: { p: NonNullable<PersonPageData['personal']> }) {
   )
 }
 
-function WorkView({ data, timesheet }: { data: PersonPageData; timesheet: PersonTimesheetView | null }) {
+function WorkView({ data, timesheet, pay }: {
+  data: PersonPageData
+  timesheet: PersonTimesheetView | null
+  pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
+}) {
   const w = data.work!
   return (
     <>
@@ -363,7 +371,9 @@ function WorkView({ data, timesheet }: { data: PersonPageData; timesheet: Person
           </Section>
         </div>
         <div className="min-w-0">
-          {timesheet && <TimesheetSection t={timesheet} />}
+          {timesheet && <TimesheetSection t={timesheet} invoicesLine={pay?.invoicesLine ?? null} />}
+          {pay && <ApprovalsSection view={pay.approvals} />}
+          {pay?.pay && <PayHoursSection view={pay.pay} save={pay.save} startEditing={pay.startEditing} />}
           <Section title="Teams"><TeamsList teams={w.teams} /></Section>
           <Section title="Reporting">
             <dl className="m-0">

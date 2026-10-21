@@ -6,13 +6,15 @@
 // setting as their page's Work tab.
 
 import type { ComponentProps } from 'react'
-import { PeopleTab, type CadenceColumn, type PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
+import { PeopleTab, type CadenceColumn, type PayColumn, type PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
 type CheckProps = Pick<ComponentProps<typeof PeopleTab>, 'cadenceActions' | 'startEditing' | 'startCadences' | 'startDialog'>
 
-export function RatesCostsTab({ people, allClients, cadence = null, check }: {
+export function RatesCostsTab({ people, allClients, cadence = null, pay = null, check }: {
   people: PersonWithAssignments[]
   allClients: { id: number; name: string }[]
+  /** Pays as, Allowance and Over (Clocky part 2, 10A-2). */
+  pay?: PayColumn | null
   /** The Timesheet column, for whoever opens Company settings > Timesheet periods. */
   cadence?: CadenceColumn | null
   /** Design check only: answers and a state to open in. */
@@ -23,8 +25,9 @@ export function RatesCostsTab({ people, allClients, cadence = null, check }: {
       <p className={`text-[13.5px] text-muted leading-relaxed ${cadence ? 'max-w-[820px]' : 'max-w-[720px]'}`}>
         Everyone who logs time on i7. Person, team, report-to and joined-on come from the <b className="text-foreground font-bold">People</b> tab; here you set <b className="text-foreground font-bold">Rate / client</b> (what the client is billed per hour) and <b className="text-foreground font-bold">Rate / cost</b> (what the hour costs internally) and <b className="text-foreground font-bold">Rate / break-even</b> (what it has to earn to cover them, overhead included).
         {cadence && <> <b className="text-foreground font-bold">Timesheet</b> is how often the person submits hours: monthly or every 2 weeks; it is the same setting as on their page.</>}
+        {pay && <> <b className="text-foreground font-bold">Pays as</b> is how a contractor is paid (hourly, a fixed amount a month, or fixed with no timesheet), and <b className="text-foreground font-bold">Allowance</b> the hours expected a week or month. <b className="text-foreground font-bold">Over</b> is this period, before approved extra hours.</>}
       </p>
-      <PeopleTab people={people} allClients={allClients} cadence={cadence} {...check} />
+      <PeopleTab people={people} allClients={allClients} cadence={cadence} pay={pay} {...check} />
     </div>
   )
 }

@@ -19,7 +19,7 @@ import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
 import { PortalAccessTab } from './PortalAccessTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, CardRights } from '@/lib/directory/people-types'
-import type { CadenceColumn, PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
+import type { CadenceColumn, PayColumn, PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
 type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access' | 'portal'
 
@@ -36,6 +36,7 @@ export function DirectoryTabs({
   accessLog,
   allowed,
   ratesCadence = null,
+  ratesPay = null,
   startTab = 'people',
 }: {
   people: PersonView[]
@@ -49,6 +50,8 @@ export function DirectoryTabs({
   allowed?: readonly string[]
   /** Rates & Costs' Timesheet column (Clocky, 16 October 2026). */
   ratesCadence?: CadenceColumn | null
+  /** Pays as, Allowance and Over (Clocky part 2, 10A-2). */
+  ratesPay?: PayColumn | null
   /** The tab open at first (?tab=rates from Company settings > Timesheet periods). */
   startTab?: string
 }) {
@@ -193,7 +196,7 @@ export function DirectoryTabs({
         <EmailsTab people={activePeople} onOpen={id => router.push(withViewAs(personHref(id, 'work')))} />
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} canEdit={rights.positions} />}
-      {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} cadence={ratesCadence} />}
+      {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} cadence={ratesCadence} pay={ratesPay} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
       {tab === 'portal' && (
         <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />

@@ -522,6 +522,225 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_lines: {
+        Row: {
+          amount: number
+          client: string | null
+          description: string
+          hours_seconds: number | null
+          id: number
+          invoice_id: number
+          kind: string
+          rate: number | null
+          reimbursement_id: number | null
+          sort: number
+        }
+        Insert: {
+          amount: number
+          client?: string | null
+          description: string
+          hours_seconds?: number | null
+          id?: number
+          invoice_id: number
+          kind: string
+          rate?: number | null
+          reimbursement_id?: number | null
+          sort?: number
+        }
+        Update: {
+          amount?: number
+          client?: string | null
+          description?: string
+          hours_seconds?: number | null
+          id?: number
+          invoice_id?: number
+          kind?: string
+          rate?: number | null
+          reimbursement_id?: number | null
+          sort?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_settings: {
+        Row: {
+          billing_address: string | null
+          billing_email: string | null
+          billing_name: string | null
+          default_approver: string | null
+          deputy_director: string | null
+          finance: string[]
+          invoice_approvers: string[]
+          next_number: number
+          payment_days: number
+          prefix: string
+          rmb_next_number: number
+          rmb_prefix: string
+          singleton_id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          billing_address?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          default_approver?: string | null
+          deputy_director?: string | null
+          finance?: string[]
+          invoice_approvers?: string[]
+          next_number?: number
+          payment_days?: number
+          prefix?: string
+          rmb_next_number?: number
+          rmb_prefix?: string
+          singleton_id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          billing_address?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          default_approver?: string | null
+          deputy_director?: string | null
+          finance?: string[]
+          invoice_approvers?: string[]
+          next_number?: number
+          payment_days?: number
+          prefix?: string
+          rmb_next_number?: number
+          rmb_prefix?: string
+          singleton_id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_settings_default_approver_fkey"
+            columns: ["default_approver"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_settings_deputy_director_fkey"
+            columns: ["deputy_director"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          currency: string
+          due_on: string
+          from_snapshot: Json
+          id: number
+          issued_on: string
+          kind: string
+          number: string
+          paid_by: string | null
+          paid_note: string | null
+          paid_on: string | null
+          paid_ref: string | null
+          period_end: string
+          period_start: string
+          person_id: string
+          state: string
+          submission_id: number | null
+          to_snapshot: Json
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string
+          due_on: string
+          from_snapshot: Json
+          id?: number
+          issued_on: string
+          kind: string
+          number: string
+          paid_by?: string | null
+          paid_note?: string | null
+          paid_on?: string | null
+          paid_ref?: string | null
+          period_end: string
+          period_start: string
+          person_id: string
+          state?: string
+          submission_id?: number | null
+          to_snapshot: Json
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string
+          due_on?: string
+          from_snapshot?: Json
+          id?: number
+          issued_on?: string
+          kind?: string
+          number?: string
+          paid_by?: string | null
+          paid_note?: string | null
+          paid_on?: string | null
+          paid_ref?: string | null
+          period_end?: string
+          period_start?: string
+          person_id?: string
+          state?: string
+          submission_id?: number | null
+          to_snapshot?: Json
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_approved_by_fkey"
+            columns: ["approved_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_paid_by_fkey"
+            columns: ["paid_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_submission_id_fkey"
+            columns: ["submission_id"]
+            referencedRelation: "tc_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monday_assignment_events: {
         Row: {
           board_id: number
@@ -1485,6 +1704,89 @@ export type Database = {
           },
         ]
       }
+      pay_terms: {
+        Row: {
+          allowance_hours: number | null
+          allowance_period: string | null
+          pays_as: string | null
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowance_hours?: number | null
+          allowance_period?: string | null
+          pays_as?: string | null
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowance_hours?: number | null
+          allowance_period?: string | null
+          pays_as?: string | null
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_terms_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_terms_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_terms_changes: {
+        Row: {
+          after: Json
+          before: Json | null
+          changed_at: string
+          changed_by: string | null
+          id: number
+          person_id: string
+          reason: string | null
+        }
+        Insert: {
+          after: Json
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          person_id: string
+          reason?: string | null
+        }
+        Update: {
+          after?: Json
+          before?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          person_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_terms_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_terms_changes_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           access_level: string | null
@@ -2099,6 +2401,58 @@ export type Database = {
             foreignKeyName: "tc_absence_requests_person_id_fkey"
             columns: ["person_id"]
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tc_approval_events: {
+        Row: {
+          action: string
+          at: string
+          by_person: string | null
+          id: number
+          invoice_id: number | null
+          note: string | null
+          step: string
+          submission_id: number | null
+        }
+        Insert: {
+          action: string
+          at?: string
+          by_person?: string | null
+          id?: number
+          invoice_id?: number | null
+          note?: string | null
+          step: string
+          submission_id?: number | null
+        }
+        Update: {
+          action?: string
+          at?: string
+          by_person?: string | null
+          id?: number
+          invoice_id?: number | null
+          note?: string | null
+          step?: string
+          submission_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tc_approval_events_by_person_fkey"
+            columns: ["by_person"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_approval_events_invoice_fk"
+            columns: ["invoice_id"]
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_approval_events_submission_id_fkey"
+            columns: ["submission_id"]
+            referencedRelation: "tc_submissions"
             referencedColumns: ["id"]
           },
         ]
@@ -2983,6 +3337,8 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          hours_approved_at: string | null
+          hours_approved_by: string | null
           id: number
           note: string | null
           period_id: number
@@ -2993,6 +3349,8 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          hours_approved_at?: string | null
+          hours_approved_by?: string | null
           id?: number
           note?: string | null
           period_id: number
@@ -3003,6 +3361,8 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          hours_approved_at?: string | null
+          hours_approved_by?: string | null
           id?: number
           note?: string | null
           period_id?: number
@@ -3014,6 +3374,12 @@ export type Database = {
           {
             foreignKeyName: "tc_submissions_approved_by_fkey"
             columns: ["approved_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_submissions_hours_approved_by_fkey"
+            columns: ["hours_approved_by"]
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -3425,6 +3791,7 @@ export type Database = {
         }
         Returns: Json
       }
+      next_document_number: { Args: { p_kind: string }; Returns: string }
       portal_can_sign_in: { Args: { p_email: string }; Returns: boolean }
       portal_end_sessions: { Args: { p_user: string }; Returns: undefined }
       portal_two_step_status: {

@@ -10,6 +10,7 @@
 //                                               page redirects
 //   ?frame=3A1 ... 3K4 | E                      Time entries (the frame's own level)
 //   ?frame=5A ... 5C3                        Timesheet periods (settings, a person's page, Rates & Costs)
+//   ?frame=10A1 | 10A1v ...                  Clocky part 2 (Part2Frame, the overview's codes)
 //   ?frame=4A | 4B                           Clock safety, with data or empty (Super Admin)
 //   ?frame=3L | 3L2 | 3L3                    Approvals (Super Admin, Team Leader of Web, Super Admin with timesheets)
 //   ?frame=2A ... 2E | 2P                       Who's working, the drawer open (2B as Wendy
@@ -30,6 +31,7 @@ import { AppClock } from './AppClock'
 import { AppWorking, AppWorkingPage } from './AppWorking'
 import { AppApprovals } from './AppApprovals'
 import { PeriodsFrame } from '../clocky-periods/PeriodsFrame'
+import { PART2_FRAMES, Part2Frame } from '../clocky-part2/Part2Frame'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { BellCheck } from '../clocky-bell/BellCheck'
 import { SafetyCheck } from '../clocky-safety/SafetyCheck'
@@ -51,6 +53,7 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
   const approvals = frame === '3L' || frame === '3L2' || frame === '3L3' ? frame : null
   const safety = frame === '4A' || frame === '4B'
   const periods = /^5[ABC]/.test(frame)
+  const part2 = PART2_FRAMES.test(frame)
   const entries = !approvals && /^3|^E$/.test(frame)
   // Clock safety sends a Team Leader or a User to their own Time entries (the page's redirect).
   const userBell = bell === 'user' || bell === 'lead'
@@ -79,7 +82,7 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
           {/* Who's working is for Team Leaders and up; the Time entries frames have the
               list's running clock (on the clock since 10:45 AM). */}
           {working ? <AppWorking frame={frame} /> : (
-            <AppClock frame={entries || approvals === '3L' || bell === 'user' ? 'RUN' : bell ? '1A' : frame} open={!bell && !entries && !approvals && !safety && !periods && closed !== '1'}
+            <AppClock frame={entries || approvals === '3L' || bell === 'user' ? 'RUN' : bell || part2 ? '1A' : frame} open={!bell && !entries && !approvals && !safety && !periods && !part2 && closed !== '1'}
               working={role !== 'user'} />
           )}
           {bell ? <BellCheck level={bell} /> : <NotificationButton kind="bell" />}
@@ -87,9 +90,11 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
       </header>
       <div className="flex flex-1">
         <Sidebar rail={rail} menuOpen={false} twoStepDaysLeft={null} startHub={null} startCounts={{}}
-          activePath={periods ? (frame.startsWith('5A') ? '/admin' : '/directory') : approvals ? '/clocky-hours/approvals' : safety ? '/clocky-hours/safety' : entries || userBell ? '/clocky-hours' : bell ? '/clocky-hours/safety' : workingPage ? '/clocky-hours/whos-working' : '/'}
+          activePath={part2 ? '/directory' : periods ? (frame.startsWith('5A') ? '/admin' : '/directory') : approvals ? '/clocky-hours/approvals' : safety ? '/clocky-hours/safety' : entries || userBell ? '/clocky-hours' : bell ? '/clocky-hours/safety' : workingPage ? '/clocky-hours/whos-working' : '/'}
           user={{ email: null, name: entriesLevel ? ME[entriesLevel] : bell === 'lead' ? ME.lead : bell === 'user' ? ME.user : frame === '2B' || approvals === '3L2' ? 'Wendy Cacka' : 'Arnaldo Oliveira', avatarUrl: null }} />
-        {periods ? (
+        {part2 ? (
+          <MainContent notice={null}><Part2Frame frame={frame} /></MainContent>
+        ) : periods ? (
           <MainContent notice={null}><PeriodsFrame frame={frame} level={level === 'admin-level' ? 'admin' : 'super'} /></MainContent>
         ) : safety ? (
           <MainContent notice={null}><SafetyCheck empty={frame === '4B'} access="full" /></MainContent>
