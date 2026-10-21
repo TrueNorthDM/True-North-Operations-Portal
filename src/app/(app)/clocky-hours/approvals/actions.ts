@@ -61,20 +61,6 @@ async function actor(key: string): Promise<Viewer | Fail> {
   return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
 }
 
-/** The Approvals page: waiting and decided, in the viewer's scope (3L). */
-export async function getApprovals(): Promise<Result<{ data: ApprovalsData }>> {
-  const access = await loadAccess()
-  if (!access.can('clocky-approvals')) return fail(NO_ACCESS)
-  const v = await viewerFor(access)
-  if (!v) return fail('Your login is not linked to anyone in the Directory.')
-  try {
-    return { ok: true, data: await loadApprovals(v, new Date()) }
-  } catch (e) {
-    console.error('[clocky approvals] list:', (e as Error).message)
-    return fail('Approvals could not be read. Try again in a moment.')
-  }
-}
-
 /** The Approvals list of Clocky part 2: waiting for you, with others, decided (approval-queue.ts). */
 export async function getQueue(): Promise<Result<{ data: QueueData }>> {
   const access = await loadAccess()
@@ -355,8 +341,9 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
     if (e2) return notSaved(e2)
     if (!moved?.length) return fail(NOT_WAITING)
     if (documentId) {
-      const { data: items } = await c.from('reimbursements').select('amount').eq('document_id', documentId)
-      const total = (items ?? []).reduce((n, i) => n + Math.round(Number(i.amount) * 100), 0) / 100
+      // The stored total is in dollars; an item in another currency shows its code and Finance converts it.
+      const { data: items } = await c.from('reimbursements').select('amount, currency').eq('document_id', documentId)
+      const total = (items ?? []).filter(i => (i.currency || 'USD') === 'USD').reduce((n, i) => n + Math.round(Number(i.amount) * 100), 0) / 100
       const { data: doc } = await c.from('reimbursement_documents').update({ total, updated_at: at }).eq('id', documentId).select('number').single()
       if (doc) await announceRmbReady({ documentId, itemId: r.id, number: doc.number, personId: r.person_id, total, finance: settings.finance })
     }

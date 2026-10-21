@@ -75,9 +75,6 @@ export function seesMoney(access: Pick<Access, 'isAdmin' | 'personId'>, personId
 export const isFinance = (access: Pick<Access, 'personId'>, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
   !!access.personId && settings.finance.includes(access.personId)
 
-/** Approves invoices (invoice_settings.invoice_approvers). */
-export const approvesInvoices = (access: Pick<Access, 'personId'>, settings: Pick<InvoiceSettings, 'invoiceApprovers'>): boolean =>
-  !!access.personId && settings.invoiceApprovers.includes(access.personId)
 
 type PersonRow = { id: string; manager_id: string | null; employment_type: string | null; internal_rate: number | null; monthly_salary: number | null }
 type TermsRow = { person_id: string; pays_as: PaysAs | null; allowance_hours: number | null; allowance_period: 'week' | 'month' | null }

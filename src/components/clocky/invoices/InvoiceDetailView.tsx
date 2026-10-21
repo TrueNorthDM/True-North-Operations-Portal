@@ -75,7 +75,7 @@ export function InvoiceDetailView({ d, api, initial }: {
             {d.locked && (
               <div className="flex gap-2 items-start text-[12.5px] text-[#5b6b82] leading-[1.5]">
                 <Icon d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" size={15} className="flex-none mt-0.5" />
-                <span>Locked. A change means reopening the timesheet, which sends this invoice back to Draft.</span>
+                <span>{d.locked}</span>
               </div>
             )}
           </div>

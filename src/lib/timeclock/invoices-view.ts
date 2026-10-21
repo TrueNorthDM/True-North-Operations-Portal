@@ -182,7 +182,8 @@ export interface InvoiceDetail {
   st: InvoiceStateKey
   who: string
   canPay: boolean
-  locked: boolean
+  /** Approved or paid: why it no longer changes (null while it can). */
+  locked: string | null
   history: { text: string; when: string; dot: string }[]
   /** For the Mark paid dialog. */
   pay: { who: string; line: string; total: string }
@@ -233,7 +234,9 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
   return {
     doc, st, who: doc.from.name || src.nameOf(inv.person_id),
     canPay: src.finance && st === 'appr',
-    locked: st === 'appr' || st === 'paid',
+    locked: st !== 'appr' && st !== 'paid' ? null
+      : inv.kind === 'fixed_no_timesheet' ? 'Locked. An approved invoice with no timesheet does not change.'
+      : 'Locked. A change means reopening the timesheet, which sends this invoice back to Draft.',
     history: order.map(({ text, when, dot }) => ({ text, when, dot })),
     pay: { who: doc.from.name || src.nameOf(inv.person_id), line: `${period.full} · approved ${inv.approved_at ? dateLabel(inv.approved_at.slice(0, 10)) : ''}`.trim(), total: doc.total },
   }

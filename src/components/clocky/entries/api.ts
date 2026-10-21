@@ -6,7 +6,7 @@
  */
 
 import type { EntriesQuery } from '@/lib/timeclock/clocky-entries'
-import type { ApprovalsData, ClockPanelData, EntriesData, HistoryData, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
+import type { ClockPanelData, EntriesData, HistoryData, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 
 export interface EntryInputBody {
   date: string
@@ -42,18 +42,6 @@ export interface EntriesApi {
   decideTimeOff(i: DecideBody): Promise<Result>
   clockIn(i: { jobcodeId: number; fields?: Record<string, string>; notes?: string }): Promise<Result<{ entryId: number; startedAt: string; startedAtReal: string }>>
   switchTo(i: { jobcodeId: number; fields?: Record<string, string>; notes?: string }): Promise<Result<{ entryId: number; previous: { label: string; todaySeconds: number }; toast: string }>>
-}
-
-/** The reads and writes of the Approvals page. */
-export interface ApprovalsApi {
-  getApprovals(): Promise<Result<{ data: ApprovalsData }>>
-  getEntryHistory(i: { id: number }): Promise<Result<{ data: HistoryData }>>
-  decideCorrection(i: DecideBody): Promise<Result<{ entryId?: number; toast: string }>>
-  decideTimeOff(i: DecideBody): Promise<Result>
-  /** Timesheets (Super Admins): the card's summary, approve or return, reopen an approved one. */
-  getTimesheet(i: { id: number }): Promise<Result<{ data: SubmitSummary }>>
-  decideTimesheet(i: { id: number; decision: 'approve' | 'return'; note?: string }): Promise<Result<{ toast: string }>>
-  reopenTimesheet(i: { id: number; note?: string }): Promise<Result<{ toast: string }>>
 }
 
 /**

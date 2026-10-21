@@ -91,8 +91,13 @@ describe('one invoice (6F)', () => {
       'Created when the October timesheet was submitted',
     ])
     expect(d.doc.paid).toBe('Paid Nov 12, 2026 · WISE-88412')
-    expect(d.locked).toBe(true)
+    expect(d.locked).toBe('Locked. A change means reopening the timesheet, which sends this invoice back to Draft.')
     expect(d.canPay).toBe(false)
+  })
+
+  it('says an approved invoice with no timesheet does not change', () => {
+    const d = buildInvoiceDetail({ ...base, sub: undefined, inv: inv({ id: 150, person_id: 'jt', state: 'approved', kind: 'fixed_no_timesheet', submission_id: null }), events: [] })
+    expect(d.locked).toBe('Locked. An approved invoice with no timesheet does not change.')
   })
 
   it('a return sends it back to Draft, with the reason', () => {
@@ -103,7 +108,7 @@ describe('one invoice (6F)', () => {
     })
     expect(d.st).toBe('draft')
     expect(d.history[0].text).toBe('Returned by Arnaldo Oliveira with the timesheet: "Oct 12 has 2 entries on DDI that belong to GNA." Back to Draft.')
-    expect(d.locked).toBe(false)
+    expect(d.locked).toBeNull()
   })
 
   it('Finance marks an approved one paid', () => {

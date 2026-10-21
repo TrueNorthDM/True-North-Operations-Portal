@@ -32,6 +32,17 @@ export interface InvoiceDocView {
 
 export const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
+/** A reimbursement in its own currency: dollars as "$45.00", others with their code ("KES 4,500.00"); Finance converts at the expense date. */
+export const money = (n: number, currency = 'USD') => (currency === 'USD' ? usd(n) : `${currency} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+
+/** A total over several currencies, never added across them: "$120.00 + KES 4,500.00". */
+export function moneyTotal(items: readonly { amount: number; currency?: string | null }[]): string {
+  const by = new Map<string, number>()
+  for (const i of items) { const c = i.currency || 'USD'; by.set(c, (by.get(c) ?? 0) + Math.round(i.amount * 100)) }
+  if (!by.size) return usd(0)
+  return [...by.entries()].sort(([a], [b]) => (a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b))).map(([c, cents]) => money(cents / 100, c)).join(' + ')
+}
+
 /** "INV-2026-0142 · Paid Nov 12, 2026 · WISE-88412" without the number: the paid stamp and the Paid column. */
 export const paidText = (paidOn: string, ref: string | null): string => `${dateLabel(paidOn)}${ref ? ` · ${ref}` : ''}`
 

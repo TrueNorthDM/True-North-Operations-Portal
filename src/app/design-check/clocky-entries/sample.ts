@@ -15,10 +15,10 @@ import { dayLabel, dateLabel, minutesLabel, zoneAbbr, initials as initialsOf } f
 import { addDays } from '@/lib/timeclock/periods'
 import { formatDuration, parseDuration, roundSeconds, runningSeconds } from '@/lib/timeclock/rounding'
 import type {
-  ApprovalRow, ApprovalsData, AttentionItem, ClockChoice, EntriesData, EntryView, HistoryData, PanelField, PanelJob, Pill, SubmitSummary,
+  AttentionItem, ClockChoice, EntriesData, EntryView, HistoryData, PanelField, PanelJob, Pill, SubmitSummary,
 } from '@/lib/timeclock/clocky-types'
-import type { ApprovalsApi, Catalog, EntriesApi } from '@/components/clocky/entries/api'
-import { attentionOrder, goesToLabel, requestHistoryLines, waitingOrder } from '@/lib/timeclock/clocky-requests'
+import type { Catalog, EntriesApi } from '@/components/clocky/entries/api'
+import { attentionOrder, goesToLabel, requestHistoryLines } from '@/lib/timeclock/clocky-requests'
 
 export type Level = 'super' | 'admin' | 'lead' | 'user'
 
@@ -345,25 +345,9 @@ function submitPeriodOf(level: Level, cad: Record<string, string>) {
 const ok = <T extends object>(x: T) => Promise.resolve({ ok: true as const, ...x })
 const no = (error: string, extra: object = {}) => Promise.resolve({ ok: false as const, error, ...extra })
 
-/** A sent timesheet (Approvals, frame 3L3): its own numbers, since the sample's hours are October's. */
-export interface Sheet {
-  id: number; who: string; start: string; end: string; full: string; line: string
-  state: 'submitted' | 'approved' | 'returned'; sentAt: string; sent: string
-  byClient: [string, number][]; noTime: string
-  decided?: { by: string; when: string; at: string; note: string | null }
-}
+export interface Store { recs: Rec[]; level: Level; cad: Record<string, string> }
 
-export interface Store { recs: Rec[]; level: Level; cad: Record<string, string>; sheets?: Sheet[] }
-
-export function makeStore(level: Level, recs: Rec[], cad: Record<string, string> = {}, sheets?: Sheet[]): Store { return { recs, level, cad, sheets } }
-
-const H = (h: number) => h * 3600
-/** Frame 3L3: two timesheets waiting (a month, a pay period) and one approved. */
-export const SHEETS: Sheet[] = [
-  { id: 901, who: 'Samuel Manzi', start: '2026-09-01', end: '2026-09-30', full: 'September 2026', line: 'You submit monthly. This covers the whole month.', state: 'submitted', sentAt: '2026-10-01T13:14:00.000Z', sent: 'Submitted Oct 1, 2026, 9:14 AM', byClient: [['i7 Marketing', H(120)], ['True North', H(48.5)]], noTime: 'Mon, Sep 14' },
-  { id: 902, who: 'Wendy Cacka', start: '2026-09-27', end: '2026-10-10', full: 'Sep 27 to Oct 10, 2026', line: 'You submit every 2 weeks, by pay period. This covers Sep 27 to Oct 10.', state: 'submitted', sentAt: '2026-10-11T12:02:00.000Z', sent: 'Submitted Oct 11, 2026, 8:02 AM', byClient: [['i7 Marketing', H(80)]], noTime: 'None' },
-  { id: 903, who: 'Cheyenne Wilson', start: '2026-09-01', end: '2026-09-30', full: 'September 2026', line: 'You submit monthly. This covers the whole month.', state: 'approved', sentAt: '2026-10-01T14:40:00.000Z', sent: 'Submitted Oct 1, 2026, 10:40 AM', byClient: [['i7 Marketing', H(152)]], noTime: 'None', decided: { by: 'Arnaldo Oliveira', when: 'Oct 3, 2026, 10:02 AM', at: '2026-10-03T14:02:00.000Z', note: null } },
-]
+export function makeStore(level: Level, recs: Rec[], cad: Record<string, string> = {}): Store { return { recs, level, cad } }
 
 export function entriesData(store: Store, q: { from: string; to: string; who: 'my' | 'all'; personId?: string }): EntriesData {
   const { level } = store
@@ -424,7 +408,7 @@ function historyOf(store: Store, id: number): HistoryData | null {
 const stamp = () => `Oct 15, 2026, ${clk(NOW_SEC)}`
 const secOfHHMM = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 3600 + m * 60 }
 
-export function makeApi(store: Store): EntriesApi & ApprovalsApi {
+export function makeApi(store: Store): EntriesApi {
   const { me } = scopeOf(store.level)
   const timedOf = (who: string, except: number | null) => store.recs.filter(x => x.kind === 'work' && x.who === who && x.s != null && x.id !== except)
   const overlapWith = (who: string, date: string, s: number, e: number, except: number | null) => {
@@ -596,92 +580,8 @@ export function makeApi(store: Store): EntriesApi & ApprovalsApi {
       store.recs.push({ id: Math.max(...store.recs.map(x => x.id)) + 1, who: me, date: TODAY, kind: 'work', s: R(NOW_SEC), e: null, job, co: f['1'] ?? '', prj: f['2'] ?? '', act: f['3'] ?? '', bill: f['4'] ?? '', code: f['5'] ?? '', notes: b.notes ?? '', status: 'Open', hist: [] })
       return ok({ entryId: 1, previous: { label: '', todaySeconds: 0 }, toast: '' })
     },
-    getApprovals: () => ok({ data: approvalsData(store) }),
-    getTimesheet: ({ id }) => {
-      const t = store.sheets?.find(x => x.id === id)
-      if (!t) return no('That timesheet could not be found.')
-      const total = t.byClient.reduce((n, [, sec]) => n + sec, 0)
-      return ok({ data: {
-        start: t.start, end: t.end, kind: t.start.slice(8) === '01' ? 'month' : 'pay_period', title: `Submit ${t.full}?`, label: t.full, cadenceLine: t.line,
-        lockNote: '', state: t.state, running: false, totalSeconds: total, byClient: t.byClient.map(([client, seconds]) => ({ client, seconds })),
-        noTime: t.noTime, attention: [], canSubmit: false, totalLabel: 'Total', block: null,
-      } satisfies SubmitSummary })
-    },
-    decideTimesheet: ({ id, decision, note }) => {
-      const t = store.sheets?.find(x => x.id === id && x.state === 'submitted')
-      if (!t) return no('That request is not waiting for you. It may have been decided already.')
-      t.state = decision === 'approve' ? 'approved' : 'returned'
-      t.decided = { by: me, when: stamp(), at: NOW_ISO, note: decision === 'approve' ? null : note ?? null }
-      return ok({ toast: decision === 'approve' ? `${t.who}'s timesheet for ${t.full} is approved.` : `${t.full} went back to ${t.who.split(' ')[0]} with your reason.` })
-    },
-    reopenTimesheet: ({ id, note }) => {
-      const t = store.sheets?.find(x => x.id === id && x.state === 'approved')
-      if (!t) return no('That timesheet is not approved, so there is nothing to reopen.')
-      t.state = 'returned'
-      t.decided = { by: me, when: stamp(), at: NOW_ISO, note: note ?? null }
-      return ok({ toast: `${t.full} is open again for ${t.who.split(' ')[0]}.` })
-    },
   }
 }
 
-// ── Approvals (3L, 3L2) ─────────────────────────────────────────────────────
-
-export function approvalsData(store: Store): ApprovalsData {
-  const { level } = store
-  const { me, inScope } = scopeOf(level)
-  const sup = level === 'super'
-  const mine = (x: Rec) => x.who !== me && inScope(x.who)
-  const rowOf = (x: Rec): ApprovalRow => {
-    const isOff = x.kind === 'off'
-    const p = PM.get(x.who)
-    const fr = x.fromReq
-    const zone = zoneOf(x.who)
-    const abbr = zone !== ET ? ` ${zoneAbbr(zone, new Date(NOW))}` : ''
-    const state = (fr ? 'approved' : x.status.toLowerCase()) as ApprovalRow['state']
-    let overlap: string | null = null
-    if (!isOff && state === 'pending') {
-      const span = { start: startIso(x)!, end: endIso(x)! }
-      const o = store.recs.find(y => y.kind === 'work' && y.who === x.who && y.s != null && sharedSpan(span, { start: startIso(y), end: endIso(y) }, new Date(NOW)))
-      if (o) overlap = approveOverlapLine({ start: startIso(o), end: endIso(o) }, COMBOS.find(([, k]) => KK[k].job === o.job && KK[k].act === o.act)?.[0] ?? shortOf(o.job), zone)
-    }
-    const decided = fr ? { by: fr.by, at: fr.at, when: fr.when, note: null } : x.decided ? { by: x.decided.by, at: x.decided.at, when: x.decided.when, note: x.decided.reason ?? null } : null
-    return {
-      key: `${isOff ? 'o' : 'c'}${x.id}`, type: isOff ? 'time_off' : 'correction', id: x.id, personId: pid(x.who), name: x.who, initials: initialsOf(x.who),
-      team: p?.t ? { name: p.t, color: TEAMS.find(t => t[0] === p.t)![1] } : null,
-      date: x.date, goesTo: isOff ? '' : goesToOf(x.who),
-      seconds: isOff ? x.dur! : x.e! - x.s!,
-      when: isOff ? `${dayLabel(x.date)}, 2026 · ${x.type}` : `${dayLabel(x.date)}, 2026 · ${clk(x.s!)} to ${clk(x.e!)}${abbr}`,
-      job: isOff ? '' : `${x.job} · ${x.act || 'No activity'}`,
-      reason: (fr ? fr.reason : isOff ? x.note : x.reason) ?? '',
-      askedAt: fr ? fr.askedAt : x.askedAt ?? NOW_ISO, asked: `Asked ${fr ? fr.asked : x.asked}`,
-      state, decided: state === 'pending' ? null : decided,
-      entryId: fr ? x.id : null, overlap, canDecide: state === 'pending',
-    }
-  }
-  // As the loader reads them: corrections as asked, then time off as asked.
-  const asked = (a: ApprovalRow, b: ApprovalRow) => (a.askedAt < b.askedAt ? -1 : a.askedAt > b.askedAt ? 1 : 0)
-  const loaded = (rows: ApprovalRow[]) => [...rows.filter(r => r.type === 'correction').sort(asked), ...rows.filter(r => r.type === 'time_off').sort(asked)]
-  const sheetRow = (t: Sheet): ApprovalRow => {
-    const p = PM.get(t.who)
-    const state = t.state === 'submitted' ? 'pending' : t.state
-    return {
-      key: `t${t.id}`, type: 'timesheet', id: t.id, personId: pid(t.who), name: t.who, initials: initialsOf(t.who),
-      team: p?.t ? { name: p.t, color: TEAMS.find(x => x[0] === p.t)![1] } : null,
-      date: t.start, goesTo: '', seconds: t.byClient.reduce((n, [, sec]) => n + sec, 0), when: t.full,
-      job: t.byClient.map(([cl, sec]) => `${cl} ${formatDuration(sec)}`).join(' · '), reason: '', askedAt: t.sentAt, asked: t.sent,
-      state, decided: t.decided && state !== 'pending' ? t.decided : null, entryId: null, overlap: null, canDecide: state === 'pending',
-      period: { start: t.start, end: t.end },
-    }
-  }
-  const sheets = sup ? store.sheets ?? [] : []
-  const waiting = waitingOrder([...loaded(store.recs.filter(x => mine(x) && x.status === 'Pending' && !x.fromReq && (x.kind === 'req' || (sup && x.kind === 'off'))).map(rowOf)), ...sheets.filter(t => t.state === 'submitted').map(sheetRow)])
-  const decided = [...loaded(store.recs.filter(x => mine(x) && ((x.kind === 'work' && x.fromReq) || (x.kind === 'req' && x.status !== 'Pending') || (sup && x.kind === 'off' && x.status !== 'Pending'))).map(rowOf)), ...sheets.filter(t => t.state !== 'submitted').map(sheetRow)]
-  return {
-    level: ACCESS[level],
-    subtitle: level === 'lead' ? 'Time corrections from the Web team, waiting for your decision.' : sup ? 'Time corrections, time off and timesheets waiting for a decision. Only Super Admins decide time off and timesheets.' : 'Time corrections from everyone, waiting for a decision. Super Admins decide time off.',
-    note: "Times in each person's own time zone. Approved time becomes an entry marked Edited.",
-    waiting, decided,
-  }
-}
 
 export { ME, TODAY, KK, JOBS, jobId, pid, R }

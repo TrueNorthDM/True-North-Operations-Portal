@@ -464,12 +464,6 @@ async function submitTarget(c: Db, personId: string, today: string, rules: Caden
   return periodToSubmit(today, rules, subs, new Set(((data ?? []) as { entry_date: string }[]).map(r => r.entry_date)))
 }
 
-/** The person's lock for a set of days, read fresh (for an action about to write). */
-export async function lockFor(c: Db, personId: string, days: readonly string[], entryState?: string | null) {
-  const subs = await loadSubmissions(c, [personId])
-  return lockOn(days, subs.get(personId) ?? [], entryState)
-}
-
 /**
  * One person's entries in a period as Time entries shows them (Clocky part 2,
  * the 6C page's Summary, Time entries and Combined tabs). The caller decides

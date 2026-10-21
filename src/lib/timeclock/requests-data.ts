@@ -17,7 +17,7 @@ import { allowanceRange } from './allowance'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { dateLabel, localDate, monthYear, stampLabel } from './format'
 import { INVOICE_STATE, stateKey } from './invoices-view'
-import { usd } from './invoice-doc'
+import { money, moneyTotal } from './invoice-doc'
 import { isFinance, loadInvoiceSettings, loadPayTerms, loadRoutes, seesMoney } from './pay-terms'
 import { addDays } from './periods'
 import { formatDuration } from './rounding'
@@ -88,7 +88,7 @@ export async function loadReimbursements(v: Pick<Access, 'personId'>, zone: stri
       st = { label: 'Approved', tone: 'teal' }
       info = `Approved ${day(r.decided_at)}. On reimbursement document ${d.number}, ${d.state === 'paid' ? 'paid' : 'waiting for Finance'}.`
     } else { st = { label: 'Approved', tone: 'teal' }; info = `Approved ${day(r.decided_at)}. It goes on your next invoice by itself.` }
-    return { id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toFixed(2)} ${r.currency}`, hasReceipt: !!r.receipt_path, st, info }
+    return { id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: money(Number(r.amount), r.currency), hasReceipt: !!r.receipt_path, st, info }
   })
   const open = (docs ?? []).find(d => d.state !== 'paid')
   return { contractor: !!route?.isContractor, rows: out, doc: !route?.isContractor && open ? { id: open.id, number: open.number } : null, clients, today: localDate(now, zone) }
@@ -122,7 +122,7 @@ export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'isAdmin'>, id
   const settings = await loadInvoiceSettings()
   if (!seesMoney(v, d.person_id, settings)) return null
   const [{ data: items }, dir] = await Promise.all([
-    c.from('reimbursements').select('id, spent_on, category, purpose, amount, decided_by, decided_at, receipt_name').eq('document_id', d.id).order('decided_at'),
+    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, decided_by, decided_at, receipt_name').eq('document_id', d.id).order('decided_at'),
     loadDirectory(),
   ])
   const p = dir.people.get(d.person_id)
@@ -135,21 +135,21 @@ export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'isAdmin'>, id
   const finance = isFinance(v, settings)
   const hist: { text: string; when: string; dot: string }[] = []
   list.forEach((i, n) => hist.push(n === 0
-    ? { text: `Created when ${i.purpose} (${usd(Number(i.amount))}) was approved by ${dir.nameOf(i.decided_by)}`, when: i.decided_at ? at(i.decided_at) : at(d.created_at), dot: '#1E7D7F' }
-    : { text: `Item added by itself: ${i.purpose} (${usd(Number(i.amount))}), approved by ${dir.nameOf(i.decided_by)}`, when: i.decided_at ? at(i.decided_at) : '', dot: '#012358' }))
+    ? { text: `Created when ${i.purpose} (${money(Number(i.amount), i.currency)}) was approved by ${dir.nameOf(i.decided_by)}`, when: i.decided_at ? at(i.decided_at) : at(d.created_at), dot: '#1E7D7F' }
+    : { text: `Item added by itself: ${i.purpose} (${money(Number(i.amount), i.currency)}), approved by ${dir.nameOf(i.decided_by)}`, when: i.decided_at ? at(i.decided_at) : '', dot: '#012358' }))
   if (paid && d.paid_on) hist.push({ text: `Paid by ${dir.nameOf(d.paid_by)}${d.paid_ref ? `, ref. ${d.paid_ref}` : ''}`, when: dateLabel(d.paid_on), dot: '#1E9E6A' })
   const first = who.split(' ')[0]
   return {
     id: d.id, number: d.number, paid, st: paid ? { label: 'Paid', tone: 'ok' } : { label: 'Approved, waiting for Finance', tone: 'teal' },
     date: dateLabel(localDate(d.created_at, zone)), personId: d.person_id, who, team, first,
-    items: list.map(i => ({ id: i.id, date: dateLabel(i.spent_on).replace(/, \d{4}$/, ''), category: i.category, what: i.purpose, amount: usd(Number(i.amount)), file: i.receipt_name || 'receipt' })),
-    total: usd(Number(d.total)),
+    items: list.map(i => ({ id: i.id, date: dateLabel(i.spent_on).replace(/, \d{4}$/, ''), category: i.category, what: i.purpose, amount: money(Number(i.amount), i.currency), file: i.receipt_name || 'receipt' })),
+    total: moneyTotal(list.map(i => ({ amount: Number(i.amount), currency: i.currency }))),
     billing: { name: settings.billingName ?? 'True North Digital Marketing', line1: lines[0] ?? '', line2: lines.slice(1).join(', ') },
     canPay: finance && !paid,
     payNote: paid ? `Paid on ${d.paid_on ? dateLabel(d.paid_on) : ''}${d.paid_ref ? `, ref. ${d.paid_ref}` : ''} by ${dir.nameOf(d.paid_by)}.`
       : finance ? `You are Finance. Pay ${first} outside Rippling payroll, then mark it paid here.` : 'Only Finance marks it paid.',
     history: hist.reverse(),
-    pay: { who, line: `${list.length} item${list.length === 1 ? '' : 's'}${list.length && list[list.length - 1].decided_at ? ` · approved ${dateLabel(localDate(list[list.length - 1].decided_at!, zone))}` : ''}`, total: usd(Number(d.total)) },
+    pay: { who, line: `${list.length} item${list.length === 1 ? '' : 's'}${list.length && list[list.length - 1].decided_at ? ` · approved ${dateLabel(localDate(list[list.length - 1].decided_at!, zone))}` : ''}`, total: moneyTotal(list.map(i => ({ amount: Number(i.amount), currency: i.currency }))) },
   }
 }
 

@@ -10,7 +10,7 @@ import type { Access } from '@/lib/access/resolve'
 import { db, loadDirectory } from './clocky-context'
 import { entrySeconds } from './clocky-panel'
 import { dateLabel, localDate, stampLabel } from './format'
-import { usd } from './invoice-doc'
+import { money, moneyTotal } from './invoice-doc'
 import { loadInvoiceSettings, seesMoney } from './pay-terms'
 import { addDays, periodLabel } from './periods'
 import { formatDuration } from './rounding'
@@ -62,12 +62,11 @@ export function payrollDocOf(x: {
 
 export function rmbDocOf(x: {
   number: string; name: string; team: string; createdOn: string
-  items: { spentOn: string; category: string; purpose: string; amount: number }[]
+  items: { spentOn: string; category: string; purpose: string; amount: number; currency?: string }[]
   billing: { name: string; address: string }
   paid: { on: string; ref: string | null } | null
 }): DocSheetData {
   const lines = x.billing.address.split('\n')
-  const total = x.items.reduce((n, i) => n + Math.round(i.amount * 100), 0) / 100
   return {
     kind: 'Reimbursement', title: x.number, titleSize: 28,
     meta: [{ k: 'Date', v: dateLabel(x.createdOn) }, { k: 'Items', v: String(x.items.length) }],
@@ -76,8 +75,8 @@ export function rmbDocOf(x: {
       { k: 'From', name: x.billing.name, l1: lines[0] ?? '', l2: lines.slice(1).join(', ') },
     ],
     heads: ['What it was for', 'Date', 'Category', 'Amount'],
-    rows: x.items.map(i => ({ a: i.purpose, b: dateLabel(i.spentOn).replace(/, \d{4}$/, ''), c: i.category, d: usd(i.amount) })),
-    totalLabel: 'Total', total: usd(total),
+    rows: x.items.map(i => ({ a: i.purpose, b: dateLabel(i.spentOn).replace(/, \d{4}$/, ''), c: i.category, d: money(i.amount, i.currency) })),
+    totalLabel: 'Total', total: moneyTotal(x.items),
     stamp: x.paid ? `Paid ${dateLabel(x.paid.on)}${x.paid.ref ? ` · ${x.paid.ref}` : ''}` : null,
     file: `${x.number}.pdf`,
   }
@@ -138,14 +137,14 @@ export async function loadRmbDoc(v: Viewer, documentId: number, zone: string): P
   const settings = await loadInvoiceSettings()
   if (!seesMoney(v, d.person_id, settings)) return null
   const [{ data: items }, dir] = await Promise.all([
-    c.from('reimbursements').select('spent_on, category, purpose, amount').eq('document_id', d.id).order('spent_on'),
+    c.from('reimbursements').select('spent_on, category, purpose, amount, currency').eq('document_id', d.id).order('spent_on'),
     loadDirectory(),
   ])
   const person = dir.people.get(d.person_id)
   return rmbDocOf({
     number: d.number, name: person?.name ?? 'Someone', team: (person?.teamId && dir.teams.get(person.teamId)?.name) || 'No team',
     createdOn: localDate(d.created_at, zone),
-    items: (items ?? []).map(i => ({ spentOn: i.spent_on, category: i.category, purpose: i.purpose, amount: Number(i.amount) })),
+    items: (items ?? []).map(i => ({ spentOn: i.spent_on, category: i.category, purpose: i.purpose, amount: Number(i.amount), currency: i.currency })),
     billing: { name: settings.billingName ?? 'True North Digital Marketing', address: settings.billingAddress ?? '' },
     paid: d.state === 'paid' && d.paid_on ? { on: d.paid_on, ref: d.paid_ref } : null,
   })
