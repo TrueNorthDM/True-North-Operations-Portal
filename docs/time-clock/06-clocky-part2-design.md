@@ -174,9 +174,16 @@ mix (README_PART2 "Invoice / PDF style").
 
 ### Cron jobs (deploy/cron)
 
-Day 1, 06:00 New York: fixed-no-timesheet invoices for the previous month.
-Daily: reminders (13C), scheduled type changes. Every 5 minutes: outbox. Every 30
-minutes: Good News sync.
+As built (deploy/cron/portal.crontab, all three lines commented until Clocky goes
+to production):
+
+- `clocky-invoices`, day 1, 11:00 UTC: fixed, no-timesheet invoices for the
+  previous month.
+- `clocky-outbox`, every 5 minutes: Rippling and Google Calendar jobs, then the Good
+  News Calendar read into `agenda_good_news` (15 minutes at most between reads).
+- `clocky-reminders`, hourly: scheduled contractor-to-employee changes first; then,
+  at 9:00 in each person's zone, due / pay period ends / late; the allowance at 90%
+  and over; at 7:00 in each person's zone, today's birthdays.
 
 ## 5. Scale and reliability
 
@@ -217,3 +224,41 @@ coverage test).
 3. **Invoice rates:** hourly invoice rate = the cost rate (`people.internal_rate`)?
    Only one active person has it on staging; Rates & Costs needs them filled.
 4. **Reports to:** 30 of 31 active people have it; confirm it is current.
+5. **Company holidays:** the portal uses the US federal list (`usHolidays`). The
+   design also shows Day after Thanksgiving and Christmas Eve: confirm the list.
+6. **Agenda events:** no edit or delete was designed; a wrong event stays until one
+   is added. Team events cannot be shared with other teams yet (the card's
+   "greyed when shared" has no control in 8E).
+7. **Birthday card:** "Say happy birthday in Chat" is left out while Chat is
+   "soon"; it comes back with Chat.
+8. **Job catalogue before the switch-over:** QuickBooks Time's import keeps adding
+   new jobs and options, but no longer overwrites what a Super Admin edited here.
+
+## 9. As built (staging, October 2026)
+
+| Step | Commit | What |
+|---|---|---|
+| 1 | 1af455b | Pay terms, approval routing, person page, Rates & Costs |
+| 2 | 28d4776 | Approvals by routing, the timesheet + invoice page |
+| 3 | e076d7e | Invoices, Mark paid, PDFs, the Submit block, Payments tab |
+| 4 | 37499a1 | Requests (time off, reimbursements, extra hours), the outbox |
+| 5a | d72f69d | Company settings 13A to 13C, reminders, contractor to employee |
+| 5b | 11a6215 | Agenda 8A to 8F, birthday bell |
+| 5c | cc02bae | Job catalogue 11A to 11D, "Which job?" |
+| 5d | c7863f8 | Reports 12A to 12C |
+| audit | 8f8e556 | Dead code out; no-timesheet lock note; reimbursement currencies |
+
+Every frame of the handoff has a design check at
+`/design-check/clocky-app?frame=<code>` (and `/design-check/clocky-clock` for the
+clock panel), measured against the prototype.
+
+### Going to production (only when the owner asks)
+
+1. Migrations 115 to 121, in order, on the production database.
+2. The code (promote the staging image).
+3. Uncomment the three crontab lines (`clocky-invoices`, `clocky-outbox`,
+   `clocky-reminders`) and install the crontab.
+4. In Company settings: the invoice numbering and billing details (13B), the
+   Rippling token and the Google service account and calendars (13A), and the
+   reminders (13C).
+
