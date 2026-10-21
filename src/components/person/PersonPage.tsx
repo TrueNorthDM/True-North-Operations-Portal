@@ -31,9 +31,12 @@ import { useToast } from '@/components/clocky/periods/ui'
 import { previewCadenceChange, setCadence } from '@/app/(app)/clocky-hours/periods/actions'
 import type { Cadence } from '@/lib/timeclock/periods'
 import { PAGE_TABS, personHref, type PageTab } from '@/lib/directory/page-rights'
+import type { PaymentsData } from '@/lib/timeclock/payments-view'
+import { PaymentsTab, type PaymentsApi } from './PaymentsTab'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 
 type Editable = 'personal' | 'work' | 'hr'
+type PaymentsProp = { data: PaymentsData; api: PaymentsApi; initial?: Parameters<typeof PaymentsTab>[0]['initial'] }
 
 const first = (name: string) => name.split(' ')[0]
 
@@ -46,7 +49,7 @@ const btnNavy = 'inline-flex items-center gap-2 font-(family-name:--font-display
 
 const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
 
-export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null, cadenceActions = CADENCE_ACTIONS, startEditing = null, startCadence }: {
+export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null, payments = null, cadenceActions = CADENCE_ACTIONS, startEditing = null, startCadence }: {
   data: PersonPageData
   tab: PageTab
   canRemove: boolean
@@ -54,6 +57,8 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
   timesheet?: PersonTimesheetView | null
   /** The Work tab's Approvals and Pay and hours (Clocky part 2, 10A-1); pay is null for those who see no money. */
   pay?: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
+  /** The Payments tab (Clocky part 2, 10P): null when it is not open, or not the tab shown. */
+  payments?: PaymentsProp | null
   /** Design check only: the cadence preview and save without the server. */
   cadenceActions?: CadenceActions
   /** Design check only: a tab already in Edit, with this cadence picked. */
@@ -86,7 +91,7 @@ export function PersonPage({ data, tab, canRemove, timesheet = null, pay = null,
         })}
       </nav>
       {/* Keyed by tab: moving to another tab leaves any edit behind. */}
-      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} timesheet={timesheet} pay={pay} cadenceActions={cadenceActions} startEditing={startEditing} startCadence={startCadence} />
+      <TabPanel key={tab} data={data} tab={tab} canRemove={canRemove} timesheet={timesheet} pay={pay} payments={payments} cadenceActions={cadenceActions} startEditing={startEditing} startCadence={startCadence} />
     </div>
   )
 }
@@ -162,12 +167,13 @@ function Cover({ data }: { data: PersonPageData }) {
 
 // ── One tab ─────────────────────────────────────────────────────────────────
 
-function TabPanel({ data, tab, canRemove, timesheet, pay, cadenceActions, startEditing, startCadence }: {
+function TabPanel({ data, tab, canRemove, timesheet, pay, payments, cadenceActions, startEditing, startCadence }: {
   data: PersonPageData
   tab: PageTab
   canRemove: boolean
   timesheet: PersonTimesheetView | null
   pay: { approvals: ApprovalsView; pay: PayView | null; invoicesLine: string | null; save: SavePay; startEditing?: boolean } | null
+  payments: PaymentsProp | null
   cadenceActions: CadenceActions
   startEditing: Editable | null
   startCadence?: Cadence
@@ -225,6 +231,13 @@ function TabPanel({ data, tab, canRemove, timesheet, pay, cadenceActions, startE
       if (!w.ok || !changed) return w
       return cadenceActions.setCadence({ personIds: [data.id], cadence: cadence! })
     }, changed ? `Saved. ${who} now submits ${cadence === 'biweekly' ? 'every 2 weeks' : 'monthly'}; Rates & Costs shows the same.` : undefined)
+  }
+
+  // Payments (10P) is its own cards and tables on the page, as the design draws it, with no section around them.
+  if (tab === 'payments') {
+    return payments
+      ? <div className="leading-[normal]"><PaymentsTab data={payments.data} api={payments.api} initial={payments.initial} /></div>
+      : <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Payments could not be read. Try again in a moment.</p>
   }
 
   let rule: { kind: 'edit' | 'view' | 'hidden'; text: string; edit?: { label: string; on: Editable } } | null = null

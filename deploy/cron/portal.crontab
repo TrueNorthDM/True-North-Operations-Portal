@@ -16,3 +16,8 @@ PORTAL_DIR=/opt/tnportal/app
 */15 * * * *             $PORTAL_DIR/deploy/cron/run.sh /api/cron/daily-summary
 # Clocky's safety net: "Still working?" at 4h 30m, the automatic stop at 5h 00m.
 */5 * * * *              $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-safety
+# Clocky part 2, day 1 at 11:00 UTC (06:00 or 07:00 New York): the fixed, no
+# timesheet invoices for the month that ended. Off until Clocky part 2 is in
+# production (owner, 20 October 2026: nothing of Clocky goes to production
+# until asked); uncomment it in the same promotion.
+# 0 11 1 * *               $PORTAL_DIR/deploy/cron/run.sh /api/cron/clocky-invoices

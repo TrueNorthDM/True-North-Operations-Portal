@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadAccess } from '@/lib/access/resolve'
 import { NOT_SAVED, signedInPerson } from '@/lib/notifications/signed-in'
 import { buildRail } from '@/lib/access/nav'
+import { loadNavFacts } from '@/lib/access/nav-facts'
 import { pinnable } from '@/lib/settings/pages'
 import { cleanSettings, type SettingsPatch } from '@/lib/settings/person'
 
@@ -39,7 +40,7 @@ async function save(patch: SettingsPatch): Promise<Result> {
 
   if (Array.isArray(clean.favourites)) {
     const access = await loadAccess()
-    const rail = buildRail({ can: access.can, canTool: access.canTool })
+    const rail = buildRail({ can: access.can, canTool: access.canTool, facts: await loadNavFacts(access) })
     const allowed = new Set(pinnable(rail).flatMap(g => g.rows.map(r => r.key)))
     clean.favourites = (clean.favourites as string[]).filter(k => allowed.has(k))
   }

@@ -63,8 +63,9 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
   const s = summary
   const done = isSent(s?.state)
   const disabled = busy || !s || s.attention.length > 0 || done || !s.canSubmit
+  // Invoices.dc.html 6A/6B: 540px with its padding (border-box); part 1 (3H): 520 plus padding.
   return (
-    <Modal label="Submit the period" width={520} onClose={onClose}>
+    <Modal label="Submit the period" width={s?.block ? 496 : 520} onClose={onClose}>
       <div className="flex items-center justify-between gap-2.5">
         <h2 className={MODAL_TITLE} style={{ letterSpacing: 'normal' }}>{s?.title ?? 'Submit'}</h2>
         <CloseButton onClick={onClose} />
@@ -86,7 +87,7 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
         <>
           <div className="grid grid-cols-2 gap-2.5">
             <div className={CARD}>
-              <div className={`${LABEL} text-muted`}>Total</div>
+              <div className={`${LABEL} text-muted`}>{s.totalLabel}</div>
               <div className="font-(family-name:--font-display) font-black text-[22px] text-tn-ink mt-1 tabular-nums lining-nums">{formatDuration(s.totalSeconds)}</div>
             </div>
             <div className={CARD}>
@@ -113,6 +114,29 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
                 </div>
               ))}
             </div>
+          )}
+          {s.block && (
+            <>
+              {/* Invoices.dc.html 6A / 6B: what submitting makes. */}
+              <div className="border border-[#cfe5e5] bg-[#f6fbfb] rounded-[12px] px-4 py-3.5 flex flex-col gap-[9px]">
+                <div className="flex items-center gap-2">
+                  <Icon d={s.block.kind === 'invoice' ? 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5' : ICON.send} size={16} color="#1E7D7F" />
+                  <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{s.block.title}</span>
+                </div>
+                {s.block.lines.map((l, i) => (
+                  <div key={i} className="flex justify-between gap-3 text-[13px] tabular-nums lining-nums">
+                    <span className="text-foreground">{l.k}</span>
+                    <span className="text-tn-ink font-semibold whitespace-nowrap">{l.v}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between gap-3 border-t border-[#cfe5e5] pt-[9px] tabular-nums lining-nums">
+                  <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">{s.block.sumLabel}</span>
+                  <span className="font-(family-name:--font-display) font-black text-[18px] text-tn-ink">{s.block.sum}</span>
+                </div>
+                <div className="text-[12px] text-tn-teal font-semibold leading-[1.45]">{s.block.note}</div>
+              </div>
+              <div className="text-[13px] text-foreground leading-[1.55] [text-wrap:pretty]">{s.block.confirm}</div>
+            </>
           )}
           <div className="text-[12px] text-muted leading-normal">{s.lockNote}</div>
           <div className="flex justify-end gap-2">

@@ -31,7 +31,8 @@ import {
 } from '@/lib/timeclock/clocky-store'
 import { correctionHistory, entryHistory, loadEntries, loadSubmitSummary, type EntriesQuery } from '@/lib/timeclock/clocky-entries'
 import { correctionGoesTo } from '@/lib/timeclock/clocky-panel'
-import { announceCorrectionRequested, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
+import { announceCorrectionRequested, announceInvoiceMade, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
+import { usd } from '@/lib/timeclock/invoice-doc'
 import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
 import { formatDuration, parseDuration, recordedSeconds, roundIso, roundSeconds } from '@/lib/timeclock/rounding'
 import {
@@ -657,9 +658,18 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     // Whoever decides first hears of it.
     const owner = currentStep(route, settings, nextState)?.owner
     if (owner) await announceTimesheetSubmitted({ submissionId: sentId, sentAt: at, personId: v.personId, to: [owner], period: periodLabel(s).full, seconds: s.totalSeconds })
+    // The contractor hears the invoice was made, with its number and total.
+    if (invoiceId) {
+      const { data: inv } = await c.from('invoices').select('number, total').eq('id', invoiceId).maybeSingle()
+      if (inv) await announceInvoiceMade({ invoiceId, at, personId: v.personId, number: inv.number, month: periodLabel(s).label, total: usd(Number(inv.total)), withHours: true })
+    }
     refresh()
     const what = nextState === 'recorded' ? 'recorded' : 'submitted'
-    return { ok: true, locked: count, invoiceId, toast: `${s.label} ${what}. ${count} entries are now locked.` }
+    // Invoices.dc.html: a contractor goes to the invoice it made; an employee hears where the hours go.
+    const toast = invoiceId ? `${s.label} ${what}. Your invoice is waiting for approval with it.`
+      : s.block?.kind === 'payroll' && nextState !== 'recorded' ? `${s.label} submitted. Your payroll summary goes to Rippling when it is approved.`
+        : `${s.label} ${what}. ${count} entries are now locked.`
+    return { ok: true, locked: count, invoiceId, toast }
   } catch (e) {
     return notSaved(e)
   }

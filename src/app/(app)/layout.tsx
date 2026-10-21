@@ -18,6 +18,7 @@ import { daysLeft } from '@/lib/auth/two-step-rule'
 import { TwoStepBanner } from '@/components/mfa/TwoStepBanner'
 import { loadAccess } from '@/lib/access/resolve'
 import { buildRail } from '@/lib/access/nav'
+import { loadNavFacts } from '@/lib/access/nav-facts'
 import { loadInbox } from '@/lib/notifications/inbox'
 import { Suspense } from 'react'
 import { ClockyTopBar } from '@/components/clocky/clock/ClockyTopBar'
@@ -53,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // The rail, its panels and the launcher all come from one resolved model
   // (lib/access/nav.ts), built here for this person: what each of them offers
   // is exactly what the page guards let through.
-  const rail = buildRail({ can: access.can, canTool: access.canTool })
+  const rail = buildRail({ can: access.can, canTool: access.canTool, facts: await loadNavFacts(access) })
   // Clocky in the top bar (design handoff of 16 October 2026): the clock for
   // everyone with Time entries, Who's working for Team Leaders and up. Started
   // here and not awaited: the bar streams them in, the page never waits.

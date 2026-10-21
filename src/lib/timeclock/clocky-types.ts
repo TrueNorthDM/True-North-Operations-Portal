@@ -311,6 +311,21 @@ export interface SubmitSummary {
   noTime: string
   attention: AttentionItem[]
   canSubmit: boolean
+  /** "Total" for a contractor, "Worked" for an employee. */
+  totalLabel: string
+  /**
+   * What submitting makes (Invoices.dc.html 6A, 6B): a contractor's invoice or
+   * an employee's payroll summary. Null when nothing is known yet (no terms).
+   */
+  block: {
+    kind: 'invoice' | 'payroll'
+    title: string
+    lines: { k: string; v: string }[]
+    sumLabel: string
+    sum: string
+    note: string
+    confirm: string
+  } | null
 }
 
 // ── Approvals (3L) ──────────────────────────────────────────────────────────

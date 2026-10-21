@@ -52,3 +52,26 @@ export function timeOffRequestedText(name: string, kind: string, startDate: stri
   const days = startDate === endDate ? dayLabel(startDate) : `${dayLabel(startDate)} to ${dayLabel(endDate)}`
   return `${name} asked for time off: ${kind}, ${days} (${formatDuration(seconds)}).`
 }
+
+/** "We created invoice INV-2026-0142 for October: $2,310.00. It waits for approval with your hours." */
+export const invoiceMadeText = (number: string, month: string, total: string, withHours: boolean): string =>
+  `We created invoice ${number} for ${month}: ${total}. ${withHours ? 'It waits for approval with your hours.' : 'It waits for approval.'}`
+
+/** "INV-2026-0138 (Stephanie Aguirre, $2,304.00) was approved. Ready to pay." */
+export const invoiceApprovedText = (number: string, name: string, total: string): string =>
+  `${number} (${name}, ${total}) was approved. Ready to pay.`
+
+/** "INV-2026-0131 (September) was paid on Oct 12, 2026. Ref. WISE-77310." */
+export const invoicePaidText = (number: string, month: string, paidOn: string, ref: string | null): string =>
+  `${number} (${month}) was paid on ${paidOn}.${ref ? ` Ref. ${ref}.` : ''}`
+
+/**
+ * Two steps, the hours approved (Approvals.dc.html bell): to the invoice
+ * approver, "Wendy Cacka approved Samuel Manzi's October hours. Invoice
+ * INV-2026-0147 ($3,200.00) is waiting for you."; to the person, "Wendy Cacka
+ * approved your October hours. Invoice INV-2026-0147 is now with Arnaldo Oliveira."
+ */
+export const hoursApprovedForApproverText = (by: string, name: string, month: string, number: string, total: string): string =>
+  `${by} approved ${name}'s ${month} hours. Invoice ${number} (${total}) is waiting for you.`
+export const hoursApprovedForPersonText = (by: string, month: string, number: string, approver: string): string =>
+  `${by} approved your ${month} hours. Invoice ${number} is now with ${approver}.`

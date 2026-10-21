@@ -533,6 +533,27 @@ export function clockyTimesheetDecidedDrafts(ctx: Ctx, x: { submissionId: number
   })
 }
 
+/** A contractor's invoice made from their timesheet: to them. */
+export function clockyInvoiceMadeDrafts(ctx: Ctx, x: { invoiceId: number; at: string; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-invoice-made', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: `/clocky-hours/invoices/${x.invoiceId}`, dedupeKey: `${x.invoiceId}:${x.at}`,
+  })
+}
+
+/** An invoice approved: to Finance, who pays it. */
+export function clockyInvoiceApprovedDrafts(ctx: Ctx, x: { invoiceId: number; to: readonly string[]; text: string }): Draft[] {
+  return x.to.map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-invoice-approved', r, {
+    title: x.text, body: '', href: '/clocky-hours/invoices', dedupeKey: String(x.invoiceId),
+  }))
+}
+
+/** An invoice marked paid: to its contractor. */
+export function clockyInvoicePaidDrafts(ctx: Ctx, x: { invoiceId: number; personId: string; text: string }): Draft[] {
+  return draftFor(ctx, 'clocky-invoice-paid', ctx.aud.byId.get(x.personId), {
+    title: x.text, body: '', href: `/clocky-hours/invoices/${x.invoiceId}`, dedupeKey: String(x.invoiceId),
+  })
+}
+
 /** Time off approved or denied: to the person who asked. */
 export function clockyTimeOffDecidedDrafts(ctx: Ctx, x: { requestId: number; personId: string; text: string }): Draft[] {
   return draftFor(ctx, 'clocky-timeoff-decided', ctx.aud.byId.get(x.personId), {

@@ -87,7 +87,7 @@ const queryOf = (ui: Pick<EntriesUi, 'period' | 'anchor' | 'who' | 'member'>, an
 const keyOf = (q: ReturnType<typeof queryOf>) => `${q.from}|${q.to}|${q.who}|${q.personId ?? ''}`
 const daySeconds = (iso: string, zone: string) => localMinutes(iso, zone) * 60
 
-export function TimeEntries({ initialData, catalog, api, initial, clock, clockHref = '/clocky-hours?clock=open', onChanged }: {
+export function TimeEntries({ initialData, catalog, api, initial, clock, clockHref = '/clocky-hours?clock=open', onChanged, onInvoiceMade }: {
   initialData: EntriesData
   catalog: Catalog
   api: EntriesApi
@@ -98,6 +98,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   clockHref?: string
   /** After a change: the live page refreshes the top bar. */
   onChanged?: () => void
+  /** A contractor's submit made an invoice: the live page opens it. */
+  onInvoiceMade?: (invoiceId: number) => void
 }) {
   const [data, setData] = useState<EntriesData>(initialData)
   const [nowMs, setNowMs] = useState(() => Date.parse(clock.now))
@@ -312,6 +314,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     if (!r) return
     if (!r.ok) return setSubmit({ summary: r.attention ? { ...s, attention: r.attention } : s, error: r.error })
     setModal(null)
+    // A contractor's invoice opens (Invoices.dc.html 6A), with the toast on it.
+    if (r.invoiceId && onInvoiceMade) return onInvoiceMade(r.invoiceId)
     say(r.toast)
     reload()
   }

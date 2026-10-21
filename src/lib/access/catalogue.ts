@@ -192,6 +192,7 @@ const TREE: Node[] = [
     { key: 'ck-whos-working', label: "Who's working, in their scope", kind: 'page', v: [1, 1, 0], ch: [
       { key: 'ck-clock-out-for', label: 'Clock out for them', kind: 'action', superOnly: true },
     ] },
+    { key: 'clocky-invoices', label: 'Invoices', kind: 'page', v: [1, 1, 1], note: 'Contractors see their own invoices; Super Admins, Admins and Finance see every one. Employees get no invoice, and Team Leaders never see anyone else\'s. Only Finance (Company settings, Invoices) marks one paid.' },
     { key: 'clocky-reports', label: 'Reports', kind: 'page', soon: true, v: [1, 1, 1] },
     { key: 'ck-safety', label: 'Clock safety', kind: 'page', v: [1, 0, 0], note: 'Every automatic clock-out. Read only below Super Admin.' },
   ] },

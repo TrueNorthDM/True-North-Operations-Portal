@@ -507,6 +507,7 @@ export function makeApi(store: Store): EntriesApi & ApprovalsApi {
         lockNote: `After you submit, ${sp.label} locks. Only a Super Admin can reopen it.`, state: done ? 'submitted' : null, running,
         totalSeconds: views.reduce((s, r) => s + r.seconds, 0), byClient: [...byClient.entries()].map(([client, seconds]) => ({ client, seconds })).sort((a, b) => b.seconds - a.seconds),
         noTime: noTime.length ? noTime.join(', ') : 'None', attention, canSubmit: !running && !attention.length && !done && work.length > 0,
+        totalLabel: 'Total', block: null,
       }
       return ok({ data })
     },
@@ -603,7 +604,7 @@ export function makeApi(store: Store): EntriesApi & ApprovalsApi {
       return ok({ data: {
         start: t.start, end: t.end, kind: t.start.slice(8) === '01' ? 'month' : 'pay_period', title: `Submit ${t.full}?`, label: t.full, cadenceLine: t.line,
         lockNote: '', state: t.state, running: false, totalSeconds: total, byClient: t.byClient.map(([client, seconds]) => ({ client, seconds })),
-        noTime: t.noTime, attention: [], canSubmit: false,
+        noTime: t.noTime, attention: [], canSubmit: false, totalLabel: 'Total', block: null,
       } satisfies SubmitSummary })
     },
     decideTimesheet: ({ id, decision, note }) => {

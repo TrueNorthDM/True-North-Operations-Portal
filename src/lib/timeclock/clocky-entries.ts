@@ -21,6 +21,9 @@ import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, 
 import { canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
 import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
+import { loadInvoiceSettings, loadPayTerms } from './pay-terms'
+import { hoursApprover, invoiceApprover } from './routing'
+import { buildSubmitBlock } from './submit-block'
 
 /** The longest range one read covers: a month and a bit, so a month view always fits. */
 export const MAX_RANGE_DAYS = 62
@@ -396,6 +399,13 @@ export async function loadPeriodSummary(v: Viewer, personId: string, now: Date, 
   const mine = (subs.get(personId) ?? []).find(s => s.start === period.start && s.end === period.end)
   const done = isSent(mine?.state)
   const label = periodLabel(period)
+  const workedSeconds = work.reduce((s, r) => s + r.seconds, 0)
+  const sortedClients = [...byClient.entries()].map(([client, seconds]) => ({ client, seconds })).sort((a, b) => b.seconds - a.seconds)
+  const timeOff = views.filter(r => r.kind === 'absence').map(r => ({ date: r.date, kind: r.short || r.path || 'Time off', seconds: r.seconds }))
+  // Days with no time, and the time off that covers the others (6B: "None. Fri, Oct 16 is Vacation.").
+  const noTimeText = noTime.length ? noTime.join(', ')
+    : timeOff.length ? `None. ${timeOff.map(t => `${dayLabel(t.date)} is ${t.kind}`).join(', ')}.` : 'None. Every weekday has time.'
+  const block = await submitBlockFor(dir, personId, label, sortedClients, timeOff, workedSeconds)
   return {
     start: period.start,
     end: period.end,
@@ -406,11 +416,38 @@ export async function loadPeriodSummary(v: Viewer, personId: string, now: Date, 
     lockNote: `After you submit, ${label.label} locks. Only a Super Admin can reopen it.`,
     state: mine?.state ?? null,
     running,
-    totalSeconds: work.reduce((s, r) => s + r.seconds, 0),
-    byClient: [...byClient.entries()].map(([client, seconds]) => ({ client, seconds })).sort((a, b) => b.seconds - a.seconds),
-    noTime: noTime.length ? noTime.join(', ') : 'None',
+    totalSeconds: workedSeconds,
+    byClient: sortedClients,
+    noTime: noTimeText,
     attention,
     canSubmit: !running && !attention.length && !done && entries.length > 0,
+    totalLabel: block?.kind === 'payroll' ? 'Worked' : 'Total',
+    block,
+  }
+}
+
+/** The Submit window's invoice or payroll block, for the person's own period. Never breaks the window: null on a failed read. */
+async function submitBlockFor(dir: Directory, personId: string, label: { label: string; full: string }, byClient: { client: string; seconds: number }[], timeOff: { date: string; kind: string; seconds: number }[], workedSeconds: number): Promise<SubmitSummary['block']> {
+  try {
+    const [settings, terms, { data: rmb, error }] = await Promise.all([
+      loadInvoiceSettings(),
+      loadPayTerms([personId]),
+      db().from('reimbursements').select('id, category, purpose, amount').eq('person_id', personId).eq('state', 'approved').is('invoice_id', null).order('asked_at'),
+    ])
+    if (error) throw new Error(error.message)
+    const t = terms.get(personId)
+    if (!t) return null
+    const hb = hoursApprover(t.route, settings)
+    const ib = invoiceApprover(t.route, settings)
+    return buildSubmitBlock({
+      isContractor: t.route.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount,
+      periodName: label.full, label: label.label, byClient,
+      reimbursements: (rmb ?? []).map(r => ({ id: r.id, category: r.category, purpose: r.purpose, amount: Number(r.amount) })),
+      timeOff, workedSeconds, hoursBy: hb ? dir.nameOf(hb) : null, invoiceBy: ib ? dir.nameOf(ib) : null,
+    })
+  } catch (e) {
+    console.error('[clocky submit] block:', e instanceof Error ? e.message : e)
+    return null
   }
 }
 

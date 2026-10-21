@@ -7,6 +7,7 @@
  */
 
 import { useRouter } from 'next/navigation'
+import { withViewAs } from '@/components/ViewAsKeeper'
 import {
   addTime, deleteEntry, editEntry, getCorrectionHistory, getEntries, getEntryHistory, getSubmitSummary, requestCorrection, saveWeekGrid, submitPeriod,
 } from '@/app/(app)/clocky-hours/entries-actions'
@@ -32,6 +33,7 @@ export function TimeEntriesLive({ initialData, catalog, openEntry = null, member
   const router = useRouter()
   const initial = { ...(openEntry ? { drawer: `e${openEntry}` } : {}), ...(member ? { who: 'all' as const, member } : {}) }
   return (
-    <TimeEntries initialData={initialData} catalog={catalog} api={API} clock={{ now: catalog.now }} onChanged={() => router.refresh()} initial={initial} />
+    <TimeEntries initialData={initialData} catalog={catalog} api={API} clock={{ now: catalog.now }} onChanged={() => router.refresh()} initial={initial}
+      onInvoiceMade={id => router.push(withViewAs(`/clocky-hours/invoices/${id}?submitted=1`))} />
   )
 }

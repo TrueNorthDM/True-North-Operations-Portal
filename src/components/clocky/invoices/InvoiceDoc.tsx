@@ -5,8 +5,9 @@
  * header, zebra rows, reimbursements as rows, the total right aligned over a
  * short gold bar, and a footer with the logo. Paid ones carry a green stamp.
  *
- *   card   inside the 6C page and the invoice detail (no From/To, no footer)
- *   page   the PDF page (620px wide, as the preview window shows it)
+ *   card    inside the 6C page (no From/To, no footer)
+ *   detail  the invoice detail page (6F): From and To, no footer
+ *   page    the PDF page (620px wide, as the preview window shows it)
  *
  * No hooks: the PDF's print page renders it on the server.
  */
@@ -28,16 +29,18 @@ export interface InvoiceDocData {
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold uppercase'
 
-export function InvoiceDoc({ inv, variant }: { inv: InvoiceDocData; variant: 'card' | 'page' }) {
+export function InvoiceDoc({ inv, variant }: { inv: InvoiceDocData; variant: 'card' | 'detail' | 'page' }) {
   const page = variant === 'page'
+  const detail = variant === 'detail'
+  const full = page || detail
   const rows = [...inv.lines.map((l, i) => ({ key: `l${i}`, kind: 'line' as const, l, i })), ...inv.reimb.map((r, j) => ({ key: `r${j}`, kind: 'reimb' as const, r, i: inv.lines.length + j }))]
-  const fs = page ? 'text-[11.5px]' : 'text-[12.5px]'
+  const fs = page ? 'text-[11.5px]' : detail ? 'text-[13px]' : 'text-[12.5px]'
   return (
     <div className={page ? 'w-[620px] min-h-[840px] box-border bg-white flex flex-col overflow-hidden' : ''}>
-      <div className={`bg-tn-primary flex justify-between items-end gap-4 ${page ? 'px-10 pt-[30px] pb-[26px]' : 'px-[18px] py-4'}`}>
+      <div className={`bg-tn-primary flex justify-between items-end gap-4 ${page ? 'px-10 pt-[30px] pb-[26px]' : detail ? 'px-8 pt-[26px] pb-[22px]' : 'px-[18px] py-4'}`}>
         <div>
           <div className={`${LABEL} text-[10px] tracking-[.16em] text-[#F2C40A]`}>Invoice</div>
-          <div className={`font-(family-name:--font-display) font-black text-[#ffffff] mt-1 whitespace-nowrap tabular-nums lining-nums ${page ? 'text-[28px]' : 'text-[20px]'}`}>{inv.number}</div>
+          <div data-invoice-number className={`font-(family-name:--font-display) font-black text-[#ffffff] mt-1 whitespace-nowrap tabular-nums lining-nums ${page ? 'text-[28px]' : detail ? 'text-[26px]' : 'text-[20px]'}`}>{inv.number}</div>
         </div>
         <div className="grid grid-cols-[auto_auto] gap-x-3.5 gap-y-1 text-[11.5px] text-right whitespace-nowrap tabular-nums lining-nums">
           <span className="text-[rgba(255,255,255,.62)]">Date</span><span className="text-[#ffffff] font-semibold">{inv.date}</span>
@@ -46,9 +49,9 @@ export function InvoiceDoc({ inv, variant }: { inv: InvoiceDocData; variant: 'ca
         </div>
       </div>
       <div className="h-[3px] bg-[#F2C40A]" />
-      <div className={page ? 'flex-1 px-10 pt-7 pb-[26px] flex flex-col gap-[22px]' : 'px-[18px] pt-4 pb-[18px] flex flex-col gap-0.5'}>
-        {page && (
-          <div className="grid grid-cols-2 gap-4 text-[11.5px] leading-[1.6] text-foreground">
+      <div className={page ? 'flex-1 px-10 pt-7 pb-[26px] flex flex-col gap-[22px]' : detail ? 'px-8 pt-6 pb-7 flex flex-col gap-[22px]' : 'px-[18px] pt-4 pb-[18px] flex flex-col gap-0.5'}>
+        {full && (
+          <div className={`grid grid-cols-2 gap-4 ${page ? 'text-[11.5px]' : 'text-[13px]'} leading-[1.6] text-foreground`}>
             <div className="min-w-0">
               <div className={`${LABEL} text-[9.5px] tracking-[.1em] text-tn-teal mb-1`}>From</div>
               <div className="text-tn-ink font-bold">{inv.from.name}</div>
@@ -64,7 +67,7 @@ export function InvoiceDoc({ inv, variant }: { inv: InvoiceDocData; variant: 'ca
           </div>
         )}
         <div className="flex flex-col gap-0.5">
-          <div className={`grid grid-cols-[minmax(0,1fr)_76px_66px_94px] gap-2 px-2.5 py-2 rounded-[8px] bg-tn-primary ${LABEL} text-[9.5px] tracking-[.08em] text-[#ffffff]`}>
+          <div className={`grid grid-cols-[minmax(0,1fr)_76px_66px_94px] gap-2 px-2.5 py-2 rounded-[8px] bg-tn-primary ${LABEL} ${detail ? 'text-[10px]' : 'text-[9.5px]'} tracking-[.08em] text-[#ffffff]`}>
             <span>Description</span><span className="text-right">Hours</span><span className="text-right">Rate</span><span className="text-right">Amount</span>
           </div>
           {rows.map(x => x.kind === 'line' ? (
@@ -86,11 +89,11 @@ export function InvoiceDoc({ inv, variant }: { inv: InvoiceDocData; variant: 'ca
         </div>
         <div className="self-end flex flex-col items-end gap-[5px] mt-1.5">
           <span className={`${LABEL} text-[10px] tracking-[.1em] text-muted whitespace-nowrap`}>Total due</span>
-          <span className={`font-(family-name:--font-display) font-black text-tn-ink leading-[1.05] whitespace-nowrap tabular-nums lining-nums ${page ? 'text-[30px]' : 'text-[28px]'}`}>{inv.total}</span>
+          <span className={`font-(family-name:--font-display) font-black text-tn-ink leading-[1.05] whitespace-nowrap tabular-nums lining-nums ${page ? 'text-[30px]' : detail ? 'text-[32px]' : 'text-[28px]'}`}>{inv.total}</span>
           <span className="w-16 h-1 rounded-[2px] bg-[#F2C40A]" />
         </div>
         {inv.paid && (
-          <span className="self-start mt-2 border-2 border-[#1E9E6A] text-[#0d7a4f] rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-extrabold text-[12px] tracking-[.04em] uppercase tabular-nums lining-nums">{inv.paid}</span>
+          <span className={`self-start ${full ? '' : 'mt-2 '}border-2 border-[#0d7a4f] text-[#0d7a4f] rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-black text-[13px] tracking-[.08em] uppercase tabular-nums lining-nums`}>{inv.paid}</span>
         )}
         {page && (
           <div className="mt-auto flex justify-between items-center pt-3 border-t border-[var(--row-rule)] text-[9.5px] text-muted">

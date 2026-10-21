@@ -24,6 +24,7 @@ import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 import { perfRun } from '@/lib/perf'
 import { Favourites } from '@/components/home/Favourites'
 import { buildRail } from '@/lib/access/nav'
+import { loadNavFacts } from '@/lib/access/nav-facts'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadSettings } from '@/lib/settings/person'
 import { resolveFavourites } from '@/lib/settings/pages'
@@ -57,7 +58,7 @@ export default async function HomePage() {
   // snapshot itself; see lib/boards/published-items.ts.
   const meP = getCurrentPerson()
   const favouritesP = Promise.all([accessP, meP.then(m => (m ? loadSettings(createAdminClient(), m.id) : null))])
-    .then(([a, s]) => (s ? resolveFavourites(buildRail({ can: a.can, canTool: a.canTool }), s.favourites) : []))
+    .then(async ([a, s]) => (s ? resolveFavourites(buildRail({ can: a.can, canTool: a.canTool, facts: await loadNavFacts(a) }), s.favourites) : []))
   const [org, access, me, celebPeople, publishing, i7Carryover, favourites] = await Promise.all([
     perf.time('org', getOrgChart()),
     perf.time('access', accessP),

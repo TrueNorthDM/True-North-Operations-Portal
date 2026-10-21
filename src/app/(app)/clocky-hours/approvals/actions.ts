@@ -21,7 +21,8 @@ import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/ti
 import { audit, loadSubmissions, lockOn, overlapFor, snapshot, type EntryRow } from '@/lib/timeclock/clocky-store'
 import { countWaiting, loadApprovals } from '@/lib/timeclock/clocky-approvals'
 import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
-import { announceCorrectionDecided, announceTimeOffDecided, announceTimesheetDecided, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
+import { announceCorrectionDecided, announceHoursApproved, announceInvoiceApproved, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
+import { usd } from '@/lib/timeclock/invoice-doc'
 import { loadInvoiceSettings, loadPayTerms, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type TimesheetState } from '@/lib/timeclock/routing'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
@@ -285,7 +286,7 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     const { data: moved, error } = await c.from('tc_submissions').update(patch).eq('id', t.id).eq('state', t.state).select('id')
     if (error) return notSaved(error)
     if (!moved?.length) return fail(NOT_WAITING)
-    const { data: inv } = await c.from('invoices').select('id, number').eq('submission_id', t.id).maybeSingle()
+    const { data: inv } = await c.from('invoices').select('id, number, total').eq('submission_id', t.id).maybeSingle()
     if (next === 'approved') {
       if (inv) await c.from('invoices').update({ state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at }).eq('id', inv.id).eq('state', 'waiting')
       await c.from('tc_entries').update({ state: 'approved', updated_at: at })
@@ -297,11 +298,13 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     const dir = await loadDirectory()
     const label = periodLabel(t).full
     const ib = invoiceApprover(route, settings)
-    if (next === 'hours_approved' && ib) {
-      await announceTimesheetSubmitted({ submissionId: t.id, sentAt: at, personId: t.personId, to: [ib], period: label, seconds: 0 })
+    if (next === 'hours_approved' && ib && inv) {
+      await announceHoursApproved({ submissionId: t.id, at, personId: t.personId, hoursBy: v.personId, invoiceBy: ib, month: periodLabel(t).label, number: inv.number, total: usd(Number(inv.total)) })
     } else {
       await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: 'approve', note: null })
     }
+    // Approved with its invoice: Finance hears it is ready to pay.
+    if (next === 'approved' && inv) await announceInvoiceApproved({ invoiceId: inv.id, personId: t.personId, number: inv.number, total: usd(Number(inv.total)), finance: settings.finance })
     refresh()
     const who = dir.nameOf(t.personId)
     const toast = next === 'hours_approved'
@@ -398,7 +401,7 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
   if (isFail(v)) return v
   try {
     const c = db()
-    const { data: inv, error: e1 } = await c.from('invoices').select('id, number, person_id, state, kind, period_start, period_end').eq('id', Number(input.id)).maybeSingle()
+    const { data: inv, error: e1 } = await c.from('invoices').select('id, number, person_id, state, kind, total, period_start, period_end').eq('id', Number(input.id)).maybeSingle()
     if (e1) return notSaved(e1)
     if (!inv || inv.kind !== 'fixed_no_timesheet' || inv.state !== 'waiting') return fail(NOT_WAITING)
     const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([inv.person_id])])
@@ -414,6 +417,7 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
     if (error) return notSaved(error)
     if (!moved?.length) return fail(NOT_WAITING)
     await c.from('tc_approval_events').insert({ submission_id: null, invoice_id: inv.id, step: 'invoice', action: approve ? 'approve' : 'return', by_person: v.personId, at, note })
+    if (approve) await announceInvoiceApproved({ invoiceId: inv.id, personId: inv.person_id, number: inv.number, total: usd(Number(inv.total)), finance: settings.finance })
     refresh()
     return { ok: true, toast: approve ? `Approved. ${inv.number} waits for Finance to pay it.` : `Returned. ${inv.number} is back to Draft.` }
   } catch (e) {

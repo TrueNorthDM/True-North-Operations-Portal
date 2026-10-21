@@ -35,16 +35,24 @@ export interface PageRights {
   hr: boolean
   hrEdit: boolean
   reports: boolean
+  /**
+   * Payments (Clocky part 2, 10P): invoices or pay periods, reimbursements.
+   * Decided by money, not by an access item: the person, Super Admins, Admins
+   * and Finance (lib/timeclock/pay-terms.ts seesMoney); never Team Leaders.
+   * Off here; the page turns it on after asking.
+   */
+  payments: boolean
   /** Inside HR and access: invite, send again, revoke (d-invite). */
   invite: boolean
   /** Inside HR and access: reset the second step (d-2fa). */
   resetTwoStep: boolean
 }
 
-export type PageTab = 'personal' | 'work' | 'hr' | 'reports'
+export type PageTab = 'personal' | 'work' | 'payments' | 'hr' | 'reports'
 export const PAGE_TABS: readonly { key: PageTab; label: string }[] = [
   { key: 'personal', label: 'Personal' },
   { key: 'work', label: 'Work' },
+  { key: 'payments', label: 'Payments' },
   { key: 'hr', label: 'HR and access' },
   { key: 'reports', label: 'Reports' },
 ]
@@ -68,6 +76,7 @@ export function pageRights(can: (key: string) => boolean, rel: Relation): PageRi
       hr,
       hrEdit: hr && can('p-hr-edit'),
       reports: true,
+      payments: false,
       invite: false,
       resetTwoStep: false,
     }
@@ -90,6 +99,7 @@ export function pageRights(can: (key: string) => boolean, rel: Relation): PageRi
     hr,
     hrEdit: hr && can('p-hr-edit'),
     reports,
+    payments: false,
     invite: hr && can('d-invite'),
     resetTwoStep: hr && can('d-2fa'),
   }

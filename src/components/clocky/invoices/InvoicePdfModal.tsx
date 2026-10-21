@@ -1,16 +1,23 @@
 'use client'
 
 /**
- * The invoice's PDF, previewed before anything downloads (Approvals.dc.html
- * 6C-p, Invoices.dc.html 6F-p; the portal's rule: every PDF opens in a preview
- * first). The page shown is the same InvoiceDoc the PDF prints; Download asks
- * the server for the file (/clocky-hours/invoices/<id>/pdf) and saves it.
+ * A pay document's PDF, previewed before anything downloads (Approvals.dc.html
+ * 6C-p, Invoices.dc.html 6F-p, Company Settings.dc.html 10P-3; the portal's
+ * rule: every PDF opens in a preview first). The page shown is the same sheet
+ * the PDF prints; Download asks the server for the file and saves it.
+ *
+ *   InvoicePdfModal   an invoice (/clocky-hours/invoices/<id>/pdf)
+ *   DocPdfModal       a payroll summary or reimbursement document
+ *                     (/clocky-hours/documents/<kind>/<id>/pdf)
  */
 
 import { useRef, useState } from 'react'
 import { useModal } from '@/components/ui/useModal'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { BTN_ICON } from '@/lib/ui/buttons'
+import type { ReactNode } from 'react'
+import type { DocKind, DocSheetData } from '@/lib/timeclock/pay-docs'
+import { DocSheet } from './DocSheet'
 import { InvoiceDoc, type InvoiceDocData } from './InvoiceDoc'
 
 export function InvoicePdfModal({ invoice, onClose, onDownloaded }: {
@@ -18,17 +25,44 @@ export function InvoicePdfModal({ invoice, onClose, onDownloaded }: {
   onClose: () => void
   onDownloaded?: (name: string) => void
 }) {
+  return (
+    <PdfWindow name={`${invoice.number}.pdf`} href={`/clocky-hours/invoices/${invoice.id}/pdf`} onClose={onClose} onDownloaded={onDownloaded}>
+      <InvoiceDoc inv={invoice} variant="page" />
+    </PdfWindow>
+  )
+}
+
+export function DocPdfModal({ kind, id, doc, onClose, onDownloaded }: {
+  kind: DocKind
+  id: number
+  doc: DocSheetData
+  onClose: () => void
+  onDownloaded?: (name: string) => void
+}) {
+  return (
+    <PdfWindow name={doc.file} href={`/clocky-hours/documents/${kind}/${id}/pdf`} onClose={onClose} onDownloaded={onDownloaded}>
+      <DocSheet doc={doc} />
+    </PdfWindow>
+  )
+}
+
+function PdfWindow({ name, href, onClose, onDownloaded, children }: {
+  name: string
+  href: string
+  onClose: () => void
+  onDownloaded?: (name: string) => void
+  children: ReactNode
+}) {
   const box = useRef<HTMLDivElement>(null)
   useModal(true, box, onClose)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const name = `${invoice.number}.pdf`
 
   const download = async () => {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch(withViewAs(`/clocky-hours/invoices/${invoice.id}/pdf`))
+      const res = await fetch(withViewAs(href))
       if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`)
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
@@ -62,7 +96,7 @@ export function InvoicePdfModal({ invoice, onClose, onDownloaded }: {
           </button>
         </div>
         <div className="flex-1 overflow-auto bg-[#e9e6dd] p-[26px] flex justify-center items-start">
-          <div className="flex-none shadow-[0_12px_30px_-14px_rgba(1,35,88,.4)]"><InvoiceDoc inv={invoice} variant="page" /></div>
+          <div className="flex-none shadow-[0_12px_30px_-14px_rgba(1,35,88,.4)]">{children}</div>
         </div>
       </div>
     </div>

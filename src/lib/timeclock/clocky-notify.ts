@@ -14,6 +14,7 @@ import {
   notifyClockyCorrectionDecided, notifyClockyCorrectionRequested, notifyClockyStillWorking,
   notifyClockyStopped, notifyClockyTimeOffRequested, notifyClockyTimeOffDecided, notifyClockyClockedOutFor,
   notifyClockyTimesheetSubmitted, notifyClockyTimesheetDecided,
+  notifyClockyInvoiceMade, notifyClockyInvoiceApproved, notifyClockyInvoicePaid,
 } from '@/lib/notifications/run'
 import type { Db } from '@/lib/supabase/types'
 import { loadDirectory } from './clocky-context'
@@ -21,7 +22,8 @@ import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
 import {
   clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText,
-  timesheetDecidedText, timesheetSubmittedText,
+  timesheetDecidedText, timesheetSubmittedText, invoiceMadeText, invoiceApprovedText, invoicePaidText,
+  hoursApprovedForApproverText, hoursApprovedForPersonText,
 } from './notify-text'
 import { stillWorkingText, stopWhen, stoppedText } from './safety'
 import type { AutoStop } from './clocky-store'
@@ -125,10 +127,10 @@ export async function announceClockedOutFor(x: { entryId: number; personId: stri
 }
 
 /** A period sent (3H): whoever decides it first hears of it (its Reports to, or the invoice approver). */
-export async function announceTimesheetSubmitted(x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; period: string; seconds: number }): Promise<void> {
+export async function announceTimesheetSubmitted(x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; period: string; seconds: number; text?: string }): Promise<void> {
   await quiet('timesheet submitted', async () => {
     const dir = await loadDirectory()
-    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.sentAt, personId: x.personId, to: x.to, text: timesheetSubmittedText(dir.nameOf(x.personId), x.period, x.seconds) })
+    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.sentAt, personId: x.personId, to: x.to, text: x.text ?? timesheetSubmittedText(dir.nameOf(x.personId), x.period, x.seconds) })
   })
 }
 
@@ -137,5 +139,33 @@ export async function announceTimesheetDecided(x: { submissionId: number; at: st
   await quiet('timesheet decided', async () => {
     const dir = await loadDirectory()
     await notifyClockyTimesheetDecided({ submissionId: x.submissionId, at: x.at, personId: x.personId, text: timesheetDecidedText(dir.nameOf(x.deciderId), x.period, x.how, x.note) })
+  })
+}
+
+/** A contractor's invoice was made from their timesheet: they hear its number and total. */
+export async function announceInvoiceMade(x: { invoiceId: number; at: string; personId: string; number: string; month: string; total: string; withHours: boolean }): Promise<void> {
+  await quiet('invoice made', () => notifyClockyInvoiceMade({ invoiceId: x.invoiceId, at: x.at, personId: x.personId, text: invoiceMadeText(x.number, x.month, x.total, x.withHours) }))
+}
+
+/** An invoice was approved: Finance hears it is ready to pay. */
+export async function announceInvoiceApproved(x: { invoiceId: number; personId: string; number: string; total: string; finance: readonly string[] }): Promise<void> {
+  await quiet('invoice approved', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyInvoiceApproved({ invoiceId: x.invoiceId, to: x.finance, text: invoiceApprovedText(x.number, dir.nameOf(x.personId), x.total) })
+  })
+}
+
+/** Finance marked an invoice paid: its contractor hears the date and the reference. */
+export async function announceInvoicePaid(x: { invoiceId: number; personId: string; number: string; month: string; paidOn: string; ref: string | null }): Promise<void> {
+  await quiet('invoice paid', () => notifyClockyInvoicePaid({ invoiceId: x.invoiceId, personId: x.personId, text: invoicePaidText(x.number, x.month, x.paidOn, x.ref) }))
+}
+
+/** Two steps, the hours approved: the invoice approver hears it waits for them, the person where it went. */
+export async function announceHoursApproved(x: { submissionId: number; at: string; personId: string; hoursBy: string; invoiceBy: string; month: string; number: string; total: string }): Promise<void> {
+  await quiet('hours approved', async () => {
+    const dir = await loadDirectory()
+    const by = dir.nameOf(x.hoursBy)
+    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.at, personId: x.personId, to: [x.invoiceBy], text: hoursApprovedForApproverText(by, dir.nameOf(x.personId), x.month, x.number, x.total) })
+    await notifyClockyTimesheetDecided({ submissionId: x.submissionId, at: x.at, personId: x.personId, text: hoursApprovedForPersonText(by, x.month, x.number, dir.nameOf(x.invoiceBy)) })
   })
 }

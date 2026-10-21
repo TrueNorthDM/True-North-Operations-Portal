@@ -23,6 +23,7 @@ import { periodLabel } from './periods'
 import { currentStep, hoursApprover, invoiceApprover, oneStep, type RoutePerson, type RouteSettings, type TimesheetState } from './routing'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel, timeLabel } from './format'
 import { formatDuration } from './rounding'
+import { INV_COLS, LINE_COLS, invoiceDocOf, usd, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
 import type { EntryView } from './clocky-types'
 
 export type ReviewTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal'
@@ -33,7 +34,6 @@ export const CLIENT_COLOR: Record<string, string> = {
   '1 - True North': '#012358', '2 - i7 Marketing': '#1E7D7F', 'Adventist Messengers/HFA': '#F2C40A', GNA: '#1E9E6A', 'A.org Job': '#6D5EF5', DDI: '#F0A35E',
 }
 const clientColor = (c: string) => CLIENT_COLOR[c] ?? '#a3aebb'
-const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const hm = (sec: number) => formatDuration(sec)
 const hmShort = (sec: number) => hm(sec).replace(' 00m', '')
 const noYear = (s: string) => s.replace(/, \d{4}/, '')
@@ -85,15 +85,7 @@ export interface TimesheetReview {
   // Fixed, no timesheet
   noTimesheet: string[] | null
   // Money (invoice approvers, Super Admins, Admins, Finance, the person)
-  invoice: {
-    id: number; number: string; date: string; period: string; due: string; state: { label: string; tone: ReviewTone }
-    lines: { desc: string; hrs: string; muted: boolean; rate: string; amt: string }[]
-    reimb: { desc: string; cat: string; amt: string }[]
-    total: string
-    from: { name: string; line: string; email: string }
-    to: { name: string; line1: string; line2: string }
-    paid: string | null
-  } | null
+  invoice: InvoiceDocView | null
   previous: { title: string; rows: { per: string; hrs: string; amt: string; st: string; stTone: ReviewTone; current: boolean }[]; diff: string } | null
   history: { text: string; when: string; dot: string }[]
   payroll: { rows: { day: string; w: string; o: string; pto: boolean; worked: boolean }[]; total: string; worked: string; off: string; period: string; st: { label: string; tone: ReviewTone }; rip: { text: string; tone: ReviewTone; icon: 'check' | 'alert' | 'send' }; line: string } | null
@@ -140,9 +132,6 @@ export type SubRow = {
   id: number; person_id: string; state: TimesheetState; submitted_at: string | null; approved_at: string | null; approved_by: string | null
   hours_approved_at: string | null; hours_approved_by: string | null; note: string | null; tc_periods: { start_date: string; end_date: string; kind: string } | null
 }
-export type InvRow = { id: number; number: string; submission_id: number | null; person_id: string; total: number; kind: string; state: string; period_start: string; period_end: string; issued_on: string; due_on: string; created_at: string; approved_by: string | null; approved_at: string | null; paid_on: string | null; paid_ref: string | null; from_snapshot: { name?: string; location?: string; email?: string }; to_snapshot: { name?: string; address?: string; email?: string } }
-
-const INV_COLS = 'id, number, submission_id, person_id, total, kind, state, period_start, period_end, issued_on, due_on, created_at, approved_by, approved_at, paid_on, paid_ref, from_snapshot, to_snapshot'
 
 /** A timesheet (?kind=timesheet) or a fixed, no timesheet invoice (?kind=invoice), as the viewer may see it; null when closed to them. */
 export async function loadReview(v: Viewer, kind: 'timesheet' | 'invoice', id: number, now = new Date()): Promise<TimesheetReview | null> {
@@ -234,7 +223,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     const st: TimesheetState | 'approved' | 'returned' = i.state === 'waiting' ? 'submitted' : i.state === 'draft' ? 'returned' : 'approved'
     const done = st !== 'submitted'
     const canBoth = !done && me === ib && me !== personId
-    const invoiceView = money ? invoiceOf(i, src.invLines, period.full) : null
+    const invoiceView = money ? invoiceDocOf(i, src.invLines, period.full) : null
     const result = st === 'approved'
       ? { text: `Approved by ${youOr(i.approved_by)}, ${noYear(stampLabel(i.approved_at!, v.zone))}. ${i.number} waits for Finance to pay it.`, tone: 'ok' as const, icon: 'check' as const, retry: false }
       : st === 'returned' ? { text: `Returned: the invoice is back to Draft.`, tone: 'bad' as const, icon: 'undo' as const, retry: false } : null
@@ -376,7 +365,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     : `Read only. ${one ? `${route.isContractor ? 'Hours and invoice' : 'Hours'}: ${route.isContractor ? nameOf(ib) : nameOf(hb)}.` : `Hours: ${nameOf(hb)}. Invoice: ${nameOf(ib)}.`}`
   const readOnly = !act && !done && !(hoursDone && (me === hb || isLead)) && s.state !== 'recorded' ? roText : null
 
-  const invoiceView = money && inv ? invoiceOf(inv, src.invLines, period.full) : null
+  const invoiceView = money && inv ? invoiceDocOf(inv, src.invLines, period.full) : null
   const history: TimesheetReview['history'] = []
   if (s.state === 'approved') history.push({ text: `Approved by ${youOr(s.approved_by)}`, when: noYear(stampLabel(s.approved_at!, v.zone)), dot: '#1E9E6A' })
   else if (ret) history.push({ text: 'Returned, back to Draft', when: noYear(stampLabel(s.approved_at ?? now.toISOString(), v.zone)), dot: '#c8323d' })
@@ -466,28 +455,10 @@ function entryRow(e: ReviewView, zone: string): ReviewEntry {
   }
 }
 
-export type LineRow = { kind: string; client: string | null; description: string; hours_seconds: number | null; rate: number | null; amount: number }
 async function linesOf(invoiceId: number): Promise<LineRow[]> {
-  const { data, error } = await db().from('invoice_lines').select('kind, client, description, hours_seconds, rate, amount').eq('invoice_id', invoiceId).order('sort')
+  const { data, error } = await db().from('invoice_lines').select(LINE_COLS).eq('invoice_id', invoiceId).order('sort')
   if (error) throw new Error(`The invoice lines could not be read: ${error.message}`)
   return (data ?? []) as LineRow[]
-}
-
-function invoiceOf(i: InvRow, lines: LineRow[], periodName: string): NonNullable<TimesheetReview['invoice']> {
-  const st = i.state === 'approved' ? { label: 'Approved', tone: 'ok' as const } : i.state === 'paid' ? { label: 'Paid', tone: 'ok' as const } : i.state === 'draft' ? { label: 'Draft', tone: 'neu' as const } : { label: 'Waiting for approval', tone: 'warn' as const }
-  const to = (i.to_snapshot?.address ?? '').split('\n')
-  return {
-    id: i.id, number: i.number, date: dateLabel(i.issued_on), period: periodName, due: dateLabel(i.due_on), state: st,
-    lines: lines.filter(l => l.kind !== 'reimbursement').map(l => ({
-      desc: l.description, hrs: l.hours_seconds != null ? formatDuration(l.hours_seconds) : '–', muted: l.kind === 'fixed',
-      rate: l.kind === 'fixed' ? 'Fixed' : l.rate != null ? usd(Number(l.rate)) : '', amt: usd(Number(l.amount)),
-    })),
-    reimb: lines.filter(l => l.kind === 'reimbursement').map(l => ({ desc: l.description, cat: l.client ?? '', amt: usd(Number(l.amount)) })),
-    total: usd(Number(i.total)),
-    from: { name: i.from_snapshot?.name ?? '', line: i.from_snapshot?.location ?? '', email: i.from_snapshot?.email ?? '' },
-    to: { name: i.to_snapshot?.name ?? 'True North Digital Marketing', line1: to[0] ?? '', line2: [to.slice(1).join(', '), i.to_snapshot?.email].filter(Boolean).join(' · ') },
-    paid: i.state === 'paid' && i.paid_on ? `Paid ${dateLabel(i.paid_on)}${i.paid_ref ? ` · ${i.paid_ref}` : ''}` : null,
-  }
 }
 
 /** "<first>'s last invoices": this one and the two before, and how it compares with the last. */

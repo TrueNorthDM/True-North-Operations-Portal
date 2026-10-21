@@ -3,7 +3,8 @@
 // Nov 3, 2026, 9:32 AM in New York.
 
 import { wallToInstant } from '@/lib/timeclock/clock'
-import { buildReview, type InvRow, type LineRow, type ReviewSource, type ReviewView, type SubRow, type TimesheetReview } from '@/lib/timeclock/timesheet-review'
+import type { InvRow, LineRow } from '@/lib/timeclock/invoice-doc'
+import { buildReview, type ReviewSource, type ReviewView, type SubRow, type TimesheetReview } from '@/lib/timeclock/timesheet-review'
 import type { PaysAs } from '@/lib/timeclock/routing'
 
 const NY = 'America/New_York'

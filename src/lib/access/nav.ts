@@ -33,6 +33,11 @@ export interface PanelItem {
   tools?: readonly string[]
   soon?: boolean
   /**
+   * Also needs a fact about the person, not their level: `invoices` is for
+   * contractors, Super Admins, Admins and Finance (an employee gets no invoice).
+   */
+  needs?: NavFact
+  /**
    * A number shown beside the row, fetched when the panel opens: `approvals`
    * is the corrections and time off waiting for this person (Clocky,
    * getApprovalsCount), drawn only above zero.
@@ -42,6 +47,9 @@ export interface PanelItem {
 
 /** The counts a panel row can carry. */
 export type NavCount = 'approvals'
+
+/** Facts about the person a row can need (NavContext.facts). */
+export type NavFact = 'invoices'
 
 /**
  * A module that is not finished, drawn faded on the rail (asked for on 22
@@ -208,6 +216,7 @@ export const RAIL: readonly RailEntry[] = [
           { key: 'clocky-hours', label: 'Time entries', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
           { key: 'clocky-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
           { key: 'clocky-whos-working', label: "Who's working", href: '/clocky-hours/whos-working', icon: 'my-team', surface: 'ck-whos-working' },
+          { key: 'clocky-invoices', label: 'Invoices', href: '/clocky-hours/invoices', icon: 'client-reports', surface: 'clocky-invoices', needs: 'invoices' },
           { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-reports', soon: true },
         ],
       },
@@ -257,10 +266,13 @@ export type ResolvedEntry =
 export interface NavContext {
   can: (surfaceKey: string) => boolean
   canTool: (toolKey: string) => boolean
+  /** The facts this person has (lib/access/nav-facts.ts); a row needing one they lack is left out. Absent: every fact holds (design checks). */
+  facts?: ReadonlySet<NavFact>
 }
 
 
 function rowVisible(i: PanelItem, ctx: NavContext): boolean {
+  if (i.needs && ctx.facts && !ctx.facts.has(i.needs)) return false
   if (i.tools) return i.tools.some(t => ctx.canTool(t))
   return !i.surface || ctx.can(i.surface)
 }

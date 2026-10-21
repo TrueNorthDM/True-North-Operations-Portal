@@ -13,6 +13,11 @@ import { resolvePageTab } from '@/lib/directory/page-rights'
 import { loadPersonTimesheet } from './timesheet'
 import { loadPersonPay } from './pay'
 import { savePayTerms } from './pay-actions'
+import { getInvoiceDoc } from '@/app/(app)/clocky-hours/invoices/actions'
+import { getPayDoc } from '@/app/(app)/clocky-hours/documents/actions'
+import { viewerFor } from '@/lib/timeclock/clocky-context'
+import { loadInvoiceSettings, seesMoney } from '@/lib/timeclock/pay-terms'
+import { loadPayments } from '@/lib/timeclock/payments-view'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +46,13 @@ export default async function PersonRoute({
   const sheet = data.work ? await loadPersonTimesheet(id, data.rights.workEdit && access.can('cs-periods-edit')) : null
   // Approvals (no money) and Pay and hours (money: the person, Super Admins, Admins, Finance) on the Work tab.
   const pay = data.work ? await loadPersonPay(id, access) : null
+  // Payments (Clocky part 2, 10P): money, so the person, Super Admins, Admins and Finance; never Team Leaders.
+  data.rights.payments = seesMoney(access, id, await loadInvoiceSettings())
+  const shown = resolvePageTab(tab, data.rights)
+  const zone = (await viewerFor(access))?.zone ?? 'America/New_York'
+  const payments = shown === 'payments'
+    ? await loadPayments(id, access, zone).catch(e => { console.error('[person payments]', e instanceof Error ? e.message : e); return null })
+    : null
 
   return (
     <div className="space-y-4">
@@ -48,11 +60,12 @@ export default async function PersonRoute({
       <Breadcrumb parents={access.can('directory') ? ['/directory'] : []} now={data.name} />
       <PersonPage
         data={data}
-        tab={resolvePageTab(tab, data.rights)}
+        tab={shown}
         // Removing someone: "Add people" on the Directory, from their Work tab.
         canRemove={!data.rights.own && data.rights.workEdit && access.can('d-edit')}
         timesheet={sheet && { ...sheet, links: { rates: access.can('directory') && access.can('d-rates'), settings: access.can('cs-periods') } }}
         pay={pay && { ...pay, save: savePayTerms.bind(null, id) }}
+        payments={payments && { data: payments, api: { getInvoiceDoc, getPayDoc } }}
       />
     </div>
   )

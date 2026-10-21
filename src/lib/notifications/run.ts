@@ -31,7 +31,7 @@ import {
   syncDrafts, teamOrderDrafts, unlinkedDrafts, unlinkedSeen, workDrafts, UNLINKED_SEEN, type Ctx,
   clockyAutoStopDrafts, clockyCorrectionDecidedDrafts, clockyCorrectionRequestedDrafts, clockyStillWorkingDrafts,
   clockyStoppedDrafts, clockyTimeOffRequestedDrafts, clockyTimeOffDecidedDrafts, clockyClockedOutForDrafts,
-  clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, CLOCK_PANEL_HREF,
+  clockyTimesheetSubmittedDrafts, clockyTimesheetDecidedDrafts, clockyInvoiceMadeDrafts, clockyInvoiceApprovedDrafts, clockyInvoicePaidDrafts, CLOCK_PANEL_HREF,
 } from './generators'
 import { sendEmail } from '@/lib/email/resend'
 import { renderClockStopped } from '@/lib/email/clock-stopped'
@@ -173,6 +173,15 @@ export const notifyClockyTimesheetSubmitted = (x: { submissionId: number; sentAt
 
 export const notifyClockyTimesheetDecided = (x: { submissionId: number; at: string; personId: string; text: string }) =>
   simple('clocky-timesheet-decided', ctx => clockyTimesheetDecidedDrafts(ctx, x))
+
+export const notifyClockyInvoiceMade = (x: { invoiceId: number; at: string; personId: string; text: string }) =>
+  simple('clocky-invoice-made', ctx => clockyInvoiceMadeDrafts(ctx, x))
+
+export const notifyClockyInvoiceApproved = (x: { invoiceId: number; to: readonly string[]; text: string }) =>
+  simple('clocky-invoice-approved', ctx => clockyInvoiceApprovedDrafts(ctx, x))
+
+export const notifyClockyInvoicePaid = (x: { invoiceId: number; personId: string; text: string }) =>
+  simple('clocky-invoice-paid', ctx => clockyInvoicePaidDrafts(ctx, x))
 
 /**
  * N2: the bell row, and with it the one email Clocky sends, "Your clock

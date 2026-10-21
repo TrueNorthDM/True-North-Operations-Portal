@@ -11,6 +11,10 @@ import { PersonPayCheck } from './PersonPayCheck'
 import { RatesPayCheck } from './RatesPayCheck'
 import { ReviewCheck } from './ReviewCheck'
 import { reviewFrame } from './review-sample'
+import { InvoicesCheck } from './InvoicesCheck'
+import { invoiceDetailFrame, invoiceListFrame, submitFrame } from './invoice-sample'
+import { PaymentsCheck } from './PaymentsCheck'
+import { contractorDocs, contractorPayments, employeeDocs, employeePayments, invoice0134 } from './payments-sample'
 
 /** Cheyenne Wilson as the prototype has her (Writers, Writer, contractor, Los Angeles). */
 function cheyenne(): PersonPageData {
@@ -35,7 +39,7 @@ function cheyenne(): PersonPageData {
 }
 
 /** The part 2 frames this route draws (the rest come as they are built). */
-export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx)$/
+export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx|6A|6B|6Ec|6Es|6Ef|6F|6Fp|6G|10P1|10P2|10P3)$/
 
 export function Part2Frame({ frame }: { frame: string }) {
   if (frame.startsWith('10A1')) {
@@ -46,6 +50,20 @@ export function Part2Frame({ frame }: { frame: string }) {
       </div>
     )
   }
+  if (frame.startsWith('10P')) {
+    const emp = frame === '10P2'
+    const base = cheyenne()
+    const data = emp ? { ...base, id: '00000000-0000-4000-8000-0000000000c2', name: 'Wendy Cacka', title: 'Web Developer', color: '#A99BD4', cover: { ...base.cover, teams: [{ teamId: 't-web', teamName: 'Web', color: '#A99BD4', position: 'lead' as const, primary: true }], location: 'Chicago, Illinois, USA' } } : base
+    return (
+      <div className="space-y-4">
+        <Breadcrumb parents={['/directory']} now={data.name} />
+        <PaymentsCheck data={data} payments={emp ? employeePayments() : contractorPayments()} open={frame === '10P3' ? invoice0134() : null} docs={emp ? employeeDocs() : {}} invoices={emp ? {} : contractorDocs()} />
+      </div>
+    )
+  }
+  if (frame === '6A' || frame === '6B') return <InvoicesCheck frame={frame} submit={submitFrame(frame)} />
+  if (frame === '6F' || frame === '6Fp') return <InvoicesCheck frame={frame} detail={invoiceDetailFrame(frame)} />
+  if (/^6[EG]/.test(frame)) return <InvoicesCheck frame={frame} list={invoiceListFrame(frame)} pdf={invoiceDetailFrame(frame)} />
   if (/^6[CD]/.test(frame)) { const f = reviewFrame(frame); return <ReviewCheck frame={frame} review={f.review} tab={f.tab} day={f.day} modal={f.modal} /> }
   if (frame.startsWith('10A2')) {
     return (
