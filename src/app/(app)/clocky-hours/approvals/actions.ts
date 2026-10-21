@@ -20,14 +20,20 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { audit, loadSubmissions, lockOn, overlapFor, snapshot, type EntryRow } from '@/lib/timeclock/clocky-store'
 import { countWaiting, loadApprovals } from '@/lib/timeclock/clocky-approvals'
-import { announceCorrectionDecided, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
-import { loadPeriodSummary } from '@/lib/timeclock/clocky-entries'
+import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
+import { announceCorrectionDecided, announceTimeOffDecided, announceTimesheetDecided, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
+import { loadInvoiceSettings, loadPayTerms, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type TimesheetState } from '@/lib/timeclock/routing'
+import { hoursByClient } from '@/lib/timeclock/invoices-data'
+import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
+import { allowanceStatus } from '@/lib/timeclock/allowance'
+import { loadConnections } from '@/lib/integrations/connections'
 import { REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
 import { formatDuration, recordedSeconds, roundSeconds } from '@/lib/timeclock/rounding'
 import { workingDays } from '@/lib/timeclock/absence'
 import { lockedMessage, periodLabel } from '@/lib/timeclock/periods'
 import { canApproveCorrection, canDecideTimeOff, canReopen } from '@/lib/timeclock/scope'
-import type { ApprovalsData, Fail, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
+import type { ApprovalsData, Fail, Result } from '@/lib/timeclock/clocky-types'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to decide.'
@@ -62,6 +68,20 @@ export async function getApprovals(): Promise<Result<{ data: ApprovalsData }>> {
     return { ok: true, data: await loadApprovals(v, new Date()) }
   } catch (e) {
     console.error('[clocky approvals] list:', (e as Error).message)
+    return fail('Approvals could not be read. Try again in a moment.')
+  }
+}
+
+/** The Approvals list of Clocky part 2: waiting for you, with others, decided (approval-queue.ts). */
+export async function getQueue(): Promise<Result<{ data: QueueData }>> {
+  const access = await loadAccess()
+  if (!access.can('clocky-approvals')) return fail(NO_ACCESS)
+  const v = await viewerFor(access)
+  if (!v) return fail('Your login is not linked to anyone in the Directory.')
+  try {
+    return { ok: true, data: await loadQueue(v, new Date()) }
+  } catch (e) {
+    console.error('[clocky approvals] queue:', (e as Error).message)
     return fail('Approvals could not be read. Try again in a moment.')
   }
 }
@@ -201,97 +221,234 @@ export async function decideTimeOff(input: { id: number; decision: 'approve' | '
   }
 }
 
-// ── Timesheets (owner's mockup of 20 October 2026) ─────────────────────────
+// ── Timesheets and invoices (Clocky part 2, README_PART2 "Approval routing") ─
 //
-// A person's sent month or pay period. Super Admins (ck-reopen) approve it,
-// return it with a reason (it unlocks as "returned" and can be sent again), or
-// reopen an approved one with a reason. approved_by and approved_at keep
-// whoever decided last, also when it went back; note keeps the reason.
+// The owner of the current step decides: the hours go to whoever the person
+// reports to, the invoice to Arnaldo Oliveira or Dave Sharpe; one step when it
+// is the same person, for employees (then Rippling) and for fixed with no
+// timesheet. Return at any step returns the timesheet and the invoice together
+// and tells everyone who approved. Hours over the allowance are decided by the
+// invoice approver, with a note. Every decision is a tc_approval_events row.
 
-type SentRow = { id: number; person_id: string; state: string; tc_periods: { start_date: string; end_date: string } | null }
+type SentRow = {
+  id: number; person_id: string; state: TimesheetState; hours_approved_by: string | null
+  tc_periods: { start_date: string; end_date: string } | null
+}
 
-async function loadSent(id: number): Promise<{ id: number; personId: string; state: string; start: string; end: string } | null> {
-  const { data, error } = await db().from('tc_submissions').select('id, person_id, state, tc_periods(start_date, end_date)').eq('id', Number(id)).maybeSingle()
+async function loadSent(id: number): Promise<{ id: number; personId: string; state: TimesheetState; hoursBy: string | null; start: string; end: string } | null> {
+  const { data, error } = await db().from('tc_submissions').select('id, person_id, state, hours_approved_by, tc_periods(start_date, end_date)').eq('id', Number(id)).maybeSingle()
   if (error) throw new Error(error.message)
-  const r = data as SentRow | null
-  return r?.tc_periods ? { id: r.id, personId: r.person_id, state: r.state, start: r.tc_periods.start_date, end: r.tc_periods.end_date } : null
+  const r = data as unknown as SentRow | null
+  return r?.tc_periods ? { id: r.id, personId: r.person_id, state: r.state, hoursBy: r.hours_approved_by, start: r.tc_periods.start_date, end: r.tc_periods.end_date } : null
 }
 
-/** The card: the sent period as its person's Submit window read it. */
-export async function getTimesheet(input: { id: number }): Promise<Result<{ data: SubmitSummary }>> {
-  const access = await loadAccess()
-  if (!access.can('ck-reopen')) return fail(NO_ACCESS)
-  const v = await viewerFor(access)
-  if (!v || !canReopen(v)) return fail(NO_ACCESS)
-  try {
-    const t = await loadSent(input.id)
-    if (!t) return fail('That timesheet could not be found.')
-    return { ok: true, data: await loadPeriodSummary(v, t.personId, new Date(), t.start) }
-  } catch (e) {
-    console.error('[clocky approvals] timesheet:', (e as Error).message)
-    return fail('That timesheet could not be read. Try again in a moment.')
-  }
+/** A signed-in decider (no access key: the routing says whose decision it is). */
+async function decider(): Promise<Viewer | Fail> {
+  if (await getViewAs()) return fail(PREVIEW)
+  const access = await writerAccess()
+  if (!access) return fail(SIGN_IN)
+  if (!access.can('clocky-approvals')) return fail(NO_ACCESS)
+  return (await viewerFor(access)) ?? fail('Your login is not linked to anyone in the Directory.')
 }
 
-/** Approve a sent timesheet, or return it with a reason. */
-export async function decideTimesheet(input: { id: number; decision: 'approve' | 'return'; note?: string }): Promise<Result<{ toast: string }>> {
-  const v = await actor('ck-reopen')
+/** Hours over the allowance in a timesheet, after the extra hours approved for it. */
+async function overFor(personId: string, start: string, end: string): Promise<number> {
+  const t = (await loadPayTerms([personId])).get(personId)
+  if (!t?.allowance || t.allowance.period !== 'month') return 0
+  const [byClient, extra] = await Promise.all([hoursByClient(personId, start, end), loadApprovedExtra([personId], start, end)])
+  return allowanceStatus(byClient.reduce((n, x) => n + x.seconds, 0), t.allowance.hours, extra(personId, start, end)).over
+}
+
+/** Approve the step that is yours: the hours, the invoice, both, or (employees) send to Rippling. */
+export async function approveTimesheet(input: { id: number; note?: string }): Promise<Result<{ toast: string }>> {
+  const v = await decider()
   if (isFail(v)) return v
-  if (!canReopen(v)) return fail('Only a Super Admin can approve a timesheet.')
   try {
     const c = db()
     const t = await loadSent(input.id)
-    if (!t || t.state !== 'submitted') return fail(NOT_WAITING)
+    if (!t) return fail(NOT_WAITING)
+    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([t.personId])])
+    const route = routes.get(t.personId)
+    const step = route ? currentStep(route, settings, t.state) : null
+    if (!route || !step || step.owner !== v.personId || t.personId === v.personId) return fail(NOT_WAITING)
+    const next = stateAfterApprove(route, settings, t.state)!
     const note = reasonOf(input.note)
-    if (input.decision === 'return' && !note) return fail(REASON_REQUIRED)
+    // Over the allowance: the invoice approver decides, and says why.
+    if (step.step === 'both' || step.step === 'invoice') {
+      const over = await overFor(t.personId, t.start, t.end)
+      if (over > 0 && !note) return fail(`${formatDuration(over)} over the allowance were not approved in advance. Write a note to approve.`)
+    }
     const at = new Date().toISOString()
-    const approve = input.decision === 'approve'
-    // Claimed first: two Super Admins can't both decide it.
-    const { data: done, error } = await c.from('tc_submissions')
-      .update({ state: approve ? 'approved' : 'returned', approved_at: at, approved_by: v.personId, note: approve ? null : note })
-      .eq('id', t.id).eq('state', 'submitted').select('id')
+    const patch = next === 'hours_approved'
+      ? { state: next, hours_approved_by: v.personId, hours_approved_at: at }
+      : { state: next, approved_by: v.personId, approved_at: at, note: note ?? null }
+    const { data: moved, error } = await c.from('tc_submissions').update(patch).eq('id', t.id).eq('state', t.state).select('id')
     if (error) return notSaved(error)
-    if (!done?.length) return fail(NOT_WAITING)
-    // The portal's own rows follow (imported ones keep QuickBooks Time's state).
-    await c.from('tc_entries').update({ state: approve ? 'approved' : 'open', updated_at: at })
-      .eq('person_id', t.personId).eq('state', 'submitted').eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
-    await audit(c, [{ entryId: null, action: approve ? 'approve_period' : 'return_period', by: v.personId, reason: note, after: { person_id: t.personId, start: t.start, end: t.end } }])
+    if (!moved?.length) return fail(NOT_WAITING)
+    const { data: inv } = await c.from('invoices').select('id, number').eq('submission_id', t.id).maybeSingle()
+    if (next === 'approved') {
+      if (inv) await c.from('invoices').update({ state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at }).eq('id', inv.id).eq('state', 'waiting')
+      await c.from('tc_entries').update({ state: 'approved', updated_at: at })
+        .eq('person_id', t.personId).eq('state', 'submitted').eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
+      // Employees: the hours and the time off go to Rippling (the outbox sends them, or waits for the connection).
+      if (!route.isContractor) await queueRipplingHours(t.id, t.personId, t.start, t.end)
+    }
+    await c.from('tc_approval_events').insert({ submission_id: t.id, invoice_id: inv?.id ?? null, step: step.step, action: 'approve', by_person: v.personId, at, note })
     const dir = await loadDirectory()
     const label = periodLabel(t).full
-    await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: approve ? 'approve' : 'return', note })
+    const ib = invoiceApprover(route, settings)
+    if (next === 'hours_approved' && ib) {
+      await announceTimesheetSubmitted({ submissionId: t.id, sentAt: at, personId: t.personId, to: [ib], period: label, seconds: 0 })
+    } else {
+      await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: 'approve', note: null })
+    }
     refresh()
     const who = dir.nameOf(t.personId)
-    return { ok: true, toast: approve ? `${who}'s timesheet for ${label} is approved.` : `${label} went back to ${first(who)} with your reason.` }
+    const toast = next === 'hours_approved'
+      ? `Hours approved. ${ib ? dir.nameOf(ib) : 'The invoice approver'} finishes the approval.`
+      : !route.isContractor ? 'Approved and sent to Rippling.'
+        : step.step === 'invoice' ? `Invoice approved. ${label} is locked${inv ? ` and ${inv.number} is Approved for Finance` : ''}.`
+          : `Approved both. ${label} is locked${inv ? ` and ${inv.number} is Approved for Finance` : ''}.`
+    void who
+    return { ok: true, toast }
   } catch (e) {
     return notSaved(e)
   }
 }
 
-/** Reopen an approved timesheet, with a reason: it unlocks and can be sent again. */
-export async function reopenTimesheet(input: { id: number; note?: string }): Promise<Result<{ toast: string }>> {
+/** Return it at any step: the timesheet reopens, the invoice goes back to Draft, everyone who approved is told. */
+export async function returnTimesheet(input: { id: number; reason: string }): Promise<Result<{ toast: string }>> {
+  const v = await decider()
+  if (isFail(v)) return v
+  try {
+    const c = db()
+    const t = await loadSent(input.id)
+    if (!t) return fail(NOT_WAITING)
+    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([t.personId])])
+    const route = routes.get(t.personId)
+    const step = route ? currentStep(route, settings, t.state) : null
+    if (!route || !step || step.owner !== v.personId || t.personId === v.personId) return fail(NOT_WAITING)
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail(REASON_REQUIRED)
+    const at = new Date().toISOString()
+    const { data: moved, error } = await c.from('tc_submissions').update({ state: 'returned', approved_by: v.personId, approved_at: at, note: reason }).eq('id', t.id).eq('state', t.state).select('id')
+    if (error) return notSaved(error)
+    if (!moved?.length) return fail(NOT_WAITING)
+    const { data: inv } = await c.from('invoices').select('id').eq('submission_id', t.id).maybeSingle()
+    if (inv) {
+      await c.from('invoices').update({ state: 'draft', approved_by: null, approved_at: null, updated_at: at }).eq('id', inv.id)
+      // Its reimbursements wait for the invoice made again.
+      await c.from('reimbursements').update({ state: 'approved', invoice_id: null }).eq('invoice_id', inv.id).eq('state', 'on_invoice')
+    }
+    await c.from('tc_entries').update({ state: 'open', updated_at: at })
+      .eq('person_id', t.personId).eq('state', 'submitted').eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
+    await c.from('tc_approval_events').insert({ submission_id: t.id, invoice_id: inv?.id ?? null, step: step.step, action: 'return', by_person: v.personId, at, note: reason })
+    const label = periodLabel(t).full
+    await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: 'return', note: reason })
+    // Whoever approved the hours before hears it went back.
+    if (t.hoursBy && t.hoursBy !== v.personId) await announceTimesheetDecided({ submissionId: t.id, at: `${at}:h`, personId: t.hoursBy, deciderId: v.personId, period: label, how: 'return', note: reason })
+    refresh()
+    const dir = await loadDirectory()
+    return { ok: true, toast: `Returned to ${dir.nameOf(t.personId)}. They see your reason.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/** Reopen an approved timesheet (Super Admins): it unlocks, the invoice goes back to Draft. */
+export async function reopenTimesheet(input: { id: number; reason: string }): Promise<Result<{ toast: string }>> {
   const v = await actor('ck-reopen')
   if (isFail(v)) return v
   if (!canReopen(v)) return fail('Only a Super Admin can reopen a period.')
   try {
     const c = db()
     const t = await loadSent(input.id)
-    if (!t || t.state !== 'approved') return fail('That timesheet is not approved, so there is nothing to reopen.')
-    const note = reasonOf(input.note)
-    if (!note) return fail(REASON_REQUIRED)
+    if (!t || (t.state !== 'approved' && t.state !== 'recorded')) return fail('That timesheet is not approved, so there is nothing to reopen.')
+    const reason = reasonOf(input.reason)
+    if (!reason) return fail(REASON_REQUIRED)
     const at = new Date().toISOString()
-    const { data: done, error } = await c.from('tc_submissions')
-      .update({ state: 'returned', approved_at: at, approved_by: v.personId, note })
-      .eq('id', t.id).eq('state', 'approved').select('id')
+    const { data: moved, error } = await c.from('tc_submissions').update({ state: 'returned', approved_by: v.personId, approved_at: at, note: reason }).eq('id', t.id).eq('state', t.state).select('id')
     if (error) return notSaved(error)
-    if (!done?.length) return fail('That timesheet is not approved, so there is nothing to reopen.')
+    if (!moved?.length) return fail('That timesheet is not approved, so there is nothing to reopen.')
+    const { data: inv } = await c.from('invoices').select('id, state').eq('submission_id', t.id).maybeSingle()
+    if (inv?.state === 'paid') {
+      await c.from('tc_submissions').update({ state: t.state }).eq('id', t.id)
+      return fail('Its invoice is already paid, so the timesheet stays as it is.')
+    }
+    if (inv) {
+      await c.from('invoices').update({ state: 'draft', approved_by: null, approved_at: null, updated_at: at }).eq('id', inv.id)
+      await c.from('reimbursements').update({ state: 'approved', invoice_id: null }).eq('invoice_id', inv.id).eq('state', 'on_invoice')
+    }
     await c.from('tc_entries').update({ state: 'open', updated_at: at })
       .eq('person_id', t.personId).in('state', ['submitted', 'approved']).eq('source', 'portal').gte('entry_date', t.start).lte('entry_date', t.end)
-    await audit(c, [{ entryId: null, action: 'reopen', by: v.personId, reason: note, after: { person_id: t.personId, start: t.start, end: t.end } }])
-    const label = periodLabel(t).full
-    await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: label, how: 'reopen', note })
+    await c.from('tc_approval_events').insert({ submission_id: t.id, invoice_id: inv?.id ?? null, step: 'both', action: 'reopen', by_person: v.personId, at, note: reason })
+    await audit(c, [{ entryId: null, action: 'reopen', by: v.personId, reason, after: { person_id: t.personId, start: t.start, end: t.end } }])
+    await announceTimesheetDecided({ submissionId: t.id, at, personId: t.personId, deciderId: v.personId, period: periodLabel(t).full, how: 'reopen', note: reason })
     refresh()
     const dir = await loadDirectory()
-    return { ok: true, toast: `${label} is open again for ${first(dir.nameOf(t.personId))}.` }
+    return { ok: true, toast: `${periodLabel(t).full} is open again for ${first(dir.nameOf(t.personId))}.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/** Fixed, no timesheet: the invoice alone, one step, its approver. */
+export async function decideInvoice(input: { id: number; decision: 'approve' | 'return'; note?: string }): Promise<Result<{ toast: string }>> {
+  const v = await decider()
+  if (isFail(v)) return v
+  try {
+    const c = db()
+    const { data: inv, error: e1 } = await c.from('invoices').select('id, number, person_id, state, kind, period_start, period_end').eq('id', Number(input.id)).maybeSingle()
+    if (e1) return notSaved(e1)
+    if (!inv || inv.kind !== 'fixed_no_timesheet' || inv.state !== 'waiting') return fail(NOT_WAITING)
+    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([inv.person_id])])
+    const route = routes.get(inv.person_id)
+    if (!route || invoiceApprover(route, settings) !== v.personId || inv.person_id === v.personId) return fail(NOT_WAITING)
+    const note = reasonOf(input.note)
+    if (input.decision === 'return' && !note) return fail(REASON_REQUIRED)
+    const at = new Date().toISOString()
+    const approve = input.decision === 'approve'
+    const { data: moved, error } = await c.from('invoices')
+      .update(approve ? { state: 'approved', approved_by: v.personId, approved_at: at, updated_at: at } : { state: 'draft', approved_by: v.personId, approved_at: at, updated_at: at, paid_note: note })
+      .eq('id', inv.id).eq('state', 'waiting').select('id')
+    if (error) return notSaved(error)
+    if (!moved?.length) return fail(NOT_WAITING)
+    await c.from('tc_approval_events').insert({ submission_id: null, invoice_id: inv.id, step: 'invoice', action: approve ? 'approve' : 'return', by_person: v.personId, at, note })
+    refresh()
+    return { ok: true, toast: approve ? `Approved. ${inv.number} waits for Finance to pay it.` : `Returned. ${inv.number} is back to Draft.` }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/** Queues an employee's approved hours for Rippling (the outbox sends them, or waits for the connection). */
+async function queueRipplingHours(submissionId: number, personId: string, start: string, end: string): Promise<void> {
+  const conn = await loadConnections()
+  const { error } = await db().from('integration_jobs').upsert({
+    kind: 'rippling_hours', ref_table: 'tc_submissions', ref_id: submissionId,
+    payload: { person_id: personId, start, end }, state: conn.rippling.connected ? 'queued' : 'waiting_connection',
+    idempotency_key: `rippling_hours:${submissionId}:${start}`,
+  }, { onConflict: 'idempotency_key' })
+  if (error) console.error('[clocky approvals] rippling queue:', error.message)
+}
+
+/** "Try again" when Rippling refused an approved pay period: the job goes back in the queue. */
+export async function retryRippling(input: { submissionId: number }): Promise<Result<{ toast: string }>> {
+  const v = await decider()
+  if (isFail(v)) return v
+  try {
+    const c = db()
+    const t = await loadSent(input.submissionId)
+    if (!t || t.state !== 'approved') return fail('That pay period is not approved.')
+    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([t.personId])])
+    const route = routes.get(t.personId)
+    if (!route || route.isContractor || !(v.isSuperAdmin || hoursApprover(route, settings) === v.personId)) return fail(NO_ACCESS)
+    const conn = await loadConnections()
+    const { error } = await c.from('integration_jobs').update({ state: conn.rippling.connected ? 'queued' : 'waiting_connection', next_at: new Date().toISOString(), last_error: null })
+      .eq('ref_table', 'tc_submissions').eq('ref_id', t.id).eq('kind', 'rippling_hours')
+    if (error) return notSaved(error)
+    refresh()
+    return { ok: true, toast: conn.rippling.connected ? 'Sent to Rippling again. It shows here in a moment.' : 'Rippling is not connected yet: it goes as soon as it is, in Company settings.' }
   } catch (e) {
     return notSaved(e)
   }

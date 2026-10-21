@@ -1,20 +1,19 @@
-// Clocky, Approvals (design handoff of 16 October 2026, README "Time
-// correction requests and approvals", frames 3L and 3L2): the time
-// corrections waiting for the viewer's decision in their scope (their teams
-// for a Team Leader, everyone for Admins and Super Admins), and time off for
-// Super Admins. The data and every decision are approvals/actions.ts.
+// Clocky, Approvals (Clocky part 2, Approvals.dc.html AP to AP-D): one queue
+// of timesheets, time off, reimbursements, extra hours and time corrections,
+// in three tabs (Waiting for you, With others, Decided), decided by the
+// routing of README_PART2. The data and every decision are approvals/actions.ts.
 
 import { requireSurface } from '@/lib/access/resolve'
 import { ApprovalsLive } from '@/components/clocky/approvals/ApprovalsLive'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
-import { getApprovals } from './actions'
+import { getQueue } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Approvals' }
 
 export default async function ApprovalsPage() {
   await requireSurface('clocky-approvals')
-  const r = await getApprovals()
+  const r = await getQueue()
   if (!r.ok) {
     return (
       <div className="flex flex-col gap-4">

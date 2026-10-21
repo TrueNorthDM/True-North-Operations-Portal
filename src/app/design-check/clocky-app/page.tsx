@@ -12,7 +12,7 @@
 //   ?frame=5A ... 5C3                        Timesheet periods (settings, a person's page, Rates & Costs)
 //   ?frame=10A1 | 10A1v ...                  Clocky part 2 (Part2Frame, the overview's codes)
 //   ?frame=4A | 4B                           Clock safety, with data or empty (Super Admin)
-//   ?frame=3L | 3L2 | 3L3                    Approvals (Super Admin, Team Leader of Web, Super Admin with timesheets)
+//   ?frame=AP1 | AP3 | AP2 | APL | APD       Approvals, part 2 (Super Admin: waiting, others, decided; Team Leader; Dave Sharpe)
 //   ?frame=2A ... 2E | 2P                       Who's working, the drawer open (2B as Wendy
 //                                               Cacka, Team Leader of Web) or the page
 //
@@ -29,7 +29,7 @@ import type { AccessLevel } from '@/lib/access/catalogue'
 import { MainContent } from '@/components/MainContent'
 import { AppClock } from './AppClock'
 import { AppWorking, AppWorkingPage } from './AppWorking'
-import { AppApprovals } from './AppApprovals'
+import { AppApprovals, type ApprovalsFrame } from './AppApprovals'
 import { PeriodsFrame } from '../clocky-periods/PeriodsFrame'
 import { PART2_FRAMES, Part2Frame } from '../clocky-part2/Part2Frame'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -50,7 +50,8 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
   if (process.env.NODE_ENV === 'production') notFound()
   const { frame = '1A', level = 'admin', closed } = await searchParams
   const bell = BELL[frame as keyof typeof BELL] ?? null
-  const approvals = frame === '3L' || frame === '3L2' || frame === '3L3' ? frame : null
+  // Part 1's 3L frames now open part 2's list (3L as AP1, 3L2 as APL).
+  const approvals = (({ '3L': 'AP1', '3L2': 'APL', '3L3': 'AP1', AP1: 'AP1', AP3: 'AP3', AP2: 'AP2', APL: 'APL', APD: 'APD' }) as Record<string, ApprovalsFrame>)[frame] ?? null
   const safety = frame === '4A' || frame === '4B'
   const periods = /^5[ABC]/.test(frame)
   const part2 = PART2_FRAMES.test(frame)
@@ -60,7 +61,8 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
   const entriesLevel = entries ? buildFrame(frame).level : null
   const working = /^2/.test(frame)
   const workingPage = frame === '2P'
-  const role = bell === 'lead' || entriesLevel === 'lead' || frame === '2B' || approvals === '3L2' ? 'team_leader'
+  const role = bell === 'lead' || entriesLevel === 'lead' || frame === '2B' || approvals === 'APL' || frame === '6Ct' || frame === '6Ce' ? 'team_leader'
+    : approvals === 'APD' || frame === '6Cd' ? 'admin'
     : bell === 'user' || entriesLevel === 'user' ? 'user'
     : entriesLevel === 'admin' ? 'admin'
     : entriesLevel === 'super' ? 'super_admin'
@@ -82,7 +84,7 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
           {/* Who's working is for Team Leaders and up; the Time entries frames have the
               list's running clock (on the clock since 10:45 AM). */}
           {working ? <AppWorking frame={frame} /> : (
-            <AppClock frame={entries || approvals === '3L' || bell === 'user' ? 'RUN' : bell || part2 ? '1A' : frame} open={!bell && !entries && !approvals && !safety && !periods && !part2 && closed !== '1'}
+            <AppClock frame={entries || bell === 'user' ? 'RUN' : bell || part2 ? '1A' : frame} open={!bell && !entries && !approvals && !safety && !periods && !part2 && closed !== '1'}
               working={role !== 'user'} />
           )}
           {bell ? <BellCheck level={bell} /> : <NotificationButton kind="bell" />}
@@ -90,8 +92,8 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
       </header>
       <div className="flex flex-1">
         <Sidebar rail={rail} menuOpen={false} twoStepDaysLeft={null} startHub={null} startCounts={{}}
-          activePath={part2 ? '/directory' : periods ? (frame.startsWith('5A') ? '/admin' : '/directory') : approvals ? '/clocky-hours/approvals' : safety ? '/clocky-hours/safety' : entries || userBell ? '/clocky-hours' : bell ? '/clocky-hours/safety' : workingPage ? '/clocky-hours/whos-working' : '/'}
-          user={{ email: null, name: entriesLevel ? ME[entriesLevel] : bell === 'lead' ? ME.lead : bell === 'user' ? ME.user : frame === '2B' || approvals === '3L2' ? 'Wendy Cacka' : 'Arnaldo Oliveira', avatarUrl: null }} />
+          activePath={part2 ? (/^6[CD]/.test(frame) ? '/clocky-hours/approvals' : '/directory') : periods ? (frame.startsWith('5A') ? '/admin' : '/directory') : approvals ? '/clocky-hours/approvals' : safety ? '/clocky-hours/safety' : entries || userBell ? '/clocky-hours' : bell ? '/clocky-hours/safety' : workingPage ? '/clocky-hours/whos-working' : '/'}
+          user={{ email: null, name: entriesLevel ? ME[entriesLevel] : bell === 'lead' ? ME.lead : bell === 'user' ? ME.user : frame === '2B' || approvals === 'APL' || frame === '6Ct' || frame === '6Ce' ? 'Wendy Cacka' : approvals === 'APD' || frame === '6Cd' ? 'Dave Sharpe' : 'Arnaldo Oliveira', avatarUrl: null }} />
         {part2 ? (
           <MainContent notice={null}><Part2Frame frame={frame} /></MainContent>
         ) : periods ? (

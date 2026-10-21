@@ -39,9 +39,11 @@ import {
   overlapLine, reasonOf, trimOther, trimThis,
 } from '@/lib/timeclock/entry-rules'
 import { changesBetween } from '@/lib/timeclock/history'
-import { addDays, lockedMessage, periodLabel } from '@/lib/timeclock/periods'
+import { addDays, isSent, lockedMessage, periodLabel } from '@/lib/timeclock/periods'
+import { loadInvoiceSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { currentStep, stateOnSubmit } from '@/lib/timeclock/routing'
+import { invoiceBlocker, makeInvoiceForSubmission } from '@/lib/timeclock/invoices-data'
 import { SHORTEN_ONLY, canAddFor, changeRight, onlyShorter } from '@/lib/timeclock/scope'
-import { loadApprovers } from '@/lib/timeclock/approvers'
 import type { EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
@@ -583,7 +585,7 @@ export async function requestCorrection(input: { date: string; start: string; en
  * when there is nothing in it, or when nobody could approve it. Its entries
  * lock with it.
  */
-export async function submitPeriod(input: { start: string; end: string }): Promise<Result<{ toast: string; locked: number }>> {
+export async function submitPeriod(input: { start: string; end: string }): Promise<Result<{ toast: string; locked: number; invoiceId: number | null }>> {
   const v = await actor()
   if (isFail(v)) return v
   try {
@@ -592,15 +594,24 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     const s = await loadSubmitSummary(v, now, input.start)
     if (s.start !== input.start || s.end !== input.end) return fail('That period has changed. Reload and try again.')
     if (s.running) return fail('Clock out first. Your clock is running.')
-    if (s.state === 'submitted') return fail('That period has already been sent.')
-    if (s.state === 'approved') return fail('That period is already approved.')
+    if (s.state === 'approved' || s.state === 'recorded') return fail('That period is already approved.')
+    if (isSent(s.state)) return fail('That period has already been sent.')
     if (s.attention.length) return fail('Fix the entries that need attention first.', { attention: s.attention })
     const { count } = await c.from('tc_entries').select('id', { count: 'exact', head: true })
       .eq('person_id', v.personId).gte('entry_date', s.start).lte('entry_date', s.end)
     if (!count) return fail('There is nothing logged in that period yet.')
-    if (!(await loadApprovers(c, v.personId)).length) {
-      return fail('Nobody is set up to approve hours yet, so this would go nowhere. Ask a Super Admin.')
+
+    // Who decides (README_PART2 "Approval routing"); the Deputy Director's own is recorded.
+    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([v.personId])])
+    const route = routes.get(v.personId)
+    if (!route) return fail('Your login is not linked to anyone in the Directory.')
+    const nextState = stateOnSubmit(route, settings)
+    if (nextState === 'submitted' && !currentStep(route, settings, 'submitted')?.owner) {
+      return fail('Nobody is set up to approve your hours yet, so this would go nowhere. Ask a Super Admin.')
     }
+    // A contractor's invoice is made with it: say now if it cannot be.
+    const blocked = await invoiceBlocker(v.personId)
+    if (blocked) return fail(blocked)
 
     const kind = s.kind
     const { data: found, error: findErr } = await c.from('tc_periods').select('id').eq('start_date', s.start).eq('end_date', s.end).maybeSingle()
@@ -616,25 +627,39 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     if (subErr) return notSaved(subErr)
     const row = sub as { id: number; state: string } | null
     let sentId = row?.id ?? 0
+    const fresh = { state: nextState, submitted_at: at, approved_at: null, approved_by: null, hours_approved_at: null, hours_approved_by: null, note: null }
     if (row) {
       // Sent again after a return: the last decision and its reason go.
-      const { data: moved, error } = await c.from('tc_submissions').update({ state: 'submitted', submitted_at: at, approved_at: null, approved_by: null, note: null })
-        .eq('id', row.id).in('state', ['draft', 'returned']).select('id')
+      const { data: moved, error } = await c.from('tc_submissions').update(fresh).eq('id', row.id).in('state', ['draft', 'returned']).select('id')
       if (error) return notSaved(error)
       // Sent or approved in another tab since the summary was read: nothing changed here.
       if (!moved?.length) return fail('That period has already been sent. Reload to see where it stands.')
     } else {
-      const { data: made, error } = await c.from('tc_submissions').insert({ person_id: v.personId, period_id: periodId, state: 'submitted', submitted_at: at }).select('id').single()
+      const { data: made, error } = await c.from('tc_submissions').insert({ person_id: v.personId, period_id: periodId, ...fresh }).select('id').single()
       if (error) return notSaved(error)
       sentId = (made as { id: number }).id
     }
+
+    // The invoice is made with it (contractors); if that fails, nothing was sent.
+    let invoiceId: number | null = null
+    try {
+      invoiceId = await makeInvoiceForSubmission(sentId, now)
+    } catch (e) {
+      await c.from('tc_submissions').update({ state: row ? row.state : 'draft', submitted_at: null }).eq('id', sentId)
+      console.error('[clocky submit] invoice:', e instanceof Error ? e.message : e)
+      return fail('Your invoice could not be made, so nothing was sent. Try again in a moment.')
+    }
+
     // The portal's own rows freeze with it (imported ones keep QuickBooks Time's state).
-    await c.from('tc_entries').update({ state: 'submitted', updated_at: at })
+    await c.from('tc_entries').update({ state: nextState === 'recorded' ? 'approved' : 'submitted', updated_at: at })
       .eq('person_id', v.personId).eq('state', 'open').eq('source', 'portal').gte('entry_date', s.start).lte('entry_date', s.end)
-    // The Super Admins who approve it hear of it.
-    await announceTimesheetSubmitted({ submissionId: sentId, sentAt: at, personId: v.personId, period: periodLabel(s).full, seconds: s.totalSeconds })
+    await c.from('tc_approval_events').insert({ submission_id: sentId, invoice_id: invoiceId, step: 'submit', action: nextState === 'recorded' ? 'record' : 'submit', by_person: v.personId, at })
+    // Whoever decides first hears of it.
+    const owner = currentStep(route, settings, nextState)?.owner
+    if (owner) await announceTimesheetSubmitted({ submissionId: sentId, sentAt: at, personId: v.personId, to: [owner], period: periodLabel(s).full, seconds: s.totalSeconds })
     refresh()
-    return { ok: true, locked: count, toast: `${s.label} submitted. ${count} entries are now locked.` }
+    const what = nextState === 'recorded' ? 'recorded' : 'submitted'
+    return { ok: true, locked: count, invoiceId, toast: `${s.label} ${what}. ${count} entries are now locked.` }
   } catch (e) {
     return notSaved(e)
   }

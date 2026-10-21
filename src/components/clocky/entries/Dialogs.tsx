@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { formatDuration } from '@/lib/timeclock/rounding'
+import { isSent } from '@/lib/timeclock/periods'
 import type { PillTone, SubmitSummary } from '@/lib/timeclock/clocky-types'
 import { BTN_MODAL_DANGER, BTN_MODAL_NAVY, BTN_MODAL_WHITE, CloseButton, FieldLabel, Icon, ICON, LABEL, MODAL_TITLE, Modal, Pill, TEXTAREA_PLAIN, TEXTAREA_WARN } from './ui'
 
@@ -60,7 +61,7 @@ export function SubmitDialog({ summary, error, busy, clockHref, onClose, onSubmi
   onFix: (key: string) => void
 }) {
   const s = summary
-  const done = s?.state === 'submitted' || s?.state === 'approved'
+  const done = isSent(s?.state)
   const disabled = busy || !s || s.attention.length > 0 || done || !s.canSubmit
   return (
     <Modal label="Submit the period" width={520} onClose={onClose}>

@@ -24,8 +24,8 @@ export function EntriesCheck({ frame }: { frame: string }) {
           {FRAMES.map(([k, label]) => (
             <Link key={k} href={`?frame=${k}`} className={`rounded-[8px] px-2.5 py-[7px] text-[12.5px] font-semibold ${k === frame ? 'bg-tn-primary text-[#ffffff]' : 'text-foreground hover:bg-subtle'}`}>{label}</Link>
           ))}
-          <Link href="/design-check/clocky-approvals?frame=3L2" className="rounded-[8px] px-2.5 py-[7px] text-[12.5px] font-semibold text-foreground hover:bg-subtle">3L Approvals (Team Leader)</Link>
-          <Link href="/design-check/clocky-approvals?frame=3L" className="rounded-[8px] px-2.5 py-[7px] text-[12.5px] font-semibold text-foreground hover:bg-subtle">3L Approvals (Super Admin)</Link>
+          <Link href="/design-check/clocky-app?frame=APL" className="rounded-[8px] px-2.5 py-[7px] text-[12.5px] font-semibold text-foreground hover:bg-subtle">3L Approvals (Team Leader)</Link>
+          <Link href="/design-check/clocky-app?frame=AP1" className="rounded-[8px] px-2.5 py-[7px] text-[12.5px] font-semibold text-foreground hover:bg-subtle">3L Approvals (Super Admin)</Link>
         </div>
         <p className="m-0 text-[12.5px] text-muted">Frame {frame}, viewing as {f.store.recs.length ? `${LEVEL[f.level]}` : ''}. Now is Thu, Oct 15, 2026, 1:20 PM (New York), frozen. Nothing is saved.</p>
       </div>

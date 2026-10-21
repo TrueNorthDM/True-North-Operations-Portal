@@ -222,8 +222,8 @@ describe("Clocky's notifications (16 October 2026)", () => {
     expect(T('clocky-clocked-out-for').button).toEqual({ label: 'Open entry' })
     expect(T('clocky-timesheet-submitted').button).toEqual({ label: 'Review', href: '/clocky-hours/approvals' })
     expect(T('clocky-timesheet-decided').button).toEqual({ label: 'Open time entries', href: '/clocky-hours' })
-    // Sent timesheets reach whoever may approve them.
-    expect(T('clocky-timesheet-submitted').audience).toEqual({ kind: 'tool', tool: 'ck-reopen' })
+    // Sent timesheets reach whoever decides them (the routing), so the rule is open to everyone.
+    expect(T('clocky-timesheet-submitted').audience).toEqual({ kind: 'everyone' })
     expect(T('clocky-auto-stops').button).toEqual({ label: 'Open Clock safety', href: '/clocky-hours/safety' })
   })
 

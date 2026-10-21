@@ -71,16 +71,19 @@ describe('locked periods (Rules 9)', () => {
     expect(body(read('approvals/actions.ts'), 'decideCorrection')).toMatch(/lockedMessage\(/)
     expect(body(read('approvals/actions.ts'), 'decideTimeOff')).toMatch(/lockedMessage\(/)
   })
-  it('only Super Admins approve, return or reopen a timesheet', () => {
+  it('a timesheet is decided by the owner of its step; only Super Admins reopen', () => {
     const a = read('approvals/actions.ts')
-    for (const name of ['decideTimesheet', 'reopenTimesheet']) {
-      expect(body(a, name), name).toMatch(/actor\('ck-reopen'\)/)
-      expect(body(a, name), name).toMatch(/canReopen\(v\)/)
+    // Approve and Return: the routing's owner of the current step, never the person themselves.
+    for (const name of ['approveTimesheet', 'returnTimesheet']) {
+      expect(body(a, name), name).toMatch(/step\.owner !== v\.personId \|\| t\.personId === v\.personId/)
     }
-    expect(body(a, 'getTimesheet')).toMatch(/can\('ck-reopen'\)/)
+    expect(body(a, 'reopenTimesheet')).toMatch(/actor\('ck-reopen'\)/)
+    expect(body(a, 'reopenTimesheet')).toMatch(/canReopen\(v\)/)
     // Returning and reopening need the reason the person reads.
-    expect(body(a, 'decideTimesheet')).toMatch(/fail\(REASON_REQUIRED\)/)
+    expect(body(a, 'returnTimesheet')).toMatch(/fail\(REASON_REQUIRED\)/)
     expect(body(a, 'reopenTimesheet')).toMatch(/fail\(REASON_REQUIRED\)/)
+    // Over the allowance, approving the invoice needs a note.
+    expect(body(a, 'approveTimesheet')).toMatch(/over the allowance were not approved in advance/)
   })
 })
 

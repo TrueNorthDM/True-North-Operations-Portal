@@ -124,11 +124,11 @@ export async function announceClockedOutFor(x: { entryId: number; personId: stri
   })
 }
 
-/** A period sent (3H): the Super Admins who approve timesheets hear of it. */
-export async function announceTimesheetSubmitted(x: { submissionId: number; sentAt: string; personId: string; period: string; seconds: number }): Promise<void> {
+/** A period sent (3H): whoever decides it first hears of it (its Reports to, or the invoice approver). */
+export async function announceTimesheetSubmitted(x: { submissionId: number; sentAt: string; personId: string; to: readonly string[]; period: string; seconds: number }): Promise<void> {
   await quiet('timesheet submitted', async () => {
     const dir = await loadDirectory()
-    await notifyClockyTimesheetSubmitted({ ...x, text: timesheetSubmittedText(dir.nameOf(x.personId), x.period, x.seconds) })
+    await notifyClockyTimesheetSubmitted({ submissionId: x.submissionId, sentAt: x.sentAt, personId: x.personId, to: x.to, text: timesheetSubmittedText(dir.nameOf(x.personId), x.period, x.seconds) })
   })
 }
 

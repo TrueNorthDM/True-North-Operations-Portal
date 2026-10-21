@@ -42,3 +42,13 @@ export async function loadAllowanceUse(terms: ReadonlyMap<string, Pick<PayTerms,
   }
   return out
 }
+
+/** Extra hours approved per person for periods that overlap from..to (extra_hours_requests). */
+export async function loadApprovedExtra(personIds: readonly string[], from: string, to: string): Promise<ExtraHours> {
+  if (!personIds.length) return () => 0
+  const { data, error } = await db().from('extra_hours_requests').select('person_id, hours, period_start, period_end')
+    .in('person_id', [...personIds]).eq('state', 'approved').lte('period_start', to).gte('period_end', from)
+  if (error) throw new Error(`Extra hours could not be read: ${error.message}`)
+  const rows = data ?? []
+  return (personId, a, b) => rows.filter(r => r.person_id === personId && r.period_start <= b && r.period_end >= a).reduce((s, r) => s + Number(r.hours), 0)
+}

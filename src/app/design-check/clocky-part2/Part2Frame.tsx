@@ -9,6 +9,8 @@ import { nextMilestone, type PersonPageData } from '@/lib/directory/person-page-
 import { formatTenure, milestoneOf, tenureSince } from '@/lib/tenure'
 import { PersonPayCheck } from './PersonPayCheck'
 import { RatesPayCheck } from './RatesPayCheck'
+import { ReviewCheck } from './ReviewCheck'
+import { reviewFrame } from './review-sample'
 
 /** Cheyenne Wilson as the prototype has her (Writers, Writer, contractor, Los Angeles). */
 function cheyenne(): PersonPageData {
@@ -33,7 +35,7 @@ function cheyenne(): PersonPageData {
 }
 
 /** The part 2 frames this route draws (the rest come as they are built). */
-export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v)$/
+export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx)$/
 
 export function Part2Frame({ frame }: { frame: string }) {
   if (frame.startsWith('10A1')) {
@@ -44,6 +46,7 @@ export function Part2Frame({ frame }: { frame: string }) {
       </div>
     )
   }
+  if (/^6[CD]/.test(frame)) { const f = reviewFrame(frame); return <ReviewCheck frame={frame} review={f.review} tab={f.tab} day={f.day} modal={f.modal} /> }
   if (frame.startsWith('10A2')) {
     return (
       <div className="space-y-6">

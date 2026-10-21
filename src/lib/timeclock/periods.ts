@@ -254,12 +254,20 @@ export const lockedMessage = (p: { start: string; end: string }): string =>
 export interface SubmittedPeriod { start: string; end: string; state: string }
 
 /**
+ * A period that was sent and is locked (Clocky part 2 adds two states): waiting
+ * for its first approval, hours approved and waiting for the invoice, approved,
+ * or recorded without approval (the Deputy Director). Draft and returned are open.
+ */
+export const SENT_STATES = ['submitted', 'hours_approved', 'approved', 'recorded'] as const
+export const isSent = (state: string | null | undefined): boolean => !!state && (SENT_STATES as readonly string[]).includes(state)
+
+/**
  * Locked: the day sits in a period the person submitted or had approved, or
  * the entry itself is submitted, approved or locked (as QuickBooks Time left
  * imported rows). Locked for everyone; a Super Admin reopens the period first.
  */
 export function lockedBy(iso: string, submissions: readonly SubmittedPeriod[], entryState?: string | null): SubmittedPeriod | { start: string; end: string; state: string } | null {
-  const s = submissions.find(x => (x.state === 'submitted' || x.state === 'approved') && x.start <= iso && iso <= x.end)
+  const s = submissions.find(x => isSent(x.state) && x.start <= iso && iso <= x.end)
   if (s) return s
   if (entryState === 'submitted' || entryState === 'approved' || entryState === 'locked') {
     const p = periodFor(iso)
@@ -441,7 +449,7 @@ export function periodToSubmit(
     p = periodContaining(addDays(p.start, -1), rules)
     earlier.unshift(p)
   }
-  const sent = (x: Period) => submissions.some(s => s.start === x.start && s.end === x.end && (s.state === 'submitted' || s.state === 'approved'))
+  const sent = (x: Period) => submissions.some(s => s.start === x.start && s.end === x.end && isSent(s.state))
   const hasTime = (x: Period) => [...recordedDays].some(d => x.start <= d && d <= x.end)
   return earlier.find(x => hasTime(x) && !sent(x)) ?? current
 }

@@ -1,25 +1,21 @@
 'use client'
 
-/** Approvals on the live page: the screen over approvals/actions.ts. */
+/** Approvals on the live page: the list over approvals/actions.ts. */
 
 import { useRouter } from 'next/navigation'
-import { decideCorrection, decideTimeOff, decideTimesheet, getApprovals, getTimesheet, reopenTimesheet } from '@/app/(app)/clocky-hours/approvals/actions'
+import { decideCorrection, decideTimeOff, getQueue } from '@/app/(app)/clocky-hours/approvals/actions'
 import { getEntryHistory } from '@/app/(app)/clocky-hours/entries-actions'
-import type { ApprovalsData } from '@/lib/timeclock/clocky-types'
-import type { ApprovalsApi } from '../entries/api'
-import { Approvals } from './Approvals'
+import type { QueueData } from '@/lib/timeclock/approval-queue'
+import { ApprovalsList, type QueueApi } from './ApprovalsList'
 
-export function ApprovalsLive({ initialData }: { initialData: ApprovalsData }) {
+export function ApprovalsLive({ initialData }: { initialData: QueueData }) {
   const router = useRouter()
-  const api: ApprovalsApi = {
-    getApprovals,
+  const api: QueueApi = {
+    getQueue,
     getEntryHistory,
     // After a decision the rail's waiting count changes too.
     decideCorrection: async i => { const r = await decideCorrection(i); if (r.ok) router.refresh(); return r },
     decideTimeOff: async i => { const r = await decideTimeOff(i); if (r.ok) router.refresh(); return r },
-    getTimesheet,
-    decideTimesheet: async i => { const r = await decideTimesheet(i); if (r.ok) router.refresh(); return r },
-    reopenTimesheet: async i => { const r = await reopenTimesheet(i); if (r.ok) router.refresh(); return r },
   }
-  return <Approvals initialData={initialData} api={api} />
+  return <ApprovalsList initialData={initialData} api={api} />
 }

@@ -261,8 +261,8 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     timings: 'instant', section: 'Timesheets', stat: 'timesheets to approve', statOne: 'timesheet to approve',
     example: { title: 'Samuel Manzi submitted October 2026', body: '168h 30m, waiting for a Super Admin.' },
     title: 'Someone submitted a timesheet',
-    description: 'A person sent their month or pay period. Approve it, or return it with a reason. In the bell only.',
-    who: 'Super Admins', audience: { kind: 'tool', tool: 'ck-reopen' },
+    description: 'A person sent their month or pay period: the hours go to whoever they report to, the invoice to Arnaldo Oliveira or Dave Sharpe. Approve it, or return it with a reason. In the bell only.',
+    who: 'Whoever approves it', audience: { kind: 'everyone' },
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {

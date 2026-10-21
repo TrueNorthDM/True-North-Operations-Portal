@@ -13,7 +13,7 @@ import type { Db } from '@/lib/supabase/types'
 import { allRows, db, loadCadenceChanges, loadClockySettings, loadDirectory, rulesFor, type ClockySettings, type Viewer } from './clocky-context'
 import { dayLabel, localDate, longDateLabel } from './format'
 import {
-  anchorMove, cadenceChange, cadenceOn, companyPayPeriods, periodContaining, periodLabel, rangeText,
+  anchorMove, cadenceChange, cadenceOn, companyPayPeriods, periodContaining, periodLabel, rangeText, SENT_STATES,
   type AnchorPlan, type Cadence, type CadenceChange, type CadencePlan,
 } from './periods'
 import { periodsAccess } from './scope'
@@ -67,7 +67,7 @@ export async function loadTimesheetPeriods(v: Viewer, now: Date): Promise<Timesh
 /** The last day of the latest pay period anyone submitted or had approved (the anchor rule). */
 export async function lastSubmittedPayEnd(c: Db): Promise<string | null> {
   const subs = await allRows<{ period_id: number }>((a, b) => c.from('tc_submissions').select('period_id')
-    .in('state', ['submitted', 'approved']).order('id').range(a, b), 'Submissions could not be read')
+    .in('state', [...SENT_STATES]).order('id').range(a, b), 'Submissions could not be read')
   const ids = [...new Set(subs.map(s => s.period_id))]
   if (!ids.length) return null
   const { data, error } = await c.from('tc_periods').select('end_date').in('id', ids).eq('kind', 'pay_period').order('end_date', { ascending: false }).limit(1)

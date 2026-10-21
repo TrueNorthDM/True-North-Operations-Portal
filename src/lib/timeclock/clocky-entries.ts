@@ -17,7 +17,7 @@ import { formatDuration, recordedSeconds } from './rounding'
 import { attentionReason, missingFields, overlapsAmong } from './entry-rules'
 import { historyLines, type AuditRow } from './history'
 import { workingDays } from './absence'
-import { SUBMIT_LOOKBACK, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
+import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
 import { canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
 import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
@@ -83,7 +83,7 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
   if (kind === 'absence') pills.push(PILL.ok('Time off: Approved'))
   else if (running) pills.push(PILL.ok('Running', 'The clock is running'))
   else {
-    const label = lock ? (lock.state === 'submitted' ? 'Submitted' : 'Approved') : STATE_LABEL[e.state] ?? 'Open'
+    const label = lock ? (lock.state === 'approved' || lock.state === 'recorded' ? 'Approved' : 'Submitted') : STATE_LABEL[e.state] ?? 'Open'
     pills.push(label === 'Approved' ? PILL.ok(label, e.source === 'tsheets' ? 'Imported from QuickBooks Time' : '') : PILL.neutral(label, e.source === 'tsheets' ? 'Imported from QuickBooks Time' : ''))
   }
   if (autoOut) pills.push(PILL.bad('Auto out', autoOut.confirmed ? 'Stopped by Clocky after 5h 00m. Real end time confirmed.' : 'Stopped by Clocky after 5h 00m. End time not confirmed.'))
@@ -283,7 +283,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     people: peopleList,
     teams: [...dir.teams.values()].filter(t => teamIds.has(t.id)).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
       .map(t => ({ id: t.id, name: t.name, color: t.color })),
-    submit: { ...period, ...periodLabel(period), state: mine?.state ?? null, submitted: mine?.state === 'submitted' || mine?.state === 'approved' },
+    submit: { ...period, ...periodLabel(period), state: mine?.state ?? null, submitted: isSent(mine?.state) },
     canAdd: isLeader(v),
     anchors: settings.anchors.map(a => ({ anchor: a.anchor, effectiveFrom: a.effectiveFrom })),
   }
@@ -394,7 +394,7 @@ export async function loadPeriodSummary(v: Viewer, personId: string, now: Date, 
   const attention = attentionOrder(work.filter(r => r.attention)).map(r => attentionItem(r, false))
   const running = work.some(r => r.running)
   const mine = (subs.get(personId) ?? []).find(s => s.start === period.start && s.end === period.end)
-  const done = mine?.state === 'submitted' || mine?.state === 'approved'
+  const done = isSent(mine?.state)
   const label = periodLabel(period)
   return {
     start: period.start,
@@ -431,4 +431,19 @@ async function submitTarget(c: Db, personId: string, today: string, rules: Caden
 export async function lockFor(c: Db, personId: string, days: readonly string[], entryState?: string | null) {
   const subs = await loadSubmissions(c, [personId])
   return lockOn(days, subs.get(personId) ?? [], entryState)
+}
+
+/**
+ * One person's entries in a period as Time entries shows them (Clocky part 2,
+ * the 6C page's Summary, Time entries and Combined tabs). The caller decides
+ * who may read whose.
+ */
+export async function loadPeriodViews(v: Viewer, personId: string, start: string, end: string, now = new Date()): Promise<EntryView[]> {
+  const c = db()
+  const [dir, catalog, subs] = await Promise.all([loadDirectory(), loadCatalog(), loadSubmissions(c, [personId])])
+  const entries = await allRows<EntryRow>((a, b) => c.from('tc_entries').select('*').eq('person_id', personId)
+    .gte('entry_date', start).lte('entry_date', end).order('started_at', { ascending: true, nullsFirst: false }).order('id').range(a, b), 'The entries could not be read')
+  const x: Ctx = { v, dir, catalog, now, subs }
+  const overlapping = overlapsAmong(entries.filter(e => e.started_at).map(e => ({ id: e.id, personId: e.person_id, start: e.started_at, end: e.ended_at })), now)
+  return entries.map(e => entryView(e, x, overlapping.has(e.id)))
 }

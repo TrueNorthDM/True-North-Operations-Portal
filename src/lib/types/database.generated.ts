@@ -262,30 +262,51 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          google_checked_at: string | null
+          google_good_news_calendar_id: string | null
+          google_service_account: string | null
+          google_team_calendar_id: string | null
           monday_account_slug: string | null
           monday_api_token: string | null
           monday_hide_stale_boards: boolean
           monday_webhook_secret: string | null
+          rippling_api_token: string | null
+          rippling_checked_at: string | null
+          rippling_connected_as: string | null
           singleton_id: number
           tsheets_api_token: string | null
           tsheets_synced_at: string | null
           updated_at: string | null
         }
         Insert: {
+          google_checked_at?: string | null
+          google_good_news_calendar_id?: string | null
+          google_service_account?: string | null
+          google_team_calendar_id?: string | null
           monday_account_slug?: string | null
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          rippling_api_token?: string | null
+          rippling_checked_at?: string | null
+          rippling_connected_as?: string | null
           singleton_id?: number
           tsheets_api_token?: string | null
           tsheets_synced_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          google_checked_at?: string | null
+          google_good_news_calendar_id?: string | null
+          google_service_account?: string | null
+          google_team_calendar_id?: string | null
           monday_account_slug?: string | null
           monday_api_token?: string | null
           monday_hide_stale_boards?: boolean
           monday_webhook_secret?: string | null
+          rippling_api_token?: string | null
+          rippling_checked_at?: string | null
+          rippling_connected_as?: string | null
           singleton_id?: number
           tsheets_api_token?: string | null
           tsheets_synced_at?: string | null
@@ -356,6 +377,76 @@ export type Database = {
             foreignKeyName: "confirmations_page_id_fkey"
             columns: ["page_id"]
             referencedRelation: "pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extra_hours_requests: {
+        Row: {
+          asked_at: string
+          asked_by: string | null
+          client: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          hours: number
+          id: number
+          period: string
+          period_end: string
+          period_start: string
+          person_id: string
+          reason: string
+          state: string
+        }
+        Insert: {
+          asked_at?: string
+          asked_by?: string | null
+          client?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          hours: number
+          id?: number
+          period: string
+          period_end: string
+          period_start: string
+          person_id: string
+          reason: string
+          state?: string
+        }
+        Update: {
+          asked_at?: string
+          asked_by?: string | null
+          client?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          hours?: number
+          id?: number
+          period?: string
+          period_end?: string
+          period_start?: string
+          person_id?: string
+          reason?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extra_hours_requests_asked_by_fkey"
+            columns: ["asked_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_hours_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_hours_requests_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -522,6 +613,51 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          done_at: string | null
+          id: number
+          idempotency_key: string
+          kind: string
+          last_error: string | null
+          next_at: string
+          payload: Json
+          ref_id: number
+          ref_table: string
+          state: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          done_at?: string | null
+          id?: number
+          idempotency_key: string
+          kind: string
+          last_error?: string | null
+          next_at?: string
+          payload?: Json
+          ref_id: number
+          ref_table: string
+          state?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          done_at?: string | null
+          id?: number
+          idempotency_key?: string
+          kind?: string
+          last_error?: string | null
+          next_at?: string
+          payload?: Json
+          ref_id?: number
+          ref_table?: string
+          state?: string
+        }
+        Relationships: []
+      }
       invoice_lines: {
         Row: {
           amount: number
@@ -564,6 +700,12 @@ export type Database = {
             foreignKeyName: "invoice_lines_invoice_id_fkey"
             columns: ["invoice_id"]
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_reimbursement_fk"
+            columns: ["reimbursement_id"]
+            referencedRelation: "reimbursements"
             referencedColumns: ["id"]
           },
         ]
@@ -2190,6 +2332,152 @@ export type Database = {
         }
         Relationships: []
       }
+      reimbursement_documents: {
+        Row: {
+          created_at: string
+          id: number
+          number: string
+          paid_by: string | null
+          paid_note: string | null
+          paid_on: string | null
+          paid_ref: string | null
+          person_id: string
+          state: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          number: string
+          paid_by?: string | null
+          paid_note?: string | null
+          paid_on?: string | null
+          paid_ref?: string | null
+          person_id: string
+          state?: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          number?: string
+          paid_by?: string | null
+          paid_note?: string | null
+          paid_on?: string | null
+          paid_ref?: string | null
+          person_id?: string
+          state?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reimbursement_documents_paid_by_fkey"
+            columns: ["paid_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursement_documents_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reimbursements: {
+        Row: {
+          amount: number
+          asked_at: string
+          billable: boolean
+          category: string
+          client: string | null
+          currency: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          document_id: number | null
+          id: number
+          invoice_id: number | null
+          person_id: string
+          purpose: string
+          receipt_name: string | null
+          receipt_path: string
+          receipt_size: number | null
+          spent_on: string
+          state: string
+        }
+        Insert: {
+          amount: number
+          asked_at?: string
+          billable?: boolean
+          category: string
+          client?: string | null
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          document_id?: number | null
+          id?: number
+          invoice_id?: number | null
+          person_id: string
+          purpose: string
+          receipt_name?: string | null
+          receipt_path: string
+          receipt_size?: number | null
+          spent_on: string
+          state?: string
+        }
+        Update: {
+          amount?: number
+          asked_at?: string
+          billable?: boolean
+          category?: string
+          client?: string | null
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          document_id?: number | null
+          id?: number
+          invoice_id?: number | null
+          person_id?: string
+          purpose?: string
+          receipt_name?: string | null
+          receipt_path?: string
+          receipt_size?: number | null
+          spent_on?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reimbursements_decided_by_fkey"
+            columns: ["decided_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_document_id_fkey"
+            columns: ["document_id"]
+            referencedRelation: "reimbursement_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_invoice_id_fkey"
+            columns: ["invoice_id"]
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings_change_log: {
         Row: {
           action: string
@@ -2343,48 +2631,84 @@ export type Database = {
       }
       tc_absence_requests: {
         Row: {
+          calendar_event_id: string | null
+          calendar_state: string | null
+          cancel_asked_at: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           decided_at: string | null
           decided_by: string | null
           decision_note: string | null
           end_date: string
+          entries_written_at: string | null
           hours_per_day: number
           id: number
           jobcode_id: number
           person_id: string
           reason: string | null
           requested_at: string
+          rippling_error: string | null
+          rippling_sent_at: string | null
+          rippling_state: string | null
           start_date: string
           state: string
         }
         Insert: {
+          calendar_event_id?: string | null
+          calendar_state?: string | null
+          cancel_asked_at?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
           end_date: string
+          entries_written_at?: string | null
           hours_per_day?: number
           id?: number
           jobcode_id: number
           person_id: string
           reason?: string | null
           requested_at?: string
+          rippling_error?: string | null
+          rippling_sent_at?: string | null
+          rippling_state?: string | null
           start_date: string
           state?: string
         }
         Update: {
+          calendar_event_id?: string | null
+          calendar_state?: string | null
+          cancel_asked_at?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
           end_date?: string
+          entries_written_at?: string | null
           hours_per_day?: number
           id?: number
           jobcode_id?: number
           person_id?: string
           reason?: string | null
           requested_at?: string
+          rippling_error?: string | null
+          rippling_sent_at?: string | null
+          rippling_state?: string | null
           start_date?: string
           state?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tc_absence_requests_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tc_absence_requests_decided_by_fkey"
             columns: ["decided_by"]
