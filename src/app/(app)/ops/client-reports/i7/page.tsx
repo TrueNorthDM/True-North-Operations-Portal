@@ -229,8 +229,6 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
     ? { ...(await loadAllManualHours(createAdminClient(), range.to)), blurb: MANUAL_BLURB }
     : undefined
 
-  const unratedPeople = data?.unratedPeople ?? []
-
   // A team's members as this report names them, matched by person id: by first
   // name, a team holding one Ana would lose her column the moment the report
   // has to call her "Ana S." (audit, 13 October 2026).
@@ -241,7 +239,6 @@ async function ReportView({ range, availableMonths, team }: { range: Range; avai
     <>
       <I7ReportView
         data={full}
-        unratedPeople={unratedPeople}
         range={range}
         availableMonths={availableMonths}
         projectHours={data?.projectHours ?? {}}
