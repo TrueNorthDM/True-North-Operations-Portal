@@ -74,7 +74,7 @@ export function ProjectHoursReport(
 ) {
   // A link that arrives with a team opens on People, the only tab a team changes.
   const [view, setView] = useState<'costs' | 'people' | undefined>(() => (selectedTeam && views.includes('people') ? 'people' : views[0]))
-  const { totals, unratedPeople } = data
+  const { totals } = data
   // i7 and MME are on Costs and not on People (September 2026), and People's
   // totals are of the rows it shows.
   const onPeople = peopleView(data)
@@ -340,18 +340,6 @@ export function ProjectHoursReport(
           </tfoot>
         </table>
       </div>
-
-      {unratedPeople.length > 0 && (
-        <div className="rounded-[12px] border border-[#e2c68e] bg-[#f9f1e3] p-4 text-sm leading-relaxed">
-          <p className="m-0 text-[#8a5408]">
-            <strong className="font-(family-name:--font-display) font-extrabold">
-              {unratedPeople.length === 1 ? '1 person has hours but no break-even rate' : `${unratedPeople.length} people have hours but no break-even rate`}
-            </strong>{': '}
-            {unratedPeople.join(', ')}. Their hours are in the totals and their cost counts as nothing,
-            so these projects read cheaper than they were. Set a rate in Rates &amp; Costs.
-          </p>
-        </div>
-      )}
     </div>
   )
 }
