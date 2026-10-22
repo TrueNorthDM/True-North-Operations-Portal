@@ -37,8 +37,6 @@ interface Props {
   manual?: { rows: ManualRow[]; options: ManualOptions; blurb: string }
   canExport?: boolean                     // the file exports (PDF, CSV, print)
   canTeamUpdate?: boolean                 // the Team Update image, granted separately
-  /** Names with hours this month but no rate, so their cost lands as zero. */
-  unratedPeople?: string[]
   /** The views this person's access opens (i7-numbers, i7-graphics), in order. */
   views?: readonly ('numbers' | 'graphics')[]
   /**
@@ -56,7 +54,7 @@ function newestOf(months: string[]): string {
   return months.reduce((mx, m) => (m > mx ? m : mx), months[0] ?? '')
 }
 
-export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, manual, canExport = false, canTeamUpdate = false, unratedPeople = [], teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
+export function I7Report({ data, range, availableMonths, preview, projectHours = {}, carryover, stdRate = 0, manual, canExport = false, canTeamUpdate = false, teams = [], selectedTeam = '', views = ['numbers', 'graphics'] }: Props) {
   const router = useRouter()
   const [navigating, startNav] = useTransition()
   const [view, setView] = useState<'numbers' | 'graphics' | undefined>(views[0])
@@ -254,27 +252,6 @@ export function I7Report({ data, range, availableMonths, preview, projectHours =
           as "Highlights"; what moved is only where it gets written, since the
           report page is for reading the month, not editing it.
         */}
-
-        {/*
-          Hours with no rate behind them. rateFor() returns 0 when no assignment
-          covers a person for the month, so their hours are counted and their
-          cost is not: the budget reads as less consumed than it really is. This
-          is the only place that says so, because the totals themselves look
-          perfectly ordinary (audit finding M3-1). Internal only, never printed
-          on the client report.
-        */}
-        {unratedPeople.length > 0 && (
-          <div className="rounded-[14px] border border-amber-300/60 bg-amber-50 px-4 py-3 text-[13px] text-[#7a4e05]">
-            <div className="font-semibold">
-              {unratedPeople.length === 1 ? '1 person has hours but no rate' : `${unratedPeople.length} people have hours but no rate`}
-            </div>
-            <div className="mt-1 leading-relaxed">
-              {unratedPeople.join(', ')}. Their hours are in the totals below and their cost is counted as $0,
-              so the budget shows less used than it really is. Set a rate in{' '}
-              <Link href="/directory#rates" className="underline font-semibold">Directory → Rates &amp; Costs</Link>.
-            </div>
-          </div>
-        )}
 
         {/*
           The summary chips (Total hours, Total cost, Projects, People) used to
