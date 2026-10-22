@@ -11,7 +11,7 @@ import { rowsFor, type Level } from './rows'
 const keepGoing: KeepGoing = async () => ({
   ok: true,
   toastFromBell: 'Keep going. Your clock runs another 5h from now.',
-  done: 'You kept going at 12:31 PM. Clocky asks again in 4h 30m.',
+  done: 'You kept going at 12:31 PM. North Time asks again in 4h 30m.',
 })
 
 export function BellCheck({ level }: { level: Level }) {

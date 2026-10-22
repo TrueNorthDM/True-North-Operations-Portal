@@ -61,7 +61,7 @@ describe('a person row', () => {
 
   it('marks an automatic stop today, and someone off the clock with their last clock out', () => {
     const w = rowOf(wendy, { nowMs: ms(NOW), dataNowMs: ms(NOW), viewerZone: 'America/New_York' })
-    expect(w.tags[0]).toEqual({ text: 'Auto out', bg: '#fdeeef', fg: '#c8323d', tip: 'Clocky stopped this clock at 10:00 AM after 5h 00m' })
+    expect(w.tags[0]).toEqual({ text: 'Auto out', bg: '#fdeeef', fg: '#c8323d', tip: 'North Time stopped this clock at 10:00 AM after 5h 00m' })
     expect(w.local).toBe('9:59 AM CDT')
     const o = rowOf(olivia, { nowMs: ms(NOW), dataNowMs: ms(NOW), viewerZone: 'America/New_York' })
     expect(o).toMatchObject({ status: 'Off', line: 'Off the clock, last: Wed, 5:10 PM', timer: 'Off', timerFg: '#a3aebb', dot: '#cbd2da' })

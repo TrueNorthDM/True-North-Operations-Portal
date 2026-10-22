@@ -70,7 +70,7 @@ export async function applyTypeChanges(today: string): Promise<number> {
   let n = 0
   for (const t of data ?? []) {
     const { data: p } = await c.from('people').select('employment_history').eq('id', t.person_id).maybeSingle()
-    const line = `${dateLabel(t.effective_on)}: contractor to US Employee (Clocky).`
+    const line = `${dateLabel(t.effective_on)}: contractor to US Employee (North Time).`
     const history = [p?.employment_history?.trim(), line].filter(Boolean).join('\n')
     const { error } = await c.from('people').update({ employment_type: 'us', employment_history: history }).eq('id', t.person_id)
     if (error) { console.error('[type change]', error.message); continue }

@@ -62,7 +62,7 @@ const CARD: Record<string, Omit<RequestCard, 'canDecide' | 'roText'>> = {
       { name: 'Wendy Cacka', sub: 'Out (approved), Web', color: '#A99BD4', cells: [null, null, 'out', 'out', 'out'] },
       { name: 'Thanksgiving', sub: 'Company holiday', color: '#e4e7ec', cells: [null, null, null, 'hol', 'hol'] },
     ] },
-    after: 'On approval, by itself: Rippling gets 24h of Vacation, the team calendar gets "Tina Gennette, out" on Nov 23 to 25, and Clocky writes 8h a day into her time entries.',
+    after: 'On approval, by itself: Rippling gets 24h of Vacation, the team calendar gets "Tina Gennette, out" on Nov 23 to 25, and North Time writes 8h a day into her time entries.',
     approveLabel: 'Approve', denyLabel: 'Deny',
   },
   r7: {

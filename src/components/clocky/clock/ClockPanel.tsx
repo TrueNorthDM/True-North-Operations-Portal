@@ -107,7 +107,7 @@ export function ClockPanel(props: PanelProps) {
 
   if (!data) {
     return (
-      <Shell phone={phone} frameTop={frameTop} box={box} header={{ title: 'Clocky', sub: '', dot: null, back: false }} onBack={() => {}} onClose={onClose} live="">
+      <Shell phone={phone} frameTop={frameTop} box={box} header={{ title: 'North Time', sub: '', dot: null, back: false }} onBack={() => {}} onClose={onClose} live="">
         <Body>{loadError ? <ErrorBanner text={loadError} /> : null}</Body>
       </Shell>
     )
@@ -469,7 +469,7 @@ function Shell({ phone, frameTop, box, header, onBack, onClose, live, children }
       ? 'absolute left-0 right-0 bottom-0 z-[45]'
       : 'absolute right-0 bottom-0 w-[421px] max-w-full border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[35]'
   return (
-    <div ref={box} role="dialog" aria-label="Clocky" tabIndex={-1} style={contained ? { top: frameTop } : undefined}
+    <div ref={box} role="dialog" aria-label="North Time" tabIndex={-1} style={contained ? { top: frameTop } : undefined}
       className={`${place} bg-white flex flex-col outline-none leading-[normal]`}>
       <div className="shrink-0 flex items-start gap-2 pt-4 pr-3.5 pb-3.5 pl-[18px] border-b border-[var(--row-rule)]">
         {header.back && (

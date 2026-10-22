@@ -109,7 +109,7 @@ export const stoppedText = (when: string): string =>
 
 /** The done line on a "Still working?" bell row after "Keep going" (Clock Safety.dc.html). */
 export const keptGoingNote = (at: Date, zone: string): string =>
-  `You kept going at ${timeLabel(at, zone)}. Clocky asks again in 4h 30m.`
+  `You kept going at ${timeLabel(at, zone)}. North Time asks again in 4h 30m.`
 
 /** The toast after "Keep going": from the panel, and from the bell. */
 export const KEEP_GOING_TOAST_PANEL = 'Got it. Your clock runs another 5h from now.'

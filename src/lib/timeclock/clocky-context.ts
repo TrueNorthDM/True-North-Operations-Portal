@@ -115,7 +115,7 @@ export const loadDirectory = cache(async function loadDirectory(): Promise<Direc
     led,
     target: id => ({ personId: id, teamIds: map.get(id)?.teamIds ?? [] }),
     zoneOf: id => map.get(id)?.zone ?? DAILY_ZONE,
-    nameOf: id => (id ? map.get(id)?.name ?? 'Someone' : 'Clocky'),
+    nameOf: id => (id ? map.get(id)?.name ?? 'Someone' : 'North Time'),
   }
 })
 

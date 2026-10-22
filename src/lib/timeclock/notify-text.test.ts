@@ -7,7 +7,7 @@ import { autoStopsLine } from '@/lib/notifications/generators'
 const NY = 'America/New_York'
 const samuel = { started_at: '2026-10-13T20:00:00Z', ended_at: '2026-10-13T21:00:00Z', entry_date: '2026-10-13' }
 
-describe("Clocky's bell rows", () => {
+describe("North Time's bell rows", () => {
   it('N3: a correction to review', () => {
     expect(correctionRequestedText('Samuel Manzi', samuel, NY))
       .toBe('Samuel Manzi asked for a time correction: 1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM.')

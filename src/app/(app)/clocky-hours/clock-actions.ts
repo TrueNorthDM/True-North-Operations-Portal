@@ -36,7 +36,7 @@ import type { ClockChoice, ClockPanelData, Fail, Result } from '@/lib/timeclock/
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to use the clock.'
 const SIGN_IN = 'Sign in again to save.'
-const NO_ACCESS = 'Clocky is not open to your access.'
+const NO_ACCESS = 'North Time is not open to your access.'
 const NOT_CLOCKED_IN = 'You are not clocked in.'
 const ALREADY = 'You are already clocked in. Stop that one first.'
 const PICK_JOB = 'Pick a job code.'

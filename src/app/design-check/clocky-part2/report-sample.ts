@@ -40,7 +40,7 @@ export function reportFrame(frame: string): ReportPage {
   return {
     query: { kind: 'month', from: '2026-10-01', to: '2026-10-31', team: 'all', person: 'all', client: 'all', bill: 'all' }, view, scope, from: '2026-10-01', to: '2026-10-31',
     scopeLine: user ? 'Your own hours only.' : lead ? 'Your team only: Social Media. Hours only: invoices are not shown to Team Leaders.' : 'Everyone. Totals in multiples of 15 minutes.',
-    file: 'clocky-report-october-2026',
+    file: 'north-time-report-october-2026',
     scopeText: `October 2026 · ${user ? me : lead ? 'Social Media team' : 'All teams'}`,
     options: {
       teams: [{ value: 'all', label: 'All teams' }, ...[...new Set(Object.values(P).map(p => p[0]))].sort().map(t => ({ value: t, label: t }))],

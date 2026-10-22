@@ -10,7 +10,7 @@ export function ReportSheet({ view, scope, file, made }: { view: ReportView; sco
     <div className="print-doc w-[860px] flex-none min-h-[600px] box-border bg-white px-10 py-9 flex flex-col gap-[18px] leading-[normal]" data-file={`${file}.pdf`}>
       <div className="flex justify-between items-end gap-4 border-b-2 border-tn-primary pb-3">
         <div>
-          <div className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink" data-doc-title>Clocky report</div>
+          <div className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink" data-doc-title>North Time report</div>
           <div className="text-[12px] text-foreground mt-[3px]">{scope}</div>
         </div>
         <div className="flex items-end gap-2">

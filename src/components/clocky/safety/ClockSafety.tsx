@@ -94,7 +94,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Clock safety" />
         <h1 className="m-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink">Clock safety</h1>
-        <p className="m-0 mt-1 text-[13.5px] text-muted">Every time Clocky stopped a forgotten clock. Times in your time zone ({zoneCity(data.zone)}).</p>
+        <p className="m-0 mt-1 text-[13.5px] text-muted">Every time North Time stopped a forgotten clock. Times in your time zone ({zoneCity(data.zone)}).</p>
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
@@ -176,7 +176,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
             <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
               <div className="min-w-[1110px]">
                 <div className={`${OCC_GRID} bg-subtle border-b border-[var(--panel-border)]`}>
-                  {['Date', 'Person', 'Job', 'Clock started', 'Stopped by Clocky', 'Real end confirmed', 'Difference', 'Kept going earlier', 'Entry'].map(h => (
+                  {['Date', 'Person', 'Job', 'Clock started', 'Stopped by North Time', 'Real end confirmed', 'Difference', 'Kept going earlier', 'Entry'].map(h => (
                     <div key={h} className={`px-3 py-2.5 whitespace-nowrap ${LABEL}`}>{h}</div>
                   ))}
                 </div>

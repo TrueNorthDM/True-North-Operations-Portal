@@ -10,7 +10,7 @@ import { loadDirectory } from '@/lib/timeclock/clocky-context'
 import { ReportSheet } from '@/components/clocky/reports/ReportSheet'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Clocky report' }
+export const metadata = { title: 'North Time report' }
 
 export default async function ReportPrintPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const access = await requireSurface('clocky-reports')

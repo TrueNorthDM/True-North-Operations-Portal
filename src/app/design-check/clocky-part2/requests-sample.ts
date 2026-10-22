@@ -58,7 +58,7 @@ function row(p: P, me: string, cancelAsked = false): TimeOffRow {
     cancel: p.who !== me ? null : req.state === 'pending' ? 'direct' : !cancelAsked && p.a > TODAY ? 'ask' : null,
     drawer: {
       dates: `${daysText(p.a, p.b)}, ${p.b.slice(0, 4)}`, note: req.note,
-      steps: stepsOf(req, { days, seconds: p.min * 60, stamp, canRetry: me === 'Arnaldo Oliveira' }), hist: historyOf(req, { stamp, nameOf: id => id ?? 'Clocky' }),
+      steps: stepsOf(req, { days, seconds: p.min * 60, stamp, canRetry: me === 'Arnaldo Oliveira' }), hist: historyOf(req, { stamp, nameOf: id => id ?? 'North Time' }),
       stateLabel: refused ? 'Approved, Rippling refused it' : pill.label, stateTone: refused ? 'bad' : pill.tone,
     },
   }

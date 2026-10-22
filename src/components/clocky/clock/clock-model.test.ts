@@ -180,7 +180,7 @@ describe('the header', () => {
   it('says each mode as the prototype does', () => {
     const nowMs = ms(et(11, 50, 34))
     expect(panelHeader('off', { data: data(), nowMs, switching: false, first: false }))
-      .toEqual({ title: 'Clocky', sub: 'Thu, Oct 15 · Today 0h 00m · Week 31h 15m', dot: null, back: false })
+      .toEqual({ title: 'North Time', sub: 'Thu, Oct 15 · Today 0h 00m · Week 31h 15m', dot: null, back: false })
     expect(panelHeader('on', { data: data({ running: running() }), nowMs, switching: false, first: false }))
       .toMatchObject({ title: 'On the clock since 8:00 AM', sub: 'Thu, Oct 15 · New York time', dot: 'green' })
     expect(panelHeader('choose', { data: data(), nowMs, switching: false, first: true })).toMatchObject({ sub: 'Your first clock in', back: false })

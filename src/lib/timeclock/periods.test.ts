@@ -274,7 +274,7 @@ describe('periodToSubmit (the Submit button)', () => {
     expect(periodToSubmit('2026-11-03', monthly, [], days())).toMatchObject({ start: '2026-11-01', end: '2026-11-30' })
   })
 
-  it('is last month while it has Clocky time and was never sent', () => {
+  it('is last month while it has North Time time and was never sent', () => {
     expect(periodToSubmit('2026-11-03', monthly, [], days('2026-10-20'))).toMatchObject({ start: '2026-10-01', end: '2026-10-31' })
   })
 

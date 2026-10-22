@@ -123,7 +123,7 @@ export function InvoicesList({ data, api, initial }: {
 
       {data.mode === 'none' && (
         <div className="max-w-[640px] bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-[18px] text-[13.5px] leading-[1.55] text-foreground">
-          Employees get no invoice. Your approved hours and PTO go to Rippling for payroll, so Invoices is not in your Clocky menu.
+          Employees get no invoice. Your approved hours and PTO go to Rippling for payroll, so Invoices is not in your North Time menu.
         </div>
       )}
 

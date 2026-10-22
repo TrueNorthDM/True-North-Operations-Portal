@@ -155,7 +155,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
           cal: { label: `Team calendar, ${week.length ? daysText(week[0], week[week.length - 1]).replace(/^[A-Z][a-z]{2}, /, '').replace(/ to [A-Z][a-z]{2}, /, ' to ') : label}`, days: week.map(d => dayLabel(d).replace(/^([A-Z][a-z]{2}), [A-Z][a-z]{2} (\d+)$/, '$1 $2')), rows: calRows },
           after: cancelAsk
             ? `Approving the cancellation takes ${formatDuration(seconds)} of ${kind} off ${who.name.split(' ')[0]}'s time entries, and off Rippling and the team calendar where it went. Keep it, with a reason, and it stays.`
-            : `On approval, by itself: Rippling gets ${formatDuration(seconds)} of ${kind}, the team calendar gets "${who.name}, out" on ${label}, and Clocky writes ${hpd}h a day into their time entries.`,
+            : `On approval, by itself: Rippling gets ${formatDuration(seconds)} of ${kind}, the team calendar gets "${who.name}, out" on ${label}, and North Time writes ${hpd}h a day into their time entries.`,
           canDecide,
           roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' : null,
           approveLabel: cancelAsk ? 'Approve cancellation' : 'Approve', denyLabel: cancelAsk ? 'Keep it' : 'Deny',

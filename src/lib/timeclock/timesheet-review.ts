@@ -237,7 +237,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
       cadenceLine: `Contractor · fixed monthly, no timesheet · reports to ${nameOf(route.reportsTo)}`,
       isContractor: true, stats: [], allowance: null, clients: [], calendar: [], attention: [], days: [], entryClients: [], entryCount: 0, totalText: '',
       noTimesheet: [
-        `${who} is paid a fixed amount every month and does not track time in Clocky.`,
+        `${who} is paid a fixed amount every month and does not track time in North Time.`,
         `This invoice was made by itself on ${dateLabel(localDate(i.created_at, v.zone)).replace(/, \d{4}$/, '')} for ${period.label} and went straight to approval. Nobody submitted anything.`,
         invoiceView?.reimb.length ? 'Approved reimbursements are on the invoice as lines.' : 'Approved reimbursements would show here as lines on the invoice; there are none this month.',
       ],
@@ -451,7 +451,7 @@ function entryRow(e: ReviewView, zone: string): ReviewEntry {
     dur: formatDuration(e.seconds), job: e.path, act: e.activity || '–', cp: [e.company, e.project].filter(Boolean).join(' · ') || '–',
     code: e.code || '–', meta: [e.activity, e.company, e.project, e.code].filter(Boolean).join(' · '),
     billable: e.billable === 'yes', note: e.notes, color: clientColor(client), client,
-    flag: e.autoOut ? (e.autoOut.confirmed ? { text: 'Stopped by Clocky, end time confirmed', tone: 'neu' } : { text: 'Stopped by Clocky, end time not confirmed', tone: 'warn' }) : null,
+    flag: e.autoOut ? (e.autoOut.confirmed ? { text: 'Stopped by North Time, end time confirmed', tone: 'neu' } : { text: 'Stopped by North Time, end time not confirmed', tone: 'warn' }) : null,
   }
 }
 

@@ -240,10 +240,10 @@ export function panelHeader(
     const t = d.toConfirm[0]
     return { title: 'Auto clocked out', sub: `${dayLabel(t.date)} · stopped at ${timeLabel(t.stoppedAt, zone)}`, dot: 'red', back: false }
   }
-  if (mode === 'choose') return { title: 'Clocky', sub: o.switching ? 'Switch to something else' : o.first ? 'Your first clock in' : 'Choose a job', dot: null, back: !o.first }
-  if (mode === 'details') return { title: 'Clocky', sub: o.switching ? 'Check the details, then switch' : 'Check the details, then clock in', dot: null, back: true }
+  if (mode === 'choose') return { title: 'North Time', sub: o.switching ? 'Switch to something else' : o.first ? 'Your first clock in' : 'Choose a job', dot: null, back: !o.first }
+  if (mode === 'details') return { title: 'North Time', sub: o.switching ? 'Check the details, then switch' : 'Check the details, then clock in', dot: null, back: true }
   const t = liveTotals(d, o.nowMs)
-  return { title: 'Clocky', sub: `${d.todayLabel} · Today ${formatDuration(t.today)} · Week ${formatDuration(t.week)}`, dot: null, back: false }
+  return { title: 'North Time', sub: `${d.todayLabel} · Today ${formatDuration(t.today)} · Week ${formatDuration(t.week)}`, dot: null, back: false }
 }
 
 /** The muted line under the chips when the real start differs from the recorded one. */

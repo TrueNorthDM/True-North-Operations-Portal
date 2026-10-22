@@ -196,11 +196,11 @@ export function generate(): Rec[] {
     }
     const rs = s == null ? null : Math.round(s * 3600)
     const re = e == null ? null : Math.round(e * 3600)
-    if (o.imported) o.hist = [{ when: 'Oct 2, 2026, 6:00 AM', who: 'Clocky', text: 'Imported from QuickBooks Time', changes: [] }]
+    if (o.imported) o.hist = [{ when: 'Oct 2, 2026, 6:00 AM', who: 'North Time', text: 'Imported from QuickBooks Time', changes: [] }]
     else if (o.manual) { o.edited = 'Arnaldo Oliveira'; o.hist = [ev(date, 17 * 3600, 'Arnaldo Oliveira', `Arnaldo Oliveira added ${formatDuration(o.dur!)} for ${n} in the week grid`, { reason: 'Status meeting held offline; Clarise could not clock in.' })] }
-    else if (x.wendyHist) o.hist = [ev(date, 8 * 3600, n, `${n} clocked in · ${o.job}`), ev(date, 13 * 3600, 'Clocky', 'Clocky stopped the clock automatically after 5h 00m', { dot: '#c8323d' }), ev(date, 13 * 3600 + 1200, n, `${n} confirmed the real end time: 12:40 PM · recorded as 12:45 PM`, { changes: [{ field: 'End', old: '1:00 PM', new: '12:40 PM' }] })]
+    else if (x.wendyHist) o.hist = [ev(date, 8 * 3600, n, `${n} clocked in · ${o.job}`), ev(date, 13 * 3600, 'North Time', 'North Time stopped the clock automatically after 5h 00m', { dot: '#c8323d' }), ev(date, 13 * 3600 + 1200, n, `${n} confirmed the real end time: 12:40 PM · recorded as 12:45 PM`, { changes: [{ field: 'End', old: '1:00 PM', new: '12:40 PM' }] })]
     else if (x.daveHist) o.hist = [ev(date, 8 * 3600, n, `${n} clocked in · ${o.job}`), ev(date, 18 * 3600, n, `${n} clocked out`), ev(TODAY, 8 * 3600 + 720, 'Arnaldo Oliveira', 'Arnaldo Oliveira edited', { changes: [{ field: 'End', old: '6:00 PM', new: '5:10 PM' }], reason: 'forgot to clock out' })]
-    else if (x.autoHist) o.hist = [ev(date, o.s!, n, `${n} switched to ${o.job}`), ev(date, o.e!, 'Clocky', 'Clocky stopped the clock automatically after 5h 00m', { dot: '#c8323d' })]
+    else if (x.autoHist) o.hist = [ev(date, o.s!, n, `${n} switched to ${o.job}`), ev(date, o.e!, 'North Time', 'North Time stopped the clock automatically after 5h 00m', { dot: '#c8323d' })]
     else {
       const rec = (r: number, v: number) => (r !== v ? ` · recorded as ${clk(v)}` : '')
       o.hist = [ev(date, rs!, n, `${n} clocked in · ${o.job}${rec(rs!, o.s!)}`)]
@@ -289,7 +289,7 @@ function viewOf(x: Rec, level: Level, overlaps: Set<number>): EntryView {
   else {
     if (running) pills.push({ text: 'Running', tone: 'ok', tip: 'The clock is running' })
     else pills.push({ text: x.status, tone: x.status === 'Approved' ? 'ok' : 'neutral', tip: x.imported ? 'Imported from QuickBooks Time' : '' })
-    if (x.auto) pills.push({ text: 'Auto out', tone: 'bad', tip: x.confirmed ? 'Stopped by Clocky after 5h 00m. Real end time confirmed.' : 'Stopped by Clocky after 5h 00m. End time not confirmed.' })
+    if (x.auto) pills.push({ text: 'Auto out', tone: 'bad', tip: x.confirmed ? 'Stopped by North Time after 5h 00m. Real end time confirmed.' : 'Stopped by North Time after 5h 00m. End time not confirmed.' })
     if (x.edited) pills.push({ text: 'Edited', tone: 'neutral', tip: `Edited by ${x.edited}` })
   }
   const work = x.kind === 'work'

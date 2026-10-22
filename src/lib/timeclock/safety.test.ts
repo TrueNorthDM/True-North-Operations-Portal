@@ -80,7 +80,7 @@ describe('what the person reads (Clock Safety.dc.html, Clock Panel.dc.html)', ()
   })
 
   it('the done line after "Keep going"', () => {
-    expect(keptGoingNote(at('16:31:00'), NY)).toBe('You kept going at 12:31 PM. Clocky asks again in 4h 30m.')
+    expect(keptGoingNote(at('16:31:00'), NY)).toBe('You kept going at 12:31 PM. North Time asks again in 4h 30m.')
   })
 })
 

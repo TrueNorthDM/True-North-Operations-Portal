@@ -45,7 +45,7 @@ describe('the server crontab', () => {
 
   // A clock stops at the 5-hour mark: the job looks often enough that a stop
   // is never more than five minutes late (Clocky, 16 October 2026).
-  it("runs Clocky's safety net every 5 minutes", () => {
+  it("runs North Time's safety net every 5 minutes", () => {
     expect(jobs().get('/api/cron/clocky-safety')).toBe('*/5 * * * *')
   })
 

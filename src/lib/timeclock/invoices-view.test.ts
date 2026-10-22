@@ -21,7 +21,7 @@ function list(o: Partial<ListSrc>) {
   return buildInvoiceList({
     mode: 'all', finance: false, invoices: [], rates: new Map(), subs: new Map(),
     routes: new Map([['sam', route('sam', 'wendy')], ['jt', route('jt', 'ao')]]),
-    settings: SETTINGS, person: id => ({ name: NAMES[id] ?? 'Someone', team: 'Web', color: '#A99BD4' }), nameOf: id => (id ? NAMES[id] ?? 'Someone' : 'Clocky'),
+    settings: SETTINGS, person: id => ({ name: NAMES[id] ?? 'Someone', team: 'Web', color: '#A99BD4' }), nameOf: id => (id ? NAMES[id] ?? 'Someone' : 'North Time'),
     today: '2026-11-03', ...o,
   })
 }
@@ -72,7 +72,7 @@ describe('one invoice (6F)', () => {
   const base = {
     lines: [{ kind: 'hours', client: '2 - i7 Marketing', description: '2 - i7 Marketing, October 2026', hours_seconds: 36000, rate: 14, amount: 140 }, { kind: 'reimbursement', client: 'Internet', description: 'Internet, October', hours_seconds: null, rate: null, amount: 35 }],
     sub: { id: 142, state: 'approved' }, route: route('jt', 'ao'), settings: SETTINGS, finance: false,
-    nameOf: (id: string | null | undefined) => (id ? NAMES[id] ?? 'Someone' : 'Clocky'), zone: 'America/New_York',
+    nameOf: (id: string | null | undefined) => (id ? NAMES[id] ?? 'Someone' : 'North Time'), zone: 'America/New_York',
   }
 
   it('tells its history newest first: created, the reimbursement, approved together, paid', () => {

@@ -50,7 +50,7 @@ import type { EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary
 const NOT_SAVED = 'Not saved. Try again in a moment.'
 const PREVIEW = 'View Stage is only a preview. Close it to change hours.'
 const SIGN_IN = 'Sign in again to save.'
-const NO_ACCESS = 'Clocky is not open to your access.'
+const NO_ACCESS = 'North Time is not open to your access.'
 const NOT_YOURS = "That person's hours are not yours to change."
 const GONE = 'That entry is not there any more.'
 const PICK_JOB = 'Pick a job code.'

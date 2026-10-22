@@ -414,7 +414,7 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
               <div key={w.t} className="flex items-center gap-[9px] text-[13px] text-tn-ink leading-[1.45]"><span className="w-2 h-2 rounded-full flex-none" style={{ background: w.c }} /><span>{w.t}</span></div>
             )) : <div className="text-[13px] text-muted">Pick the days to see who else is off.</div>}
           </div>
-          <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] [text-wrap:pretty]">When a Super Admin approves, Rippling gets it for payroll, the team calendar shows &quot;{data.me.name}, out&quot; on those days, and Clocky writes it into your time entries. Nobody copies anything.</div>
+          <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] [text-wrap:pretty]">When a Super Admin approves, Rippling gets it for payroll, the team calendar shows &quot;{data.me.name}, out&quot; on those days, and North Time writes it into your time entries. Nobody copies anything.</div>
         </div>
       </div>
       <div className="flex justify-end gap-2">

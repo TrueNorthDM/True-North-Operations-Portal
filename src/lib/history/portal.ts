@@ -42,7 +42,7 @@ export const TIMELINE = {
   months: [
     { from: '2026-06-01', to: '2026-07-01', lines: ['Publishing Goals', 'Directory, Home'] },
     { from: '2026-07-01', to: '2026-08-01', lines: ['i7 report, View Stage', 'the True North look'] },
-    { from: '2026-08-01', to: '2026-09-01', lines: ['Clocky, Access levels', 'Project Hours'] },
+    { from: '2026-08-01', to: '2026-09-01', lines: ['North Time, Access levels', 'Project Hours'] },
     { from: '2026-09-01', to: '2026-10-01', lines: ['My Work, Report', 'new navigation'] },
   ],
 }
@@ -75,7 +75,7 @@ export const BUILT: { when: string; what: string; how: string; isNew?: boolean }
   { when: 'July 2026', what: 'View Stage and True North Team', how: 'Admins preview the portal as each level sees it; the Monday team board, mirrored live.' },
   { when: 'August 2026', what: 'Access levels', how: 'What each level can open, set by an admin on one board.' },
   { when: 'August 2026', what: 'Project Hours and Others', how: 'The project tracking sheet accounting kept by hand, now automatic, with donations, a month by month table and exports.' },
-  { when: 'August 2026', what: 'Clocky', how: 'The portal became the time clock, with history back to 2017.' },
+  { when: 'August 2026', what: 'North Time', how: 'The portal became the time clock, with history back to 2017.' },
   { when: 'Aug, Sep 2026', what: 'My Work and My Team', how: 'Everyone\'s Monday steps across every board in one list, and team leaders set their team\'s priority order.' },
   { when: 'September 2026', what: 'Report', how: 'Team leaders read their team\'s workload and pace.' },
   { when: 'September 2026', what: 'Navigation and Notifications', how: 'A navy rail with panels and search, and a bell for new work, deadlines and syncs, with a daily summary.' },
@@ -114,7 +114,7 @@ export const MOVE = {
 
 /** Chapter 5: what comes next. Ideas and work in progress, never promises with dates. */
 export const NEXT = [
-  { kind: 'building' as const, label: 'Being built', items: [['Clocky', ' reports, approvals and invoices'], ['My Hours', ' for each person']] },
+  { kind: 'building' as const, label: 'Being built', items: [['North Time', ' reports, approvals and invoices'], ['My Hours', ' for each person']] },
   { kind: 'planned' as const, label: 'Planned', items: [['Chat and Emails', ', in the Messages drawer already in the top bar'], ['My Work', ' showing when a step is waiting on the previous one, with a notification when it is ready']] },
   { kind: 'possible' as const, label: 'Possible', items: [['SEO tools', ': Schema App, Schema Scraper, Knowledge Graph, Page Auditor, Image Optimization, Analytics and Impact Globe'], ['The COE team\'s prototypes', ' of five of them are saved in True North\'s GitHub, ready to be brought into the portal']] },
 ]

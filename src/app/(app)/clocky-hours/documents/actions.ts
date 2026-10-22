@@ -15,7 +15,7 @@ export async function getPayDoc(input: { kind: DocKind; id: number }): Promise<R
   try {
     if (input.kind !== 'payroll' && input.kind !== 'rmb') return { ok: false, error: 'No such document.' }
     const access = await loadAccess()
-    if (!access.can('clocky-hours')) return { ok: false, error: 'Clocky is not open to your access.' }
+    if (!access.can('clocky-hours')) return { ok: false, error: 'North Time is not open to your access.' }
     const v = await viewerFor(access)
     const doc = await loadDoc(access, input.kind, Number(input.id), v?.zone ?? 'America/New_York')
     return doc ? { ok: true, doc } : { ok: false, error: 'That document is not open to you.' }

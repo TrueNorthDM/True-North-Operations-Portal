@@ -408,7 +408,7 @@ export default async function SettingsPage() {
       editable: false,
       content: (
         <div>
-          <SectionHead title="Job catalogue" desc="The jobs people pick in Clocky, their fields and the clients. The portal keeps them now; QuickBooks Time no longer changes what is edited here. A change shows in the clock panel right away." />
+          <SectionHead title="Job catalogue" desc="The jobs people pick in North Time, their fields and the clients. The portal keeps them now; QuickBooks Time no longer changes what is edited here. A change shows in the clock panel right away." />
           <JobCatalogue data={jobCatalogue} canEdit={access.can('cs-jobs-edit')} api={{ saveJob, addFolder, addJob, reorderJobs, setOptionShown, renameOption, addOption }} />
         </div>
       ),

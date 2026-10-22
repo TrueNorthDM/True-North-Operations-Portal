@@ -84,7 +84,7 @@ export const AUTOMATIONS: Automation[] = [
   },
   {
     id: 'clocky-delta',
-    name: 'Clocky catch-up',
+    name: 'North Time catch-up',
     kind: 'cron',
     purpose: 'Keeps the portal\u2019s copy of QuickBooks Time current while both run in parallel: new entries, edits, retroactive approvals and deletions. Skips itself if an import is already going, and stops mattering the day the portal becomes the clock.',
     trigger: 'Server crontab (deploy/cron/portal.crontab)',

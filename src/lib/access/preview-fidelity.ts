@@ -41,7 +41,7 @@ export const PREVIEW_CAVEATS: readonly PreviewCaveat[] = [
     // Clocky reads privileged and scopes in app code, so whose hours a level
     // reaches follows the preview; "My" is still the person signed in.
     surfaceKey: 'clocky-hours',
-    label: 'Clocky',
+    label: 'North Time',
     shows: 'your own hours under My, not the previewed person’s. The preview cannot sign in as somebody else. Whose hours each level reaches, and what it can change, follow the previewed level.',
   },
 ] as const

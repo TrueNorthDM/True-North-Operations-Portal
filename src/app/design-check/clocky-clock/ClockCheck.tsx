@@ -51,8 +51,8 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
       <div className="max-w-[1380px] mx-auto flex flex-col gap-[18px]">
         <div className="flex flex-col gap-3.5">
           <div>
-            <h1 className="m-0 font-(family-name:--font-display) font-black text-[24px] text-tn-ink">Clocky, painel do relógio (build)</h1>
-            <p className="m-0 mt-1 text-[13.5px] text-muted">{tbOnly ? 'Compare com o card TB de Clocky (todas as telas).dc.html. Os componentes são os reais; o servidor é simulado com os dados do protótipo.' : `Compare com Clock Panel.dc.html?frame=${f.code}${phone ? '&device=phone' : ''}. Os componentes são os reais; o servidor é simulado com os dados do protótipo.`}</p>
+            <h1 className="m-0 font-(family-name:--font-display) font-black text-[24px] text-tn-ink">North Time, painel do relógio (build)</h1>
+            <p className="m-0 mt-1 text-[13.5px] text-muted">{tbOnly ? 'Compare com o card TB de North Time (todas as telas).dc.html. Os componentes são os reais; o servidor é simulado com os dados do protótipo.' : `Compare com Clock Panel.dc.html?frame=${f.code}${phone ? '&device=phone' : ''}. Os componentes são os reais; o servidor é simulado com os dados do protótipo.`}</p>
           </div>
           <div className="flex gap-4 items-center flex-wrap">
             <Link href={`/design-check/clocky-working`} className="text-[13px] font-semibold text-tn-teal">Who&apos;s working</Link>

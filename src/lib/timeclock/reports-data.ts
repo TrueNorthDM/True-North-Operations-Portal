@@ -25,7 +25,7 @@ export interface ReportPage {
   view: ReportView
   scope: 'all' | 'team' | 'own'
   scopeLine: string
-  /** "clocky-report-october-2026" */
+  /** "north-time-report-october-2026" */
   file: string
   /** For the PDF: "October 2026 · All teams". */
   scopeText: string
@@ -122,7 +122,7 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAd
   return {
     query: { ...query, from: period.from, to: period.to }, view, scope, from: period.from, to: period.to,
     scopeLine: scope === 'own' ? 'Your own hours only.' : scope === 'team' ? `Your team only: ${leadTeams}. Hours only: invoices are not shown to Team Leaders.` : 'Everyone. Totals in multiples of 15 minutes.',
-    file: `clocky-report-${slug}`,
+    file: `north-time-report-${slug}`,
     scopeText: [period.label, scope === 'own' ? dir.nameOf(me) : scope === 'team' ? `${leadTeams} team` : query.team === ALL ? 'All teams' : dir.teams.get(query.team)?.name ?? '',
       query.client !== ALL ? query.client : '', query.bill === 'yes' ? 'billable only' : query.bill === 'no' ? 'not billable only' : ''].filter(Boolean).join(' · '),
     options: {

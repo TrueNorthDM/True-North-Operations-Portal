@@ -102,7 +102,7 @@ function build(r: Row): Built {
 
 const routeOf = (who: string): RoutePerson => ({ personId: who, reportsTo: REP[who] ?? null, isContractor: P[who]?.[1] === 'con', paysAs: 'hourly' })
 const subState = (b: Built) => (b.st === 'draft' ? 'returned' : b.st === 'hrs' ? 'submitted' : b.st === 'wait' ? (REP[b.inv.person_id] === invBy(b.inv.person_id) ? 'submitted' : 'hours_approved') : 'approved')
-const nameOf = (id: string | null | undefined) => id ?? 'Clocky'
+const nameOf = (id: string | null | undefined) => id ?? 'North Time'
 
 /** 6F's invoice: INV-2026-0142 paid on Nov 12 (the frame's change to it). */
 function rows(frame: string): Row[] {

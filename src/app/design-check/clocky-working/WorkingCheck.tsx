@@ -30,7 +30,7 @@ export function WorkingCheck({ frame, frozen }: { frame: string; frozen: boolean
       <div className="max-w-[1380px] mx-auto flex flex-col gap-[18px]">
         <div className="flex flex-col gap-3">
           <div>
-            <h1 className="m-0 font-(family-name:--font-display) font-black text-[24px] text-tn-ink">Clocky, Who&apos;s working (build)</h1>
+            <h1 className="m-0 font-(family-name:--font-display) font-black text-[24px] text-tn-ink">North Time, Who&apos;s working (build)</h1>
             <p className="m-0 mt-1 text-[13.5px] text-muted">{`Compare com Who's Working.dc.html?frame=${f.code}. Os componentes são os reais; o servidor é simulado com os dados do protótipo.`}</p>
           </div>
           <Link href="/design-check/clocky-clock" className="text-[13px] font-semibold text-tn-teal self-start">Clock panel</Link>

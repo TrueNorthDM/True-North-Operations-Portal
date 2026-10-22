@@ -115,7 +115,7 @@ export function stepsOf(r: OffRequest, x: { days: number; seconds: number; stamp
       : { t: r.calendar === 'queued' ? 'Going on the team calendar' : 'Waiting for Google Calendar', sub: r.calendar === 'queued' ? `"${r.who}, out" on ${daysText(r.start, r.end)}, in the next few minutes.` : 'Google Calendar is not connected yet. It goes on the team calendar by itself once a Super Admin connects it.', state: 'wait', retry: false }
   const ent: OffStep = r.entriesWrittenAt
     ? { t: 'Written into the time entries', sub: `${x.days} day${x.days === 1 ? '' : 's'} of ${r.type}, ${formatDuration(x.seconds / Math.max(1, x.days))} each.`, state: 'ok', retry: false }
-    : { t: 'Not written into the time entries yet', sub: 'Clocky writes the days when the request is approved.', state: 'wait', retry: false }
+    : { t: 'Not written into the time entries yet', sub: 'North Time writes the days when the request is approved.', state: 'wait', retry: false }
   return [rip, cal, ent]
 }
 

@@ -29,12 +29,12 @@ describe('historyLines', () => {
     })
     expect(lines.map(l => l.text)).toEqual([
       'Wendy Cacka confirmed the real end time: 12:40 PM · recorded as 12:45 PM',
-      'Clocky stopped the clock automatically after 5h 00m',
+      'North Time stopped the clock automatically after 5h 00m',
       `Wendy Cacka clocked in · ${job} · recorded as 8:00 AM`,
     ])
     expect(lines[0].changes).toEqual([{ field: 'End', old: '1:00 PM', new: '12:45 PM' }])
     expect(lines[1].dot).toBe('#c8323d')
-    expect(lines[1].who).toBe('Clocky')
+    expect(lines[1].who).toBe('North Time')
     expect(lines[2].when).toBe('Oct 15, 2026, 8:07 AM')
   })
 
@@ -57,7 +57,7 @@ describe('historyLines', () => {
 
   it('says where an entry came from: QuickBooks Time, or an approved correction', () => {
     const imported = historyLines({ ...base, audit: [], importedAt: '2026-10-02T10:00:00Z' })
-    expect(imported.map(l => [l.who, l.text])).toEqual([['Clocky', 'Imported from QuickBooks Time']])
+    expect(imported.map(l => [l.who, l.text])).toEqual([['North Time', 'Imported from QuickBooks Time']])
 
     const approved = historyLines({
       ...base,

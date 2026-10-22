@@ -113,14 +113,14 @@ export interface HistoryInput {
 
 /** The entry's history, newest first. */
 export function historyLines(h: HistoryInput): HistoryLine[] {
-  const name = (id: string | null) => (id ? h.names.get(id) ?? 'Someone' : 'Clocky')
+  const name = (id: string | null) => (id ? h.names.get(id) ?? 'Someone' : 'North Time')
   const line = (at: string, who: string, text: string, extra: Partial<HistoryLine> = {}): HistoryLine => ({
     at, when: stampLabel(at, h.viewerZone), who, text, changes: [], reason: null, dot: TEAL, ...extra,
   })
   const out: HistoryLine[] = []
   const owner = h.names.get(h.personId) ?? 'Someone'
 
-  if (h.importedAt) out.push(line(h.importedAt, 'Clocky', 'Imported from QuickBooks Time'))
+  if (h.importedAt) out.push(line(h.importedAt, 'North Time', 'Imported from QuickBooks Time'))
   if (h.request) {
     out.push(line(h.request.requestedAt, owner,
       `${owner} requested a time correction: ${formatDuration(h.request.seconds)} · ${h.request.job}`,
@@ -149,7 +149,7 @@ export function historyLines(h: HistoryInput): HistoryLine[] {
         out.push(line(a.changed_at, who, `${who} undid the clock out`))
         break
       case 'auto_stop':
-        out.push(line(after.ended_at_real ?? a.changed_at, 'Clocky', 'Clocky stopped the clock automatically after 5h 00m', { dot: RED }))
+        out.push(line(after.ended_at_real ?? a.changed_at, 'North Time', 'North Time stopped the clock automatically after 5h 00m', { dot: RED }))
         break
       case 'confirm_end': {
         const real = after.ended_at_real ?? after.ended_at

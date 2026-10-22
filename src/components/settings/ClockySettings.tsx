@@ -295,7 +295,7 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
       <div className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
         <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex flex-col gap-[3px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">New bell lines</span>
-          <span className="text-[12.5px] text-muted">Bell only. The one email Clocky sends is still &quot;Your clock stopped&quot;.</span>
+          <span className="text-[12.5px] text-muted">Bell only. The one email North Time sends is still &quot;Your clock stopped&quot;.</span>
         </div>
         <div className={`grid grid-cols-[150px_minmax(0,1.4fr)_minmax(0,1fr)] bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}><div className="px-[18px] py-[9px]">Area</div><div className="px-3 py-[9px]">Line</div><div className="px-3 py-[9px]">Goes to</div></div>
         {LINES.map(([area, line, to]) => (

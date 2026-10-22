@@ -98,7 +98,7 @@ describe('no overlaps (Rules 8)', () => {
 })
 
 describe('writes go through the server only (migration 113)', () => {
-  it('no Clocky action writes with the signed-in session', () => {
+  it('no North Time action writes with the signed-in session', () => {
     for (const f of FILES) expect(read(f), f).not.toMatch(/@\/lib\/supabase\/server/)
   })
 

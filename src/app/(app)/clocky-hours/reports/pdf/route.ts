@@ -16,5 +16,5 @@ export async function GET(request: Request) {
   const query = new URL(request.url).searchParams
   query.delete('_vs')
   const q = query.toString()
-  return sheetPdf(request, `/clocky-hours/reports/print${q ? `?${q}` : ''}`, () => 'clocky-report.pdf', { width: 860, landscape: true, allPages: true })
+  return sheetPdf(request, `/clocky-hours/reports/print${q ? `?${q}` : ''}`, () => 'north-time-report.pdf', { width: 860, landscape: true, allPages: true })
 }

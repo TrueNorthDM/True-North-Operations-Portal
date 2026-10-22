@@ -202,7 +202,7 @@ describe('the generators', () => {
 })
 
 
-describe("Clocky's notifications (16 October 2026)", () => {
+describe("North Time's notifications (16 October 2026)", () => {
   const T = (k: string) => TYPE_BY_KEY.get(k)!
 
   it('are in the bell only, as it happens, but the daily line for Super Admins', () => {

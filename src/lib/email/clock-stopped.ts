@@ -30,7 +30,7 @@ export function renderClockStopped(v: ClockStoppedVars): { subject: string; html
   const body = `Your clock stopped by itself at ${v.stoppedAt}. Confirm when you really stopped.`
   const button = 'Confirm end time'
   const fine = `It ran 5h 00m without an answer since you clocked in at ${v.clockedInAt}. Until you confirm, the entry shows "Auto out" and the clock button in the portal stays red.`
-  const footer = 'Sent to you because Clocky stopped your clock.'
+  const footer = 'Sent to you because North Time stopped your clock.'
 
   const html = `<!doctype html>
 <html lang="en">

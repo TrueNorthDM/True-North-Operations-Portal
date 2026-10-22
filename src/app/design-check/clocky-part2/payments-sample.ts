@@ -35,7 +35,7 @@ function inv(r: (typeof CW)[number]): InvRow {
 export function contractorPayments(): PaymentsData {
   return buildContractorPayments({
     name: 'Cheyenne Wilson', route: { personId: 'cw', reportsTo: 'Arnaldo Oliveira', isContractor: true, paysAs: 'hourly' }, settings: SETTINGS,
-    nameOf: id => id ?? 'Clocky', today: '2026-11-03',
+    nameOf: id => id ?? 'North Time', today: '2026-11-03',
     invoices: CW.map(r => ({ ...inv(r), seconds: r[2] * 60, subState: r[4] === 'paid' ? 'approved' : 'submitted' })),
     reimbursements: [{ id: 1, purpose: 'Grammarly Premium, October', spent_on: '2026-10-28', category: 'Software', amount: 30, state: 'on_invoice', decision_note: null, invoice_id: 143 }],
   })

@@ -193,7 +193,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   // ── Clocky (16 October 2026, design handoff Design/design_handoff_clocky) ──
   // The row's text is its title, exact copy from the design; the body is empty.
   {
-    key: 'clocky-still-working', src: 'Clocky', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-still-working', src: 'North Time', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Clock safety', stat: 'still working?',
     example: { title: 'Still working?', body: 'Your clock has been running 4h 30m since you clocked in at 8:00 AM. It stops at 5h 00m unless you keep it going.' },
     title: 'Still working? (your clock at 4h 30m)',
@@ -202,16 +202,16 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Keep going', action: 'keep-going' },
   },
   {
-    key: 'clocky-stopped', src: 'Clocky', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-stopped', src: 'North Time', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Clock safety', stat: 'clocks stopped', statOne: 'clock stopped', alarm: true,
     example: { title: 'Your clock stopped by itself at 1:00 PM.', body: 'Confirm when you really stopped.' },
     title: 'Your clock stopped by itself',
-    description: 'Nobody answered "Still working?", so Clocky stopped your clock at 5h 00m. In the bell, and the one Clocky email: "Your clock stopped by itself".',
+    description: 'Nobody answered "Still working?", so North Time stopped your clock at 5h 00m. In the bell, and the one North Time email: "Your clock stopped by itself".',
     who: 'You', audience: { kind: 'everyone' },
     button: { label: 'Confirm end time', action: 'open-clock' },
   },
   {
-    key: 'clocky-correction-requested', src: 'Clocky · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-correction-requested', src: 'North Time · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Time corrections', stat: 'time corrections to review', statOne: 'time correction to review',
     example: { title: 'Samuel Manzi asked for a time correction', body: '1h 00m on Tue, Oct 13, 4:00 PM to 5:00 PM.' },
     title: 'Someone asked for a time correction',
@@ -220,7 +220,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {
-    key: 'clocky-correction-decided', src: 'Clocky · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-correction-decided', src: 'North Time · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Your requests', stat: 'requests decided', statOne: 'request decided',
     example: { title: 'Rock Kai approved your time correction', body: '1h 30m on Wed, Oct 14. It now counts in your hours.' },
     title: 'Your time correction was approved or denied',
@@ -229,7 +229,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open time entries', href: '/clocky-hours' },
   },
   {
-    key: 'clocky-timeoff-requested', src: 'Clocky · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-timeoff-requested', src: 'North Time · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Time off', stat: 'time off requests', statOne: 'time off request',
     example: { title: 'Olivia Hale asked for time off', body: 'Vacation, Fri, Oct 16 (8h 00m).' },
     title: 'Someone asked for time off',
@@ -238,7 +238,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {
-    key: 'clocky-timeoff-decided', src: 'Clocky · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-timeoff-decided', src: 'North Time · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Your requests', stat: 'requests decided', statOne: 'request decided',
     example: { title: 'Dave Sharpe approved your time off', body: 'Vacation, Fri, Oct 16 (8h 00m).' },
     title: 'Your time off was approved or denied',
@@ -247,7 +247,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open time entries', href: '/clocky-hours' },
   },
   {
-    key: 'clocky-clocked-out-for', src: 'Clocky · Who\'s working', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-clocked-out-for', src: 'North Time · Who\'s working', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Clock safety', stat: 'clocks ended for you', statOne: 'clock ended for you',
     example: { title: 'Dave Sharpe clocked you out at 3:45 PM', body: 'Reason: "Forgot to clock out."' },
     title: 'Someone clocked you out',
@@ -257,7 +257,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open entry' },
   },
   {
-    key: 'clocky-timesheet-submitted', src: 'Clocky · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-timesheet-submitted', src: 'North Time · approvals', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Timesheets', stat: 'timesheets to approve', statOne: 'timesheet to approve',
     example: { title: 'Samuel Manzi submitted October 2026', body: '168h 30m, waiting for a Super Admin.' },
     title: 'Someone submitted a timesheet',
@@ -266,7 +266,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Review', href: '/clocky-hours/approvals' },
   },
   {
-    key: 'clocky-timesheet-decided', src: 'Clocky · your timesheet', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-timesheet-decided', src: 'North Time · your timesheet', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Timesheets', stat: 'timesheets decided', statOne: 'timesheet decided',
     example: { title: 'Arnaldo Oliveira approved your October 2026 timesheet', body: 'Returned or reopened, it comes with the reason.' },
     title: 'Your timesheet was approved, returned or reopened',
@@ -276,7 +276,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   },
   // Invoices (Clocky part 2, Invoices.dc.html bell lines).
   {
-    key: 'clocky-invoice-made', src: 'Clocky · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-invoice-made', src: 'North Time · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Invoices', stat: 'invoices made', statOne: 'invoice made',
     example: { title: 'We created invoice INV-2026-0142 for October', body: '$2,310.00. It waits for approval with your hours.' },
     title: 'Your invoice was made',
@@ -285,7 +285,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open invoice' },
   },
   {
-    key: 'clocky-invoice-approved', src: 'Clocky · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-invoice-approved', src: 'North Time · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Invoices', stat: 'invoices to pay', statOne: 'invoice to pay',
     example: { title: 'INV-2026-0138 (Stephanie Aguirre, $2,304.00) was approved', body: 'Ready to pay.' },
     title: 'An invoice is ready to pay',
@@ -294,7 +294,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open invoices', href: '/clocky-hours/invoices' },
   },
   {
-    key: 'clocky-invoice-paid', src: 'Clocky · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-invoice-paid', src: 'North Time · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Invoices', stat: 'invoices paid', statOne: 'invoice paid',
     example: { title: 'INV-2026-0131 (September) was paid on Oct 12, 2026', body: 'Ref. WISE-77310.' },
     title: 'Your invoice was paid',
@@ -368,7 +368,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open request', href: '/requests/time-off' },
   },
   {
-    key: 'clocky-reminder', src: 'Clocky · reminders', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-reminder', src: 'North Time · reminders', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Timesheets', stat: 'timesheet reminders', statOne: 'timesheet reminder',
     example: { title: 'Your October timesheet is due tomorrow', body: 'Or: your pay period ends Saturday; or it is late.' },
     title: 'Your timesheet is due, or late',
@@ -387,7 +387,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open Agenda', href: '/agenda' },
   },
   {
-    key: 'clocky-late', src: 'Clocky · reminders', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-late', src: 'North Time · reminders', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Timesheets', stat: 'timesheets late', statOne: 'timesheet late',
     example: { title: 'Submit October: it is 3 days late', body: 'Saheed Fidimaye has not submitted.' },
     title: 'Someone has not submitted, 3 days late',
@@ -396,7 +396,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open Time entries', href: '/clocky-hours' },
   },
   {
-    key: 'clocky-allowance', src: 'Clocky · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-allowance', src: 'North Time · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Allowance', stat: 'allowance lines', statOne: 'allowance line',
     example: { title: 'You have used 90% of your allowance', body: '126h of 140h this month.' },
     title: 'Your hours allowance: 90%, or over',
@@ -405,7 +405,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Ask for extra hours', href: '/requests/extra-hours' },
   },
   {
-    key: 'clocky-allowance-over', src: 'Clocky · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-allowance-over', src: 'North Time · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Allowance', stat: 'over the allowance', statOne: 'over the allowance',
     example: { title: 'Cheyenne Wilson is over the October allowance without approval', body: '151h 15m of 140h.' },
     title: 'Someone went over the allowance without approval',
@@ -414,7 +414,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open Extra hours', href: '/requests/extra-hours' },
   },
   {
-    key: 'clocky-type-change', src: 'Clocky · people', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
+    key: 'clocky-type-change', src: 'North Time · people', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Contractor to employee', stat: 'changes scheduled', statOne: 'change scheduled',
     example: { title: 'Rock Kai becomes an employee on Tue, Dec 1, 2026', body: 'November closes as the last invoice; then pay periods and Rippling.' },
     title: 'A contractor becomes an employee',
@@ -423,11 +423,11 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     button: { label: 'Open' },
   },
   {
-    key: 'clocky-auto-stops', src: 'Clocky · daily summary', block: 'tools', icon: 'clocky', defaultTiming: 'daily', available: true,
+    key: 'clocky-auto-stops', src: 'North Time · daily summary', block: 'tools', icon: 'clocky', defaultTiming: 'daily', available: true,
     timings: 'daily', section: 'Clock safety', stat: 'automatic clock-outs', statOne: 'automatic clock-out',
     example: { title: '2 automatic clock-outs yesterday', body: 'Wendy Cacka, Justus Tsofa.' },
     title: 'Automatic clock-outs yesterday',
-    description: 'One line a day: how many clocks Clocky stopped by itself yesterday, and whose.',
+    description: 'One line a day: how many clocks North Time stopped by itself yesterday, and whose.',
     who: 'Super Admins', audience: { kind: 'tool', tool: 'access-levels' },
     button: { label: 'Open Clock safety', href: '/clocky-hours/safety' },
   },
