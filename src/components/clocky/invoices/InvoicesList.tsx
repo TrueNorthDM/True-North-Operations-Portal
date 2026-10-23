@@ -196,7 +196,7 @@ export function InvoicesList({ data, api, initial }: {
                   <div className="px-3.5 py-2 flex justify-end">
                     {r.canPay ? (
                       <button type="button" onClick={e => { e.stopPropagation(); setPay(payTarget(r)) }}
-                        className="inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-3 py-[7px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-tn-teal">
+                        className="inline-flex shrink-0 items-center gap-[7px] border border-slate-200 rounded-[10px] px-3 py-[7px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] whitespace-nowrap cursor-pointer hover:border-tn-teal">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Mark paid
                       </button>
                     ) : (
