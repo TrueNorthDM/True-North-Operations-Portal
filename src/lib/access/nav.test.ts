@@ -113,4 +113,11 @@ describe('the rail', () => {
     expect(tools.matches).toContain('/seo')
     expect(hub(railFor('super_admin'), 'admin')!.matches).toContain('/admin')
   })
+
+  it('lights only North Time on Approvals, though Requests has a shortcut to it', () => {
+    const rail = railFor('super_admin')
+    expect(hub(rail, 'clocky')!.matches).toContain('/clocky-hours/approvals')
+    expect(hub(rail, 'requests')!.matches).not.toContain('/clocky-hours/approvals')
+    expect(hub(rail, 'requests')!.groups.flatMap(g => g.items).map(i => i.key)).toContain('requests-approvals')
+  })
 })

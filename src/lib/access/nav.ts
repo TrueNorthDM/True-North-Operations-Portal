@@ -44,6 +44,11 @@ export interface PanelItem {
    * getApprovalsCount), drawn only above zero.
    */
   count?: NavCount
+  /**
+   * A shortcut to a page that belongs to another hub (Requests > Approvals is
+   * North Time's page): it opens it, but does not light this hub's icon.
+   */
+  shortcut?: boolean
 }
 
 /** The counts a panel row can carry. */
@@ -255,7 +260,7 @@ export const RAIL: readonly RailEntry[] = [
       {
         label: 'Decisions',
         items: [
-          { key: 'requests-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
+          { key: 'requests-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals', shortcut: true },
         ],
       },
     ],
@@ -333,7 +338,8 @@ export function buildRail(ctx: NavContext): ResolvedEntry[] {
     if (!rows.length) continue
     // The landing only for whoever opens it: holding one row of a hub does not open its landing page.
     const landing = e.landing && (!e.landingSurface || ctx.can(e.landingSurface)) ? e.landing : undefined
-    const matches = [...new Set([...rows.map(r => pathOf(r.href)), ...(landing ? [landing] : []), ...(e.alsoMatches ?? [])])]
+    const own = e.groups.flatMap(g => g.items.filter(i => !i.shortcut && rowVisible(i, ctx)))
+    const matches = [...new Set([...own.map(r => pathOf(r.href)), ...(landing ? [landing] : []), ...(e.alsoMatches ?? [])])]
     out.push({
       kind: 'hub',
       key: e.key,
