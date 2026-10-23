@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
-import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, filterItems, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
+import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
 import { daysOf } from './good-news'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
@@ -26,6 +26,14 @@ describe('8A month', () => {
     expect(cell('2026-11-06').outTip).toBe('Dave Sharpe, out')
     const span = monthCells([{ ...items.find(x => x.id === 'o2')!, id: 'x', a: '2026-11-13', b: '2026-11-16' }], TODAY, TODAY)
     expect(span.filter(c => c.out.length).map(c => c.day)).toEqual(['2026-11-13', '2026-11-16'])
+  })
+})
+
+describe('8A on a phone', () => {
+  it('dots a day with each kind on it, in the chips\' order, PTO on weekdays only', () => {
+    expect(dayKinds(items, '2026-11-13')).toEqual(['event', 'ms'])
+    expect(dayKinds(items, '2026-11-03')).toEqual(['bday'])
+    expect(dayKinds(items, '2026-11-11')).toEqual([])
   })
 })
 

@@ -239,14 +239,11 @@ coverage test).
 To do once the screen-by-screen review of the part 2 handoff is finished, in this order
 unless the owner says otherwise.
 
-**A. The Agenda on a phone (built, not shipped).** The handoff has no phone design for
-the Agenda, and the month grid cannot be read at 390px. The owner chose: on a phone the
-month shows each day with one coloured dot per kind (the chips' colours), the day tapped
-(today at first, the 1st in another month) is listed under the calendar like the List
-view, and the filter chips sit in one row that scrolls sideways. Built and checked at
-390px and 1440px (desktop unchanged), then set aside: the change is
-`docs/time-clock/later/agenda-phone-8A.patch` (apply with `git apply`), with a test for
-`dayKinds` in `src/lib/agenda/model.test.ts`.
+**A. The Agenda on a phone: done 2026-10-23 (owner approved).** The handoff has no
+phone design for the Agenda. On a phone the month shows each day with one coloured dot
+per kind (the chips' colours), the day tapped (today at first, the 1st in another month)
+is listed under the calendar like the List view, and the filter chips sit in one row
+that scrolls sideways. The desktop is unchanged.
 
 **B. Google Calendar by OAuth, more than one account per person.**
 - Everyone can connect their own Google Calendar to the portal with Google sign-in

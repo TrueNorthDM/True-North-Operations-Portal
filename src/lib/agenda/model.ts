@@ -253,6 +253,11 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
 // ── 8C List ───────────────────────────────────────────────────────────────────
 
 export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string }
+/** The kinds on a day, in the chips' order: the dots of the month on a phone. PTO skips weekends, as the list does. */
+export function dayKinds(items: readonly AgendaItem[], d: string): AgendaKind[] {
+  return KINDS.filter(k => items.some(x => x.k === k && covers(x, d) && !(k === 'pto' && isWeekend(d))))
+}
+
 export interface ListDay { day: string; title: string; sub: string; today: boolean; rows: ListRow[] }
 
 export function listDays(items: readonly AgendaItem[], start: string, today: string, seesType: (x: AgendaItem) => boolean): ListDay[] {
