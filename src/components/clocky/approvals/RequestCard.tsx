@@ -75,13 +75,14 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
       {card.cal && (
         <div className="flex flex-col gap-2">
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{card.cal.label}</span>
-          <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden">
-            <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={{ gridTemplateColumns: `180px repeat(${card.cal.days.length},minmax(0,1fr))` }}>
+          {/* The names column is 180px in the window; on a phone it gives the days room. */}
+          <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden [--cal-name:104px] md:[--cal-name:180px]">
+            <div className="grid bg-subtle border-b border-[var(--panel-border)]" style={{ gridTemplateColumns: `var(--cal-name) repeat(${card.cal.days.length},minmax(0,1fr))` }}>
               <div />
               {card.cal.days.map(d => <div key={d} className="px-1 py-2 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.06em] uppercase text-muted text-center">{d}</div>)}
             </div>
             {card.cal.rows.map(r => (
-              <div key={r.name} className="grid items-center border-b border-[var(--row-rule)]" style={{ gridTemplateColumns: `180px repeat(${card.cal!.days.length},minmax(0,1fr))` }}>
+              <div key={r.name} className="grid items-center border-b border-[var(--row-rule)]" style={{ gridTemplateColumns: `var(--cal-name) repeat(${card.cal!.days.length},minmax(0,1fr))` }}>
                 <div className="px-3 py-[7px] flex flex-col gap-px"><span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">{r.name}</span><span className="text-[11.5px] text-muted">{r.sub}</span></div>
                 {r.cells.map((c, i) => (
                   <div key={i} className="px-[3px] py-2">
