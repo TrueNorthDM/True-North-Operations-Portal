@@ -94,6 +94,8 @@ describe('one invoice (6F)', () => {
       'Reimbursement added by itself: Internet, October ($35.00)',
       'Created when the October timesheet was submitted',
     ])
+    // Paid shows the day Finance wrote; the reimbursement, the invoice's date.
+    expect(d.history.map(h => h.when)).toEqual(['Nov 12, 2026', 'Nov 3, 2026, 9:40 AM', 'Nov 1, 2026', 'Nov 1, 2026, 2:05 AM'])
     expect(d.doc.paid).toBe('Paid Nov 12, 2026 · WISE-88412')
     expect(d.locked).toBe('Locked. A change means reopening the timesheet, which sends this invoice back to Draft.')
     expect(d.canPay).toBe(false)

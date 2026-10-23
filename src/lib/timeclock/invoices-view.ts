@@ -14,7 +14,7 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { db, loadDirectory } from './clocky-context'
-import { dateLabel, initials as initialsOf, monthLong, monthYear, stampLabel } from './format'
+import { dateLabel, initials as initialsOf, localDate, monthLong, monthYear, stampLabel } from './format'
 import { INV_COLS, LINE_COLS, invoiceDocOf, paidText, usd, type DocTone, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
 import { isFinance, loadInvoiceSettings, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
@@ -220,7 +220,7 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
     when: at(inv.created_at), dot: '#1E7D7F', t: inv.created_at,
   })
   for (const l of src.lines.filter(x => x.kind === 'reimbursement')) {
-    hist.push({ text: `Reimbursement added by itself: ${l.description} (${usd(Number(l.amount))})`, when: at(inv.created_at), dot: '#a3aebb', t: inv.created_at })
+    hist.push({ text: `Reimbursement added by itself: ${l.description} (${usd(Number(l.amount))})`, when: dateLabel(inv.issued_on ?? localDate(inv.created_at, src.zone)), dot: '#a3aebb', t: inv.created_at })
   }
   for (const e of src.events) {
     const by = src.nameOf(e.by_person)
@@ -230,7 +230,7 @@ export function buildInvoiceDetail(src: DetailSource): InvoiceDetail {
     else if (e.action === 'submit') hist.push({ text: `Made again when the ${period.label} timesheet was submitted again`, when: at(e.at), dot: '#1E7D7F', t: e.at })
     else if (e.action === 'approve' && e.step === 'hours') hist.push({ text: `Hours approved by ${by}`, when: at(e.at), dot: '#1E7D7F', t: e.at })
     else if (e.action === 'approve') hist.push({ text: one && inv.submission_id ? `Approved by ${by}, together with the hours` : `Invoice approved by ${by}`, when: at(e.at), dot: '#012358', t: e.at })
-    else if (e.action === 'paid') hist.push({ text: `Paid on ${dateLabel(inv.paid_on ?? e.at.slice(0, 10))} by ${by}${inv.paid_ref ? `, ref. ${inv.paid_ref}` : ''}`, when: at(e.at), dot: '#1E9E6A', t: e.at })
+    else if (e.action === 'paid') hist.push({ text: `Paid on ${dateLabel(inv.paid_on ?? e.at.slice(0, 10))} by ${by}${inv.paid_ref ? `, ref. ${inv.paid_ref}` : ''}`, when: dateLabel(inv.paid_on ?? localDate(e.at, src.zone)), dot: '#1E9E6A', t: e.at })
   }
   // Newest first; at the same moment, the later line first (the prototype reverses the list).
   const order = hist.map((h, i) => ({ h, i })).sort((a, b) => b.h.t.localeCompare(a.h.t) || b.i - a.i).map(x => x.h)
