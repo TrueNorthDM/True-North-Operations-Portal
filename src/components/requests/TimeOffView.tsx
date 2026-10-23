@@ -25,6 +25,8 @@ import type { TimeOffPage, TimeOffRow } from '@/lib/timeclock/time-off-data'
 import type { OffTone } from '@/lib/timeclock/time-off'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, TEXTAREA_WARN, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
+import { usePhone } from '@/components/clocky/clock/hooks'
+import { PhoneSheet } from './PhoneSheet'
 
 export interface TimeOffApi {
   askTimeOff(i: { jobcodeId: number; start: string; end: string; hoursPerDay: number; note?: string }): Promise<Result<{ toast: string }>>
@@ -336,6 +338,96 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
   const pick = (d: string) => setF(x => (!x.a || x.b ? { ...x, a: d, b: null } : d < x.a ? { ...x, a: d, b: x.a } : { ...x, b: d }))
   const moveMonth = (n: number) => { const d = new Date(Date.UTC(y, m - 1 + n, 1)); set({ month: d.toISOString().slice(0, 7) }) }
   const ok = !!f.type && !!f.a && days.length > 0 && !busy
+  const phone = usePhone()
+  const send = () => onSend({ jobcodeId: f.type!, start: f.a!, end: end!, hoursPerDay: hpd, note: f.note.trim() || undefined })
+
+  // The calendar: 36px days in the window, 44px on the phone (Requests.dc.html 7Ap).
+  const calendar = (
+    <div className={`border border-[var(--panel-border)] rounded-[12px] flex flex-col ${phone ? 'px-2 pt-2 pb-2.5 gap-1.5' : 'px-3 py-2.5 gap-2'}`}>
+      <div className="flex items-center justify-between">
+        <button type="button" aria-label="Previous month" onClick={() => moveMonth(-1)} className={`${phone ? 'w-11 h-11 rounded-[10px]' : 'w-[30px] h-[30px] rounded-[8px]'} border-0 bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle`}><Icon d="M15 18l-6-6 6-6" size={phone ? 18 : 16} width={2.2} /></button>
+        <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap">{MON_LONG[m - 1]} {y}</span>
+        <button type="button" aria-label="Next month" onClick={() => moveMonth(1)} className={`${phone ? 'w-11 h-11 rounded-[10px]' : 'w-[30px] h-[30px] rounded-[8px]'} border-0 bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle`}><Icon d="M9 6l6 6-6 6" size={phone ? 18 : 16} width={2.2} /></button>
+      </div>
+      <div className={`grid grid-cols-7 ${phone ? 'gap-px' : 'gap-0.5'}`}>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(h => <div key={h} className="text-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.06em] uppercase text-[#a3aebb] pt-0.5 pb-1">{h}</div>)}
+        {cells.map(d => {
+          const inM = d.slice(0, 7) === f.month, past = d < data.today, w = dow(d), wk = w === 0 || w === 6, h = hol[d]
+          const sel = !!f.a && d >= f.a && d <= (end ?? f.a), edge = d === f.a || d === end, o = teamOffOn(d)
+          const counted = sel && !wk && !h
+          const bg = !inM ? 'transparent' : edge ? '#012358' : counted ? '#eaf4f4' : sel ? '#f4f2ec' : 'transparent'
+          const fg = !inM ? 'transparent' : edge ? '#ffffff' : past ? '#cbd2da' : wk || h ? '#a3aebb' : '#012358'
+          return (
+            <button key={d} type="button" disabled={!inM || past} onClick={() => pick(d)} title={h ?? (o ? `${o.who} is off` : undefined)}
+              className={`relative border-0 tabular-nums lining-nums disabled:cursor-default cursor-pointer ${phone ? 'h-11 text-[14px]' : 'h-9 text-[13px]'}`}
+              style={{ background: bg, color: fg, fontWeight: edge ? 800 : 600, borderRadius: edge ? 9 : sel ? 4 : 9 }}>
+              {inM ? Number(d.slice(8)) : ''}
+              {inM && (h || o) && !edge && <span className={`absolute left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${phone ? 'bottom-[5px]' : 'bottom-1'}`} style={{ background: h ? '#d4a017' : '#A99BD4' }} />}
+            </button>
+          )
+        })}
+      </div>
+      {!phone && (
+        <div className="flex gap-3.5 flex-wrap text-[11.5px] text-muted">
+          <span className="flex items-center gap-[5px]"><span className="w-[5px] h-[5px] rounded-full bg-[#d4a017]" />Company holiday</span>
+          <span className="flex items-center gap-[5px]"><span className="w-[5px] h-[5px] rounded-full bg-[#A99BD4]" />Someone on your team is off</span>
+        </div>
+      )}
+    </div>
+  )
+  const countLine = f.a ? `${days.length} working day${days.length === 1 ? '' : 's'}, ${formatDuration(seconds)}` : 'Pick the days'
+  const skipLine = skipped.length > 0 ? `${skipped.map(d => dayLabel(d)).join(' and ')} ${skipped.length === 1 ? 'is a company holiday' : 'are company holidays'}, not counted.` : null
+  const balanceLine = `${typeLabel}: the balance shows here once Rippling is connected.`
+  const whoList = who.length ? who.map(w => (
+    <div key={w.t} className="flex items-center gap-[9px] text-[13px] text-tn-ink leading-[1.45]"><span className="w-2 h-2 rounded-full flex-none" style={{ background: w.c }} /><span>{w.t}</span></div>
+  )) : <div className="text-[13px] text-muted">Pick the days to see who else is off.</div>
+  const modes = ([['full', 'Full days'], ['hours', 'Hours a day']] as const)
+  const hoursSelect = f.mode === 'hours' && (
+    <div className={phone ? '' : 'w-[150px]'}>
+      <LabeledSelect label="Hours a day" value={`${f.hpd}h`} onChange={v => set({ hpd: parseInt(v, 10) })} options={[1, 2, 3, 4, 5, 6, 7, 8].map(n => ({ value: `${n}h`, label: `${n}h` }))} />
+    </div>
+  )
+
+  if (phone) {
+    return (
+      <PhoneSheet crumb="Requests · Time off" title="Request time off" onBack={onClose}
+        footer={(
+          <button type="button" disabled={!ok} onClick={send} className="w-full h-[50px] flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed">
+            <Icon d="M22 2 11 13M22 2l-7 20-4-9-9-4z" size={15} color={BTN_ICON.navy} width={2.4} />Send request
+          </button>
+        )}>
+        <LabeledSelect label="Type" value={String(f.type ?? '')} onChange={v => set({ type: Number(v) })} options={data.types.map(t => ({ value: String(t.id), label: t.label }))} />
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel>Dates</FieldLabel>
+          {calendar}
+        </div>
+        <div className="bg-subtle rounded-[12px] px-3.5 py-3 flex flex-col gap-[3px]">
+          <span className="font-(family-name:--font-display) font-black text-[18px] text-tn-ink tabular-nums lining-nums">{countLine}</span>
+          <span className="text-[12.5px] text-foreground leading-[1.45]">{f.a ? range(f.a, end ?? f.a) : 'Tap a day, then the last day.'}</span>
+          {skipLine && <span className="text-[12px] text-muted leading-[1.45]">{skipLine}</span>}
+        </div>
+        <div className="border border-[var(--panel-border)] bg-white rounded-[12px] px-3.5 py-3 text-[13px] text-foreground font-bold leading-[1.45]">{balanceLine}</div>
+        <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-[7px]">
+          <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Who else is off</span>
+          {whoList}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel>Each day</FieldLabel>
+          <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
+            {modes.map(([k, label]) => (
+              <button key={k} type="button" aria-pressed={f.mode === k} onClick={() => set({ mode: k })}
+                className={`flex-1 h-10 border-0 cursor-pointer rounded-[8px] font-(family-name:--font-display) font-bold text-[13px] ${f.mode === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
+            ))}
+          </div>
+        </div>
+        {hoursSelect}
+        <label className="flex flex-col gap-[5px]">
+          <FieldLabel>Note (optional)</FieldLabel>
+          <textarea value={f.note} onChange={e => set({ note: e.target.value })} rows={2} placeholder="Anything your Team Leader should know" className={`${TEXTAREA_PLAIN} text-[14px]`} />
+        </label>
+      </PhoneSheet>
+    )
+  }
 
   return (
     <Modal label="Request time off" width={836} onClose={onClose} gap={16}>
@@ -348,51 +440,19 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
           <LabeledSelect label="Type" value={String(f.type ?? '')} onChange={v => set({ type: Number(v) })} options={data.types.map(t => ({ value: String(t.id), label: t.label }))} />
           <div className="flex flex-col gap-1.5">
             <FieldLabel>Dates: one day or a range</FieldLabel>
-            <div className="border border-[var(--panel-border)] rounded-[12px] px-3 py-2.5 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <button type="button" aria-label="Previous month" onClick={() => moveMonth(-1)} className="w-[30px] h-[30px] border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle"><Icon d="M15 18l-6-6 6-6" size={16} width={2.2} /></button>
-                <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap">{MON_LONG[m - 1]} {y}</span>
-                <button type="button" aria-label="Next month" onClick={() => moveMonth(1)} className="w-[30px] h-[30px] border-0 rounded-[8px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-subtle"><Icon d="M9 6l6 6-6 6" size={16} width={2.2} /></button>
-              </div>
-              <div className="grid grid-cols-7 gap-0.5">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(h => <div key={h} className="text-center font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.06em] uppercase text-[#a3aebb] pt-0.5 pb-1">{h}</div>)}
-                {cells.map(d => {
-                  const inM = d.slice(0, 7) === f.month, past = d < data.today, w = dow(d), wk = w === 0 || w === 6, h = hol[d]
-                  const sel = !!f.a && d >= f.a && d <= (end ?? f.a), edge = d === f.a || d === end, o = teamOffOn(d)
-                  const counted = sel && !wk && !h
-                  const bg = !inM ? 'transparent' : edge ? '#012358' : counted ? '#eaf4f4' : sel ? '#f4f2ec' : 'transparent'
-                  const fg = !inM ? 'transparent' : edge ? '#ffffff' : past ? '#cbd2da' : wk || h ? '#a3aebb' : '#012358'
-                  return (
-                    <button key={d} type="button" disabled={!inM || past} onClick={() => pick(d)} title={h ?? (o ? `${o.who} is off` : undefined)}
-                      className="relative h-9 border-0 text-[13px] tabular-nums lining-nums disabled:cursor-default cursor-pointer"
-                      style={{ background: bg, color: fg, fontWeight: edge ? 800 : 600, borderRadius: edge ? 9 : sel ? 4 : 9 }}>
-                      {inM ? Number(d.slice(8)) : ''}
-                      {inM && (h || o) && !edge && <span className="absolute left-1/2 bottom-1 -translate-x-1/2 w-1 h-1 rounded-full" style={{ background: h ? '#d4a017' : '#A99BD4' }} />}
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="flex gap-3.5 flex-wrap text-[11.5px] text-muted">
-                <span className="flex items-center gap-[5px]"><span className="w-[5px] h-[5px] rounded-full bg-[#d4a017]" />Company holiday</span>
-                <span className="flex items-center gap-[5px]"><span className="w-[5px] h-[5px] rounded-full bg-[#A99BD4]" />Someone on your team is off</span>
-              </div>
-            </div>
+            {calendar}
           </div>
           <div className="flex items-end gap-3 flex-wrap">
             <div className="flex flex-col gap-1.5">
               <FieldLabel>Each day</FieldLabel>
               <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
-                {([['full', 'Full days'], ['hours', 'Hours a day']] as const).map(([k, label]) => (
+                {modes.map(([k, label]) => (
                   <button key={k} type="button" aria-pressed={f.mode === k} onClick={() => set({ mode: k })}
                     className={`border-0 cursor-pointer rounded-[8px] px-3 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] ${f.mode === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
                 ))}
               </div>
             </div>
-            {f.mode === 'hours' && (
-              <div className="w-[150px]">
-                <LabeledSelect label="Hours a day" value={`${f.hpd}h`} onChange={v => set({ hpd: parseInt(v, 10) })} options={[1, 2, 3, 4, 5, 6, 7, 8].map(n => ({ value: `${n}h`, label: `${n}h` }))} />
-              </div>
-            )}
+            {hoursSelect}
           </div>
           <label className="flex flex-col gap-[5px]">
             <FieldLabel>Note (optional)</FieldLabel>
@@ -402,26 +462,24 @@ function AskForm({ data, initial, busy, onClose, onSend }: {
         <div className="flex flex-col gap-3 min-w-0">
           <div className="bg-subtle rounded-[12px] px-4 py-3.5 flex flex-col gap-1">
             <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Counted</span>
-            <span className="font-(family-name:--font-display) font-black text-[20px] text-tn-ink tabular-nums lining-nums">{f.a ? `${days.length} working day${days.length === 1 ? '' : 's'}, ${formatDuration(seconds)}` : 'Pick the days'}</span>
+            <span className="font-(family-name:--font-display) font-black text-[20px] text-tn-ink tabular-nums lining-nums">{countLine}</span>
             <span className="text-[12.5px] text-foreground leading-[1.5]">{f.a ? range(f.a, end ?? f.a) : 'Click a day, then the last day.'}</span>
-            {skipped.length > 0 && <span className="text-[12px] text-muted leading-[1.5]">{skipped.map(d => dayLabel(d)).join(' and ')} {skipped.length === 1 ? 'is a company holiday' : 'are company holidays'}, not counted.</span>}
+            {skipLine && <span className="text-[12px] text-muted leading-[1.5]">{skipLine}</span>}
           </div>
           <div className="border border-[var(--panel-border)] bg-white rounded-[12px] px-4 py-3.5 flex flex-col gap-1.5">
             <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Balance in Rippling</span>
-            <span className="text-[13.5px] text-foreground font-bold leading-[1.45]">{typeLabel}: the balance shows here once Rippling is connected.</span>
+            <span className="text-[13.5px] text-foreground font-bold leading-[1.45]">{balanceLine}</span>
           </div>
           <div className="border border-[var(--panel-border)] rounded-[12px] px-4 py-3.5 flex flex-col gap-2">
             <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">Who else is off</span>
-            {who.length ? who.map(w => (
-              <div key={w.t} className="flex items-center gap-[9px] text-[13px] text-tn-ink leading-[1.45]"><span className="w-2 h-2 rounded-full flex-none" style={{ background: w.c }} /><span>{w.t}</span></div>
-            )) : <div className="text-[13px] text-muted">Pick the days to see who else is off.</div>}
+            {whoList}
           </div>
           <div className="text-[12.5px] text-[#5b6b82] leading-[1.55] [text-wrap:pretty]">When a Super Admin approves, Rippling gets it for payroll, the team calendar shows &quot;{data.me.name}, out&quot; on those days, and North Time writes it into your time entries. Nobody copies anything.</div>
         </div>
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className={BTN_WHITE}>Cancel</button>
-        <button type="button" disabled={!ok} onClick={() => onSend({ jobcodeId: f.type!, start: f.a!, end: end!, hoursPerDay: hpd, note: f.note.trim() || undefined })} className={BTN_NAVY}>
+        <button type="button" disabled={!ok} onClick={send} className={BTN_NAVY}>
           <Icon d="M22 2 11 13M22 2l-7 20-4-9-9-4z" size={14} color={BTN_ICON.navy} width={2.4} />Send request
         </button>
       </div>
