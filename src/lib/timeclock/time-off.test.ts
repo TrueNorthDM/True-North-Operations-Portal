@@ -31,6 +31,7 @@ describe('time off (Requests.dc.html 7A to 7E)', () => {
     const r = req({ state: 'approved', rippling: 'refused', ripplingError: 'Sick balance is 0h.', calendar: 'done', entriesWrittenAt: '2026-11-03T14:00:00Z' })
     const s = stepsOf(r, { days: 1, seconds: 8 * 3600, stamp: () => '', canRetry: true })[0]
     expect(s).toMatchObject({ t: 'Rippling refused it: "Sick balance is 0h."', state: 'bad', retry: true })
+    expect(s.sub).toBe('Fix the balance in Rippling, then try again. Payroll does not have this day yet.')
     expect(stepsOf(r, { days: 1, seconds: 8 * 3600, stamp: () => '', canRetry: false })[0].retry).toBe(false)
     expect(checksOf(r)[0]).toEqual({ t: 'Rippling refused it', tone: 'bad', icon: 'x' })
   })

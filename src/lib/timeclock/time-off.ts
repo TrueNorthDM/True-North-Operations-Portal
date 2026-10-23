@@ -104,7 +104,7 @@ export function stepsOf(r: OffRequest, x: { days: number; seconds: number; stamp
   const rip: OffStep = r.rippling === 'sent'
     ? { t: `Sent to Rippling, ${r.ripplingSentAt ? x.stamp(r.ripplingSentAt) : ''}`.replace(/, $/, ''), sub: `${formatDuration(x.seconds)} of ${r.type}, by day, for payroll.`, state: 'ok', retry: false }
     : r.rippling === 'refused'
-      ? { t: `Rippling refused it${r.ripplingError ? `: "${r.ripplingError}"` : ''}`, sub: 'Fix it in Rippling, then try again. Payroll does not have these days yet.', state: 'bad', retry: x.canRetry }
+      ? { t: `Rippling refused it${r.ripplingError ? `: "${r.ripplingError}"` : ''}`, sub: `Fix ${/balance/i.test(r.ripplingError ?? '') ? 'the balance' : 'it'} in Rippling, then try again. Payroll does not have ${x.days === 1 ? 'this day' : 'these days'} yet.`, state: 'bad', retry: x.canRetry }
       : r.rippling === 'queued'
         ? { t: 'Being sent to Rippling', sub: `${formatDuration(x.seconds)} of ${r.type}, by day, for payroll. It goes in the next few minutes.`, state: 'wait', retry: false }
         : { t: 'Waiting for Rippling', sub: 'Rippling is not connected yet. It is sent by itself once a Super Admin connects it in Company settings, Integrations.', state: 'wait', retry: false }
