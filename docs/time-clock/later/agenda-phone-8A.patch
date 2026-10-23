@@ -1,0 +1,190 @@
+diff --git a/src/components/agenda/AgendaView.tsx b/src/components/agenda/AgendaView.tsx
+index 84a81bb..2f15ec7 100644
+--- a/src/components/agenda/AgendaView.tsx
++++ b/src/components/agenda/AgendaView.tsx
+@@ -20,9 +20,10 @@ import { useModal } from '@/components/ui/useModal'
+ import { BTN_ICON } from '@/lib/ui/buttons'
+ import { FieldLabel, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
+ import {
+-  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel,
+-  type AgendaItem, type AgendaKind, type AgendaView as View,
++  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel,
++  type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
+ } from '@/lib/agenda/model'
++import { usePhone } from '@/components/clocky/clock/hooks'
+ import { NewEventDialog, type NewEventSetup, type CreateEvent } from './NewEventDialog'
+ 
+ export interface AgendaData {
+@@ -55,6 +56,9 @@ export function AgendaView({ data, api, linked = true }: { data: AgendaData; api
+   const [card, setCard] = useState<string | null>(data.startCard ?? null)
+   const [creating, setCreating] = useState(!!data.startNew)
+   const [toast, setToast] = useState<ToastState | null>(null)
++  // A phone: the month in dots, and the day picked listed under it (no phone design in the handoff).
++  const phone = usePhone()
++  const [pick, setPick] = useState<string | null>(null)
+ 
+   const go = (v: View, a: string) => {
+     setView(v); setAnchor(a)
+@@ -96,18 +100,18 @@ export function AgendaView({ data, api, linked = true }: { data: AgendaData; api
+       </div>
+ 
+       <div className="flex items-end gap-2.5 flex-wrap">
+-        <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
++        <div className="flex gap-1.5 flex-1 min-w-0 overflow-x-auto md:flex-wrap md:overflow-visible [scrollbar-width:none]">
+           {KINDS.map(k => {
+             const isOn = on.has(k)
+             return (
+               <button key={k} type="button" aria-pressed={isOn} onClick={() => setOn(s => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n })}
+-                className={`inline-flex items-center gap-[7px] border rounded-full px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12px] leading-[normal] cursor-pointer ${isOn ? 'border-[#cbd2da] bg-white text-tn-ink' : 'border-[var(--panel-border)] bg-transparent text-muted'}`}>
++                className={`flex-none whitespace-nowrap inline-flex items-center gap-[7px] border rounded-full px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12px] leading-[normal] cursor-pointer ${isOn ? 'border-[#cbd2da] bg-white text-tn-ink' : 'border-[var(--panel-border)] bg-transparent text-muted'}`}>
+                 <span className="w-[9px] h-[9px] rounded-[3px]" style={{ background: KIND[k].swatch, opacity: isOn ? 1 : 0.35 }} />{KIND[k].label}
+               </button>
+             )
+           })}
+         </div>
+-        <div className="w-[200px] flex flex-col gap-[5px]">
++        <div className="w-full md:w-[200px] flex flex-col gap-[5px]">
+           <FieldLabel>Team</FieldLabel>
+           <Select value={team} onChange={setTeam} searchable fullWidth ariaLabel="Team"
+             options={[{ value: ALL_TEAMS, label: 'All teams' }, ...data.teams.map(t => ({ value: t.id, label: t.name }))]}
+@@ -117,7 +121,9 @@ export function AgendaView({ data, api, linked = true }: { data: AgendaData; api
+ 
+       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_290px] gap-4 items-start">
+         <div className="min-w-0">
+-          {view === 'month' && <Month items={items} anchor={anchor} today={data.today} onOpen={setCard} onMore={d => go('list', d)} />}
++          {view === 'month' && (phone
++            ? <MonthPhone items={items} anchor={anchor} today={data.today} seesType={seesType} pick={pick} onPick={setPick} onOpen={setCard} />
++            : <Month items={items} anchor={anchor} today={data.today} onOpen={setCard} onMore={d => go('list', d)} />)}
+           {view === 'week' && <Week items={items} anchor={anchor} today={data.today} seesType={seesType} onOpen={setCard} />}
+           {view === 'list' && <List items={items} start={viewDays('list', anchor).from} today={data.today} seesType={seesType} onOpen={setCard} />}
+         </div>
+@@ -231,24 +237,74 @@ function List({ items, start, today, seesType, onOpen }: { items: AgendaItem[];
+             <span className={`font-(family-name:--font-display) font-black text-[16px] ${g.today ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{g.title}</span>
+             <span className="text-[12px] text-muted">{g.sub}</span>
+           </div>
+-          <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
+-            {g.rows.map(it => (
+-              <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="w-full flex items-center gap-3 border-0 border-b border-[var(--row-rule)] bg-white px-3.5 py-[11px] cursor-pointer text-left leading-[normal] whitespace-nowrap hover:bg-[#f8f7f3]">
+-                <span className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={15} width={2.2} /></span>
+-                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+-                  <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink overflow-hidden text-ellipsis">{it.label}</span>
+-                  <span className="text-[12px] text-muted overflow-hidden text-ellipsis">{it.sub}</span>
+-                </span>
+-                <span className="text-[12px] text-foreground whitespace-nowrap tabular-nums lining-nums">{it.time}</span>
+-              </button>
+-            ))}
+-          </div>
++          <Rows rows={g.rows} onOpen={onOpen} />
+         </div>
+       ))}
+     </div>
+   )
+ }
+ 
++function Rows({ rows, onOpen }: { rows: ListDay['rows']; onOpen: (id: string) => void }) {
++  return (
++    <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
++      {rows.map(it => (
++        <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="w-full flex items-center gap-3 border-0 border-b border-[var(--row-rule)] bg-white px-3.5 py-[11px] cursor-pointer text-left leading-[normal] whitespace-nowrap hover:bg-[#f8f7f3]">
++          <span className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={15} width={2.2} /></span>
++          <span className="flex-1 min-w-0 flex flex-col gap-0.5">
++            <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink overflow-hidden text-ellipsis">{it.label}</span>
++            <span className="text-[12px] text-muted overflow-hidden text-ellipsis">{it.sub}</span>
++          </span>
++          <span className="text-[12px] text-foreground whitespace-nowrap tabular-nums lining-nums">{it.time}</span>
++        </button>
++      ))}
++    </div>
++  )
++}
++
++// ── 8A on a phone ───────────────────────────────────────────────────────────
++
++/** The month with a dot per kind on each day; the day tapped (today at first) is listed under it. */
++function MonthPhone({ items, anchor, today, seesType, pick, onPick, onOpen }: {
++  items: AgendaItem[]; anchor: string; today: string; seesType: (x: AgendaItem) => boolean
++  pick: string | null; onPick: (day: string) => void; onOpen: (id: string) => void
++}) {
++  const month = anchor.slice(0, 7)
++  const cells = monthCells(items, anchor, today)
++  const sel = pick?.startsWith(month) ? pick : today.startsWith(month) ? today : `${month}-01`
++  const first = listDays(items, sel, today, seesType)[0]
++  const rows = first?.day === sel ? first.rows : []
++  return (
++    <div className="flex flex-col gap-3">
++      <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
++        <div className="grid grid-cols-7 bg-subtle border-b border-[var(--panel-border)]">
++          {DOWS.map(d => <div key={d} className={`py-2 text-center leading-[normal] ${LABEL}`}>{d}</div>)}
++        </div>
++        <div className="grid grid-cols-7">
++          {cells.map(d => {
++            const on = d.day === sel
++            return (
++              <button key={d.day} type="button" disabled={!d.inMonth} aria-pressed={on} aria-label={fday(d.day)} onClick={() => onPick(d.day)}
++                className={`h-[54px] border-0 border-r border-b border-[var(--row-rule)] flex flex-col items-center pt-1.5 gap-1 cursor-pointer disabled:cursor-default ${on ? 'bg-tn-teal-soft' : d.inMonth ? 'bg-white' : 'bg-[#faf9f5]'}`}>
++                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold leading-[normal] tabular-nums lining-nums ${d.today ? 'bg-tn-primary text-[#ffffff]' : d.inMonth ? 'text-tn-ink' : 'text-[#cbd2da]'}`}>{d.n}</span>
++                {d.inMonth && (
++                  <span className="flex gap-[3px]">
++                    {dayKinds(items, d.day).map(k => <span key={k} className="w-[5px] h-[5px] rounded-full" style={{ background: KIND[k].swatch }} />)}
++                  </span>
++                )}
++              </button>
++            )
++          })}
++        </div>
++      </div>
++      <div className="flex items-baseline gap-2 leading-[normal]">
++        <span className={`font-(family-name:--font-display) font-black text-[16px] ${sel === today ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{fday(sel)}</span>
++        {sel === today && <span className="text-[12px] text-muted">Today</span>}
++      </div>
++      {rows.length ? <Rows rows={rows} onOpen={onOpen} /> : <p className="m-0 bg-white border border-[var(--panel-border)] rounded-[14px] px-4 py-3.5 text-[13px] text-muted">Nothing on this day.</p>}
++    </div>
++  )
++}
++
+ // ── Coming up ───────────────────────────────────────────────────────────────
+ 
+ function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string; onOpen: (id: string) => void }) {
+diff --git a/src/lib/agenda/model.test.ts b/src/lib/agenda/model.test.ts
+index b0f9eab..58d32b9 100644
+--- a/src/lib/agenda/model.test.ts
++++ b/src/lib/agenda/model.test.ts
+@@ -1,6 +1,6 @@
+ import { describe, expect, it } from 'vitest'
+ import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
+-import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, filterItems, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
++import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
+ import { daysOf } from './good-news'
+ 
+ // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
+@@ -29,6 +29,14 @@ describe('8A month', () => {
+   })
+ })
+ 
++describe('8A on a phone', () => {
++  it('dots a day with each kind on it, in the chips\' order, PTO on weekdays only', () => {
++    expect(dayKinds(items, '2026-11-13')).toEqual(['event', 'ms'])
++    expect(dayKinds(items, '2026-11-03')).toEqual(['bday'])
++    expect(dayKinds(items, '2026-11-11')).toEqual([])
++  })
++})
++
+ describe('8B week', () => {
+   const wk = weekModel(items, '2026-11-24', TODAY, seesType)
+   it('draws time off across its days, with the type for a Super Admin', () => {
+diff --git a/src/lib/agenda/model.ts b/src/lib/agenda/model.ts
+index e6e65fb..f54fa3b 100644
+--- a/src/lib/agenda/model.ts
++++ b/src/lib/agenda/model.ts
+@@ -253,6 +253,11 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
+ // ── 8C List ───────────────────────────────────────────────────────────────────
+ 
+ export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string }
++/** The kinds on a day, in the chips' order: the dots of the month on a phone. PTO skips weekends, as the list does. */
++export function dayKinds(items: readonly AgendaItem[], d: string): AgendaKind[] {
++  return KINDS.filter(k => items.some(x => x.k === k && covers(x, d) && !(k === 'pto' && isWeekend(d))))
++}
++
+ export interface ListDay { day: string; title: string; sub: string; today: boolean; rows: ListRow[] }
+ 
+ export function listDays(items: readonly AgendaItem[], start: string, today: string, seesType: (x: AgendaItem) => boolean): ListDay[] {

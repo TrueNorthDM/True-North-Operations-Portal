@@ -219,8 +219,8 @@ coverage test).
 
 1. **Rippling:** API access on the current plan, who holds the admin login, and the
    token (entered in Settings > Integrations).
-2. **Google Calendar:** the team calendar and Good News Calendar IDs, and a Google
-   Cloud service account the calendars are shared with.
+2. **Google Calendar:** replaced by the owner's plan of 2026-10-23 (below, "After the
+   handoff review", task B): everyone connects their own Google accounts by OAuth.
 3. **Invoice rates:** hourly invoice rate = the cost rate (`people.internal_rate`)?
    Only one active person has it on staging; Rates & Costs needs them filled.
 4. **Reports to:** 30 of 31 active people have it; confirm it is current.
@@ -233,6 +233,33 @@ coverage test).
    "soon"; it comes back with Chat.
 8. **Job catalogue before the switch-over:** QuickBooks Time's import keeps adding
    new jobs and options, but no longer overwrites what a Super Admin edited here.
+
+### After the handoff review (owner, 2026-10-23)
+
+To do once the screen-by-screen review of the part 2 handoff is finished, in this order
+unless the owner says otherwise.
+
+**A. The Agenda on a phone (built, not shipped).** The handoff has no phone design for
+the Agenda, and the month grid cannot be read at 390px. The owner chose: on a phone the
+month shows each day with one coloured dot per kind (the chips' colours), the day tapped
+(today at first, the 1st in another month) is listed under the calendar like the List
+view, and the filter chips sit in one row that scrolls sideways. Built and checked at
+390px and 1440px (desktop unchanged), then set aside: the change is
+`docs/time-clock/later/agenda-phone-8A.patch` (apply with `git apply`), with a test for
+`dayKinds` in `src/lib/agenda/model.test.ts`.
+
+**B. Google Calendar by OAuth, more than one account per person.**
+- Everyone can connect their own Google Calendar to the portal with Google sign-in
+  (OAuth), and may connect more than one Google account.
+- The Agenda holds True North's official events, PTO, events and milestones, and
+  meetings.
+- The company calendars are connected by a Super Admin. In the create / edit event
+  window, the Super Admin sets who can see each event.
+- Each person does the same with their own connections: chooses which of their Google
+  calendars come in and who can see those events.
+- To confirm when this starts: on 2026-10-22 the owner said everyone sees every event
+  and only Super Admins and Admins edit or delete them; visibility is now set per
+  event. Edit and delete rights stay as decided unless the owner changes them.
 
 ## 9. As built (staging, October 2026)
 
