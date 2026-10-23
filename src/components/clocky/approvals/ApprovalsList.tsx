@@ -4,9 +4,10 @@
  * Approvals, Clocky part 2 (Approvals.dc.html, frames AP, AP-3, AP-2, AP-L,
  * AP-D): one queue, five kinds, three tabs, a filter by kind.
  *
- *   Waiting for you   timesheets open their page (Review); time corrections
- *                     and time off are decided here (Deny asks the reason in
- *                     their card, Approve is direct)
+ *   Waiting for you   timesheets open their page (Review); time corrections,
+ *                     time off, reimbursements and extra hours are decided here
+ *                     (Deny asks the reason in their card, Approve is direct;
+ *                     the row opens the card)
  *   With others       read only: "With Wendy Cacka", "Yours, with Dave Sharpe"
  *   Decided           the pill and who, when, why
  *
@@ -241,9 +242,9 @@ export function ApprovalsList({ initialData, api, initial }: {
                       <>
                         <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setReq({ row: r, deny: true }) }}
                           className={`${BTN_WHITE} text-[#c8323d] hover:border-[#c8323d]`}>{r.request.denyLabel}</button>
-                        <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); setReq({ row: r, deny: false }) }}
+                        <button type="button" disabled={busy} onClick={e => { e.stopPropagation(); void decideRequest(r, 'approve') }}
                           className="inline-flex items-center gap-[7px] border-0 rounded-[10px] px-[15px] py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:bg-[#0a2f6b]">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Review
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{r.request.approveLabel}
                         </button>
                       </>
                     )}
