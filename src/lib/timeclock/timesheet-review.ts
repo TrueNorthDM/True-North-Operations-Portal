@@ -399,7 +399,10 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
     id: s.id, kind: 'timesheet', personId, who, initials: initialsOf(who), team, zoneCity,
     title: route.isContractor ? `${who}, ${period.full}` : `${who}, pay period ${rangeLabel(start, end)}`,
     state: { label: stLabel, tone: stTone },
-    submitted: s.submitted_at ? `Submitted ${stampLabel(s.submitted_at, v.zone)}` : '',
+    // Their own clock too, when it reads differently from the viewer's (Approvals.dc.html 6C-j).
+    submitted: s.submitted_at
+      ? `Submitted ${stampLabel(s.submitted_at, v.zone)}${timeLabel(s.submitted_at, zone) !== timeLabel(s.submitted_at, v.zone) ? ` (${timeLabel(s.submitted_at, zone)} in ${zoneCity})` : ''}`
+      : '',
     steps, result, readOnly,
     cadenceLine: route.isContractor
       ? `Contractor · submits ${period.label.includes(' to ') ? 'every 2 weeks' : 'monthly'}${ratePart} · reports to ${nameOf(route.reportsTo)}`
