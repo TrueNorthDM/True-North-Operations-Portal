@@ -93,7 +93,7 @@ export function InvoiceDoc({ inv, variant }: { inv: InvoiceDocData; variant: 'ca
           <span className="w-16 h-1 rounded-[2px] bg-[#F2C40A]" />
         </div>
         {inv.paid && (
-          <span className={`self-start ${full ? '' : 'mt-2 '}border-2 border-[#0d7a4f] text-[#0d7a4f] rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-black text-[13px] tracking-[.08em] uppercase tabular-nums lining-nums`}>{inv.paid}</span>
+          <span className={`self-start ${full ? '' : 'mt-2 '}border-2 border-[#0d7a4f] text-[#0d7a4f] rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-black text-[13px] tracking-[.08em] uppercase normal-nums`}>{inv.paid}</span>
         )}
         {page && (
           <div className="mt-auto flex justify-between items-center pt-3 border-t border-[var(--row-rule)] text-[9.5px] text-muted">
