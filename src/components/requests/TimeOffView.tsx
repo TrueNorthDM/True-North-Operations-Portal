@@ -108,13 +108,17 @@ export function TimeOffView({ data, api, initial }: {
       {tab === 'mine' && data.employee && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {data.types.filter(t => t.paid).map(t => (
-              <div key={t.id} className="bg-white border border-[var(--panel-border)] rounded-[14px] px-4 py-3.5 flex flex-col gap-1">
-                <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{t.label}</span>
-                <span className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink tabular-nums lining-nums">–</span>
-                <span className="text-[12px] text-muted">From Rippling, once connected</span>
-              </div>
-            ))}
+            {data.types.filter(t => t.paid).map(t => {
+              // What is asked and not decided yet (7B: "24h waiting for approval"); the balance itself comes with Rippling.
+              const waiting = data.mine.filter(r => r.waiting && r.type === t.label).reduce((n, r) => n + r.seconds, 0)
+              return (
+                <div key={t.id} className="bg-white border border-[var(--panel-border)] rounded-[14px] px-4 py-3.5 flex flex-col gap-1">
+                  <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{t.label}</span>
+                  <span className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink tabular-nums lining-nums">–</span>
+                  <span className="text-[12px] text-muted">{waiting ? `${formatDuration(waiting).replace(' 00m', '')} waiting for approval` : 'From Rippling, once connected'}</span>
+                </div>
+              )
+            })}
           </div>
           <div className="text-[12px] text-muted -mt-1.5">Balances come from Rippling once a Super Admin connects it. Company holidays are off for everyone and are not asked for.</div>
         </>

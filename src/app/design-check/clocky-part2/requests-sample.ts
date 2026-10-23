@@ -53,7 +53,7 @@ function row(p: P, me: string, cancelAsked = false): TimeOffRow {
   const refused = req.rippling === 'refused'
   return {
     id: p.id, personId: p.who, who: p.who, initials: p.who.split(' ').map(w => w[0]).join(''), type: p.type, start: p.a, end: p.b,
-    dates: daysText(p.a, p.b), count: countText(days, p.min * 60), checks: checksOf(req), pill, seconds: p.min * 60,
+    dates: daysText(p.a, p.b), count: countText(days, p.min * 60), checks: checksOf(req), pill, seconds: p.min * 60, waiting: req.state === 'pending',
     group: req.state === 'pending' || cancelAsked ? 'pending' : p.a >= TODAY ? 'upcoming' : 'past',
     cancel: p.who !== me ? null : req.state === 'pending' ? 'direct' : !cancelAsked && p.a > TODAY ? 'ask' : null,
     drawer: {

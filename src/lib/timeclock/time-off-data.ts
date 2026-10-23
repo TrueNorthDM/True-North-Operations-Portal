@@ -29,6 +29,8 @@ export interface TimeOffRow {
   /** pending: cancel straight away; approved and still to come: ask a Super Admin. */
   cancel: 'direct' | 'ask' | null
   seconds: number
+  /** Not decided yet: its hours count as waiting for approval on the balance card. */
+  waiting: boolean
   group: 'pending' | 'upcoming' | 'past'
   drawer: { dates: string; note: string | null; steps: OffStep[]; hist: { t: string; when: string; dot: string }[]; stateLabel: string; stateTone: OffTone }
 }
@@ -88,7 +90,7 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
     const refused = req.state === 'approved' && req.rippling === 'refused'
     return {
       id: req.id, personId: req.personId, who: req.who, initials: initials(req.who), type: req.type, start: req.start, end: req.end,
-      dates: daysText(req.start, req.end), count: countText(days, seconds), checks: checksOf(req), pill, seconds, group,
+      dates: daysText(req.start, req.end), count: countText(days, seconds), checks: checksOf(req), pill, seconds, waiting: req.state === 'pending', group,
       cancel: !own ? null : req.state === 'pending' ? 'direct' as const : req.state === 'approved' && upcoming && !req.cancelAskedAt ? 'ask' as const : null,
       drawer: {
         dates: `${daysText(req.start, req.end)}, ${req.end.slice(0, 4)}`, note: req.note,
