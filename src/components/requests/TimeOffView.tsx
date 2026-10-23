@@ -206,8 +206,8 @@ function OffDrawer({ row, me, busy, onClose, onRetry, onCancel }: { row: TimeOff
   const d = row.drawer
   return createPortal(
     <>
-      <div className="fixed inset-x-0 bottom-0 top-[63px] z-[60] bg-[rgba(1,35,88,.10)]" onMouseDown={onClose} />
-      <div ref={box} role="dialog" aria-modal="true" aria-label="Time off request" className="fixed top-[63px] right-0 bottom-0 w-full max-w-[440px] bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[61] flex flex-col leading-[normal]">
+      <div className="fixed inset-x-0 bottom-0 top-[var(--chrome-top)] z-[60] bg-[rgba(1,35,88,.10)]" onMouseDown={onClose} />
+      <div ref={box} role="dialog" aria-modal="true" aria-label="Time off request" className="fixed top-[var(--chrome-top)] right-0 bottom-0 w-full max-w-[441px] bg-white border-l border-[var(--panel-border)] shadow-[-24px_0_50px_-24px_rgba(1,35,88,.35)] z-[61] flex flex-col leading-[normal]">
         <div className="px-[18px] pt-[18px] pb-3.5 border-b border-[var(--row-rule)] flex gap-2.5 items-start">
           <div className="flex-1 min-w-0 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
