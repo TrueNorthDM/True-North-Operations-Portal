@@ -8,7 +8,7 @@ const { buildInvoiceDetail, buildInvoiceList } = await import('./invoices-view')
 type ListSrc = Parameters<typeof buildInvoiceList>[0]
 type Inv = ListSrc['invoices'][number]
 
-const SETTINGS = { invoiceApprovers: ['ao', 'dave'], defaultApprover: 'ao', deputyDirector: 'dave' }
+const SETTINGS = { invoiceApprovers: ['ao', 'dave'], defaultApprover: 'ao', deputyDirector: 'dave', finance: [] }
 const NAMES: Record<string, string> = { ao: 'Arnaldo Oliveira', dave: 'Dave Sharpe', wendy: 'Wendy Cacka', sam: 'Samuel Manzi', jt: 'Justus Tsofa', tina: 'Tina Gennette' }
 const route = (personId: string, reportsTo: string, paysAs: 'hourly' | 'fixed_monthly' | 'fixed_no_timesheet' = 'hourly') => ({ personId, reportsTo, isContractor: true, paysAs })
 const inv = (o: Partial<Inv> & { id: number; person_id: string }): Inv => ({
@@ -27,6 +27,10 @@ function list(o: Partial<ListSrc>) {
 }
 
 describe('the Invoices list (6E)', () => {
+  it('names who marks invoices paid, from Company settings', () => {
+    expect(list({ settings: { ...SETTINGS, finance: ['tina'] } }).financeNames).toBe('Tina Gennette')
+    expect(list({}).financeNames).toBe('')
+  })
   it('says where each invoice is, as the prototype does', () => {
     const l = list({
       invoices: [

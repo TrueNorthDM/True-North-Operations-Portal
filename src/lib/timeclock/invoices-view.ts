@@ -66,6 +66,8 @@ export interface InvoiceList {
   paidMonth: { label: string; ym: string }
   /** Clicking "Paid in <month>" shows the period paid in it (the one before). */
   paidPeriod: string
+  /** "Tina Gennette": who marks invoices paid (Company settings, Invoices). */
+  financeNames: string
 }
 
 type SubState = { id: number; state: string }
@@ -77,14 +79,14 @@ export interface ListSource {
   rates: Map<number, number>
   subs: Map<number, SubState>
   routes: Map<string, RoutePerson>
-  settings: Pick<InvoiceSettings, 'invoiceApprovers' | 'defaultApprover' | 'deputyDirector'>
+  settings: Pick<InvoiceSettings, 'invoiceApprovers' | 'defaultApprover' | 'deputyDirector' | 'finance'>
   person: (id: string) => { name: string; team: string; color: string }
   nameOf: (id: string | null | undefined) => string
   /** Today, YYYY-MM-DD in the viewer's zone. */
   today: string
 }
 
-export function stateKey(i: Pick<InvRow, 'state'>, sub: SubState | undefined, route: RoutePerson | undefined, s: ListSource['settings']): InvoiceStateKey {
+export function stateKey(i: Pick<InvRow, 'state'>, sub: SubState | undefined, route: RoutePerson | undefined, s: Pick<InvoiceSettings, 'invoiceApprovers' | 'defaultApprover' | 'deputyDirector'>): InvoiceStateKey {
   if (i.state === 'paid') return 'paid'
   if (i.state === 'approved') return 'appr'
   if (i.state === 'draft') return 'draft'
@@ -128,6 +130,7 @@ export function buildInvoiceList(src: ListSource): InvoiceList {
     defaultPeriod: periods[0] ?? 'All periods',
     paidMonth: { label: monthLong(`${prev}-01`), ym: prev },
     paidPeriod: monthYear(before),
+    financeNames: src.settings.finance.map(src.nameOf).join(' and '),
   }
 }
 

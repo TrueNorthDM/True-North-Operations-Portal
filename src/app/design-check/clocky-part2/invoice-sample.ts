@@ -48,7 +48,7 @@ const INV: Row[] = [
 ]
 
 const INVAP = ['Arnaldo Oliveira', 'Dave Sharpe']
-const SETTINGS = { invoiceApprovers: INVAP, defaultApprover: 'Arnaldo Oliveira', deputyDirector: 'Dave Sharpe' }
+const SETTINGS = { invoiceApprovers: INVAP, defaultApprover: 'Arnaldo Oliveira', deputyDirector: 'Dave Sharpe', finance: ['Tina Gennette'] }
 const invBy = (n: string) => { const r = REP[n]; return r && INVAP.includes(r) ? r : 'Arnaldo Oliveira' }
 const kindOf = { h: 'hourly', f: 'fixed_monthly', n: 'fixed_no_timesheet' } as const
 

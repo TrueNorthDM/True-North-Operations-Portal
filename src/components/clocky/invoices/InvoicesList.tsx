@@ -211,7 +211,7 @@ export function InvoicesList({ data, api, initial }: {
             </div>
           </div>
           <div className="text-[12px] text-muted leading-[1.5]">
-            {data.finance ? 'Mark paid only after the money left. Paid once: the action goes away after that.' : "Only Finance marks invoices paid. Totals use each person's rate from Rates & Costs."}
+            {data.finance ? 'Mark paid only after the money left. Paid once: the action goes away after that.' : `Only Finance${data.financeNames ? ` (${data.financeNames})` : ''} marks invoices paid. Totals use each person's rate from Rates & Costs.`}
           </div>
         </>
       )}
