@@ -99,6 +99,8 @@ export interface TimesheetReview {
     returnTitle: string
     returnText: string
     canReopen: boolean
+    /** Reopening after Rippling got the hours: the portal cannot take them back there. */
+    reopenWarn: string | null
   }
 }
 
@@ -248,7 +250,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
         { text: `Created by itself for ${period.label} (fixed monthly)`, when: noYear(dateLabel(localDate(i.created_at, v.zone))), dot: '#1E7D7F' },
       ],
       payroll: null,
-      act: { kind: canBoth ? 'invoice' : null, label: 'Approve invoice', barNote: 'No timesheet: approving sends the invoice to Finance. Return sends it back to Draft, with your reason.', overWarn: null, overInfo: null, returnTitle: `Return ${period.label} to ${first}?`, returnText: `${i.number} goes back to Draft. ${first} sees your reason.`, canReopen: false },
+      act: { kind: canBoth ? 'invoice' : null, label: 'Approve invoice', barNote: 'No timesheet: approving sends the invoice to Finance. Return sends it back to Draft, with your reason.', overWarn: null, overInfo: null, returnTitle: `Return ${period.label} to ${first}?`, returnText: `${i.number} goes back to Draft. ${first} sees your reason.`, canReopen: false, reopenWarn: null },
     }
   }
 
@@ -443,6 +445,7 @@ export function buildReview(src: ReviewSource): TimesheetReview | null {
         ? (canHours ? `The timesheet unlocks. ${first} sees your reason, fixes the hours and submits again.` : `The timesheet unlocks and ${money && inv ? inv.number : 'the invoice'} goes back to Draft. ${first} sees your reason, fixes the hours and submits again; the invoice is made again.${canInv ? ` ${nameOf(s.hours_approved_by)} is told too.` : ''}`)
         : `The pay period unlocks and nothing goes to Rippling. ${first} sees your reason, fixes the hours and submits again.`,
       canReopen: v.isSuperAdmin && (s.state === 'approved' || s.state === 'recorded') && inv?.state !== 'paid',
+      reopenWarn: payroll?.st.label === 'Sent to Rippling' ? 'These hours were already sent to Rippling. Reopening here does not change Rippling; fix it there too.' : null,
     },
   }
 }

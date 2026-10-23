@@ -458,6 +458,7 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
           title={modal === 'return' ? a.returnTitle : `Reopen ${r.title.split(', ').slice(1).join(', ')}?`}
           text={modal === 'return' ? a.returnText : `The timesheet unlocks${r.invoice ? ` and ${r.invoice.number} goes back to Draft` : ''}. ${first} sees your reason, fixes the hours and submits again.`}
           action={modal === 'return' ? (r.kind === 'invoice' || !r.isContractor || a.kind === 'hours' ? 'Return' : 'Return both') : 'Reopen'}
+          warn={modal === 'reopen' ? a.reopenWarn : null}
           reason={reason} setReason={setReason} busy={busy} onClose={() => setModal(null)}
           onConfirm={() => void run(() => (modal === 'return' ? api.return(reason.trim()) : api.reopen(reason.trim())), () => setModal(null))} />
       )}
@@ -467,8 +468,8 @@ export function TimesheetReviewPage({ review: r, api, initial }: {
   )
 }
 
-function ReasonDialog({ title, text, action, reason, setReason, busy, onClose, onConfirm }: {
-  title: string; text: string; action: string; reason: string; setReason: (s: string) => void; busy: boolean; onClose: () => void; onConfirm: () => void
+function ReasonDialog({ title, text, action, warn = null, reason, setReason, busy, onClose, onConfirm }: {
+  title: string; text: string; action: string; warn?: string | null; reason: string; setReason: (s: string) => void; busy: boolean; onClose: () => void; onConfirm: () => void
 }) {
   const box = useRef<HTMLDivElement>(null)
   useModal(true, box, onClose)
@@ -478,6 +479,9 @@ function ReasonDialog({ title, text, action, reason, setReason, busy, onClose, o
       <div ref={box} role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-[500px] bg-white rounded-[16px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] p-[22px] flex flex-col gap-3 leading-[normal]">
         <div className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">{title}</div>
         <div className="text-[13.5px] text-foreground leading-[1.55] [text-wrap:pretty]">{text}</div>
+        {warn && (
+          <div role="alert" className="flex gap-2.5 items-start rounded-[11px] bg-[#fdf8e7] border border-[#f0e2a8] px-3.5 py-[11px] text-[13px] text-[#8a6d1a] font-bold leading-[1.5]"><span className="flex-none mt-px flex"><Svg d={ICONS.alert} size={17} stroke="currentColor" sw={2} /></span>{warn}</div>
+        )}
         <label className="flex flex-col gap-[5px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-[#8a6d1a]">Reason (required)</span>
           <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="What needs fixing before it comes back"
