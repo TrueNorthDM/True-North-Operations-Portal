@@ -62,7 +62,9 @@ export function TimeOffView({ data, api, initial }: {
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
 
   const rows = tab === 'all' && data.canAll ? data.everyone : data.mine
-  const groups: [string, TimeOffRow[]][] = ([['Pending', rows.filter(r => r.group === 'pending')], ['Upcoming', rows.filter(r => r.group === 'upcoming')], ['Past', rows.filter(r => r.group === 'past').reverse()]] as [string, TimeOffRow[]][]).filter(g => g[1].length)
+  // Upcoming: the next day off first. Past: the latest first.
+  const byStart = (a: TimeOffRow, b: TimeOffRow) => a.start.localeCompare(b.start) || a.id - b.id
+  const groups: [string, TimeOffRow[]][] = ([['Pending', rows.filter(r => r.group === 'pending')], ['Upcoming', rows.filter(r => r.group === 'upcoming').sort(byStart)], ['Past', rows.filter(r => r.group === 'past').sort(byStart).reverse()]] as [string, TimeOffRow[]][]).filter(g => g[1].length)
   const open = [...data.mine, ...data.everyone].find(r => r.id === drawer) ?? null
   const cx = [...data.mine, ...data.everyone].find(r => r.id === cancelId) ?? null
 
