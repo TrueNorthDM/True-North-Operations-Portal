@@ -28,6 +28,8 @@ export interface CatalogueApi {
   addOption: (i: { fieldId: number; label: string }) => Promise<Done>
 }
 
+// The options table: narrower number columns on a phone, so a code (i7-WEBDVT) stays on one line.
+const OPT_COLS = 'grid-cols-[minmax(0,1fr)_92px_54px_68px] md:grid-cols-[minmax(0,1fr)_120px_110px_90px]'
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13.5px] text-tn-ink bg-white outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] disabled:bg-subtle'
 const SMALL_BTN = 'inline-flex items-center gap-1.5 border border-slate-200 rounded-[9px] px-[11px] py-1.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12px] leading-[normal] cursor-pointer hover:border-tn-teal disabled:opacity-50'
@@ -239,26 +241,26 @@ function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; 
           </div>
           <span className="text-[12px] text-muted whitespace-nowrap">{`${f.options.filter(o => o.shown).length} shown · ${f.options.filter(o => !o.shown).length} hidden`}</span>
         </div>
-        <div className={`grid grid-cols-[minmax(0,1fr)_120px_110px_90px] bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}>
-          <div className="px-4 py-[9px]">Option</div><div className="px-3 py-[9px] text-right">Used in</div><div className="px-3 py-[9px]">Shown</div><div />
+        <div className={`grid ${OPT_COLS} bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}>
+          <div className="px-3 md:px-4 py-[9px]">Option</div><div className="px-2 md:px-3 py-[9px] text-right">Used in</div><div className="px-2 md:px-3 py-[9px]">Shown</div><div />
         </div>
         <div className="max-h-[520px] overflow-auto">
           {f.options.map(o => (
-            <div key={o.id} className="grid grid-cols-[minmax(0,1fr)_120px_110px_90px] items-center border-b border-[var(--row-rule)] text-[13px] leading-[normal]" style={{ opacity: o.shown ? 1 : 0.5 }}>
-              <div className="px-4 py-[7px] min-w-0">
+            <div key={o.id} className={`grid ${OPT_COLS} items-center border-b border-[var(--row-rule)] text-[13px] leading-[normal]`} style={{ opacity: o.shown ? 1 : 0.5 }}>
+              <div className="px-3 md:px-4 py-[7px] min-w-0">
                 {renaming === o.id
                   ? <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit(o.id, o.label)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setRenaming(null) }} aria-label={`Rename ${o.label}`}
                     className="w-full h-8 box-border px-2.5 border border-tn-teal rounded-[8px] font-sans text-[13px] text-tn-ink outline-none shadow-[0_0_0_3px_rgba(30,125,127,.15)]" />
                   : <span className={`text-tn-ink font-semibold ${mono ? 'font-mono' : ''}`}>{o.label}</span>}
               </div>
-              <div className="px-3 py-[7px] text-right text-foreground tabular-nums lining-nums">{`${o.used.toLocaleString('en-US')} entries`}</div>
-              <div className="px-3 py-[7px]">
+              <div className="px-2 md:px-3 py-[7px] text-right text-foreground tabular-nums lining-nums whitespace-nowrap">{`${o.used.toLocaleString('en-US')} entries`}</div>
+              <div className="px-2 md:px-3 py-[7px]">
                 <button type="button" role="switch" aria-checked={o.shown} aria-label={`Show ${o.label}`} disabled={!canEdit} onClick={async () => say(await api.setOptionShown({ optionId: o.id, shown: !o.shown }))}
                   className="w-[34px] h-[19px] border-0 rounded-full relative cursor-pointer p-0 disabled:cursor-default" style={{ background: o.shown ? '#1E7D7F' : '#cbd2da' }}>
                   <span className="absolute top-0.5 w-[15px] h-[15px] rounded-full bg-white shadow-[0_1px_3px_rgba(1,35,88,.3)]" style={{ left: o.shown ? 17 : 2 }} />
                 </button>
               </div>
-              <div className="px-3 py-[7px] text-right">
+              <div className="px-2 md:px-3 py-[7px] text-right">
                 {canEdit && <button type="button" onClick={() => { setRenaming(o.id); setDraft(o.label) }} className="border-0 bg-transparent cursor-pointer text-[12.5px] font-bold text-tn-teal p-0">Rename</button>}
               </div>
             </div>
