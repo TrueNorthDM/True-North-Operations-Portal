@@ -54,16 +54,17 @@ export function WhichJobView({ groups, codes }: { groups: GuideGroup[]; codes: s
         <div className="flex flex-col gap-3.5">
           {shown.map(g => (
             <div key={g.folder} className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
-              <div className="flex items-center gap-2.5 px-4 py-3 bg-subtle border-b border-[var(--panel-border)] leading-[normal]">
+              {/* On a phone the folder's line goes under its name, and each job's line under the job and its label. */}
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-x-2.5 gap-y-1 px-4 py-3 bg-subtle border-b border-[var(--panel-border)] leading-[normal]">
                 <Icon d={FOLDER} size={16} color="#8593a4" width={1.9} className="flex-none" />
                 <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{g.folder}</span>
-                <span className="text-[12.5px] text-foreground flex-1 min-w-0">{g.use}</span>
+                <span className="text-[12.5px] text-foreground basis-full md:basis-auto md:flex-1 min-w-0 leading-[1.45]">{g.use}</span>
               </div>
               {g.rows.map(r => (
-                <div key={r.id} className="grid grid-cols-[200px_minmax(0,1fr)_120px] gap-3.5 items-start px-4 py-[11px] border-b border-[var(--row-rule)] text-[13px] leading-[normal]">
+                <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[200px_minmax(0,1fr)_120px] gap-x-3.5 gap-y-1 md:gap-y-3.5 items-start px-4 py-[11px] border-b border-[var(--row-rule)] text-[13px] leading-[normal]">
                   <span className="font-(family-name:--font-display) font-bold text-tn-ink">{r.name}</span>
-                  <span className="text-foreground leading-[1.5] [text-wrap:pretty]">{r.use}</span>
-                  <span className={`justify-self-end text-[10.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap ${r.billable ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{r.billable ? 'Billable' : 'Not billable'}</span>
+                  <span className="col-span-2 row-start-2 md:col-span-1 md:row-start-auto text-foreground leading-[1.5] [text-wrap:pretty]">{r.use}</span>
+                  <span className={`col-start-2 row-start-1 md:col-start-auto md:row-start-auto justify-self-end text-[10.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap ${r.billable ? 'bg-[#e6f6ee] text-[#0d7a4f]' : 'bg-[#f1f3f6] text-[#5b6b82]'}`}>{r.billable ? 'Billable' : 'Not billable'}</span>
                 </div>
               ))}
             </div>
