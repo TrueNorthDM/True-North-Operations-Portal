@@ -120,8 +120,11 @@ export function NewEventDialog({ setup, api, onClose, onDone }: { setup: NewEven
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <DayField label={f.when === 'range' ? 'First day' : 'Date'} value={f.date} onChange={v => set('date', v)} />
+      {/* On a phone the date takes its own line, From and To side by side under it. */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className={`min-w-0 ${f.when === 'time' ? 'col-span-2 md:col-span-1' : ''}`}>
+          <DayField label={f.when === 'range' ? 'First day' : 'Date'} value={f.date} onChange={v => set('date', v)} />
+        </div>
         {f.when === 'time' && <>
           <LabeledSelect label="From" value={f.from} onChange={v => set('from', v)} options={TIMES} />
           <LabeledSelect label="To" value={f.to} onChange={v => set('to', v)} options={TIMES} />
@@ -130,7 +133,7 @@ export function NewEventDialog({ setup, api, onClose, onDone }: { setup: NewEven
           <DayField label="Last day" value={f.end} min={f.date} onChange={v => set('end', v)} />
         )}
       </div>
-      <div className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-3">
         <LabeledSelect label="Time zone" value={f.zone} onChange={v => set('zone', v)} options={EVENT_ZONES.map(z => ({ value: z.zone, label: z.label }))} />
         <label className="flex flex-col gap-[5px] min-w-0">
           <FieldLabel>Place or video link</FieldLabel>
