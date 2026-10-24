@@ -28,7 +28,7 @@ export interface RmbDocApi {
 const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
 const COLS = 'grid grid-cols-[100px_110px_minmax(0,1fr)_90px_100px] gap-2.5'
 
-export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi; initial?: { pdf?: DocSheetData; pay?: boolean } }) {
+export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi; initial?: { pdf?: DocSheetData; pay?: boolean; /** The design check: no receipt files behind it. */ sample?: boolean } }) {
   const router = useRouter()
   const [pdf, setPdf] = useState<DocSheetData | null>(initial?.pdf ?? null)
   const [pay, setPay] = useState(!!initial?.pay && d.canPay)
@@ -105,7 +105,7 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
         </div>
       </div>
 
-      {pdf && <DocPdfModal kind="rmb" id={d.id} doc={pdf} onClose={() => setPdf(null)} onDownloaded={name => say({ text: `Downloaded ${name}` })} />}
+      {pdf && <DocPdfModal kind="rmb" id={d.id} doc={pdf} files={!initial?.sample} onClose={() => setPdf(null)} onDownloaded={name => say({ text: `Downloaded ${name}` })} />}
       {pay && <MarkPaidDialog target={{ id: d.id, number: d.number, ...d.pay }} onClose={() => setPay(false)} save={api.markRmbPaid}
         refPlaceholder="e.g. ACH-20261103" notePlaceholder="" note={null}
         onSaved={t => { setPay(false); say({ text: t }); router.refresh() }} />}

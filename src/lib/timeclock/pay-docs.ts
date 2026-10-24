@@ -14,6 +14,8 @@ import { money, moneyTotal } from './invoice-doc'
 import { loadInvoiceSettings, seesMoney } from './pay-terms'
 import { addDays, periodLabel } from './periods'
 import { formatDuration } from './rounding'
+import { receiptShow, type DocReceipt } from './receipt-pages'
+import { pdfPageCount, receiptBytes } from './receipt-files'
 
 export type DocKind = 'payroll' | 'rmb'
 
@@ -32,6 +34,8 @@ export interface DocSheetData {
   stamp: string | null
   /** The file Download saves. */
   file: string
+  /** A reimbursement document's receipts, a page or more each after it (9D-p); none on a payroll summary. */
+  receipts: DocReceipt[]
 }
 
 // ── Payroll summary ─────────────────────────────────────────────────────────
@@ -55,6 +59,7 @@ export function payrollDocOf(x: {
     totalLabel: 'Paid hours', total: formatDuration(worked + off),
     stamp: x.sentAt ? `Sent to Rippling ${x.sentAt.replace(/, \d+:\d+ [AP]M$/, '')}` : null,
     file: `payroll-${x.name.split(' ')[0].toLowerCase()}-${p.label.toLowerCase().replace(/ /g, '-')}.pdf`,
+    receipts: [],
   }
 }
 
@@ -62,7 +67,7 @@ export function payrollDocOf(x: {
 
 export function rmbDocOf(x: {
   number: string; name: string; team: string; createdOn: string
-  items: { spentOn: string; category: string; purpose: string; amount: number; currency?: string }[]
+  items: { spentOn: string; category: string; purpose: string; amount: number; currency?: string; receipt?: Omit<DocReceipt, 'line'> }[]
   billing: { name: string; address: string }
   paid: { on: string; ref: string | null } | null
 }): DocSheetData {
@@ -79,6 +84,7 @@ export function rmbDocOf(x: {
     totalLabel: 'Total', total: moneyTotal(x.items),
     stamp: x.paid ? `Paid ${dateLabel(x.paid.on)}${x.paid.ref ? ` · ${x.paid.ref}` : ''}` : null,
     file: `${x.number}.pdf`,
+    receipts: x.items.flatMap(i => (i.receipt ? [{ ...i.receipt, line: `${i.purpose}, ${money(i.amount, i.currency)}` }] : [])),
   }
 }
 
@@ -130,21 +136,31 @@ export async function loadPayrollDoc(v: Viewer, submissionId: number, zone: stri
   })
 }
 
-export async function loadRmbDoc(v: Viewer, documentId: number, zone: string): Promise<DocSheetData | null> {
+/** `keep`: the PDF receipts' bytes by reimbursement id, for the PDF maker to draw. */
+export async function loadRmbDoc(v: Viewer, documentId: number, zone: string, keep?: Map<number, Uint8Array>): Promise<DocSheetData | null> {
   const c = db()
   const { data: d } = await c.from('reimbursement_documents').select('id, number, person_id, state, paid_on, paid_ref, created_at').eq('id', documentId).maybeSingle()
   if (!d) return null
   const settings = await loadInvoiceSettings()
   if (!seesMoney(v, d.person_id, settings)) return null
   const [{ data: items }, dir] = await Promise.all([
-    c.from('reimbursements').select('spent_on, category, purpose, amount, currency').eq('document_id', d.id).order('spent_on'),
+    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, receipt_path, receipt_name').eq('document_id', d.id).order('spent_on').order('id'),
     loadDirectory(),
   ])
   const person = dir.people.get(d.person_id)
+  // A PDF receipt brings its own pages; one that cannot be read keeps one page, with the line saying where to open it.
+  const receipts = await Promise.all((items ?? []).map(async i => {
+    const show = receiptShow(i.receipt_path)
+    if (show !== 'pdf') return { id: i.id, file: i.receipt_name || 'receipt', show, pages: 1 }
+    const bytes = await receiptBytes(i.receipt_path)
+    const pages = bytes && await pdfPageCount(bytes)
+    if (bytes && pages) keep?.set(i.id, bytes)
+    return { id: i.id, file: i.receipt_name || 'receipt.pdf', show: pages ? show : 'none' as const, pages: pages ?? 1 }
+  }))
   return rmbDocOf({
     number: d.number, name: person?.name ?? 'Someone', team: (person?.teamId && dir.teams.get(person.teamId)?.name) || 'No team',
     createdOn: localDate(d.created_at, zone),
-    items: (items ?? []).map(i => ({ spentOn: i.spent_on, category: i.category, purpose: i.purpose, amount: Number(i.amount), currency: i.currency })),
+    items: (items ?? []).map((i, k) => ({ spentOn: i.spent_on, category: i.category, purpose: i.purpose, amount: Number(i.amount), currency: i.currency, receipt: receipts[k] })),
     billing: { name: settings.billingName ?? 'True North Digital Marketing', address: settings.billingAddress ?? '' },
     paid: d.state === 'paid' && d.paid_on ? { on: d.paid_on, ref: d.paid_ref } : null,
   })

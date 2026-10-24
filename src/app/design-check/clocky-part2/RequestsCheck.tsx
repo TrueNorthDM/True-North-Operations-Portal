@@ -40,7 +40,7 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
   }
   if (doc) {
     return <RmbDocView key={frame} d={doc} api={{ getPayDoc: async () => (sheet ? { ok: true, doc: sheet } : { ok: false, error: 'No sheet.' }), markRmbPaid: async () => ({ ok: true, toast: 'RMB-2026-0031 marked paid. Wendy Cacka sees it in the bell.' }) }}
-      initial={frame === '9Dp' ? { pdf: sheet } : undefined} />
+      initial={frame === '9Dp' ? { pdf: sheet, sample: true } : { sample: true }} />
   }
   if (extra) {
     return <ExtraHoursView key={frame} data={extra} api={{ askExtraHours: async () => ({ ok: true, toast: 'Sent. A Super Admin decides on Approvals.' }) }}

@@ -1,19 +1,34 @@
 /**
  * GET /clocky-hours/documents/<payroll|rmb>/<id>/pdf: a payroll summary or a
  * reimbursement document as a PDF, the one the preview window shows. The
- * print page decides who may have it (lib/timeclock/pay-docs.ts).
+ * print page decides who may have it (lib/timeclock/pay-docs.ts). A
+ * reimbursement document brings its receipts as pages (9D-p).
  */
 
 import { requireSurface } from '@/lib/access/resolve'
 import { sheetPdf } from '@/lib/pdf/sheet-pdf'
+import { viewerFor } from '@/lib/timeclock/clocky-context'
+import { loadRmbDoc } from '@/lib/timeclock/pay-docs'
+import { drawPdfReceipts } from '@/lib/timeclock/receipt-files'
+import { pageLabels } from '@/lib/timeclock/receipt-pages'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request, { params }: { params: Promise<{ kind: string; id: string }> }) {
-  await requireSurface('clocky-hours')
+  const access = await requireSurface('clocky-hours')
   const { kind, id } = await params
-  if ((kind !== 'payroll' && kind !== 'rmb') || !/^\d+$/.test(id)) return new Response('No such document.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
-  return sheetPdf(request, `/clocky-hours/documents/${kind}/${id}/print`, title => `${title}.pdf`)
+  const missing = (body: string) => new Response(body, { status: 404, headers: { 'Content-Type': 'text/plain' } })
+  if ((kind !== 'payroll' && kind !== 'rmb') || !/^\d+$/.test(id)) return missing('No such document.')
+  const print = `/clocky-hours/documents/${kind}/${id}/print`
+  if (kind === 'payroll') return sheetPdf(request, print, title => `${title}.pdf`)
+  // The same money rule as the print page; the PDF receipts' bytes come back with it.
+  const files = new Map<number, Uint8Array>()
+  const doc = await loadRmbDoc(access, Number(id), (await viewerFor(access))?.zone ?? 'America/New_York', files)
+  if (!doc) return missing('That document is not open to you.')
+  return sheetPdf(request, print, title => `${title}.pdf`, {
+    width: 620, landscape: false,
+    paged: { labels: n => pageLabels(n, doc.receipts), draw: (pdf, boxes, pxToPt) => drawPdfReceipts(pdf, boxes, files, pxToPt) },
+  })
 }

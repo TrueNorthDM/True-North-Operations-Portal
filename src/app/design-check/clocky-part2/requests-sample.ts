@@ -133,7 +133,10 @@ export function rmbSheet(): DocSheetData {
   return rmbDocOf({
     number: 'RMB-2026-0031', name: 'Wendy Cacka', team: 'Web', createdOn: '2026-11-03', paid: null,
     billing: { name: 'True North Digital Marketing LLC', address: 'PO Box 2096, New York, NY 10163\nUnited States' },
-    items: [{ spentOn: '2026-10-19', category: 'Equipment', purpose: 'USB-C hub for a second monitor', amount: 12.99 }, { spentOn: '2026-10-30', category: 'Software', purpose: 'Figma Professional, Oct to Dec', amount: 45 }],
+    items: [
+      { spentOn: '2026-10-19', category: 'Equipment', purpose: 'USB-C hub for a second monitor', amount: 12.99, receipt: { id: 1, file: 'usb-hub-receipt.jpg', show: 'image', pages: 1 } },
+      { spentOn: '2026-10-30', category: 'Software', purpose: 'Figma Professional, Oct to Dec', amount: 45, receipt: { id: 2, file: 'figma-receipt-oct.pdf', show: 'pdf', pages: 1 } },
+    ],
   })
 }
 
