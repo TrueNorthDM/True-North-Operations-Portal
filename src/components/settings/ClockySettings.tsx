@@ -19,6 +19,7 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import type { IntegrationsData, InvoiceSettingsData } from '@/lib/timeclock/company-settings'
 import type { ReminderKey } from '@/lib/timeclock/reminder-kinds'
 import { REMINDERS } from '@/lib/timeclock/reminder-kinds'
+import { openDrawer } from '@/components/NotificationButton'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
@@ -277,17 +278,24 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
     <div className="flex flex-col gap-[18px]">
       {!canEdit && <ReadOnly />}
       <div className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
-        <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)]"><span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Timesheet reminders</span></div>
+        <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex items-center justify-between gap-2.5 flex-wrap">
+          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Timesheet reminders</span>
+          {/* The bell's Tools tab, where these lines land (Company Settings.dc.html 13C). */}
+          <button type="button" onClick={() => openDrawer('bell', 'tools')} className="inline-flex items-center gap-[7px] border border-slate-200 rounded-[10px] px-[13px] py-2 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] cursor-pointer hover:border-tn-teal">
+            <Icon d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" size={14} color="#1E9E6A" width={2.2} />See them in the bell
+          </button>
+        </div>
         {REMINDERS.map(r => (
-          <div key={r.key} className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_60px] gap-3.5 items-center px-[18px] py-3.5 border-b border-[var(--row-rule)]" style={{ opacity: state[r.key] ? 1 : 0.5 }}>
+          // On a phone: the line and its switch on top, who and when under it, one each.
+          <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_60px] gap-x-3.5 gap-y-1 md:gap-y-3.5 items-center px-[18px] py-3.5 border-b border-[var(--row-rule)]" style={{ opacity: state[r.key] ? 1 : 0.5 }}>
             <div className="flex gap-2.5 items-start min-w-0">
               <span className="w-[30px] h-[30px] rounded-[9px] bg-[var(--warn-bg)] text-[#8a6d1a] flex items-center justify-center flex-none"><Icon d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" size={15} /></span>
               <span className="text-[13.5px] text-tn-ink font-bold leading-[1.4]">&quot;{r.text}&quot;</span>
             </div>
-            <span className="text-[12.5px] text-foreground leading-[1.45]">{r.who}</span>
-            <span className="text-[12.5px] text-foreground leading-[1.45]">{r.when}</span>
+            <span className="max-md:col-span-2 max-md:row-start-2 max-md:pl-10 text-[12.5px] text-foreground leading-[1.45]">{r.who}</span>
+            <span className="max-md:col-span-2 max-md:row-start-3 max-md:pl-10 text-[12.5px] text-muted md:text-foreground leading-[1.45]">{r.when}</span>
             <button type="button" role="switch" aria-checked={state[r.key]} aria-label={r.text} disabled={!canEdit} onClick={() => void toggle(r.key)}
-              className="justify-self-end w-9 h-5 border-0 rounded-full relative cursor-pointer p-0 disabled:cursor-default" style={{ background: state[r.key] ? '#1E7D7F' : '#cbd2da' }}>
+              className="max-md:col-start-2 max-md:row-start-1 justify-self-end w-9 h-5 border-0 rounded-full relative cursor-pointer p-0 disabled:cursor-default" style={{ background: state[r.key] ? '#1E7D7F' : '#cbd2da' }}>
               <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-[0_1px_3px_rgba(1,35,88,.3)]" style={{ left: state[r.key] ? 18 : 2 }} />
             </button>
           </div>
@@ -298,12 +306,13 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">New bell lines</span>
           <span className="text-[12.5px] text-muted">Bell only. The one email North Time sends is still &quot;Your clock stopped&quot;.</span>
         </div>
-        <div className={`grid grid-cols-[150px_minmax(0,1.4fr)_minmax(0,1fr)] bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}><div className="px-[18px] py-[9px]">Area</div><div className="px-3 py-[9px]">Line</div><div className="px-3 py-[9px]">Goes to</div></div>
+        {/* On a phone each line is a short block: the area, the line, who it goes to. */}
+        <div className={`hidden md:grid grid-cols-[150px_minmax(0,1.4fr)_minmax(0,1fr)] bg-subtle border-b border-[var(--panel-border)] ${LABEL}`}><div className="px-[18px] py-[9px]">Area</div><div className="px-3 py-[9px]">Line</div><div className="px-3 py-[9px]">Goes to</div></div>
         {LINES.map(([area, line, to]) => (
-          <div key={`${area}${line}`} className="grid grid-cols-[150px_minmax(0,1.4fr)_minmax(0,1fr)] items-center border-b border-[var(--row-rule)] text-[12.5px]">
-            <div className="px-[18px] py-[9px] text-tn-teal font-(family-name:--font-display) font-extrabold">{area}</div>
-            <div className="px-3 py-[9px] text-tn-ink font-semibold leading-[1.45]">{line}</div>
-            <div className={`px-3 py-[9px] leading-[1.45] ${/red/.test(to) ? 'text-[#c8323d]' : 'text-foreground'}`}>{to}</div>
+          <div key={`${area}${line}`} className="grid grid-cols-1 md:grid-cols-[150px_minmax(0,1.4fr)_minmax(0,1fr)] items-center border-b border-[var(--row-rule)] text-[12.5px] max-md:px-[18px] max-md:py-2.5 max-md:gap-0.5">
+            <div className="md:px-[18px] md:py-[9px] text-tn-teal font-(family-name:--font-display) font-extrabold">{area}</div>
+            <div className="md:px-3 md:py-[9px] text-tn-ink font-semibold leading-[1.45]">{line}</div>
+            <div className={`md:px-3 md:py-[9px] leading-[1.45] ${/red/.test(to) ? 'text-[#c8323d]' : 'text-foreground'}`}>{to}</div>
           </div>
         ))}
       </div>

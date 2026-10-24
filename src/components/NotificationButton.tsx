@@ -24,6 +24,12 @@ function storedTab(kind: DrawerKind): string | null {
   try { return window.localStorage.getItem(TAB_KEY(kind)) } catch { return null }
 }
 
+/** Opens a drawer from elsewhere on the page ("See them in the bell", Company settings > Reminders, 13C), on a given tab. */
+export const OPEN_DRAWER = 'tn:open-drawer'
+export function openDrawer(kind: DrawerKind, tab?: string) {
+  window.dispatchEvent(new CustomEvent(OPEN_DRAWER, { detail: { kind, tab } }))
+}
+
 const BADGE: Record<DrawerKind, string> = {
   bell: 'bg-tn-primary text-[#F2C40A]',
   inbox: 'bg-tn-teal text-[#ffffff]',
@@ -64,6 +70,17 @@ export function NotificationButton({ kind, items = {}, startOpen = false, keepGo
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
+
+  useEffect(() => {
+    function onOpen(e: Event) {
+      const x = (e as CustomEvent<{ kind: DrawerKind; tab?: string }>).detail
+      if (x?.kind !== kind) return
+      if (x.tab && d.tabs.some(t => t.key === x.tab)) setTab(x.tab)
+      setOpen(true)
+    }
+    window.addEventListener(OPEN_DRAWER, onOpen)
+    return () => window.removeEventListener(OPEN_DRAWER, onOpen)
+  }, [kind, d.tabs])
 
   const toggle = () => {
     if (!open) {
