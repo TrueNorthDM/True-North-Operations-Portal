@@ -75,6 +75,7 @@ describe('8C list and Coming up', () => {
     const days = listDays(items, TODAY, TODAY, seesType)
     expect(days[0]).toMatchObject({ title: 'Tue, Nov 3', sub: 'Today' })
     expect(days[0].rows[0]).toMatchObject({ label: "Joy Inyele's birthday", sub: 'Birthday', time: 'All day' })
+    expect(days.find(d => d.day === '2026-11-09')!.rows.find(r => r.label.startsWith('Justus'))!.sub).toBe('Anniversary')
     expect(days.find(d => d.day === '2026-11-06')!.rows[0].sub).toBe('Vacation · Fri, Nov 6')
   })
   it('lists who is out, celebrations and events', () => {

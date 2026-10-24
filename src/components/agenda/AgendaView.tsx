@@ -247,8 +247,9 @@ function List({ items, start, today, seesType, onOpen }: { items: AgendaItem[]; 
   return (
     <div className="flex flex-col gap-3">
       {days.map(g => (
-        <div key={g.day} className="grid grid-cols-[120px_minmax(0,1fr)] gap-3.5 items-start">
-          <div className="flex flex-col pt-2.5 leading-[normal]">
+        <div key={g.day} className="grid grid-cols-1 md:grid-cols-[120px_minmax(0,1fr)] gap-1.5 md:gap-3.5 items-start">
+          {/* On a phone the day sits above its rows, so the names have the width. */}
+          <div className="flex md:flex-col items-baseline md:items-stretch gap-2 md:gap-0 md:pt-2.5 leading-[normal]">
             <span className={`font-(family-name:--font-display) font-black text-[16px] ${g.today ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{g.title}</span>
             <span className="text-[12px] text-muted">{g.sub}</span>
           </div>

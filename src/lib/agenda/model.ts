@@ -298,7 +298,7 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
           : x.k === 'ms' ? `Milestone${x.client ? ` · ${x.client}` : ''}`
           : x.k === 'gn' ? 'Good News Calendar'
           : x.k === 'hol' ? (x.country && x.country !== 'US' ? `National holiday · ${countryName(x.country)}` : 'Company holiday')
-          : KIND[x.k].label.replace(/s$/, '')
+          : x.k === 'anni' ? 'Anniversary' : KIND[x.k].label.replace(/s$/, '')
         return {
           id: x.id, label: label(x), sub, time: x.s != null ? hourLabel(x.s) : 'All day',
           bg: company ? '#012358' : L.bg, fg: company ? '#F2C40A' : L.fg,
