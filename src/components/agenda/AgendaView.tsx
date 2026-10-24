@@ -20,10 +20,13 @@ import { useModal } from '@/components/ui/useModal'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import { FieldLabel, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
-  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel,
+  ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
 } from '@/lib/agenda/model'
 import { usePhone } from '@/components/clocky/clock/hooks'
+import { addDays } from '@/lib/timeclock/periods'
+import { TenureBadge } from '@/components/TenureBadge'
+import { yearColor } from '@/lib/tenure'
 import { NewEventDialog, type NewEventSetup, type CreateEvent } from './NewEventDialog'
 
 export interface AgendaData {
@@ -44,6 +47,11 @@ export interface AgendaData {
 
 const DOWS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
+/** The week number (owner, 2026-10-23): not in the handoff. */
+const WEEK_TAG = 'rounded-[6px] px-2 py-[3px] bg-tn-teal-soft text-tn-teal font-(family-name:--font-display) font-extrabold text-[11.5px] leading-[normal] whitespace-nowrap tabular-nums lining-nums'
+/** A work anniversary's HR badge (TenureBadge), compact in the small chips. */
+const Anni = ({ yrs, size, compact = false }: { yrs: number; size: number; compact?: boolean }) =>
+  <TenureBadge milestone={{ kind: 'year', value: yrs, color: yearColor(yrs) }} size={size} compact={compact} />
 const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
 
 export function AgendaView({ data, api, linked = true }: { data: AgendaData; api: CreateEvent; linked?: boolean }) {
@@ -91,6 +99,7 @@ export function AgendaView({ data, api, linked = true }: { data: AgendaData; api
             <button type="button" aria-label="Next" onClick={() => go(view, stepAnchor(view, anchor, 1))} className="w-[34px] h-[34px] border-0 rounded-[9px] bg-transparent cursor-pointer text-tn-ink flex items-center justify-center hover:bg-white"><Icon d="M9 6l6 6-6 6" size={17} width={2.2} /></button>
           </div>
           <span className="font-(family-name:--font-display) font-extrabold text-[16px] leading-[normal] text-tn-ink min-w-[150px] whitespace-nowrap">{rangeTitle(view, anchor)}</span>
+          {view === 'week' && <span className={WEEK_TAG}>Week {weekNumber(anchor)}</span>}
           {data.create && (
             <button type="button" onClick={() => setCreating(true)} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-4 py-2.5 bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer shadow-[0_6px_16px_-8px_rgba(1,35,88,.55)] hover:bg-[#0a2f6b]">
               <Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{data.create.mode === 'team' ? 'New team event' : 'New event'}
@@ -124,7 +133,9 @@ export function AgendaView({ data, api, linked = true }: { data: AgendaData; api
           {view === 'month' && (phone
             ? <MonthPhone items={items} anchor={anchor} today={data.today} seesType={seesType} pick={pick} onPick={setPick} onOpen={setCard} />
             : <Month items={items} anchor={anchor} today={data.today} onOpen={setCard} onMore={d => go('list', d)} />)}
-          {view === 'week' && <Week items={items} anchor={anchor} today={data.today} seesType={seesType} onOpen={setCard} />}
+          {view === 'week' && (phone
+            ? <WeekPhone items={items} anchor={anchor} today={data.today} seesType={seesType} onOpen={setCard} />
+            : <Week items={items} anchor={anchor} today={data.today} seesType={seesType} onOpen={setCard} />)}
           {view === 'list' && <List items={items} start={viewDays('list', anchor).from} today={data.today} seesType={seesType} onOpen={setCard} />}
         </div>
         <ComingUp items={items} today={data.today} onOpen={setCard} />
@@ -146,11 +157,14 @@ function Month({ items, anchor, today, onOpen, onMore }: { items: AgendaItem[]; 
   const cells = monthCells(items, anchor, today)
   return (
     <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
-      <div className="grid grid-cols-7 bg-subtle border-b border-[var(--panel-border)]">
+      <div className="grid grid-cols-[34px_repeat(7,minmax(0,1fr))] bg-subtle border-b border-[var(--panel-border)]">
+        <div className={`px-2.5 py-2 leading-[normal] ${LABEL}`}>W</div>
         {DOWS.map(d => <div key={d} className={`px-2.5 py-2 leading-[normal] ${LABEL}`}>{d}</div>)}
       </div>
-      <div className="grid grid-cols-7">
-        {cells.map(d => (
+      <div className="grid grid-cols-[34px_repeat(7,minmax(0,1fr))]">
+        {cells.map((d, i) => [
+          i % 7 === 0 && <div key={`w${d.day}`} className="box-border border-r border-b border-[var(--row-rule)] pt-[11px] text-center text-[11px] font-bold leading-[normal] text-tn-teal tabular-nums lining-nums">{weekNumber(d.day)}</div>,
+          (
           <div key={d.day} className={`min-h-[124px] box-border border-r border-b border-[var(--row-rule)] pt-1.5 px-1.5 pb-2 flex flex-col gap-[3px] min-w-0 ${d.inMonth ? 'bg-white' : 'bg-[#faf9f5]'}`}>
             <div className="flex items-center justify-between gap-1 min-h-6">
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold leading-[normal] tabular-nums lining-nums ${d.today ? 'bg-tn-primary text-[#ffffff]' : d.inMonth ? 'text-tn-ink' : 'text-[#cbd2da]'}`}>{d.n}</span>
@@ -164,13 +178,14 @@ function Month({ items, anchor, today, onOpen, onMore }: { items: AgendaItem[]; 
               <button key={it.id} type="button" title={it.title} onClick={() => onOpen(it.id)}
                 className="flex items-center gap-[5px] border-0 rounded-[6px] px-1.5 py-[3px] font-sans text-[11.5px] font-semibold leading-[normal] cursor-pointer text-left min-w-0"
                 style={{ background: it.look.bg, color: it.look.fg }}>
-                {it.look.d && <Icon d={it.look.d} size={11} width={2.4} className="flex-none" />}
+                {it.look.yrs ? <Anni yrs={it.look.yrs} size={14} compact /> : it.look.flag ? <span className="flex-none text-[11px] leading-none">{it.look.flag}</span> : it.look.d && <Icon d={it.look.d} size={11} width={2.4} className="flex-none" />}
                 <span className="overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
               </button>
             ))}
             {d.more > 0 && <button type="button" onClick={() => onMore(d.day)} className="border-0 bg-transparent px-1.5 py-px text-left text-[11.5px] font-bold leading-[normal] text-tn-teal cursor-pointer">+{d.more} more</button>}
           </div>
-        ))}
+          ),
+        ])}
       </div>
     </div>
   )
@@ -197,7 +212,7 @@ function Week({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[];
           <button key={b.id} type="button" title={b.title} onClick={() => onOpen(b.id)}
             className="mx-1 border-0 rounded-[7px] px-[9px] text-[12px] font-bold leading-[normal] flex items-center gap-1.5 cursor-pointer min-w-0 text-left"
             style={{ gridColumn: b.col, gridRow: b.row, background: b.look.bg, color: b.look.fg }}>
-            {b.look.d && <Icon d={b.look.d} size={12} width={2.4} className="flex-none" />}
+            {b.look.yrs ? <Anni yrs={b.look.yrs} size={16} compact /> : b.look.flag ? <span className="flex-none text-[12px] leading-none">{b.look.flag}</span> : b.look.d && <Icon d={b.look.d} size={12} width={2.4} className="flex-none" />}
             <span className="overflow-hidden text-ellipsis whitespace-nowrap">{b.label}</span>
           </button>
         ))}
@@ -249,7 +264,7 @@ function Rows({ rows, onOpen }: { rows: ListDay['rows']; onOpen: (id: string) =>
     <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
       {rows.map(it => (
         <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="w-full flex items-center gap-3 border-0 border-b border-[var(--row-rule)] bg-white px-3.5 py-[11px] cursor-pointer text-left leading-[normal] whitespace-nowrap hover:bg-[#f8f7f3]">
-          <span className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}><Icon d={it.d} size={15} width={2.2} /></span>
+          {it.yrs ? <Anni yrs={it.yrs} size={30} compact /> : <span className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center flex-none" style={{ background: it.bg, color: it.fg }}>{it.flag ? <span className="text-[16px] leading-none">{it.flag}</span> : <Icon d={it.d} size={15} width={2.2} />}</span>}
           <span className="flex-1 min-w-0 flex flex-col gap-0.5">
             <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink overflow-hidden text-ellipsis">{it.label}</span>
             <span className="text-[12px] text-muted overflow-hidden text-ellipsis">{it.sub}</span>
@@ -305,6 +320,31 @@ function MonthPhone({ items, anchor, today, seesType, pick, onPick, onOpen }: {
   )
 }
 
+// ── 8B on a phone ───────────────────────────────────────────────────────────
+
+/** The week's seven days one under the other, each with its items as the List shows them (owner, 2026-10-23). */
+function WeekPhone({ items, anchor, today, seesType, onOpen }: { items: AgendaItem[]; anchor: string; today: string; seesType: (x: AgendaItem) => boolean; onOpen: (id: string) => void }) {
+  const { from } = viewDays('week', anchor)
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(from, i)
+    const first = listDays(items, d, today, seesType)[0]
+    return { day: d, rows: first?.day === d ? first.rows : [] }
+  })
+  return (
+    <div className="flex flex-col gap-3">
+      {days.map(g => (
+        <div key={g.day} className="flex flex-col gap-1.5">
+          <div className="flex items-baseline gap-2 leading-[normal]">
+            <span className={`font-(family-name:--font-display) font-black text-[15px] ${g.day === today ? 'text-[#c8323d]' : 'text-tn-ink'}`}>{fday(g.day)}</span>
+            {g.day === today && <span className="text-[12px] text-muted">Today</span>}
+          </div>
+          {g.rows.length ? <Rows rows={g.rows} onOpen={onOpen} /> : <span className="text-[12.5px] text-muted">Nothing on this day.</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Coming up ───────────────────────────────────────────────────────────────
 
 function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string; onOpen: (id: string) => void }) {
@@ -346,9 +386,11 @@ function ItemCard({ item, me, today, holidays, onClose }: { item: AgendaItem; me
         <div className="h-1.5" style={{ background: c.band }} />
         <div className="pt-[18px] px-5 pb-5 flex flex-col gap-3.5">
           <div className="flex items-start gap-3">
-            <span className={`w-10 h-10 flex items-center justify-center flex-none font-(family-name:--font-display) font-extrabold text-[13px] ${c.round ? 'rounded-full' : 'rounded-[12px]'}`} style={{ background: c.icBg, color: c.icFg }}>
-              {c.ini ?? <Icon d={c.d} size={18} width={2} />}
-            </span>
+            {c.yrs ? <Anni yrs={c.yrs} size={44} /> : (
+              <span className={`w-10 h-10 flex items-center justify-center flex-none font-(family-name:--font-display) font-extrabold text-[13px] ${c.round ? 'rounded-full' : 'rounded-[12px]'}`} style={{ background: c.icBg, color: c.icFg }}>
+                {c.ini ?? (c.flag ? <span className="text-[20px] leading-none">{c.flag}</span> : <Icon d={c.d} size={18} width={2} />)}
+              </span>
+            )}
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase" style={{ color: c.kindFg }}>{c.kind}</span>
               <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink leading-[1.3]">{c.title}</span>

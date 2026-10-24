@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { agendaFrame } from '@/app/design-check/clocky-part2/agenda-sample'
-import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
+import { ALL_TEAMS, KINDS, backOn, cardOf, comingUp, dayKinds, filterItems, weekNumber, linkIn, listDays, monthCells, rangeTitle, stepAnchor, thisWeek, weekModel, type AgendaItem } from './model'
 import { daysOf } from './good-news'
 
 // Agenda.dc.html's own sample, seen on Tue, Nov 3, 2026.
@@ -37,12 +37,30 @@ describe('8A on a phone', () => {
   })
 })
 
+describe('the week number (US count)', () => {
+  it('starts on Sunday, and week 1 has Jan 1', () => {
+    expect(weekNumber('2026-11-22')).toBe(48)
+    expect(weekNumber('2026-11-28')).toBe(48)
+    expect(weekNumber('2025-12-28')).toBe(1)
+    expect(weekNumber('2026-01-03')).toBe(1)
+    expect(weekNumber('2026-01-04')).toBe(2)
+    expect(weekNumber('2026-12-27')).toBe(1)
+  })
+})
+
 describe('8B week', () => {
   const wk = weekModel(items, '2026-11-24', TODAY, seesType)
   it('draws time off across its days, with the type for a Super Admin', () => {
     const bar = wk.bars.find(b => b.id === 'o3')!
     expect(bar.label).toBe('Wendy Cacka, out (Vacation)')
     expect(bar.col).toBe('5 / 8')
+  })
+  it('puts all-day bars on different days in the same row', () => {
+    const w = weekModel(items, '2026-11-17', TODAY, seesType)
+    expect(w.bars.length).toBe(6)
+    // Sun to Sat, one a day except two on Fri: two rows, not six.
+    expect(Math.max(...w.bars.map(b => b.row))).toBe(2)
+    expect(w.bars.filter(b => b.row === 2).map(b => b.col)).toEqual(['7 / 8'])
   })
   it('places an event by its hours, as drawn', () => {
     const e = wk.cols[2].events[0]

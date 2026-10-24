@@ -49,6 +49,8 @@ export interface AgendaItem {
   onGoogle?: boolean
   /** The teams an event is for; empty is everyone. */
   audience?: string[]
+  /** A holiday: its country (ISO code). US ones are the company holidays. */
+  country?: string | null
 }
 
 export const KIND: Record<AgendaKind, { label: string; swatch: string }> = {
@@ -121,6 +123,14 @@ export function viewDays(view: AgendaView, anchor: string): { from: string; to: 
   return { from: anchor, to: addDays(anchor, 13) }
 }
 
+/** The week's number, US count (owner, 2026-10-23): weeks run Sunday to Saturday, and week 1 is the one with Jan 1. */
+export function weekNumber(iso: string): number {
+  const sun = addDays(iso, -dow(iso)), sat = addDays(sun, 6)
+  const jan1 = `${sat.slice(0, 4)}-01-01`
+  const start = addDays(jan1, -dow(jan1))
+  return Math.round((D(sun).getTime() - D(start).getTime()) / (7 * 86400000)) + 1
+}
+
 export function rangeTitle(view: AgendaView, anchor: string): string {
   if (view === 'month') { const [y, m] = anchor.split('-').map(Number); return `${MONL[m - 1]} ${y}` }
   const { from, to } = viewDays(view, anchor)
@@ -151,16 +161,23 @@ export function label(x: AgendaItem): string {
 /** A colour at an opacity, as the prototype writes it ("#047857" + "40"). */
 export const tint = (hex: string, alpha: string): string => (/^#[0-9a-f]{6}$/i.test(hex) ? `${hex}${alpha}` : hex)
 
-export interface Look { bg: string; fg: string; d: string; c: string }
+/** A country's flag from its ISO code (regional indicators), as the phone numbers show it. */
+export const flagOf = (cc: string | null | undefined): string => (cc && /^[A-Za-z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc.toUpperCase()].map(ch => 0x1f1e6 + ch.charCodeAt(0) - 65)) : '')
+/** "KE" -> "Kenya" */
+export const countryName = (cc: string): string => { try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(cc.toUpperCase()) ?? cc } catch { return cc } }
+
+/** `flag`: a holiday shows its country's flag where the others show their icon; `yrs`: a work
+ * anniversary shows the HR tenure badge (TenureBadge) with its years (owner, 2026-10-23). */
+export interface Look { bg: string; fg: string; d: string; c: string; flag: string; yrs?: number }
 export function look(x: AgendaItem): Look {
-  if (x.k === 'pto') { const c = x.who?.color ?? '#9CA3AF'; return { bg: tint(c, '40'), fg: '#012358', d: '', c } }
-  if (x.k === 'bday') return { bg: '#fdf3c4', fg: '#7a5c00', d: AG_ICON.gift, c: '#F2C40A' }
-  if (x.k === 'anni') return { bg: '#eaf4f4', fg: '#1E7D7F', d: AG_ICON.star, c: '#1E7D7F' }
-  if (x.k === 'event' && x.team) return { bg: tint(x.team.color, '38'), fg: '#012358', d: AG_ICON.people, c: x.team.color }
-  if (x.k === 'event') return { bg: '#012358', fg: '#fff', d: '', c: '#012358' }
-  if (x.k === 'ms') return { bg: '#e6f6ee', fg: '#0d7a4f', d: AG_ICON.flag, c: '#1E9E6A' }
-  if (x.k === 'gn') return { bg: '#fbe9df', fg: '#b4400f', d: AG_ICON.star, c: '#c2410c' }
-  return { bg: '#f1f3f6', fg: '#5b6b82', d: '', c: '#a3aebb' }
+  if (x.k === 'pto') { const c = x.who?.color ?? '#9CA3AF'; return { bg: tint(c, '40'), fg: '#012358', d: '', c, flag: '' } }
+  if (x.k === 'bday') return { bg: '#fdf3c4', fg: '#7a5c00', d: AG_ICON.gift, c: '#F2C40A', flag: '' }
+  if (x.k === 'anni') return { bg: '#eaf4f4', fg: '#1E7D7F', d: AG_ICON.star, c: '#1E7D7F', flag: '', yrs: x.yrs }
+  if (x.k === 'event' && x.team) return { bg: tint(x.team.color, '38'), fg: '#012358', d: AG_ICON.people, c: x.team.color, flag: '' }
+  if (x.k === 'event') return { bg: '#012358', fg: '#fff', d: '', c: '#012358', flag: '' }
+  if (x.k === 'ms') return { bg: '#e6f6ee', fg: '#0d7a4f', d: AG_ICON.flag, c: '#1E9E6A', flag: '' }
+  if (x.k === 'gn') return { bg: '#fbe9df', fg: '#b4400f', d: AG_ICON.star, c: '#c2410c', flag: '' }
+  return { bg: '#f1f3f6', fg: '#5b6b82', d: '', c: '#a3aebb', flag: flagOf(x.country) }
 }
 
 const SORT: Record<AgendaKind, number> = { hol: 0, event: 1, ms: 2, bday: 3, anni: 4, gn: 5, pto: 9 }
@@ -233,9 +250,15 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
   const hours = [...Array(last - first + 1)].map((_, i) => hourLabel(first + i).replace(':00', ''))
   const allDay = items.filter(x => x.s == null && x.a <= days[6] && x.b >= days[0])
     .sort((p, q) => ((p.k === 'pto' ? 0 : 1) - (q.k === 'pto' ? 0 : 1)) || p.a.localeCompare(q.a))
-  const bars = allDay.map((x, i) => {
+  // Each bar takes the first row free on all its days, so bars on different days share a row.
+  const taken: boolean[][] = []
+  const bars = allDay.map(x => {
     const s0 = days.indexOf(x.a < days[0] ? days[0] : x.a), e0 = days.indexOf(x.b > days[6] ? days[6] : x.b)
-    return { id: x.id, col: `${s0 + 2} / ${e0 + 3}`, row: i + 1, label: label(x) + (x.k === 'pto' && x.type && seesType(x) ? ` (${x.type})` : ''), title: label(x), look: look(x) }
+    let r = 0
+    while (taken[r]?.slice(s0, e0 + 1).some(Boolean)) r++
+    taken[r] ??= Array(7).fill(false)
+    for (let i = s0; i <= e0; i++) taken[r][i] = true
+    return { id: x.id, col: `${s0 + 2} / ${e0 + 3}`, row: r + 1, label: label(x) + (x.k === 'pto' && x.type && seesType(x) ? ` (${x.type})` : ''), title: label(x), look: look(x) }
   })
   return {
     heads: days.map(d => ({ d: WD[dow(d)], n: Number(d.slice(8)), today: d === today })),
@@ -252,7 +275,7 @@ export function weekModel(items: readonly AgendaItem[], anchor: string, today: s
 
 // ── 8C List ───────────────────────────────────────────────────────────────────
 
-export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string }
+export interface ListRow { id: string; label: string; sub: string; time: string; bg: string; fg: string; d: string; flag: string; yrs?: number }
 /** The kinds on a day, in the chips' order: the dots of the month on a phone. PTO skips weekends, as the list does. */
 export function dayKinds(items: readonly AgendaItem[], d: string): AgendaKind[] {
   return KINDS.filter(k => items.some(x => x.k === k && covers(x, d) && !(k === 'pto' && isWeekend(d))))
@@ -274,12 +297,13 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
           : x.k === 'event' ? `${x.teams ?? 'Everyone'}${x.place ? ` · ${x.place.split(' · ')[0]}` : ''}`
           : x.k === 'ms' ? `Milestone${x.client ? ` · ${x.client}` : ''}`
           : x.k === 'gn' ? 'Good News Calendar'
-          : x.k === 'hol' ? 'Company holiday'
+          : x.k === 'hol' ? (x.country && x.country !== 'US' ? `National holiday · ${countryName(x.country)}` : 'Company holiday')
           : KIND[x.k].label.replace(/s$/, '')
         return {
           id: x.id, label: label(x), sub, time: x.s != null ? hourLabel(x.s) : 'All day',
           bg: company ? '#012358' : L.bg, fg: company ? '#F2C40A' : L.fg,
           d: x.k === 'pto' ? AG_ICON.cal : x.k === 'event' ? AG_ICON.clock : x.k === 'hol' ? AG_ICON.flag : L.d || AG_ICON.star,
+          flag: L.flag, yrs: L.yrs,
         }
       }),
     })
@@ -309,7 +333,7 @@ export function comingUp(items: readonly AgendaItem[], today: string): ComingGro
 export interface CardRow { d: string; b: string; t: string; bold: boolean }
 export interface AgendaCard {
   band: string; kind: string; kindFg: string; title: string
-  ini: string | null; d: string; icBg: string; icFg: string; round: boolean
+  ini: string | null; d: string; flag: string; yrs?: number; icBg: string; icFg: string; round: boolean
   rows: CardRow[]; desc: string | null; foot: string
   button: { label: string; href: string } | null
 }
@@ -327,8 +351,9 @@ export const cityOf = (zone: string): string => (zone.split('/').pop() ?? zone).
 export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; today: string; zone: string; holidays: ReadonlySet<string> }): AgendaCard {
   const L = look(x)
   const kind = x.k === 'event' && x.team ? `Team event · ${x.team.name}` : x.k === 'event' ? 'Company event' : x.k === 'ms' ? 'Milestone' : x.k === 'gn' ? 'Good News'
-    : x.k === 'pto' ? 'Time off' : x.k === 'bday' ? 'Birthday' : x.k === 'anni' ? 'Work anniversary' : 'Company holiday'
-  const base: AgendaCard = { band: L.c, kind, kindFg: x.k === 'gn' ? '#b4400f' : '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', button: null }
+    : x.k === 'pto' ? 'Time off' : x.k === 'bday' ? 'Birthday' : x.k === 'anni' ? 'Work anniversary'
+    : x.country && x.country !== 'US' ? `National holiday · ${countryName(x.country)}` : 'Company holiday'
+  const base: AgendaCard = { band: L.c, kind, kindFg: x.k === 'gn' ? '#b4400f' : '#8593a4', title: label(x), ini: null, d: L.d || AG_ICON.cal, flag: L.flag, yrs: L.yrs, icBg: L.bg, icFg: L.fg, round: false, rows: [], desc: x.desc || null, foot: '', button: null }
   const team = x.who?.teamName ?? ''
   const day = (iso: string, t = '') => ({ d: AG_ICON.cal, b: fday(iso), t, bold: true })
   const when = () => (x.a === x.b ? day(x.a, x.s == null ? ', all day' : '') : { d: AG_ICON.cal, b: drng(x.a, x.b), t: '', bold: true })
@@ -371,6 +396,9 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
     }
   }
   if (x.k === 'gn') return { ...base, rows: [x.a === x.b ? day(x.a) : when()], foot: 'From the Good News Calendar in Google. Read only here; edit it in Google Calendar.', button: x.link ? { label: 'Open in Google Calendar', href: x.link } : null }
+  if (x.country && x.country !== 'US') {
+    return { ...base, rows: [day(x.a)], foot: `A public holiday in ${countryName(x.country)}, shown for information: it does not change time off or work days. Holiday data: the date-holidays project (CC BY 3.0).` }
+  }
   return { ...base, rows: [day(x.a)], foot: 'From the company holiday list. Nobody asks for it as time off.' }
 }
 
@@ -379,7 +407,7 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
 export interface ThisWeek {
   range: string
   out: { id: string; ini: string; color: string; name: string; when: string }[]
-  celebrations: { id: string; name: string; when: string; today: boolean; d: string; bg: string; fg: string }[]
+  celebrations: { id: string; name: string; when: string; today: boolean; d: string; bg: string; fg: string; yrs?: number }[]
   next: { dow: string; n: number; title: string; sub: string } | null
 }
 
@@ -392,7 +420,7 @@ export function thisWeek(items: readonly AgendaItem[], today: string): ThisWeek 
     out: items.filter(x => x.k === 'pto' && inWeek(x)).sort((p, q) => p.a.localeCompare(q.a))
       .map(x => ({ id: x.id, ini: ini(x.who?.name ?? ''), color: x.who?.color ?? '#9CA3AF', name: x.who?.name ?? '', when: drng(x.a, x.b).replace(/(\w+), /g, '') })),
     celebrations: items.filter(x => (x.k === 'bday' || x.k === 'anni') && x.a >= today && x.a <= addDays(today, 6)).sort((p, q) => p.a.localeCompare(q.a))
-      .map(x => { const L = look(x); return { id: x.id, name: label(x), when: x.a === today ? 'Today' : fday(x.a), today: x.a === today, d: L.d, bg: L.bg, fg: L.fg } }),
+      .map(x => { const L = look(x); return { id: x.id, name: label(x), when: x.a === today ? 'Today' : fday(x.a), today: x.a === today, d: L.d, bg: L.bg, fg: L.fg, yrs: L.yrs } }),
     next: next ? {
       dow: WD[dow(next.a)], n: Number(next.a.slice(8)), title: next.title ?? '',
       sub: [next.s != null ? `${hourLabel(next.s)} to ${hourLabel(next.e ?? next.s + 1)}` : next.a === next.b ? 'All day' : drng(next.a, next.b), next.place?.split(' · ')[0]].filter(Boolean).join(' · '),

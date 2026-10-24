@@ -7,7 +7,8 @@ import type { Milestone } from '@/lib/tenure'
 
 const TEAL = '#1E7D7F'
 
-export function TenureBadge({ milestone, size = 56 }: { milestone: Milestone; size?: number }) {
+/** `compact`: the year number alone, for the Agenda's small chips where "years" cannot be read. */
+export function TenureBadge({ milestone, size = 56, compact = false }: { milestone: Milestone; size?: number; compact?: boolean }) {
   if (milestone.kind === 'none') return null
 
   if (milestone.kind === 'year') {
@@ -32,10 +33,12 @@ export function TenureBadge({ milestone, size = 56 }: { milestone: Milestone; si
           )}
         </svg>
         <span className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-          <span className="font-(family-name:--font-display) font-extrabold" style={{ color: ink, fontSize: size * 0.42 }}>{milestone.value}</span>
-          <span className="font-(family-name:--font-display) font-extrabold uppercase tracking-wide" style={{ color: ink, fontSize: size * 0.135, marginTop: size * 0.02 }}>
-            {milestone.value === 1 ? 'year' : 'years'}
-          </span>
+          <span className="font-(family-name:--font-display) font-extrabold" style={{ color: ink, fontSize: size * (compact ? 0.55 : 0.42) }}>{milestone.value}</span>
+          {!compact && (
+            <span className="font-(family-name:--font-display) font-extrabold uppercase tracking-wide" style={{ color: ink, fontSize: size * 0.135, marginTop: size * 0.02 }}>
+              {milestone.value === 1 ? 'year' : 'years'}
+            </span>
+          )}
         </span>
       </span>
     )

@@ -8,6 +8,9 @@
  *   - the type of time off only for a Super Admin and the person
  *   - an event for some teams only for those teams, its creator, and the
  *     Super Admins and Admins who run the calendar
+ *   - national holidays (holidays.ts): the US ones (the company holidays) for
+ *     everyone, the person's own country's, and every country someone at True
+ *     North lives in for Super Admins and Admins
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -18,6 +21,7 @@ import { usHolidays } from '@/lib/notifications/calendar'
 import { loadCatalog, loadDirectory, type Directory } from '@/lib/timeclock/clocky-context'
 import { localDate, localMinutes } from '@/lib/timeclock/format'
 import { addDays } from '@/lib/timeclock/periods'
+import { countryOf, nationalHolidays } from './holidays'
 import { linkIn, type AgendaItem, type AgendaWho } from './model'
 
 export interface AgendaViewer { id: string; zone: string; superAdmin: boolean; admin: boolean; teamIds: readonly string[] }
@@ -41,7 +45,7 @@ export function holidaysIn(from: string, to: string): Map<string, string> {
 
 export async function loadAgendaItems(v: AgendaViewer, from: string, to: string): Promise<AgendaItem[]> {
   const c = createAdminClient()
-  const [dir, people, catalog, offRes, evRes, gnRes] = await Promise.all([
+  const [dir, people, catalog, offRes, evRes, gnRes, homeRes] = await Promise.all([
     loadDirectory(),
     loadCelebrationPeople(),
     loadCatalog(),
@@ -50,8 +54,10 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string)
     c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, place, audience_team_ids, client, description, calendar_state, created_by')
       .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).limit(2000),
     c.from('agenda_good_news').select('google_event_id, title, start_date, end_date, description, html_link').lte('start_date', to).gte('end_date', from).limit(2000),
+    // Where people live, for the national holidays.
+    c.from('people').select('id, address, location').limit(5000),
   ])
-  for (const r of [offRes, evRes, gnRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
+  for (const r of [offRes, evRes, gnRes, homeRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
   const items: AgendaItem[] = []
 
   // Approved time off. Everyone sees "<name>, out"; the type only the person and a Super Admin.
@@ -97,7 +103,17 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string)
   // The Good News Calendar, read only.
   for (const g of gnRes.data ?? []) items.push({ id: `gn:${g.google_event_id}`, k: 'gn', a: g.start_date, b: g.end_date, title: g.title, desc: g.description, link: g.html_link })
 
-  for (const [d, name] of holidaysIn(from, to)) items.push({ id: `hol:${d}`, k: 'hol', a: d, b: d, title: name })
+  for (const [d, name] of holidaysIn(from, to)) items.push({ id: `hol:${d}`, k: 'hol', a: d, b: d, title: name, country: 'US' })
+
+  // Other countries' national holidays, shown only (owner, 2026-10-23).
+  const home = new Map((homeRes.data ?? []).map(r => [r.id as string, countryOf(r.address as { country?: string } | null, r.location as string | null)]))
+  const wanted = new Set<string>()
+  if (v.superAdmin || v.admin) { for (const [id, cc] of home) if (cc && dir.people.get(id)?.active) wanted.add(cc) }
+  else { const mine = home.get(v.id); if (mine) wanted.add(mine) }
+  wanted.delete('US')
+  for (const cc of [...wanted].sort()) {
+    for (const [d, name] of nationalHolidays(cc, from, to)) items.push({ id: `hol:${cc}:${d}`, k: 'hol', a: d, b: d, title: name, country: cc })
+  }
   return items
 }
 

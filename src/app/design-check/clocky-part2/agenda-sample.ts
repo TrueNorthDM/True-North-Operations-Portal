@@ -37,10 +37,15 @@ const EV: AgendaItem[] = [
   { id: 'g1', k: 'gn', title: 'Pathfinder camporee recap', a: '2026-11-07', b: '2026-11-07', desc: 'Photos and stories from the camporee weekend.', link: 'https://calendar.google.com/' },
   { id: 'g2', k: 'gn', title: 'Community food drive, Nairobi', a: '2026-11-14', b: '2026-11-14', desc: 'The Africa team joins the food drive.', link: 'https://calendar.google.com/' },
   { id: 'g3', k: 'gn', title: 'Hope for Africa radio special', a: '2026-11-21', b: '2026-11-21', desc: 'Live broadcast, 4:00 PM EAT.', link: 'https://calendar.google.com/' },
-  { id: 'h1', k: 'hol', title: 'Thanksgiving', a: '2026-11-26', b: '2026-11-26' },
-  { id: 'h2', k: 'hol', title: 'Day after Thanksgiving', a: '2026-11-27', b: '2026-11-27' },
-  { id: 'h3', k: 'hol', title: 'Christmas Eve', a: '2026-12-24', b: '2026-12-24' },
-  { id: 'h4', k: 'hol', title: 'Christmas Day', a: '2026-12-25', b: '2026-12-25' },
+  { id: 'h1', k: 'hol', title: 'Thanksgiving', a: '2026-11-26', b: '2026-11-26', country: 'US' },
+  { id: 'h2', k: 'hol', title: 'Day after Thanksgiving', a: '2026-11-27', b: '2026-11-27', country: 'US' },
+  { id: 'h3', k: 'hol', title: 'Christmas Eve', a: '2026-12-24', b: '2026-12-24', country: 'US' },
+  { id: 'h4', k: 'hol', title: 'Christmas Day', a: '2026-12-25', b: '2026-12-25', country: 'US' },
+  // Other countries' public holidays (date-holidays), as a Super Admin sees them: Brazil and Kenya.
+  { id: 'h5', k: 'hol', title: "All Souls' Day", a: '2026-11-02', b: '2026-11-02', country: 'BR' },
+  { id: 'h6', k: 'hol', title: 'Republic Day', a: '2026-11-15', b: '2026-11-15', country: 'BR' },
+  { id: 'h7', k: 'hol', title: 'Black Awareness Day', a: '2026-11-20', b: '2026-11-20', country: 'BR' },
+  { id: 'h8', k: 'hol', title: 'Jamhuri Day', a: '2026-12-12', b: '2026-12-12', country: 'KE' },
 ]
 
 export function agendaFrame(frame: string): AgendaData {

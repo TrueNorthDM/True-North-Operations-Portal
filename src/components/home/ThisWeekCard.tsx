@@ -4,6 +4,8 @@
 
 import Link from 'next/link'
 import { Icon } from '@/components/clocky/entries/ui'
+import { TenureBadge } from '@/components/TenureBadge'
+import { yearColor } from '@/lib/tenure'
 import type { ThisWeek } from '@/lib/agenda/model'
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
@@ -31,7 +33,8 @@ export function ThisWeekCard({ week, linked = true }: { week: ThisWeek; linked?:
           <span className={LABEL}>Birthdays and anniversaries</span>
           {week.celebrations.map(o => (
             <div key={o.id} className="flex items-center gap-2.5">
-              <span className="w-7 h-7 rounded-[9px] flex items-center justify-center flex-none" style={{ background: o.bg, color: o.fg }}><Icon d={o.d} size={14} width={2} /></span>
+              {o.yrs ? <TenureBadge milestone={{ kind: 'year', value: o.yrs, color: yearColor(o.yrs) }} size={28} compact />
+                : <span className="w-7 h-7 rounded-[9px] flex items-center justify-center flex-none" style={{ background: o.bg, color: o.fg }}><Icon d={o.d} size={14} width={2} /></span>}
               <span className="flex-1 text-[13px] text-tn-ink font-semibold">{o.name}</span>
               <span className={`text-[12px] whitespace-nowrap ${o.today ? 'text-[#c8323d] font-extrabold' : 'text-muted font-normal'}`}>{o.when}</span>
             </div>
