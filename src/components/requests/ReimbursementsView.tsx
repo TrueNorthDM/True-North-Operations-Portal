@@ -54,6 +54,7 @@ export function ReimbursementsView({ data, send, initial }: { data: Reimbursemen
   const router = useRouter()
   const [form, setForm] = useState(!!initial?.form)
   const [toast, setToast] = useState<ToastState | null>(null)
+  const phone = usePhone()
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const sub = data.contractor
     ? 'Ask for money you spent for work, with the receipt. Approved, it goes on your next invoice by itself.'
@@ -84,7 +85,37 @@ export function ReimbursementsView({ data, send, initial }: { data: Reimbursemen
         </button>
       )}
 
-      {data.rows.length > 0 ? (
+      {data.rows.length > 0 && phone ? (
+        // On a phone each reimbursement is a short card, the request's name and total above its receipts.
+        <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
+          {data.rows.map(r => (
+            <Fragment key={r.id}>
+              {r.report?.first && (
+                <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 bg-[#faf9f5] border-b border-[var(--row-rule)] text-[12.5px]">
+                  <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{r.report.title}</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-tn-ink whitespace-nowrap tabular-nums lining-nums">{r.report.total}</span>
+                </div>
+              )}
+              <div className={`flex flex-col gap-1.5 py-3 pr-3.5 border-b border-[var(--row-rule)] ${r.report ? 'pl-6' : 'pl-3.5'}`}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="flex items-center gap-2 min-w-0 text-[13.5px] text-tn-ink font-semibold">
+                    {r.what}
+                    {r.hasReceipt && (
+                      <a href={withViewAs(`/requests/reimbursements/receipt/${r.id}`)} target="_blank" rel="noreferrer" aria-label="Open the receipt" className="inline-flex text-tn-teal flex-none"><Icon d={RECEIPT} size={13} width={2.2} /></a>
+                    )}
+                  </span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{r.amount}</span>
+                </div>
+                <span className="text-[12px] text-muted tabular-nums lining-nums">{r.date} · {r.category}</span>
+                <div className="flex items-start gap-2">
+                  <span className={`${PILL} flex-none`} style={{ background: REQ_TONE[r.st.tone].bg, color: REQ_TONE[r.st.tone].fg }}>{r.st.label}</span>
+                  <span className="text-[12px] text-[#5b6b82] leading-[1.45] [text-wrap:pretty]">{r.info}</span>
+                </div>
+              </div>
+            </Fragment>
+          ))}
+        </div>
+      ) : data.rows.length > 0 ? (
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
           <div className="min-w-[880px]">
             <div className={`${COLS} bg-subtle border-b border-[var(--panel-border)]`}>
