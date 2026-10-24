@@ -30,6 +30,20 @@ export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
 }
 const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
 const COLS = 'grid grid-cols-[130px_130px_minmax(220px,1fr)_110px_120px_minmax(220px,1fr)]'
+const COLS_ALL = 'grid grid-cols-[180px_120px_120px_minmax(200px,1fr)_110px_110px_minmax(200px,1fr)]'
+
+/** Who sent it (Everyone): initials in the team's colour, the name and the team. */
+function Who({ who }: { who: NonNullable<ReimbursementsPage['rows'][number]['who']> }) {
+  return (
+    <span className="flex items-center gap-2 min-w-0">
+      <span className="w-7 h-7 flex-none rounded-full text-tn-ink text-[10.5px] font-extrabold flex items-center justify-center" style={{ background: who.color }}>{who.initials}</span>
+      <span className="flex flex-col min-w-0 leading-[1.25]">
+        <span className="text-[13px] text-tn-ink font-semibold truncate">{who.name}</span>
+        {who.team && <span className="text-[11.5px] text-muted truncate">{who.team}</span>}
+      </span>
+    </span>
+  )
+}
 const RECEIPT = 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6'
 const CAMERA = 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'
 const UPLOAD = 'M12 16V4M7 9l5-5 5 5M5 20h14'
@@ -50,11 +64,15 @@ export const sendReimbursement: SendReimbursement = async form => {
   }
 }
 
-export function ReimbursementsView({ data, send, initial }: { data: ReimbursementsPage; send: SendReimbursement; initial?: { form?: boolean; draft?: Partial<Draft> } }) {
+export function ReimbursementsView({ data, send, initial }: { data: ReimbursementsPage; send: SendReimbursement; initial?: { form?: boolean; draft?: Partial<Draft>; tab?: 'mine' | 'all' } }) {
   const router = useRouter()
   const [form, setForm] = useState(!!initial?.form)
   const [toast, setToast] = useState<ToastState | null>(null)
   const phone = usePhone()
+  // Super Admins, Admins and Finance also see everyone's (owner, 2026-10-23), as Time off does.
+  const [tab, setTab] = useState<'mine' | 'all'>(initial?.tab ?? 'mine')
+  const all = tab === 'all' && !!data.everyone
+  const list = all ? data.everyone! : data.rows
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const sub = data.contractor
     ? 'Ask for money you spent for work, with the receipt. Approved, it goes on your next invoice by itself.'
@@ -85,18 +103,28 @@ export function ReimbursementsView({ data, send, initial }: { data: Reimbursemen
         </button>
       )}
 
-      {data.rows.length > 0 && phone ? (
+      {data.everyone && (
+        <div role="tablist" aria-label="Whose reimbursements" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 self-start justify-self-start">
+          {([['mine', 'Mine'], ['all', 'Everyone']] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+              className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] ${tab === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
+          ))}
+        </div>
+      )}
+
+      {list.length > 0 && phone ? (
         // On a phone each reimbursement is a short card, the request's name and total above its receipts.
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
-          {data.rows.map(r => (
+          {list.map(r => (
             <Fragment key={r.id}>
               {r.report?.first && (
                 <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 bg-[#faf9f5] border-b border-[var(--row-rule)] text-[12.5px]">
-                  <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{r.report.title}</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{r.who ? `${r.who.name} · ` : ''}{r.report.title}</span>
                   <span className="font-(family-name:--font-display) font-extrabold text-tn-ink whitespace-nowrap tabular-nums lining-nums">{r.report.total}</span>
                 </div>
               )}
               <div className={`flex flex-col gap-1.5 py-3 pr-3.5 border-b border-[var(--row-rule)] ${r.report ? 'pl-6' : 'pl-3.5'}`}>
+                {r.who && !r.report && <Who who={r.who} />}
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="flex items-center gap-2 min-w-0 text-[13.5px] text-tn-ink font-semibold">
                     {r.what}
@@ -115,23 +143,24 @@ export function ReimbursementsView({ data, send, initial }: { data: Reimbursemen
             </Fragment>
           ))}
         </div>
-      ) : data.rows.length > 0 ? (
+      ) : list.length > 0 ? (
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
-          <div className="min-w-[880px]">
-            <div className={`${COLS} bg-subtle border-b border-[var(--panel-border)]`}>
-              {['Date', 'Category', 'What it was for', 'Amount', 'State', 'Where it is'].map((h, i) => (
-                <div key={h} className={`px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted ${i === 3 ? 'text-right' : ''}`}>{h}</div>
+          <div className={all ? 'min-w-[1060px]' : 'min-w-[880px]'}>
+            <div className={`${all ? COLS_ALL : COLS} bg-subtle border-b border-[var(--panel-border)]`}>
+              {[...(all ? ['Person'] : []), 'Date', 'Category', 'What it was for', 'Amount', 'State', 'Where it is'].map(h => (
+                <div key={h} className={`px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted ${h === 'Amount' ? 'text-right' : ''}`}>{h}</div>
               ))}
             </div>
-            {data.rows.map(r => (
+            {list.map(r => (
               <Fragment key={r.id}>
               {r.report?.first && (
                 <div className="flex items-center justify-between gap-3 px-3.5 py-2 bg-[#faf9f5] border-b border-[var(--row-rule)] text-[12.5px]">
-                  <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{r.report.title}</span>
+                  <span className="font-(family-name:--font-display) font-extrabold text-tn-ink">{r.who ? `${r.who.name} · ` : ''}{r.report.title}</span>
                   <span className="font-(family-name:--font-display) font-extrabold text-tn-ink tabular-nums lining-nums">{r.report.total}</span>
                 </div>
               )}
-              <div className={`${COLS} items-center border-b border-[var(--row-rule)] text-[13px] tabular-nums lining-nums hover:bg-[#f8f7f3] ${r.report ? '[&>div:first-child]:pl-6' : ''}`}>
+              <div className={`${all ? COLS_ALL : COLS} items-center border-b border-[var(--row-rule)] text-[13px] tabular-nums lining-nums hover:bg-[#f8f7f3] ${r.report ? '[&>div:first-child]:pl-6' : ''}`}>
+                {all && <div className="px-3.5 py-3 min-w-0">{r.who && !r.report ? <Who who={r.who} /> : null}</div>}
                 <div className="px-3.5 py-3 text-tn-ink font-semibold whitespace-nowrap">{r.date}</div>
                 <div className="px-3.5 py-3 text-foreground">{r.category}</div>
                 <div className="px-3.5 py-3 flex items-center gap-2 min-w-0">
@@ -151,7 +180,7 @@ export function ReimbursementsView({ data, send, initial }: { data: Reimbursemen
           </div>
         </div>
       ) : (
-        <div className="bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-11 text-center text-[13.5px] text-muted">No reimbursement requests yet. Decisions on other people&apos;s requests are in Approvals.</div>
+        <div className="bg-white border border-[var(--panel-border)] rounded-[14px] px-5 py-11 text-center text-[13.5px] text-muted">{all ? 'Nobody has asked for a reimbursement yet.' : <>No reimbursement requests yet. Decisions on other people&apos;s requests are in Approvals.</>}</div>
       )}
 
       {form && <NewReimbursement data={data} draft={initial?.draft} send={send} onClose={() => setForm(false)}

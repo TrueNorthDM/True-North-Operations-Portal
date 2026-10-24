@@ -95,7 +95,20 @@ export function reimbursementsFrame(frame: string): ReimbursementsPage {
     { id: 13, date: 'Oct 13, 2026', category: 'Travel', what: 'Uber to the client', amount: '$18.40', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.' },
     { id: 14, date: 'Oct 13, 2026', category: 'Meals with a client', what: 'Lunch with the i7 team', amount: '$64.00', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.' },
   ].map((r, i) => ({ ...r, report: { id: 1, first: i === 0, title: 'São Paulo trip, Oct 12 to 15, 4 receipts', total: '$873.00' } }))
-  return { contractor: true, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : frame === '9Br' ? [...trip, ...rows] : rows, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY }
+  // 9Be: Everyone, as a Super Admin sees it (owner, 2026-10-23): who sent each one.
+  const who = (name: string, team: string, color: string) => ({ name, initials: name.split(' ').map(w => w[0]).join(''), team, color })
+  const jt = who('Justus Tsofa', 'Africa', '#F0A35E'), wc = who('Wendy Cacka', 'Web', '#A99BD4'), ji = who('Joy Inyele', 'Africa', '#F0A35E'), ap = who('Amy Prindle', 'Writers', '#86C06A')
+  const everyone: ReimbursementsPage['rows'] = [
+    ...trip.map(r => ({ ...r, who: jt, report: r.report ? { ...r.report, title: 'São Paulo trip, Oct 12 to 15, 4 receipts' } : undefined })),
+    { id: 21, date: 'Nov 2, 2026', category: 'Software', what: 'Figma Professional, Oct to Dec', amount: '$45.00', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.', who: wc },
+    { ...rows[0], who: jt },
+    { id: 22, date: 'Oct 30, 2026', category: 'Equipment', what: 'USB headset for client calls', amount: '$48.00', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.', who: ji },
+    { ...rows[1], who: jt, info: rows[1].info },
+    { id: 23, date: 'Oct 22, 2026', category: 'Meals with a client', what: 'Lunch, Thu, Oct 22', amount: '$64.20', hasReceipt: true, st: { label: 'Denied', tone: 'bad' as const }, info: 'Denied by Arnaldo Oliveira: "No client meeting that day. Send it again with the meeting."', who: ap },
+    { id: 24, date: 'Oct 19, 2026', category: 'Equipment', what: 'USB-C hub for a second monitor', amount: '$12.99', hasReceipt: true, st: { label: 'Approved', tone: 'teal' as const }, info: 'Approved Oct 21. On reimbursement document RMB-2026-0031, waiting for Finance.', who: wc },
+    { ...rows[2], who: jt }, { ...rows[3], who: jt },
+  ]
+  return { contractor: true, everyone: frame === '9Be' ? everyone : null, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : frame === '9Br' ? [...trip, ...rows] : rows, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY }
 }
 
 /** 9D: RMB-2026-0031, Wendy Cacka's, as Finance (Tina Gennette). */

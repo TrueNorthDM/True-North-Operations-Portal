@@ -49,7 +49,7 @@ function cheyenne(): PersonPageData {
 }
 
 /** The part 2 frames this route draws (the rest come as they are built). */
-export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx|6A|6B|6Ec|6Es|6Ef|6F|6Fp|6G|10P1|10P2|10P3|10A3|10A4|13A|13B|13C|7A|7Ap|7B|7D|7Dx|7E|9A|9Ap|9Ar|9B|9Br|9D|9Dp|10E|10C|8A|8B|8C|8D1|8D2|8D3|8D4|8E|8F|11A|11B|11Cl|11D|12A|12B|12C|12U)$/
+export const PART2_FRAMES = /^(10A1|10A1v|10A2|10A2v|6C|6Cr|6Ct|6Ci|6Ce|6Cb|6Cn|6Cd|6Cj|6Cp|6Co|6D|6Ds|6Dx|6A|6B|6Ec|6Es|6Ef|6F|6Fp|6G|10P1|10P2|10P3|10A3|10A4|13A|13B|13C|7A|7Ap|7B|7D|7Dx|7E|9A|9Ap|9Ar|9B|9Br|9Be|9D|9Dp|10E|10C|8A|8B|8C|8D1|8D2|8D3|8D4|8E|8F|11A|11B|11Cl|11D|12A|12B|12C|12U)$/
 
 export function Part2Frame({ frame }: { frame: string }) {
   if (frame === '8F') return <AgendaCheck week={thisWeekFrame()} />
@@ -107,7 +107,7 @@ export function Part2Frame({ frame }: { frame: string }) {
     )
   }
   if (/^7/.test(frame)) return <RequestsCheck frame={frame} timeOff={timeOffFrame(frame)} />
-  if (frame === '9A' || frame === '9Ap' || frame === '9Ar' || frame === '9B' || frame === '9Br') return <RequestsCheck frame={frame} rmb={reimbursementsFrame(frame)} />
+  if (frame === '9A' || frame === '9Ap' || frame === '9Ar' || frame === '9B' || frame === '9Br' || frame === '9Be') return <RequestsCheck frame={frame} rmb={reimbursementsFrame(frame)} />
   if (frame === '9D' || frame === '9Dp') return <RequestsCheck frame={frame} doc={rmbDocFrame()} sheet={rmbSheet()} />
   if (frame === '10E' || frame === '10C') return <RequestsCheck frame={frame} extra={extraFrame(frame)} />
   if (frame === '6A' || frame === '6B') return <InvoicesCheck frame={frame} submit={submitFrame(frame)} />
