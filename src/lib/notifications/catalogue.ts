@@ -402,7 +402,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     title: 'Your hours allowance: 90%, or over',
     description: 'Once at 90% and once over, each week or month. Ask for extra hours before going over. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
-    button: { label: 'Ask for extra hours', href: '/requests/extra-hours' },
+    button: { label: 'Ask for extra hours', href: '/requests/extra-hours?ask=1' },
   },
   {
     key: 'clocky-allowance-over', src: 'North Time · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,

@@ -10,10 +10,11 @@ import { ExtraHoursLive } from '@/components/requests/RequestsLive'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Extra hours' }
 
-export default async function ExtraHoursRoute() {
+export default async function ExtraHoursRoute({ searchParams }: { searchParams: Promise<{ ask?: string }> }) {
   const access = await requireSurface('rq-extra-hours')
   const v = await viewerFor(access)
   const data = v ? await loadExtraHours({ personId: v.personId, ledTeamIds: v.ledTeamIds }, v.zone) : null
   if (!data) return <p role="alert" className="m-0 text-[13px] font-semibold text-[#c8323d]">Your login is not linked to anyone in the Directory.</p>
-  return <ExtraHoursLive data={data} />
+  // ?ask=1 (the clock panel's "Ask for extra hours", 10B-2, and the allowance bell line): the form already open, as 10C.
+  return <ExtraHoursLive data={data} ask={(await searchParams).ask === '1'} />
 }

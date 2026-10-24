@@ -24,6 +24,6 @@ export function RmbDocLive({ d }: { d: RmbDocPage }) {
   return <RmbDocView d={d} api={{ getPayDoc: i => getPayDoc(i), markRmbPaid }} />
 }
 
-export function ExtraHoursLive({ data }: { data: ExtraPage }) {
-  return <ExtraHoursView data={data} api={{ askExtraHours }} />
+export function ExtraHoursLive({ data, ask = false }: { data: ExtraPage; ask?: boolean }) {
+  return <ExtraHoursView data={data} api={{ askExtraHours }} initial={ask ? { form: true } : undefined} />
 }

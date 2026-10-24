@@ -463,7 +463,7 @@ function AllowanceLine({ a }: { a: NonNullable<ClockPanelData['allowance']> }) {
     return (
       <div role="alert" className="w-full box-border flex items-center gap-2.5 justify-between flex-wrap text-[12.5px] text-[#c8323d] bg-[#fdeeef] border border-[#f3c6ca] rounded-[11px] px-3 py-[9px] tabular-nums lining-nums">
         <span className="font-bold">{hrs(a.over)} over your allowance, not approved. Ask for extra hours.</span>
-        <a href="/requests/extra-hours" className="font-extrabold font-(family-name:--font-display) text-tn-ink whitespace-nowrap">Ask for extra hours</a>
+        <a href="/requests/extra-hours?ask=1" className="font-extrabold font-(family-name:--font-display) text-tn-ink whitespace-nowrap">Ask for extra hours</a>
       </div>
     )
   }

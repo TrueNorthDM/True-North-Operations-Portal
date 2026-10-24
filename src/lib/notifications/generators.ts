@@ -623,7 +623,7 @@ export function clockyLateDrafts(ctx: Ctx, x: { personId: string; key: string; t
 
 /** The allowance at 90% or over: to the person, once per period and step. */
 export function clockyAllowanceDrafts(ctx: Ctx, x: { personId: string; key: string; text: string }): Draft[] {
-  return draftFor(ctx, 'clocky-allowance', ctx.aud.byId.get(x.personId), { title: x.text, body: '', href: '/requests/extra-hours', dedupeKey: x.key })
+  return draftFor(ctx, 'clocky-allowance', ctx.aud.byId.get(x.personId), { title: x.text, body: '', href: '/requests/extra-hours?ask=1', dedupeKey: x.key })
 }
 
 /** Over the allowance without approval: to the Team Leaders and Super Admins named, once per period. */
