@@ -83,7 +83,7 @@ const CARD: Record<string, Omit<RequestCard, 'canDecide' | 'roText'>> = {
     kind: 'xh', id: 9, type: 'Extra hours', title: '8h 00m in November', width: 620, twoCols: false, receipt: null,
     facts: [{ k: 'When', v: 'November 2026' }, { k: 'Client or project', v: '2 - i7 Marketing' }, { k: 'Why', v: '"Six extra i7 blog posts for the Q4 push, asked by the i7 team."' }],
     allow: 'Allowance: 140h a month. November so far: 18h 30m. October: 151h 15m, with 8h approved in advance and 3h 15m over without approval.', cal: null,
-    after: "Approved, her November allowance becomes 148h. Hours past that are flagged again, in the clock panel, Who's working and this queue.",
+    after: "Approved, their November allowance becomes 148h. Hours past that are flagged again, in the clock panel, Who's working and this queue.",
     approveLabel: 'Approve', denyLabel: 'Deny',
   },
 }

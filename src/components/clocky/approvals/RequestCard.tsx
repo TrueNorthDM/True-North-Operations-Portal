@@ -53,8 +53,9 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
   return (
     <Modal label={card.type} width={card.width - 44} onClose={onClose} gap={16}>
       <div className="flex items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1" style={{ background: t.bg, color: t.fg }}>{card.type}</span>
+        {/* On a phone the title goes under the type when they do not fit side by side; the type stays one line. */}
+        <div className="flex items-center gap-x-2.5 gap-y-1.5 flex-wrap min-w-0">
+          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap" style={{ background: t.bg, color: t.fg }}>{card.type}</span>
           <span className="font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink tabular-nums lining-nums">{card.title}</span>
         </div>
         <CloseButton onClick={onClose} />
