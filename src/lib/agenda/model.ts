@@ -419,7 +419,8 @@ export function thisWeek(items: readonly AgendaItem[], today: string): ThisWeek 
     range: rng(from, to).replace(/, \d{4}$/, ''),
     out: items.filter(x => x.k === 'pto' && inWeek(x)).sort((p, q) => p.a.localeCompare(q.a))
       .map(x => ({ id: x.id, ini: ini(x.who?.name ?? ''), color: x.who?.color ?? '#9CA3AF', name: x.who?.name ?? '', when: drng(x.a, x.b).replace(/(\w+), /g, '') })),
-    celebrations: items.filter(x => (x.k === 'bday' || x.k === 'anni') && x.a >= today && x.a <= addDays(today, 6)).sort((p, q) => p.a.localeCompare(q.a))
+    // The same Sunday to Saturday as the title and Who is out (owner, 2026-10-23; the prototype looked 7 days ahead).
+    celebrations: items.filter(x => (x.k === 'bday' || x.k === 'anni') && inWeek(x)).sort((p, q) => p.a.localeCompare(q.a))
       .map(x => { const L = look(x); return { id: x.id, name: label(x), when: x.a === today ? 'Today' : fday(x.a), today: x.a === today, d: L.d, bg: L.bg, fg: L.fg, yrs: L.yrs } }),
     next: next ? {
       dow: WD[dow(next.a)], n: Number(next.a.slice(8)), title: next.title ?? '',

@@ -128,7 +128,9 @@ describe('8F This week', () => {
     const w = thisWeek(items, TODAY)
     expect(w.range).toBe('Nov 1 to 7')
     expect(w.out.map(o => `${o.name} ${o.when}`)).toEqual(['Dave Sharpe Nov 6'])
-    expect(w.celebrations.map(o => `${o.name} ${o.when}`)).toEqual(["Joy Inyele's birthday Today", 'Justus Tsofa, 4 years at True North Mon, Nov 9'])
+    // Sunday to Saturday, as the title: Justus's Nov 9 is next week.
+    expect(w.celebrations.map(o => `${o.name} ${o.when}`)).toEqual(["Joy Inyele's birthday Today"])
+    expect(thisWeek(items, '2026-11-09').celebrations.map(o => o.name)).toContain('Justus Tsofa, 4 years at True North')
     expect(w.next).toEqual({ dow: 'Thu', n: 5, title: 'All-hands', sub: '11:00 AM to 12:00 PM · Google Meet' })
   })
 })
