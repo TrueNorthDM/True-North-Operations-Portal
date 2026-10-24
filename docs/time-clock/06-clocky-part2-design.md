@@ -254,6 +254,9 @@ that scrolls sideways. The desktop is unchanged.
   window, the Super Admin sets who can see each event.
 - Each person does the same with their own connections: chooses which of their Google
   calendars come in and who can see those events.
+- Event types with their own icon (Meeting, Celebration, Training, Deadline...) in the
+  New event window, designed together with the above (owner, 2026-10-23). Today the
+  window has Event or Milestone only; company or team comes from who creates it.
 - To confirm when this starts: on 2026-10-22 the owner said everyone sees every event
   and only Super Admins and Admins edit or delete them; visibility is now set per
   event. Edit and delete rights stay as decided unless the owner changes them.
