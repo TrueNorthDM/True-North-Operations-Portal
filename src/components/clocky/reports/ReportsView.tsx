@@ -67,6 +67,7 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
         </div>
       </div>
 
+      {/* On a phone the month goes on its own line under Period, and Team, Person and Client take the full width. */}
       <div className="flex flex-wrap gap-2.5 items-end">
         <div className="flex flex-col gap-[5px]">
           <span className={LABEL}>Period</span>
@@ -84,11 +85,11 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
               <input type="date" value={range.to} min={range.from} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} onBlur={() => go({ from: range.from, to: range.to })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
           </div>
         ) : (
-          <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink px-1.5 pb-2.5 whitespace-nowrap leading-[normal]">{v.label}</span>
+          <span className="max-md:basis-full font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink px-1.5 max-md:px-0.5 pb-2.5 max-md:pb-0 whitespace-nowrap leading-[normal]">{v.label}</span>
         )}
-        {page.scope === 'all' && <div className="w-[170px]"><LabeledSelect label="Team" value={q.team} search onChange={t => go({ team: t, person: 'all' })} options={page.options.teams} /></div>}
-        {page.scope !== 'own' && <div className="w-[190px]"><LabeledSelect label="Person" value={q.person} search onChange={p => go({ person: p })} options={page.options.people} /></div>}
-        <div className="w-[200px]"><LabeledSelect label="Client" value={q.client} onChange={c => go({ client: c })} options={page.options.clients} /></div>
+        {page.scope === 'all' && <div className="w-full md:w-[170px]"><LabeledSelect label="Team" value={q.team} search onChange={t => go({ team: t, person: 'all' })} options={page.options.teams} /></div>}
+        {page.scope !== 'own' && <div className="w-full md:w-[190px]"><LabeledSelect label="Person" value={q.person} search onChange={p => go({ person: p })} options={page.options.people} /></div>}
+        <div className="w-full md:w-[200px]"><LabeledSelect label="Client" value={q.client} onChange={c => go({ client: c })} options={page.options.clients} /></div>
         <div className="flex flex-col gap-[5px]">
           <span className={LABEL}>Billable</span>
           <div className={SEG} role="group" aria-label="Billable">
@@ -147,17 +148,20 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-3.5 items-start">
-        <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto leading-[normal]">
+        <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden leading-[normal]">
           <div className="px-4 py-[13px] font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink border-b border-[var(--panel-border)]">By person</div>
+          {/* Only the table scrolls sideways; its title stays. */}
+          <div className="overflow-x-auto">
           <div className="grid grid-cols-[minmax(180px,1.4fr)_90px_80px_90px_90px_110px] bg-subtle border-b border-[var(--panel-border)] min-w-[640px]">
-            {v.personHeads.map((h, k) => <div key={h} className={`px-3 py-[9px] font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted whitespace-nowrap ${k ? 'text-right' : 'text-left'}`}>{h}</div>)}
+            {v.personHeads.map((h, k) => <div key={h} className={`px-3 py-[9px] font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.08em] uppercase text-muted whitespace-nowrap ${k ? 'text-right' : 'text-left sticky left-0 z-[1] bg-subtle max-md:w-[170px]'}`}>{h}</div>)}
           </div>
           {v.byPerson.map(p => (
-            <div key={p.id} className="grid grid-cols-[minmax(180px,1.4fr)_90px_80px_90px_90px_110px] items-center border-b border-[var(--row-rule)] text-[12.5px] tabular-nums lining-nums hover:bg-[#f8f7f3] min-w-[640px]">
-              <div className="px-3 py-2 flex items-center gap-[9px] min-w-0">
+            <div key={p.id} className="group grid grid-cols-[minmax(180px,1.4fr)_90px_80px_90px_90px_110px] items-center border-b border-[var(--row-rule)] text-[12.5px] tabular-nums lining-nums hover:bg-[#f8f7f3] min-w-[640px]">
+              {/* The name stays in view when the table scrolls sideways (a phone). */}
+              <div className="sticky left-0 z-[1] self-stretch bg-white group-hover:bg-[#f8f7f3] max-md:w-[170px] px-3 py-2 flex items-center gap-[9px] min-w-0">
                 <span className="w-[26px] h-[26px] rounded-full bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[10px] flex items-center justify-center flex-none">{p.ini}</span>
                 <span className="flex flex-col min-w-0">
-                  <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink whitespace-nowrap">{p.name}</span>
+                  <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink whitespace-nowrap max-md:truncate">{p.name}</span>
                   <span className="flex items-center gap-[5px] text-[11px] text-muted"><span className="w-1.5 h-1.5 rounded-full" style={{ background: p.teamColor }} />{p.team}</span>
                 </span>
               </div>
@@ -168,6 +172,7 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
               <div className="px-3 py-2 text-right text-tn-ink font-semibold">{p.last}</div>
             </div>
           ))}
+          </div>
         </div>
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden leading-[normal]">
           <div className="px-4 py-[13px] font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink border-b border-[var(--panel-border)]">By client</div>
