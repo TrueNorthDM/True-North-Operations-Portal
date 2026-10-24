@@ -9,6 +9,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { NavIcon } from '@/components/NavIcon'
+import type { NavIconKey } from '@/lib/nav/nav-icons'
 import { ClockyClock } from '@/components/clocky/clock/ClockyClock'
 import { WhosWorkingButton } from '@/components/clocky/working/WhosWorking'
 import { FRAMES, TB_STATES, sampleApi } from './sample'
@@ -33,7 +34,10 @@ function Bell() {
   )
 }
 
-export function ClockCheck({ frame, device, frozen }: { frame: string; device: 'desktop' | 'phone'; frozen: boolean }) {
+/** The rail as the prototype draws it on the home page (Clock Panel.dc.html): Home lit, the rest 62% white. */
+const RAIL: (NavIconKey | null)[] = ['home', 'my-work', 'chat', 'emails', null, 'tools', 'people', null, 'admin', 'clocky']
+
+export function ClockCheck({ frame, device, frozen, bare = false }: { frame: string; device: 'desktop' | 'phone'; frozen: boolean; /** &bare=1: the frame alone, as Clock Panel.dc.html?bare=1. */ bare?: boolean }) {
   // TB: only the top-bar button's four states, at the top (as the overview's TB card).
   const tbOnly = frame === 'TB'
   const f = FRAMES.find(x => x.code === frame) ?? FRAMES[0]
@@ -49,7 +53,7 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
   return (
     <div className="min-h-screen bg-[#e9e6dd] px-8 pt-7 pb-12">
       <div className="max-w-[1380px] mx-auto flex flex-col gap-[18px]">
-        <div className="flex flex-col gap-3.5">
+        {!bare && <div className="flex flex-col gap-3.5">
           <div>
             <h1 className="m-0 font-(family-name:--font-display) font-black text-[24px] text-tn-ink">North Time, painel do relógio (build)</h1>
             <p className="m-0 mt-1 text-[13.5px] text-muted">{tbOnly ? 'Compare com o card TB de North Time (todas as telas).dc.html. Os componentes são os reais; o servidor é simulado com os dados do protótipo.' : `Compare com Clock Panel.dc.html?frame=${f.code}${phone ? '&device=phone' : ''}. Os componentes são os reais; o servidor é simulado com os dados do protótipo.`}</p>
@@ -68,7 +72,7 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
               <Link key={x.code} href={q({ frame: x.code })} className={`rounded-[8px] px-[11px] py-[7px] text-[12.5px] font-semibold ${!tbOnly && x.code === f.code ? 'bg-tn-primary text-[#ffffff]' : 'text-foreground'}`}>{`${x.code} ${x.title}`}</Link>
             ))}
           </div>
-        </div>
+        </div>}
 
         {tbOnly ? null : phone ? (
           <div className="relative w-[390px] h-[844px] mx-auto my-3.5 rounded-[46px] overflow-hidden bg-white flex flex-col shadow-[0_0_0_10px_#10203a,0_40px_80px_-30px_rgba(1,35,88,.55)]">
@@ -96,7 +100,12 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
               </div>
             </header>
             <div className="flex-1 flex min-h-0 bg-background">
-              <nav className="w-16 shrink-0 bg-tn-primary" />
+              <nav className="w-16 shrink-0 bg-tn-primary flex flex-col items-center gap-1.5 pt-3 pb-3">
+                {RAIL.map((k, i) => k
+                  ? <span key={k} className={`w-11 h-11 rounded-xl flex items-center justify-center ${i === 0 ? 'bg-white/[.14] text-[#ffffff]' : 'text-white/[.62]'}`}><NavIcon name={k} size={20} /></span>
+                  : <span key={`r${i}`} className="w-7 h-px bg-white/20 my-1.5" />)}
+                <span className="mt-auto w-10 h-10 rounded-full bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] flex items-center justify-center">AO</span>
+              </nav>
               <main className="flex-1 min-w-0 px-10 py-[34px]">
                 <div className="font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink tracking-[-.01em]">True North Operations Portal</div>
                 <div className="text-[15px] text-muted mt-1.5">Where would you like to go?</div>
@@ -105,7 +114,7 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
           </div>
         )}
 
-        <div className="flex flex-col gap-3 mt-2.5">
+        {!bare && <div className="flex flex-col gap-3 mt-2.5">
           <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[16px] text-tn-ink">Botão do relógio na top bar, os 4 estados</h2>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
             {TB_STATES.map(s => (
@@ -119,7 +128,7 @@ export function ClockCheck({ frame, device, frozen }: { frame: string; device: '
             ))}
           </div>
           <p className="m-0 text-[12.5px] text-muted">Com o relógio rodando, a aba do navegador mostra: <b className="text-foreground">1:58 · i7 › Web Dev · True North</b></p>
-        </div>
+        </div>}
       </div>
     </div>
   )
