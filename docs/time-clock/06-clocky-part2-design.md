@@ -237,7 +237,9 @@ coverage test).
 ### After the handoff review (owner, 2026-10-23)
 
 To do once the screen-by-screen review of the part 2 handoff is finished, in this order
-unless the owner says otherwise.
+unless the owner says otherwise. **The review finished on 2026-10-24**: every screen from
+6A to 13C compared with the prototype on desktop and at 390px, the approved fixes on
+staging (last 4f2ccc4); production untouched.
 
 **A. The Agenda on a phone: done 2026-10-23 (owner approved).** The handoff has no
 phone design for the Agenda. On a phone the month shows each day with one coloured dot
