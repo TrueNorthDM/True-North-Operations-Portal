@@ -162,13 +162,14 @@ function Jobs({ data, canEdit, api, startId, say }: { data: CatalogueData; canEd
             <LabeledSelect label="Parent folder" value={ed.parent} disabled={!canEdit} onChange={v => set('parent', v)}
               options={[...folders.map(f => ({ value: String(f.id), label: f.name })), { value: NO_FOLDER, label: 'No folder (top level)' }]} />
           )}
-          <div className="grid grid-cols-[1fr_1fr] gap-2.5">
+          {/* One column on a phone: "Billable by default" does not fit beside Active at 390px. */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-2.5">
             <Switch on={ed.active} label="Active" disabled={!canEdit} onChange={() => set('active', !ed.active)} />
             <Switch on={ed.billable} label="Billable by default" disabled={!canEdit} onChange={() => set('billable', !ed.billable)} />
             {row.i7 && !row.folder && <Switch on label="Asks for an i7 Code" disabled onChange={() => {}} />}
           </div>
           {!row.folder && (
-            <div className="grid grid-cols-[1fr_1fr] gap-2.5">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
               <LabeledSelect label="Default Company" value={ed.company} disabled={!canEdit} onChange={v => set('company', v)} options={fieldOpts('company')} />
               <LabeledSelect label="Default Project" value={ed.project} disabled={!canEdit} search onChange={v => set('project', v)} options={fieldOpts('project')} />
             </div>
