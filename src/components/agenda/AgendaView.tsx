@@ -303,8 +303,12 @@ function MonthPhone({ items, anchor, today, seesType, pick, onPick, onOpen }: {
                 className={`h-[54px] border-0 border-r border-b border-[var(--row-rule)] flex flex-col items-center pt-1.5 gap-1 cursor-pointer disabled:cursor-default ${on ? 'bg-tn-teal-soft' : d.inMonth ? 'bg-white' : 'bg-[#faf9f5]'}`}>
                 <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold leading-[normal] tabular-nums lining-nums ${d.today ? 'bg-tn-primary text-[#ffffff]' : d.inMonth ? 'text-tn-ink' : 'text-[#cbd2da]'}`}>{d.n}</span>
                 {d.inMonth && (
-                  <span className="flex gap-[3px]">
-                    {dayKinds(items, d.day).map(k => <span key={k} className="w-[5px] h-[5px] rounded-full" style={{ background: KIND[k].swatch }} />)}
+                  <span className="flex items-center gap-[3px]">
+                    {dayKinds(items, d.day).map(k => {
+                      // An anniversary keeps its HR badge here too, the year of the first one that day.
+                      const yrs = k === 'anni' ? items.find(x => x.k === 'anni' && x.a === d.day)?.yrs : undefined
+                      return yrs ? <Anni key={k} yrs={yrs} size={12} compact /> : <span key={k} className="w-[5px] h-[5px] rounded-full self-center" style={{ background: KIND[k].swatch }} />
+                    })}
                   </span>
                 )}
               </button>
@@ -361,7 +365,7 @@ function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string
           <span className={`leading-[normal] ${LABEL}`}>{g.title}</span>
           {g.items.map(it => (
             <button key={it.id} type="button" onClick={() => onOpen(it.id)} className="flex items-center gap-[9px] border-0 bg-transparent py-[3px] px-0 cursor-pointer text-left leading-[normal]">
-              <span className="w-2 h-2 rounded-full flex-none" style={{ background: it.c }} />
+              {it.yrs ? <Anni yrs={it.yrs} size={16} compact /> : <span className="w-2 h-2 rounded-full flex-none" style={{ background: it.c }} />}
               <span className="flex-1 min-w-0 text-[12.5px] text-tn-ink font-semibold overflow-hidden text-ellipsis whitespace-nowrap">{it.label}</span>
               <span className="text-[11.5px] text-muted whitespace-nowrap">{it.when}</span>
             </button>

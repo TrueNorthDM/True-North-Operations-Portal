@@ -313,7 +313,7 @@ export function listDays(items: readonly AgendaItem[], start: string, today: str
 
 // ── Coming up (the side panel, next 14 days) ─────────────────────────────────
 
-export interface ComingGroup { title: string; items: { id: string; label: string; when: string; c: string }[] }
+export interface ComingGroup { title: string; items: { id: string; label: string; when: string; c: string; yrs?: number }[] }
 
 export function comingUp(items: readonly AgendaItem[], today: string): ComingGroup[] {
   const until = addDays(today, 13), soon = items.filter(x => x.a <= until && x.b >= today)
@@ -322,7 +322,7 @@ export function comingUp(items: readonly AgendaItem[], today: string): ComingGro
     items: soon.filter(x => ks.includes(x.k)).sort((p, q) => p.a.localeCompare(q.a)).map(x => ({
       id: x.id, label: label(x).replace(', out', ''),
       when: x.k === 'pto' ? drng(x.a < today ? today : x.a, x.b).replace(/^(\w+), /, '') : fday(x.a),
-      c: look(x).c,
+      c: look(x).c, yrs: look(x).yrs,
     })),
   })
   return [grp('Who is out', ['pto']), grp('Birthdays and anniversaries', ['bday', 'anni']), grp('Events and milestones', ['event', 'ms'])].filter(g => g.items.length)
