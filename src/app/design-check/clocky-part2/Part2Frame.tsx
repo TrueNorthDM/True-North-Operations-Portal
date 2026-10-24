@@ -74,12 +74,26 @@ export function Part2Frame({ frame }: { frame: string }) {
   if (frame === '10A3' || frame === '10A4') {
     // Rock Kai, Social Media, contractor, reports to Dave Sharpe (Company Settings.dc.html 10A-3, 10A-4).
     const base = cheyenne()
-    const rock = { ...base, id: '00000000-0000-4000-8000-0000000000c3', name: 'Rock Kai', title: 'Team Leader', color: '#DC2626', cover: { ...base.cover, teams: [{ teamId: 't-sm', teamName: 'Social Media', color: '#DC2626', position: 'lead' as const, primary: true }], location: 'United States' }, work: base.work && { ...base.work, fullName: 'Rock Kai', managerId: 'm-ds', managerName: 'Dave Sharpe' } }
+    const teams = [{ teamId: 't-sm', teamName: 'Social Media', color: '#DC2626', position: 'lead' as const, primary: true }]
+    const rock = { ...base, id: '00000000-0000-4000-8000-0000000000c3', name: 'Rock Kai', title: 'Team Leader', color: '#DC2626', cover: { ...base.cover, teams, location: 'United States' }, work: base.work && { ...base.work, fullName: 'Rock Kai', title: 'Team Leader', teams, managerId: 'm-ds', managerName: 'Dave Sharpe' } }
+    // His own approvals and pay, as the prototype draws them: Dave Sharpe for both, $20.00/h, no allowance.
+    const rockPay = {
+      approvals: {
+        rows: [
+          { k: 'Reports to', v: 'Dave Sharpe', sub: 'Work tab' },
+          { k: 'Hours approved by', v: 'Dave Sharpe', sub: 'The person they report to' },
+          { k: 'Invoice approved by', v: 'Dave Sharpe', sub: 'They report to Dave Sharpe' },
+        ],
+        note: 'Same person: one step, Approve both.',
+      },
+      pay: { isContractor: true, paysAs: 'hourly' as const, hourlyRate: 20, fixedAmount: null, allowance: null, timeOff: frame === '10A4' ? 'From Dec 1, in Requests' : 'Contractors do not ask PTO', canEdit: true },
+      invoicesLine: 'Made when they submit',
+    }
     const options = typeChangeOptions('2026-11-03', '2026-10-04', 'Dave Sharpe')
     return (
       <div className="space-y-4">
         <Breadcrumb parents={['/directory']} now="Rock Kai" />
-        <PersonPayCheck data={rock} editing={false} typeChange={{
+        <PersonPayCheck data={rock} editing={false} sample={rockPay} typeChange={{
           name: 'Rock Kai', canMigrate: frame === '10A3', canCancel: frame === '10A4', options, startOpen: frame === '10A3',
           scheduled: frame === '10A4' ? { date: 'Tue, Dec 1, 2026', text: 'November closes as a contractor, with their last invoice; then pay periods and Rippling. It goes in their history on the day.' } : null,
           stays: "Reports to Dave Sharpe, who keeps approving Rock's hours. Their team, their allowance, their time entries and every past invoice and decision.",

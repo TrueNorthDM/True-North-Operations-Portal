@@ -7,7 +7,8 @@
  *   Approvals      Reports to, who approves the hours and who the invoice, and
  *                  whether that is one step or two. No money: shown to whoever
  *                  sees the Work tab.
- *   Pay and hours  Pays as, the rate or the fixed amount, the hours allowance.
+ *   Pay and hours  Pays as, the rate or the fixed amount, the hours allowance,
+ *                  and for a contractor when time off comes (10A-3).
  *                  Money: only for the person, Super Admins, Admins and
  *                  Finance; changed by whoever keeps Rates & Costs (d-rates).
  */
@@ -32,6 +33,8 @@ export interface PayView {
   hourlyRate: number | null
   fixedAmount: number | null
   allowance: { hours: number; period: 'week' | 'month' } | null
+  /** A contractor's "Time off" line (10A-3, 10A-4): "Contractors do not ask PTO", or from when they will. */
+  timeOff?: string | null
   canEdit: boolean
 }
 
@@ -125,8 +128,9 @@ export function PayHoursSection({ view, save, startEditing = false, after }: {
       <Section title="Pay and hours" tag={<NewTag />} right={view.canEdit ? <button type="button" onClick={open} className="border-0 bg-transparent p-0 font-(family-name:--font-display) font-extrabold text-[11px] tracking-[.04em] uppercase text-tn-teal hover:text-tn-ink cursor-pointer">Edit</button> : undefined}>
         <dl className="m-0">
           <Row label="Pays as" value={view.isContractor ? PAYS[view.paysAs ?? 'hourly'] : 'Salary (Rippling)'} />
-          {view.isContractor && <Row label={view.paysAs === 'hourly' ? 'Rate an hour' : 'Fixed amount a month'} value={rateText} sub={view.paysAs === 'fixed_no_timesheet' ? 'No timesheet: the invoice is made on the 1st' : undefined} />}
+          {view.isContractor && <Row label={view.paysAs === 'hourly' ? 'Rate / cost' : 'Fixed amount a month'} value={rateText} sub={view.paysAs === 'fixed_no_timesheet' ? 'No timesheet: the invoice is made on the 1st' : undefined} />}
           <Row label="Hours allowance" value={view.allowance ? `${view.allowance.hours}h ${UNIT[view.allowance.period]}` : 'None'} />
+          {view.timeOff && <Row label="Time off" value={view.timeOff} />}
         </dl>
         {after}
       </Section>

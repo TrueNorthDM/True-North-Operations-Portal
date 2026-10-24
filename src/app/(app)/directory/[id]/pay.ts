@@ -12,7 +12,7 @@ import { hoursApprover, invoiceApprover, isRecordedOnly, oneStep } from '@/lib/t
 import type { ApprovalsView, PayView } from '@/components/person/PayApprovalsSections'
 import type { TypeChangeView } from '@/components/person/TypeChange'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
-import { localDate, monthLong } from '@/lib/timeclock/format'
+import { dateLabel, localDate, monthLong } from '@/lib/timeclock/format'
 import { addDays, anchorOn } from '@/lib/timeclock/periods'
 import { loadTypeChange, typeChangeOptions } from '@/lib/timeclock/type-change'
 
@@ -56,9 +56,12 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
     const money = seesMoney(access, personId, settings)
     // Contractor to employee: shown to whoever sees money; scheduled by Super Admins only.
     let typeChange: TypeChangeView | null = null
+    // A contractor asks no time off; once the change to employee is scheduled, from that day, in Requests (10A-3, 10A-4).
+    let timeOff: string | null = null
     if (money && p.isContractor) {
       const [scheduled, clocky] = await Promise.all([loadTypeChange(personId), loadClockySettings()])
       const today = localDate(new Date(), 'America/New_York')
+      timeOff = scheduled ? `From ${dateLabel(scheduled.effectiveOn).replace(/, \d{4}$/, '')}, in Requests` : 'Contractors do not ask PTO'
       const first = name(personId).split(' ')[0]
       typeChange = {
         name: name(personId), canMigrate: access.isSuperAdmin && !scheduled,
@@ -72,7 +75,7 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       typeChange,
       approvals: { rows, note },
       pay: money ? {
-        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance,
+        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance, timeOff,
         canEdit: access.can('directory') && access.can('d-rates'),
       } : null,
       invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : p.paysAs === 'fixed_no_timesheet' ? 'Made on the 1st, no timesheet' : 'Made when they submit') : null,

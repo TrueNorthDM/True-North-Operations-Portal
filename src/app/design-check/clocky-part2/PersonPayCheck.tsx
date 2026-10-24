@@ -8,8 +8,25 @@
 import { PersonPage } from '@/components/person/PersonPage'
 import type { PersonPageData } from '@/lib/directory/person-page-data'
 import type { TypeChangeView } from '@/components/person/TypeChange'
+import type { ApprovalsView, PayView } from '@/components/person/PayApprovalsSections'
 
-export function PersonPayCheck({ data, editing, typeChange = null }: { data: PersonPageData; editing: boolean; typeChange?: TypeChangeView | null }) {
+type PaySample = { approvals: ApprovalsView; pay: PayView; invoicesLine: string }
+
+// Cheyenne Wilson's (10A-1); Rock Kai brings his own (10A-3, 10A-4).
+const CHEYENNE: PaySample = {
+  approvals: {
+    rows: [
+      { k: 'Reports to', v: 'Arnaldo Oliveira', sub: 'Work tab' },
+      { k: 'Hours approved by', v: 'Arnaldo Oliveira', sub: 'The person they report to' },
+      { k: 'Invoice approved by', v: 'Arnaldo Oliveira', sub: 'Everyone not reporting to Dave Sharpe' },
+    ],
+    note: 'Same person: one step, Approve both.',
+  },
+  pay: { isContractor: true, paysAs: 'hourly', hourlyRate: 22, fixedAmount: null, allowance: { hours: 140, period: 'month' }, timeOff: 'Contractors do not ask PTO', canEdit: true },
+  invoicesLine: 'Made when they submit',
+}
+
+export function PersonPayCheck({ data, editing, typeChange = null, sample = CHEYENNE }: { data: PersonPageData; editing: boolean; typeChange?: TypeChangeView | null; sample?: PaySample }) {
   return (
     <PersonPage
       data={data}
@@ -23,16 +40,9 @@ export function PersonPayCheck({ data, editing, typeChange = null }: { data: Per
         links: { rates: true, settings: true },
       }}
       pay={{
-        approvals: {
-          rows: [
-            { k: 'Reports to', v: 'Arnaldo Oliveira', sub: 'Work tab' },
-            { k: 'Hours approved by', v: 'Arnaldo Oliveira', sub: 'The person they report to' },
-            { k: 'Invoice approved by', v: 'Arnaldo Oliveira', sub: 'Everyone not reporting to Dave Sharpe' },
-          ],
-          note: 'Same person: one step, Approve both.',
-        },
-        pay: { isContractor: true, paysAs: 'hourly', hourlyRate: 22, fixedAmount: null, allowance: { hours: 140, period: 'month' }, canEdit: true },
-        invoicesLine: 'Made when they submit',
+        approvals: sample.approvals,
+        pay: sample.pay,
+        invoicesLine: sample.invoicesLine,
         save: async () => ({ ok: true }),
         startEditing: editing,
         typeChange,
