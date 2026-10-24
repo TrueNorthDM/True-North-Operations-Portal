@@ -1,11 +1,11 @@
 'use client'
 
-// 10A-2: Directory > Rates & Costs with Pays as, Allowance and Over (Company
+// 10A-2: Rates & Costs, its own page under People, with Pays as, Allowance and Over (Company
 // Settings.dc.html, frame 10A2), the real tab in Edit with the prototype's
 // values: Olivia Hale fixed monthly, Cheyenne Wilson 11h 15m over 140h a
 // month, Wendy Cacka an employee with 40h a week.
 
-import { RatesCostsTab } from '@/components/admin/RatesCostsTab'
+import { RatesCostsPage } from '@/components/admin/RatesCostsPage'
 import type { CadenceActions } from '@/components/person/PersonForms'
 import type { PayColumn } from '@/components/tsheets/settings/PeopleTab'
 import { idOf, previewCadenceChange, ratesPeople, SEED, setCadence } from '../clocky-periods/sample'
@@ -23,6 +23,8 @@ const PAY: Record<string, Partial<PayColumn['byPerson'][string]>> = {
   'Amy Prindle': { allowance: M(140) },
   'Samuel Manzi': { allowance: M(160) },
   'Wendy Cacka': { isContractor: false, paysAs: null, allowance: { hours: 40, period: 'week' } },
+  // Fixed, no timesheet: Timesheet says None.
+  'Tina Gennette': { paysAs: 'fixed_no_timesheet' },
 }
 
 const payColumn = (): PayColumn => ({
@@ -32,7 +34,7 @@ const payColumn = (): PayColumn => ({
 
 export function RatesPayCheck({ editing }: { editing: boolean }) {
   return (
-    <RatesCostsTab
+    <RatesCostsPage
       people={ratesPeople()}
       allClients={[{ id: 1, name: 'i7 Marketing' }]}
       cadence={{ byPerson: BY_PERSON, canEdit: true }}

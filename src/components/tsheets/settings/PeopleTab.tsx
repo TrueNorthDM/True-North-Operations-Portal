@@ -19,7 +19,7 @@
  * dates each change takes effect. A name opens the person's page.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { SearchInput } from '@/components/clocky/clock/ClockParts'
 import { Segmented } from '@/components/ui/Segmented'
@@ -109,6 +109,12 @@ interface Props {
   startEditing?: boolean
   startCadences?: Record<string, Cadence>
   startDialog?: DialogItem[] | null
+  /**
+   * The page's own top (Directory > Rates & Costs as its own page, 10A-2): it
+   * gets Edit, or Cancel and Save changes, to place at its right; then there
+   * is no save bar under the table.
+   */
+  head?: (actions: ReactNode) => ReactNode
 }
 
 const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
@@ -149,7 +155,7 @@ const alOf = (k: string): { hours: number; period: 'week' | 'month' } | null => 
 const alText = (k: string) => (k === 'none' ? 'None' : `${k.slice(0, -1)}h ${k.endsWith('w') ? 'a week' : 'a month'}`)
 const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 
-export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null }: Props) {
+export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head }: Props) {
   const router = useRouter()
   const grid = pay ? (cadence ? GRID_TS_PAY : GRID_PAY) : cadence ? GRID_TS : GRID
   // Pays as and Allowance being changed (Clocky part 2): "hourly" etc., and "140m" / "40w" / "none".
@@ -422,8 +428,27 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
     </span>
   )
 
+  // The handoff's buttons at the top right (Company Settings.dc.html 10A2): Edit, or Cancel and Save changes.
+  const topActions = head && (editing ? (
+    <div className="flex items-center gap-2 flex-wrap justify-end">
+      {error && <span className="text-[13px] text-[var(--bdg-red-fg)]">{error}</span>}
+      <button type="button" onClick={cancel} disabled={saving} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal disabled:opacity-50">Cancel</button>
+      <button type="button" onClick={() => void save()} disabled={saving} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2C40A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{saving ? 'Saving…' : 'Save changes'}
+      </button>
+    </div>
+  ) : (
+    <div className="flex items-center gap-2 flex-wrap justify-end">
+      {error && <span className="text-[13px] text-[var(--bdg-red-fg)]">{error}</span>}
+      <button type="button" onClick={enterEdit} className="inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E9E6A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" /></svg>Edit
+      </button>
+    </div>
+  ))
+
   return (
     <div>
+      {head?.(topActions)}
       {/* toolbar */}
       <div className="flex items-center gap-3.5 flex-wrap mb-[18px]">
         <div className="flex-1 min-w-[230px] max-w-[340px]">
@@ -451,7 +476,10 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
         <div className={pay ? (cadence ? 'min-w-[1840px]' : 'min-w-[1830px]') : cadence ? 'min-w-[1420px]' : 'min-w-[1404px]'}>
           {/* header */}
           <div className={`${grid} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
-            <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
+            {/* The name stays in view when the table scrolls sideways (a phone, a narrow window). */}
+            <span className="sticky left-0 z-[1] max-md:w-[178px] max-md:justify-self-start -ml-[22px] pl-[22px] -mr-3.5 pr-3.5 -my-3.5 py-3.5 self-stretch flex items-center bg-subtle">
+              <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
+            </span>
             <SortHeader label="Team" active={sort?.id === 'team'} dir={sort?.id === 'team' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'team'))} />
             <SortHeader label="Report to" active={sort?.id === 'reports'} dir={sort?.id === 'reports' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'reports'))} />
             <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />
@@ -483,10 +511,11 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
             const costVal = editing ? (d?.cost ?? '') : (p.costRate != null ? String(p.costRate) : '')
             const beVal = editing ? (d?.be ?? '') : (p.beRate != null ? String(p.beRate) : '')
             const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
+            const changed = editing && ((cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) || payChanged(p.id))
             return (
-              <div key={p.id} className={`${grid} px-[22px] py-3 border-b border-slate-100 last:border-0 ${editing && ((cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) || payChanged(p.id)) ? 'bg-[var(--warn-bg)]' : ''}`}>
-                {/* Person: navy avatar + name (from Directory); the name opens their page */}
-                <span className="inline-flex items-center gap-[11px] min-w-0">
+              <div key={p.id} className={`${grid} px-[22px] py-3 border-b border-slate-100 last:border-0 ${changed ? 'bg-[var(--warn-bg)]' : ''}`}>
+                {/* Person: navy avatar + name (from Directory); the name opens their page, and stays in view when the table scrolls sideways */}
+                <span className={`sticky left-0 z-[1] max-md:w-[178px] max-md:justify-self-start -ml-[22px] pl-[22px] -mr-3.5 pr-3.5 -my-3 py-3 self-stretch inline-flex items-center gap-[11px] min-w-0 ${changed ? 'bg-[var(--warn-bg)]' : 'bg-white'}`}>
                   <span className="w-[30px] h-[30px] rounded-full shrink-0 bg-tn-primary text-white inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[10.5px]">
                     {initialsOf(p.name)}
                   </span>
@@ -519,7 +548,8 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 {/* Timesheet: the pill, or in Edit the choice (changed rows amber) */}
                 {cadence && (
                   <span className="flex flex-col gap-1 items-start">
-                    {editing && cadence.canEdit ? (
+                    {/* Paid a fixed amount with no timesheet: nothing to submit (Company Settings.dc.html 10A2) */}
+                    {pay && (payDraft[p.id]?.paysAs ?? payOf(p.id)?.paysAs) === 'fixed_no_timesheet' ? <span className="text-[13px] text-foreground">None</span> : editing && cadence.canEdit ? (
                       <Segmented
                         compact
                         display="px-2.5 py-[5px] text-[12px]"
@@ -581,8 +611,8 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
         </div>
       </div>
 
-      {/* save bar */}
-      <div className="flex items-center justify-end gap-3.5 mt-6 pt-5 border-t border-slate-200 leading-[normal]">
+      {/* save bar (a page with its own top has its buttons there) */}
+      {!head && <div className="flex items-center justify-end gap-3.5 mt-6 pt-5 border-t border-slate-200 leading-[normal]">
         {error ? (
           <span className="text-[13px] text-[var(--bdg-red-fg)] mr-auto">{error}</span>
         ) : editing ? (
@@ -621,7 +651,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
             <span className="text-[#ffffff]">Edit</span>
           </button>
         )}
-      </div>
+      </div>}
 
       {cadDialog && (
         <PeriodsDialog

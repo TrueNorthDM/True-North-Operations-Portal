@@ -24,6 +24,8 @@ export const NAV_ICON = {
   'boards': 'M3 3h18v18H3zM9 3v18M15 3v18',
   'client-reports': 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M12 11v8M14 13h-3a1 1 0 0 0 0 2h2a1 1 0 0 1 0 2h-3',
   'directory': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  // Rates & Costs (People, 10A-2): a dollar sign.
+  'rates': 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
   'organization': 'M9 3h6v5H9zM3 16h5v5H3zM9.5 16h5v5h-5zM16 16h5v5h-5zM12 8v4M5.5 16v-4h13v4M12 12v4',
   'history': 'M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3 2',
   'human-resources': 'M18 8A6 6 0 1 1 6 8a6 6 0 0 1 12 0zM15.5 12.9 17 22l-5-3-5 3 1.5-9.1',

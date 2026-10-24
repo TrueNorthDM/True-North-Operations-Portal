@@ -4,6 +4,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DirectoryTabs } from '@/components/admin/DirectoryTabs'
+import { RatesCostsPage } from '@/components/admin/RatesCostsPage'
 import type { AccessLogEntry } from '@/components/admin/AccessLogManager'
 import { RestrictedDirectory, type RestrictedPerson, type RestrictedTeam } from '@/components/admin/RestrictedDirectory'
 import { colourOf, teamColour, teamColoursFrom } from '@/lib/directory/team-colour'
@@ -386,18 +387,27 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     )
   }
 
-  // Privileged only: the Rates & Costs tab data (moved here from Settings →
+  // Privileged only: the Rates & Costs page data (moved here from Settings →
   // People & rates). Loaded after the restricted branch so non-admins never
-  // trigger it, and only with Rates & Costs (d-rates): it carries every pay rate.
-  const budget = rights.rates ? await getBudgetUsageData({ pay: true }) : null
+  // trigger it, and only on that page with Rates & Costs (d-rates): it carries every pay rate.
+  const onRates = startTab === 'rates' && rights.rates
+  const budget = onRates ? await getBudgetUsageData({ pay: true }) : null
   // Its Timesheet column (Clocky, 16 October 2026): with Company settings >
   // Timesheet periods; changed by whoever may change the periods.
-  const periods = rights.rates && access.can('cs-periods') ? await getTimesheetPeriods() : null
+  const periods = onRates && access.can('cs-periods') ? await getTimesheetPeriods() : null
   // Pays as, Allowance and Over (Clocky part 2, 10A-2), with Rates & Costs.
-  const ratesPay = rights.rates && budget ? await loadRatesPay(budget.people.map(p => p.id), access.can('d-rates')) : null
+  const ratesPay = budget ? await loadRatesPay(budget.people.map(p => p.id), access.can('d-rates')) : null
   const ratesCadence = periods?.ok
     ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
     : null
+
+  // Rates & Costs is its own page under People (Company Settings.dc.html 10A-2,
+  // owner 2026-10-23), at the address every link already uses.
+  if (startTab === 'rates' && budget) {
+    return (
+      <RatesCostsPage people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} />
+    )
+  }
 
   // Access-log rows resolved to the current person (avatar/team) for the tab.
   // Resolve each access row to a person by any key we hold, most specific
@@ -436,13 +446,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         teamOptions={teamOptions}
         teamCards={access.can('d-teams') ? teamCards : []}
         rights={rights}
-        ratesPeople={budget?.people ?? []}
-        ratesClients={(budget?.clients ?? []).map(c => ({ id: c.id, name: c.name }))}
         accessLog={accessLog}
-        allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['rates', 'd-rates'], ['access', 'd-log'], ['portal', 'd-portal']] as const)
+        allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['access', 'd-log'], ['portal', 'd-portal']] as const)
           .filter(([, key]) => access.can(key)).map(([tab]) => tab)}
-        ratesCadence={ratesCadence}
-        ratesPay={ratesPay}
         startTab={startTab}
       />
     </div>

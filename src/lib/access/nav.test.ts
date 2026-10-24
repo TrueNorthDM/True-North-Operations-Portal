@@ -65,12 +65,12 @@ describe('the rail', () => {
     }
   })
 
-  // Organization and History are for everyone signed in; the Directory and
-  // Human Resources follow their ticks.
+  // Organization and History are for everyone signed in; the Directory,
+  // Rates & Costs (its own row since 10A-2) and Human Resources follow their ticks.
   it('gives a user Organization and History, and a Team Leader the Directory too', () => {
     expect(rows(railFor('user'), 'people')).toEqual(['organization', 'history'])
     expect(rows(railFor('team_leader'), 'people')).toEqual(['directory', 'organization', 'history'])
-    expect(rows(railFor('admin'), 'people')).toEqual(['directory', 'organization', 'human-resources', 'history'])
+    expect(rows(railFor('admin'), 'people')).toEqual(['directory', 'rates', 'organization', 'human-resources', 'history'])
   })
 
   // The Clocky menu as the design handoff draws it (README "Clocky menu in

@@ -116,11 +116,7 @@ export function Part2Frame({ frame }: { frame: string }) {
   if (/^6[CD]/.test(frame)) { const f = reviewFrame(frame); return <ReviewCheck frame={frame} review={f.review} tab={f.tab} day={f.day} modal={f.modal} /> }
   if (frame.startsWith('10A2')) {
     return (
-      <div className="space-y-6">
-        <Breadcrumb self="/directory" />
-        <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink m-0 leading-[normal]" style={{ letterSpacing: '-.01em' }}>Directory</h1>
-        <RatesPayCheck editing={frame === '10A2'} />
-      </div>
+      <RatesPayCheck editing={frame === '10A2'} />
     )
   }
   return null

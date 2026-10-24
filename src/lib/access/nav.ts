@@ -152,6 +152,8 @@ export const RAIL: readonly RailEntry[] = [
       label: null,
       items: [
         { key: 'directory', label: NAV_LABEL['/directory'], href: '/directory', icon: 'directory', surface: 'directory' },
+        // Its own page since the part 2 handoff (Company Settings.dc.html 10A-2): Super Admins (d-rates).
+        { key: 'rates', label: 'Rates & Costs', href: '/directory?tab=rates', icon: 'rates', surface: 'd-rates' },
         { key: 'organization', label: NAV_LABEL['/organization'], href: ROUTES.organization, icon: 'organization', surface: 'organization' },
         { key: 'human-resources', label: NAV_LABEL['/human-resources'], href: '/human-resources', icon: 'human-resources', surface: 'human-resources' },
         // Everyone signed in, like Organization (7 October 2026).

@@ -4,7 +4,7 @@
 // real tab and the prototype's fifteen people. 5Cn (not in the handoff): two
 // of them with no cadence of their own yet, shown as "Not set".
 
-import { RatesCostsTab } from '@/components/admin/RatesCostsTab'
+import { RatesCostsPage } from '@/components/admin/RatesCostsPage'
 import type { CadenceActions } from '@/components/person/PersonForms'
 import { CHANGED, changedItems, idOf, previewCadenceChange, ratesPeople, SEED, setCadence } from './sample'
 
@@ -16,7 +16,7 @@ const BY_PERSON_UNSET = Object.fromEntries(SEED.map(r => [idOf(r[0]), NOT_SET.in
 export function RatesCheck({ frame }: { frame: string }) {
   const editing = frame === '5C2' || frame === '5C3'
   return (
-    <RatesCostsTab
+    <RatesCostsPage
       people={ratesPeople()}
       allClients={[{ id: 1, name: 'i7 Marketing' }]}
       cadence={{ byPerson: frame === '5Cn' ? BY_PERSON_UNSET : BY_PERSON, canEdit: true }}

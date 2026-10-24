@@ -14,14 +14,12 @@ import { tabKeys } from '@/components/ui/tab-keys'
 import { PeopleManager } from './PeopleManager'
 import { EmailsTab } from './EmailsTab'
 import { TeamsManager, type TeamCard } from './TeamsManager'
-import { RatesCostsTab } from './RatesCostsTab'
 import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
 import { PortalAccessTab } from './PortalAccessTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, CardRights } from '@/lib/directory/people-types'
-import type { CadenceColumn, PayColumn, PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
 
-type Tab = 'people' | 'emails' | 'teams' | 'rates' | 'access' | 'portal'
+type Tab = 'people' | 'emails' | 'teams' | 'access' | 'portal'
 
 export interface TeamOption { id: string; name: string; key: string; color: string }
 export interface ProjectOption { id: string; name: string; logo: string | null }
@@ -31,31 +29,21 @@ export function DirectoryTabs({
   teamOptions,
   teamCards,
   rights,
-  ratesPeople,
-  ratesClients,
   accessLog,
   allowed,
-  ratesCadence = null,
-  ratesPay = null,
   startTab = 'people',
 }: {
   people: PersonView[]
   teamOptions: TeamOption[]
   teamCards: TeamCard[]
   rights: CardRights
-  ratesPeople: PersonWithAssignments[]
-  ratesClients: { id: number; name: string }[]
   accessLog: AccessLogEntry[]
   /** The tabs this person's access opens (People always); every tab when omitted. */
   allowed?: readonly string[]
-  /** Rates & Costs' Timesheet column (Clocky, 16 October 2026). */
-  ratesCadence?: CadenceColumn | null
-  /** Pays as, Allowance and Over (Clocky part 2, 10A-2). */
-  ratesPay?: PayColumn | null
-  /** The tab open at first (?tab=rates from Company settings > Timesheet periods). */
+  /** The tab open at first (?tab=emails and the like). Rates & Costs is its own page since 10A-2. */
   startTab?: string
 }) {
-  const [tab, setTab] = useState<Tab>(() => (startTab === 'people' || !(['emails', 'teams', 'rates', 'access', 'portal'] as string[]).includes(startTab) || (allowed && !allowed.includes(startTab)) ? 'people' : startTab as Tab))
+  const [tab, setTab] = useState<Tab>(() => (startTab === 'people' || !(['emails', 'teams', 'access', 'portal'] as string[]).includes(startTab) || (allowed && !allowed.includes(startTab)) ? 'people' : startTab as Tab))
   // Deep-link: open a person's card on mount when ?open=<id> was passed.
   const router = useRouter()
   // The popup is for adding someone; everyone else opens on their own page.
@@ -75,7 +63,6 @@ export function DirectoryTabs({
     { key: 'people', label: 'People', count: people.length },
     { key: 'emails', label: 'Emails', count: activePeople.length },
     { key: 'teams', label: 'Teams', count: teamCards.length },
-    { key: 'rates', label: 'Rates & Costs' },
     { key: 'access', label: 'Access log', count: accessLog.length },
     { key: 'portal', label: 'Portal access', count: activePeople.length },
   ]
@@ -196,7 +183,6 @@ export function DirectoryTabs({
         <EmailsTab people={activePeople} onOpen={id => router.push(withViewAs(personHref(id, 'work')))} />
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} canEdit={rights.positions} />}
-      {tab === 'rates' && <RatesCostsTab people={ratesPeople} allClients={ratesClients} cadence={ratesCadence} pay={ratesPay} />}
       {tab === 'access' && <AccessLogManager entries={accessLog} />}
       {tab === 'portal' && (
         <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
