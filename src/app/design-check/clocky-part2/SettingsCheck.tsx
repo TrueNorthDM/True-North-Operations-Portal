@@ -24,7 +24,7 @@ export function SettingsCheck({ frame, integrations, invoices }: { frame: string
       <SettingsNav signedIn={{ name: 'Arnaldo Oliveira', role: 'Super Admin · True North' }} startSection={frame === '13B' ? 'invoices' : frame === '13C' ? 'reminders' : 'integrations'} sections={[
         { id: 'invoices', label: 'Invoices', icon: icon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5'), isNew: true, editable: false,
           content: <div>{head('Invoices', 'How invoices and reimbursement documents are numbered, and what True North puts in the "To" block.')}<InvoiceSettings data={invoices} canEdit save={ok} /></div> },
-        { id: 'integrations', label: 'Integrations', icon: icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'), isNew: true, editable: false,
+        { id: 'integrations', label: 'Integrations', icon: icon('M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'), editable: false,
           content: <div>{head('Integrations', 'Rippling for payroll and PTO, Google Calendar for the team calendar and the Good News Calendar. The portal fills them; nobody copies by hand.')}
             <IntegrationsSettings data={integrations} canEdit api={{ saveRipplingToken: ok, removeRipplingToken: ok, saveGoogle: ok, removeGoogle: ok, testGoogle: async () => ({ ok: true, toast: 'Google Calendar answered: the team calendar can be read; the Good News Calendar can be read.' }), retryIntegrationJob: async () => ({ ok: true, toast: 'Queued again.' }) }} /></div> },
         { id: 'reminders', label: 'Reminders', icon: icon('M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0'), isNew: true, editable: false,

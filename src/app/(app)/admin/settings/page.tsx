@@ -428,7 +428,6 @@ export default async function SettingsPage() {
       id: 'integrations',
       label: 'Integrations',
       icon: IntegrationsIcon,
-      isNew: true,
       editable: false,
       content: (
         <div>

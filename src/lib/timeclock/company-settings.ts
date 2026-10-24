@@ -15,7 +15,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadDirectory } from './clocky-context'
-import { dateLabel, localDate, stampLabel } from './format'
+import { dateLabel, dayLabel, localDate, stampLabel } from './format'
 import { loadConnections } from '@/lib/integrations/connections'
 import { loadInvoiceSettings } from './pay-terms'
 import { REMINDERS, type ReminderKey } from './reminder-kinds'
@@ -43,7 +43,8 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
   const at = (t: string) => stampLabel(t, zone).replace(/, \d{4},/, ',')
   const days = (p: Record<string, unknown>) => {
     const a = String(p.start ?? ''), b = String(p.end ?? '')
-    return a && b ? (a === b ? dateLabel(a).replace(/, \d{4}$/, '') : `${dateLabel(a).replace(/, \d{4}$/, '')} to ${dateLabel(b).replace(/, \d{4}$/, '')}`) : ''
+    // One day with its weekday ("Thu, Oct 29", 13A); a span as "Oct 4 to Oct 17".
+    return a && b ? (a === b ? dayLabel(a) : `${dateLabel(a).replace(/, \d{4}$/, '')} to ${dateLabel(b).replace(/, \d{4}$/, '')}`) : ''
   }
   const errorsOf = (kinds: string[]): IntegrationError[] => list
     .filter(j => kinds.includes(j.kind) && j.last_error && (j.state === 'failed' || (j.state === 'done' && j.attempts > 1)))
