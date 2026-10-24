@@ -30,7 +30,7 @@ export function SettingsCheck({ frame, level }: { frame: string; level: 'super' 
   const sections: SettingsSection[] = [
     ...OTHER.map(([id, label, paths]) => ({ id, label, icon: icon(paths), editable: false, content: <p className="text-[13.5px] text-muted m-0">{label}: unchanged.</p> })),
     {
-      id: 'periods', label: 'Timesheet periods', isNew: true, editable: false,
+      id: 'periods', label: 'Timesheet periods', editable: false,
       icon: icon(['M4 5h16v16H4z', 'M4 10h16', 'M9 3v4', 'M15 3v4', 'M8 14h3', 'M8 17h6']),
       content: (
         <TimesheetPeriodsSection

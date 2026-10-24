@@ -393,7 +393,6 @@ export default async function SettingsPage() {
       id: 'periods',
       label: 'Timesheet periods',
       icon: PeriodsIcon,
-      isNew: true,
       // Its own Edit / Done: Done saves, and moving the start date asks first.
       editable: false,
       content: 'error' in periods
@@ -404,7 +403,6 @@ export default async function SettingsPage() {
       id: 'jobs',
       label: 'Job catalogue',
       icon: JobsIcon,
-      isNew: true,
       editable: false,
       content: (
         <div>

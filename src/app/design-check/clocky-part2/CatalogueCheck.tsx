@@ -18,7 +18,7 @@ export function CatalogueCheck({ frame, data, startId, guide }: { frame: string;
     <div className="space-y-[22px]">
       <h1 className="font-(family-name:--font-display) font-extrabold text-[27px] text-tn-ink m-0 leading-[normal]" style={{ letterSpacing: '-.01em' }}>Company settings</h1>
       <SettingsNav signedIn={{ name: 'Arnaldo Oliveira', role: 'Super Admin · True North' }} startSection="jobs" sections={[{
-        id: 'jobs', label: 'Job catalogue', icon: folder, isNew: true, editable: false,
+        id: 'jobs', label: 'Job catalogue', icon: folder, editable: false,
         content: (
           <div>
             <div className="mb-[18px]">
