@@ -1,13 +1,14 @@
-// The Clocky report as one landscape page (Reports.dc.html 12C): the cards,
+// The North Time report as one landscape page (Reports.dc.html 12C), or more when its rows run over: the cards,
 // by person and by client. The same sheet is the preview and, through the
 // print page, the PDF (lib/pdf/sheet-pdf.ts, 860px wide).
 
 import Image from 'next/image'
 import type { ReportView } from '@/lib/timeclock/reports'
 
-export function ReportSheet({ view, scope, file, made }: { view: ReportView; scope: string; file: string; made: string }) {
+/** `pages`: how many pages it takes, one unless its rows run over (the preview and the PDF maker measure it). */
+export function ReportSheet({ view, scope, file, made, pages = 1 }: { view: ReportView; scope: string; file: string; made: string; pages?: number }) {
   return (
-    <div className="print-doc w-[860px] flex-none min-h-[600px] box-border bg-white px-10 py-9 flex flex-col gap-[18px] leading-[normal]" data-file={`${file}.pdf`}>
+    <div data-sheet className="print-doc w-[860px] flex-none min-h-[600px] box-border bg-white px-10 py-9 flex flex-col gap-[18px] leading-[normal]" data-file={`${file}.pdf`}>
       <div className="flex justify-between items-end gap-4 border-b-2 border-tn-primary pb-3">
         <div>
           <div className="font-(family-name:--font-display) font-black text-[24px] text-tn-ink" data-doc-title>North Time report</div>
@@ -30,7 +31,7 @@ export function ReportSheet({ view, scope, file, made }: { view: ReportView; sco
         <div className="flex flex-col">
           <div className="font-(family-name:--font-display) font-extrabold text-[12px] text-tn-ink pb-1.5">By person</div>
           {view.byPerson.map(p => (
-            <div key={p.id} className="grid grid-cols-[minmax(0,1fr)_70px_60px_80px] gap-2 py-[5px] border-b border-[var(--row-rule)] text-[11px] tabular-nums lining-nums">
+            <div key={p.id} data-keep className="grid grid-cols-[minmax(0,1fr)_70px_60px_80px] gap-2 py-[5px] [break-inside:avoid] border-b border-[var(--row-rule)] text-[11px] tabular-nums lining-nums">
               <span className="text-tn-ink font-semibold">{p.name}</span>
               <span className="text-right">{p.hours}</span>
               <span className="text-right" style={{ color: p.overTone === 'bad' ? '#c8323d' : p.overTone === 'warn' ? '#8a6d1a' : '#cbd2da' }}>{p.over}</span>
@@ -41,15 +42,16 @@ export function ReportSheet({ view, scope, file, made }: { view: ReportView; sco
         <div className="flex flex-col">
           <div className="font-(family-name:--font-display) font-extrabold text-[12px] text-tn-ink pb-1.5">By client</div>
           {view.byClient.map(c => (
-            <div key={c.label} className="grid grid-cols-[minmax(0,1fr)_70px] gap-2 py-[5px] border-b border-[var(--row-rule)] text-[11px] tabular-nums lining-nums">
+            <div key={c.label} data-keep className="grid grid-cols-[minmax(0,1fr)_70px] gap-2 py-[5px] [break-inside:avoid] border-b border-[var(--row-rule)] text-[11px] tabular-nums lining-nums">
               <span className="text-tn-ink font-semibold">{c.label}</span>
               <span className="text-right">{c.hours}</span>
             </div>
           ))}
         </div>
       </div>
-      <div className="mt-auto flex justify-between text-[10px] text-muted border-t border-[var(--row-rule)] pt-2.5">
+      <div data-keep className="mt-auto flex justify-between gap-4 text-[10px] text-muted border-t border-[var(--row-rule)] pt-2.5 [break-inside:avoid]">
         <span>Made by the True North Operations Portal on {made}. Totals in multiples of 15 minutes.</span>
+        <span data-page-at="doc" className="whitespace-nowrap">Page {pages} of {pages}</span>
       </div>
     </div>
   )

@@ -6,14 +6,15 @@
  * the address and the server reads the report again (lib/timeclock/reports-data.ts).
  */
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { PdfWindow } from '@/components/clocky/invoices/InvoicePdfModal'
 import { FieldLabel, Icon, LabeledSelect, Toast, type ToastState } from '@/components/clocky/entries/ui'
 import type { ReportPage } from '@/lib/timeclock/reports-data'
-import { reportSearch as search, type ReportQuery } from '@/lib/timeclock/reports'
+import { reportSearch as search, type ReportQuery, type ReportView } from '@/lib/timeclock/reports'
+import { fitOnePage, pagePx, sheetPages } from '@/lib/timeclock/receipt-pages'
 import { ReportSheet } from './ReportSheet'
 
 const SEG = 'flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5'
@@ -190,12 +191,39 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
       </div>
 
       {pdf && (
-        <PdfWindow landscape name={`${page.file}.pdf`} href={`/clocky-hours/reports/pdf${qs ? `?${qs}` : ''}`} onClose={() => setPdf(false)}
-          onDownloaded={() => { setToast({ text: 'Downloaded the report PDF.' }); setTimeout(() => setToast(null), 4200) }}>
-          <ReportSheet view={v} scope={page.scopeText} file={page.file} made={made} />
-        </PdfWindow>
+        <ReportPdf view={v} scope={page.scopeText} file={page.file} made={made} href={`/clocky-hours/reports/pdf${qs ? `?${qs}` : ''}`} onClose={() => setPdf(false)}
+          onDownloaded={() => { setToast({ text: 'Downloaded the report PDF.' }); setTimeout(() => setToast(null), 4200) }} />
       )}
       <Toast toast={toast} />
     </div>
+  )
+}
+
+/** The report's preview (12C): one landscape page unless its rows run over, measured as the PDF maker measures it. */
+function ReportPdf({ view, scope, file, made, href, onClose, onDownloaded }: {
+  view: ReportView; scope: string; file: string; made: string; href: string; onClose: () => void; onDownloaded: () => void
+}) {
+  const sheet = useRef<HTMLDivElement>(null)
+  const [pages, setPages] = useState(1)
+  useEffect(() => {
+    const el = sheet.current
+    if (!el) return
+    const watch = new ResizeObserver(() => {
+      // In the sheet's own pixels: on a phone the window shows it smaller (860px at its zoom).
+      const box = el.getBoundingClientRect()
+      const k = box.width / 860 || 1
+      const keeps = [...el.querySelectorAll('[data-keep]')].map(e => { const r = e.getBoundingClientRect(); return { top: (r.top - box.top) / k, height: r.height / k } })
+      // As the PDF maker: a little over one page fits on one, a little smaller.
+      const natural = box.height / k
+      setPages(fitOnePage(natural, 860, true).fits ? 1 : sheetPages(natural, keeps, pagePx(860, true)).pages)
+    })
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [])
+  return (
+    <PdfWindow landscape name={`${file}.pdf`} href={href} onClose={onClose} onDownloaded={onDownloaded}
+      pages={`Preview, ${pages} page${pages === 1 ? '' : 's'}, landscape.`}>
+      <div ref={sheet}><ReportSheet view={view} scope={scope} file={file} made={made} pages={pages} /></div>
+    </PdfWindow>
   )
 }

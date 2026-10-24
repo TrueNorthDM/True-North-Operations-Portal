@@ -16,5 +16,9 @@ export async function GET(request: Request) {
   const query = new URL(request.url).searchParams
   query.delete('_vs')
   const q = query.toString()
-  return sheetPdf(request, `/clocky-hours/reports/print${q ? `?${q}` : ''}`, () => 'north-time-report.pdf', { width: 860, landscape: true, allPages: true })
+  return sheetPdf(request, `/clocky-hours/reports/print${q ? `?${q}` : ''}`, () => 'north-time-report.pdf', {
+    width: 860, landscape: true,
+    // Its footer says which page it ends on, once the report is measured (12C).
+    paged: { fit: true, labels: n => ({ doc: `Page ${n} of ${n}`, receipts: [], on: null }), draw: async pdf => pdf },
+  })
 }

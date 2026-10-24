@@ -8,8 +8,11 @@
  * Pure: the preview, the print page and the PDF route share it.
  */
 
-/** One A4 page in the sheet's pixels: 620 wide, so 620 x 1122.5 / 793.7 tall. */
-export const A4_PAGE_PX = (620 * 1122.5) / 793.7
+/** One A4 page in a sheet's pixels: the sheet fills its width (A4 is 793.7 by 1122.5 at 96 dpi). */
+export const pagePx = (width: number, landscape = false) => (landscape ? (width * 793.7) / 1122.5 : (width * 1122.5) / 793.7)
+
+/** The pay documents' page: 620 wide, portrait. */
+export const A4_PAGE_PX = pagePx(620)
 
 /** The sheet's own pages from its drawn height (a hair of rounding is not a page). */
 export const docPagesOf = (heightPx: number, page = A4_PAGE_PX) => Math.max(1, Math.ceil((heightPx - 2) / page))
@@ -29,6 +32,20 @@ export function sheetPages(natural: number, keeps: readonly { top: number; heigh
     if (k.height < page && Math.floor((top + k.height - 0.5) / page) > first) push += (first + 1) * page - top
   }
   return { pages: docPagesOf(natural + push, page), push }
+}
+
+/**
+ * A sheet that runs a little over one page (the report, 12C: 16 people are
+ * about 700px on a 608px page) prints on one page, a little smaller, as a
+ * printer's "fit to page" would: the sheet is drawn wider, so the page's
+ * scale shrinks it, and its height fits. Over `minScale` of shrinking, it
+ * runs onto more pages instead. `width` is the width to draw it at.
+ */
+export function fitOnePage(natural: number, width: number, landscape: boolean, minScale = 0.75): { width: number; fits: boolean } {
+  const page = pagePx(width, landscape)
+  if (natural <= page) return { width, fits: true }
+  if (page / natural < minScale) return { width, fits: false }
+  return { width: Math.ceil((width * natural) / page) + 1, fits: true }
 }
 
 export type ReceiptShow = 'image' | 'pdf' | 'none'

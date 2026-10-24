@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { docPagesOf, pageLabels, previewPagesText, receiptShow, receiptsOnText, sheetPages } from './receipt-pages'
+import { docPagesOf, fitOnePage, pageLabels, pagePx, previewPagesText, receiptShow, receiptsOnText, sheetPages } from './receipt-pages'
 
 const one = { pages: 1 }
 
@@ -40,5 +40,16 @@ describe('a document whose rows run onto a second page', () => {
     expect(sheetPages(90, rows.slice(0, 3), P)).toEqual({ pages: 1, push: 0 })
     // The move itself can make the page it needs: 195 plus 10 runs past 200.
     expect(sheetPages(195, rows, P).pages).toBe(3)
+  })
+})
+
+describe('a report a little over one page', () => {
+  it('prints on one page, a little smaller; much longer runs onto more pages', () => {
+    const page = pagePx(860, true)
+    expect(fitOnePage(500, 860, true)).toEqual({ width: 860, fits: true })
+    const fit = fitOnePage(704, 860, true)
+    expect(fit.fits).toBe(true)
+    expect(pagePx(fit.width, true)).toBeGreaterThanOrEqual(704)
+    expect(fitOnePage(page * 1.5, 860, true)).toEqual({ width: 860, fits: false })
   })
 })
