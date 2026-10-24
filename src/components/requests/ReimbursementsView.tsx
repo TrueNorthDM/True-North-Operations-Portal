@@ -19,6 +19,8 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import { MON, parsePaidOn } from '@/lib/timeclock/paid-on'
 import type { ReimbursementsPage, ReqTone } from '@/lib/timeclock/requests-data'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
+import { usePhone } from '@/components/clocky/clock/hooks'
+import { PhoneSheet } from './PhoneSheet'
 
 export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
   ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
@@ -27,6 +29,8 @@ export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
 const PILL = 'font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap'
 const COLS = 'grid grid-cols-[130px_130px_minmax(220px,1fr)_110px_120px_minmax(220px,1fr)]'
 const RECEIPT = 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6'
+const CAMERA = 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'
+const UPLOAD = 'M12 16V4M7 9l5-5 5 5M5 20h14'
 const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)] tabular-nums lining-nums'
 export const CATEGORIES = ['Internet', 'Software', 'Equipment', 'Travel', 'Meals with a client', 'Other']
 const CURRENCIES = ['USD', 'KES', 'RWF']
@@ -127,11 +131,13 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
   const [error, setError] = useState<string | null>(null)
   const [drag, setDrag] = useState(false)
   const input = useRef<HTMLInputElement>(null)
+  const camera = useRef<HTMLInputElement>(null)
+  const phone = usePhone()
   const set = (p: Partial<Draft>) => setD(x => ({ ...x, ...p }))
   const amountOk = Number(d.amount.replace(/,/g, '')) > 0
   const hasFile = !!d.file || !!d.fileLabel
   const ok = hasFile && amountOk && !!d.what.trim()
-  const pickFile = (f: File | undefined | null) => { if (f) set({ file: f, fileLabel: `${f.type === 'application/pdf' ? 'PDF' : 'Photo'}, ${size(f.size)}` }) }
+  const pickFile = (f: File | undefined | null, fromCamera = false) => { if (f) set({ file: f, fileLabel: `${f.type === 'application/pdf' ? 'PDF' : fromCamera ? 'Photo from the camera' : 'Photo'}, ${size(f.size)}` }) }
 
   const submit = async () => {
     if (!ok || !d.file) return
@@ -154,6 +160,76 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
     else setError(r.error)
   }
 
+  const afterLine = data.contractor ? 'Approved, it goes on your next invoice by itself. If that invoice is already approved, it goes on the one after.' : 'Approved, the portal puts it on a reimbursement document and Finance pays you, outside Rippling payroll.'
+  const files = (
+    <>
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/heic,image/heif,image/webp,application/pdf" className="hidden" onChange={e => pickFile(e.target.files?.[0])} />
+      <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => pickFile(e.target.files?.[0], true)} />
+    </>
+  )
+
+  // 9A on a phone (Requests.dc.html 9Ap): the whole screen, the receipt from the camera or a file.
+  if (phone) {
+    const PHONE_INPUT = `${INPUT} h-11 text-[14px]`
+    return (
+      <PhoneSheet crumb="Requests · Reimbursements" title="New reimbursement" onBack={onClose}
+        footer={(
+          <div className="flex flex-col gap-2">
+            {error && <p role="alert" className="m-0 text-[12.5px] font-semibold text-[#c8323d]">{error}</p>}
+            <button type="button" disabled={!ok || busy} onClick={() => void submit()} className="w-full h-[50px] flex items-center justify-center gap-[9px] border-0 rounded-[12px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[15px] cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed">
+              <Icon d="M22 2 11 13M22 2l-7 20-4-9-9-4z" size={15} color={BTN_ICON.navy} width={2.4} />{busy ? 'Sending…' : 'Send request'}
+            </button>
+          </div>
+        )}>
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel>Receipt (required)</FieldLabel>
+          {files}
+          {hasFile ? (
+            <div className="flex gap-3 items-center border border-[var(--panel-border)] rounded-[12px] p-2.5">
+              <div className="w-[78px] h-24 rounded-[8px] bg-[#e9e6dd] flex items-center justify-center flex-none"><Icon d={CAMERA} size={24} color="#8593a4" width={1.7} /></div>
+              <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink break-all">{d.file?.name ?? 'receipt'}</span>
+                <span className="text-[12px] text-muted">{d.fileLabel}</span>
+                <button type="button" onClick={() => camera.current?.click()} className="self-start h-11 border-0 bg-transparent p-0 cursor-pointer text-[13px] font-bold text-tn-teal">Retake</button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {([['Take a photo', CAMERA, camera], ['Choose a file', UPLOAD, input]] as const).map(([label, icon, ref]) => (
+                <button key={label} type="button" onClick={() => ref.current?.click()}
+                  className="h-14 rounded-[12px] border-[1.5px] border-dashed border-[#cbd2da] bg-[#f8f7f3] flex items-center justify-center gap-2 cursor-pointer font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">
+                  <Icon d={icon} size={18} color="#1E9E6A" width={2} />{label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <label className="flex flex-col gap-[5px]"><FieldLabel>Date of the expense</FieldLabel><input value={d.date} onChange={e => set({ date: e.target.value })} className={PHONE_INPUT} /></label>
+        <LabeledSelect label="Category" value={d.category} onChange={v => set({ category: v })} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
+        <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2.5">
+          <label className="flex flex-col gap-[5px] min-w-0"><FieldLabel>Amount</FieldLabel><input value={d.amount} onChange={e => set({ amount: e.target.value })} placeholder="0.00" inputMode="decimal" className={PHONE_INPUT} /></label>
+          <LabeledSelect label="Currency" value={d.currency} onChange={v => set({ currency: v })} options={CURRENCIES.map(c => ({ value: c, label: c }))} />
+        </div>
+        {d.currency !== 'USD' && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
+        <label className="flex flex-col gap-[5px]"><FieldLabel>What it was for</FieldLabel><textarea value={d.what} onChange={e => set({ what: e.target.value })} rows={2} placeholder="e.g. Home internet for October" className={`${TEXTAREA_PLAIN} text-[14px]`} /></label>
+        <LabeledSelect label="Client or project (optional)" value={d.client} search onChange={v => set({ client: v, billable: v === 'None' ? 'no' : d.billable })} options={['None', ...data.clients].map(c => ({ value: c, label: c }))} />
+        {/* Billable only matters once a client is picked; the phone design leaves it out until then. */}
+        {d.client !== 'None' && (
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel>Billable to the client</FieldLabel>
+            <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5">
+              {([['yes', 'Yes'], ['no', 'No']] as const).map(([k, label]) => (
+                <button key={k} type="button" aria-pressed={d.billable === k} onClick={() => set({ billable: k })}
+                  className={`flex-1 h-10 border-0 rounded-[8px] font-(family-name:--font-display) font-bold text-[13px] cursor-pointer ${d.billable === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="text-[12.5px] text-tn-teal font-semibold leading-[1.5] bg-tn-teal-soft rounded-[10px] px-3 py-2.5">{afterLine}</div>
+      </PhoneSheet>
+    )
+  }
+
   return (
     <Modal label="New reimbursement" width={776} onClose={onClose} gap={16}>
       <div className="flex items-center justify-between gap-2.5">
@@ -163,7 +239,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] gap-5 items-start">
         <div className="flex flex-col gap-1.5">
           <FieldLabel>Receipt (required)</FieldLabel>
-          <input ref={input} type="file" accept="image/jpeg,image/png,image/heic,image/heif,image/webp,application/pdf" className="hidden" onChange={e => pickFile(e.target.files?.[0])} />
+          {files}
           {!hasFile ? (
             <button type="button" onClick={() => input.current?.click()}
               onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)}
@@ -178,7 +254,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
               <Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3" size={32} color="#8593a4" width={1.6} />
               <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink break-all">{d.file?.name ?? 'receipt'}</span>
               <span className="text-[12px] text-muted">{d.fileLabel}</span>
-              <button type="button" onClick={() => { set({ file: null, fileLabel: '' }); if (input.current) input.current.value = '' }} className="border-0 bg-transparent cursor-pointer text-[12.5px] font-bold text-[#c8323d]">Remove</button>
+              <button type="button" onClick={() => { set({ file: null, fileLabel: '' }); if (input.current) input.current.value = '' }} className="border-0 bg-transparent px-1.5 py-px cursor-pointer text-[12.5px] font-bold text-[#c8323d]">Remove</button>
             </div>
           )}
         </div>
@@ -206,7 +282,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
             </div>
           </div>
           <div className="text-[12.5px] text-tn-teal font-semibold leading-[1.5] bg-tn-teal-soft rounded-[10px] px-3 py-2.5">
-            {data.contractor ? 'Approved, it goes on your next invoice by itself. If that invoice is already approved, it goes on the one after.' : 'Approved, the portal puts it on a reimbursement document and Finance pays you, outside Rippling payroll.'}
+            {afterLine}
           </div>
         </div>
       </div>

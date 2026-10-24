@@ -27,7 +27,7 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
     return (
       <ReimbursementsView key={frame} data={rmb} send={async () => ({ ok: true })}
         initial={frame === '9A' ? { form: true, draft: { file, fileLabel: 'PDF, 1 page, 96 KB', category: 'Internet', amount: '35.00', what: 'Home internet for October (Safaricom Home Fibre).', date: 'Oct 31, 2026' } }
-          : frame === '9Ap' ? { form: true, draft: { file, fileLabel: 'Photo, 1.2 MB', category: 'Software', amount: '12.99', what: 'Canva Pro for November, for client social posts.', date: 'Oct 31, 2026' } } : undefined} />
+          : frame === '9Ap' ? { form: true, draft: { file, fileLabel: 'Photo from the camera, 1.2 MB', category: 'Software', amount: '12.99', what: 'Canva Pro for November, for client social posts.', date: 'Oct 31, 2026' } } : undefined} />
     )
   }
   if (doc) {
