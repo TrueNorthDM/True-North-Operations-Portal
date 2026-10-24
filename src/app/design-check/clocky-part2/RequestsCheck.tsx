@@ -14,7 +14,13 @@ import type { ExtraPage, ReimbursementsPage, RmbDocPage } from '@/lib/timeclock/
 import type { DocSheetData } from '@/lib/timeclock/pay-docs'
 
 export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { frame: string; timeOff?: TimeOffPage; rmb?: ReimbursementsPage; doc?: RmbDocPage; sheet?: DocSheetData; extra?: ExtraPage }) {
-  const [file] = useState(() => (frame === '9A' ? new File(['%PDF'], 'safaricom-oct.pdf', { type: 'application/pdf' }) : frame === '9Ap' ? new File(['img'], 'IMG_4471.jpg', { type: 'image/jpeg' }) : null))
+  const [file] = useState(() => (frame === '9A' ? new File(['%PDF'], 'safaricom-oct.pdf', { type: 'application/pdf' }) : frame === '9Ap' ? new File(['img'], 'IMG_4471.jpg', { type: 'image/jpeg' }) : frame === '9Ar' ? new File(['%PDF'], 'latam-gru.pdf', { type: 'application/pdf' }) : null))
+  // 9Ar: a trip, four receipts in one request (owner, 2026-10-23).
+  const [trip] = useState(() => frame === '9Ar' ? [
+    { file: new File(['%PDF'], 'hotel-ibis.pdf', { type: 'application/pdf' }), fileLabel: 'PDF, 210 KB', date: 'Oct 15, 2026', category: 'Travel', amount: '378.60', what: 'Hotel, 3 nights' },
+    { file: new File(['img'], 'uber-oct13.jpg', { type: 'image/jpeg' }), fileLabel: 'Photo, 640 KB', date: 'Oct 13, 2026', category: 'Travel', amount: '18.40', what: 'Uber to the client' },
+    { file: new File(['img'], 'lunch.jpg', { type: 'image/jpeg' }), fileLabel: 'Photo, 1.1 MB', date: 'Oct 13, 2026', category: 'Meals with a client', amount: '64.00', what: 'Lunch with the i7 team' },
+  ] : [])
   if (timeOff) {
     const ok = async () => ({ ok: true as const, toast: 'Sent. A Super Admin decides; you hear back in the bell.' })
     return (
@@ -27,7 +33,8 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
     return (
       <ReimbursementsView key={frame} data={rmb} send={async () => ({ ok: true })}
         initial={frame === '9A' ? { form: true, draft: { file, fileLabel: 'PDF, 1 page, 96 KB', category: 'Internet', amount: '35.00', what: 'Home internet for October (Safaricom Home Fibre).', date: 'Oct 31, 2026' } }
-          : frame === '9Ap' ? { form: true, draft: { file, fileLabel: 'Photo from the camera, 1.2 MB', category: 'Software', amount: '12.99', what: 'Canva Pro for November, for client social posts.', date: 'Oct 31, 2026' } } : undefined} />
+          : frame === '9Ap' ? { form: true, draft: { file, fileLabel: 'Photo from the camera, 1.2 MB', category: 'Software', amount: '12.99', what: 'Canva Pro for November, for client social posts.', date: 'Oct 31, 2026' } }
+          : frame === '9Ar' ? { form: true, draft: { file, fileLabel: 'PDF, 180 KB', category: 'Travel', amount: '412.00', what: 'Flight GRU, round trip', date: 'Oct 12, 2026', name: 'São Paulo trip, Oct 12 to 15', client: '2 - i7 Marketing', billable: 'yes', more: trip } } : undefined} />
     )
   }
   if (doc) {

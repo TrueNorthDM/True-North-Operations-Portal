@@ -52,7 +52,7 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
   const { frame = '1A', level = 'admin', closed } = await searchParams
   const bell = BELL[frame as keyof typeof BELL] ?? null
   // Part 1's 3L frames now open part 2's list (3L as AP1, 3L2 as APL).
-  const approvals = (({ '3L': 'AP1', '3L2': 'APL', '3L3': 'AP1', AP1: 'AP1', AP3: 'AP3', AP2: 'AP2', APL: 'APL', APD: 'APD', '7C': '7C', '9C': '9C', '10D': '10D' }) as Record<string, ApprovalsFrame>)[frame] ?? null
+  const approvals = (({ '3L': 'AP1', '3L2': 'APL', '3L3': 'AP1', AP1: 'AP1', AP3: 'AP3', AP2: 'AP2', APL: 'APL', APD: 'APD', '7C': '7C', '9C': '9C', '9Cr': '9Cr', '10D': '10D' }) as Record<string, ApprovalsFrame>)[frame] ?? null
   const safety = frame === '4A' || frame === '4B'
   const periods = /^5[ABC]/.test(frame)
   const part2 = PART2_FRAMES.test(frame)
@@ -63,7 +63,7 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
   const working = /^2/.test(frame)
   const workingPage = frame === '2P'
   // Invoices.dc.html: 6A, 6B, 6Ec, 6F and 6Fp as a User (Justus Tsofa, Wendy Cacka), 6Ef and 6G as Finance (Tina Gennette).
-  const invUser = ['6A', '6B', '6Ec', '6F', '6Fp', '7A', '7Ap', '7B', '7D', '7E', '9A', '9Ap', '9B', '10E', '10C'].includes(frame)
+  const invUser = ['6A', '6B', '6Ec', '6F', '6Fp', '7A', '7Ap', '7B', '7D', '7E', '9A', '9Ap', '9Ar', '9B', '9Br', '10E', '10C'].includes(frame)
   const invFinance = frame === '6Ef' || frame === '6G' || frame === '9D' || frame === '9Dp'
   const role = invUser ? 'user' : invFinance ? 'admin'
     : bell === 'lead' || entriesLevel === 'lead' || frame === '2B' || approvals === 'APL' || frame === '6Ct' || frame === '6Ce' ? 'team_leader'

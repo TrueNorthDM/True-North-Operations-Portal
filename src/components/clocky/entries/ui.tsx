@@ -93,7 +93,8 @@ export function FieldLabel({ children, warn = false }: { children: ReactNode; wa
   return <span className={`${LABEL} ${warn ? 'text-[var(--warn-fg)]' : 'text-muted'}`}>{children}</span>
 }
 
-const TRIGGER = 'h-10 px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] tabular-nums lining-nums transition-colors hover:border-tn-teal aria-expanded:border-tn-teal aria-expanded:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
+/** The select's frame, for a select with no label above it. */
+export const TRIGGER = 'h-10 px-3 bg-white border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] tabular-nums lining-nums transition-colors hover:border-tn-teal aria-expanded:border-tn-teal aria-expanded:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
 /** A labelled dropdown: the prototype's field (label, "auto" hint) on the portal's Select. */
 export function LabeledSelect({ label, value, options, onChange, placeholder = 'Choose', search = false, auto = false, disabled = false }: {

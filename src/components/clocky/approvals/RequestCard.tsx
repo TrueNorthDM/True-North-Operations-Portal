@@ -6,19 +6,25 @@
  * facts, the receipt (reimbursements), the team calendar (time off), the
  * allowance (extra hours), what approving does by itself, and Approve or Deny
  * with a reason. Read only for whoever does not decide it.
+ *
+ * A reimbursement with several receipts (migration 122) lists them, each with
+ * Approve or Deny (and its reason); "Deny all" takes one reason for all.
  */
 
 import { useState } from 'react'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { BTN_ICON } from '@/lib/ui/buttons'
-import type { RequestCard as Card } from '@/lib/timeclock/request-cards'
+import type { RequestCard as Card, ReportItem } from '@/lib/timeclock/request-cards'
+import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { CloseButton, FieldLabel, Icon, Modal, TEXTAREA_WARN } from '../entries/ui'
 
 const TYPE: Record<Card['kind'], { bg: string; fg: string }> = {
-  off: { bg: '#eef1fb', fg: '#3b4fa8' }, 'off-cancel': { bg: '#eef1fb', fg: '#3b4fa8' }, rmb: { bg: '#fbf3e4', fg: '#8a5a12' }, xh: { bg: '#f0edfb', fg: '#5847c9' },
+  off: { bg: '#eef1fb', fg: '#3b4fa8' }, 'off-cancel': { bg: '#eef1fb', fg: '#3b4fa8' }, rmb: { bg: '#fbf3e4', fg: '#8a5a12' }, 'rmb-report': { bg: '#fbf3e4', fg: '#8a5a12' }, xh: { bg: '#f0edfb', fg: '#5847c9' },
 }
 
-export function RequestCard({ card, who, initials, team, asked, busy, denyFirst, onClose, onApprove, onDeny }: {
+export type ItemDecision = { id: number; decision: 'approve' | 'deny'; note?: string }
+
+export function RequestCard({ card, who, initials, team, asked, busy, denyFirst, onClose, onApprove, onDeny, onDecideItems }: {
   card: Card
   who: string
   initials: string
@@ -29,8 +35,19 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
   onClose: () => void
   onApprove: () => void
   onDeny: (reason: string) => void
+  /** A request with several receipts: each one's decision. */
+  onDecideItems?: (d: ItemDecision[]) => void
 }) {
   const [deny, setDeny] = useState(denyFirst)
+  // Each receipt still waiting: approve unless it is switched to deny, with its reason.
+  const waiting = (card.items ?? []).filter(i => i.state === 'pending')
+  const [picks, setPicks] = useState<Record<number, { deny: boolean; note: string }>>({})
+  const pick = (id: number) => picks[id] ?? { deny: false, note: '' }
+  const setPick = (id: number, p: Partial<{ deny: boolean; note: string }>) => setPicks(x => ({ ...x, [id]: { ...pick(id), ...p } }))
+  const toDeny = waiting.filter(i => pick(i.id).deny)
+  const toApprove = waiting.filter(i => !pick(i.id).deny)
+  const itemsReady = toDeny.every(i => pick(i.id).note.trim())
+  const report = !!card.items
   const [reason, setReason] = useState('')
   const t = TYPE[card.kind]
   return (
@@ -49,6 +66,11 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
           <span className="flex items-center gap-1.5 text-[12px] text-muted"><span className="w-2 h-2 rounded-full" style={{ background: team?.color ?? 'var(--faint)' }} />{team?.name ?? 'No team'} · {asked}</span>
         </div>
       </div>
+      {card.items && (
+        <div className="flex flex-col gap-1.5">
+          {card.items.map(it => <ItemRow key={it.id} it={it} canDecide={card.canDecide} pick={pick(it.id)} onPick={p => setPick(it.id, p)} disabled={deny} />)}
+        </div>
+      )}
       <div className={`grid gap-[18px] items-start ${card.twoCols ? 'grid-cols-1 md:grid-cols-[minmax(0,.9fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}>
         {card.receipt && (
           <div className="flex flex-col gap-2">
@@ -99,7 +121,7 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
         <>
           {deny && (
             <label className="flex flex-col gap-[5px]">
-              <FieldLabel warn>Reason (required)</FieldLabel>
+              <FieldLabel warn>{report && waiting.length > 1 ? 'Reason for all (required)' : 'Reason (required)'}</FieldLabel>
               <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder="Tell them why" className={TEXTAREA_WARN} autoFocus />
             </label>
           )}
@@ -107,14 +129,20 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
             {!deny ? (
               <>
                 <button type="button" disabled={busy} onClick={() => setDeny(true)} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-[#c8323d] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-[#c8323d]">{card.denyLabel}</button>
-                <button type="button" disabled={busy} onClick={onApprove} className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-60">
-                  <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />{card.approveLabel}
+                <button type="button" disabled={busy || (report && !itemsReady)}
+                  onClick={() => (report && onDecideItems ? onDecideItems(waiting.map(i => (pick(i.id).deny ? { id: i.id, decision: 'deny', note: pick(i.id).note.trim() } : { id: i.id, decision: 'approve' }))) : onApprove())}
+                  className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">
+                  <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />
+                  {report && toDeny.length
+                    ? (toApprove.length ? `Approve ${toApprove.length}, deny ${toDeny.length} (${totalsText(toApprove.map(i => i.value))})` : `Deny ${toDeny.length}`)
+                    : card.approveLabel}
                 </button>
               </>
             ) : (
               <>
                 <button type="button" onClick={() => { setDeny(false); setReason('') }} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">Cancel</button>
-                <button type="button" disabled={!reason.trim() || busy} onClick={() => onDeny(reason.trim())} className="border-0 rounded-[10px] px-[18px] py-[11px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">{card.denyLabel}</button>
+                <button type="button" disabled={!reason.trim() || busy}
+                  onClick={() => (report && onDecideItems ? onDecideItems(waiting.map(i => ({ id: i.id, decision: 'deny', note: reason.trim() }))) : onDeny(reason.trim()))} className="border-0 rounded-[10px] px-[18px] py-[11px] bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">{card.denyLabel}</button>
               </>
             )}
           </div>
@@ -122,5 +150,46 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
       )}
       {card.roText && <div className="text-[12.5px] text-[#5b6b82] bg-[var(--chip-neutral-bg)] rounded-[10px] px-3 py-2.5">{card.roText}</div>}
     </Modal>
+  )
+}
+
+const RECEIPT = 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6'
+const DONE: Record<string, { label: string; bg: string; fg: string }> = {
+  approved: { label: 'Approved', bg: '#e6f6ee', fg: '#0d7a4f' }, on_invoice: { label: 'On invoice', bg: '#e6f6ee', fg: '#0d7a4f' },
+  paid: { label: 'Paid', bg: '#e6f6ee', fg: '#0d7a4f' }, denied: { label: 'Denied', bg: '#fdeeef', fg: '#c8323d' },
+}
+
+/** One receipt of the request: open it, see it, and (while waiting) approve or deny it. */
+function ItemRow({ it, canDecide, pick, onPick, disabled }: { it: ReportItem; canDecide: boolean; pick: { deny: boolean; note: string }; onPick: (p: Partial<{ deny: boolean; note: string }>) => void; disabled: boolean }) {
+  const waiting = it.state === 'pending'
+  const done = DONE[it.state]
+  return (
+    <div className="border border-[var(--panel-border)] rounded-[12px] px-2.5 py-2 flex flex-col gap-2">
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <a href={withViewAs(`/requests/reimbursements/receipt/${it.receipt.id}`)} target="_blank" rel="noreferrer" title={`Open ${it.receipt.file}`} aria-label={`Open the receipt ${it.receipt.file}`}
+          className="w-11 h-11 flex-none rounded-[8px] bg-subtle border border-[var(--panel-border)] flex items-center justify-center text-muted hover:border-tn-teal">
+          <Icon d={RECEIPT} size={18} width={1.7} />
+        </a>
+        <div className="flex-1 min-w-[150px] flex flex-col gap-0.5">
+          <span className="text-[13px] font-semibold text-tn-ink leading-[1.35]">{it.purpose}</span>
+          <span className="text-[12px] text-muted leading-[1.35]">{it.date} · {it.category}{it.client ? ` · ${it.client}` : ''}</span>
+        </div>
+        <span className="font-(family-name:--font-display) font-extrabold text-[13.5px] text-tn-ink whitespace-nowrap tabular-nums lining-nums">{it.amount}</span>
+        {waiting && canDecide ? (
+          <div className="flex bg-white border border-[var(--panel-border)] rounded-[9px] p-[2px] gap-0.5" role="group" aria-label={`Decide ${it.purpose}`}>
+            {([[false, 'Approve'], [true, 'Deny']] as const).map(([d, label]) => (
+              <button key={label} type="button" disabled={disabled} aria-pressed={pick.deny === d} onClick={() => onPick({ deny: d })}
+                className={`border-0 rounded-[7px] px-2.5 py-[5px] font-(family-name:--font-display) font-bold text-[12px] cursor-pointer disabled:opacity-50 disabled:cursor-default ${pick.deny === d ? (d ? 'bg-[#c8323d] text-[#ffffff]' : 'bg-tn-primary text-[#ffffff]') : 'bg-transparent text-foreground'}`}>{label}</button>
+            ))}
+          </div>
+        ) : done ? (
+          <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase rounded-full px-[9px] py-1 whitespace-nowrap" style={{ background: done.bg, color: done.fg }}>{done.label}</span>
+        ) : null}
+      </div>
+      {waiting && canDecide && pick.deny && !disabled && (
+        <textarea value={pick.note} onChange={e => onPick({ note: e.target.value })} rows={1} placeholder="Why this receipt is denied (required)" aria-label={`Reason for ${it.purpose}`} className={TEXTAREA_WARN} autoFocus />
+      )}
+      {it.state === 'denied' && it.note && <span className="text-[12px] text-[#c8323d]">&quot;{it.note}&quot;</span>}
+    </div>
   )
 }

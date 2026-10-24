@@ -21,8 +21,9 @@ import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/ti
 import { audit, loadSubmissions, lockOn, overlapFor, snapshot, type EntryRow } from '@/lib/timeclock/clocky-store'
 import { countWaiting, loadApprovals } from '@/lib/timeclock/clocky-approvals'
 import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
-import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceReimbursementDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
+import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
+import { decisionText } from '@/lib/timeclock/reimbursement-reports'
 import { loadInvoiceSettings, loadPayTerms, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type TimesheetState } from '@/lib/timeclock/routing'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
@@ -323,16 +324,7 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
     let toast = `Approved. It goes on ${first(who)}'s next invoice by itself.`
     let documentId: number | null = null
     if (!contractor) {
-      // The employee's open document, or a new one.
-      const { data: open } = await c.from('reimbursement_documents').select('id, number').eq('person_id', r.person_id).eq('state', 'approved').order('created_at', { ascending: false }).limit(1).maybeSingle()
-      let doc = open
-      if (!doc) {
-        const { data: number, error: nErr } = await c.rpc('next_document_number', { p_kind: 'reimbursement' })
-        if (nErr || !number) return notSaved(nErr ?? new Error('No document number'))
-        const { data: made, error: mErr } = await c.from('reimbursement_documents').insert({ number: number as string, person_id: r.person_id, total: 0, state: 'approved' }).select('id, number').single()
-        if (mErr) return notSaved(mErr)
-        doc = made
-      }
+      const doc = await openRmbDocument(c, r.person_id)
       documentId = doc.id
       where = `It is on reimbursement document ${doc.number}, for Finance to pay.`
       toast = `Approved. It is on ${doc.number} for Finance to pay.`
@@ -340,14 +332,90 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
     const { data: moved, error: e2 } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: note, document_id: documentId }).eq('id', r.id).eq('state', 'pending').select('id')
     if (e2) return notSaved(e2)
     if (!moved?.length) return fail(NOT_WAITING)
-    if (documentId) {
-      // The stored total is in dollars; an item in another currency shows its code and Finance converts it.
-      const { data: items } = await c.from('reimbursements').select('amount, currency').eq('document_id', documentId)
-      const total = (items ?? []).filter(i => (i.currency || 'USD') === 'USD').reduce((n, i) => n + Math.round(Number(i.amount) * 100), 0) / 100
-      const { data: doc } = await c.from('reimbursement_documents').update({ total, updated_at: at }).eq('id', documentId).select('number').single()
-      if (doc) await announceRmbReady({ documentId, itemId: r.id, number: doc.number, personId: r.person_id, total, finance: settings.finance })
-    }
+    if (documentId) await settleRmbDocument(c, documentId, r.id, r.person_id, at, settings.finance)
     await announceReimbursementDecided({ id: r.id, personId: r.person_id, deciderId: v.personId, purpose: r.purpose, amount: Number(r.amount), currency: r.currency, approved: true, where, note: null })
+    refresh()
+    return { ok: true, toast }
+  } catch (e) {
+    return notSaved(e)
+  }
+}
+
+/** The employee's open reimbursement document, or a new one. */
+async function openRmbDocument(c: ReturnType<typeof db>, personId: string): Promise<{ id: number; number: string }> {
+  const { data: open } = await c.from('reimbursement_documents').select('id, number').eq('person_id', personId).eq('state', 'approved').order('created_at', { ascending: false }).limit(1).maybeSingle()
+  if (open) return open
+  const { data: number, error: nErr } = await c.rpc('next_document_number', { p_kind: 'reimbursement' })
+  if (nErr || !number) throw nErr ?? new Error('No document number')
+  const { data: made, error: mErr } = await c.from('reimbursement_documents').insert({ number: number as string, person_id: personId, total: 0, state: 'approved' }).select('id, number').single()
+  if (mErr) throw mErr
+  return made
+}
+
+/** A document's total after items join it (dollars; an item in another currency shows its code and Finance converts it), and Finance hears it is ready to pay. */
+async function settleRmbDocument(c: ReturnType<typeof db>, documentId: number, itemId: number, personId: string, at: string, finance: readonly string[]): Promise<void> {
+  const { data: items } = await c.from('reimbursements').select('amount, currency').eq('document_id', documentId)
+  const total = (items ?? []).filter(i => (i.currency || 'USD') === 'USD').reduce((n, i) => n + Math.round(Number(i.amount) * 100), 0) / 100
+  const { data: doc } = await c.from('reimbursement_documents').update({ total, updated_at: at }).eq('id', documentId).select('number').single()
+  if (doc) await announceRmbReady({ documentId, itemId, number: doc.number, personId, total, finance })
+}
+
+/**
+ * A request with several receipts (9C, migration 122), Super Admins
+ * (rq-decide), never their own: every receipt still waiting gets a decision,
+ * approved or denied with its reason. Approved ones go where a single one would
+ * (the next invoice, or the employee's open document), each on its own line.
+ * The person hears it once, with what was approved and why the rest was not.
+ */
+export async function decideReimbursementReport(input: { reportId: number; decisions: { id: number; decision: 'approve' | 'deny'; note?: string }[] }): Promise<Result<{ toast: string }>> {
+  const v = await actor('rq-decide')
+  if (isFail(v)) return v
+  try {
+    const c = db()
+    const [{ data: rows, error }, { data: rep }] = await Promise.all([
+      c.from('reimbursements').select('id, person_id, purpose, amount, currency, state').eq('report_id', Number(input.reportId)).order('id'),
+      c.from('reimbursement_reports').select('name').eq('id', Number(input.reportId)).maybeSingle(),
+    ])
+    if (error) return notSaved(error)
+    const waiting = (rows ?? []).filter(r => r.state === 'pending')
+    if (!waiting.length || waiting[0].person_id === v.personId) return fail(NOT_WAITING)
+    const personId = waiting[0].person_id
+    const chosen = new Map((input.decisions ?? []).map(d => [Number(d.id), d]))
+    const approve: typeof waiting = [], deny: { r: (typeof waiting)[number]; note: string }[] = []
+    for (const r of waiting) {
+      const d = chosen.get(r.id)
+      if (!d) return fail('Decide every receipt: approve it or deny it.')
+      if (d.decision === 'approve') { approve.push(r); continue }
+      const note = reasonOf(d.note)
+      if (!note) return fail('Give the reason for each receipt you deny.')
+      deny.push({ r, note })
+    }
+    const at = new Date().toISOString()
+    const dir = await loadDirectory()
+    const who = dir.nameOf(personId)
+    for (const { r, note } of deny) {
+      const { error: e } = await c.from('reimbursements').update({ state: 'denied', decided_by: v.personId, decided_at: at, decision_note: note }).eq('id', r.id).eq('state', 'pending')
+      if (e) return notSaved(e)
+    }
+    let where = approve.length === 1 ? 'It goes on your next invoice by itself.' : 'They go on your next invoice by themselves, each on its own line.'
+    let toast = `${decisionText(approve.length, deny.length)}${approve.length ? ` ${approve.length === 1 ? 'It goes' : 'They go'} on ${first(who)}'s next invoice by ${approve.length === 1 ? 'itself' : 'themselves'}.` : ` ${first(who)} sees your reason${deny.length === 1 ? '' : 's'}.`}`
+    if (approve.length) {
+      const [routes, settings] = await Promise.all([loadRoutes([personId]), loadInvoiceSettings()])
+      let documentId: number | null = null
+      if (!routes.get(personId)?.isContractor) {
+        const doc = await openRmbDocument(c, personId)
+        documentId = doc.id
+        where = `${approve.length === 1 ? 'It is' : 'They are'} on reimbursement document ${doc.number}, for Finance to pay.`
+        toast = `${decisionText(approve.length, deny.length)} ${approve.length === 1 ? 'It is' : 'They are'} on ${doc.number} for Finance to pay.`
+      }
+      const { error: e } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: null, document_id: documentId }).in('id', approve.map(r => r.id)).eq('state', 'pending')
+      if (e) return notSaved(e)
+      if (documentId) await settleRmbDocument(c, documentId, approve[0].id, personId, at, settings.finance)
+    }
+    await announceReimbursementReportDecided({
+      firstId: waiting[0].id, personId, deciderId: v.personId, name: rep?.name ?? null,
+      approved: approve.map(r => ({ amount: Number(r.amount), currency: r.currency })), denied: deny.map(d => ({ purpose: d.r.purpose, note: d.note })), where,
+    })
     refresh()
     return { ok: true, toast }
   } catch (e) {

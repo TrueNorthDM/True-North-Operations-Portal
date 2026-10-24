@@ -83,12 +83,19 @@ export function timeOffFrame(frame: string): TimeOffPage {
 /** 9A, 9B: Justus Tsofa (contractor). */
 export function reimbursementsFrame(frame: string): ReimbursementsPage {
   const rows: ReimbursementsPage['rows'] = [
-    { id: 1, date: 'Oct 31, 2026', category: 'Software', what: 'Canva Pro, November', amount: '$12.99', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' }, info: 'Waiting for a Super Admin.' },
+    { id: 1, date: 'Oct 31, 2026', category: 'Software', what: 'Canva Pro, November', amount: '$12.99', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.' },
     { id: 3, date: 'Oct 25, 2026', category: 'Internet', what: 'Internet, October', amount: '$35.00', hasReceipt: true, st: { label: 'On invoice', tone: 'navy' }, info: 'Approved Oct 27. On invoice INV-2026-0142, waiting for approval.' },
     { id: 4, date: 'Sep 27, 2026', category: 'Internet', what: 'Internet, September', amount: '$35.00', hasReceipt: true, st: { label: 'Paid', tone: 'ok' }, info: 'Paid with INV-2026-0131 on Oct 12, 2026.' },
     { id: 5, date: 'Sep 14, 2026', category: 'Travel', what: 'Matatu fares to a client meeting', amount: '$18.40', hasReceipt: true, st: { label: 'Denied', tone: 'bad' }, info: 'Denied by Arnaldo Oliveira: "Send it again with the client and the date of the meeting."' },
   ]
-  return { contractor: true, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : rows, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY }
+  // 9Br: a trip sent as one request with four receipts (migration 122).
+  const trip: ReimbursementsPage['rows'] = [
+    { id: 11, date: 'Oct 12, 2026', category: 'Travel', what: 'Flight GRU, round trip', amount: '$412.00', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.' },
+    { id: 12, date: 'Oct 12, 2026', category: 'Travel', what: 'Hotel, 3 nights', amount: '$378.60', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.' },
+    { id: 13, date: 'Oct 13, 2026', category: 'Travel', what: 'Uber to the client', amount: '$18.40', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.' },
+    { id: 14, date: 'Oct 13, 2026', category: 'Meals with a client', what: 'Lunch with the i7 team', amount: '$64.00', hasReceipt: true, st: { label: 'Waiting', tone: 'warn' as const }, info: 'Waiting for a Super Admin.' },
+  ].map((r, i) => ({ ...r, report: { id: 1, first: i === 0, title: 'São Paulo trip, Oct 12 to 15, 4 receipts', total: '$873.00' } }))
+  return { contractor: true, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : frame === '9Br' ? [...trip, ...rows] : rows, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY }
 }
 
 /** 9D: RMB-2026-0031, Wendy Cacka's, as Finance (Tina Gennette). */

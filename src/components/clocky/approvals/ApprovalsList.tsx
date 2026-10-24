@@ -26,7 +26,7 @@ import type { QueueData, QueueRow, QueueType, Tone } from '@/lib/timeclock/appro
 import type { DecideBody } from '../entries/api'
 import type { Result } from '@/lib/timeclock/clocky-types'
 import { CorrectionReview } from '../entries/Dialogs'
-import { RequestCard } from './RequestCard'
+import { RequestCard, type ItemDecision } from './RequestCard'
 import { HistoryDrawer } from '../entries/HistoryDrawer'
 import { Toast, type ToastState } from '../entries/ui'
 
@@ -37,6 +37,7 @@ export interface QueueApi {
   decideTimeOff(i: DecideBody): Promise<Result>
   decideTimeOffCancel(i: DecideBody): Promise<Result<{ toast: string }>>
   decideReimbursement(i: DecideBody): Promise<Result<{ toast: string }>>
+  decideReimbursementReport(i: { reportId: number; decisions: ItemDecision[] }): Promise<Result<{ toast: string }>>
   decideExtraHours(i: DecideBody): Promise<Result<{ toast: string }>>
 }
 
@@ -129,13 +130,16 @@ export function ApprovalsList({ initialData, api, initial }: {
   }
 
   // Time off, reimbursements and extra hours: decided on their card (7C, 9C, 10D).
-  const decideRequest = async (r: QueueRow, decision: 'approve' | 'deny', note?: string) => {
+  const decideRequest = async (r: QueueRow, decision: 'approve' | 'deny', note?: string, items?: ItemDecision[]) => {
     const k = r.request?.kind
     if (!k) return
     setBusy(true)
     try {
       const body = { id: r.id, decision, note }
-      const res = k === 'off' ? await api.decideTimeOff(body) : k === 'off-cancel' ? await api.decideTimeOffCancel(body) : k === 'rmb' ? await api.decideReimbursement(body) : await api.decideExtraHours(body)
+      // Several receipts: each one's decision, or all of them one way (the row's Approve, the card's Deny all).
+      const res = k === 'rmb-report'
+        ? await api.decideReimbursementReport({ reportId: r.id, decisions: items ?? (r.request?.items ?? []).filter(i => i.state === 'pending').map(i => ({ id: i.id, decision, note })) })
+        : k === 'off' ? await api.decideTimeOff(body) : k === 'off-cancel' ? await api.decideTimeOffCancel(body) : k === 'rmb' ? await api.decideReimbursement(body) : await api.decideExtraHours(body)
       if (!res.ok) return say(res.error, true)
       setReq(null)
       const first = r.name.split(' ')[0]
@@ -292,7 +296,8 @@ export function ApprovalsList({ initialData, api, initial }: {
       {req?.row.request && (
         <RequestCard key={req.row.key} card={req.row.request} who={req.row.name} initials={req.row.initials} team={req.row.team} asked={req.row.asked}
           busy={busy} denyFirst={req.deny} onClose={() => setReq(null)}
-          onApprove={() => void decideRequest(req.row, 'approve')} onDeny={note => void decideRequest(req.row, 'deny', note)} />
+          onApprove={() => void decideRequest(req.row, 'approve')} onDeny={note => void decideRequest(req.row, 'deny', note)}
+          onDecideItems={items => void decideRequest(req.row, 'approve', undefined, items)} />
       )}
       {drawer !== null && (
         <HistoryDrawer history={history?.id === drawer ? history.data : null} error={history?.id === drawer ? history.error : null} onClose={() => setDrawer(null)} />

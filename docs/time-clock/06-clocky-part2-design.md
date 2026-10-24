@@ -281,7 +281,7 @@ clock panel), measured against the prototype.
 
 ### Going to production (only when the owner asks)
 
-1. Migrations 115 to 121, in order, on the production database.
+1. Migrations 115 to 122, in order, on the production database (122: several receipts in one reimbursement request, 2026-10-23).
 2. The code (promote the staging image).
 3. Uncomment the three crontab lines (`clocky-invoices`, `clocky-outbox`,
    `clocky-reminders`) and install the crontab.

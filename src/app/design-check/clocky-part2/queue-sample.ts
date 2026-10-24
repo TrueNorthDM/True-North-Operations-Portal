@@ -90,7 +90,30 @@ const CARD: Record<string, Omit<RequestCard, 'canDecide' | 'roText'>> = {
 
 const ME = { super: 'Arnaldo Oliveira', admin: 'Dave Sharpe', lead: 'Wendy Cacka' } as const
 
-export function sampleQueue(level: 'super' | 'admin' | 'lead'): QueueData {
+// 9Cr: a trip sent as one request with four receipts (migration 122), each decided on its own.
+const TRIP_ITEMS: NonNullable<RequestCard['items']> = [
+  { id: 11, date: 'Oct 12', category: 'Travel', purpose: 'Flight GRU, round trip', amount: '$412.00', value: { amount: 412, currency: 'USD' }, client: '2 - i7 Marketing, billable', receipt: { id: 11, file: 'latam-gru.pdf', sub: 'PDF, 180 KB' }, state: 'pending', note: null },
+  { id: 12, date: 'Oct 12', category: 'Travel', purpose: 'Hotel, 3 nights', amount: '$378.60', value: { amount: 378.6, currency: 'USD' }, client: '2 - i7 Marketing, billable', receipt: { id: 12, file: 'hotel-ibis.pdf', sub: 'PDF, 210 KB' }, state: 'pending', note: null },
+  { id: 13, date: 'Oct 13', category: 'Travel', purpose: 'Uber to the client', amount: '$18.40', value: { amount: 18.4, currency: 'USD' }, client: '2 - i7 Marketing, billable', receipt: { id: 13, file: 'uber-oct13.jpg', sub: 'Photo, 640 KB' }, state: 'pending', note: null },
+  { id: 14, date: 'Oct 13', category: 'Meals with a client', purpose: 'Lunch with the i7 team', amount: '$64.00', value: { amount: 64, currency: 'USD' }, client: '2 - i7 Marketing, billable', receipt: { id: 14, file: 'lunch.jpg', sub: 'Photo, 1.1 MB' }, state: 'pending', note: null },
+]
+
+function tripRow(sup: boolean): QueueRow {
+  return {
+    key: 'rr1', type: 'rmb', id: 1, personId: 'Justus Tsofa', name: 'Justus Tsofa', initials: ini('Justus Tsofa'), team: { name: 'Africa', color: TEAMC.Africa ?? null },
+    main: 'São Paulo trip, Oct 12 to 15 · $873.00', sub: '4 receipts: Flight GRU, round trip, Hotel, 3 nights, Uber to the client, …', flag: null,
+    why: 'Contractor: each receipt goes on their next invoice.', asked: 'Asked Fri, Oct 16, 9:20 AM', askedAt: 'Asked Fri, Oct 16, 9:20 AM',
+    ownerName: 'a Super Admin', own: false, done: null, href: null, card: null,
+    request: {
+      kind: 'rmb-report', id: 1, type: 'Reimbursement', title: 'São Paulo trip, Oct 12 to 15, 4 receipts, $873.00', width: 760, twoCols: false, receipt: null, items: TRIP_ITEMS,
+      facts: [{ k: 'Client or project', v: '2 - i7 Marketing' }], allow: null, cal: null,
+      after: 'Justus Tsofa is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.',
+      canDecide: sup, roText: sup ? null : 'Read only. Only Super Admins decide time off, reimbursements and extra hours.', approveLabel: 'Approve all 4', denyLabel: 'Deny all',
+    },
+  }
+}
+
+export function sampleQueue(level: 'super' | 'admin' | 'lead', withTrip = false): QueueData {
   const me = ME[level]
   const sup = level === 'super'
   const lead = level === 'lead'
@@ -115,7 +138,7 @@ export function sampleQueue(level: 'super' | 'admin' | 'lead'): QueueData {
     subtitle: sup ? 'Your decisions: hours of the people who report to you, invoices, time off, reimbursements and extra hours. "With others" shows, read only, what Team Leaders and Dave Sharpe still have.'
       : level === 'admin' ? 'You approve the hours and invoices of the people who report to you (Rock Kai, Arnaldo Oliveira). Everything else is read only.'
         : 'Hours from the Web team, and time corrections. Invoices are not shown to Team Leaders: Arnaldo Oliveira finishes each timesheet after you.',
-    wait: WAIT.filter(mine).map(s => row(s, null)),
+    wait: [...(withTrip && sup ? [tripRow(sup)] : []), ...WAIT.filter(mine).map(s => row(s, null))],
     others: WAIT.filter(s => !mine(s) && inTeam(s)).map(s => row(s, null)),
     done: DONE.filter(inTeam).map(s => row(s, { label: s.st, tone: s.tone, by: s.by })),
     note: "Hours go to the person each one reports to. Invoices go to Arnaldo Oliveira, or to Dave Sharpe for the people who report to him. When both land on the same person it is one step. The Deputy Director's timesheet is recorded without approval.",

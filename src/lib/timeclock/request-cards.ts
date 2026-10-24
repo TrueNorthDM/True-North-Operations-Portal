@@ -20,9 +20,27 @@ import { loadPayTerms, loadRoutes } from './pay-terms'
 import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays } from './time-off'
 import { usd } from './invoice-doc'
+import { receiptsText, reportTitle, totalsText, type Amount } from './reimbursement-reports'
+
+/** One receipt of a request with several (migration 122), decided on its own. */
+export interface ReportItem {
+  id: number
+  /** "Oct 12" */
+  date: string
+  category: string
+  purpose: string
+  /** "$412.00" or "1,200.00 KES" */
+  amount: string
+  value: Amount
+  /** "2 - i7 Marketing, billable", when it has a client. */
+  client: string | null
+  receipt: { id: number; file: string; sub: string }
+  state: string
+  note: string | null
+}
 
 export interface RequestCard {
-  kind: 'off' | 'off-cancel' | 'rmb' | 'xh'
+  kind: 'off' | 'off-cancel' | 'rmb' | 'rmb-report' | 'xh'
   id: number
   type: string
   title: string
@@ -30,6 +48,8 @@ export interface RequestCard {
   width: number
   twoCols: boolean
   receipt: { id: number; file: string; sub: string } | null
+  /** A request with several receipts: each one, decided on its own. */
+  items?: ReportItem[]
   facts: { k: string; v: string }[]
   allow: string | null
   cal: { label: string; days: string[]; rows: { name: string; sub: string; color: string; cells: ('req' | 'out' | 'hol' | null)[] }[] } | null
@@ -77,7 +97,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   const [{ data: offs }, { data: rmbs }, { data: xhs }, catalog] = await Promise.all([
     c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
       .or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`).order('id'),
-    isLead ? Promise.resolve({ data: [] }) : c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_name, receipt_size')
+    isLead ? Promise.resolve({ data: [] }) : c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_name, receipt_size, report_id')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id'),
     c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, reason, state, asked_at, decided_by, decided_at, decision_note')
       .or(`state.eq.pending,decided_at.gte.${since}`).order('id'),
@@ -165,11 +185,68 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   }
 
   // ── Reimbursements (9C) ──────────────────────────────────────────────────
-  const rmbRows = (rmbs ?? []) as { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_name: string | null; receipt_size: number | null }[]
+  type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_name: string | null; receipt_size: number | null; report_id: number | null }
+  const rmbRows = (rmbs ?? []) as Rmb[]
   if (rmbRows.length) {
     const routes = await loadRoutes([...new Set(rmbRows.map(r => r.person_id))])
-    const { data: openDocs } = await c.from('reimbursement_documents').select('id, number, person_id, total').eq('state', 'approved')
-    for (const r of rmbRows) {
+    const reportIds = [...new Set(rmbRows.map(r => r.report_id).filter((x): x is number => x != null))]
+    const [{ data: openDocs }, { data: reports }] = await Promise.all([
+      c.from('reimbursement_documents').select('id, number, person_id, total').eq('state', 'approved'),
+      reportIds.length ? c.from('reimbursement_reports').select('id, name').in('id', reportIds) : Promise.resolve({ data: [] as { id: number; name: string | null }[] }),
+    ])
+    const amountOf = (r: Rmb) => (r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${r.currency}`)
+    const sizeOf = (n: number | null) => (n ? (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`) : '')
+    const receiptOf = (r: Rmb) => ({ id: r.id, file: r.receipt_name ?? 'receipt', sub: `${(r.receipt_name ?? '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'Photo'}${sizeOf(r.receipt_size) ? `, ${sizeOf(r.receipt_size)}` : ''}` })
+
+    // A request with several receipts (migration 122): one row, each receipt decided on its own.
+    const byReport = new Map<number, Rmb[]>()
+    for (const r of rmbRows) if (r.report_id != null) byReport.set(r.report_id, [...(byReport.get(r.report_id) ?? []), r])
+    for (const [reportId, list] of byReport) {
+      const r0 = list[0]
+      const who = person(r0.person_id)
+      const contractor = !!routes.get(r0.person_id)?.isContractor
+      const name = (reports ?? []).find(x => x.id === reportId)?.name ?? null
+      const own = r0.person_id === v.personId
+      const waiting = list.filter(r => r.state === 'pending')
+      const pending = waiting.length > 0
+      const canDecide = pending && decides && !own
+      const doc = (openDocs ?? []).find(d => d.person_id === r0.person_id)
+      const values = list.map(r => ({ amount: Number(r.amount), currency: r.currency }))
+      const total = totalsText(values)
+      const denied = list.filter(r => r.state === 'denied').length, approved = list.length - waiting.length - denied
+      const decided = list.filter(r => r.decided_at).sort((a, b) => b.decided_at!.localeCompare(a.decided_at!))[0]
+      const clients = [...new Set(list.map(r => r.client).filter((x): x is string => !!x))]
+      const purposes = list.map(r => r.purpose)
+      out.push({
+        key: `rr${reportId}`, type: 'rmb', id: reportId, personId: r0.person_id, ...who,
+        main: `${name ?? 'Several receipts'} · ${total}`, sub: `${receiptsText(list.length)}: ${purposes.slice(0, 3).join(', ')}${purposes.length > 3 ? ', …' : ''}`, flag: null,
+        why: contractor ? 'Contractor: each receipt goes on their next invoice.' : 'Employee: they go on a reimbursement document for Finance.',
+        asked: asked(r0.asked_at, v.zone), askedAt: r0.asked_at,
+        ownerName: 'a Super Admin', owner: canDecide ? v.personId : null, own,
+        done: pending ? null : {
+          label: !denied ? 'Approved' : !approved ? 'Denied' : `Approved ${approved}, denied ${denied}`, tone: !denied ? 'ok' : !approved ? 'bad' : 'warn',
+          by: decided ? `${dir.nameOf(decided.decided_by)}, ${dateLabel(localDate(decided.decided_at!, v.zone)).replace(/, \d{4}$/, '')}` : '',
+        },
+        href: null,
+        request: {
+          kind: 'rmb-report', id: reportId, type: 'Reimbursement', title: `${reportTitle(name, list.length)}, ${total}`, width: 760, twoCols: false,
+          receipt: null,
+          items: list.map(r => ({
+            id: r.id, date: dayLabel(r.spent_on).replace(/^[A-Z][a-z]{2}, /, ''), category: r.category, purpose: r.purpose, amount: amountOf(r), value: { amount: Number(r.amount), currency: r.currency },
+            client: r.client ? `${r.client}, ${r.billable ? 'billable' : 'not billable'}` : null, receipt: receiptOf(r), state: r.state, note: r.decision_note,
+          })),
+          facts: [{ k: 'Client or project', v: clients.length ? clients.join(', ') : 'None, not billable to a client' }],
+          allow: null, cal: null,
+          after: contractor
+            ? `${who.name} is a contractor. Each receipt you approve goes on their next invoice by itself, as its own line.`
+            : `${who.name} is an employee. The receipts you approve go on ${doc ? `reimbursement document ${doc.number}` : 'a new reimbursement document'} for Finance to pay, each as its own line${doc ? `, with the items already on it (${usd(Number(doc.total))})` : ''}.`,
+          canDecide, roText: canDecide ? null : own ? 'Your own request. A Super Admin decides it.' : pending ? 'Read only. Only Super Admins decide time off, reimbursements and extra hours.' : null,
+          approveLabel: waiting.length > 1 ? `Approve all ${waiting.length}` : 'Approve', denyLabel: waiting.length > 1 ? 'Deny all' : 'Deny',
+        },
+      })
+    }
+
+    for (const r of rmbRows.filter(x => x.report_id == null)) {
       const who = person(r.person_id)
       const contractor = !!routes.get(r.person_id)?.isContractor
       const amt = r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toFixed(2)} ${r.currency}`

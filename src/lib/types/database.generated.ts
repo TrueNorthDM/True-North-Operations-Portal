@@ -2597,6 +2597,34 @@ export type Database = {
           },
         ]
       }
+      reimbursement_reports: {
+        Row: {
+          created_at: string
+          id: number
+          name: string | null
+          person_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name?: string | null
+          person_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string | null
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reimbursement_reports_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reimbursements: {
         Row: {
           amount: number
@@ -2616,6 +2644,7 @@ export type Database = {
           receipt_name: string | null
           receipt_path: string
           receipt_size: number | null
+          report_id: number | null
           spent_on: string
           state: string
         }
@@ -2637,6 +2666,7 @@ export type Database = {
           receipt_name?: string | null
           receipt_path: string
           receipt_size?: number | null
+          report_id?: number | null
           spent_on: string
           state?: string
         }
@@ -2658,6 +2688,7 @@ export type Database = {
           receipt_name?: string | null
           receipt_path?: string
           receipt_size?: number | null
+          report_id?: number | null
           spent_on?: string
           state?: string
         }
@@ -2684,6 +2715,12 @@ export type Database = {
             foreignKeyName: "reimbursements_person_id_fkey"
             columns: ["person_id"]
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_report_id_fkey"
+            columns: ["report_id"]
+            referencedRelation: "reimbursement_reports"
             referencedColumns: ["id"]
           },
         ]

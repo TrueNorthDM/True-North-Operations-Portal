@@ -22,6 +22,7 @@ import { isFinance, loadInvoiceSettings, loadPayTerms, loadRoutes, seesMoney } f
 import { addDays } from './periods'
 import { formatDuration } from './rounding'
 import { clientFolder } from './invoices-data'
+import { reportTitle, totalsText } from './reimbursement-reports'
 
 export type ReqTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal' | 'navy'
 
@@ -36,6 +37,8 @@ export async function loadClients(): Promise<string[]> {
 export interface RmbRow {
   id: number; date: string; category: string; what: string; amount: string; hasReceipt: boolean
   st: { label: string; tone: ReqTone }; info: string
+  /** Sent with other receipts in one request (migration 122): the request, on its first row. */
+  report?: { id: number; first: boolean; title: string; total: string }
 }
 
 export interface ReimbursementsPage {
@@ -47,17 +50,24 @@ export interface ReimbursementsPage {
   today: string
 }
 
-type RRow = { id: number; spent_on: string; category: string; purpose: string; amount: number; currency: string; state: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string }
+type RRow = { id: number; spent_on: string; category: string; purpose: string; amount: number; currency: string; state: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_path: string; report_id: number | null }
 
 export async function loadReimbursements(v: Pick<Access, 'personId'>, zone: string, now = new Date()): Promise<ReimbursementsPage | null> {
   if (!v.personId) return null
   const c = db()
   const [{ data, error }, routes, dir, clients, settings] = await Promise.all([
-    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, state, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path').eq('person_id', v.personId).order('spent_on', { ascending: false }).limit(200),
+    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, state, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, report_id').eq('person_id', v.personId).order('spent_on', { ascending: false }).limit(200),
     loadRoutes([v.personId]), loadDirectory(), loadClients(), loadInvoiceSettings(),
   ])
   if (error) throw new Error(`Reimbursements could not be read: ${error.message}`)
-  const rows = (data ?? []) as RRow[]
+  const loaded = (data ?? []) as RRow[]
+  // A request's receipts stay together, where its latest one falls, oldest first inside it.
+  const latest = new Map<number, string>()
+  for (const r of loaded) if (r.report_id != null && (latest.get(r.report_id) ?? '') < r.spent_on) latest.set(r.report_id, r.spent_on)
+  const sortKey = (r: RRow) => (r.report_id != null ? latest.get(r.report_id)! : r.spent_on)
+  const rows = [...loaded].sort((a, b) => sortKey(b).localeCompare(sortKey(a)) || (a.report_id ?? 0) - (b.report_id ?? 0) || (a.report_id != null ? a.spent_on.localeCompare(b.spent_on) : 0))
+  const reportIds = [...new Set(rows.map(r => r.report_id).filter((x): x is number => x != null))]
+  const { data: reports } = reportIds.length ? await c.from('reimbursement_reports').select('id, name').in('id', reportIds) : { data: [] as { id: number; name: string | null }[] }
   const invIds = [...new Set(rows.map(r => r.invoice_id).filter((x): x is number => x != null))]
   const docIds = [...new Set(rows.map(r => r.document_id).filter((x): x is number => x != null))]
   const [{ data: invs }, { data: docs }] = await Promise.all([
@@ -88,7 +98,13 @@ export async function loadReimbursements(v: Pick<Access, 'personId'>, zone: stri
       st = { label: 'Approved', tone: 'teal' }
       info = `Approved ${day(r.decided_at)}. On reimbursement document ${d.number}, ${d.state === 'paid' ? 'paid' : 'waiting for Finance'}.`
     } else { st = { label: 'Approved', tone: 'teal' }; info = `Approved ${day(r.decided_at)}. It goes on your next invoice by itself.` }
-    return { id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: money(Number(r.amount), r.currency), hasReceipt: !!r.receipt_path, st, info }
+    const mates = r.report_id != null ? rows.filter(x => x.report_id === r.report_id) : []
+    const report = r.report_id != null ? {
+      id: r.report_id, first: mates[0]?.id === r.id,
+      title: reportTitle((reports ?? []).find(x => x.id === r.report_id)?.name, mates.length),
+      total: totalsText(mates.map(x => ({ amount: Number(x.amount), currency: x.currency }))),
+    } : undefined
+    return { id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: money(Number(r.amount), r.currency), hasReceipt: !!r.receipt_path, st, info, report }
   })
   const open = (docs ?? []).find(d => d.state !== 'paid')
   return { contractor: !!route?.isContractor, rows: out, doc: !route?.isContractor && open ? { id: open.id, number: open.number } : null, clients, today: localDate(now, zone) }

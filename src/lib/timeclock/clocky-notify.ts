@@ -21,6 +21,7 @@ import type { Db } from '@/lib/supabase/types'
 import { loadDirectory } from './clocky-context'
 import { localDate, timeLabel } from './format'
 import { roundIso } from './rounding'
+import { reportTitle, totalsText, type Amount } from './reimbursement-reports'
 import {
   clockedOutForText, correctionDecidedText, correctionRequestedText, timeOffDecidedText, timeOffRequestedText, timeOffCancelDecidedText, timeOffCancelAskedText,
   timesheetDecidedText, timesheetSubmittedText, invoiceMadeText, invoiceApprovedText, invoicePaidText,
@@ -196,6 +197,26 @@ export async function announceReimbursementRequested(x: { id: number; personId: 
   await quiet('reimbursement requested', async () => {
     const dir = await loadDirectory()
     await notifyClockyReimbursementRequested({ id: x.id, personId: x.personId, text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${x.category}, ${money(x.amount, x.currency)} (${x.purpose}).` })
+  })
+}
+
+/** Several receipts in one request: "Justus Tsofa asked for a reimbursement: São Paulo trip, 4 receipts, $873.00." */
+export async function announceReimbursementReportRequested(x: { firstId: number; personId: string; name: string | null; items: readonly Amount[] }): Promise<void> {
+  await quiet('reimbursement requested', async () => {
+    const dir = await loadDirectory()
+    await notifyClockyReimbursementRequested({ id: x.firstId, personId: x.personId, text: `${dir.nameOf(x.personId)} asked for a reimbursement: ${reportTitle(x.name, x.items.length)}, ${totalsText(x.items)}.` })
+  })
+}
+
+/** One bell for a request with several receipts: "Arnaldo Oliveira decided São Paulo trip, 4 receipts: approved 3 ($809.00), denied 1. Lunch: "Meals are paid by i7." They go on your next invoice." */
+export async function announceReimbursementReportDecided(x: { firstId: number; personId: string; deciderId: string; name: string | null; approved: readonly Amount[]; denied: readonly { purpose: string; note: string }[]; where: string }): Promise<void> {
+  await quiet('reimbursement decided', async () => {
+    const dir = await loadDirectory()
+    const n = x.approved.length + x.denied.length
+    const parts = [x.approved.length ? `approved ${x.approved.length} (${totalsText(x.approved)})` : '', x.denied.length ? `denied ${x.denied.length}` : ''].filter(Boolean).join(', ')
+    const reasons = x.denied.map(d => `${d.purpose}: "${d.note}"`).join(' ')
+    const text = `${dir.nameOf(x.deciderId)} decided ${reportTitle(x.name, n)}: ${parts}.${reasons ? ` ${reasons}` : ''}${x.approved.length ? ` ${x.where}` : ''}`
+    await notifyClockyReimbursementDecided({ id: x.firstId, personId: x.personId, text })
   })
 }
 
