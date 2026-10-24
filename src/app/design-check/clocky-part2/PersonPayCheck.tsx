@@ -10,7 +10,7 @@ import type { PersonPageData } from '@/lib/directory/person-page-data'
 import type { TypeChangeView } from '@/components/person/TypeChange'
 import type { ApprovalsView, PayView } from '@/components/person/PayApprovalsSections'
 
-type PaySample = { approvals: ApprovalsView; pay: PayView; invoicesLine: string }
+type PaySample = { approvals: ApprovalsView; pay: PayView; invoicesLine: string; /** 10A-4: every 2 weeks from Dec 1. */ scheduled?: boolean }
 
 // Cheyenne Wilson's (10A-1); Rock Kai brings his own (10A-3, 10A-4).
 const CHEYENNE: PaySample = {
@@ -33,7 +33,8 @@ export function PersonPayCheck({ data, editing, typeChange = null, sample = CHEY
       tab="work"
       canRemove={false}
       timesheet={{
-        cadence: 'monthly',
+        cadence: sample.scheduled ? 'biweekly' : 'monthly',
+        until: sample.scheduled ? { cadence: 'monthly', from: '2026-12-01' } : null,
         currentPeriod: 'November 2026',
         periodIf: { monthly: 'November 2026', biweekly: 'Nov 8 to 21, 2026' },
         canEdit: false,

@@ -77,17 +77,20 @@ export function Part2Frame({ frame }: { frame: string }) {
     const teams = [{ teamId: 't-sm', teamName: 'Social Media', color: '#DC2626', position: 'lead' as const, primary: true }]
     const rock = { ...base, id: '00000000-0000-4000-8000-0000000000c3', name: 'Rock Kai', title: 'Team Leader', color: '#DC2626', cover: { ...base.cover, teams, location: 'United States' }, work: base.work && { ...base.work, fullName: 'Rock Kai', title: 'Team Leader', teams, managerId: 'm-ds', managerName: 'Dave Sharpe' } }
     // His own approvals and pay, as the prototype draws them: Dave Sharpe for both, $20.00/h, no allowance.
+    // 10A-4: the change scheduled for Dec 1.
+    const sched = frame === '10A4'
     const rockPay = {
       approvals: {
         rows: [
           { k: 'Reports to', v: 'Dave Sharpe', sub: 'Work tab' },
           { k: 'Hours approved by', v: 'Dave Sharpe', sub: 'The person they report to' },
-          { k: 'Invoice approved by', v: 'Dave Sharpe', sub: 'They report to Dave Sharpe' },
+          { k: sched ? 'Invoice, until Nov 30' : 'Invoice approved by', v: 'Dave Sharpe', sub: 'They report to Dave Sharpe' },
         ],
-        note: 'Same person: one step, Approve both.',
+        note: sched ? 'From Dec 1 no invoice: Dave Sharpe approves the hours and they go to Rippling.' : 'Same person: one step, Approve both.',
       },
-      pay: { isContractor: true, paysAs: 'hourly' as const, hourlyRate: 20, fixedAmount: null, allowance: null, timeOff: frame === '10A4' ? 'From Dec 1, in Requests' : 'Contractors do not ask PTO', canEdit: true },
-      invoicesLine: 'Made when they submit',
+      pay: { isContractor: true, paysAs: 'hourly' as const, hourlyRate: 20, fixedAmount: null, allowance: null, timeOff: sched ? 'From Dec 1, in Requests' : 'Contractors do not ask PTO', contractorUntil: sched ? 'Nov 30' : null, canEdit: true },
+      invoicesLine: sched ? 'Last one: November 2026' : 'Made when they submit',
+      scheduled: sched,
     }
     const options = typeChangeOptions('2026-11-03', '2026-10-04', 'Dave Sharpe')
     return (

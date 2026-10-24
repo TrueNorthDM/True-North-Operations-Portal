@@ -15,6 +15,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { NewTag } from '@/components/clocky/periods/ui'
 import type { Cadence } from '@/lib/timeclock/periods'
+import { dateLabel } from '@/lib/timeclock/format'
 import { PillBadge, Section } from './PersonParts'
 
 export interface PersonTimesheetView {
@@ -22,6 +23,8 @@ export interface PersonTimesheetView {
   cadence: Cadence | null
   currentPeriod: string
   periodIf: Record<Cadence, string>
+  /** A change waiting (10A-4): "Monthly, every 2 weeks from Dec 1". */
+  until?: { cadence: Cadence; from: string } | null
   /** May change it here (cs-periods-edit, with Edit work). */
   canEdit: boolean
   /** The two places the line points to, as links only for whoever opens them. */
@@ -29,6 +32,8 @@ export interface PersonTimesheetView {
 }
 
 const CADENCE: Record<Cadence, string> = { monthly: 'Monthly', biweekly: 'Every 2 weeks' }
+/** "Dec 1" */
+const shortDay = (iso: string) => dateLabel(iso).replace(/, \d{4}$/, '')
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -64,6 +69,7 @@ export function TimesheetSection({ t, editing = false, draft, onDraft, startsLin
           <Row label="Submits hours">
             {choosing
               ? <Segmented label="Submits hours" display="px-3 py-1.5 text-[12.5px]" options={[{ key: 'monthly', label: 'Monthly' }, { key: 'biweekly', label: 'Every 2 weeks' }]} value={shown} onChange={c => onDraft?.(c)} />
+              : t.until && t.cadence ? <span>{CADENCE[t.until.cadence]}, {CADENCE[t.cadence].toLowerCase()} from {shortDay(t.until.from)}</span>
               : <PillBadge pill={t.cadence === null ? { kind: 'amber', label: 'Not set' } : t.cadence === 'biweekly' ? { kind: 'teal', label: CADENCE.biweekly } : { kind: 'grey', label: CADENCE.monthly }} />}
           </Row>
         </dl>

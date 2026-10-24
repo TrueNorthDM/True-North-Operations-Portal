@@ -22,6 +22,8 @@ export interface PersonTimesheet {
   currentPeriod: string
   /** The current period on each cadence, for the row while Edit work picks one (5B2). */
   periodIf: Record<Cadence, string>
+  /** A change of cadence waiting (10A-4): how they submit until then, and the day it starts. */
+  until: { cadence: Cadence; from: string } | null
   canEdit: boolean
 }
 
@@ -37,6 +39,7 @@ export async function loadPersonTimesheet(personId: string, canEdit: boolean, no
       cadence: rules.changes.length ? cn.scheduled?.cadence ?? cn.now : null,
       currentPeriod: periodLabel(periodContaining(today, rules)).full,
       periodIf: { monthly: monthYear(today), biweekly: pay ? periodLabel(pay).full : '-' },
+      until: cn.scheduled ? { cadence: cn.now, from: cn.scheduled.from } : null,
       canEdit,
     }
   } catch (e) {

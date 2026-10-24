@@ -12,7 +12,7 @@ import { hoursApprover, invoiceApprover, isRecordedOnly, oneStep } from '@/lib/t
 import type { ApprovalsView, PayView } from '@/components/person/PayApprovalsSections'
 import type { TypeChangeView } from '@/components/person/TypeChange'
 import { loadClockySettings } from '@/lib/timeclock/clocky-context'
-import { dateLabel, localDate, monthLong } from '@/lib/timeclock/format'
+import { dateLabel, localDate, monthLong, monthYear } from '@/lib/timeclock/format'
 import { addDays, anchorOn } from '@/lib/timeclock/periods'
 import { loadTypeChange, typeChangeOptions } from '@/lib/timeclock/type-change'
 
@@ -37,6 +37,11 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
     const ib = invoiceApprover(p, settings)
     const others = settings.invoiceApprovers.filter(id => id !== settings.defaultApprover).map(id => dir.nameOf(id))
 
+    // A change to employee waiting (10A-4): the invoice ends the day before; not money, so read for whoever sees Approvals.
+    const scheduled = p.isContractor ? await loadTypeChange(personId) : null
+    const lastDay = scheduled ? dateLabel(addDays(scheduled.effectiveOn, -1)).replace(/, \d{4}$/, '') : null
+    const firstDay = scheduled ? dateLabel(scheduled.effectiveOn).replace(/, \d{4}$/, '') : null
+
     const rows: ApprovalsView['rows'] = [{ k: 'Reports to', v: name(p.reportsTo), sub: 'Work tab' }]
     let note: string
     if (isRecordedOnly(p, settings)) {
@@ -49,8 +54,9 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       note = `No timesheet: the invoice is made on the 1st and goes straight to ${name(ib)}.`
     } else {
       rows.push({ k: 'Hours approved by', v: name(hb), sub: p.reportsTo ? 'The person they report to' : 'Nobody to report to yet' })
-      rows.push({ k: 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
-      note = oneStep(p, settings) ? 'Same person: one step, Approve both.' : `Two steps: ${name(hb)} approves the hours, then ${name(ib)} the invoice.`
+      rows.push({ k: lastDay ? `Invoice, until ${lastDay}` : 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
+      note = firstDay ? `From ${firstDay} no invoice: ${name(hb)} approves the hours and they go to Rippling.`
+        : oneStep(p, settings) ? 'Same person: one step, Approve both.' : `Two steps: ${name(hb)} approves the hours, then ${name(ib)} the invoice.`
     }
 
     const money = seesMoney(access, personId, settings)
@@ -59,9 +65,9 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
     // A contractor asks no time off; once the change to employee is scheduled, from that day, in Requests (10A-3, 10A-4).
     let timeOff: string | null = null
     if (money && p.isContractor) {
-      const [scheduled, clocky] = await Promise.all([loadTypeChange(personId), loadClockySettings()])
+      const clocky = await loadClockySettings()
       const today = localDate(new Date(), 'America/New_York')
-      timeOff = scheduled ? `From ${dateLabel(scheduled.effectiveOn).replace(/, \d{4}$/, '')}, in Requests` : 'Contractors do not ask PTO'
+      timeOff = firstDay ? `From ${firstDay}, in Requests` : 'Contractors do not ask PTO'
       const first = name(personId).split(' ')[0]
       typeChange = {
         name: name(personId), canMigrate: access.isSuperAdmin && !scheduled,
@@ -75,10 +81,10 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
       typeChange,
       approvals: { rows, note },
       pay: money ? {
-        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance, timeOff,
+        isContractor: p.isContractor, paysAs: t.paysAs, hourlyRate: t.hourlyRate, fixedAmount: t.fixedAmount, allowance: t.allowance, timeOff, contractorUntil: lastDay,
         canEdit: access.can('directory') && access.can('d-rates'),
       } : null,
-      invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : p.paysAs === 'fixed_no_timesheet' ? 'Made on the 1st, no timesheet' : 'Made when they submit') : null,
+      invoicesLine: money ? (!p.isContractor ? 'None, paid through Rippling' : scheduled ? `Last one: ${monthYear(addDays(scheduled.effectiveOn, -1))}` : p.paysAs === 'fixed_no_timesheet' ? 'Made on the 1st, no timesheet' : 'Made when they submit') : null,
     }
   } catch (e) {
     // The sections are left out rather than the page failing (migration 115 not run yet).
