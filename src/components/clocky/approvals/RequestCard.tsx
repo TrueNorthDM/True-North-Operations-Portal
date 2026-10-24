@@ -74,7 +74,7 @@ export function RequestCard({ card, who, initials, team, asked, busy, denyFirst,
       <div className={`grid gap-[18px] items-start ${card.twoCols ? 'grid-cols-1 md:grid-cols-[minmax(0,.9fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}>
         {card.receipt && (
           <div className="flex flex-col gap-2">
-            <div className="h-[300px] rounded-[12px] bg-subtle border border-dashed border-[#cbd2da] flex flex-col items-center justify-center gap-2 text-center p-4 box-border">
+            <div className="h-[160px] md:h-[300px] rounded-[12px] bg-subtle border border-dashed border-[#cbd2da] flex flex-col items-center justify-center gap-2 text-center p-4 box-border">
               <Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3" size={34} color="#8593a4" width={1.6} />
               <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink break-all">{card.receipt.file}</span>
               <span className="text-[12px] text-muted">{card.receipt.sub}</span>
