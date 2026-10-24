@@ -15,10 +15,11 @@ import { dayLabel, initials, stampLabel, timeLabel, zoneAbbr } from './format'
 import { recordedSeconds } from './rounding'
 import { holidaysBetween, offDays } from './time-off'
 import { canApproveCorrection, canDecideTimeOff, seesEveryone } from './scope'
-import { loadInvoiceSettings, loadRoutes } from './pay-terms'
+import { loadRouteSettings, loadRoutes } from './pay-terms'
 import { currentStep, invoiceApprover, type TimesheetState } from './routing'
 import type { ApprovalRow, ApprovalsData } from './clocky-types'
 import { goesToLabel, teamLeadNames, waitingOrder } from './clocky-requests'
+import { waitingRequests } from './request-cards'
 
 /** Decided requests shown: the last 90 days. */
 const DECIDED_DAYS = 90
@@ -122,27 +123,27 @@ export async function loadApprovals(v: Viewer, now: Date): Promise<ApprovalsData
   }
 }
 
-/** The number on the Clocky menu row "Approvals": what is waiting for the viewer. */
+/**
+ * The number on the Clocky menu row "Approvals": exactly the rows of "Waiting
+ * for you" (approval-queue.ts loadQueue), counted with the same predicates
+ * without building them: time corrections in the viewer's scope; timesheets
+ * and fixed invoices whose current step is theirs (README_PART2 routing, with
+ * the same settings); time off, its cancellations, reimbursements (a request
+ * with several receipts once) and extra hours they decide (request-cards.ts).
+ * Never their own.
+ */
 export async function countWaiting(v: Viewer): Promise<number> {
   if (!v.can('clocky-approvals')) return 0
   const c = db()
-  const dir = await loadDirectory()
-  const [corr, off] = await Promise.all([
+  const [dir, settings] = await Promise.all([loadDirectory(), loadRouteSettings()])
+  const [corr, subs, fixed, requests] = await Promise.all([
     allRows<{ person_id: string }>((a, b) => c.from('tc_correction_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Time corrections could not be read'),
-    v.can('ck-timeoff')
-      ? allRows<{ person_id: string }>((a, b) => c.from('tc_absence_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Time off could not be read')
-      : Promise.resolve([] as { person_id: string }[]),
-  ])
-  // Timesheets and fixed invoices whose current step is this viewer's (README_PART2 routing).
-  const [subs, fixed, settings] = await Promise.all([
-    allRows<{ person_id: string; state: TimesheetState }>((a, b) => c.from('tc_submissions').select('person_id, state').in('state', ['submitted', 'hours_approved']).order('id').range(a, b), 'Timesheets could not be read'),
+    allRows<{ person_id: string; state: TimesheetState; tc_periods: { start_date: string } | null }>((a, b) => c.from('tc_submissions').select('person_id, state, tc_periods(start_date)').in('state', ['submitted', 'hours_approved']).order('id').range(a, b), 'Timesheets could not be read'),
     allRows<{ person_id: string }>((a, b) => c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').eq('state', 'waiting').order('id').range(a, b), 'Invoices could not be read'),
-    loadInvoiceSettings(),
+    waitingRequests(v, dir, settings),
   ])
   const routes = await loadRoutes([...new Set([...subs, ...fixed].map(x => x.person_id))])
-  const sheets = subs.filter(x => x.person_id !== v.personId && routes.get(x.person_id) && currentStep(routes.get(x.person_id)!, settings, x.state)?.owner === v.personId).length
+  const sheets = subs.filter(x => x.tc_periods && x.person_id !== v.personId && routes.get(x.person_id) && currentStep(routes.get(x.person_id)!, settings, x.state)?.owner === v.personId).length
     + fixed.filter(x => x.person_id !== v.personId && routes.get(x.person_id) && invoiceApprover(routes.get(x.person_id)!, settings) === v.personId).length
-  return corr.filter(r => canApproveCorrection(v, dir.target(r.person_id))).length
-    + off.filter(r => canDecideTimeOff(v, dir.target(r.person_id))).length
-    + sheets
+  return corr.filter(r => canApproveCorrection(v, dir.target(r.person_id))).length + sheets + requests
 }

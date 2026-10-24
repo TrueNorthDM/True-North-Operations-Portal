@@ -18,6 +18,8 @@ import type { CatalogueData, CatalogueRow } from '@/lib/timeclock/job-catalogue'
 import { FieldLabel, Icon, LabeledSelect, Toast, type ToastState } from '@/components/clocky/entries/ui'
 
 type Done = { ok: true; toast: string; id?: number } | { ok: false; error: string }
+/** A call that never answered (the connection dropped) reads as a refusal, so busy resets and the toast says so. */
+const settle = (p: Promise<Done>): Promise<Done> => p.catch(() => ({ ok: false, error: 'That did not go through. Check your connection and try again.' }))
 export interface CatalogueApi {
   saveJob: (i: { id: number; name: string; parentId: number | null; active: boolean; billable: boolean; company: string; project: string; use: string }) => Promise<Done>
   addFolder: () => Promise<Done>
@@ -101,7 +103,7 @@ function Jobs({ data, canEdit, api, startId, say }: { data: CatalogueData; canEd
   const jobs = rows.filter(r => !r.folder).length
   const fieldOpts = (key: string) => [{ value: '', label: 'None' }, ...(data.fields.find(f => f.key === key)?.options.filter(o => o.shown).map(o => ({ value: o.label, label: o.label })) ?? [])]
 
-  const run = async (p: Promise<Done>) => { setBusy(true); const r = await p; setBusy(false); say(r); return r }
+  const run = async (p: Promise<Done>) => { setBusy(true); const r = await settle(p); setBusy(false); say(r); return r }
   const move = (from: number | null, to: number) => {
     setDrag(null); setOver(null)
     const a = rows.find(r => r.id === from), b = rows.find(r => r.id === to)
@@ -220,7 +222,7 @@ function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; 
   const commit = async (id: number, old: string) => {
     setRenaming(null)
     const v = draft.trim()
-    if (v && v !== old) say(await api.renameOption({ optionId: id, label: v }))
+    if (v && v !== old) say(await settle(api.renameOption({ optionId: id, label: v })))
   }
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-4 items-start">
@@ -255,7 +257,7 @@ function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; 
               </div>
               <div className="px-2 md:px-3 py-[7px] text-right text-foreground tabular-nums lining-nums whitespace-nowrap">{`${o.used.toLocaleString('en-US')} entries`}</div>
               <div className="px-2 md:px-3 py-[7px]">
-                <button type="button" role="switch" aria-checked={o.shown} aria-label={`Show ${o.label}`} disabled={!canEdit} onClick={async () => say(await api.setOptionShown({ optionId: o.id, shown: !o.shown }))}
+                <button type="button" role="switch" aria-checked={o.shown} aria-label={`Show ${o.label}`} disabled={!canEdit} onClick={async () => say(await settle(api.setOptionShown({ optionId: o.id, shown: !o.shown })))}
                   className="w-[34px] h-[19px] border-0 rounded-full relative cursor-pointer p-0 disabled:cursor-default" style={{ background: o.shown ? '#1E7D7F' : '#cbd2da' }}>
                   <span className="absolute top-0.5 w-[15px] h-[15px] rounded-full bg-white shadow-[0_1px_3px_rgba(1,35,88,.3)]" style={{ left: o.shown ? 17 : 2 }} />
                 </button>
@@ -267,7 +269,7 @@ function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; 
           ))}
         </div>
         {canEdit && (
-          <form className="flex gap-2 px-4 py-3 border-t border-[var(--panel-border)] bg-[#faf9f5]" onSubmit={async e => { e.preventDefault(); const v = fresh.trim(); if (!v) return; const r = await api.addOption({ fieldId: Number(f.id), label: v }); if (r.ok) setFresh(''); say(r) }}>
+          <form className="flex gap-2 px-4 py-3 border-t border-[var(--panel-border)] bg-[#faf9f5]" onSubmit={async e => { e.preventDefault(); const v = fresh.trim(); if (!v) return; const r = await settle(api.addOption({ fieldId: Number(f.id), label: v })); if (r.ok) setFresh(''); say(r) }}>
             <input value={fresh} onChange={e => setFresh(e.target.value)} placeholder="New option" maxLength={120} aria-label="New option"
               className="flex-1 h-[38px] box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink bg-white outline-none focus:border-tn-teal" />
             <button type="submit" className="inline-flex items-center gap-1.5 border border-slate-200 rounded-[10px] px-3.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] cursor-pointer hover:border-tn-teal"><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />Add</button>

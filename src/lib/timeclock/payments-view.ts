@@ -13,10 +13,10 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { db, loadCatalog, loadDirectory } from './clocky-context'
+import { db, loadCatalog, loadDirectory, rowsOf } from './clocky-context'
 import { dateLabel, dayLabel, localDate } from './format'
 import { INV_COLS, paidText, usd, type InvRow } from './invoice-doc'
-import { loadInvoiceSettings, loadRoutes, seesMoney } from './pay-terms'
+import { loadRouteSettings, loadRoutes, seesMoney } from './pay-terms'
 import { sentToRippling, weeksOf, type DocKind } from './pay-docs'
 import { periodLabel } from './periods'
 import { formatDuration } from './rounding'
@@ -141,7 +141,7 @@ export function buildEmployeePayments(x: { name: string; periods: PeriodLite[]; 
 
 /** The tab for this viewer, or null when it is not theirs to see (Team Leaders, everyone else). */
 export async function loadPayments(personId: string, v: Pick<Access, 'personId' | 'isAdmin'>, zone: string, now = new Date()): Promise<PaymentsData | null> {
-  const settings = await loadInvoiceSettings()
+  const settings = await loadRouteSettings()
   if (!seesMoney(v, personId, settings)) return null
   const c = db()
   const [routes, dir] = await Promise.all([loadRoutes([personId]), loadDirectory()])
@@ -157,13 +157,13 @@ export async function loadPayments(personId: string, v: Pick<Access, 'personId' 
     const invoices = (inv ?? []) as unknown as InvRow[]
     const ids = invoices.map(i => i.id)
     const subIds = invoices.map(i => i.submission_id).filter((s): s is number => s != null)
-    const [{ data: lines }, { data: subs }] = await Promise.all([
-      ids.length ? c.from('invoice_lines').select('invoice_id, hours_seconds').in('invoice_id', ids) : Promise.resolve({ data: [] as { invoice_id: number; hours_seconds: number | null }[] }),
-      subIds.length ? c.from('tc_submissions').select('id, state').in('id', subIds) : Promise.resolve({ data: [] as { id: number; state: string }[] }),
+    const [lines, subs] = await Promise.all([
+      ids.length ? c.from('invoice_lines').select('invoice_id, hours_seconds').in('invoice_id', ids).then(r => rowsOf(r, 'Payments could not be read')) : Promise.resolve([] as { invoice_id: number; hours_seconds: number | null }[]),
+      subIds.length ? c.from('tc_submissions').select('id, state').in('id', subIds).then(r => rowsOf(r, 'Payments could not be read')) : Promise.resolve([] as { id: number; state: string }[]),
     ])
     const secs = new Map<number, number>()
-    for (const l of lines ?? []) if (l.hours_seconds) secs.set(l.invoice_id, (secs.get(l.invoice_id) ?? 0) + l.hours_seconds)
-    const subState = new Map((subs ?? []).map(s => [s.id, s.state]))
+    for (const l of lines) if (l.hours_seconds) secs.set(l.invoice_id, (secs.get(l.invoice_id) ?? 0) + l.hours_seconds)
+    const subState = new Map(subs.map(s => [s.id, s.state]))
     return buildContractorPayments({
       name, route, settings, nameOf: dir.nameOf, today,
       invoices: invoices.map(i => ({ ...i, seconds: secs.get(i.id) ?? null, subState: i.submission_id != null ? subState.get(i.submission_id) : undefined })),
@@ -180,10 +180,10 @@ export async function loadPayments(personId: string, v: Pick<Access, 'personId' 
   const [sent, weeks, items] = await Promise.all([
     sentToRippling(list.map(s => s.id), zone),
     Promise.all(list.map(s => weeksOf(personId, s.tc_periods!.start_date, s.tc_periods!.end_date, now))),
-    (docs ?? []).length ? c.from('reimbursements').select('document_id').in('document_id', (docs ?? []).map(d => d.id)).then(r => r.data ?? []) : Promise.resolve([] as { document_id: number | null }[]),
+    (docs ?? []).length ? c.from('reimbursements').select('document_id').in('document_id', (docs ?? []).map(d => d.id)).then(r => rowsOf(r, 'Payments could not be read')) : Promise.resolve([] as { document_id: number | null }[]),
   ])
-  const [{ data: offs }, catalog] = await Promise.all([
-    list.length ? c.from('tc_absence_requests').select('start_date, end_date, jobcode_id').eq('person_id', personId).eq('state', 'approved') : Promise.resolve({ data: [] as { start_date: string; end_date: string; jobcode_id: number }[] }),
+  const [offs, catalog] = await Promise.all([
+    list.length ? c.from('tc_absence_requests').select('start_date, end_date, jobcode_id').eq('person_id', personId).eq('state', 'approved').then(r => rowsOf(r, 'Payments could not be read')) : Promise.resolve([] as { start_date: string; end_date: string; jobcode_id: number }[]),
     loadCatalog(),
   ])
   const kindOf = (jobcodeId: number) => { const j = catalog.jobs.get(jobcodeId); return j?.short || j?.path || 'Time off' }
@@ -193,7 +193,7 @@ export async function loadPayments(personId: string, v: Pick<Access, 'personId' 
     name, zone, hoursBy: route ? dir.nameOf(hoursApprover(route, settings)) : null,
     periods: list.map((s, i) => {
       const p = s.tc_periods!
-      const off = (offs ?? []).filter(o => o.start_date <= p.end_date && o.end_date >= p.start_date)
+      const off = offs.filter(o => o.start_date <= p.end_date && o.end_date >= p.start_date)
       return {
         id: s.id, start: p.start_date, end: p.end_date, state: s.state,
         worked: weeks[i].reduce((n, w) => n + w.worked, 0), off: weeks[i].reduce((n, w) => n + w.off, 0),

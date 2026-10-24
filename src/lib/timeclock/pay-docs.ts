@@ -7,7 +7,7 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { db, loadDirectory } from './clocky-context'
+import { allRows, db, loadDirectory } from './clocky-context'
 import { entrySeconds } from './clocky-panel'
 import { dateLabel, localDate, stampLabel } from './format'
 import { money, moneyTotal } from './invoice-doc'
@@ -18,6 +18,9 @@ import { receiptShow, type DocReceipt } from './receipt-pages'
 import { pdfPageCount, receiptBytes } from './receipt-files'
 
 export type DocKind = 'payroll' | 'rmb'
+
+/** The page that opens a document, and the access item its PDF and print page are guarded with. */
+export const docSurface = (kind: DocKind): string => (kind === 'rmb' ? 'rq-reimbursements' : 'clocky-hours')
 
 export interface DocSheetData {
   /** "Payroll summary", "Reimbursement": the gold word in the band. */
@@ -94,12 +97,11 @@ type Viewer = Pick<Access, 'personId' | 'isAdmin'>
 
 /** The worked and time-off seconds of each week of a period. */
 export async function weeksOf(personId: string, start: string, end: string, now = new Date()): Promise<{ worked: number; off: number }[]> {
-  const { data, error } = await db().from('tc_entries').select('entry_date, started_at, ended_at, duration_seconds, kind')
-    .eq('person_id', personId).gte('entry_date', start).lte('entry_date', end)
-  if (error) throw new Error(`The hours could not be read: ${error.message}`)
+  const data = await allRows<{ entry_date: string; started_at: string | null; ended_at: string | null; duration_seconds: number | null; kind: string }>((a, b) => db().from('tc_entries')
+    .select('entry_date, started_at, ended_at, duration_seconds, kind').eq('person_id', personId).gte('entry_date', start).lte('entry_date', end).order('id').range(a, b), 'The hours could not be read')
   const weeks: { worked: number; off: number }[] = []
   for (let d = start, i = 0; d <= end; d = addDays(d, 7), i++) weeks.push({ worked: 0, off: 0 })
-  for (const r of data ?? []) {
+  for (const r of data) {
     const i = Math.floor((Date.parse(`${r.entry_date}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / (7 * 86_400_000))
     const s = entrySeconds(r as Parameters<typeof entrySeconds>[0], now)
     if (r.kind === 'absence') weeks[i].off += s
@@ -120,7 +122,8 @@ export async function sentToRippling(submissionIds: readonly number[], zone: str
 
 export async function loadPayrollDoc(v: Viewer, submissionId: number, zone: string): Promise<DocSheetData | null> {
   const c = db()
-  const { data: s } = await c.from('tc_submissions').select('id, person_id, submitted_at, tc_periods(start_date, end_date)').eq('id', submissionId).maybeSingle()
+  const { data: s, error } = await c.from('tc_submissions').select('id, person_id, submitted_at, tc_periods(start_date, end_date)').eq('id', submissionId).maybeSingle()
+  if (error) throw new Error(`The timesheet could not be read: ${error.message}`)
   if (!s) return null
   const settings = await loadInvoiceSettings()
   if (!seesMoney(v, s.person_id, settings)) return null
@@ -139,14 +142,17 @@ export async function loadPayrollDoc(v: Viewer, submissionId: number, zone: stri
 /** `keep`: the PDF receipts' bytes by reimbursement id, for the PDF maker to draw. */
 export async function loadRmbDoc(v: Viewer, documentId: number, zone: string, keep?: Map<number, Uint8Array>): Promise<DocSheetData | null> {
   const c = db()
-  const { data: d } = await c.from('reimbursement_documents').select('id, number, person_id, state, paid_on, paid_ref, created_at').eq('id', documentId).maybeSingle()
+  const { data: d, error } = await c.from('reimbursement_documents').select('id, number, person_id, state, paid_on, paid_ref, created_at').eq('id', documentId).maybeSingle()
+  if (error) throw new Error(`The reimbursement document could not be read: ${error.message}`)
   if (!d) return null
   const settings = await loadInvoiceSettings()
   if (!seesMoney(v, d.person_id, settings)) return null
-  const [{ data: items }, dir] = await Promise.all([
+  const [{ data: items, error: itemsErr }, dir] = await Promise.all([
     c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, receipt_path, receipt_name').eq('document_id', d.id).order('spent_on').order('id'),
     loadDirectory(),
   ])
+  // An unread list would print the document empty, with a $0.00 total.
+  if (itemsErr) throw new Error(`The document's items could not be read: ${itemsErr.message}`)
   const person = dir.people.get(d.person_id)
   // A PDF receipt brings its own pages; one that cannot be read keeps one page, with the line saying where to open it.
   const receipts = await Promise.all((items ?? []).map(async i => {

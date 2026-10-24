@@ -103,21 +103,28 @@ export async function createAgendaEvent(input: NewEventInput): Promise<Result<{ 
     }).select('id').single()
     if (error) { console.error('[agenda]', error.message); return fail('Not saved. Try again in a moment.') }
 
-    let waiting = false
+    // The event exists from here: a queue that fails does not fail the save (a retry would make it twice).
+    let waiting = false, unqueued = false
     if (google) {
-      const state = await enqueue({
-        kind: 'gcal_upsert', refTable: 'agenda_events', refId: data.id, key: `agenda:${data.id}`,
-        payload: startsAt && endsAt
-          ? { summary: title, startAt: startsAt, endAt: endsAt, timeZone: zone, location: place, description }
-          : { summary: title, start: startDate, end: endDate, location: place, description },
-      })
-      waiting = state === 'waiting_connection'
+      try {
+        const state = await enqueue({
+          kind: 'gcal_upsert', refTable: 'agenda_events', refId: data.id, key: `agenda:${data.id}`,
+          payload: startsAt && endsAt
+            ? { summary: title, startAt: startsAt, endAt: endsAt, timeZone: zone, location: place, description }
+            : { summary: title, start: startDate, end: endDate, location: place, description },
+        })
+        waiting = state === 'waiting_connection'
+      } catch (e) {
+        unqueued = true
+        console.error('[agenda] calendar queue:', e instanceof Error ? e.message : e)
+      }
     }
     revalidatePath('/agenda')
     revalidatePath('/')
     return {
       ok: true,
       toast: !google ? 'Created. Everyone who can see it finds it in Agenda.'
+        : unqueued ? 'Created. Everyone who can see it finds it in Agenda. It could not be sent to the team Google Calendar.'
         : waiting ? 'Created. Everyone who can see it finds it in Agenda. It goes on the team Google Calendar once Google Calendar is connected.'
         : 'Created. Everyone who can see it finds it in Agenda and on the team Google Calendar.',
     }

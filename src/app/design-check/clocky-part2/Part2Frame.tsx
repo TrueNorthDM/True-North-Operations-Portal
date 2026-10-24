@@ -100,6 +100,7 @@ export function Part2Frame({ frame }: { frame: string }) {
           name: 'Rock Kai', canMigrate: frame === '10A3', canCancel: frame === '10A4', options, startOpen: frame === '10A3',
           scheduled: frame === '10A4' ? { date: 'Tue, Dec 1, 2026', text: 'November closes as a contractor, with their last invoice; then pay periods and Rippling. It goes in their history on the day.' } : null,
           stays: "Reports to Dave Sharpe, who keeps approving Rock's hours. Their team, their allowance, their time entries and every past invoice and decision.",
+          rippling: 'none',
         }} />
       </div>
     )

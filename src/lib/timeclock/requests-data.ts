@@ -12,13 +12,13 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { db, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
+import { db, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf } from './clocky-context'
 import { allowanceRange } from './allowance'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { dateLabel, localDate, monthYear, stampLabel } from './format'
 import { INVOICE_STATE, stateKey } from './invoices-view'
 import { money, moneyTotal } from './invoice-doc'
-import { isFinance, loadInvoiceSettings, loadPayTerms, loadRoutes, seesMoney } from './pay-terms'
+import { isFinance, loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, seesMoney } from './pay-terms'
 import { addDays } from './periods'
 import { formatDuration } from './rounding'
 import { clientFolder } from './invoices-data'
@@ -69,7 +69,7 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
   if (!v.personId) return null
   const me = v.personId
   const c = db()
-  const [dir, clients, settings] = await Promise.all([loadDirectory(), loadClients(), loadInvoiceSettings()])
+  const [dir, clients, settings] = await Promise.all([loadDirectory(), loadClients(), loadRouteSettings()])
   const seesAll = v.isAdmin || isFinance(v, settings)
   let q = c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, state, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, report_id').order('spent_on', { ascending: false })
   q = seesAll ? q.limit(1000) : q.eq('person_id', me).limit(200)
@@ -80,17 +80,18 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
   const reportIds = [...new Set(loaded.map(r => r.report_id).filter((x): x is number => x != null))]
   const invIds = [...new Set(loaded.map(r => r.invoice_id).filter((x): x is number => x != null))]
   const docIds = [...new Set(loaded.map(r => r.document_id).filter((x): x is number => x != null))]
-  const [routes, { data: reports }, { data: invs }, { data: docs }] = await Promise.all([
+  // A failed read throws: a missing invoice or document would say "It goes on your next invoice" of one already on it.
+  const [routes, reports, invs, docs] = await Promise.all([
     loadRoutes(people),
-    reportIds.length ? c.from('reimbursement_reports').select('id, name').in('id', reportIds) : Promise.resolve({ data: [] as { id: number; name: string | null }[] }),
-    invIds.length ? c.from('invoices').select('id, number, state, paid_on, submission_id').in('id', invIds) : Promise.resolve({ data: [] as { id: number; number: string; state: string; paid_on: string | null; submission_id: number | null }[] }),
-    docIds.length ? c.from('reimbursement_documents').select('id, number, state, paid_on').in('id', docIds) : Promise.resolve({ data: [] as { id: number; number: string; state: string; paid_on: string | null }[] }),
+    reportIds.length ? c.from('reimbursement_reports').select('id, name').in('id', reportIds).then(r => rowsOf(r, 'Reimbursement requests could not be read')) : Promise.resolve([] as { id: number; name: string | null }[]),
+    invIds.length ? c.from('invoices').select('id, number, state, paid_on, submission_id').in('id', invIds).then(r => rowsOf(r, 'Invoices could not be read')) : Promise.resolve([] as { id: number; number: string; state: string; paid_on: string | null; submission_id: number | null }[]),
+    docIds.length ? c.from('reimbursement_documents').select('id, number, state, paid_on').in('id', docIds).then(r => rowsOf(r, 'Reimbursement documents could not be read')) : Promise.resolve([] as { id: number; number: string; state: string; paid_on: string | null }[]),
   ])
-  const subIds = (invs ?? []).map(i => i.submission_id).filter((x): x is number => x != null)
-  const { data: subs } = subIds.length ? await c.from('tc_submissions').select('id, state').in('id', subIds) : { data: [] as { id: number; state: string }[] }
-  const inv = new Map((invs ?? []).map(i => [i.id, i]))
-  const doc = new Map((docs ?? []).map(d => [d.id, d]))
-  const subState = new Map((subs ?? []).map(s => [s.id, s.state]))
+  const subIds = invs.map(i => i.submission_id).filter((x): x is number => x != null)
+  const subs = subIds.length ? rowsOf(await c.from('tc_submissions').select('id, state').in('id', subIds), 'Timesheets could not be read') : []
+  const inv = new Map(invs.map(i => [i.id, i]))
+  const doc = new Map(docs.map(d => [d.id, d]))
+  const subState = new Map(subs.map(s => [s.id, s.state]))
   const day = (t: string | null) => (t ? dateLabel(localDate(t, zone)).replace(/, \d{4}$/, '') : '')
   const whoOf = (id: string): RmbRow['who'] => {
     const p = dir.people.get(id), t = p?.teamId ? dir.teams.get(p.teamId) : undefined
@@ -118,13 +119,13 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
     const mates = r.report_id != null ? list.filter(x => x.report_id === r.report_id) : []
     const report = r.report_id != null ? {
       id: r.report_id, first: mates[0]?.id === r.id,
-      title: reportTitle((reports ?? []).find(x => x.id === r.report_id)?.name, mates.length),
+      title: reportTitle(reports.find(x => x.id === r.report_id)?.name, mates.length),
       total: totalsText(mates.map(x => ({ amount: Number(x.amount), currency: x.currency }))),
     } : undefined
     return { id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: money(Number(r.amount), r.currency), hasReceipt: !!r.receipt_path, st, info, report, ...(withWho ? { who: whoOf(r.person_id) } : {}) }
   })
   const route = routes.get(me)
-  const open = (docs ?? []).find(d => d.state !== 'paid' && loaded.some(r => r.document_id === d.id && r.person_id === me))
+  const open = docs.find(d => d.state !== 'paid' && loaded.some(r => r.document_id === d.id && r.person_id === me))
   return {
     contractor: !!route?.isContractor,
     rows: build(arrangeReimbursements(loaded.filter(r => r.person_id === me)), false),
@@ -156,19 +157,19 @@ export interface RmbDocPage {
 
 export async function loadRmbDocPage(v: Pick<Access, 'personId' | 'isAdmin'>, id: number, zone: string): Promise<RmbDocPage | null> {
   const c = db()
-  const { data: d } = await c.from('reimbursement_documents').select('id, number, person_id, state, total, paid_on, paid_ref, paid_by, created_at').eq('id', id).maybeSingle()
+  const d = oneOf(await c.from('reimbursement_documents').select('id, number, person_id, state, total, paid_on, paid_ref, paid_by, created_at').eq('id', id).maybeSingle(), 'The reimbursement document could not be read')
   if (!d) return null
   const settings = await loadInvoiceSettings()
   if (!seesMoney(v, d.person_id, settings)) return null
-  const [{ data: items }, dir] = await Promise.all([
-    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, decided_by, decided_at, receipt_name').eq('document_id', d.id).order('decided_at'),
+  const [items, dir] = await Promise.all([
+    c.from('reimbursements').select('id, spent_on, category, purpose, amount, currency, decided_by, decided_at, receipt_name').eq('document_id', d.id).order('decided_at').then(r => rowsOf(r, 'The document\'s items could not be read')),
     loadDirectory(),
   ])
   const p = dir.people.get(d.person_id)
   const team = (p?.teamId && dir.teams.get(p.teamId)?.name) || 'No team'
   const who = p?.name ?? 'Someone'
   const at = (t: string) => stampLabel(t, zone)
-  const list = items ?? []
+  const list = items
   const lines = (settings.billingAddress ?? '').split('\n')
   const paid = d.state === 'paid'
   const finance = isFinance(v, settings)

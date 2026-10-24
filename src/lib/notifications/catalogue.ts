@@ -235,7 +235,8 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     title: 'Someone asked for time off',
     description: 'A request for time off, waiting for a Super Admin. In the bell only.',
     who: 'Super Admins', audience: { kind: 'tool', tool: 'ck-timeoff' },
-    button: { label: 'Review', href: '/clocky-hours/approvals' },
+    // No href of its own: the line's, which is Approvals only for whoever can open it (audit, 24 October 2026).
+    button: { label: 'Review' },
   },
   {
     key: 'clocky-timeoff-decided', src: 'North Time · your request', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
@@ -244,7 +245,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     title: 'Your time off was approved or denied',
     description: 'A Super Admin decided your time off: approved, or denied with the reason. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
-    button: { label: 'Open time entries', href: '/clocky-hours' },
+    button: { label: 'Open request', href: '/requests/time-off' },
   },
   {
     key: 'clocky-clocked-out-for', src: 'North Time · Who\'s working', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,

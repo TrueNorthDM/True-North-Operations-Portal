@@ -120,12 +120,24 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
     finish(null)
   }
 
+  // Leave the editor without saving: the draft, its preview (even one still coming) and any error go.
+  function cancel() {
+    asked.current = null
+    setError(null)
+    finish(null)
+  }
+
   function move() {
     if (!anchorDraft) return
     start(async () => {
-      const r = await actions.setPayPeriodAnchor({ anchor: anchorDraft })
-      if (!r.ok) { setError(r.error); return }
-      finish(`Saved. Pay periods start ${longDateLabel(anchorDraft)}, every 2 weeks.`)
+      // A dropped connection stays in the dialog with its error, not on the error page.
+      try {
+        const r = await actions.setPayPeriodAnchor({ anchor: anchorDraft })
+        if (!r.ok) { setError(r.error); return }
+        finish(`Saved. Pay periods start ${longDateLabel(anchorDraft)}, every 2 weeks.`)
+      } catch {
+        setError('That did not go through. Check your connection and try again.')
+      }
     })
   }
 
@@ -218,6 +230,7 @@ export function TimesheetPeriodsSection({ data, anchorOptions, startEditing = fa
       {canEdit && (
         <div className="flex justify-end items-center gap-2.5 mt-1.5 pt-5 border-t border-slate-200">
           {editing && <span className="text-[13px] text-muted mr-auto">Editing. Changes apply when you press Done.</span>}
+          {editing && <button type="button" disabled={pending} onClick={cancel} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] transition-colors hover:border-tn-teal disabled:opacity-60">Cancel</button>}
           <button type="button" aria-pressed={editing} disabled={pending} onClick={() => (editing ? done() : setEditing(true))} className={editing ? PERIODS_DONE : PERIODS_EDIT}>
             {editing ? (
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>

@@ -51,10 +51,15 @@ export function MarkPaidDialog({ target, onClose, save, onSaved, refPlaceholder 
     if (!day) { setError('Write the day it was paid, like Nov 3, 2026.'); return }
     setBusy(true)
     setError(null)
-    const r = await save({ id: target.id, paidOn: day, ref, note: noteText })
-    setBusy(false)
-    if (r.ok) onSaved(r.toast)
-    else setError(r.error)
+    try {
+      const r = await save({ id: target.id, paidOn: day, ref, note: noteText })
+      if (r.ok) onSaved(r.toast)
+      else setError(r.error)
+    } catch {
+      setError('That did not go through. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (

@@ -515,9 +515,10 @@ export function clockyTimeOffRequestedDrafts(ctx: Ctx, x: { requestId: number; p
   // The Super Admins decide; the Team Leader the person reports to is told too (Requests.dc.html 7A).
   const deciders = ctx.aud.withTool('ck-timeoff')
   const told = (x.also ?? []).map(id => ctx.aud.byId.get(id)).filter((r): r is NonNullable<typeof r> => !!r && !deciders.some(d => d.personId === r.personId))
+  // Whoever is only told and cannot open Approvals goes to the Agenda, where the time off shows once approved.
   return [...deciders, ...told].filter(r => r.personId !== x.personId)
     .flatMap(r => draftFor(ctx, 'clocky-timeoff-requested', r, {
-      title: x.text, body: '', href: '/clocky-hours/approvals', dedupeKey: x.key ?? String(x.requestId),
+      title: x.text, body: '', href: r.canTool('clocky-approvals') ? '/clocky-hours/approvals' : '/agenda', dedupeKey: x.key ?? String(x.requestId),
     }))
 }
 
@@ -633,8 +634,14 @@ export function clockyAllowanceOverDrafts(ctx: Ctx, x: { personId: string; key: 
 
 /** A contractor scheduled to become an employee: to whoever they report to and Finance. */
 export function clockyTypeChangeDrafts(ctx: Ctx, x: { changeId: number; personId: string; to: readonly string[]; text: string; body: string }): Draft[] {
+  // The person's page only for whoever can open it (lib/directory/page-rights.ts: p-any, or p-led
+  // on a team they lead); Finance and a Reports-to outside the team get the Directory list (audit, 24 October 2026).
+  const theirTeams = [...(ctx.aud.byId.get(x.personId)?.teams.keys() ?? [])]
+  const hrefFor = (r: NonNullable<ReturnType<typeof ctx.aud.byId.get>>) =>
+    r.canTool('p-any') || (r.canTool('p-led') && theirTeams.some(t => r.teams.get(t) === true)) ? `/directory/${x.personId}`
+      : r.canTool('directory') ? '/directory' : null
   return [...new Set(x.to)].filter(id => id !== x.personId).map(id => ctx.aud.byId.get(id)).flatMap(r => draftFor(ctx, 'clocky-type-change', r, {
-    title: x.text, body: x.body, href: `/directory/${x.personId}`, dedupeKey: String(x.changeId),
+    title: x.text, body: x.body, href: r ? hrefFor(r) : null, dedupeKey: String(x.changeId),
   }))
 }
 

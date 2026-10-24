@@ -15,7 +15,7 @@ import { getViewAs } from '@/lib/auth/view-as-server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadClockySettings, loadDirectory } from '@/lib/timeclock/clocky-context'
 import { localDate } from '@/lib/timeclock/format'
-import { loadInvoiceSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { invoiceApprover } from '@/lib/timeclock/routing'
 import { anchorOn } from '@/lib/timeclock/periods'
 import { typeChangeOptions } from '@/lib/timeclock/type-change'
@@ -39,7 +39,7 @@ export async function scheduleEmployee(personId: string, input: { date: string; 
   if (!UUID.test(personId)) return no('Person not found.')
   try {
     const c = createAdminClient()
-    const [routes, settings, clocky, dir] = await Promise.all([loadRoutes([personId]), loadInvoiceSettings(), loadClockySettings(), loadDirectory()])
+    const [routes, settings, clocky, dir] = await Promise.all([loadRoutes([personId]), loadRouteSettings(), loadClockySettings(), loadDirectory()])
     const route = routes.get(personId)
     if (!route?.isContractor) return no('Only a contractor becomes an employee here.')
     const today = localDate(new Date(), 'America/New_York')
@@ -49,11 +49,19 @@ export async function scheduleEmployee(personId: string, input: { date: string; 
     if (!option) return no('Pick one of the days offered: a 1st of a month or the first day of a pay period.')
     const { data: made, error } = await c.from('people_type_changes').insert({ person_id: personId, to_type: 'us', effective_on: option.date, note: String(input.note ?? '').trim().slice(0, 500) || null, scheduled_by: access.personId }).select('id').single()
     if (error) return no(error.code === '23505' ? 'A change is already scheduled for them. Cancel it first.' : 'Not saved. Try again in a moment.')
-    // From that day they submit every 2 weeks, by pay period.
-    await c.from('tc_person_cadence').delete().eq('person_id', personId).gt('effective_from', today)
-    const { error: cErr } = await c.from('tc_person_cadence').insert({ person_id: personId, cadence: 'biweekly', effective_from: option.date, one_period: false, set_by: access.personId })
-    if (cErr) {
+    // From that day they submit every 2 weeks, by pay period. The changes already planned are
+    // kept aside first: should the new one fail, they go back as they were.
+    const { data: planned, error: pErr } = await c.from('tc_person_cadence').select('person_id, cadence, effective_from, one_period, set_by, set_at').eq('person_id', personId).gt('effective_from', today)
+    const undo = async () => {
       await c.from('people_type_changes').delete().eq('id', made.id)
+      if (planned?.length) await c.from('tc_person_cadence').upsert(planned, { onConflict: 'person_id,effective_from' })
+    }
+    if (pErr) { await undo(); return no('Not saved. Try again in a moment.') }
+    const { error: dErr } = await c.from('tc_person_cadence').delete().eq('person_id', personId).gt('effective_from', today)
+    const { error: cErr } = dErr ? { error: dErr } : await c.from('tc_person_cadence').insert({ person_id: personId, cadence: 'biweekly', effective_from: option.date, one_period: false, set_by: access.personId })
+    if (cErr) {
+      await undo()
+      console.error('[type change] cadence:', cErr.message)
       return no('Not saved. Try again in a moment.')
     }
     const who = dir.nameOf(personId)

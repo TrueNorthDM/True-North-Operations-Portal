@@ -7,7 +7,7 @@
 
 import type { Access } from '@/lib/access/resolve'
 import { loadDirectory } from '@/lib/timeclock/clocky-context'
-import { loadInvoiceSettings, loadPayTerms, seesMoney } from '@/lib/timeclock/pay-terms'
+import { loadPayTerms, loadRouteSettings, seesMoney } from '@/lib/timeclock/pay-terms'
 import { hoursApprover, invoiceApprover, isRecordedOnly, oneStep } from '@/lib/timeclock/routing'
 import type { ApprovalsView, PayView } from '@/components/person/PayApprovalsSections'
 import type { TypeChangeView } from '@/components/person/TypeChange'
@@ -15,6 +15,7 @@ import { loadClockySettings } from '@/lib/timeclock/clocky-context'
 import { dateLabel, localDate, monthLong, monthYear } from '@/lib/timeclock/format'
 import { addDays, anchorOn } from '@/lib/timeclock/periods'
 import { loadTypeChange, typeChangeOptions } from '@/lib/timeclock/type-change'
+import { loadConnections } from '@/lib/integrations/connections'
 
 export interface PersonPay {
   approvals: ApprovalsView
@@ -28,7 +29,7 @@ export interface PersonPay {
 
 export async function loadPersonPay(personId: string, access: Access): Promise<PersonPay | null> {
   try {
-    const [settings, terms, dir] = await Promise.all([loadInvoiceSettings(), loadPayTerms([personId]), loadDirectory()])
+    const [settings, terms, dir] = await Promise.all([loadRouteSettings(), loadPayTerms([personId]), loadDirectory()])
     const t = terms.get(personId)
     if (!t) return null
     const p = t.route
@@ -42,18 +43,20 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
     const lastDay = scheduled ? dateLabel(addDays(scheduled.effectiveOn, -1)).replace(/, \d{4}$/, '') : null
     const firstDay = scheduled ? dateLabel(scheduled.effectiveOn).replace(/, \d{4}$/, '') : null
 
+    // When whoever they report to cannot open Approvals, the default approver decides (routing.ts, audit 24 October 2026).
+    const hbSub = !p.reportsTo ? 'Nobody to report to yet' : hb === p.reportsTo ? 'The person they report to' : 'The default approver: the person they report to cannot open Approvals'
     const rows: ApprovalsView['rows'] = [{ k: 'Reports to', v: name(p.reportsTo), sub: 'Work tab' }]
     let note: string
     if (isRecordedOnly(p, settings)) {
       note = 'Deputy Director: their own timesheet is recorded without approval.'
     } else if (!p.isContractor) {
-      rows.push({ k: 'Hours approved by', v: name(hb), sub: p.reportsTo ? 'The person they report to' : 'Nobody to report to yet' })
+      rows.push({ k: 'Hours approved by', v: name(hb), sub: hbSub })
       note = `No invoice: ${name(hb)} approves the hours and they go to Rippling.`
     } else if (p.paysAs === 'fixed_no_timesheet') {
       rows.push({ k: 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
       note = `No timesheet: the invoice is made on the 1st and goes straight to ${name(ib)}.`
     } else {
-      rows.push({ k: 'Hours approved by', v: name(hb), sub: p.reportsTo ? 'The person they report to' : 'Nobody to report to yet' })
+      rows.push({ k: 'Hours approved by', v: name(hb), sub: hbSub })
       rows.push({ k: lastDay ? `Invoice, until ${lastDay}` : 'Invoice approved by', v: name(ib), sub: ib && ib === p.reportsTo && ib !== settings.defaultApprover ? `They report to ${name(ib)}` : others.length ? `Everyone not reporting to ${others.join(' or ')}` : 'Everyone' })
       note = firstDay ? `From ${firstDay} no invoice: ${name(hb)} approves the hours and they go to Rippling.`
         : oneStep(p, settings) ? 'Same person: one step, Approve both.' : `Two steps: ${name(hb)} approves the hours, then ${name(ib)} the invoice.`
@@ -65,7 +68,8 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
     // A contractor asks no time off; once the change to employee is scheduled, from that day, in Requests (10A-3, 10A-4).
     let timeOff: string | null = null
     if (money && p.isContractor) {
-      const clocky = await loadClockySettings()
+      // Rippling's state for the dialog's line; a failed read only leaves the line generic.
+      const [clocky, conn] = await Promise.all([loadClockySettings(), loadConnections().catch(() => null)])
       const today = localDate(new Date(), 'America/New_York')
       timeOff = firstDay ? `From ${firstDay}, in Requests` : 'Contractors do not ask PTO'
       const first = name(personId).split(' ')[0]
@@ -75,6 +79,7 @@ export async function loadPersonPay(personId: string, access: Access): Promise<P
         canCancel: access.isSuperAdmin && !!scheduled,
         options: typeChangeOptions(today, anchorOn(today, clocky.anchors)?.anchor ?? null, ib ? name(ib) : 'the invoice approver'),
         stays: `Reports to ${name(p.reportsTo)}, who keeps approving ${first}'s hours. Their team, their allowance, their time entries and every past invoice and decision.`,
+        rippling: !conn ? null : conn.rippling.connected ? 'connected' : conn.rippling.tokenSaved ? 'token' : 'none',
       }
     }
     return {

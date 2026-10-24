@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { requireSurface } from '@/lib/access/resolve'
+import { loadAccess } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadInvoiceSettings, seesMoney } from '@/lib/timeclock/pay-terms'
 
@@ -14,10 +14,11 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requireSurface('rq-reimbursements')
+  const access = await loadAccess()
   const { id } = await params
   const missing = () => new NextResponse('That receipt is not open to you.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
-  if (!/^\d+$/.test(id)) return missing()
+  // A file, not a page: a 404 rather than a redirect Home whose HTML would come back as the receipt.
+  if (!access.can('rq-reimbursements') || !/^\d+$/.test(id)) return missing()
   const c = createAdminClient()
   const { data: r } = await c.from('reimbursements').select('person_id, receipt_path, receipt_name').eq('id', Number(id)).maybeSingle()
   if (!r) return missing()

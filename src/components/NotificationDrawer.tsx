@@ -232,9 +232,12 @@ export function NotificationDrawer({ kind, tab, onTab, items, read, onRead, onUn
                     if (b.action === 'keep-going') {
                       setBusy(i.id)
                       setError(null)
-                      keepGoing({ notificationId: i.id }).catch(() => ({ ok: false as const, error: 'Not saved. Try again in a moment.' })).then(res => {
+                      keepGoing({ notificationId: i.id }).catch(() => null).then(res => {
                         setBusy(null)
-                        if (!res.ok) { setError(res.error); return }
+                        // No answer (the connection dropped): nothing changed on the server, so the row stays unread.
+                        if (!res) { setError('Not saved. Try again in a moment.'); return }
+                        // A refusal: the server already marked an outdated reminder read, so the row reads that way here too.
+                        if (!res.ok) { setError(res.error); onRead([i.id]); return }
                         // The server marked the row read and wrote what was done; the refresh brings it.
                         onRead([i.id])
                         setDoneHere(d => ({ ...d, [i.id]: res.done }))

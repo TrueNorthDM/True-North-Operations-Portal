@@ -51,6 +51,26 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   // (8 October 2026): old links go to the page now.
   const { open: openId, _vs: vs, tab: startTab } = await searchParams
   if (openId && /^[0-9a-f-]{36}$/i.test(openId)) redirect(personHref(openId) + (vs ? `?_vs=${encodeURIComponent(vs)}` : ''))
+
+  // Rates & Costs is its own page under People (Company Settings.dc.html 10A-2,
+  // owner 2026-10-23), at the address every link already uses. It answers to its
+  // own tick (d-rates), whatever the Directory level, so whoever sees its row
+  // opens it (audit, 24 October 2026); and it reads nothing else of the Directory.
+  if (startTab === 'rates' && rights.rates) {
+    // Every pay rate: read only for d-rates.
+    const budget = await getBudgetUsageData({ pay: true })
+    // Its Timesheet column (Clocky, 16 October 2026): with Company settings >
+    // Timesheet periods; changed by whoever may change the periods.
+    const periods = access.can('cs-periods') ? await getTimesheetPeriods() : null
+    // Pays as, Allowance and Over (Clocky part 2, 10A-2).
+    const ratesPay = await loadRatesPay(budget.people.map(p => p.id), access.can('d-rates'))
+    const ratesCadence = periods?.ok
+      ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
+      : null
+    return (
+      <RatesCostsPage people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} />
+    )
+  }
   // Directory is reachable by everyone; the configured directory level decides
   // the view (see access/surfaces.ts): level 3 gets the full admin tabs,
   // levels 1 and 2 the read-only, team-scoped list below.
@@ -384,28 +404,6 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         <Breadcrumb self="/directory" />
         <RestrictedDirectory people={dirPeople} teams={showTeams ? dirTeams : []} showTeams={showTeams} />
       </div>
-    )
-  }
-
-  // Privileged only: the Rates & Costs page data (moved here from Settings →
-  // People & rates). Loaded after the restricted branch so non-admins never
-  // trigger it, and only on that page with Rates & Costs (d-rates): it carries every pay rate.
-  const onRates = startTab === 'rates' && rights.rates
-  const budget = onRates ? await getBudgetUsageData({ pay: true }) : null
-  // Its Timesheet column (Clocky, 16 October 2026): with Company settings >
-  // Timesheet periods; changed by whoever may change the periods.
-  const periods = onRates && access.can('cs-periods') ? await getTimesheetPeriods() : null
-  // Pays as, Allowance and Over (Clocky part 2, 10A-2), with Rates & Costs.
-  const ratesPay = budget ? await loadRatesPay(budget.people.map(p => p.id), access.can('d-rates')) : null
-  const ratesCadence = periods?.ok
-    ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
-    : null
-
-  // Rates & Costs is its own page under People (Company Settings.dc.html 10A-2,
-  // owner 2026-10-23), at the address every link already uses.
-  if (startTab === 'rates' && budget) {
-    return (
-      <RatesCostsPage people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} />
     )
   }
 

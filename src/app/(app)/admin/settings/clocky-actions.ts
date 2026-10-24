@@ -73,9 +73,15 @@ export async function saveGoogle(input: { serviceAccount?: string; teamCalendarI
   if (error) { console.error('[settings] google:', error.message); return no(NOT_SAVED) }
   if (key) await logChange('google_service_account', 'saved')
   const connected = !!(key || before?.google_service_account) && !!team
-  const released = connected ? await releaseWaiting('google') : 0
+  // Saved either way: what waited for Google is released now, or by the next save or retry.
+  let released = 0, stuck = false
+  if (connected) {
+    try { released = await releaseWaiting('google') } catch (e) { stuck = true; console.error('[settings] google release:', e instanceof Error ? e.message : e) }
+  }
   refresh()
-  return { ok: true, toast: connected ? `Saved and connected.${released ? ` ${released} waiting item${released === 1 ? '' : 's'} go to the calendar in the next few minutes.` : ''}` : 'Saved. Add the service account key and the team calendar to connect it.' }
+  return { ok: true, toast: !connected ? 'Saved. Add the service account key and the team calendar to connect it.'
+    : stuck ? 'Saved and connected. What waited for the calendar could not be sent yet: try again in a moment.'
+      : `Saved and connected.${released ? ` ${released} waiting item${released === 1 ? '' : 's'} go to the calendar in the next few minutes.` : ''}` }
 }
 
 export async function removeGoogle(): Promise<Done> {
@@ -114,12 +120,18 @@ export async function testGoogle(): Promise<Done> {
 export async function retryIntegrationJob(input: { id: number }): Promise<Done> {
   if (!(await allowedTo('cs-integrations-edit'))) return no('Only Super Admins try again.')
   const c = createAdminClient()
-  const { data: j } = await c.from('integration_jobs').select('id, kind, ref_table, ref_id, state').eq('id', Number(input.id)).maybeSingle()
-  if (!j || j.state !== 'failed') return no('That item is not waiting to be tried again.')
-  const { retryJobs } = await import('@/lib/integrations/outbox')
-  await retryJobs(j.ref_table, j.ref_id, [j.kind as Parameters<typeof retryJobs>[2][number]])
-  if (j.ref_table === 'tc_absence_requests' && j.kind === 'rippling_pto') await c.from('tc_absence_requests').update({ rippling_state: 'waiting_connection', rippling_error: null }).eq('id', j.ref_id)
-  if (j.ref_table === 'tc_absence_requests' && j.kind === 'gcal_upsert') await c.from('tc_absence_requests').update({ calendar_state: 'queued' }).eq('id', j.ref_id)
+  try {
+    const { data: j, error } = await c.from('integration_jobs').select('id, kind, ref_table, ref_id, state').eq('id', Number(input.id)).maybeSingle()
+    if (error) throw new Error(error.message)
+    if (!j || j.state !== 'failed') return no('That item is not waiting to be tried again.')
+    const { retryJobs } = await import('@/lib/integrations/outbox')
+    await retryJobs(j.ref_table, j.ref_id, [j.kind as Parameters<typeof retryJobs>[2][number]])
+    if (j.ref_table === 'tc_absence_requests' && j.kind === 'rippling_pto') await c.from('tc_absence_requests').update({ rippling_state: 'waiting_connection', rippling_error: null }).eq('id', j.ref_id)
+    if (j.ref_table === 'tc_absence_requests' && j.kind === 'gcal_upsert') await c.from('tc_absence_requests').update({ calendar_state: 'queued' }).eq('id', j.ref_id)
+  } catch (e) {
+    console.error('[settings] retry:', e instanceof Error ? e.message : e)
+    return no(NOT_SAVED)
+  }
   refresh()
   return { ok: true, toast: 'Queued again. It goes in the next few minutes, or when its connection works.' }
 }

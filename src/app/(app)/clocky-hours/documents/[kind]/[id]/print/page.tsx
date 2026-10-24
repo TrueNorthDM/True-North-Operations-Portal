@@ -6,9 +6,9 @@
 // PDF receipts into their boxes.
 
 import { notFound } from 'next/navigation'
-import { requireSurface } from '@/lib/access/resolve'
+import { loadAccess } from '@/lib/access/resolve'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
-import { loadDoc } from '@/lib/timeclock/pay-docs'
+import { docSurface, loadDoc } from '@/lib/timeclock/pay-docs'
 import { DocSheet } from '@/components/clocky/invoices/DocSheet'
 import { ReceiptPages } from '@/components/clocky/invoices/ReceiptPages'
 
@@ -18,9 +18,9 @@ export const metadata = { title: 'Document' }
 export default async function DocPrintPage({ params, searchParams }: { params: Promise<{ kind: string; id: string }>; searchParams: Promise<{ _vs?: string }> }) {
   const { kind, id } = await params
   const { _vs: vs } = await searchParams
-  // Clocky first, then the money rule (pay-docs.ts) for this document.
-  const access = await requireSurface('clocky-hours')
-  if ((kind !== 'payroll' && kind !== 'rmb') || !/^\d+$/.test(id)) notFound()
+  // The page that opens it first (Time entries, or Requests for a reimbursement document), then the money rule (pay-docs.ts).
+  const access = await loadAccess()
+  if ((kind !== 'payroll' && kind !== 'rmb') || !/^\d+$/.test(id) || !access.can(docSurface(kind))) notFound()
   const v = await viewerFor(access)
   const doc = await loadDoc(access, kind, Number(id), v?.zone ?? 'America/New_York')
   if (!doc) notFound()

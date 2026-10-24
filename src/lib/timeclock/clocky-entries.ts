@@ -21,7 +21,7 @@ import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, 
 import { canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
 import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
-import { loadInvoiceSettings, loadPayTerms } from './pay-terms'
+import { loadPayTerms, loadRouteSettings } from './pay-terms'
 import { hoursApprover, invoiceApprover } from './routing'
 import { buildSubmitBlock } from './submit-block'
 
@@ -430,7 +430,7 @@ export async function loadPeriodSummary(v: Viewer, personId: string, now: Date, 
 async function submitBlockFor(dir: Directory, personId: string, label: { label: string; full: string }, byClient: { client: string; seconds: number }[], timeOff: { date: string; kind: string; seconds: number }[], workedSeconds: number): Promise<SubmitSummary['block']> {
   try {
     const [settings, terms, { data: rmb, error }] = await Promise.all([
-      loadInvoiceSettings(),
+      loadRouteSettings(),
       loadPayTerms([personId]),
       db().from('reimbursements').select('id, category, purpose, amount').eq('person_id', personId).eq('state', 'approved').is('invoice_id', null).order('asked_at'),
     ])

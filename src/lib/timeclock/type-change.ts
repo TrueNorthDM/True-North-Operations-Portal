@@ -59,17 +59,23 @@ export function typeChangeOptions(today: string, anchor: string | null, invoiceA
 
 /** The change waiting for a person, if any. */
 export async function loadTypeChange(personId: string): Promise<{ id: number; effectiveOn: string; label: string } | null> {
-  const { data } = await createAdminClient().from('people_type_changes').select('id, effective_on').eq('person_id', personId).eq('state', 'scheduled').maybeSingle()
+  const { data, error } = await createAdminClient().from('people_type_changes').select('id, effective_on').eq('person_id', personId).eq('state', 'scheduled').maybeSingle()
+  // Unread is not "none": the page would offer to schedule a change that is already waiting.
+  if (error) throw new Error(`The scheduled change could not be read: ${error.message}`)
   return data ? { id: data.id, effectiveOn: data.effective_on, label: longDay(data.effective_on) } : null
 }
 
 /** On the day: the contractor becomes a US employee, and their history says so. Safe to run again. */
 export async function applyTypeChanges(today: string): Promise<number> {
   const c = createAdminClient()
-  const { data } = await c.from('people_type_changes').select('id, person_id, effective_on, scheduled_by').eq('state', 'scheduled').lte('effective_on', today)
+  const { data, error: listErr } = await c.from('people_type_changes').select('id, person_id, effective_on, scheduled_by').eq('state', 'scheduled').lte('effective_on', today)
+  // Said, not thrown: the hourly reminders still go, and the change is applied on the next run.
+  if (listErr) { console.error('[type change]', listErr.message); return 0 }
   let n = 0
   for (const t of data ?? []) {
-    const { data: p } = await c.from('people').select('employment_history').eq('id', t.person_id).maybeSingle()
+    const { data: p, error: pErr } = await c.from('people').select('employment_history').eq('id', t.person_id).maybeSingle()
+    // Unread, the history would be written over with this one line: left for the next run.
+    if (pErr) { console.error('[type change]', pErr.message); continue }
     const line = `${dateLabel(t.effective_on)}: contractor to US Employee (North Time).`
     const history = [p?.employment_history?.trim(), line].filter(Boolean).join('\n')
     const { error } = await c.from('people').update({ employment_type: 'us', employment_history: history }).eq('id', t.person_id)

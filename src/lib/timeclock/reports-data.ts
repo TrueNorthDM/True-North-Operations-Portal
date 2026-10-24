@@ -12,7 +12,7 @@ import type { Access } from '@/lib/access/resolve'
 import { teamColour } from '@/lib/directory/team-colour'
 import { allRows, db, loadCatalog, loadClockySettings, loadDirectory } from './clocky-context'
 import { localDate } from './format'
-import { isFinance, loadInvoiceSettings, loadPayTerms, loadRoutes } from './pay-terms'
+import { isFinance, loadPayTerms, loadRouteSettings, loadRoutes } from './pay-terms'
 import { loadApprovedExtra } from './allowance-data'
 import { loadSubmissions } from './clocky-store'
 import { currentStep, type TimesheetState } from './routing'
@@ -45,7 +45,7 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAd
   const me = access.personId
   if (!me) return null
   const c = db()
-  const [dir, catalog, settings, inv] = await Promise.all([loadDirectory(), loadCatalog(), loadClockySettings(), loadInvoiceSettings()])
+  const [dir, catalog, settings, inv] = await Promise.all([loadDirectory(), loadCatalog(), loadClockySettings(), loadRouteSettings()])
   const zone = dir.zoneOf(me)
   const today = localDate(now, zone)
   const custom = query.kind === 'custom' && query.from && query.to && query.from <= query.to ? { from: query.from, to: query.to } : null

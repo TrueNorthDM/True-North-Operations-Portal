@@ -4,7 +4,7 @@
  * with the same filters and the same gate.
  */
 
-import { requireSurface } from '@/lib/access/resolve'
+import { loadAccess } from '@/lib/access/resolve'
 import { sheetPdf } from '@/lib/pdf/sheet-pdf'
 
 export const runtime = 'nodejs'
@@ -12,7 +12,8 @@ export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  await requireSurface('clocky-reports')
+  // A file, not a page: a 404 rather than a redirect Home whose HTML would come back as the PDF.
+  if (!(await loadAccess()).can('clocky-reports')) return new Response('Reports are not open to you.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
   const query = new URL(request.url).searchParams
   query.delete('_vs')
   const q = query.toString()

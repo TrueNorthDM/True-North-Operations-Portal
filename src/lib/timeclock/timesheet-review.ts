@@ -13,12 +13,12 @@
 
 import type { AccessLevel } from '@/lib/access/catalogue'
 import type { Viewer } from './clocky-context'
-import { db, loadDirectory } from './clocky-context'
+import { db, loadDirectory, oneOf, rowsOf } from './clocky-context'
 import { loadPeriodViews } from './clocky-entries'
 import { allowanceStatus } from './allowance'
 import { loadApprovedExtra } from './allowance-data'
 import { clientFolder } from './invoices-data'
-import { loadInvoiceSettings, loadPayTerms, seesMoney, type PayTerms } from './pay-terms'
+import { loadPayTerms, loadRouteSettings, seesMoney, type PayTerms } from './pay-terms'
 import { periodLabel } from './periods'
 import { currentStep, hoursApprover, invoiceApprover, oneStep, type RoutePerson, type RouteSettings, type TimesheetState } from './routing'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel, timeLabel } from './format'
@@ -147,20 +147,18 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
   let sub: SubRow | null = null
   let inv: InvRow | null = null
   if (kind === 'timesheet') {
-    const { data } = await c.from('tc_submissions').select('id, person_id, state, submitted_at, approved_at, approved_by, hours_approved_at, hours_approved_by, note, tc_periods(start_date, end_date, kind)').eq('id', id).maybeSingle()
-    sub = data as unknown as SubRow | null
+    // A failed read throws: an unread invoice would show the timesheet as hours only, an unread timesheet as missing.
+    sub = oneOf(await c.from('tc_submissions').select('id, person_id, state, submitted_at, approved_at, approved_by, hours_approved_at, hours_approved_by, note, tc_periods(start_date, end_date, kind)').eq('id', id).maybeSingle(), 'The timesheet could not be read') as unknown as SubRow | null
     if (!sub?.tc_periods) return null
-    const { data: i } = await c.from('invoices').select(INV_COLS).eq('submission_id', sub.id).maybeSingle()
-    inv = i as unknown as InvRow | null
+    inv = oneOf(await c.from('invoices').select(INV_COLS).eq('submission_id', sub.id).maybeSingle(), 'The invoice could not be read') as unknown as InvRow | null
   } else {
-    const { data: i } = await c.from('invoices').select(INV_COLS).eq('id', id).maybeSingle()
-    inv = i as unknown as InvRow | null
+    inv = oneOf(await c.from('invoices').select(INV_COLS).eq('id', id).maybeSingle(), 'The invoice could not be read') as unknown as InvRow | null
     if (!inv || inv.kind !== 'fixed_no_timesheet') return null
   }
   const personId = sub?.person_id ?? inv!.person_id
   const start = sub?.tc_periods?.start_date ?? inv!.period_start
   const end = sub?.tc_periods?.end_date ?? inv!.period_end
-  const [dir, settings, terms] = await Promise.all([loadDirectory(), loadInvoiceSettings(), loadPayTerms([personId])])
+  const [dir, settings, terms] = await Promise.all([loadDirectory(), loadRouteSettings(), loadPayTerms([personId])])
   const t = terms.get(personId)
   if (!t) return null
   const p = dir.people.get(personId)
@@ -169,21 +167,21 @@ export async function gatherReview(v: Viewer, kind: 'timesheet' | 'invoice', id:
     sub ? loadPeriodViews(v, personId, start, end, now) : Promise.resolve([] as EntryView[]),
     loadApprovedExtra([personId], start, end),
     sub && !t.route.isContractor
-      ? c.from('integration_jobs').select('state, last_error, done_at').eq('ref_table', 'tc_submissions').eq('ref_id', sub.id).eq('kind', 'rippling_hours').maybeSingle().then(r => r.data)
+      ? c.from('integration_jobs').select('state, last_error, done_at').eq('ref_table', 'tc_submissions').eq('ref_id', sub.id).eq('kind', 'rippling_hours').maybeSingle().then(r => oneOf(r, "Rippling's answer could not be read"))
       : Promise.resolve(null),
     inv ? linesOf(inv.id) : Promise.resolve([] as LineRow[]),
-    inv ? c.from('invoices').select('id, total, state, period_start, period_end, paid_on').eq('person_id', personId).lt('period_start', inv.period_start).order('period_start', { ascending: false }).limit(2).then(r => r.data ?? []) : Promise.resolve([]),
+    inv ? c.from('invoices').select('id, total, state, period_start, period_end, paid_on').eq('person_id', personId).lt('period_start', inv.period_start).order('period_start', { ascending: false }).limit(2).then(r => rowsOf(r, 'The last invoices could not be read')) : Promise.resolve([]),
   ])
   const prevIds = prevData.map(x => x.id)
-  const { data: prevLines } = prevIds.length ? await c.from('invoice_lines').select('invoice_id, kind, hours_seconds, amount').in('invoice_id', prevIds) : { data: [] }
+  const prevLines = prevIds.length ? rowsOf(await c.from('invoice_lines').select('invoice_id, kind, hours_seconds, amount').in('invoice_id', prevIds), 'The last invoices could not be read') : []
   const ids = [personId, t.route.reportsTo, settings.defaultApprover, ...settings.invoiceApprovers, sub?.approved_by, sub?.hours_approved_by, inv?.approved_by].filter((x): x is string => !!x)
   return {
     viewer: { personId: v.personId, level: v.level, isSuperAdmin: v.isSuperAdmin, ledTeamIds: v.ledTeamIds, zone: v.zone },
     sub, inv, invLines,
     prev: prevData.map(x => ({
       ...x, total: Number(x.total),
-      seconds: (prevLines ?? []).filter(l => l.invoice_id === x.id).reduce((n, l) => n + (l.hours_seconds ?? 0), 0),
-      rmb: (prevLines ?? []).filter(l => l.invoice_id === x.id && l.kind === 'reimbursement').reduce((n, l) => n + Number(l.amount), 0),
+      seconds: prevLines.filter(l => l.invoice_id === x.id).reduce((n, l) => n + (l.hours_seconds ?? 0), 0),
+      rmb: prevLines.filter(l => l.invoice_id === x.id && l.kind === 'reimbursement').reduce((n, l) => n + Number(l.amount), 0),
     })),
     rmb: invLines.filter(l => l.kind === 'reimbursement').reduce((n, l) => n + Number(l.amount), 0),
     settings, terms: t,

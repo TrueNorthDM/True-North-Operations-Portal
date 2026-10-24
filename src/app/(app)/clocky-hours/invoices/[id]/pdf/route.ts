@@ -5,7 +5,7 @@
  * person, Super Admins, Admins and Finance (lib/pdf/sheet-pdf.ts).
  */
 
-import { requireSurface } from '@/lib/access/resolve'
+import { loadAccess } from '@/lib/access/resolve'
 import { sheetPdf } from '@/lib/pdf/sheet-pdf'
 
 export const runtime = 'nodejs'
@@ -13,8 +13,8 @@ export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireSurface('clocky-invoices')
   const { id } = await params
-  if (!/^\d+$/.test(id)) return new Response('No such invoice.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
+  // A file, not a page: a 404 rather than a redirect Home whose HTML would come back as the PDF.
+  if (!(await loadAccess()).can('clocky-invoices') || !/^\d+$/.test(id)) return new Response('No such invoice.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
   return sheetPdf(request, `/clocky-hours/invoices/${id}/print`, number => `${number}.pdf`)
 }

@@ -13,10 +13,10 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { db, loadDirectory } from './clocky-context'
+import { db, loadDirectory, oneOf, rowsOf } from './clocky-context'
 import { dateLabel, initials as initialsOf, localDate, monthLong, monthYear, stampLabel } from './format'
 import { INV_COLS, LINE_COLS, invoiceDocOf, paidText, usd, type DocTone, type InvRow, type InvoiceDocView, type LineRow } from './invoice-doc'
-import { isFinance, loadInvoiceSettings, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
+import { isFinance, loadRouteSettings, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
 import { periodLabel } from './periods'
 import { hoursApprover, invoiceApprover, oneStep, type RoutePerson } from './routing'
 
@@ -149,7 +149,7 @@ export async function invoiceModeFor(v: InvoiceViewer, settings: Pick<InvoiceSet
 
 /** The 6E list for this viewer. */
 export async function loadInvoiceList(v: InvoiceViewer, now = new Date()): Promise<InvoiceList> {
-  const settings = await loadInvoiceSettings()
+  const settings = await loadRouteSettings()
   const { mode, finance } = await invoiceModeFor(v, settings)
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: v.zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
   const dir = await loadDirectory()
@@ -169,8 +169,8 @@ export async function loadInvoiceList(v: InvoiceViewer, now = new Date()): Promi
   const ids = invoices.map(i => i.id)
   const subIds = invoices.map(i => i.submission_id).filter((x): x is number => x != null)
   const [lines, subs, routes] = await Promise.all([
-    ids.length ? c.from('invoice_lines').select('invoice_id, rate').in('invoice_id', ids).eq('kind', 'hours').then(r => r.data ?? []) : Promise.resolve([]),
-    subIds.length ? c.from('tc_submissions').select('id, state').in('id', subIds).then(r => r.data ?? []) : Promise.resolve([]),
+    ids.length ? c.from('invoice_lines').select('invoice_id, rate').in('invoice_id', ids).eq('kind', 'hours').then(r => rowsOf(r, 'Invoice lines could not be read')) : Promise.resolve([]),
+    subIds.length ? c.from('tc_submissions').select('id, state').in('id', subIds).then(r => rowsOf(r, 'Timesheets could not be read')) : Promise.resolve([]),
     loadRoutes([...new Set(invoices.map(i => i.person_id))]),
   ])
   const rates = new Map<number, number>()
@@ -252,12 +252,13 @@ export async function loadInvoiceDetail(v: InvoiceViewer, id: number): Promise<I
   if (error) throw new Error(`The invoice could not be read: ${error.message}`)
   const inv = data as unknown as InvRow | null
   if (!inv) return null
-  const settings = await loadInvoiceSettings()
+  const settings = await loadRouteSettings()
   if (!seesMoney({ isAdmin: v.isAdmin, personId: v.personId }, inv.person_id, settings)) return null
   const [lines, events, sub, routes, dir] = await Promise.all([
-    c.from('invoice_lines').select(LINE_COLS).eq('invoice_id', inv.id).order('sort').then(r => (r.data ?? []) as LineRow[]),
+    // A failed read throws: no lines would show a $0.00 invoice, no timesheet the wrong state.
+    c.from('invoice_lines').select(LINE_COLS).eq('invoice_id', inv.id).order('sort').then(r => rowsOf(r, 'The invoice lines could not be read') as unknown as LineRow[]),
     eventsOf(inv),
-    inv.submission_id != null ? c.from('tc_submissions').select('id, state').eq('id', inv.submission_id).maybeSingle().then(r => (r.data ?? undefined) as SubState | undefined) : Promise.resolve(undefined),
+    inv.submission_id != null ? c.from('tc_submissions').select('id, state').eq('id', inv.submission_id).maybeSingle().then(r => (oneOf(r, 'The timesheet could not be read') ?? undefined) as SubState | undefined) : Promise.resolve(undefined),
     loadRoutes([inv.person_id]),
     loadDirectory(),
   ])

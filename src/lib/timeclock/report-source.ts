@@ -183,11 +183,13 @@ export async function loadI7UniverseHere(
   const idList = [...jobcodeIds]
   const codes = new Set<string>()
   for (let from = 0; ; from += PAGE) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tc_entries').select('jobcode_id, fields')
       .gte('entry_date', since)
       .in('jobcode_id', idList)
       .order('id', { ascending: true }).range(from, from + PAGE - 1)
+    // A failed page would end the list early and drop codes without a word.
+    if (error) throw new Error(`The i7 codes could not be read: ${error.message}`)
     const rows = (data ?? []) as {
       jobcode_id: number | null; fields: Record<string, string> | null
     }[]

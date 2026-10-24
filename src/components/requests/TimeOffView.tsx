@@ -72,13 +72,19 @@ export function TimeOffView({ data, api, initial }: {
 
   const run = async (p: Promise<Result<{ toast: string }>>, after?: () => void) => {
     setBusy(true)
-    const r = await p
-    setBusy(false)
-    if (!r.ok) { say({ text: r.error, error: true }); return false }
-    after?.()
-    say({ text: r.toast })
-    router.refresh()
-    return true
+    try {
+      const r = await p
+      if (!r.ok) { say({ text: r.error, error: true }); return false }
+      after?.()
+      say({ text: r.toast })
+      router.refresh()
+      return true
+    } catch {
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+      return false
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (!data.employee && !data.canAll) {

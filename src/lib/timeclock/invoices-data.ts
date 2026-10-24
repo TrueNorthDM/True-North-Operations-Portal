@@ -72,12 +72,15 @@ export async function makeInvoiceForSubmission(submissionId: number, now = new D
 export async function writeInvoice(x: { personId: string; submissionId: number | null; start: string; end: string; paysAs: PaysAs; hourlyRate: number | null; fixedAmount: number | null; now?: Date }): Promise<number> {
   const c = createAdminClient()
   const now = x.now ?? new Date()
-  const [settings, byClient, reimbursements, { data: person }] = await Promise.all([
+  const [settings, byClient, reimbursements, personRes] = await Promise.all([
     loadInvoiceSettings(),
     x.paysAs === 'fixed_no_timesheet' ? Promise.resolve([]) : hoursByClient(x.personId, x.start, x.end, now),
     reimbursementsFor(x.personId),
     c.from('people').select('full_name, location, email_personal, email_true_north').eq('id', x.personId).maybeSingle(),
   ])
+  // The invoice keeps who it is from: an unread name would be saved blank on it.
+  if (personRes.error) throw new Error(`The person could not be read: ${personRes.error.message}`)
+  const person = personRes.data
   const periodName = periodLabel({ start: x.start, end: x.end }).full
   const { lines, total } = buildInvoiceLines({ paysAs: x.paysAs, periodName, hourlyRate: x.hourlyRate, fixedAmount: x.fixedAmount, byClient, reimbursements })
   const issued = now.toISOString().slice(0, 10)
@@ -88,31 +91,52 @@ export async function writeInvoice(x: { personId: string; submissionId: number |
     to_snapshot: { name: settings.billingName ?? 'True North Digital Marketing', address: settings.billingAddress ?? '', email: settings.billingEmail ?? '' },
     approved_by: null, approved_at: null, updated_at: now.toISOString(),
   }
+  const lineRows = (id: number) => lines.map(l => ({
+    invoice_id: id, kind: l.kind, client: l.client, description: l.description, hours_seconds: l.hoursSeconds, rate: l.rate, amount: l.amount, reimbursement_id: l.reimbursementId, sort: l.sort,
+  }))
+  const rIds = lines.filter(l => l.reimbursementId).map(l => l.reimbursementId!)
 
   // The same invoice again after a return (it went back to Draft): same number, new lines.
-  const { data: existing } = x.submissionId
-    ? await c.from('invoices').select('id, state').eq('submission_id', x.submissionId).maybeSingle()
-    : { data: null }
-  let id: number
+  // An unread one would be made again as a second invoice for the same timesheet.
+  const { data: existing, error: exErr } = x.submissionId
+    ? await c.from('invoices').select('id, state, total, issued_on, due_on').eq('submission_id', x.submissionId).maybeSingle()
+    : { data: null, error: null }
+  if (exErr) throw new Error(`The invoice could not be read: ${exErr.message}`)
+
   if (existing) {
     if (existing.state === 'approved' || existing.state === 'paid') throw new Error('That invoice is already approved.')
+    // The new lines go in before the old ones go, so a failure leaves the Draft as it was, never empty.
+    const { data: old, error: oErr } = await c.from('invoice_lines').select('id').eq('invoice_id', existing.id)
+    if (oErr) throw new Error(`The invoice lines could not be read: ${oErr.message}`)
+    const { data: added, error: lErr } = await c.from('invoice_lines').insert(lineRows(existing.id)).select('id')
+    if (lErr) throw new Error(`The invoice lines were not saved: ${lErr.message}`)
+    const undoLines = async () => { if (added?.length) await c.from('invoice_lines').delete().in('id', added.map(l => l.id)) }
     const { error } = await c.from('invoices').update(fields).eq('id', existing.id)
-    if (error) throw new Error(`The invoice was not saved: ${error.message}`)
-    await c.from('invoice_lines').delete().eq('invoice_id', existing.id)
-    id = existing.id
-  } else {
-    const { data: number, error: nErr } = await c.rpc('next_document_number', { p_kind: 'invoice' })
-    if (nErr || !number) throw new Error(`No invoice number: ${nErr?.message ?? 'none'}`)
-    const { data: made, error } = await c.from('invoices').insert({ ...fields, number: number as string }).select('id').single()
-    if (error) throw new Error(`The invoice was not saved: ${error.message}`)
-    id = made.id
+    if (error) { await undoLines(); throw new Error(`The invoice was not saved: ${error.message}`) }
+    const oldIds = (old ?? []).map(l => l.id)
+    const { error: dErr } = oldIds.length ? await c.from('invoice_lines').delete().in('id', oldIds) : { error: null }
+    const { error: rErr } = dErr || !rIds.length ? { error: null } : await c.from('reimbursements').update({ state: 'on_invoice', invoice_id: existing.id }).in('id', rIds)
+    if (dErr || rErr) {
+      // Back to the Draft it was, with its old lines.
+      await undoLines()
+      await c.from('invoices').update({ state: existing.state, total: existing.total, issued_on: existing.issued_on, due_on: existing.due_on, updated_at: now.toISOString() }).eq('id', existing.id)
+      throw new Error(`The invoice was not saved: ${(dErr ?? rErr)!.message}`)
+    }
+    return existing.id
   }
-  const { error: lErr } = await c.from('invoice_lines').insert(lines.map(l => ({
-    invoice_id: id, kind: l.kind, client: l.client, description: l.description, hours_seconds: l.hoursSeconds, rate: l.rate, amount: l.amount, reimbursement_id: l.reimbursementId, sort: l.sort,
-  })))
-  if (lErr) throw new Error(`The invoice lines were not saved: ${lErr.message}`)
+
+  const { data: number, error: nErr } = await c.rpc('next_document_number', { p_kind: 'invoice' })
+  if (nErr || !number) throw new Error(`No invoice number: ${nErr?.message ?? 'none'}`)
+  const { data: made, error } = await c.from('invoices').insert({ ...fields, number: number as string }).select('id').single()
+  if (error) throw new Error(`The invoice was not saved: ${error.message}`)
+  const id = made.id
+  const { error: lErr } = await c.from('invoice_lines').insert(lineRows(id))
   // The reimbursements on it leave the queue for the next one.
-  const rIds = lines.filter(l => l.reimbursementId).map(l => l.reimbursementId!)
-  if (rIds.length) await c.from('reimbursements').update({ state: 'on_invoice', invoice_id: id }).in('id', rIds)
+  const { error: rErr } = lErr || !rIds.length ? { error: null } : await c.from('reimbursements').update({ state: 'on_invoice', invoice_id: id }).in('id', rIds)
+  if (lErr || rErr) {
+    // No invoice waiting for approval with no lines: it goes (its lines with it).
+    await c.from('invoices').delete().eq('id', id)
+    throw new Error(`The invoice lines were not saved: ${(lErr ?? rErr)!.message}`)
+  }
   return id
 }

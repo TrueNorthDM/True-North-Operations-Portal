@@ -268,6 +268,10 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
     else setError(r.error)
   }
 
+  // A contractor's receipts go on a USD invoice, so they ask in dollars (owner, 24 October 2026); an
+  // employee's document goes to Finance, who converts any other currency.
+  const currencies = data.contractor ? ['USD'] : CURRENCIES
+  const usdNote = 'In US dollars: your invoice is in USD. Paid in another currency? Convert it, and write the amount you paid in What it was for.'
   const afterLine = data.contractor
     ? (many ? 'Approved, each receipt goes on your next invoice by itself, as its own line. If that invoice is already approved, they go on the one after.' : 'Approved, it goes on your next invoice by itself. If that invoice is already approved, it goes on the one after.')
     : (many ? 'Approved, the portal puts each receipt on a reimbursement document and Finance pays you, outside Rippling payroll.' : 'Approved, the portal puts it on a reimbursement document and Finance pays you, outside Rippling payroll.')
@@ -314,7 +318,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
         const date = <input value={it.date} onChange={e => setItem(it.key, { date: e.target.value })} aria-label={`Date of line ${i + 1}`} className={`${INPUT} min-w-0`} />
         const cat = bare(`Category of line ${i + 1}`, it.category, v => setItem(it.key, { category: v }), CATEGORIES)
         const amt = <input value={it.amount} onChange={e => setItem(it.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" aria-label={`Amount of line ${i + 1}`} className={`${INPUT} min-w-0`} />
-        const cur = bare(`Currency of line ${i + 1}`, it.currency, v => setItem(it.key, { currency: v }), CURRENCIES)
+        const cur = bare(`Currency of line ${i + 1}`, it.currency, v => setItem(it.key, { currency: v }), currencies)
         return (
           <div key={it.key} className="border border-[var(--panel-border)] rounded-[12px] p-2.5 flex flex-col gap-2">
             {phone ? (
@@ -352,6 +356,7 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
         </button>
       )}
       <div className="flex justify-end items-baseline gap-2.5 pt-1"><span className="text-[12.5px] text-muted">Total</span><span className="font-(family-name:--font-display) font-black text-[20px] text-tn-ink tabular-nums lining-nums">{total}</span></div>
+      {data.contractor && <div className="text-[12px] text-muted leading-[1.45]">{usdNote}</div>}
     </div>
   )
   const topFields = (
@@ -415,9 +420,11 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
             <LabeledSelect label="Category" value={first.category} onChange={v => setItem(first.key, { category: v })} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
             <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2.5">
               <label className="flex flex-col gap-[5px] min-w-0"><FieldLabel>Amount</FieldLabel><input value={first.amount} onChange={e => setItem(first.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" className={PHONE_INPUT} /></label>
-              <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={CURRENCIES.map(c => ({ value: c, label: c }))} />
+              <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={currencies.map(c => ({ value: c, label: c }))} />
             </div>
-            {first.currency !== 'USD' && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
+            {data.contractor
+              ? <div className="text-[12px] text-muted leading-[1.45]">{usdNote}</div>
+              : first.currency !== 'USD' && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
             <label className="flex flex-col gap-[5px]"><FieldLabel>What it was for</FieldLabel><textarea value={first.what} onChange={e => setItem(first.key, { what: e.target.value })} rows={2} placeholder="e.g. Home internet for October" className={`${TEXTAREA_PLAIN} text-[14px]`} /></label>
             <LabeledSelect label="Client or project (optional)" value={client} search onChange={v => { setClient(v); if (v === 'None') setBillable('no') }} options={clientOptions} />
             {/* Billable only matters once a client is picked; the phone design leaves it out until then. */}
@@ -472,9 +479,11 @@ function NewReimbursement({ data, draft, send, onClose, onSent }: { data: Reimbu
             </div>
             <div className="grid grid-cols-[minmax(0,1fr)_130px] gap-3">
               <label className="flex flex-col gap-[5px]"><FieldLabel>Amount</FieldLabel><input value={first.amount} onChange={e => setItem(first.key, { amount: e.target.value })} placeholder="0.00" inputMode="decimal" className={INPUT} /></label>
-              <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={CURRENCIES.map(c => ({ value: c, label: c }))} />
+              <LabeledSelect label="Currency" value={first.currency} onChange={v => setItem(first.key, { currency: v })} options={currencies.map(c => ({ value: c, label: c }))} />
             </div>
-            {first.currency !== 'USD' && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2 -mt-1.5">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
+            {data.contractor
+              ? <div className="text-[12px] text-muted leading-[1.45] -mt-1.5">{usdNote}</div>
+              : first.currency !== 'USD' && <div className="text-[12px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[9px] px-[11px] py-2 -mt-1.5">Invoices are in USD. Finance converts at the rate of the expense date.</div>}
             <label className="flex flex-col gap-[5px]"><FieldLabel>What it was for</FieldLabel><textarea value={first.what} onChange={e => setItem(first.key, { what: e.target.value })} rows={2} placeholder="e.g. Home internet for October" className={TEXTAREA_PLAIN} /></label>
             <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
               <LabeledSelect label="Client or project (optional)" value={client} search onChange={v => { setClient(v); if (v === 'None') setBillable('no') }} options={clientOptions} />

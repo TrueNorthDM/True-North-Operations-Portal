@@ -4,6 +4,10 @@
  *
  *   hoursApprover(p)   = p.reportsTo                  null for the Deputy Director
  *   invoiceApprover(p) = invoiceApprovers has p.reportsTo ? p.reportsTo : the default approver
+ *
+ *   Either one goes to the default approver instead when the person it names
+ *   cannot open Approvals (settings.approvers, when given): a timesheet never
+ *   waits for someone who could not decide it.
  *   oneStep(p)         = employee, or hours and invoice with the same person,
  *                        or fixed with no timesheet
  *
@@ -35,7 +39,17 @@ export interface RouteSettings {
   defaultApprover: string | null
   /** Their own timesheet is recorded without approval (Dave Sharpe). */
   deputyDirector: string | null
+  /**
+   * Everyone who can open Approvals and sign in (pay-terms.ts loadRouteSettings).
+   * When given, an approver not on it is passed over for the default approver;
+   * left out, the people above decide as named.
+   */
+  approvers?: readonly string[] | null
 }
+
+/** The default approver instead of someone who cannot open Approvals to decide. */
+const able = (id: string | null, s: RouteSettings): string | null =>
+  id && s.approvers && !s.approvers.includes(id) ? s.defaultApprover : id
 
 export type TimesheetState = 'draft' | 'submitted' | 'hours_approved' | 'approved' | 'returned' | 'recorded'
 
@@ -44,13 +58,13 @@ export const isRecordedOnly = (p: RoutePerson, s: RouteSettings): boolean => !!s
 
 export function hoursApprover(p: RoutePerson, s: RouteSettings): string | null {
   if (isRecordedOnly(p, s)) return null
-  // Nobody to report to (a gap in the Directory): the default approver decides.
-  return p.reportsTo ?? s.defaultApprover
+  // Nobody to report to (a gap in the Directory), or someone who cannot open Approvals: the default approver decides.
+  return able(p.reportsTo, s) ?? s.defaultApprover
 }
 
 export function invoiceApprover(p: RoutePerson, s: RouteSettings): string | null {
   if (isRecordedOnly(p, s) || !p.isContractor) return null
-  return p.reportsTo && s.invoiceApprovers.includes(p.reportsTo) ? p.reportsTo : s.defaultApprover
+  return p.reportsTo && s.invoiceApprovers.includes(p.reportsTo) ? able(p.reportsTo, s) : s.defaultApprover
 }
 
 export function oneStep(p: RoutePerson, s: RouteSettings): boolean {

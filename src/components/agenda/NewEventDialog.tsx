@@ -86,10 +86,15 @@ export function NewEventDialog({ setup, api, onClose, onDone }: { setup: NewEven
   const submit = async () => {
     if (!ok || busy) return
     setBusy(true); setError(null)
-    const r = await api({ kind: f.kind, when: f.when, title: f.title, date: f.date, end: f.end, from: f.from, to: f.to, zone: f.zone, place: f.place, teams: f.teams, client: f.client, description: f.desc, google: f.google })
-    setBusy(false)
-    if (r.ok) onDone(r.toast)
-    else setError(r.error)
+    try {
+      const r = await api({ kind: f.kind, when: f.when, title: f.title, date: f.date, end: f.end, from: f.from, to: f.to, zone: f.zone, place: f.place, teams: f.teams, client: f.client, description: f.desc, google: f.google })
+      if (r.ok) onDone(r.toast)
+      else setError(r.error)
+    } catch {
+      setError('That did not go through. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (

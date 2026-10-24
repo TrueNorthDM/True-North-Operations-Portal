@@ -29,6 +29,10 @@ export interface PanelItem {
   icon: NavIconKey
   /** Shown when this access item is open to the person (lib/access/catalogue.ts). */
   surface?: string
+  /** And this one too: the page checks it first (Who's working and Clock safety need North Time itself). */
+  alsoSurface?: string
+  /** Or any of these, for a page that serves several items (Import: rules, import, reconciliation). */
+  anySurface?: readonly string[]
   /** Or when any of these tools is open to them (level and team list, Access levels). */
   tools?: readonly string[]
   soon?: boolean
@@ -225,7 +229,7 @@ export const RAIL: readonly RailEntry[] = [
         items: [
           { key: 'clocky-hours', label: 'Time entries', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
           { key: 'clocky-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
-          { key: 'clocky-whos-working', label: "Who's working", href: '/clocky-hours/whos-working', icon: 'my-team', surface: 'ck-whos-working' },
+          { key: 'clocky-whos-working', label: "Who's working", href: '/clocky-hours/whos-working', icon: 'my-team', surface: 'ck-whos-working', alsoSurface: 'clocky-hours' },
           { key: 'clocky-invoices', label: 'Invoices', href: '/clocky-hours/invoices', icon: 'client-reports', surface: 'clocky-invoices', needs: 'invoices' },
           { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-reports' },
         ],
@@ -235,10 +239,10 @@ export const RAIL: readonly RailEntry[] = [
         items: [
           // Clocky part 2 (Job Catalogue.dc.html 11D): for everyone.
           { key: 'clocky-which-job', label: 'Which job?', href: '/clocky-hours/which-job', icon: 'manual', surface: 'ck-which-job' },
-          { key: 'clocky-safety', label: 'Clock safety', href: '/clocky-hours/safety', icon: 'admin', surface: 'ck-safety' },
+          { key: 'clocky-safety', label: 'Clock safety', href: '/clocky-hours/safety', icon: 'admin', surface: 'ck-safety', alsoSurface: 'clocky-hours' },
           // A section of Company settings (Admin > Configuration).
           { key: 'clocky-periods', label: 'Timesheet periods', href: '/admin/settings#periods', icon: 'settings', surface: 'cs-periods' },
-          { key: 'clocky-import', label: 'Import', href: '/clocky-hours/import', icon: 'schema-scraper', surface: 'ck-import' },
+          { key: 'clocky-import', label: 'Import', href: '/clocky-hours/import', icon: 'schema-scraper', anySurface: ['ck-import', 'ck-rules', 'ck-recon'], alsoSurface: 'clocky-hours' },
         ],
       },
     ],
@@ -309,6 +313,8 @@ export interface NavContext {
 
 function rowVisible(i: PanelItem, ctx: NavContext): boolean {
   if (i.needs && ctx.facts && !ctx.facts.has(i.needs)) return false
+  if (i.alsoSurface && !ctx.can(i.alsoSurface)) return false
+  if (i.anySurface) return i.anySurface.some(k => ctx.can(k))
   if (i.tools) return i.tools.some(t => ctx.canTool(t))
   return !i.surface || ctx.can(i.surface)
 }

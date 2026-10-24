@@ -192,7 +192,7 @@ const TREE: Node[] = [
   // Clocky for everyone (design handoff of 16 October 2026, README "Who sees
   // what"; owner's decisions in docs/time-clock/05-clocky-build.md). Who sees
   // and changes whose hours is lib/timeclock/scope.ts.
-  { key: 'm-clocky', label: 'North Time', kind: 'module', building: true, ch: [
+  { key: 'm-clocky', label: 'North Time', kind: 'module', ch: [
     { key: 'clocky-hours', label: 'Time entries, and the clock in the top bar', kind: 'page', v: [1, 1, 1], note: 'Their own hours. A User only shortens their own entries; more time comes through a time correction request.', ch: [
       { key: 'ck-team', label: 'See and change the hours of the teams they lead', kind: 'action', v: [1, 1, 0] },
       { key: 'ck-all', label: "See and change everyone's hours", kind: 'action', v: [1, 0, 0] },

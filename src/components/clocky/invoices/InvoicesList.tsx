@@ -82,10 +82,15 @@ export function InvoicesList({ data, api, initial }: {
 
   const openPdf = async (r: InvoiceListRow) => {
     setBusy(r.id)
-    const res = await api.getInvoiceDoc({ id: r.id })
-    setBusy(null)
-    if (res.ok) setPdf(res.doc)
-    else say({ text: res.error, error: true })
+    try {
+      const res = await api.getInvoiceDoc({ id: r.id })
+      if (res.ok) setPdf(res.doc)
+      else say({ text: res.error, error: true })
+    } catch {
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } finally {
+      setBusy(null)
+    }
   }
 
   const exportCsv = () => {

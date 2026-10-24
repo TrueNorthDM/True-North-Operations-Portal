@@ -107,9 +107,14 @@ function AskExtra({ data, draft, onClose, send }: { data: ExtraPage; draft?: Par
     if (!ok) return
     setBusy(true)
     setError(null)
-    const r = await send({ personId: d.personId, hours, when: d.when, client: d.client, why: d.why.trim() })
-    setBusy(false)
-    if (!r.ok) setError(r.error)
+    try {
+      const r = await send({ personId: d.personId, hours, when: d.when, client: d.client, why: d.why.trim() })
+      if (!r.ok) setError(r.error)
+    } catch {
+      setError('That did not go through. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (

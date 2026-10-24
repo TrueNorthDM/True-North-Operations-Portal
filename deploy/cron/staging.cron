@@ -1,0 +1,20 @@
+# Staging's scheduled jobs (owner, 24 October 2026: North Time is tested on
+# staging, and its reminders, outbox, invoices on the 1st and safety net only
+# happen on a schedule). The production jobs stay in portal.crontab; this file
+# only ever calls the staging portal (127.0.0.1:3001, staging.env), so nothing
+# here reaches production's data. Staging has no Google or Rippling connection,
+# so the outbox only marks jobs as waiting.
+#
+# Install as root:  install -m 644 deploy/cron/staging.cron /etc/cron.d/tnportal-staging
+# /etc/cron.d format: the sixth field is the user.
+CRON_TZ=UTC
+SHELL=/bin/bash
+
+# North Time's safety net: "Still working?" at 4h 30m, the automatic stop at 5h 00m.
+*/5 * * * *  portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-safety
+# The fixed, no timesheet invoices for the month that ended, day 1 at 11:00 UTC.
+0 11 1 * *   portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-invoices
+# The outbox (Rippling and Google Calendar), every 5 minutes.
+*/5 * * * *  portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-outbox
+# The timesheet reminders, the allowance lines and the change to employee on its day, every hour.
+5 * * * *    portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-reminders

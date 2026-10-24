@@ -13,7 +13,7 @@ import { announceInvoiceMade, announceTimesheetSubmitted } from './clocky-notify
 import { localDate } from './format'
 import { usd } from './invoice-doc'
 import { writeInvoice } from './invoices-data'
-import { loadInvoiceSettings, loadPayTerms } from './pay-terms'
+import { loadPayTerms, loadRouteSettings } from './pay-terms'
 import { periodLabel } from './periods'
 import { invoiceApprover } from './routing'
 
@@ -38,7 +38,7 @@ export async function runFixedInvoices(now = new Date()): Promise<FixedInvoicesR
   const { data: people, error } = await c.from('people').select('id, full_name, status').eq('employment_type', 'contractor')
   if (error) throw new Error(`People could not be read: ${error.message}`)
   const active = (people ?? []).filter(p => !p.status || p.status === 'active')
-  const [terms, settings] = await Promise.all([loadPayTerms(active.map(p => p.id)), loadInvoiceSettings()])
+  const [terms, settings] = await Promise.all([loadPayTerms(active.map(p => p.id)), loadRouteSettings()])
   const fixed = active.filter(p => terms.get(p.id)?.paysAs === 'fixed_no_timesheet')
   if (!fixed.length) return report
   const { data: had, error: hErr } = await c.from('invoices').select('person_id').eq('kind', 'fixed_no_timesheet').eq('period_start', start).in('person_id', fixed.map(p => p.id))

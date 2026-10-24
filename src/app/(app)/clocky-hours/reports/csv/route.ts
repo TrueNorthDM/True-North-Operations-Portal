@@ -3,7 +3,7 @@
  * (Reports.dc.html, "CSV"), with the same people and columns the page shows.
  */
 
-import { requireSurface } from '@/lib/access/resolve'
+import { loadAccess } from '@/lib/access/resolve'
 import { loadReport } from '@/lib/timeclock/reports-data'
 import { parseReportQuery, reportCsv } from '@/lib/timeclock/reports'
 
@@ -11,7 +11,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const access = await requireSurface('clocky-reports')
+  const access = await loadAccess()
+  // A file, not a page: a 404 rather than a redirect Home whose HTML would download as the CSV.
+  if (!access.can('clocky-reports')) return new Response('Reports are not open to you.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
   const page = await loadReport(access, parseReportQuery(Object.fromEntries(new URL(request.url).searchParams)))
   if (!page) return new Response('Your login is not linked to anyone in the Directory.', { status: 404, headers: { 'Content-Type': 'text/plain' } })
   return new Response(reportCsv(page.view), {

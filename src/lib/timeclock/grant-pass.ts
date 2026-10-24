@@ -71,12 +71,16 @@ function add(map: Map<string, GrantPassSlice>, label: string, side: Side, second
 
 export async function loadGrantPassData(supabase: Client): Promise<GrantPassData> {
   // The two ways a Grant Pass hour is marked, resolved once.
-  const [{ data: fieldRows }, { data: jcRows }, { data: peopleRows }, { data: optionRows }] = await Promise.all([
+  const reads = await Promise.all([
     supabase.from('tc_fields').select('id, external_id'),
     supabase.from('tc_jobcodes').select('id, name, parent_id'),
     supabase.from('people').select('id, full_name'),
     supabase.from('tc_field_options').select('field_id, label'),
   ])
+  // Unread is not empty: every hour would land outside Grant Pass and the report would show none.
+  const failed = reads.find(r => r.error)?.error
+  if (failed) throw new Error(`Grant Pass could not be read: ${failed.message}`)
+  const [{ data: fieldRows }, { data: jcRows }, { data: peopleRows }, { data: optionRows }] = reads
 
   const fields = (fieldRows ?? []) as { id: number; external_id: number | null }[]
   const projectKey = fields.find(f => String(f.external_id) === PROJECT_CF)?.id

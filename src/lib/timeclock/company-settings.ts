@@ -101,10 +101,12 @@ export interface InvoiceSettingsData {
 }
 
 export async function loadInvoiceSettingsData(now = new Date()): Promise<InvoiceSettingsData> {
-  const [s, dir, { data: raw }] = await Promise.all([
+  const [s, dir, { data: raw, error: rawErr }] = await Promise.all([
     loadInvoiceSettings(), loadDirectory(),
     createAdminClient().from('invoice_settings').select('number_year, rmb_number_year').eq('singleton_id', 1).maybeSingle(),
   ])
+  // The next numbers shown depend on it: unread, they could show last year's count.
+  if (rawErr) throw new Error(`Invoice settings could not be read: ${rawErr.message}`)
   const y = Number(localDate(now, 'America/New_York').slice(0, 4))
   const next = (n: number, year: number | null) => String(year && year !== y ? 1 : n).padStart(4, '0')
   const lines = (s.billingAddress ?? '').split('\n')
@@ -125,7 +127,9 @@ export async function loadInvoiceSettingsData(now = new Date()): Promise<Invoice
 export { REMINDERS, type ReminderKey }
 
 export async function loadReminders(): Promise<Record<ReminderKey, boolean>> {
-  const { data } = await createAdminClient().from('app_settings').select('clocky_reminders').eq('singleton_id', 1).maybeSingle()
+  const { data, error } = await createAdminClient().from('app_settings').select('clocky_reminders').eq('singleton_id', 1).maybeSingle()
+  // Unread is not "all on": the switches would show on and the hourly run would send what a Super Admin turned off.
+  if (error) throw new Error(`Reminder settings could not be read: ${error.message}`)
   const r = (data?.clocky_reminders ?? {}) as Partial<Record<ReminderKey, boolean>>
   return Object.fromEntries(REMINDERS.map(x => [x.key, r[x.key] !== false])) as Record<ReminderKey, boolean>
 }

@@ -11,7 +11,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { FieldName } from './entry-rules'
-import { loadCatalog, type Catalog, type Job } from './clocky-context'
+import { allRows, loadCatalog, type Catalog, type Job } from './clocky-context'
 
 export interface CatalogueRow {
   id: number
@@ -85,8 +85,9 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
     for (const u of (r.data ?? []) as { label: string; entries: number }[]) used.set(`${fieldIds[i]}:${u.label}`, Number(u.entries))
   })
   const byExternal = new Map<number, Job>()
-  const { data: ext } = await c.from('tc_jobcodes').select('id, external_id').not('external_id', 'is', null).limit(5000)
-  for (const r of ext ?? []) { const j = catalog.jobs.get(r.id); if (j && r.external_id != null) byExternal.set(Number(r.external_id), j) }
+  // Every row, a page at a time (PostgREST stops at 1,000), and a failed read throws.
+  const ext = await allRows<{ id: number; external_id: number | null }>((a, b) => c.from('tc_jobcodes').select('id, external_id').not('external_id', 'is', null).order('id').range(a, b), 'Job codes could not be read')
+  for (const r of ext) { const j = catalog.jobs.get(r.id); if (j && r.external_id != null) byExternal.set(Number(r.external_id), j) }
 
   return {
     rows: catalogueRows(catalog),

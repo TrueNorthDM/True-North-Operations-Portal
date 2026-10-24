@@ -38,6 +38,18 @@ export function must<T>(res: { data: T | null; error: { message: string } | null
   return res.data as T
 }
 
+/** A list read, or a throw with the database's words: an unread list is not an empty one. */
+export function rowsOf<R extends { data: unknown[] | null; error: { message: string } | null }>(res: R, what: string): NonNullable<R['data']> {
+  if (res.error) throw new Error(`${what}: ${res.error.message}`)
+  return (res.data ?? []) as NonNullable<R['data']>
+}
+
+/** A one-row read (maybeSingle), or a throw: unread is not "none". */
+export function oneOf<R extends { data: unknown; error: { message: string } | null }>(res: R, what: string): NonNullable<R['data']> | null {
+  if (res.error) throw new Error(`${what}: ${res.error.message}`)
+  return (res.data ?? null) as NonNullable<R['data']> | null
+}
+
 /** Every row of a query, 1,000 at a time (PostgREST stops at 1,000 without saying so). */
 export async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>, what: string): Promise<T[]> {
   const out: T[] = []

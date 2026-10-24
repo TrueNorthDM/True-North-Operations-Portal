@@ -31,7 +31,9 @@ export interface EntryFieldKeys {
 }
 
 export async function loadEntryFieldKeys(supabase: Client): Promise<EntryFieldKeys> {
-  const { data } = await supabase.from('tc_fields').select('id, external_id, name')
+  const { data, error } = await supabase.from('tc_fields').select('id, external_id, name')
+  // Unread is not "no fields": every entry would be saved and shown without its custom fields.
+  if (error) throw new Error(`The entry fields could not be read: ${error.message}`)
   const rows = (data ?? []) as { id: number; external_id: number | null; name: string }[]
 
   const byExternal = (ext: string) => {
@@ -62,12 +64,13 @@ export async function loadEntryFieldKeys(supabase: Client): Promise<EntryFieldKe
  */
 export async function loadFieldOptions(supabase: Client, fieldId: string | null): Promise<string[]> {
   if (!fieldId) return []
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('tc_field_options')
     .select('label, position')
     .eq('field_id', Number(fieldId))
     .eq('active', true)
     .order('position')
     .order('label')
+  if (error) throw new Error(`The field's options could not be read: ${error.message}`)
   return ((data ?? []) as { label: string }[]).map(o => o.label)
 }

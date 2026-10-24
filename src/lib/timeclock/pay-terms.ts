@@ -14,8 +14,10 @@
  * Not a "use server" file.
  */
 
+import { cache } from 'react'
 import type { Access } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loadAudience } from '@/lib/notifications/audience'
 import type { PaysAs, RoutePerson, RouteSettings } from './routing'
 import { loadAllowanceUse } from './allowance-data'
 
@@ -63,6 +65,19 @@ export async function loadInvoiceSettings(): Promise<InvoiceSettings> {
     finance: s?.finance ?? [],
   }
 }
+
+/**
+ * The invoice settings with who can decide in Approvals (routing.ts
+ * `approvers`): everyone who signs in and opens Approvals, by the access rule
+ * as their own pages decide it (the notifications' audience reads it the same
+ * way). Routing passes anyone else over for the default approver, so a
+ * timesheet never waits for someone who cannot open it. Read once per request;
+ * every place that says or decides whose step it is reads this one.
+ */
+export const loadRouteSettings = cache(async function loadRouteSettings(): Promise<InvoiceSettings> {
+  const [settings, audience] = await Promise.all([loadInvoiceSettings(), loadAudience(createAdminClient())])
+  return { ...settings, approvers: audience.withTool('clocky-approvals').map(r => r.personId) }
+})
 
 /** Sees someone's pay and invoices: themselves, Super Admins, Admins and Finance. Never Team Leaders. */
 export function seesMoney(access: Pick<Access, 'isAdmin' | 'personId'>, personId: string | null, settings: Pick<InvoiceSettings, 'finance'>): boolean {

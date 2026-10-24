@@ -24,7 +24,7 @@ import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
 import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { decisionText } from '@/lib/timeclock/reimbursement-reports'
-import { loadInvoiceSettings, loadPayTerms, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type TimesheetState } from '@/lib/timeclock/routing'
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
@@ -323,15 +323,24 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
     let where = 'It goes on your next invoice by itself.'
     let toast = `Approved. It goes on ${first(who)}'s next invoice by itself.`
     let documentId: number | null = null
-    if (!contractor) {
-      const doc = await openRmbDocument(c, r.person_id)
-      documentId = doc.id
-      where = `It is on reimbursement document ${doc.number}, for Finance to pay.`
-      toast = `Approved. It is on ${doc.number} for Finance to pay.`
-    }
-    const { data: moved, error: e2 } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: note, document_id: documentId }).eq('id', r.id).eq('state', 'pending').select('id')
+    // Claimed first, then its document: a lost race never leaves an empty document behind.
+    const { data: moved, error: e2 } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: note, document_id: null }).eq('id', r.id).eq('state', 'pending').select('id')
     if (e2) return notSaved(e2)
     if (!moved?.length) return fail(NOT_WAITING)
+    if (!contractor) {
+      try {
+        const doc = await openRmbDocument(c, r.person_id)
+        const { error: e3 } = await c.from('reimbursements').update({ document_id: doc.id }).eq('id', r.id)
+        if (e3) throw e3
+        documentId = doc.id
+        where = `It is on reimbursement document ${doc.number}, for Finance to pay.`
+        toast = `Approved. It is on ${doc.number} for Finance to pay.`
+      } catch (e) {
+        // No document for it: it waits again, rather than approved where Finance never sees it.
+        await c.from('reimbursements').update({ state: 'pending', decided_by: null, decided_at: null, decision_note: null }).eq('id', r.id)
+        return notSaved(e)
+      }
+    }
     if (documentId) await settleRmbDocument(c, documentId, r.id, r.person_id, at, settings.finance)
     await announceReimbursementDecided({ id: r.id, personId: r.person_id, deciderId: v.personId, purpose: r.purpose, amount: Number(r.amount), currency: r.currency, approved: true, where, note: null })
     refresh()
@@ -343,7 +352,9 @@ export async function decideReimbursement(input: { id: number; decision: 'approv
 
 /** The employee's open reimbursement document, or a new one. */
 async function openRmbDocument(c: ReturnType<typeof db>, personId: string): Promise<{ id: number; number: string }> {
-  const { data: open } = await c.from('reimbursement_documents').select('id, number').eq('person_id', personId).eq('state', 'approved').order('created_at', { ascending: false }).limit(1).maybeSingle()
+  const { data: open, error } = await c.from('reimbursement_documents').select('id, number').eq('person_id', personId).eq('state', 'approved').order('created_at', { ascending: false }).limit(1).maybeSingle()
+  // Unread is not "none": a second open document would split the person's items.
+  if (error) throw error
   if (open) return open
   const { data: number, error: nErr } = await c.rpc('next_document_number', { p_kind: 'reimbursement' })
   if (nErr || !number) throw nErr ?? new Error('No document number')
@@ -401,16 +412,26 @@ export async function decideReimbursementReport(input: { reportId: number; decis
     let toast = `${decisionText(approve.length, deny.length)}${approve.length ? ` ${approve.length === 1 ? 'It goes' : 'They go'} on ${first(who)}'s next invoice by ${approve.length === 1 ? 'itself' : 'themselves'}.` : ` ${first(who)} sees your reason${deny.length === 1 ? '' : 's'}.`}`
     if (approve.length) {
       const [routes, settings] = await Promise.all([loadRoutes([personId]), loadInvoiceSettings()])
-      let documentId: number | null = null
-      if (!routes.get(personId)?.isContractor) {
-        const doc = await openRmbDocument(c, personId)
-        documentId = doc.id
-        where = `${approve.length === 1 ? 'It is' : 'They are'} on reimbursement document ${doc.number}, for Finance to pay.`
-        toast = `${decisionText(approve.length, deny.length)} ${approve.length === 1 ? 'It is' : 'They are'} on ${doc.number} for Finance to pay.`
-      }
-      const { error: e } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: null, document_id: documentId }).in('id', approve.map(r => r.id)).eq('state', 'pending')
+      // Claimed first, then the document: a lost race never leaves an empty document behind.
+      const { data: claimed, error: e } = await c.from('reimbursements').update({ state: 'approved', decided_by: v.personId, decided_at: at, decision_note: null, document_id: null }).in('id', approve.map(r => r.id)).eq('state', 'pending').select('id')
       if (e) return notSaved(e)
-      if (documentId) await settleRmbDocument(c, documentId, approve[0].id, personId, at, settings.finance)
+      const ids = (claimed ?? []).map(x => x.id)
+      let documentId: number | null = null
+      if (ids.length && !routes.get(personId)?.isContractor) {
+        try {
+          const doc = await openRmbDocument(c, personId)
+          const { error: e3 } = await c.from('reimbursements').update({ document_id: doc.id }).in('id', ids)
+          if (e3) throw e3
+          documentId = doc.id
+          where = `${approve.length === 1 ? 'It is' : 'They are'} on reimbursement document ${doc.number}, for Finance to pay.`
+          toast = `${decisionText(approve.length, deny.length)} ${approve.length === 1 ? 'It is' : 'They are'} on ${doc.number} for Finance to pay.`
+        } catch (err) {
+          // No document for them: they wait again, rather than approved where Finance never sees them.
+          await c.from('reimbursements').update({ state: 'pending', decided_by: null, decided_at: null, decision_note: null }).in('id', ids)
+          return notSaved(err)
+        }
+      }
+      if (documentId) await settleRmbDocument(c, documentId, ids[0], personId, at, settings.finance)
     }
     await announceReimbursementReportDecided({
       firstId: waiting[0].id, personId, deciderId: v.personId, name: rep?.name ?? null,
@@ -496,7 +517,7 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     const c = db()
     const t = await loadSent(input.id)
     if (!t) return fail(NOT_WAITING)
-    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([t.personId])])
+    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([t.personId])])
     const route = routes.get(t.personId)
     const step = route ? currentStep(route, settings, t.state) : null
     if (!route || !step || step.owner !== v.personId || t.personId === v.personId) return fail(NOT_WAITING)
@@ -555,7 +576,7 @@ export async function returnTimesheet(input: { id: number; reason: string }): Pr
     const c = db()
     const t = await loadSent(input.id)
     if (!t) return fail(NOT_WAITING)
-    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([t.personId])])
+    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([t.personId])])
     const route = routes.get(t.personId)
     const step = route ? currentStep(route, settings, t.state) : null
     if (!route || !step || step.owner !== v.personId || t.personId === v.personId) return fail(NOT_WAITING)
@@ -632,7 +653,7 @@ export async function decideInvoice(input: { id: number; decision: 'approve' | '
     const { data: inv, error: e1 } = await c.from('invoices').select('id, number, person_id, state, kind, total, period_start, period_end').eq('id', Number(input.id)).maybeSingle()
     if (e1) return notSaved(e1)
     if (!inv || inv.kind !== 'fixed_no_timesheet' || inv.state !== 'waiting') return fail(NOT_WAITING)
-    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([inv.person_id])])
+    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([inv.person_id])])
     const route = routes.get(inv.person_id)
     if (!route || invoiceApprover(route, settings) !== v.personId || inv.person_id === v.personId) return fail(NOT_WAITING)
     const note = reasonOf(input.note)
@@ -669,7 +690,7 @@ export async function retryRippling(input: { submissionId: number }): Promise<Re
   try {
     const t = await loadSent(input.submissionId)
     if (!t || t.state !== 'approved') return fail('That pay period is not approved.')
-    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([t.personId])])
+    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([t.personId])])
     const route = routes.get(t.personId)
     if (!route || route.isContractor || !(v.isSuperAdmin || hoursApprover(route, settings) === v.personId)) return fail(NO_ACCESS)
     await retryJobs('tc_submissions', t.id, ['rippling_hours'])

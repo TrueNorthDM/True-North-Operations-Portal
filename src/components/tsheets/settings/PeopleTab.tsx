@@ -19,12 +19,13 @@
  * dates each change takes effect. A name opens the person's page.
  */
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { SearchInput } from '@/components/clocky/clock/ClockParts'
 import { Segmented } from '@/components/ui/Segmented'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
+import { useModal } from '@/components/ui/useModal'
 import { personHref } from '@/lib/directory/page-rights'
 import { CadencePill, NewTag, PeriodsDialog, useToast, type DialogItem } from '@/components/clocky/periods/ui'
 import { previewCadenceChange, setCadence } from '@/app/(app)/clocky-hours/periods/actions'
@@ -202,6 +203,9 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
   // month, hours already logged included (audit finding M3-2). The choice was
   // never offered before: every save silently took the "from today" branch.
   const [pendingRates, setPendingRates] = useState<{ name: string; from: number | null; to: number }[] | null>(null)
+  // Escape closes it, focus goes in and comes back, like every other dialog.
+  const rateBox = useRef<HTMLDivElement>(null)
+  useModal(!!pendingRates, rateBox, () => setPendingRates(null))
 
   const [editing, setEditing] = useState(startEditing)
   const [drafts, setDrafts] = useState<Record<string, { client: string; cost: string; be: string; salary: string }>>(() => (startEditing ? draftsOf(people) : {}))
@@ -313,13 +317,20 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
 
   async function saveCadences() {
     setSaving(true)
-    for (const to of ['monthly', 'biweekly'] as const) {
-      const ids = cadChanged.filter(p => cadDraft[p.id] === to).map(p => p.id)
-      if (!ids.length) continue
-      const r = await cadenceActions.setCadence({ personIds: ids, cadence: to })
-      if (!r.ok) { setSaving(false); setError(r.error); return }
-      // Saved: out of the draft, so Confirm again only sends what is left.
-      setCadDraft(d => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.includes(id))))
+    try {
+      for (const to of ['monthly', 'biweekly'] as const) {
+        const ids = cadChanged.filter(p => cadDraft[p.id] === to).map(p => p.id)
+        if (!ids.length) continue
+        const r = await cadenceActions.setCadence({ personIds: ids, cadence: to })
+        if (!r.ok) { setSaving(false); setError(r.error); return }
+        // Saved: out of the draft, so Confirm again only sends what is left.
+        setCadDraft(d => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.includes(id))))
+      }
+    } catch {
+      // The connection dropped: Save and Cancel work again, and Confirm resends what is left.
+      setSaving(false)
+      setError('That did not go through. Check your connection and try again.')
+      return
     }
     const n = cadChanged.length
     setSaving(false)
@@ -377,8 +388,15 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
       }
     }
     if (ops.length === 0) { setEditing(false); setSaving(false); return }
-    const results = await Promise.all(ops)
-    setSaving(false)
+    let results: { ok: boolean; error?: string }[]
+    try {
+      results = await Promise.all(ops)
+    } catch {
+      setError('That did not go through. Check your connection and try again.')
+      return
+    } finally {
+      setSaving(false)
+    }
     const failed = results.find(r => !r.ok)
     if (failed) { setError(failed.error ?? 'Some changes could not be saved.'); return }
     setEditing(false)
@@ -675,7 +693,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
       */}
       {pendingRates && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={() => setPendingRates(null)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+          <div ref={rateBox} role="dialog" aria-modal="true" aria-label="When does the new rate start?" className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-900">When does the new rate start?</h3>
 
             <ul className="text-sm text-slate-700 space-y-1">

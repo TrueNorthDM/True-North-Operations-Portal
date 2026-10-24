@@ -24,6 +24,13 @@ export interface TypeChangeView {
   scheduled: { date: string; text: string } | null
   options: TypeChangeOption[]
   stays: string
+  /**
+   * Rippling as Integrations has it: "connected" once a token is saved and the
+   * portal's calls are written (RIPPLING_CALLS_WRITTEN), "token" for a saved
+   * token waiting on those calls, "none" with no token; null when it could not
+   * be read.
+   */
+  rippling: 'connected' | 'token' | 'none' | null
   /** Design check only: the dialog already open (10A-3). */
   startOpen?: boolean
 }
@@ -41,11 +48,16 @@ export function TypeChangeBanner({ view, api }: { view: TypeChangeView; api: Typ
   if (!view.scheduled) return null
   const cancel = async () => {
     setBusy(true)
-    const r = await api.cancel()
-    setBusy(false)
-    setToast(r.ok ? { text: r.toast } : { text: r.error, error: true })
+    try {
+      const r = await api.cancel()
+      setToast(r.ok ? { text: r.toast } : { text: r.error, error: true })
+      if (r.ok) router.refresh()
+    } catch {
+      setToast({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } finally {
+      setBusy(false)
+    }
     setTimeout(() => setToast(null), 4200)
-    if (r.ok) router.refresh()
   }
   return (
     <div role="status" className="flex gap-3 items-center rounded-[12px] bg-tn-teal-soft border border-[#cfe5e5] px-4 py-3 text-[13.5px] text-tn-ink leading-[1.5] flex-wrap">
@@ -84,13 +96,24 @@ function TypeChangeDialog({ view, onClose, schedule, onDone }: { view: TypeChang
   const [error, setError] = useState<string | null>(null)
   const option = view.options.find(o => o.date === date)
   const dots = ['#a3aebb', '#1E7D7F', '#012358']
+  // The picker stays off until the portal's Rippling calls exist; the line says which part is missing.
+  const rippling = view.rippling === 'token'
+    ? 'A Rippling token is saved, but the portal does not call Rippling yet: it links the employee there, and reads their PTO balances, once it does.'
+    : view.rippling === 'none'
+      ? 'Rippling is not connected yet (no token is saved in Integrations): the portal links the employee there, and reads their PTO balances, once it is.'
+      : view.rippling === null ? 'Rippling is not connected yet: the portal links the employee there, and reads their PTO balances, once it is.' : null
   const submit = async () => {
     setBusy(true)
     setError(null)
-    const r = await schedule({ date, note: note.trim() || undefined })
-    setBusy(false)
-    if (r.ok) onDone(r.toast)
-    else setError(r.error)
+    try {
+      const r = await schedule({ date, note: note.trim() || undefined })
+      if (r.ok) onDone(r.toast)
+      else setError(r.error)
+    } catch {
+      setError('That did not go through. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <Modal label="Change to employee" width={636} onClose={onClose}>
@@ -100,11 +123,13 @@ function TypeChangeDialog({ view, onClose, schedule, onDone }: { view: TypeChang
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <LabeledSelect label="From" value={date} onChange={setDate} options={view.options.map(o => ({ value: o.date, label: o.label }))} />
-        <LabeledSelect label="Rippling employee" value="" onChange={() => {}} disabled placeholder="Linked when Rippling is connected" options={[]} />
+        <LabeledSelect label="Rippling employee" value="" onChange={() => {}} disabled placeholder={view.rippling === 'connected' ? 'Linked by the portal' : 'Linked when Rippling is connected'} options={[]} />
       </div>
-      <div className="flex gap-2 items-center text-[12.5px] text-[#5b6b82] font-semibold">
-        <Icon d="M12 8v4M12 16h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" size={14} width={2.4} />Rippling is not connected yet: the portal links the employee there, and reads their PTO balances, once it is.
-      </div>
+      {rippling && (
+        <div className="flex gap-2 items-center text-[12.5px] text-[#5b6b82] font-semibold">
+          <Icon d="M12 8v4M12 16h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" size={14} width={2.4} />{rippling}
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">What happens</span>
         {option?.steps.map((m, i) => (

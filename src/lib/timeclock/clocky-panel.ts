@@ -126,9 +126,10 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const terms = (await loadPayTerms([me])).get(me)
   if (terms?.allowance) {
     const r = allowanceRange(today, terms.allowance.period, settings.weekStart)
-    const { data: extra } = await c.from('extra_hours_requests').select('hours').eq('person_id', me).eq('state', 'approved').lte('period_start', r.to).gte('period_end', r.from)
+    // Unread is not "none": the panel would call approved hours over the allowance.
+    const extra = must(await c.from('extra_hours_requests').select('hours').eq('person_id', me).eq('state', 'approved').lte('period_start', r.to).gte('period_end', r.from), 'Extra hours could not be read')
     const used = work.filter(e => e.entry_date >= r.from && e.entry_date <= r.to).reduce((s, e) => s + counted(e), 0)
-    const st = allowanceStatus(used, terms.allowance.hours, (extra ?? []).reduce((n, x) => n + Number(x.hours), 0))
+    const st = allowanceStatus(used, terms.allowance.hours, extra.reduce((n, x) => n + Number(x.hours), 0))
     allowance = { ...st, period: terms.allowance.period, hours: terms.allowance.hours }
   }
 

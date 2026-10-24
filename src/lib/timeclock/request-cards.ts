@@ -6,17 +6,20 @@
  * approving does by itself.
  *
  * Super Admins decide (time off with ck-timeoff, the rest with rq-decide);
- * never their own. Reimbursements are money: never shown to Team Leaders.
+ * never their own. Reimbursements are money: shown only to who sees that
+ * person's money (pay-terms.ts seesMoney), and never to Team Leaders. The
+ * Approvals count (clocky-approvals.ts countWaiting) asks the same questions
+ * (waitingRequests below), so the number and the list cannot disagree.
  *
  * Not a "use server" file: approval-queue.ts calls it.
  */
 
 import type { Directory, Viewer } from './clocky-context'
-import { db, loadCatalog } from './clocky-context'
+import { allRows, db, loadCatalog, must } from './clocky-context'
 import { dateLabel, dayLabel, initials, localDate, monthYear, timeLabel } from './format'
 import { formatDuration } from './rounding'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
-import { loadPayTerms, loadRoutes } from './pay-terms'
+import { loadPayTerms, loadRoutes, seesMoney, type InvoiceSettings } from './pay-terms'
 import { addDays } from './periods'
 import { daysText, holidaysBetween, offDays } from './time-off'
 import { usd } from './invoice-doc'
@@ -89,18 +92,66 @@ const asked = (t: string, zone: string) => {
   return `Asked ${dayLabel(d)}, ${timeLabel(t, zone)}`
 }
 
-export async function loadRequestRows(v: Viewer, dir: Directory, since: string, now = new Date()): Promise<CardRow[]> {
+// ── What the list and the count share ──────────────────────────────────────
+
+/** The access a money check takes, from the viewer. */
+export const moneyViewer = (v: Viewer) => ({ isAdmin: v.level === 'super_admin' || v.level === 'admin', personId: v.personId })
+
+/** Waiting for a decision: time off asked for, or approved time off its person asks to cancel. */
+export const offWaiting = (r: { state: string; cancel_asked_at: string | null }): boolean =>
+  r.state === 'pending' || (r.state === 'approved' && !!r.cancel_asked_at)
+
+/** The viewer decides this kind of request for this person: time off with ck-timeoff, the rest with rq-decide; never their own. */
+export const decidesRequest = (v: Viewer, kind: 'off' | 'rmb' | 'xh', personId: string): boolean =>
+  personId !== v.personId && v.can(kind === 'off' ? 'ck-timeoff' : 'rq-decide')
+
+/** A reimbursement is money: its row is for whoever sees that person's money, never a Team Leader. */
+export const showsRmb = (v: Viewer, personId: string, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
+  v.level !== 'team_leader' && seesMoney(moneyViewer(v), personId, settings)
+
+/** A Team Leader sees the extra hours of the teams they lead, and their own. */
+export const showsXh = (v: Viewer, personId: string, teamId: string | null): boolean =>
+  v.level !== 'team_leader' || personId === v.personId || (!!teamId && v.ledTeamIds.has(teamId))
+
+/**
+ * How many time off, reimbursement and extra hours rows are waiting for this
+ * viewer in Approvals: what loadRequestRows lists with the viewer as owner,
+ * counted with the same predicates (a request with several receipts is one).
+ */
+export async function waitingRequests(v: Viewer, dir: Directory, settings: Pick<InvoiceSettings, 'finance'>): Promise<number> {
   const c = db()
-  const isLead = v.level === 'team_leader'
-  const decidesOff = v.can('ck-timeoff')
-  const decides = v.can('rq-decide')
-  const [{ data: offs }, { data: rmbs }, { data: xhs }, catalog] = await Promise.all([
-    c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
-      .or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`).order('id'),
-    isLead ? Promise.resolve({ data: [] }) : c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_name, receipt_size, report_id')
-      .or(`state.eq.pending,decided_at.gte.${since}`).order('id'),
-    c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, reason, state, asked_at, decided_by, decided_at, decision_note')
-      .or(`state.eq.pending,decided_at.gte.${since}`).order('id'),
+  const [offs, rmbs, xhs] = await Promise.all([
+    v.can('ck-timeoff')
+      ? allRows<{ person_id: string; state: string; cancel_asked_at: string | null }>((a, b) => c.from('tc_absence_requests').select('person_id, state, cancel_asked_at')
+        .or('state.eq.pending,cancel_asked_at.not.is.null').order('id').range(a, b), 'Time off could not be read')
+      : Promise.resolve([]),
+    v.can('rq-decide')
+      ? allRows<{ person_id: string; report_id: number | null }>((a, b) => c.from('reimbursements').select('person_id, report_id').eq('state', 'pending').order('id').range(a, b), 'Reimbursements could not be read')
+      : Promise.resolve([]),
+    v.can('rq-decide')
+      ? allRows<{ person_id: string }>((a, b) => c.from('extra_hours_requests').select('person_id').eq('state', 'pending').order('id').range(a, b), 'Extra hours could not be read')
+      : Promise.resolve([]),
+  ])
+  const rmbRows = rmbs.filter(r => showsRmb(v, r.person_id, settings) && decidesRequest(v, 'rmb', r.person_id))
+  return offs.filter(r => offWaiting(r) && decidesRequest(v, 'off', r.person_id)).length
+    + new Set(rmbRows.filter(r => r.report_id != null).map(r => r.report_id)).size + rmbRows.filter(r => r.report_id == null).length
+    + xhs.filter(r => showsXh(v, r.person_id, dir.people.get(r.person_id)?.teamId ?? null) && decidesRequest(v, 'xh', r.person_id)).length
+}
+
+type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_name: string | null; receipt_size: number | null; report_id: number | null }
+type OffRow = { id: number; person_id: string; jobcode_id: number; start_date: string; end_date: string; hours_per_day: number; state: string; reason: string | null; requested_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; rippling_state: string | null; cancel_asked_at: string | null; cancel_reason: string | null; cancelled_at: string | null; cancelled_by: string | null }
+type XhRow = { id: number; person_id: string; asked_by: string | null; hours: number; period: string; period_start: string; period_end: string; client: string | null; reason: string; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null }
+
+export async function loadRequestRows(v: Viewer, dir: Directory, since: string, settings: Pick<InvoiceSettings, 'finance'>, now = new Date()): Promise<CardRow[]> {
+  const c = db()
+  // Every row, a page at a time, and a failed read throws: an empty list would read as nothing waiting.
+  const [offs, rmbs, xhs, catalog] = await Promise.all([
+    allRows<OffRow>((a, b) => c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, hours_per_day, state, reason, requested_at, decided_by, decided_at, decision_note, rippling_state, cancel_asked_at, cancel_reason, cancelled_at, cancelled_by')
+      .or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`).order('id').range(a, b), 'Time off could not be read'),
+    v.level === 'team_leader' ? Promise.resolve([] as Rmb[]) : allRows<Rmb>((a, b) => c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, client, billable, state, asked_at, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_name, receipt_size, report_id')
+      .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Reimbursements could not be read'),
+    allRows<XhRow>((a, b) => c.from('extra_hours_requests').select('id, person_id, asked_by, hours, period, period_start, period_end, client, reason, state, asked_at, decided_by, decided_at, decision_note')
+      .or(`state.eq.pending,decided_at.gte.${since}`).order('id').range(a, b), 'Extra hours could not be read'),
     loadCatalog(),
   ])
   const person = (id: string) => {
@@ -111,12 +162,13 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   const out: CardRow[] = []
 
   // ── Time off (7C), and approved time off its person asks to cancel ───────
-  const offRows = offs ?? []
+  const offRows = offs
   if (offRows.length) {
     const lo = offRows.reduce((m, r) => (r.start_date < m ? r.start_date : m), '9999-12-31')
     const hi = offRows.reduce((m, r) => (r.end_date > m ? r.end_date : m), '0000-01-01')
     const holidays = holidaysBetween(addDays(lo, -7), addDays(hi, 7))
-    const { data: approved } = await c.from('tc_absence_requests').select('person_id, start_date, end_date').eq('state', 'approved').lte('start_date', addDays(hi, 7)).gte('end_date', addDays(lo, -7))
+    const approved = await allRows<{ person_id: string; start_date: string; end_date: string }>((a, b) => c.from('tc_absence_requests').select('person_id, start_date, end_date')
+      .eq('state', 'approved').lte('start_date', addDays(hi, 7)).gte('end_date', addDays(lo, -7)).order('id').range(a, b), 'Time off could not be read')
     for (const r of offRows) {
       const who = person(r.person_id)
       const kind = catalog.jobs.get(r.jobcode_id)?.short ?? 'Time off'
@@ -124,13 +176,13 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const hpd = Number(r.hours_per_day)
       const seconds = Math.round(days.length * hpd * 3600)
       const cancelAsk = r.state === 'approved' && !!r.cancel_asked_at
-      const pending = r.state === 'pending' || cancelAsk
+      const pending = offWaiting(r)
       // The team calendar: the working week(s) around the request, the request, the team's time off, the holidays.
       const monday = addDays(r.start_date, -((new Date(`${r.start_date}T00:00:00Z`).getUTCDay() + 6) % 7))
       const lastDay = addDays(r.end_date, (5 - new Date(`${r.end_date}T00:00:00Z`).getUTCDay() + 7) % 7)
       const week: string[] = []
       for (let d = monday; d <= lastDay && week.length < 10; d = addDays(d, 1)) { const w = new Date(`${d}T00:00:00Z`).getUTCDay(); if (w > 0 && w < 6) week.push(d) }
-      const mates = (approved ?? []).filter(o => o.person_id !== r.person_id && dir.people.get(o.person_id)?.teamId === who.teamId && who.teamId && o.start_date <= week[week.length - 1] && o.end_date >= week[0])
+      const mates = approved.filter(o => o.person_id !== r.person_id && dir.people.get(o.person_id)?.teamId === who.teamId && who.teamId && o.start_date <= week[week.length - 1] && o.end_date >= week[0])
       const hols = week.filter(d => holidays.has(d))
       const calRows: NonNullable<RequestCard['cal']>['rows'] = [
         { name: who.name, sub: 'This request', color: who.team?.color ?? '#9CA3AF', cells: week.map(d => (days.includes(d) ? 'req' : null)) },
@@ -142,7 +194,7 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       ]
       const clash = mates.flatMap(m => days.filter(d => d >= m.start_date && d <= m.end_date).map(d => ({ who: dir.nameOf(m.person_id), d })))
       const own = r.person_id === v.personId
-      const canDecide = pending && decidesOff && !own
+      const canDecide = pending && decidesRequest(v, 'off', r.person_id)
       const label = daysText(r.start_date, r.end_date)
       const doneOf = (): CardRow['done'] => {
         if (pending) return null
@@ -185,14 +237,13 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   }
 
   // ── Reimbursements (9C) ──────────────────────────────────────────────────
-  type Rmb = { id: number; person_id: string; spent_on: string; category: string; purpose: string; amount: number; currency: string; client: string | null; billable: boolean; state: string; asked_at: string; decided_by: string | null; decided_at: string | null; decision_note: string | null; invoice_id: number | null; document_id: number | null; receipt_name: string | null; receipt_size: number | null; report_id: number | null }
-  const rmbRows = (rmbs ?? []) as Rmb[]
+  const rmbRows = rmbs.filter(r => showsRmb(v, r.person_id, settings))
   if (rmbRows.length) {
     const routes = await loadRoutes([...new Set(rmbRows.map(r => r.person_id))])
     const reportIds = [...new Set(rmbRows.map(r => r.report_id).filter((x): x is number => x != null))]
-    const [{ data: openDocs }, { data: reports }] = await Promise.all([
-      c.from('reimbursement_documents').select('id, number, person_id, total').eq('state', 'approved'),
-      reportIds.length ? c.from('reimbursement_reports').select('id, name').in('id', reportIds) : Promise.resolve({ data: [] as { id: number; name: string | null }[] }),
+    const [openDocs, reports] = await Promise.all([
+      allRows<{ id: number; number: string; person_id: string; total: number }>((a, b) => c.from('reimbursement_documents').select('id, number, person_id, total').eq('state', 'approved').order('id').range(a, b), 'Reimbursement documents could not be read'),
+      reportIds.length ? c.from('reimbursement_reports').select('id, name').in('id', reportIds).then(r => must(r, 'Reimbursement requests could not be read') ?? []) : Promise.resolve([] as { id: number; name: string | null }[]),
     ])
     const amountOf = (r: Rmb) => (r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${r.currency}`)
     const sizeOf = (n: number | null) => (n ? (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`) : '')
@@ -205,12 +256,12 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const r0 = list[0]
       const who = person(r0.person_id)
       const contractor = !!routes.get(r0.person_id)?.isContractor
-      const name = (reports ?? []).find(x => x.id === reportId)?.name ?? null
+      const name = reports.find(x => x.id === reportId)?.name ?? null
       const own = r0.person_id === v.personId
       const waiting = list.filter(r => r.state === 'pending')
       const pending = waiting.length > 0
-      const canDecide = pending && decides && !own
-      const doc = (openDocs ?? []).find(d => d.person_id === r0.person_id)
+      const canDecide = pending && decidesRequest(v, 'rmb', r0.person_id)
+      const doc = openDocs.find(d => d.person_id === r0.person_id)
       const values = list.map(r => ({ amount: Number(r.amount), currency: r.currency }))
       const total = totalsText(values)
       const denied = list.filter(r => r.state === 'denied').length, approved = list.length - waiting.length - denied
@@ -252,8 +303,8 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
       const amt = r.currency === 'USD' ? usd(Number(r.amount)) : `${Number(r.amount).toFixed(2)} ${r.currency}`
       const own = r.person_id === v.personId
       const pending = r.state === 'pending'
-      const canDecide = pending && decides && !own
-      const doc = (openDocs ?? []).find(d => d.person_id === r.person_id)
+      const canDecide = pending && decidesRequest(v, 'rmb', r.person_id)
+      const doc = openDocs.find(d => d.person_id === r.person_id)
       const isPdf = (r.receipt_name ?? '').toLowerCase().endsWith('.pdf')
       const size = r.receipt_size ? (r.receipt_size >= 1048576 ? `${(r.receipt_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(r.receipt_size / 1024))} KB`) : ''
       out.push({
@@ -287,17 +338,17 @@ export async function loadRequestRows(v: Viewer, dir: Directory, since: string, 
   }
 
   // ── Extra hours (10D) ────────────────────────────────────────────────────
-  const xhRows = xhs ?? []
+  const xhRows = xhs
   if (xhRows.length) {
     const ids = [...new Set(xhRows.map(r => r.person_id))]
     const terms = await loadPayTerms(ids)
     const use = await loadAllowanceUse(terms, now, await loadApprovedExtra(ids, addDays(localDate(now, v.zone), -40), addDays(localDate(now, v.zone), 40)))
     for (const r of xhRows) {
       const who = person(r.person_id)
-      if (isLead && !(who.teamId && v.ledTeamIds.has(who.teamId)) && r.person_id !== v.personId) continue
+      if (!showsXh(v, r.person_id, who.teamId)) continue
       const own = r.person_id === v.personId
       const pending = r.state === 'pending'
-      const canDecide = pending && decides && !own
+      const canDecide = pending && decidesRequest(v, 'xh', r.person_id)
       const hours = formatDuration(Number(r.hours) * 3600)
       const when = r.period === 'month' ? monthYear(r.period_start) : `the week of ${dayLabel(r.period_start)}`
       const t = terms.get(r.person_id)

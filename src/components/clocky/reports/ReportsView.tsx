@@ -23,6 +23,8 @@ const pill = (on: boolean) => (on ? 'bg-tn-primary text-[#ffffff]' : 'bg-transpa
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted leading-[normal]'
 const WHITE_BTN = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:border-tn-teal'
 const TONE = { ink: 'text-tn-ink', ok: 'text-[#0d7a4f]', bad: 'text-[#c8323d]' } as const
+/** A whole day the report can read: a typed year passes through 0002 and 0202 before 2026, so those wait. */
+const fullDay = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= '2000-01-01' && !Number.isNaN(Date.parse(d))
 
 export function ReportsView({ page, made, startPdf = false, linked = true }: { page: ReportPage; made: string; startPdf?: boolean; linked?: boolean }) {
   const router = useRouter()
@@ -30,6 +32,13 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
   const [pdf, setPdf] = useState(startPdf)
   const [toast, setToast] = useState<ToastState | null>(null)
   const [range, setRange] = useState({ from: page.from, to: page.to })
+  // router.replace keeps this component: when the server answers with another
+  // period, the From and To boxes follow it (set while rendering, not in an effect).
+  const [shown, setShown] = useState({ from: page.from, to: page.to })
+  if (shown.from !== page.from || shown.to !== page.to) {
+    setShown({ from: page.from, to: page.to })
+    setRange({ from: page.from, to: page.to })
+  }
   const q = page.query
   const v = page.view
   const go = (patch: Partial<ReportQuery>) => {
@@ -37,6 +46,12 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
     const next = { ...q, ...patch }
     const s = search(next)
     startTransition(() => router.replace(withViewAs(`/clocky-hours/reports${s ? `?${s}` : ''}`), { scroll: false }))
+  }
+  // Each date applies as soon as both make a range, not only when the box loses focus.
+  const pickDay = (patch: Partial<typeof range>) => {
+    const next = { ...range, ...patch }
+    setRange(next)
+    if (fullDay(next.from) && fullDay(next.to) && next.from <= next.to && (next.from !== page.from || next.to !== page.to)) go({ from: next.from, to: next.to })
   }
   const qs = search(q)
   const csv = async () => {
@@ -81,9 +96,9 @@ export function ReportsView({ page, made, startPdf = false, linked = true }: { p
         {q.kind === 'custom' ? (
           <div className="flex items-end gap-2">
             <label className="flex flex-col gap-[5px]"><FieldLabel>From</FieldLabel>
-              <input type="date" value={range.from} max={range.to} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} onBlur={() => go({ from: range.from, to: range.to })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
+              <input type="date" value={range.from} max={range.to} onChange={e => pickDay({ from: e.target.value })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
             <label className="flex flex-col gap-[5px]"><FieldLabel>To</FieldLabel>
-              <input type="date" value={range.to} min={range.from} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} onBlur={() => go({ from: range.from, to: range.to })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
+              <input type="date" value={range.to} min={range.from} onChange={e => pickDay({ to: e.target.value })} className="h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] text-[13px] text-tn-ink bg-white" /></label>
           </div>
         ) : (
           <span className="max-md:basis-full font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink px-1.5 max-md:px-0.5 pb-2.5 max-md:pb-0 whitespace-nowrap leading-[normal]">{v.label}</span>

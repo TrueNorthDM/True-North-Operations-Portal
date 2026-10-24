@@ -67,4 +67,20 @@ describe('approval routing (README_PART2 "Approval routing")', () => {
     expect(hoursApprover(p('new', null), S)).toBe('arnaldo')
     expect(oneStep(p('new', null), S)).toBe(true)
   })
+
+  it('someone who cannot open Approvals is passed over for the default approver', () => {
+    // Wendy (Team Leader of Web) lost Approvals; Dave still has it.
+    const A: RouteSettings = { ...S, approvers: ['arnaldo', 'dave'] }
+    expect(hoursApprover(samuel, A)).toBe('arnaldo')
+    expect(oneStep(samuel, A)).toBe(true)
+    expect(currentStep(samuel, A, 'submitted')).toEqual({ step: 'both', owner: 'arnaldo' })
+    expect(currentStep(wendy, A, 'submitted')).toEqual({ step: 'payroll', owner: 'arnaldo' })
+    expect(hoursApprover(rock, A)).toBe('dave')
+    // An invoice approver who lost it too.
+    const B: RouteSettings = { ...S, approvers: ['arnaldo'] }
+    expect(invoiceApprover(rock, B)).toBe('arnaldo')
+    expect(currentStep(john, B, 'submitted')).toEqual({ step: 'invoice', owner: 'arnaldo' })
+    // Not given: as named, whoever they are.
+    expect(hoursApprover(samuel, S)).toBe('wendy')
+  })
 })

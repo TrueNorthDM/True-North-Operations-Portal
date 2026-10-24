@@ -35,9 +35,13 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
   const [toast, setToast] = useState<ToastState | null>(null)
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
   const openPdf = async () => {
-    const r = await api.getPayDoc({ kind: 'rmb', id: d.id })
-    if (r.ok) setPdf(r.doc)
-    else say({ text: r.error, error: true })
+    try {
+      const r = await api.getPayDoc({ kind: 'rmb', id: d.id })
+      if (r.ok) setPdf(r.doc)
+      else say({ text: r.error, error: true })
+    } catch {
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    }
   }
   const tone = REQ_TONE[d.st.tone]
 

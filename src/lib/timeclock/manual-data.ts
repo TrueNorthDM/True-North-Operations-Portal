@@ -101,7 +101,7 @@ function choosableJobcodes(
  *     what "Start on 1 September" produces while August is still being invoiced
  */
 async function peopleForEntry(supabase: Client, month: string) {
-  const [{ data: peopleRows }, assignments] = await Promise.all([
+  const [{ data: peopleRows, error: peopleErr }, assignments] = await Promise.all([
     supabase.from('people').select('id, full_name').eq('status', 'active').order('full_name'),
     // Reaches tr_assignments through the privileged client, like every other
     // reader of that table: migration 054 revoked SELECT on it from
@@ -111,6 +111,7 @@ async function peopleForEntry(supabase: Client, month: string) {
     // everybody they have no rate.
     loadI7Assignments(),
   ])
+  if (peopleErr) throw new Error(`People could not be read: ${peopleErr.message}`)
 
   return ((peopleRows ?? []) as { id: string; full_name: string }[]).map(p => {
     const state = rateStateFor(assignments, p.id, month)

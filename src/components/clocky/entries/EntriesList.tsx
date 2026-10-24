@@ -169,7 +169,9 @@ export function EntriesList({ rows, all, nowMs, cols, setCols, colsOpen, setCols
                           <span className="text-[10px] font-(family-name:--font-display) font-extrabold tracking-[.06em] uppercase text-tn-teal bg-white px-1">switched</span>
                         </div>
                       )}
-                      <div onClick={card ? () => onOpen(r) : undefined}
+                      {/* Time off and correction rows open their card: by click, or Enter and Space when focused. */}
+                      <div onClick={card ? () => onOpen(r) : undefined} role={card ? 'button' : undefined} tabIndex={card ? 0 : undefined}
+                        onKeyDown={card ? e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(r) } } : undefined}
                         className={`grid items-center border-b border-[var(--row-rule)] ${flagged ? 'bg-[var(--warn-bg)]' : 'bg-white'} hover:bg-[var(--row-hover)] ${card ? 'cursor-pointer' : ''}`}
                         style={{ gridTemplateColumns: template }}>
                         {vis.map(c => <Cell key={c.key} k={c.key} r={r} all={all} nowMs={nowMs} onEdit={() => onEdit(r)} />)}

@@ -41,10 +41,15 @@ export function PaymentsTab({ data, api, initial }: { data: PaymentsData; api: P
     if (!r.doc) return
     setBusy(r.key)
     const d = r.doc
-    const res = d.kind === 'invoice' ? await api.getInvoiceDoc({ id: d.id }) : await api.getPayDoc({ kind: d.kind, id: d.id })
-    setBusy(null)
-    if (!res.ok) return say({ text: res.error, error: true })
-    setOpen(d.kind === 'invoice' ? { kind: 'invoice', doc: res.doc as InvoiceDocView } : { kind: d.kind, id: d.id, doc: res.doc as DocSheetData })
+    try {
+      const res = d.kind === 'invoice' ? await api.getInvoiceDoc({ id: d.id }) : await api.getPayDoc({ kind: d.kind, id: d.id })
+      if (!res.ok) return say({ text: res.error, error: true })
+      setOpen(d.kind === 'invoice' ? { kind: 'invoice', doc: res.doc as InvoiceDocView } : { kind: d.kind, id: d.id, doc: res.doc as DocSheetData })
+    } catch {
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } finally {
+      setBusy(null)
+    }
   }
 
   return (

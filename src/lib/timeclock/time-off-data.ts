@@ -66,11 +66,11 @@ export async function loadTimeOff(v: Pick<Access, 'personId' | 'isAdmin' | 'isSu
   const from = addDays(today, -400)
   let q = c.from('tc_absence_requests').select(COLS).in('state', ['pending', 'approved']).gte('end_date', from).order('start_date', { ascending: true })
   if (!canAll) q = q.eq('person_id', v.personId)
-  const [{ data, error }, { data: offsRaw }] = await Promise.all([
+  const [{ data, error }, { data: offsRaw, error: offsErr }] = await Promise.all([
     q,
     c.from('tc_absence_requests').select('person_id, start_date, end_date').eq('state', 'approved').neq('person_id', v.personId).gte('end_date', addDays(today, -31)).lte('start_date', addDays(today, 400)),
   ])
-  if (error) throw new Error(`Time off could not be read: ${error.message}`)
+  if (error || offsErr) throw new Error(`Time off could not be read: ${(error ?? offsErr)!.message}`)
   const holidays = holidaysBetween(addDays(today, -400), addDays(today, 400))
   const stamp = (t: string) => stampLabel(t, zone)
   const kindOf = (jobcodeId: number) => { const j = catalog.jobs.get(jobcodeId); return j?.short || j?.path || 'Time off' }

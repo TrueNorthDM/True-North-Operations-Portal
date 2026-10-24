@@ -41,7 +41,7 @@ import {
 } from '@/lib/timeclock/entry-rules'
 import { changesBetween } from '@/lib/timeclock/history'
 import { addDays, isSent, lockedMessage, periodLabel } from '@/lib/timeclock/periods'
-import { loadInvoiceSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, stateOnSubmit } from '@/lib/timeclock/routing'
 import { invoiceBlocker, makeInvoiceForSubmission } from '@/lib/timeclock/invoices-data'
 import { SHORTEN_ONLY, canAddFor, changeRight, onlyShorter } from '@/lib/timeclock/scope'
@@ -603,7 +603,7 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     if (!count) return fail('There is nothing logged in that period yet.')
 
     // Who decides (README_PART2 "Approval routing"); the Deputy Director's own is recorded.
-    const [settings, routes] = await Promise.all([loadInvoiceSettings(), loadRoutes([v.personId])])
+    const [settings, routes] = await Promise.all([loadRouteSettings(), loadRoutes([v.personId])])
     const route = routes.get(v.personId)
     if (!route) return fail('Your login is not linked to anyone in the Directory.')
     const nextState = stateOnSubmit(route, settings)
@@ -642,11 +642,23 @@ export async function submitPeriod(input: { start: string; end: string }): Promi
     }
 
     // The invoice is made with it (contractors); if that fails, nothing was sent.
+    const { data: had, error: hadErr } = await c.from('invoices').select('id').eq('submission_id', sentId).maybeSingle()
+    if (hadErr) {
+      await c.from('tc_submissions').update({ state: row ? row.state : 'draft', submitted_at: null }).eq('id', sentId)
+      return notSaved(hadErr)
+    }
     let invoiceId: number | null = null
     try {
       invoiceId = await makeInvoiceForSubmission(sentId, now)
     } catch (e) {
       await c.from('tc_submissions').update({ state: row ? row.state : 'draft', submitted_at: null }).eq('id', sentId)
+      // writeInvoice undoes its own half-made invoice; should that undo fail, none is left waiting with the timesheet back in draft.
+      const { data: left } = await c.from('invoices').select('id').eq('submission_id', sentId).eq('state', 'waiting').maybeSingle()
+      if (left && had) await c.from('invoices').update({ state: 'draft', updated_at: now.toISOString() }).eq('id', left.id)
+      else if (left) {
+        await c.from('reimbursements').update({ state: 'approved', invoice_id: null }).eq('invoice_id', left.id).eq('state', 'on_invoice')
+        await c.from('invoices').delete().eq('id', left.id)
+      }
       console.error('[clocky submit] invoice:', e instanceof Error ? e.message : e)
       return fail('Your invoice could not be made, so nothing was sent. Try again in a moment.')
     }

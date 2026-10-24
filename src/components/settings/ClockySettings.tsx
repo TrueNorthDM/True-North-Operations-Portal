@@ -59,10 +59,15 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
   const [good, setGood] = useState(data.google.goodNewsCalendarId)
   const run = async (p: Promise<Done>, after?: () => void) => {
     setBusy(true)
-    const r = await p
-    setBusy(false)
-    say(r.ok ? { text: r.toast } : { text: r.error, error: true })
-    if (r.ok) { after?.(); router.refresh() }
+    try {
+      const r = await p
+      say(r.ok ? { text: r.toast } : { text: r.error, error: true })
+      if (r.ok) { after?.(); router.refresh() }
+    } catch {
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } finally {
+      setBusy(false)
+    }
   }
   const cards = [
     { key: 'rippling' as const, mark: 'R', icBg: '#fbf1e6', icFg: '#92400E', name: 'Rippling', on: data.rippling.tokenSaved, onLabel: 'Token saved', d: data.rippling },
@@ -196,10 +201,15 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
   )
   const submit = async () => {
     setBusy(true)
-    const r = await save(f)
-    setBusy(false)
-    say(r.ok ? { text: r.toast } : { text: r.error, error: true })
-    if (r.ok) router.refresh()
+    try {
+      const r = await save(f)
+      say(r.ok ? { text: r.toast } : { text: r.error, error: true })
+      if (r.ok) router.refresh()
+    } catch {
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <div className="flex flex-col gap-[18px]">
@@ -269,7 +279,14 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
   const toggle = async (key: ReminderKey) => {
     const next = !state[key]
     setState(s => ({ ...s, [key]: next }))
-    const r = await set({ key, on: next })
+    let r: Done
+    try {
+      r = await set({ key, on: next })
+    } catch {
+      setState(s => ({ ...s, [key]: !next }))
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+      return
+    }
     if (!r.ok) { setState(s => ({ ...s, [key]: !next })); say({ text: r.error, error: true }); return }
     say({ text: r.toast })
     router.refresh()

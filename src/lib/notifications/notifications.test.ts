@@ -217,9 +217,10 @@ describe("North Time's notifications (16 October 2026)", () => {
     expect(T('clocky-still-working').button).toEqual({ label: 'Keep going', action: 'keep-going' })
     expect(T('clocky-stopped').button).toEqual({ label: 'Confirm end time', action: 'open-clock' })
     expect(T('clocky-correction-requested').button).toEqual({ label: 'Review', href: '/clocky-hours/approvals' })
-    expect(T('clocky-timeoff-requested').button).toEqual({ label: 'Review', href: '/clocky-hours/approvals' })
+    // The line's own href: Approvals for whoever can open it, the Agenda for a Reports-to only told (audit, 24 October 2026).
+    expect(T('clocky-timeoff-requested').button).toEqual({ label: 'Review' })
     expect(T('clocky-correction-decided').button).toEqual({ label: 'Open time entries', href: '/clocky-hours' })
-    expect(T('clocky-timeoff-decided').button).toEqual({ label: 'Open time entries', href: '/clocky-hours' })
+    expect(T('clocky-timeoff-decided').button).toEqual({ label: 'Open request', href: '/requests/time-off' })
     // No address of its own: the row's, that entry's history.
     expect(T('clocky-clocked-out-for').button).toEqual({ label: 'Open entry' })
     expect(T('clocky-timesheet-submitted').button).toEqual({ label: 'Review', href: '/clocky-hours/approvals' })

@@ -24,7 +24,7 @@
  * is written once (the notifications' dedupe key), however often this runs.
  */
 
-import { db, loadCadenceChanges, loadClockySettings, loadDirectory, rulesFor } from './clocky-context'
+import { allRows, db, loadCadenceChanges, loadClockySettings, loadDirectory, rulesFor } from './clocky-context'
 import { loadSubmissions } from './clocky-store'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { loadReminders } from './company-settings'
@@ -66,7 +66,9 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
       return [p.id, { today, cur, prev: periodContaining(addDays(cur.start, -1), rules) }]
     }))
     const lo = [...prevOf.values()].reduce((m, x) => (x.prev.start < m ? x.prev.start : m), '9999-12-31')
-    const { data: used } = await c.from('tc_entries').select('person_id, entry_date').in('person_id', atNine.map(p => p.id)).eq('source', 'portal').gte('entry_date', lo).limit(20000)
+    // Every row, a page at a time: PostgREST stops at 1,000 without saying so.
+    const used = await allRows<{ person_id: string; entry_date: string }>((a, b) => c.from('tc_entries').select('person_id, entry_date')
+      .in('person_id', atNine.map(p => p.id)).eq('source', 'portal').gte('entry_date', lo).order('id').range(a, b), 'Time entries could not be read')
     for (const p of atNine) {
       if (terms.get(p.id)?.paysAs === 'fixed_no_timesheet') continue
       const { today, cur, prev } = prevOf.get(p.id)!
@@ -79,7 +81,7 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
       if (on.pay_period_ends && cur.kind === 'pay_period' && dow(today) === 4 && cur.end === addDays(today, 2) && !sent(cur.start, cur.end)) {
         reminders.push({ personId: p.id, key: `ends:${cur.start}`, text: `Your pay period ends Saturday (${rangeText(cur.start, cur.end)}).` })
       }
-      const clocky = (used ?? []).some(u => u.person_id === p.id && u.entry_date >= prev.start && u.entry_date <= prev.end)
+      const clocky = used.some(u => u.person_id === p.id && u.entry_date >= prev.start && u.entry_date <= prev.end)
       if (on.late && clocky && !sent(prev.start, prev.end)) {
         const n = daysBetween(prev.end, today)
         const pl = periodLabel(prev)

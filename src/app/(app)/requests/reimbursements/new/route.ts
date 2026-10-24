@@ -23,6 +23,7 @@ import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { announceReimbursementReportRequested, announceReimbursementRequested } from '@/lib/timeclock/clocky-notify'
 import { localDate } from '@/lib/timeclock/format'
 import { loadClients } from '@/lib/timeclock/requests-data'
+import { loadRoutes } from '@/lib/timeclock/pay-terms'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -54,7 +55,9 @@ export async function POST(request: Request) {
   if (count > MAX_RECEIPTS) return no(`Send up to ${MAX_RECEIPTS} receipts at a time.`)
   const field = (k: string, i: number) => form.get(numbered ? `${k}_${i}` : k)
   const today = localDate(new Date(), v.zone)
-  const clients = await loadClients()
+  // A contractor's receipts go on a USD invoice, so they come in dollars (owner, 24 October 2026).
+  const [clients, routes] = await Promise.all([loadClients(), loadRoutes([v.personId])])
+  const contractor = routes.get(v.personId)?.isContractor ?? false
   const items: Item[] = []
   let total = 0
   for (let i = 0; i < count; i++) {
@@ -74,6 +77,7 @@ export async function POST(request: Request) {
     if (!(amount > 0 && amount < 100_000)) return no(`${n}write the amount, like 35.00.`)
     const currency = String(field('currency', i) ?? 'USD').toUpperCase()
     if (!/^[A-Z]{3}$/.test(currency)) return no(`${n}pick the currency.`)
+    if (contractor && currency !== 'USD') return no(`${n}write the amount in US dollars: your invoice is in USD.`)
     const purpose = String(field('purpose', i) ?? '').trim().slice(0, 500)
     if (!purpose) return no(`${n}say what it was for.`)
     const clientRaw = String(field('client', i) ?? '').trim()
