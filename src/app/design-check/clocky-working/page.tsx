@@ -9,5 +9,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const sp = await searchParams
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : sp[k]) ?? ''
   const frame = one('frame') || '2A'
-  return <WorkingCheck key={frame} frame={frame} frozen={one('frozen') === '1'} />
+  return <WorkingCheck key={frame} frame={frame} frozen={one('frozen') === '1'} bare={one('bare') === '1'} />
 }

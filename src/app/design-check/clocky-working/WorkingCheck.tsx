@@ -9,6 +9,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { NavIcon } from '@/components/NavIcon'
+import { DemoRail } from '../clocky-clock/DemoRail'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { ClockButton } from '@/components/clocky/clock/ClockButton'
 import { WhosWorking } from '@/components/clocky/working/WhosWorking'
@@ -17,7 +18,7 @@ import { FRAMES, TEAM_ORDER, sampleApi } from './sample'
 
 const ICON_BTN = 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-500'
 
-export function WorkingCheck({ frame, frozen }: { frame: string; frozen: boolean }) {
+export function WorkingCheck({ frame, frozen, bare = false }: { frame: string; frozen: boolean; /** &bare=1: the frame alone, as Who's Working.dc.html?bare=1. */ bare?: boolean }) {
   const f = FRAMES.find(x => x.code === frame) ?? FRAMES[0]
   const [open, setOpen] = useState(!f.page)
   const api = sampleApi(f.data)
@@ -28,7 +29,7 @@ export function WorkingCheck({ frame, frozen }: { frame: string; frozen: boolean
   return (
     <div className="min-h-screen bg-[#e9e6dd] px-8 pt-7 pb-12">
       <div className="max-w-[1380px] mx-auto flex flex-col gap-[18px]">
-        <div className="flex flex-col gap-3">
+        {!bare && <div className="flex flex-col gap-3">
           <div>
             <h1 className="m-0 font-(family-name:--font-display) font-black text-[24px] text-tn-ink">North Time, Who&apos;s working (build)</h1>
             <p className="m-0 mt-1 text-[13.5px] text-muted">{`Compare com Who's Working.dc.html?frame=${f.code}. Os componentes são os reais; o servidor é simulado com os dados do protótipo.`}</p>
@@ -39,7 +40,7 @@ export function WorkingCheck({ frame, frozen }: { frame: string; frozen: boolean
               <Link key={x.code} href={q(x.code)} className={`rounded-[8px] px-[11px] py-[7px] text-[12.5px] font-semibold ${x.code === f.code ? 'bg-tn-primary text-[#ffffff]' : 'text-foreground'}`}>{`${x.code} ${x.title}`}</Link>
             ))}
           </div>
-        </div>
+        </div>}
 
         <div className="relative h-[880px] border border-[#d9d6cc] rounded-[14px] overflow-hidden bg-white flex flex-col shadow-[0_8px_30px_rgba(1,35,88,.08)]">
           <header className="h-[65px] shrink-0 border-b border-slate-200 bg-white px-6 flex items-center justify-between gap-4">
@@ -60,7 +61,7 @@ export function WorkingCheck({ frame, frozen }: { frame: string; frozen: boolean
             </div>
           </header>
           <div className="flex-1 flex min-h-0 bg-background">
-            <nav className="w-16 shrink-0 bg-tn-primary" />
+            <DemoRail />
             <main className="flex-1 min-w-0 px-10 py-[34px]">
               {f.page ? (
                 <Breadcrumb parents={['/clocky-hours']} now="Who's working" />

@@ -9,7 +9,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { NavIcon } from '@/components/NavIcon'
-import type { NavIconKey } from '@/lib/nav/nav-icons'
+import { DemoRail } from './DemoRail'
 import { ClockyClock } from '@/components/clocky/clock/ClockyClock'
 import { WhosWorkingButton } from '@/components/clocky/working/WhosWorking'
 import { FRAMES, TB_STATES, sampleApi } from './sample'
@@ -33,9 +33,6 @@ function Bell() {
     </span>
   )
 }
-
-/** The rail as the prototype draws it on the home page (Clock Panel.dc.html): Home lit, the rest 62% white. */
-const RAIL: (NavIconKey | null)[] = ['home', 'my-work', 'chat', 'emails', null, 'tools', 'people', null, 'admin', 'clocky']
 
 export function ClockCheck({ frame, device, frozen, bare = false }: { frame: string; device: 'desktop' | 'phone'; frozen: boolean; /** &bare=1: the frame alone, as Clock Panel.dc.html?bare=1. */ bare?: boolean }) {
   // TB: only the top-bar button's four states, at the top (as the overview's TB card).
@@ -100,12 +97,7 @@ export function ClockCheck({ frame, device, frozen, bare = false }: { frame: str
               </div>
             </header>
             <div className="flex-1 flex min-h-0 bg-background">
-              <nav className="w-16 shrink-0 bg-tn-primary flex flex-col items-center gap-1.5 pt-3 pb-3">
-                {RAIL.map((k, i) => k
-                  ? <span key={k} className={`w-11 h-11 rounded-xl flex items-center justify-center ${i === 0 ? 'bg-white/[.14] text-[#ffffff]' : 'text-white/[.62]'}`}><NavIcon name={k} size={20} /></span>
-                  : <span key={`r${i}`} className="w-7 h-px bg-white/20 my-1.5" />)}
-                <span className="mt-auto w-10 h-10 rounded-full bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] flex items-center justify-center">AO</span>
-              </nav>
+              <DemoRail />
               <main className="flex-1 min-w-0 px-10 py-[34px]">
                 <div className="font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink tracking-[-.01em]">True North Operations Portal</div>
                 <div className="text-[15px] text-muted mt-1.5">Where would you like to go?</div>
