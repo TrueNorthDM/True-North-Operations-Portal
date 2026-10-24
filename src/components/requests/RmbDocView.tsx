@@ -7,7 +7,7 @@
  * Finance's, once.
  */
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
@@ -53,29 +53,37 @@ export function RmbDocView({ d, api, initial }: { d: RmbDocPage; api: RmbDocApi;
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-[18px] items-start">
-        <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[34px] py-[30px] flex flex-col gap-[22px] min-w-0">
-          <div className="flex justify-between items-start gap-4">
+        <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-4 py-5 md:px-[34px] md:py-[30px] flex flex-col gap-[22px] min-w-0">
+          {/* On a phone the paper stacks: the date under the title, Pay to over From, each item as a short block. */}
+          <div className="flex flex-col md:flex-row md:justify-between items-start gap-3 md:gap-4">
             <div>
               <div className="font-(family-name:--font-display) font-black text-[28px] text-tn-ink" style={{ letterSpacing: '-.01em' }}>Reimbursement</div>
               <div className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-teal mt-0.5">{d.number}</div>
             </div>
-            <div className="grid grid-cols-[auto_auto] gap-x-4 gap-y-[5px] text-[13px] text-right tabular-nums lining-nums">
+            <div className="grid grid-cols-[auto_auto] gap-x-4 gap-y-[5px] text-[13px] md:text-right tabular-nums lining-nums">
               <span className="text-muted">Date</span><span className="text-tn-ink font-semibold">{d.date}</span>
               <span className="text-muted">Items</span><span className="text-tn-ink font-semibold">{d.items.length}</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-5 text-[13px] leading-[1.6] text-foreground">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-[13px] leading-[1.6] text-foreground">
             <div><div className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted mb-1">Pay to</div><div className="text-tn-ink font-bold text-[14px]">{d.who}</div><div>{d.team} · US Employee</div><div>Paid by Finance, outside Rippling payroll</div></div>
             <div><div className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted mb-1">From</div><div className="text-tn-ink font-bold text-[14px]">{d.billing.name}</div><div>{d.billing.line1}</div><div>{d.billing.line2}</div></div>
           </div>
           <div className="flex flex-col">
-            <div className={`${COLS} py-[9px] border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted`}><span>Date</span><span>Category</span><span>What it was for</span><span>Receipt</span><span className="text-right">Amount</span></div>
+            <div className={`hidden md:grid ${COLS} py-[9px] border-b border-[var(--panel-border)] font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted`}><span>Date</span><span>Category</span><span>What it was for</span><span>Receipt</span><span className="text-right">Amount</span></div>
             {d.items.map(i => (
-              <div key={i.id} className={`${COLS} py-[11px] border-b border-[var(--row-rule)] text-[13px] items-center tabular-nums lining-nums text-foreground`}>
+              <Fragment key={i.id}>
+              <div className="md:hidden flex flex-col gap-1 py-3 border-b border-[var(--row-rule)] text-[13px] tabular-nums lining-nums">
+                <div className="flex items-baseline justify-between gap-3"><span className="text-tn-ink font-semibold">{i.what}</span><span className="text-tn-ink font-bold whitespace-nowrap">{i.amount}</span></div>
+                <span className="text-[12px] text-muted">{i.date} · {i.category}</span>
+                <a href={withViewAs(`/requests/reimbursements/receipt/${i.id}`)} target="_blank" rel="noreferrer" className="self-start inline-flex items-start gap-1 text-[12px] font-bold text-tn-teal min-w-0"><Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" size={12} width={2.2} className="flex-none mt-px" /><span className="[overflow-wrap:anywhere] leading-[1.35]">{i.file}</span></a>
+              </div>
+              <div className={`hidden md:grid ${COLS} py-[11px] border-b border-[var(--row-rule)] text-[13px] items-center tabular-nums lining-nums text-foreground`}>
                 <span className="text-tn-ink font-semibold">{i.date}</span><span>{i.category}</span><span className="text-tn-ink font-semibold">{i.what}</span>
-                <a href={withViewAs(`/requests/reimbursements/receipt/${i.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] font-bold text-tn-teal min-w-0"><Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" size={12} width={2.2} /><span className="truncate">{i.file}</span></a>
+                <a href={withViewAs(`/requests/reimbursements/receipt/${i.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1 text-[12px] font-bold text-tn-teal min-w-0"><Icon d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" size={12} width={2.2} className="flex-none mt-px" /><span className="[overflow-wrap:anywhere] leading-[1.35]">{i.file}</span></a>
                 <span className="text-right text-tn-ink font-bold">{i.amount}</span>
               </div>
+              </Fragment>
             ))}
             <div className="flex justify-between items-baseline pt-4"><span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">Total</span><span className="font-(family-name:--font-display) font-black text-[28px] text-tn-ink tabular-nums lining-nums">{d.total}</span></div>
           </div>
