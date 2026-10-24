@@ -403,6 +403,7 @@ export default async function SettingsPage() {
       id: 'jobs',
       label: 'Job catalogue',
       icon: JobsIcon,
+      isNew: true,
       editable: false,
       content: (
         <div>
@@ -428,6 +429,7 @@ export default async function SettingsPage() {
       id: 'integrations',
       label: 'Integrations',
       icon: IntegrationsIcon,
+      isNew: true,
       editable: false,
       content: (
         <div>

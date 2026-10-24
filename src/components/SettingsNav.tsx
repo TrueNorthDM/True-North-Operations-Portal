@@ -76,7 +76,8 @@ export function SettingsNav({
               >
                 <span className="inline-flex w-[17px] h-[17px] items-center justify-center shrink-0">{s.icon}</span>
                 <span className="flex-1">{s.label}</span>
-                {s.isNew && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-0.5 leading-[normal]">New</span>}
+                {/* NEW marks a section not opened yet; the open one does not need it (Company Settings.dc.html). */}
+                {s.isNew && !on && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-0.5 leading-[normal]">New</span>}
               </button>
             )
           })}
