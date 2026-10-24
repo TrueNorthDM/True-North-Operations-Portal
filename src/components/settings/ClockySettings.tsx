@@ -126,11 +126,12 @@ export function IntegrationsSettings({ data, canEdit, api }: { data: Integration
               <span className={LABEL}>Errors</span>
               <div className="border border-[var(--panel-border)] rounded-[12px] overflow-hidden">
                 {g.d.errors.map(e => (
-                  <div key={e.id} className={`grid grid-cols-[150px_110px_minmax(0,1fr)_120px] gap-2.5 items-center px-3.5 py-2.5 border-b border-[var(--row-rule)] text-[12.5px] ${e.failed ? 'bg-[#fdeeef]' : 'bg-white'}`}>
+                  // On a phone: when and the button on one line, then what it was, then the error.
+                  <div key={e.id} className={`grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[150px_110px_minmax(0,1fr)_120px] gap-x-2.5 gap-y-1 md:gap-y-2.5 items-center px-3.5 py-2.5 border-b border-[var(--row-rule)] text-[12.5px] ${e.failed ? 'bg-[#fdeeef]' : 'bg-white'}`}>
                     <span className="text-tn-ink font-semibold">{e.when}</span>
-                    <span className="text-foreground">{e.what}</span>
-                    <span className={`leading-[1.45] ${e.failed ? 'text-[#c8323d]' : 'text-foreground'}`}>{e.text}</span>
-                    <span className="justify-self-end">
+                    <span className="max-md:col-span-2 max-md:row-start-2 text-foreground">{e.what}</span>
+                    <span className={`max-md:col-span-2 max-md:row-start-3 leading-[1.45] ${e.failed ? 'text-[#c8323d]' : 'text-foreground'}`}>{e.text}</span>
+                    <span className="max-md:col-start-2 max-md:row-start-1 justify-self-end text-right">
                       {e.failed && canEdit && <button type="button" disabled={busy} onClick={() => void run(api.retryIntegrationJob({ id: e.id }))} className="border-0 rounded-[9px] px-3 py-[7px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[12px] leading-[normal] cursor-pointer">Try again</button>}
                       {e.doneText && <span className="text-[11.5px] font-bold text-[#0d7a4f]">{e.doneText}</span>}
                     </span>
