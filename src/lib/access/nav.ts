@@ -112,9 +112,15 @@ const toolRows = (group: ToolGroup): PanelItem[] => {
   return rows
 }
 
-/** The rail, top to bottom. Rules separate the person's own things, the company, and the machinery. */
+/**
+ * The rail, top to bottom (owner, 25 October 2026): the day's work (Home, Agenda,
+ * My Work, North Time, Requests), then messages (Chat, Emails), then the
+ * company (Tools, People), then Admin. Rules separate the groups.
+ */
 export const RAIL: readonly RailEntry[] = [
   { kind: 'page', key: 'home', href: '/', icon: 'home' },
+  // Clocky part 2 (Agenda.dc.html): one calendar for the company, for everyone.
+  { kind: 'page', key: 'agenda', href: '/agenda', icon: 'agenda', surface: 'agenda' },
   {
     kind: 'hub',
     key: 'my-work',
@@ -131,6 +137,68 @@ export const RAIL: readonly RailEntry[] = [
       ],
     }],
   },
+  {
+    // Clocky for every level (owner's decision, 16 October 2026,
+    // docs/time-clock/05-clocky-build.md): one hub, its rows filtered by level
+    // as the design handoff's "Clocky menu in the rail" (Design/design_handoff_clocky).
+    // It replaced the My Hours hub; /hours redirects here.
+    kind: 'hub',
+    key: 'clocky',
+    label: NAV_LABEL['/clocky-hours'],
+    icon: 'clocky',
+    hint: 'Your own hours: what you clocked, and the corrections you asked for. Clock in opens from the top bar.',
+    hints: [
+      { surface: 'ck-all', hint: "The time module: everyone's hours, and the rules behind them." },
+      { surface: 'ck-team', hint: "Your hours and your team's. Clock in and Who's working also open from the top bar." },
+    ],
+    groups: [
+      {
+        label: null,
+        items: [
+          { key: 'clocky-hours', label: 'Time entries', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
+          { key: 'clocky-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
+          { key: 'clocky-whos-working', label: "Who's working", href: '/clocky-hours/whos-working', icon: 'my-team', surface: 'ck-whos-working', alsoSurface: 'clocky-hours' },
+          { key: 'clocky-invoices', label: 'Invoices', href: '/clocky-hours/invoices', icon: 'client-reports', surface: 'clocky-invoices', needs: 'invoices' },
+          { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-reports' },
+        ],
+      },
+      {
+        label: 'The module',
+        items: [
+          // Clocky part 2 (Job Catalogue.dc.html 11D): for everyone.
+          { key: 'clocky-which-job', label: 'Which job?', href: '/clocky-hours/which-job', icon: 'manual', surface: 'ck-which-job' },
+          { key: 'clocky-safety', label: 'Clock safety', href: '/clocky-hours/safety', icon: 'admin', surface: 'ck-safety', alsoSurface: 'clocky-hours' },
+          // A section of Company settings (Admin > Configuration).
+          { key: 'clocky-import', label: 'Import', href: '/clocky-hours/import', icon: 'schema-scraper', anySurface: ['ck-import', 'ck-rules', 'ck-recon'], alsoSurface: 'clocky-hours' },
+        ],
+      },
+    ],
+  },
+  {
+    // Clocky part 2 (Requests.dc.html): what people ask for, in one place.
+    kind: 'hub',
+    key: 'requests',
+    label: NAV_LABEL['/requests'],
+    icon: 'requests',
+    hint: 'Time off, reimbursements and extra hours. Everyone sees their own; Super Admins decide.',
+    groups: [
+      {
+        label: null,
+        items: [
+          { key: 'requests-time-off', label: 'Time off', href: '/requests/time-off', icon: 'calendar', surface: 'rq-time-off', needs: 'employee' },
+          { key: 'requests-reimbursements', label: 'Reimbursements', href: '/requests/reimbursements', icon: 'receipt', surface: 'rq-reimbursements' },
+          { key: 'requests-extra-hours', label: 'Extra hours', href: '/requests/extra-hours', icon: 'clock-plus', surface: 'rq-extra-hours' },
+        ],
+      },
+      {
+        label: 'Decisions',
+        items: [
+          { key: 'requests-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals', shortcut: true },
+        ],
+      },
+    ],
+  },
+  { kind: 'rule' },
   { kind: 'page', key: 'chat', href: ROUTES.chat, icon: 'chat', surface: 'chat', soon: true },
   { kind: 'page', key: 'emails', href: ROUTES.emails, icon: 'emails', surface: 'emails', soon: true },
   { kind: 'rule' },
@@ -165,8 +233,6 @@ export const RAIL: readonly RailEntry[] = [
       ],
     }],
   },
-  // Clocky part 2 (Agenda.dc.html): one calendar for the company, for everyone.
-  { kind: 'page', key: 'agenda', href: '/agenda', icon: 'agenda', surface: 'agenda' },
   { kind: 'rule' },
   {
     kind: 'hub',
@@ -205,68 +271,6 @@ export const RAIL: readonly RailEntry[] = [
         items: [
           { key: 'tests', label: 'Tests', href: '/admin/tests', icon: 'tests', surface: 'tests' },
           { key: 'manual', label: 'System manual', href: '/admin/manual', icon: 'manual', surface: 'manual' },
-        ],
-      },
-    ],
-  },
-  {
-    // Clocky for every level (owner's decision, 16 October 2026,
-    // docs/time-clock/05-clocky-build.md): one hub, its rows filtered by level
-    // as the design handoff's "Clocky menu in the rail" (Design/design_handoff_clocky).
-    // It replaced the My Hours hub; /hours redirects here.
-    kind: 'hub',
-    key: 'clocky',
-    label: NAV_LABEL['/clocky-hours'],
-    icon: 'clocky',
-    hint: 'Your own hours: what you clocked, and the corrections you asked for. Clock in opens from the top bar.',
-    hints: [
-      { surface: 'ck-all', hint: "The time module: everyone's hours, and the rules behind them." },
-      { surface: 'ck-team', hint: "Your hours and your team's. Clock in and Who's working also open from the top bar." },
-    ],
-    groups: [
-      {
-        label: null,
-        items: [
-          { key: 'clocky-hours', label: 'Time entries', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
-          { key: 'clocky-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
-          { key: 'clocky-whos-working', label: "Who's working", href: '/clocky-hours/whos-working', icon: 'my-team', surface: 'ck-whos-working', alsoSurface: 'clocky-hours' },
-          { key: 'clocky-invoices', label: 'Invoices', href: '/clocky-hours/invoices', icon: 'client-reports', surface: 'clocky-invoices', needs: 'invoices' },
-          { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-reports' },
-        ],
-      },
-      {
-        label: 'The module',
-        items: [
-          // Clocky part 2 (Job Catalogue.dc.html 11D): for everyone.
-          { key: 'clocky-which-job', label: 'Which job?', href: '/clocky-hours/which-job', icon: 'manual', surface: 'ck-which-job' },
-          { key: 'clocky-safety', label: 'Clock safety', href: '/clocky-hours/safety', icon: 'admin', surface: 'ck-safety', alsoSurface: 'clocky-hours' },
-          // A section of Company settings (Admin > Configuration).
-          { key: 'clocky-periods', label: 'Timesheet periods', href: '/admin/settings#periods', icon: 'settings', surface: 'cs-periods' },
-          { key: 'clocky-import', label: 'Import', href: '/clocky-hours/import', icon: 'schema-scraper', anySurface: ['ck-import', 'ck-rules', 'ck-recon'], alsoSurface: 'clocky-hours' },
-        ],
-      },
-    ],
-  },
-  {
-    // Clocky part 2 (Requests.dc.html): what people ask for, in one place.
-    kind: 'hub',
-    key: 'requests',
-    label: NAV_LABEL['/requests'],
-    icon: 'requests',
-    hint: 'Time off, reimbursements and extra hours. Everyone sees their own; Super Admins decide.',
-    groups: [
-      {
-        label: null,
-        items: [
-          { key: 'requests-time-off', label: 'Time off', href: '/requests/time-off', icon: 'calendar', surface: 'rq-time-off', needs: 'employee' },
-          { key: 'requests-reimbursements', label: 'Reimbursements', href: '/requests/reimbursements', icon: 'receipt', surface: 'rq-reimbursements' },
-          { key: 'requests-extra-hours', label: 'Extra hours', href: '/requests/extra-hours', icon: 'clock-plus', surface: 'rq-extra-hours' },
-        ],
-      },
-      {
-        label: 'Decisions',
-        items: [
-          { key: 'requests-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals', shortcut: true },
         ],
       },
     ],

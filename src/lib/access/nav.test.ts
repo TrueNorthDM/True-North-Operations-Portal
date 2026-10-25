@@ -17,14 +17,15 @@ const hub = (rail: ResolvedEntry[], key: string) =>
 const rows = (rail: ResolvedEntry[], key: string) => hub(rail, key)?.groups.flatMap(g => g.items.map(i => i.key)) ?? []
 
 describe('the rail', () => {
-  it('gives a Super Admin everything, in the handoff order, with two rules', () => {
-    expect(keys(railFor('super_admin'))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', 'agenda', '|', 'admin', 'clocky', 'requests'])
+  // The owner's order (25 October 2026): the day's work, messages, the company, Admin.
+  it('gives a Super Admin everything, in the owner\'s order, with three rules', () => {
+    expect(keys(railFor('super_admin'))).toEqual(['home', 'agenda', 'my-work', 'clocky', 'requests', '|', 'chat', 'emails', '|', 'tools', 'people', '|', 'admin'])
   })
 
   // Clocky is for every level (16 October 2026: Time entries and the clock),
-  // so a user sees it after the second rule; not Admin. My Hours is gone.
+  // so a user sees it in the first group; not Admin. My Hours is gone.
   it('gives a user North Time, but neither Admin nor My Hours', () => {
-    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'my-work', 'chat', 'emails', '|', 'tools', 'people', 'agenda', '|', 'clocky', 'requests'])
+    expect(keys(railFor('user', ['publishing']))).toEqual(['home', 'agenda', 'my-work', 'clocky', 'requests', '|', 'chat', 'emails', '|', 'tools', 'people'])
   })
 
   // A rule with nothing on one side is not drawn, and never two in a row.
@@ -83,8 +84,8 @@ describe('the rail', () => {
   })
 
   it('gives each level its North Time rows, in the designed order', () => {
-    expect(rows(railFor('super_admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-periods', 'clocky-import'])
-    expect(rows(railFor('admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-periods', 'clocky-import'])
+    expect(rows(railFor('super_admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-import'])
+    expect(rows(railFor('admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-import'])
     expect(rows(railFor('team_leader'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job'])
     expect(rows(railFor('user'), 'clocky')).toEqual(['clocky-hours', 'clocky-invoices', 'clocky-reports', 'clocky-which-job'])
   })
@@ -93,7 +94,7 @@ describe('the rail', () => {
     const clocky = hub(railFor('super_admin'), 'clocky')!
     expect(clocky.groups.map(g => [g.label, g.items.map(i => [i.label, i.href])])).toEqual([
       [null, [['Time entries', '/clocky-hours'], ['Approvals', '/clocky-hours/approvals'], ["Who's working", '/clocky-hours/whos-working'], ['Invoices', '/clocky-hours/invoices'], ['Reports', '/clocky-hours/reports']]],
-      ['The module', [['Which job?', '/clocky-hours/which-job'], ['Clock safety', '/clocky-hours/safety'], ['Timesheet periods', '/admin/settings#periods'], ['Import', '/clocky-hours/import']]],
+      ['The module', [['Which job?', '/clocky-hours/which-job'], ['Clock safety', '/clocky-hours/safety'], ['Import', '/clocky-hours/import']]],
     ])
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-approvals')?.count).toBe('approvals')
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-reports')?.soon).toBeUndefined()

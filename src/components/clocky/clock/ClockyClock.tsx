@@ -68,6 +68,14 @@ export function ClockyClock({
     }
   }, [api])
 
+  // Clock in shows at once (owner, 25 October 2026: it waited for two server trips): the
+  // panel takes what the server will say, and goes back to what it had if the server refuses.
+  const optimistic = useCallback((patch: (d: ClockPanelData) => ClockPanelData) => {
+    let before: ClockPanelData | null = null
+    setState(s => { before = s.data; return s.data ? { data: patch(s.data), error: null } : s })
+    return () => setState(s => ({ data: before ?? s.data, error: s.error }))
+  }, [])
+
   useEffect(() => {
     if (!latest) return
     let live = true
@@ -133,7 +141,7 @@ export function ClockyClock({
       <ClockButton ref={btn} state={tb} phone={phone} open={open} onClick={() => onOpenChange(!open)} />
       {open && (
         <ClockPanel data={data} loadError={state.error} api={api} nowMs={nowMs} phone={phone} frameTop={frameTop}
-          initialUi={initialUi} forceOffline={forceOffline} onClose={() => onOpenChange(false)} refresh={refresh} toast={showToast} closeRef={btn} />
+          initialUi={initialUi} forceOffline={forceOffline} onClose={() => onOpenChange(false)} refresh={refresh} optimistic={optimistic} toast={showToast} closeRef={btn} />
       )}
       {toast && (
         <ClockToast text={toast.text} error={toast.error} contained={frameTop != null} phone={phone}

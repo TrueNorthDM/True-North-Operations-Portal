@@ -74,6 +74,8 @@ interface PanelProps {
   onClose: () => void
   /** Read the panel again from the server. */
   refresh: () => Promise<void>
+  /** Show a change before the server has it; returns the undo, for a refusal. Absent in design checks. */
+  optimistic?: (patch: (d: ClockPanelData) => ClockPanelData) => () => void
   toast: (t: Toast | null) => void
   /** Where focus goes back on close. */
   closeRef?: React.RefObject<HTMLElement | null>
@@ -115,7 +117,7 @@ export function ClockPanel(props: PanelProps) {
   return <PanelWithData {...props} data={data} box={box} />
 }
 
-function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffline, onClose, refresh, toast, box }: PanelProps & {
+function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffline, onClose, refresh, optimistic, toast, box }: PanelProps & {
   data: ClockPanelData
   box: React.RefObject<HTMLDivElement | null>
 }) {
@@ -176,12 +178,24 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     return Object.keys(f).length ? f : undefined
   }
 
-  const startWith = (c: { jobcodeId: number; fields: Record<string, string>; notes: string }) => {
+  const startWith = (c: { jobcodeId: number; fields: Record<string, string>; notes: string; label?: string }) => {
     if (data.locked) { set({ ...PANEL_UI }); setError(null); return }
+    // The timer starts on the click (owner, 25 October 2026); the server's answer then
+    // fills in the rest (the quarter-hour start, the safety window), or takes it back.
+    const job = data.jobs.find(j => j.id === c.jobcodeId)
+    const at = new Date().toISOString()
+    const undo = optimistic?.(d => ({
+      ...d, now: at,
+      running: {
+        id: -1, jobcodeId: c.jobcodeId, path: job?.path ?? '', short: job?.short ?? '', label: c.label || job?.short || '', isI7: !!job?.isI7,
+        fields: c.fields, notes: c.notes, startedAt: at, startedAtReal: at, sessionStartedAt: at, windowStartedAt: at,
+        recordedSeconds: 0, roundNote: null, missing: [], imported: false,
+      },
+    }))
+    set({ ...PANEL_UI })
     void run(() => api.clockIn({ jobcodeId: c.jobcodeId, fields: c.fields, notes: c.notes }), async () => {
-      set({ ...PANEL_UI })
       await refresh()
-    })
+    }).then(r => { if (!r.ok) undo?.() })
   }
 
   const switchTo = (c: { jobcodeId: number; fields: Record<string, string>; notes: string; label?: string }, to: ClockChoice) => {
