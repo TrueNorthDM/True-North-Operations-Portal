@@ -185,7 +185,7 @@ instead." when nothing would remain.
 | Function | Input | Returns |
 |---|---|---|
 | `getApprovals()` | | `data: ApprovalsData`: `subtitle` (per level), `note`, `waiting`, `decided` (`ApprovalRow`: `type`, `when` in the person's zone, `job`, `reason`, `asked`, `decided`, `overlap` (Approve opens the review instead), `entryId` for the history drawer). |
-| `getApprovalsCount()` | | `count` for the menu pill (0: no pill). |
+| `getApprovalsCount()` | | `count` for the menu pill (0: no pill). Since 25 October 2026 the rail reads it with the other counts in one call, `getRailCounts` in `app/(app)/rail-actions.ts`. |
 | `decideCorrection(input)` | `{ id, decision: 'approve' or 'deny', note? }` (note required to deny) | `entryId?` (approve), `toast` ("Approved. 1h 30m added to Clarise Nixon's entries. Clarise gets a notification." / "Denied. Clarise gets the reason."). |
 | `decideTimeOff(input)` | same | `{}` (Super Admins; approve writes the entries, refused into a locked period). |
 

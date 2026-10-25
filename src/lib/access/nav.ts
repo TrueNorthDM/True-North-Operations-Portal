@@ -18,6 +18,7 @@ import { onPath, pathOf } from '@/lib/nav/path'
 import type { NavIconKey } from '@/lib/nav/nav-icons'
 import { ROUTES } from '@/lib/nav/routes'
 import { CLIENT_REPORT_TOOLS, TOOLS, type ToolGroup } from '@/lib/access/tools'
+import type { NavCount } from '@/lib/nav/counts'
 
 export type Level = 1 | 2 | 3
 
@@ -43,9 +44,9 @@ export interface PanelItem {
    */
   needs?: NavFact
   /**
-   * A number shown beside the row, fetched when the panel opens: `approvals`
-   * is the corrections and time off waiting for this person (Clocky,
-   * getApprovalsCount), drawn only above zero.
+   * A number shown beside the row and summed on its hub's rail icon, drawn
+   * only above zero: what in that page needs this person's attention
+   * (NavCount in lib/nav/counts.ts, read by app/(app)/rail-actions.ts).
    */
   count?: NavCount
   /**
@@ -55,8 +56,8 @@ export interface PanelItem {
   shortcut?: boolean
 }
 
-/** The counts a panel row can carry. */
-export type NavCount = 'approvals'
+/** The counts a panel row can carry: lib/nav/counts.ts, which the rail in the browser may import. */
+export type { NavCount } from '@/lib/nav/counts'
 
 /** Facts about the person a row can need (NavContext.facts). */
 export type NavFact = 'invoices' | 'employee'
@@ -131,7 +132,7 @@ export const RAIL: readonly RailEntry[] = [
     groups: [{
       label: null,
       items: [
-        { key: 'my-work', label: 'My Work', href: '/my-work', icon: 'my-work', surface: 'my-work' },
+        { key: 'my-work', label: 'My Work', href: '/my-work', icon: 'my-work', surface: 'my-work', count: 'my-late' },
         { key: 'report', label: 'Report', href: '/report', icon: 'report', surface: 'report' },
         { key: 'my-team', label: 'My Team', href: '/my-work?tab=team', icon: 'my-team', surface: 'my-team' },
       ],
@@ -225,7 +226,7 @@ export const RAIL: readonly RailEntry[] = [
       items: [
         { key: 'directory', label: NAV_LABEL['/directory'], href: '/directory', icon: 'directory', surface: 'directory' },
         // Its own page since the part 2 handoff (Company Settings.dc.html 10A-2): Super Admins (d-rates).
-        { key: 'rates', label: 'Rates & Costs', href: '/directory?tab=rates', icon: 'rates', surface: 'd-rates' },
+        { key: 'rates', label: 'Rates & Costs', href: '/directory?tab=rates', icon: 'rates', surface: 'd-rates', count: 'no-rate' },
         { key: 'organization', label: NAV_LABEL['/organization'], href: ROUTES.organization, icon: 'organization', surface: 'organization' },
         { key: 'human-resources', label: NAV_LABEL['/human-resources'], href: '/human-resources', icon: 'human-resources', surface: 'human-resources' },
         // Everyone signed in, like Organization (7 October 2026).
@@ -253,8 +254,8 @@ export const RAIL: readonly RailEntry[] = [
       {
         label: 'Integrations',
         items: [
-          { key: 'monday-accounts', label: 'Monday accounts', href: '/admin/monday-links', icon: 'monday-accounts', surface: 'monday-accounts' },
-          { key: 'automations', label: 'Automations', href: '/admin/automations', icon: 'automations', surface: 'automations' },
+          { key: 'monday-accounts', label: 'Monday accounts', href: '/admin/monday-links', icon: 'monday-accounts', surface: 'monday-accounts', count: 'monday-unlinked' },
+          { key: 'automations', label: 'Automations', href: '/admin/automations', icon: 'automations', surface: 'automations', count: 'automations-down' },
         ],
       },
       {
@@ -262,7 +263,7 @@ export const RAIL: readonly RailEntry[] = [
         // which is for each person's own things.
         label: 'Configuration',
         items: [
-          { key: 'company-settings', label: NAV_LABEL['/admin/settings'], href: '/admin/settings', icon: 'settings', surface: 'settings' },
+          { key: 'company-settings', label: NAV_LABEL['/admin/settings'], href: '/admin/settings', icon: 'settings', surface: 'settings', count: 'integration-errors' },
           { key: 'notification-rules', label: 'Notification rules', href: '/notifications?tab=rules', icon: 'bell', surface: 'notification-rules' },
         ],
       },

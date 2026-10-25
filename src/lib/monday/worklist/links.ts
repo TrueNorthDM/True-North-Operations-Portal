@@ -39,6 +39,31 @@ export function unresolvedAccounts(
   return out
 }
 
+/**
+ * The accounts the screen lists as "Waiting on an answer": no person owns
+ * them and nobody has said they are outside True North. The screen and the
+ * rail's "Accounts to link" (owner, 25 October 2026) both read it here.
+ */
+export function waitingOnAnswer<U extends { id: number; is_external: boolean }>(users: readonly U[], linked: { has(id: number): boolean }): U[] {
+  return users.filter(u => !linked.has(u.id) && !u.is_external)
+}
+
+/**
+ * How many accounts wait on an answer, without the screen's assignment counts
+ * and suggestions: two small reads.
+ */
+export async function countWaitingOnAnswer(supabase: Client): Promise<number> {
+  const [userRead, linkRead] = await Promise.all([
+    selectAllPages((from, to) => supabase.from('monday_users').select('id, is_external').order('id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('monday_user_links').select('monday_user_id').order('monday_user_id').range(from, to)),
+  ])
+  for (const [what, r] of [['Monday accounts', userRead], ['account links', linkRead]] as const) {
+    if (r.error) throw new Error(`Could not read the ${what}: ${r.error.message}`)
+  }
+  const linked = new Set((linkRead.data as { monday_user_id: number }[]).map(l => l.monday_user_id))
+  return waitingOnAnswer(userRead.data as { id: number; is_external: boolean }[], linked).length
+}
+
 export interface PendingAccount {
   mondayUserId: number
   name: string
@@ -136,7 +161,7 @@ export async function loadLinkBoard(supabase: Client): Promise<LinkBoard> {
 
   const bySize = (a: { assignments: number }, b: { assignments: number }) => b.assignments - a.assignments
 
-  const pending = users.filter(u => !linkedIds.has(u.id) && !u.is_external).map(toPending).sort(bySize)
+  const pending = waitingOnAnswer(users, linkedIds).map(toPending).sort(bySize)
   const external = users.filter(u => u.is_external).map(toPending).sort(bySize)
   const linked: LinkedAccount[] = users
     .filter(u => linkedIds.has(u.id))

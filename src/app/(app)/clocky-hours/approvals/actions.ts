@@ -19,7 +19,7 @@ import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import { audit, loadSubmissions, lockOn, overlapFor, snapshot, type EntryRow } from '@/lib/timeclock/clocky-store'
-import { countWaiting, loadApprovals } from '@/lib/timeclock/clocky-approvals'
+import { loadApprovals } from '@/lib/timeclock/clocky-approvals'
 import { loadQueue, type QueueData } from '@/lib/timeclock/approval-queue'
 import { announceCorrectionDecided, announceExtraDecided, announceHoursApproved, announceInvoiceApproved, announceReimbursementDecided, announceReimbursementReportDecided, announceRmbReady, announceTimeOffDecided, announceTimesheetDecided } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
@@ -73,20 +73,6 @@ export async function getQueue(): Promise<Result<{ data: QueueData }>> {
   } catch (e) {
     console.error('[clocky approvals] queue:', (e as Error).message)
     return fail('Approvals could not be read. Try again in a moment.')
-  }
-}
-
-/** The count on the Clocky menu row "Approvals" (0 shows none). */
-export async function getApprovalsCount(): Promise<Result<{ count: number }>> {
-  const access = await loadAccess()
-  if (!access.can('clocky-approvals')) return { ok: true, count: 0 }
-  const v = await viewerFor(access)
-  if (!v) return { ok: true, count: 0 }
-  try {
-    return { ok: true, count: await countWaiting(v) }
-  } catch (e) {
-    console.error('[clocky approvals] count:', (e as Error).message)
-    return { ok: true, count: 0 }
   }
 }
 

@@ -31,24 +31,40 @@ type JobRow = { id: number; kind: string; payload: Record<string, unknown>; stat
 
 const WHAT: Record<string, string> = { rippling_pto: 'Time off', rippling_pto_cancel: 'Time off', rippling_hours: 'Hours', gcal_upsert: 'Calendar', gcal_delete: 'Calendar' }
 
-export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
-  const c = createAdminClient()
-  const [conn, dir, { data: jobs, error }] = await Promise.all([
-    loadConnections(), loadDirectory(),
-    c.from('integration_jobs').select('id, kind, payload, state, last_error, attempts, created_at, done_at, next_at')
-      .or(`state.in.(failed,waiting_connection,queued),done_at.gte.${new Date(now.getTime() - 14 * 86_400_000).toISOString()}`).order('id', { ascending: false }).limit(200),
-  ])
+const RIPPLING_KINDS = ['rippling_pto', 'rippling_pto_cancel', 'rippling_hours']
+const GOOGLE_KINDS = ['gcal_upsert', 'gcal_delete']
+
+/** The outbox as 13A reads it: what is waiting or failed, and what went out in the last two weeks. */
+async function readOutbox(now: Date): Promise<JobRow[]> {
+  const { data, error } = await createAdminClient().from('integration_jobs').select('id, kind, payload, state, last_error, attempts, created_at, done_at, next_at')
+    .or(`state.in.(failed,waiting_connection,queued),done_at.gte.${new Date(now.getTime() - 14 * 86_400_000).toISOString()}`).order('id', { ascending: false }).limit(200)
   if (error) throw new Error(`The outbox could not be read: ${error.message}`)
-  const list = (jobs ?? []) as JobRow[]
+  return (data ?? []) as JobRow[]
+}
+
+/** The jobs an integration's error list shows: failed, or sent after a failed try; the newest twelve. */
+export function listedErrors<J extends Pick<JobRow, 'kind' | 'state' | 'last_error' | 'attempts'>>(list: readonly J[], kinds: readonly string[]): J[] {
+  return list.filter(j => kinds.includes(j.kind) && j.last_error && (j.state === 'failed' || (j.state === 'done' && j.attempts > 1))).slice(0, 12)
+}
+
+/**
+ * The rail's "Failed jobs to try again" (owner, 25 October 2026): exactly the
+ * rows 13A draws with Try again, read and filtered the same way.
+ */
+export async function countRetryable(now = new Date()): Promise<number> {
+  const list = await readOutbox(now)
+  return [RIPPLING_KINDS, GOOGLE_KINDS].reduce((n, kinds) => n + listedErrors(list, kinds).filter(j => j.state === 'failed').length, 0)
+}
+
+export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
+  const [conn, dir, list] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now)])
   const at = (t: string) => stampLabel(t, zone).replace(/, \d{4},/, ',')
   const days = (p: Record<string, unknown>) => {
     const a = String(p.start ?? ''), b = String(p.end ?? '')
     // One day with its weekday ("Thu, Oct 29", 13A); a span as "Oct 4 to Oct 17".
     return a && b ? (a === b ? dayLabel(a) : `${dateLabel(a).replace(/, \d{4}$/, '')} to ${dateLabel(b).replace(/, \d{4}$/, '')}`) : ''
   }
-  const errorsOf = (kinds: string[]): IntegrationError[] => list
-    .filter(j => kinds.includes(j.kind) && j.last_error && (j.state === 'failed' || (j.state === 'done' && j.attempts > 1)))
-    .slice(0, 12)
+  const errorsOf = (kinds: string[]): IntegrationError[] => listedErrors(list, kinds)
     .map(j => {
       const p = j.payload ?? {}
       const who = typeof p.who === 'string' ? p.who : typeof p.person_id === 'string' ? dir.nameOf(p.person_id) : 'Someone'
@@ -73,7 +89,7 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
         { k: 'Reads', v: 'PTO balances (Vacation, Sick, Holiday)' },
         { k: 'Waiting to send', v: waitingRippling ? `${waitingRippling} item${waitingRippling === 1 ? '' : 's'}, sent by themselves once it works` : 'Nothing' },
       ],
-      errors: errorsOf(['rippling_pto', 'rippling_pto_cancel', 'rippling_hours']),
+      errors: errorsOf(RIPPLING_KINDS),
     },
     google: {
       connected: conn.google.connected, saved: !!conn.google.account, account: conn.google.account,
@@ -84,7 +100,7 @@ export async function loadIntegrations(zone: string, now = new Date()): Promise<
         { k: 'Writes', v: 'Approved PTO ("Name, out") and events marked for the team calendar' },
         { k: 'Reads', v: 'The Good News Calendar, shown in Agenda (read only)' },
       ],
-      errors: errorsOf(['gcal_upsert', 'gcal_delete']),
+      errors: errorsOf(GOOGLE_KINDS),
     },
   }
 }

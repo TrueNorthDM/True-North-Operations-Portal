@@ -27,6 +27,20 @@ export interface InvoiceLineInput {
 
 export interface ReimbursementForInvoice { id: number; category: string; purpose: string; amount: number }
 
+/**
+ * What Rates & Costs lacks for a contractor's invoice to be made: an hourly
+ * contractor needs a rate an hour above zero, a fixed one an amount a month
+ * above zero. Null when nothing is missing, or for someone who gets no invoice
+ * (an employee). One rule for the submit check (invoices-data.ts
+ * invoiceBlocker) and the rail's "Contractors with no rate" (owner, 25 October
+ * 2026), so the two can never disagree.
+ */
+export function missingRate(t: { isContractor: boolean; paysAs: PaysAs | null; hourlyRate: number | null; fixedAmount: number | null }): 'hourly' | 'fixed' | null {
+  if (!t.isContractor) return null
+  if (t.paysAs === 'hourly') return t.hourlyRate && t.hourlyRate > 0 ? null : 'hourly'
+  return t.fixedAmount && t.fixedAmount > 0 ? null : 'fixed'
+}
+
 const cents = (n: number) => Math.round(n * 100)
 const money = (c: number) => c / 100
 

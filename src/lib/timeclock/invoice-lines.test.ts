@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildInvoiceLines, dueOn } from './invoice-lines'
+import { buildInvoiceLines, dueOn, missingRate } from './invoice-lines'
 
 const H = (h: number) => Math.round(h * 3600)
 
@@ -43,5 +43,28 @@ describe('dueOn', () => {
   it('adds the payment days', () => {
     expect(dueOn('2026-11-01', 14)).toBe('2026-11-15')
     expect(dueOn('2026-12-20', 15)).toBe('2027-01-04')
+  })
+})
+
+// One rule for the submit check and the rail's "Contractors with no rate" (owner, 25 October 2026).
+describe('missingRate', () => {
+  const c = (paysAs: 'hourly' | 'fixed_monthly' | 'fixed_no_timesheet' | null, hourlyRate: number | null, fixedAmount: number | null, isContractor = true) =>
+    missingRate({ isContractor, paysAs, hourlyRate, fixedAmount })
+
+  it('needs a rate an hour above zero for an hourly contractor', () => {
+    expect(c('hourly', null, 1800)).toBe('hourly')
+    expect(c('hourly', 0, null)).toBe('hourly')
+    expect(c('hourly', 14, null)).toBeNull()
+  })
+
+  it('needs an amount a month above zero for a fixed contractor, with or without a timesheet', () => {
+    expect(c('fixed_monthly', 22, null)).toBe('fixed')
+    expect(c('fixed_no_timesheet', 22, 0)).toBe('fixed')
+    expect(c('fixed_monthly', null, 1800)).toBeNull()
+    expect(c('fixed_no_timesheet', null, 1800)).toBeNull()
+  })
+
+  it('asks nothing of an employee, who gets no invoice', () => {
+    expect(c(null, null, null, false)).toBeNull()
   })
 })

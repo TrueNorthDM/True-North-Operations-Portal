@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildRail, type ResolvedEntry } from './nav'
+import { badgeText, hubCount, NAV_COUNT_LABEL, NAV_COUNTS, railCountKeys } from '@/lib/nav/counts'
 import { canAs, rulesWithTools } from './simulate'
 import type { AccessLevel } from './catalogue'
 
@@ -120,5 +121,48 @@ describe('the rail', () => {
     expect(hub(rail, 'clocky')!.matches).toContain('/clocky-hours/approvals')
     expect(hub(rail, 'requests')!.matches).not.toContain('/clocky-hours/approvals')
     expect(hub(rail, 'requests')!.groups.flatMap(g => g.items).map(i => i.key)).toContain('requests-approvals')
+  })
+})
+
+// The attention counters (owner, 25 October 2026): a number on each rail icon
+// whenever something in it needs the person.
+describe('the rail counts', () => {
+  const ALL = { approvals: 3, 'my-late': 5, 'integration-errors': 2, 'monday-unlinked': 4, 'automations-down': 1, 'no-rate': 2 } as const
+
+  it('sums the distinct counts of a hub\'s visible rows', () => {
+    const rail = railFor('super_admin')
+    expect(hubCount(hub(rail, 'clocky')!, ALL)).toBe(3)
+    // Requests repeats Approvals as a shortcut: its own hub shows it once.
+    expect(hubCount(hub(rail, 'requests')!, ALL)).toBe(3)
+    expect(hubCount(hub(rail, 'my-work')!, ALL)).toBe(5)
+    expect(hubCount(hub(rail, 'people')!, ALL)).toBe(2)
+    expect(hubCount(hub(rail, 'admin')!, ALL)).toBe(2 + 4 + 1)
+    expect(hubCount(hub(rail, 'tools')!, ALL)).toBe(0)
+  })
+
+  it('adds nothing for a count not read yet, or a row the person does not have', () => {
+    const rail = railFor('super_admin')
+    expect(hubCount(hub(rail, 'admin')!, { 'monday-unlinked': 4 })).toBe(4)
+    expect(hubCount(hub(rail, 'admin')!, {})).toBe(0)
+    // A team leader has no Rates & Costs row, so People carries no money count.
+    const people = hub(railFor('team_leader'), 'people')
+    expect(people ? hubCount(people, ALL) : 0).toBe(0)
+  })
+
+  it('asks for each count the rail carries, once', () => {
+    expect(railCountKeys(railFor('super_admin'))).toEqual([...NAV_COUNTS])
+    expect(railCountKeys(railFor('team_leader'))).not.toContain('no-rate')
+    expect(new Set(railCountKeys(railFor('super_admin'))).size).toBe(NAV_COUNTS.length)
+  })
+
+  it('caps the icon\'s number at 99+', () => {
+    expect(badgeText(1)).toBe('1')
+    expect(badgeText(99)).toBe('99')
+    expect(badgeText(100)).toBe('99+')
+    expect(badgeText(1234)).toBe('99+')
+  })
+
+  it('names what every count means', () => {
+    for (const k of NAV_COUNTS) expect(NAV_COUNT_LABEL[k]).toBeTruthy()
   })
 })

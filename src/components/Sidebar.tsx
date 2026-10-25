@@ -13,10 +13,13 @@
  *
  * What the rail offers is resolved on the server for the person signed in
  * (lib/access/nav.ts, buildRail) and handed over as plain data, so hiding an
- * item and blocking its route come from the same configuration. No counts or
- * dots on the rail itself: the top bar's buttons carry those. One panel row
- * carries a number (Clocky's Approvals, 16 October 2026: what waits for this
- * person's decision), read when its panel opens and drawn only above zero.
+ * item and blocking its route come from the same configuration. Counts on
+ * the rail itself since 25 October 2026 (owner, reversing "no counts on the
+ * rail"): a panel row carries what in its page needs this person's attention
+ * (lib/nav/counts.ts NavCount), and its hub's icon carries the sum, gold on
+ * the navy, drawn only above zero. They are read together in one call on
+ * mount, after each navigation (a decision made on a page shows on the next
+ * one) and when a panel opens.
  *
  * Client Component for the pathname and the open panel. Hidden on a phone
  * (md:flex); the top bar stays usable on its own there.
@@ -28,8 +31,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { withViewAs } from '@/components/ViewAsKeeper'
 import { UserMenu } from '@/components/UserMenu'
 import { NavIcon } from '@/components/NavIcon'
-import type { NavCount, NavItem, ResolvedEntry } from '@/lib/access/nav'
-import { getApprovalsCount } from '@/app/(app)/clocky-hours/approvals/actions'
+import type { NavItem, ResolvedEntry } from '@/lib/access/nav'
+import { NAV_COUNT_LABEL, badgeText, hubCount, railCountKeys, type NavCount } from '@/lib/nav/counts'
+import { getRailCounts } from '@/app/(app)/rail-actions'
 import { onPath, pathOf } from '@/lib/nav/path'
 
 type Hub = Extract<ResolvedEntry, { kind: 'hub' }>
@@ -73,13 +77,27 @@ function PendingBar({ pending }: { pending: boolean }) {
   )
 }
 
-/** Where each row count comes from. */
-const COUNTS: Record<NavCount, () => Promise<number>> = {
-  approvals: () => getApprovalsCount().then(r => (r.ok ? r.count : 0)),
+/**
+ * A hub's number on its icon (owner, 25 October 2026): gold on the navy, in the
+ * button's top right corner, ringed in the navy so it stands off the glyph. A
+ * pill, never a corner triangle (owner rule for rail icons).
+ */
+function RailBadge({ n }: { n: number }) {
+  if (n <= 0) return null
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute top-[3px] right-[3px] min-w-4 h-4 box-border px-1 rounded-full bg-[#F2C40A] text-[#012358] text-[10px] font-bold leading-none tabular-nums inline-flex items-center justify-center ring-2 ring-[#012358]"
+    >
+      {badgeText(n)}
+    </span>
+  )
 }
 
+const attention = (n: number) => (n > 0 ? `${n} need${n === 1 ? 's' : ''} your attention` : '')
+
 export function Sidebar({
-  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null, canMyTeam = true, startCounts = {}, activePath,
+  rail, user, menuOpen = false, startHub = null, twoStepDaysLeft = null, canMyTeam = true, startCounts, activePath,
 }: {
   rail: ResolvedEntry[]
   /** The person signed in (or previewed), for the avatar at the foot of the rail. */
@@ -91,7 +109,7 @@ export function Sidebar({
   /** Days left to set up two-step sign-in, while that week runs: the avatar menu offers it. */
   twoStepDaysLeft?: number | null
   canMyTeam?: boolean
-  /** Design check only: the row counts, without asking the server. */
+  /** Design check only: the counts, fixed, without asking the server (an empty object: none). */
   startCounts?: Partial<Record<NavCount, number>>
   /** Design check only: the page the rail marks as current, instead of the address. */
   activePath?: string
@@ -107,18 +125,19 @@ export function Sidebar({
   const aside = useRef<HTMLElement>(null)
   const openKey = open && open.path === pathname ? open.key : null
   const hub = rail.find((e): e is Hub => e.kind === 'hub' && e.key === openKey) ?? null
-  const [counts, setCounts] = useState<Partial<Record<NavCount, number>>>(startCounts)
-  // The counts an open panel shows, read each time it opens so they are current.
-  const wanted = (hub?.groups.flatMap(g => g.items.map(i => i.count)).filter((c): c is NavCount => !!c) ?? []).join('|')
-  const fixed = Object.keys(startCounts).length > 0
+  const [counts, setCounts] = useState<Partial<Record<NavCount, number>>>(startCounts ?? {})
+  // Every count this person's rail carries, in one call: on mount, after each
+  // navigation, and each time a panel opens (`asked`), so they are current.
+  // Keyed on the keys as a string, because the rail is rebuilt on every render.
+  const countKeys = railCountKeys(rail).join('|')
+  const fixed = startCounts !== undefined
+  const [asked, setAsked] = useState(0)
   useEffect(() => {
-    if (!wanted || fixed) return
+    if (!countKeys || fixed) return
     let live = true
-    for (const c of wanted.split('|') as NavCount[]) {
-      COUNTS[c]().then(n => { if (live) setCounts(prev => ({ ...prev, [c]: n })) }).catch(() => {})
-    }
+    getRailCounts(countKeys.split('|')).then(c => { if (live) setCounts(prev => ({ ...prev, ...c })) }).catch(() => {})
     return () => { live = false }
-  }, [wanted, fixed])
+  }, [countKeys, fixed, realPath, asked])
 
   const go = (key: string, href: string) => {
     setPendingKey(key)
@@ -198,24 +217,29 @@ export function Sidebar({
   const hubButton = (h: Hub) => {
     const isOpen = openKey === h.key
     const here = h.matches.some(m => onPath(pathname, m))
+    const n = hubCount(h, counts)
+    const spoken = [h.label, h.readiness ? READINESS_NOTE[h.readiness].toLowerCase() : '', attention(n)].filter(Boolean).join(', ')
+    const tip = [h.label, h.readiness ? READINESS_NOTE[h.readiness] : '', attention(n)].filter(Boolean).join(' · ')
     return (
       <button
         key={h.key}
         type="button"
         onClick={() => {
           if (h.direct) { go(h.key, h.direct); return }
+          if (!isOpen) setAsked(a => a + 1)
           setOpen(isOpen ? null : { key: h.key, path: pathname })
         }}
         data-hub={h.key}
-        aria-label={h.readiness ? `${h.label}, ${READINESS_NOTE[h.readiness].toLowerCase()}` : h.label}
+        aria-label={spoken}
         aria-expanded={h.direct ? undefined : isOpen}
         aria-controls={h.direct || !isOpen ? undefined : 'rail-panel'}
         aria-busy={(pending && pendingKey === h.key) || undefined}
         className={`${RAIL_BUTTON} ${railTone(isOpen ? 'open' : here ? 'current' : 'off', !!h.readiness)}`}
       >
         <NavIcon name={h.icon} />
+        <RailBadge n={n} />
         <PendingBar pending={pending && pendingKey === h.key} />
-        {!isOpen && <Tooltip label={h.readiness ? `${h.label} · ${READINESS_NOTE[h.readiness]}` : h.label} />}
+        {!isOpen && <Tooltip label={tip} />}
       </button>
     )
   }
@@ -264,13 +288,14 @@ export function Sidebar({
               {g.items.map(item => {
                 const on = rowActive(pathname, item.href)
                 const count = item.count ? counts[item.count] ?? 0 : 0
+                const meaning = item.count ? NAV_COUNT_LABEL[item.count] : ''
                 return (
                   <button
                     key={item.key}
                     type="button"
                     data-row
                     onClick={() => go(item.key, item.href)}
-                    aria-label={item.soon ? `${item.label}, coming soon` : count > 0 ? `${item.label}, ${count} waiting for a decision` : undefined}
+                    aria-label={item.soon ? `${item.label}, coming soon` : count > 0 ? `${item.label}, ${count} ${meaning.toLowerCase()}` : undefined}
                     aria-current={on ? 'page' : undefined}
                     className={`flex items-center gap-2.5 rounded-lg p-2 text-left text-[13.5px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40 ${on ? 'bg-tn-teal/10 text-tn-teal' : 'text-foreground hover:bg-subtle'}`}
                   >
@@ -278,7 +303,7 @@ export function Sidebar({
                     <span className="flex-1 min-w-0 leading-snug">{item.label}</span>
                     {item.soon && <span className="shrink-0 rounded bg-[#fbf1cf] px-[5px] py-0.5 text-[9.5px] font-bold tracking-[.06em] text-[#8a6703]">SOON</span>}
                     {count > 0 && (
-                      <span title="Waiting for a decision" className="shrink-0 min-w-5 h-5 box-border px-1.5 rounded-full bg-[var(--warn-bg)] border border-[#e9d48a] text-[var(--warn-fg)] text-[11px] font-bold inline-flex items-center justify-center tabular-nums">{count}</span>
+                      <span title={meaning} className="shrink-0 min-w-5 h-5 box-border px-1.5 rounded-full bg-[var(--warn-bg)] border border-[#e9d48a] text-[var(--warn-fg)] text-[11px] font-bold inline-flex items-center justify-center tabular-nums">{count}</span>
                     )}
                   </button>
                 )

@@ -9,6 +9,9 @@
 //   ?page=soon | home                                           a Coming soon page, or Home, in the content
 //   ?twoStep=6                                                  someone with 6 days left to set up two-step sign-in
 //   ?approvals=3                                                Clocky's Approvals row with 3 waiting (Clock Safety.dc.html rail)
+//   ?counts=1 | big                                             the attention counters (25 October 2026): a sample on
+//                                                               North Time, Requests, My Work, People and Admin; big
+//                                                               puts 140 on Approvals to show the 99+ cap
 //
 // A team leader and a user are given three tool grants (Publishing Goals, Href
 // Links and the i7 report), which is what a typical team has. Development only.
@@ -25,21 +28,29 @@ import { HomeBody } from '../home-widgets/HomeBody'
 import { buildRail } from '@/lib/access/nav'
 import { canAs, rulesWithTools } from '@/lib/access/simulate'
 import type { AccessLevel } from '@/lib/access/catalogue'
+import type { NavCount } from '@/lib/nav/counts'
 
 export const dynamic = 'force-dynamic'
 
 // admin is a Super Admin here (the first checks were written as one); admin-level is the Admin level.
 const ROLE: Record<string, AccessLevel> = { user: 'user', lead: 'team_leader', admin: 'super_admin', super: 'super_admin', 'admin-level': 'admin' }
 const GRANTS = new Set(['publishing', 'href-links', 'i7-budget'])
+// One of each, so every hub shows a number: North Time 3, Requests 3 (the same
+// Approvals, once), My Work 5, People 2, Admin 2 + 4 + 1 = 7.
+const SAMPLE_COUNTS: Record<NavCount, number> = { approvals: 3, 'my-late': 5, 'integration-errors': 2, 'monday-unlinked': 4, 'automations-down': 1, 'no-rate': 2 }
 
-export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string; hub?: string; page?: string; twoStep?: string; approvals?: string }> }) {
+export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string; hub?: string; page?: string; twoStep?: string; approvals?: string; counts?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
-  const { level = 'admin', open, hub, page, twoStep, approvals } = await searchParams
+  const { level = 'admin', open, hub, page, twoStep, approvals, counts } = await searchParams
   const twoStepDaysLeft = twoStep ? Number(twoStep) : null
   const role = ROLE[level] ?? 'super_admin'
   const can = canAs(role, { teams: [['team', role === 'team_leader']], rules: rulesWithTools(GRANTS) })
   const canTool = can
   const rail = buildRail({ can, canTool })
+  // Always fixed here: a design check never asks the server for counts.
+  const startCounts: Partial<Record<NavCount, number>> = counts === 'big' ? { ...SAMPLE_COUNTS, approvals: 140 }
+    : counts ? SAMPLE_COUNTS
+    : approvals ? { approvals: Number(approvals) } : {}
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -66,7 +77,7 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
           menuOpen={open === 'menu'}
           twoStepDaysLeft={twoStepDaysLeft}
           startHub={hub ?? null}
-          startCounts={approvals ? { approvals: Number(approvals) } : {}}
+          startCounts={startCounts}
           user={{ email: 'arnaldo@leveluponline.org', name: 'Arnaldo Oliveira', avatarUrl: null }}
         />
         <main className="flex-1 min-w-0">

@@ -198,8 +198,18 @@ export async function peopleInFilter(supabase: Client, f: PeopleFilter): Promise
   return [...new Set(((data ?? []) as { person_id: string }[]).map(m => m.person_id))]
 }
 
+/**
+ * Whether a people column is a step the list shows: not switched off, and,
+ * once discovery has said which statuses it owns, owning at least one with a
+ * deadline. The work list and the rail's late count (late.ts) both ask it.
+ */
+export function shownStep(st: { source: string; stageList: readonly StepStage[] | null } | undefined): boolean {
+  if (st?.source === 'off') return false
+  return !(st?.stageList && st.stageList.length === 0)
+}
+
 /** Monday accounts belonging to a set of directory people. */
-async function accountsFor(supabase: Client, personIds: string[]): Promise<number[]> {
+export async function accountsFor(supabase: Client, personIds: string[]): Promise<number[]> {
   if (!personIds.length) return []
   // In slices: a list of everyone is longer than a query string should be.
   const out: number[] = []
@@ -386,12 +396,11 @@ export async function loadWorklist(supabase: Client, f: WorklistFilters): Promis
     if (!b || !b.included) continue
     if (hiddenAccounts.has(a.monday_user_id)) continue
     const st = steps.get(`${a.board_id}:${a.people_col}`)
-    // A column switched off is not a step, so it is not work.
-    if (st?.source === 'off') continue
-    // Nor is a people column that owns no status with a deadline. Hidden here
-    // as well as by the ingest, so it takes effect the moment discovery says
-    // so rather than when the board's turn in the sync comes round.
-    if (st?.stageList && st.stageList.length === 0) continue
+    // A column switched off is not a step, so it is not work. Nor is a people
+    // column that owns no status with a deadline. Hidden here as well as by
+    // the ingest, so it takes effect the moment discovery says so rather than
+    // when the board's turn in the sync comes round.
+    if (!shownStep(st)) continue
     const stage = stageOf(st?.stageList ?? null, a)
 
     const pid = personByAccount.get(a.monday_user_id)

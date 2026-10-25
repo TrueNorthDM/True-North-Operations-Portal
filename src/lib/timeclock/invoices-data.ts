@@ -12,7 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { allRows, loadCatalog } from './clocky-context'
 import { entrySeconds } from './clocky-panel'
 import type { EntryRow } from './clocky-store'
-import { buildInvoiceLines, dueOn, type ReimbursementForInvoice } from './invoice-lines'
+import { buildInvoiceLines, dueOn, missingRate, type ReimbursementForInvoice } from './invoice-lines'
 import { loadInvoiceSettings, loadPayTerms } from './pay-terms'
 import { periodLabel } from './periods'
 import type { PaysAs } from './routing'
@@ -46,10 +46,25 @@ async function reimbursementsFor(personId: string): Promise<ReimbursementForInvo
 /** Whether an invoice can be made for this person now: the reason it cannot, in their words. */
 export async function invoiceBlocker(personId: string): Promise<string | null> {
   const t = (await loadPayTerms([personId])).get(personId)
-  if (!t || !t.route.isContractor) return null
-  if (t.paysAs === 'hourly' && !(t.hourlyRate && t.hourlyRate > 0)) return 'Your invoice cannot be made yet: there is no rate an hour for you in Rates & Costs. Ask a Super Admin to add it, then submit.'
-  if (t.paysAs !== 'hourly' && !(t.fixedAmount && t.fixedAmount > 0)) return 'Your invoice cannot be made yet: there is no amount a month for you in Rates & Costs. Ask a Super Admin to add it, then submit.'
+  const missing = t ? missingRate({ ...t, isContractor: t.route.isContractor }) : null
+  if (missing === 'hourly') return 'Your invoice cannot be made yet: there is no rate an hour for you in Rates & Costs. Ask a Super Admin to add it, then submit.'
+  if (missing === 'fixed') return 'Your invoice cannot be made yet: there is no amount a month for you in Rates & Costs. Ask a Super Admin to add it, then submit.'
   return null
+}
+
+/**
+ * The rail's "Contractors with no rate" on Rates & Costs (owner, 25 October
+ * 2026): contractors still in the company (active, as Rates & Costs lists
+ * them) for whom invoiceBlocker would refuse an invoice today. Money-free as a
+ * number, but read from pay: call it only for d-rates.
+ */
+export async function countMissingRates(): Promise<number> {
+  const { data, error } = await createAdminClient().from('people').select('id').eq('status', 'active').eq('employment_type', 'contractor')
+  if (error) throw new Error(`People could not be read: ${error.message}`)
+  const ids = (data ?? []).map(p => p.id as string)
+  if (!ids.length) return 0
+  const terms = await loadPayTerms(ids)
+  return [...terms.values()].filter(t => missingRate({ ...t, isContractor: t.route.isContractor })).length
 }
 
 /**
