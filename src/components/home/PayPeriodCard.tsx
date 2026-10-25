@@ -100,7 +100,8 @@ function Meter({ m }: { m: NonNullable<PayPeriodView['meter']> }) {
   const gap = m.days.length > 16 ? 3 : 6
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-4 items-end">
+      {/* Wraps by the card's own width, not the window's: beside an open rail panel the card is narrow on a wide screen. */}
+      <div className="flex flex-wrap justify-between gap-x-6 gap-y-4 items-end">
         <div className="flex items-baseline gap-2.5 flex-wrap">
           <span className={`${display} font-black text-[46px] leading-none text-tn-ink tracking-[-.02em] tabular-nums lining-nums whitespace-nowrap`}>{m.total}</span>
           <span className="text-[14px] text-muted tabular-nums lining-nums">of {m.expected} in the period</span>
