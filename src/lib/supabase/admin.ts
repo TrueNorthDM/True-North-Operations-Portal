@@ -33,3 +33,26 @@ export function createAdminClient() {
     },
   })
 }
+
+/**
+ * The admin client for putting a file in storage (a receipt, a photo). The
+ * host's firewall (ModSecurity rule 390614, "Null Byte Attack") refuses any
+ * binary body on the public address, so the portal's server sends files over
+ * the Docker network instead: SUPABASE_INTERNAL_URL (http://kong:8000 on the
+ * server), which never passes the firewall or the gate. Unset (local
+ * development), it is the public address. Only for upload and remove: a link
+ * made with it (getPublicUrl) would name the internal address.
+ */
+export function createUploadClient() {
+  const url = process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) {
+    throw new Error(
+      'createUploadClient: missing SUPABASE_INTERNAL_URL / NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY',
+    )
+  }
+  return createClient<Database>(url, key, {
+    global: { headers: gateHeaders() },
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
