@@ -235,7 +235,7 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
             {field('paymentDays', 'Payment terms (days)', true)}
             <div className="flex flex-col gap-[5px]"><span className={LABEL}>Currency</span><div className={`${INPUT} flex items-center bg-subtle text-muted`}>USD</div></div>
           </div>
-          <div className="text-[12px] text-muted leading-[1.5]">Every invoice is in USD: contractors ask for their reimbursements in dollars. An employee's reimbursement in another currency is converted by Finance at the rate of the expense date.</div>
+          <div className="text-[12px] text-muted leading-[1.5]">Every invoice is in USD: contractors ask for their reimbursements in dollars. An employee&apos;s reimbursement in another currency is converted by Finance at the rate of the expense date.</div>
           {canEdit && <div className="flex justify-end"><button type="button" disabled={busy} onClick={() => void submit()} className={BTN_N}><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save</button></div>}
         </div>
         <div className="flex flex-col gap-2 xl:sticky xl:top-0">
