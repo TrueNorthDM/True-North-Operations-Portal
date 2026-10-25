@@ -10,7 +10,7 @@
 
 import { verifiedSession } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
 import { loadCurrentPerson } from '@/lib/directory/current-person'
 import { revalidatePath } from 'next/cache'
 
@@ -55,7 +55,7 @@ export async function uploadMyAvatar(formData: FormData): Promise<Result<{ url: 
   const admin = createAdminClient()
   const bytes = new Uint8Array(await file.arrayBuffer())
   const path = `${personId}.jpg`
-  const { error: upErr } = await admin.storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', upsert: true })
+  const { error: upErr } = await createUploadClient().storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', upsert: true })
   if (upErr) { console.error('[avatar] upload:', upErr.message); return { ok: false, error: 'The photo could not be saved. Try again.' } }
 
   const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path)

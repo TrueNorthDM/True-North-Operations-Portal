@@ -18,7 +18,7 @@ import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, createUploadClient } from '@/lib/supabase/admin'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { announceReimbursementReportRequested, announceReimbursementRequested } from '@/lib/timeclock/clocky-notify'
 import { localDate } from '@/lib/timeclock/format'
@@ -89,14 +89,15 @@ export async function POST(request: Request) {
   const name = String(form.get('name') ?? '').trim().slice(0, 120) || null
 
   const c = createAdminClient()
+  const files = createUploadClient()
   const paths: string[] = []
   const undo = async (reportId: number | null) => {
-    if (paths.length) await c.storage.from('receipts').remove(paths)
+    if (paths.length) await files.storage.from('receipts').remove(paths)
     if (reportId) await c.from('reimbursement_reports').delete().eq('id', reportId)
   }
   for (const it of items) {
     const path = `${v.personId}/${randomUUID()}.${it.ext}`
-    const { error } = await c.storage.from('receipts').upload(path, Buffer.from(await it.file.arrayBuffer()), { contentType: it.file.type, upsert: false })
+    const { error } = await files.storage.from('receipts').upload(path, Buffer.from(await it.file.arrayBuffer()), { contentType: it.file.type, upsert: false })
     if (error) { console.error('[reimbursement] upload:', error.message); await undo(null); return no('The receipts were not saved. Try again in a moment.', 500) }
     paths.push(path)
   }
