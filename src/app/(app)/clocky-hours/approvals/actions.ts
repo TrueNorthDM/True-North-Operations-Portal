@@ -30,7 +30,7 @@ import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
 import { allowanceStatus } from '@/lib/timeclock/allowance'
 import { loadConnections } from '@/lib/integrations/connections'
-import { REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
+import { NOTE_TO_APPROVE, REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
 import { formatDuration, recordedSeconds, roundSeconds } from '@/lib/timeclock/rounding'
 import { holidaysBetween, offDays } from '@/lib/timeclock/time-off'
 import { enqueue, retryJobs } from '@/lib/integrations/outbox'
@@ -512,7 +512,7 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     // Over the allowance: the invoice approver decides, and says why.
     if (step.step === 'both' || step.step === 'invoice') {
       const over = await overFor(t.personId, t.start, t.end)
-      if (over > 0 && !note) return fail(`${formatDuration(over)} over the allowance were not approved in advance. Write a note to approve.`)
+      if (over > 0 && !note) return fail(`${formatDuration(over)} over the allowance were not approved in advance. ${NOTE_TO_APPROVE}`)
     }
     const at = new Date().toISOString()
     const patch = next === 'hours_approved'

@@ -79,6 +79,8 @@ interface PanelProps {
   toast: (t: Toast | null) => void
   /** Where focus goes back on close. */
   closeRef?: React.RefObject<HTMLElement | null>
+  /** Opened by Home's "Clock out": run the clock out at once, through its usual gate for missing fields. */
+  startOut?: boolean
 }
 
 export function ClockPanel(props: PanelProps) {
@@ -117,7 +119,7 @@ export function ClockPanel(props: PanelProps) {
   return <PanelWithData {...props} data={data} box={box} />
 }
 
-function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffline, onClose, refresh, optimistic, toast, box }: PanelProps & {
+function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffline, onClose, refresh, optimistic, toast, box, startOut }: PanelProps & {
   data: ClockPanelData
   box: React.RefObject<HTMLDivElement | null>
 }) {
@@ -215,6 +217,16 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
       await refresh()
     }).then(r => { if (!r.ok && (r as Fail).missing) set({ gate: { kind: 'out' } }) })
   }
+
+  // Home's banner asked for the clock out: once, when the panel opens on a running clock.
+  const outAsked = useRef(false)
+  const clockOutRef = useRef(clockOut)
+  useEffect(() => { clockOutRef.current = clockOut })
+  useEffect(() => {
+    if (!startOut || outAsked.current || !running) return
+    outAsked.current = true
+    clockOutRef.current()
+  }, [startOut, running])
 
   const gateGo = () => {
     const g = ui.gate

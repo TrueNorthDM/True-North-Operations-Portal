@@ -119,6 +119,9 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const work = recent.filter(e => e.kind !== 'absence')
   const counted = (e: EntryRow) => entrySeconds(e, now)
   const todaySeconds = work.filter(e => e.entry_date === today).reduce((s, e) => s + counted(e), 0)
+  const todaySpans = work.filter(e => e.entry_date === today && e.started_at)
+    .map(e => ({ start: (e.started_at_real ?? e.started_at)!, end: e.ended_at ? e.ended_at_real ?? e.ended_at : null }))
+    .sort((a, b) => a.start.localeCompare(b.start))
   const weekSeconds = work.filter(e => e.entry_date >= week.start && e.entry_date <= week.end).reduce((s, e) => s + counted(e), 0)
 
   // The hours allowance (Clocky part 2, 10B): this week or month against the allowance plus the extra hours approved.
@@ -267,6 +270,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     today,
     todayLabel: dayLabel(today),
     todaySeconds,
+    todaySpans,
     weekSeconds,
     allowance,
     running: runningView,

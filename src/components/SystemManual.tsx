@@ -55,7 +55,7 @@ const TOC = [
 ]
 
 const RAIL = [
-  { icon: 'home', name: 'Home', desc: 'Your landing page, My Team and My Work at a glance.', admin: false },
+  { icon: 'home', name: 'Home', desc: 'What you need to do today: your day and clock, what needs you, your pay period, the Agenda.', admin: false },
   { icon: 'work', name: 'My Work', desc: 'A panel of three views: My Work, Report and My Team. With only one granted, it goes straight there.', admin: false },
   { icon: 'book', name: 'Chat · Emails', desc: 'Two places coming soon: the company chat, and the mailboxes you hold.', admin: false },
   { icon: 'tools', name: 'Tools', desc: 'A panel in two groups. SEO Tools: Href Links, and seven tools coming soon. Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team.', admin: false },
@@ -73,7 +73,7 @@ const SRC: Record<string, { color: string; bg: string }> = {
   none: { color: '#8593a4', bg: 'var(--color-subtle)' },
 }
 const PAGES = [
-  { icon: 'home', name: 'Home', desc: 'The landing screen. Surfaces your team at a glance and everything assigned to you, with quick jumps to the rest of the portal.', src: 'Monday', srcKey: 'monday' as const },
+  { icon: 'home', name: 'Home', desc: 'The landing screen, one question per level: what do I need to do today? The day banner with the clock, Needs you / My Work / Requests, the pay period, the Agenda, the i7 budget and Publishing goals (design_handoff_home, 25 October 2026).', src: 'Monday', srcKey: 'monday' as const },
   { icon: 'work', name: 'My Work', desc: 'Everything assigned to you across Monday in one list, in your team\'s priority order. Team leaders and admins set that order, by whole workspace, by board, or step by step; Admin, Access levels says who else can.', src: 'Monday', srcKey: 'monday' as const },
   { icon: 'dash', name: 'Publishing Goals · Boards', desc: 'Operations tools. Publishing Goals tracks publishing pace versus target for AAAF, HFA and Bessemeters over a chosen timeframe; Boards is the Monday boards review.', src: 'Monday', srcKey: 'monday' as const, sub: ['Publishing Goals', 'Boards'] },
   { icon: 'proj', name: 'Href Links', desc: 'An SEO tool: manages the hreflang tag workflow for the AAAF and HFA WordPress sites, the one place the portal writes back to Monday.', src: 'Monday + WordPress', srcKey: 'mixed' as const },

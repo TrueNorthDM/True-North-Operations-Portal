@@ -1,9 +1,12 @@
 /**
- * The last four complete weeks of publishing, per board, for the Home widget;
- * the last two complete cycles for a board counted in two-week cycles
- * (Bessemeters, 15 October 2026; publishing-cycles.ts).
+ * The last five complete weeks of publishing, per board, for the Home widget;
+ * the last five complete cycles for a board counted in two-week cycles
+ * (Bessemeters, 15 October 2026; publishing-cycles.ts). Five, not four, and
+ * every targeted language per row, not English alone, since the Home redesign
+ * (owner, 25 October 2026): the card draws English as a chart and every other
+ * language as a row of its own.
  *
- * Week by week rather than four weeks added together, because a month that hits
+ * Week by week rather than five weeks added together, because a month that hits
  * its target can hide a week that missed badly, and the target is set per week.
  *
  * Complete weeks only, Monday to Sunday in New York, ending with the Sunday
@@ -45,6 +48,14 @@ import type { SnapshotBoard } from './types'
 import { MONTH_SHORT } from '@/lib/format/months'
 import { zoneDate } from '@/lib/notifications/schedule'
 
+/** One language in one row: published against its target that row. */
+export interface PublishingLangWeek {
+  /** The language key, exactly as `publishing_target_periods` spells it: "Spanish". */
+  lang: string
+  done: number
+  target: number
+}
+
 /** One row of the card: a week, or a two-week cycle on a board counted in cycles. */
 export interface PublishingWeek {
   /** The Monday, as YYYY-MM-DD: the week's, or the cycle's first. */
@@ -62,6 +73,12 @@ export interface PublishingWeek {
    * the whole miss.
    */
   en: { done: number; target: number } | null
+  /**
+   * Every language with a target that row, English included, English first,
+   * then the larger targets, then by name. `en` stays beside it for the
+   * notifications and anything else that only wants English.
+   */
+  langs: PublishingLangWeek[]
   /** Published that week in a language with no target, or none: shown beside the score, not in it. */
   untargeted: number
 }
@@ -76,17 +93,28 @@ export interface PublishingBoardWeeks {
   perPeriod: number
   /** The English slice of `perPeriod`, 0 when the board has no English target. */
   enPerPeriod: number
-  /** Oldest first: four weeks, or up to two cycles. */
+  /** Oldest first: five weeks, or up to five cycles. */
   weeks: PublishingWeek[]
   /** How many of the rows met their target, all languages together. */
   hits: number
   /** How many of the rows met the English target alone. */
   enHits: number
   /**
+   * Per language, how many rows met that language's target: the pill on each
+   * language row. A row where the language had no target does not count.
+   */
+  langHits: Record<string, number>
+  /**
    * A board counted in cycles whose first cycle has not ended yet: the Sunday
    * it ends, YYYY-MM-DD, for "First cycle ends Oct 26". Null otherwise.
    */
   firstCycleEnds: string | null
+  /**
+   * The same board's first cycle while it runs, counted up to now, for "0 of
+   * 1 so far" (owner, 25 October 2026). Null once a cycle has ended, and on a
+   * weekly board.
+   */
+  firstCycle: PublishingWeek | null
 }
 
 /**
@@ -98,22 +126,35 @@ export interface PublishingBoardWeeks {
  */
 const ENGLISH = 'English'
 
+/**
+ * English first, then the larger targets, then by name. The targets table has
+ * no order of its own, and a card that reshuffles its rows between two loads
+ * reads as if something changed.
+ */
+function langOrder(a: PublishingLangWeek, b: PublishingLangWeek): number {
+  if (a.lang === ENGLISH || b.lang === ENGLISH) return a.lang === ENGLISH ? -1 : 1
+  return b.target - a.target || a.lang.localeCompare(b.lang)
+}
+
 /** The board's name without its " · Publishing" suffix, which the widget has no room for. */
 function clientName(name: string): string {
   return name.split('·')[0].trim()
 }
 
+/** How many complete rows the card shows: five weeks, or five cycles. */
+export const ROWS = 5
+
 /**
- * The last four COMPLETE weeks, oldest first, Monday to Sunday in New York.
+ * The last `n` COMPLETE weeks, oldest first, Monday to Sunday in New York.
  *
  * Anchored on the most recent Sunday that has already passed, so a Monday
  * morning shows the week that just ended rather than one still running. Cut
  * on the UTC day, Sunday evening in New York already read as the next week.
  */
-export function lastFourWeeks(now: Date): { start: Date; end: Date }[] {
+export function lastWeeks(now: Date, n: number): { start: Date; end: Date }[] {
   const thisMonday = weekStartDay(now)
   const out: { start: Date; end: Date }[] = []
-  for (let back = 4; back >= 1; back--) out.push(weekBounds(addDays(thisMonday, -7 * back)))
+  for (let back = n; back >= 1; back--) out.push(weekBounds(addDays(thisMonday, -7 * back)))
   return out
 }
 
@@ -139,8 +180,8 @@ export function weekLabel(start: Date, end: Date): string {
 const weekDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 
 /**
- * Which rows: "complete" is the card (the last four complete weeks, or the
- * last two complete cycles); "current" is the week or cycle still running,
+ * Which rows: "complete" is the card (the last five complete weeks, or the
+ * last five complete cycles); "current" is the week or cycle still running,
  * up to now, which the behind-pace notification asks about.
  */
 export type RowsMode = 'complete' | 'current'
@@ -155,14 +196,14 @@ export function boardSpans(cadence: Cadence, now: Date, mode: RowsMode): Span[] 
       const cy = cycleOf(cadence, today)
       return cy ? [{ start: cycleBounds(cy).start, end: now, label: cycleLabel(cy), monday: cy.start }] : []
     }
-    return lastCompleteCycles(cadence, today, 2).map(cy => ({ ...cycleBounds(cy), label: cycleLabel(cy), monday: cy.start }))
+    return lastCompleteCycles(cadence, today, ROWS).map(cy => ({ ...cycleBounds(cy), label: cycleLabel(cy), monday: cy.start }))
   }
   if (mode === 'current') {
     const monday = weekStartDay(now)
     const { start, end } = weekBounds(monday)
     return [{ start, end: now, label: weekLabel(start, end), monday }]
   }
-  return lastFourWeeks(now).map(({ start, end }) => ({ start, end, label: weekLabel(start, end), monday: weekStartDay(start) }))
+  return lastWeeks(now, ROWS).map(({ start, end }) => ({ start, end, label: weekLabel(start, end), monday: weekStartDay(start) }))
 }
 
 /**
@@ -187,7 +228,7 @@ export function boardRows(input: {
   // total: the widget answers "did the client's week land". English is the
   // one language pulled back out, because it is the one that goes missing
   // unnoticed.
-  const counted: PublishingWeek[] = spans.map(({ start, end, label, monday }) => {
+  const count = ({ start, end, label, monday }: Span): PublishingWeek => {
     const langTargets = targetsForWeek(rules, monday)[boardId]
     const target = Object.values(langTargets ?? {}).reduce((sum, n) => sum + n, 0)
     const enTarget = langTargets?.[ENGLISH] ?? 0
@@ -197,22 +238,39 @@ export function boardRows(input: {
       ? computePublishingMetrics(items, { [boardId]: langTargets }, start, end, isPublisher, rules.paused).boards[0]
       : undefined
     const en = stat?.langs.find(l => l.lang === ENGLISH)
+    // A language whose target is 0 that row has no target, the same as one
+    // with no row at all, and gets no cell.
+    const langs = (stat?.langs ?? [])
+      .filter(l => l.target > 0)
+      .map(l => ({ lang: l.lang, done: l.done, target: l.target }))
+      .sort(langOrder)
     return {
       start: monday,
       label,
       done: stat?.done ?? 0,
       target,
       en: enTarget > 0 ? { done: en?.done ?? 0, target: enTarget } : null,
+      langs,
       untargeted: stat?.untargeted ?? 0,
     }
-  })
+  }
+  const counted = spans.map(count)
   const latest = counted[counted.length - 1]
 
-  // No cycle has ended yet, so the card names the day the first one will.
+  // No cycle has ended yet, so the card names the day the first one will,
+  // and counts the first cycle so far (before it starts, 0 of its target).
   let firstCycleEnds: string | null = null
+  let firstCycle: PublishingWeek | null = null
   if (isCycled(cadence) && mode === 'complete' && counted.length === 0) {
     const today = zoneDate(now, PUBLISHING_ZONE)
-    firstCycleEnds = cycleOf(cadence, today)?.end ?? firstCycleEnd(cadence)
+    const cy = cycleOf(cadence, today) ?? { start: cadence.start, end: firstCycleEnd(cadence) ?? cadence.start }
+    firstCycleEnds = cy.end
+    firstCycle = count({ start: cycleBounds(cy).start, end: now, label: cycleLabel(cy), monday: cy.start })
+  }
+
+  const langHits: Record<string, number> = {}
+  for (const w of counted) {
+    for (const l of w.langs) langHits[l.lang] = (langHits[l.lang] ?? 0) + (l.done >= l.target ? 1 : 0)
   }
 
   return {
@@ -226,7 +284,9 @@ export function boardRows(input: {
     weeks: counted,
     hits: counted.filter(w => w.target > 0 && w.done >= w.target).length,
     enHits: counted.filter(w => w.en && w.en.done >= w.en.target).length,
+    langHits,
     firstCycleEnds,
+    firstCycle,
   }
 }
 

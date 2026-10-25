@@ -79,7 +79,7 @@ export async function getClockPanel(): Promise<Result<{ data: ClockPanelData }>>
   const access = await loadAccess()
   if (!access.can('clocky-hours')) return fail(NO_ACCESS)
   const v = await viewerFor(access)
-  if (!v) return fail('Your login is not linked to anyone in the Directory.')
+  if (!v) return fail('Your login is not linked to anyone in the Directory.', { unlinked: true })
   try {
     // A preview shows; it never stops anyone's clock.
     return { ok: true, data: await loadClockPanel(v, new Date(), { act: !(await getViewAs()) }) }

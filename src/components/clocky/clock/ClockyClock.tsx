@@ -20,6 +20,7 @@ import { ClockButton } from './ClockButton'
 import { ClockPanel, type PanelUi, type Toast } from './ClockPanel'
 import { ClockToast, type Phone } from './ClockParts'
 import { useLiveNow, usePhone } from './hooks'
+import { CLOCK_INTENT, publishClock, type ClockIntent } from './clock-bus'
 
 /** The tab title Clocky writes, so it knows its own from the page's. */
 const OURS = /^\d+:\d{2} · .+ · True North$/
@@ -44,8 +45,8 @@ export function ClockyClock({
   /** Write the timer into the browser tab's title while the clock runs. */
   setsTitle?: boolean
 }) {
-  const [state, setState] = useState<{ data: ClockPanelData | null; error: string | null }>(() =>
-    initial.ok ? { data: initial.data, error: null } : { data: null, error: initial.error })
+  const [state, setState] = useState<{ data: ClockPanelData | null; error: string | null; unlinked?: boolean }>(() =>
+    initial.ok ? { data: initial.data, error: null } : { data: null, error: initial.error, unlinked: !!initial.unlinked })
   const data = state.data
   const narrow = usePhone(device)
   // In the app ('auto', not inside a design-check frame) the phone and desktop
@@ -62,7 +63,7 @@ export function ClockyClock({
     loaded.current = Date.now()
     try {
       const r = await api.load()
-      setState(s => (r.ok ? { data: r.data, error: null } : { data: s.data, error: r.error }))
+      setState(s => (r.ok ? { data: r.data, error: null } : { data: s.data, error: r.error, unlinked: !!r.unlinked }))
     } catch {
       // Offline: the clock keeps counting from what it has.
     }
@@ -82,6 +83,29 @@ export function ClockyClock({
     latest.then(r => { if (live && r.ok) setState({ data: r.data, error: null }) }, () => {})
     return () => { live = false }
   }, [latest])
+
+  // Home's day banner shows this same clock (clock-bus.ts): every change goes to it, a failed read too.
+  const unlinked = !!state.unlinked
+  useEffect(() => { if (!frameTop) publishClock({ data, error: state.error, unlinked }) }, [data, state.error, unlinked, frameTop])
+
+  // Its buttons open this panel: to clock in, to switch jobs, or to clock out.
+  const [intent, setIntent] = useState<ClockIntent | null>(null)
+  const openRef = useRef(onOpenChange)
+  useEffect(() => { openRef.current = onOpenChange })
+  useEffect(() => {
+    if (frameTop != null) return
+    const onIntent = (e: Event) => {
+      const want = (e as CustomEvent<ClockIntent>).detail
+      // A panel already open keeps its own state: close it so it opens fresh on the ask.
+      openRef.current(false)
+      setTimeout(() => { setIntent(want); openRef.current(true) }, 0)
+    }
+    window.addEventListener(CLOCK_INTENT, onIntent)
+    return () => window.removeEventListener(CLOCK_INTENT, onIntent)
+  }, [frameTop])
+  // The ask lasts while that panel is open; closed afterwards, a plain click opens it plainly.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) { setWasOpen(open); if (!open && wasOpen && intent) setIntent(null) }
 
   // The toast: 10 seconds with Undo, 5 without. A design check keeps its own.
   const [toast, setToastState] = useState<Toast | null>(initialToast ?? null)
@@ -141,7 +165,7 @@ export function ClockyClock({
       <ClockButton ref={btn} state={tb} phone={phone} open={open} onClick={() => onOpenChange(!open)} />
       {open && (
         <ClockPanel data={data} loadError={state.error} api={api} nowMs={nowMs} phone={phone} frameTop={frameTop}
-          initialUi={initialUi} forceOffline={forceOffline} onClose={() => onOpenChange(false)} refresh={refresh} optimistic={optimistic} toast={showToast} closeRef={btn} />
+          initialUi={intent === 'switch' ? { ...initialUi, view: 'choose', ret: 'switch', query: '' } : initialUi} startOut={intent === 'out'} forceOffline={forceOffline} onClose={() => onOpenChange(false)} refresh={refresh} optimistic={optimistic} toast={showToast} closeRef={btn} />
       )}
       {toast && (
         <ClockToast text={toast.text} error={toast.error} contained={frameTop != null} phone={phone}

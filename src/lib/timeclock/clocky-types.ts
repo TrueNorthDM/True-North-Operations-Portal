@@ -38,6 +38,8 @@ export interface Fail {
   stopped?: true
   /** 3H: what must be fixed before the period can be submitted. */
   attention?: AttentionItem[]
+  /** The clock's read: the login is linked to nobody in the Directory, so there is no clock to show. */
+  unlinked?: true
 }
 
 export type Ok<T extends object = Record<never, never>> = { ok: true } & T
@@ -154,6 +156,11 @@ export interface ClockPanelData {
   /** "Thu, Oct 15" */
   todayLabel: string
   todaySeconds: number
+  /**
+   * Today's clock-ins, real times, oldest first; `end` null while it runs.
+   * Home's day banner draws them as the gold bars (design_handoff_home, 25 October 2026).
+   */
+  todaySpans: { start: string; end: string | null }[]
   weekSeconds: number
   /** The hours allowance this week or month (Clocky part 2, 10B); null without one. */
   allowance: (import('./allowance').AllowanceStatus & { period: 'week' | 'month'; hours: number }) | null

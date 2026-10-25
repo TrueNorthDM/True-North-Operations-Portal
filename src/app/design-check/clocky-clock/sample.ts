@@ -133,6 +133,7 @@ const base = (o: Partial<ClockPanelData> = {}): ClockPanelData => ({
   today: '2026-10-15',
   todayLabel: 'Thu, Oct 15',
   todaySeconds: 0,
+  todaySpans: [],
   weekSeconds: H(31, 15),
   allowance: null,
   running: null,

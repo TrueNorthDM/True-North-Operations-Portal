@@ -15,22 +15,18 @@
  */
 
 import { useState, useEffect } from 'react'
-import { budgetStatus, BUDGET_STATUS_LABEL, type BudgetStatus } from '@/lib/tsheets/i7-view'
+import { budgetStatus } from '@/lib/tsheets/i7-view'
+import { BUDGET_GRADIENT, BUDGET_PILL } from './budget-style'
 import { money, moneySigned } from '@/lib/tsheets/format'
 import type { I7Carryover } from '@/lib/tsheets/types'
 import { MONTH_LONG } from '@/lib/format/months'
 
 const fmtMonth = (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? `${MONTH_LONG[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}` : ym)
 
-// The status and its words are the PDF's too (lib/tsheets/i7-view.ts).
-type Status = BudgetStatus
+// The status and its words are the PDF's too (lib/tsheets/i7-view.ts); the
+// pill's colours are shared with Home's compact card (budget-style.ts).
 const statusOf = budgetStatus
-const PILL: Record<Status, { cls: string; label: string }> = {
-  good: { cls: 'text-[#1E9E6A] bg-[#eafaf1] border-[#c3ead5]', label: BUDGET_STATUS_LABEL.good },
-  warn: { cls: 'text-amber-700 bg-amber-50 border-amber-200', label: BUDGET_STATUS_LABEL.warn },
-  bad: { cls: 'text-red-700 bg-red-50 border-red-200', label: BUDGET_STATUS_LABEL.bad },
-  none: { cls: 'text-slate-500 bg-slate-100 border-slate-200', label: BUDGET_STATUS_LABEL.none },
-}
+const PILL = BUDGET_PILL
 
 /** The budget-balance card: navy header + this month's total, balance left and
  *  the animated usage bar. Shared by the i7 report and the Home page. */
@@ -159,7 +155,7 @@ function Meter({ label, actual, budget }: { label: string; actual: number; budge
         <div
           className="relative h-2.5 rounded-full overflow-hidden"
           style={has
-            ? { backgroundImage: 'linear-gradient(90deg, #1E7D7F 0%, #31a39a 50%, #f59e0b 78%, #ef4444 100%)' }
+            ? { backgroundImage: BUDGET_GRADIENT }
             : { backgroundColor: '#eef0f3' }}
         >
           {/* grey mask over the not-yet-used portion */}

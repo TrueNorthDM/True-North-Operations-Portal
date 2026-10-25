@@ -9,24 +9,36 @@ export function Sunrise({
   anchorLeft = '50%',
   anchorTop = 60,
   glowAt = '50% 8%',
-}: { anchorLeft?: string; anchorTop?: number; glowAt?: string }) {
+  scale = 1,
+  moving = false,
+}: {
+  anchorLeft?: string
+  /** Pixels, or any CSS length (Home's day banner keeps it 130px above its foot, so a taller banner on a phone keeps it clear of the clock card). */
+  anchorTop?: number | string
+  glowAt?: string
+  /** Home's day banner draws it at 0.75 (design_handoff_home): the rays and rings shrink, the core stays 12px. */
+  scale?: number
+  /** It follows the time of day there: a new anchor slides over 1.2 seconds. */
+  moving?: boolean
+}) {
+  const R = (v: number) => v * scale
   return (
     <>
       {/* concentric elements anchored on the sun's centre */}
-      <div className="pointer-events-none absolute h-0 w-0" style={{ left: anchorLeft, top: anchorTop }}>
+      <div className="pointer-events-none absolute h-0 w-0" style={{ left: anchorLeft, top: anchorTop, ...(moving ? { transition: 'left 1.2s ease' } : {}) }}>
         <div
           className="tn-anim"
-          style={{ position: 'absolute', left: -330, top: -330, width: 660, height: 660, borderRadius: '50%', background: 'repeating-conic-gradient(from 0deg, rgba(242,196,10,.13) 0deg 1.6deg, transparent 1.6deg 15deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', maskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', animation: 'tn-spin 80s linear infinite' }}
+          style={{ position: 'absolute', left: R(-330), top: R(-330), width: R(660), height: R(660), borderRadius: '50%', background: 'repeating-conic-gradient(from 0deg, rgba(242,196,10,.13) 0deg 1.6deg, transparent 1.6deg 15deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', maskImage: 'radial-gradient(circle, transparent 26%, #000 40%, transparent 74%)', animation: 'tn-spin 80s linear infinite' }}
         />
         <div
           className="tn-anim"
-          style={{ position: 'absolute', left: -260, top: -260, width: 520, height: 520, borderRadius: '50%', background: 'repeating-conic-gradient(from 4deg, rgba(148,196,197,.10) 0deg 1deg, transparent 1deg 9deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', maskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', animation: 'tn-spin-rev 120s linear infinite' }}
+          style={{ position: 'absolute', left: R(-260), top: R(-260), width: R(520), height: R(520), borderRadius: '50%', background: 'repeating-conic-gradient(from 4deg, rgba(148,196,197,.10) 0deg 1deg, transparent 1deg 9deg)', WebkitMaskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', maskImage: 'radial-gradient(circle, transparent 34%, #000 48%, transparent 78%)', animation: 'tn-spin-rev 120s linear infinite' }}
         />
         {[0, 1.8, 3.6].map((delay, i) => (
           <div
             key={i}
             className="tn-anim"
-            style={{ position: 'absolute', left: -270, top: -270, width: 540, height: 540, borderRadius: '50%', border: `1px solid ${i === 1 ? 'rgba(242,196,10,.4)' : 'rgba(148,196,197,.5)'}`, animation: `tn-ripple 5.4s ease-out infinite`, animationDelay: `${delay}s` }}
+            style={{ position: 'absolute', left: R(-270), top: R(-270), width: R(540), height: R(540), borderRadius: '50%', border: `1px solid ${i === 1 ? 'rgba(242,196,10,.4)' : 'rgba(148,196,197,.5)'}`, animation: `tn-ripple 5.4s ease-out infinite`, animationDelay: `${delay}s` }}
           />
         ))}
         <div

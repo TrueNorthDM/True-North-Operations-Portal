@@ -27,6 +27,12 @@ export const OVER_24H = 'No entry can be longer than 24 hours.'
 /** Server-side only: the screens keep Save and Delete off until a reason is typed. */
 export const REASON_REQUIRED = 'Type the reason for the change first.'
 
+/**
+ * How approveTimesheet's refusal ends when hours over the allowance need a
+ * note: Home's side panel opens its note field when an answer ends with it.
+ */
+export const NOTE_TO_APPROVE = 'Write a note to approve.'
+
 /** The reason as it is kept (trimmed, at most 2,000 characters), or null when there is none. */
 export function reasonOf(v: unknown): string | null {
   const s = String(v ?? '').trim().slice(0, 2000)

@@ -88,9 +88,15 @@ type SubRow = {
 }
 type InvRow = { id: number; number: string; submission_id: number | null; person_id: string; total: number; kind: string; state: string; period_start: string; period_end: string; created_at: string; approved_by: string | null; approved_at: string | null }
 
-export async function loadQueue(v: Viewer, now = new Date()): Promise<QueueData> {
+/**
+ * Home's Needs you (design_handoff_home, 25 October 2026) asks for "Waiting for
+ * you" alone: `waitingOnly` reads nothing decided (the queue's rows stay the
+ * same, only the Decided tab is empty), and `requests: false` leaves time off,
+ * reimbursements and extra hours to their own read.
+ */
+export async function loadQueue(v: Viewer, now = new Date(), opts: { waitingOnly?: boolean; requests?: boolean } = {}): Promise<QueueData> {
   const c = db()
-  const since = new Date(now.getTime() - DECIDED_DAYS * 86_400_000).toISOString()
+  const since = opts.waitingOnly ? now.toISOString() : new Date(now.getTime() - DECIDED_DAYS * 86_400_000).toISOString()
   const dir = await loadDirectory()
   const settings = await loadRouteSettings()
   const [legacy, subs, noTs, requests] = await Promise.all([
@@ -101,7 +107,7 @@ export async function loadQueue(v: Viewer, now = new Date()): Promise<QueueData>
     // Fixed, no timesheet: the invoice alone is the request.
     allRows<InvRow>((a, b) => c.from('invoices').select('id, number, submission_id, person_id, total, kind, state, period_start, period_end, created_at, approved_by, approved_at')
       .eq('kind', 'fixed_no_timesheet').or(`state.eq.waiting,approved_at.gte.${since}`).order('id').range(a, b), 'Invoices could not be read'),
-    loadRequestRows(v, dir, since, settings, now),
+    opts.requests === false ? Promise.resolve([]) : loadRequestRows(v, dir, since, settings, now),
   ])
   // A failed read throws: a missing invoice would read as "Hours only", missing lines as no reimbursements.
   const subIds = subs.map(s => s.id)

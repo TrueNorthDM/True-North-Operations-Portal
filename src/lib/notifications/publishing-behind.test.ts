@@ -15,8 +15,8 @@ const { expectedInCycle, expectedSoFar, makeCtx, publishingDrafts } = await impo
 
 const board = (over: Partial<PublishingBoardWeeks>): PublishingBoardWeeks => ({
   boardId: '1764094550', name: 'Bessemeters', cycleWeeks: 2, perPeriod: 10, enPerPeriod: 10,
-  weeks: [{ start: '2026-10-12', label: 'Oct 12 to Oct 25', done: 3, target: 10, en: { done: 3, target: 10 }, untargeted: 0 }],
-  hits: 0, enHits: 0, firstCycleEnds: null, ...over,
+  weeks: [{ start: '2026-10-12', label: 'Oct 12 to Oct 25', done: 3, target: 10, en: { done: 3, target: 10 }, langs: [{ lang: 'English', done: 3, target: 10 }], untargeted: 0 }],
+  hits: 0, enHits: 0, langHits: { English: 0 }, firstCycleEnds: null, firstCycle: null, ...over,
 })
 
 describe('expectedInCycle', () => {
@@ -53,14 +53,14 @@ describe('publishingDrafts', () => {
   })
 
   it('says nothing for a cycle on pace', async () => {
-    weeks.boards = [board({ weeks: [{ start: '2026-10-12', label: '', done: 7, target: 10, en: null, untargeted: 0 }] })]
+    weeks.boards = [board({ weeks: [{ start: '2026-10-12', label: '', done: 7, target: 10, en: null, langs: [], untargeted: 0 }] })]
     expect(await publishingDrafts(ctx())).toEqual([])
   })
 
   it('keeps the weekly rule for a weekly board', async () => {
     weeks.boards = [board({
       boardId: '462251934', name: 'AskAnAdventistFriend', cycleWeeks: 1, perPeriod: 10,
-      weeks: [{ start: '2026-10-19', label: 'Oct 19-25', done: 3, target: 10, en: null, untargeted: 0 }],
+      weeks: [{ start: '2026-10-19', label: 'Oct 19-25', done: 3, target: 10, en: null, langs: [], untargeted: 0 }],
     })]
     const ds = await publishingDrafts(ctx())
     expect(expectedSoFar(10, '2026-10-21')).toBe(4)
