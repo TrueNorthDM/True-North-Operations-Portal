@@ -19,8 +19,9 @@ import type { ResolvedEntry } from '@/lib/access/nav'
  *   monday-unlinked      Monday accounts waiting on an answer, not the "Removed account" placeholders (Monday accounts)
  *   automations-down     services down, warning, or checks gone stale (Automations)
  *   no-rate              contractors whose invoice cannot be made for want of a rate (Rates & Costs)
+ *   to-pay               Finance: approved invoices and reimbursement documents waiting to be paid (Invoices)
  */
-export const NAV_COUNTS = ['approvals', 'my-late', 'integration-errors', 'monday-unlinked', 'automations-down', 'no-rate'] as const
+export const NAV_COUNTS = ['approvals', 'my-late', 'integration-errors', 'monday-unlinked', 'automations-down', 'no-rate', 'to-pay'] as const
 export type NavCount = (typeof NAV_COUNTS)[number]
 
 /** What the number on a panel row means, for its pill's title and the row's spoken label. */
@@ -31,6 +32,7 @@ export const NAV_COUNT_LABEL: Record<NavCount, string> = {
   'monday-unlinked': 'Accounts to link',
   'automations-down': 'Down or stale',
   'no-rate': 'Contractors with no rate',
+  'to-pay': 'To pay',
 }
 
 /** A rail icon's number: past 99 it reads "99+", which still says "a lot" and keeps the pill small. */

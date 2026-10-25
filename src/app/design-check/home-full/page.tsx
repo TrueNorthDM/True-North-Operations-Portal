@@ -2,7 +2,7 @@
 // the prototype's sample, with its switches (level, Pay period, Bessemeters),
 // in the page's own layout inside the padding MainContent gives a page. The
 // same Home inside the portal's shell: /design-check/rail?page=home.
-// /design-check/home-full?home=super|admin|lead|emp|con&pay=auto|running|today|late|sent&bess=0|1
+// /design-check/home-full?home=super|admin|lead|emp|con|fin&pay=auto|running|today|late|sent&bess=0|1
 
 import { NewHome, HomeSwitches, readChoice } from './NewHome'
 

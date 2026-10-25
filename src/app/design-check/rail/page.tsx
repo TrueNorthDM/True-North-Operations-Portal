@@ -38,9 +38,10 @@ export const dynamic = 'force-dynamic'
 // admin is a Super Admin here (the first checks were written as one); admin-level is the Admin level.
 const ROLE: Record<string, AccessLevel> = { user: 'user', lead: 'team_leader', admin: 'super_admin', super: 'super_admin', 'admin-level': 'admin' }
 const GRANTS = new Set(['publishing', 'href-links', 'i7-budget'])
-// One of each, so every hub shows a number: North Time 3, Requests 3 (the same
-// Approvals, once), My Work 5, People 2, Admin 2 + 4 + 1 = 7.
-const SAMPLE_COUNTS: Record<NavCount, number> = { approvals: 3, 'my-late': 5, 'integration-errors': 2, 'monday-unlinked': 4, 'automations-down': 1, 'no-rate': 2 }
+// One of each, so every hub shows a number: North Time 3 + 4 = 7 (Approvals, and
+// To pay on Invoices), Requests 3 (the same Approvals, once), My Work 5, People 2,
+// Admin 2 + 4 + 1 = 7.
+const SAMPLE_COUNTS: Record<NavCount, number> = { approvals: 3, 'my-late': 5, 'integration-errors': 2, 'monday-unlinked': 4, 'automations-down': 1, 'no-rate': 2, 'to-pay': 4 }
 
 export default async function RailDesignCheck({ searchParams }: { searchParams: Promise<{ level?: string; open?: string; hub?: string; page?: string; twoStep?: string; approvals?: string; counts?: string; home?: string; pay?: string; bess?: string }> }) {
   if (process.env.NODE_ENV === 'production') notFound()
@@ -48,18 +49,19 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
   const { open, hub, page, twoStep, approvals, counts } = sp
   // On Home, the prototype's level switch decides the shell's level too.
   const choice = readChoice(sp)
-  const level = page === 'home' ? ({ super: 'admin', admin: 'admin-level', lead: 'lead', emp: 'user', con: 'user' } as const)[choice.level] : sp.level ?? 'admin'
+  const level = page === 'home' ? ({ super: 'admin', admin: 'admin-level', lead: 'lead', emp: 'user', con: 'user', fin: 'user' } as const)[choice.level] : sp.level ?? 'admin'
   const twoStepDaysLeft = twoStep ? Number(twoStep) : null
   const role = ROLE[level] ?? 'super_admin'
   const can = canAs(role, { teams: [['team', role === 'team_leader']], rules: rulesWithTools(GRANTS) })
   const canTool = can
   const rail = buildRail({ can, canTool })
   // Always fixed here: a design check never asks the server for counts.
-  // On Home, the rail counts what the Home sample shows: its decisions and its late steps.
+  // On Home, the rail counts what the Home sample shows: its decisions, its late steps and Finance's To pay.
   const home = needsOf(choice.level)
   const homeCounts: Partial<Record<NavCount, number>> = {
     approvals: home.needs.rows.filter(r => r.kind === 'approval' || r.kind === 'request').length,
     'my-late': (home.work?.rows ?? []).filter(r => r.due?.tone === 'late').length,
+    'to-pay': home.needs.rows.filter(r => r.kind === 'pay').length,
   }
   const startCounts: Partial<Record<NavCount, number>> = counts === 'big' ? { ...SAMPLE_COUNTS, approvals: 140 }
     : counts ? SAMPLE_COUNTS

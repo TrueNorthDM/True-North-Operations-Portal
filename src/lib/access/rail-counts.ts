@@ -10,6 +10,7 @@
  *   monday-unlinked      Monday accounts' "Waiting on an answer" (worklist/links.ts)
  *   automations-down     the Automations header's problems, stale checks included (health/summary.ts)
  *   no-rate              contractors invoiceBlocker would refuse (invoices-data.ts)
+ *   to-pay               Finance's invoices and reimbursement documents to pay, Home's To pay rows (invoices-data.ts countToPay)
  *
  * Read for what the person sees, so a View Stage preview shows the previewed
  * level's numbers (loadAccess, as the pages render). A count the person may
@@ -28,7 +29,7 @@ import { perfRun } from '@/lib/perf'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { countWaiting } from '@/lib/timeclock/clocky-approvals'
 import { countRetryable } from '@/lib/timeclock/company-settings'
-import { countMissingRates } from '@/lib/timeclock/invoices-data'
+import { countMissingRates, countToPay } from '@/lib/timeclock/invoices-data'
 import { countLate } from '@/lib/monday/worklist/late'
 import { WORK_ZONE } from '@/lib/monday/worklist/list-view'
 import { countWaitingOnAnswer } from '@/lib/monday/worklist/links'
@@ -39,6 +40,7 @@ import { healthSummary } from '@/lib/health/summary'
  * What a person needs to be shown each number: the page it leads to, and for
  * failed jobs the right to try them again (only Super Admins have the button).
  * Rates & Costs is money, so its count is for d-rates alone: never a Team Leader.
+ * To pay sits on Invoices and is Finance's alone: the counter asks who is Finance.
  */
 export const COUNT_NEEDS: Record<NavCount, readonly string[]> = {
   approvals: ['clocky-approvals'],
@@ -47,6 +49,7 @@ export const COUNT_NEEDS: Record<NavCount, readonly string[]> = {
   'monday-unlinked': ['monday-accounts'],
   'automations-down': ['automations'],
   'no-rate': ['d-rates'],
+  'to-pay': ['clocky-invoices'],
 }
 
 export const mayCount = (can: Access['can'], key: NavCount): boolean => COUNT_NEEDS[key].every(k => can(k))
@@ -69,6 +72,7 @@ const COUNTERS: Record<NavCount, (access: Access, now: Date) => Promise<number>>
     return readError ? 0 : healthSummary(results, now).problems.length
   },
   'no-rate': () => countMissingRates(),
+  'to-pay': access => countToPay(access),
 }
 
 /** The asked counts, read side by side; one [perf] line says how long each took. */

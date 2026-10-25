@@ -18,6 +18,10 @@
  *               ck-timeoff and rq-decide
  *   Invoices    the fixed-pay invoices the 1st makes by itself and sends to
  *               the viewer (invoices-cron.ts), in the week before; informs only
+ *   To pay      Finance alone (pay-terms.ts paysWhat): every approved invoice
+ *               (clocky-invoices) and every reimbursement document waiting
+ *               (rq-reimbursements), by due day; Mark paid runs the pages'
+ *               own markInvoicePaid and markRmbPaid
  *   My Work     the person's own My Work list, due within 7 days or late, by
  *               date; New York's day, as My Work works it out; my-work
  *   Requests    what the person asked for and where it is: time off,
@@ -48,13 +52,14 @@ import { loadApprovers } from '@/lib/timeclock/approvers'
 import { db, loadDirectory, viewerFor, type Directory, type Viewer } from '@/lib/timeclock/clocky-context'
 import { goesToLabel, teamLeadNames } from '@/lib/timeclock/clocky-requests'
 import { dateLabel, dayLabel, localDate, rangeLabel, stampLabel } from '@/lib/timeclock/format'
-import { loadPayTerms, loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
+import { moneyTotal, money, usd } from '@/lib/timeclock/invoice-doc'
+import { loadInvoiceSettings, loadPayTerms, loadRouteSettings, loadRoutes, paysWhat } from '@/lib/timeclock/pay-terms'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
 import { loadRequestRows, type CardRow } from '@/lib/timeclock/request-cards'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { currentStep, invoiceApprover, type TimesheetState } from '@/lib/timeclock/routing'
 import { periodLabel } from '@/lib/timeclock/periods'
-import { byDue, dueOnDay, dueSince, dueToday, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
+import { byDue, dueOnDay, dueSince, dueToday, payDocumentRow, payInvoiceRow, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
 
 const APPROVALS = '/clocky-hours/approvals'
 const AUTOMATIONS = '/admin/automations'
@@ -81,7 +86,13 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
   // A read that failed is not a login linked to nobody: the first fails each kind that
   // needs the person, the second skips them and says so once (audit, 25 October 2026).
   let viewerFailed = false
-  const v = await viewerFor(access).catch(e => { console.error('[home] needs you, viewer:', (e as Error).message); viewerFailed = true; return null })
+  // Who is Finance (Company settings > Invoices). Unread, nobody gets To pay rows this
+  // time and the log says why: a line about paying would reach people who never pay.
+  const [v, settings] = await Promise.all([
+    viewerFor(access).catch(e => { console.error('[home] needs you, viewer:', (e as Error).message); viewerFailed = true; return null }),
+    loadInvoiceSettings().catch(e => { console.error('[home] needs you, invoice settings:', (e as Error).message); return null }),
+  ])
+  const pays = settings ? paysWhat(access, settings) : { invoices: false, documents: false }
   const unlinked = !v && !viewerFailed
   const zone = v?.zone ?? WORK_ZONE
   const today = localDate(now, zone)
@@ -104,13 +115,15 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
   const decides = access.can('ck-timeoff') || access.can('rq-decide')
   const approvalsOpen = access.can('clocky-approvals')
   const viewerKinds = [approvalsOpen, decides, access.can('my-work'), access.can('rq-time-off'), access.can('rq-reimbursements'), access.can('rq-extra-hours'), access.can('clocky-hours'), access.can('clocky-invoices')]
-  const [system, invites, approvals, decisions, invoices, work, ...mine] = await Promise.all([
+  const [system, invites, approvals, decisions, invoices, payInv, payDocs, work, ...mine] = await Promise.all([
     // Every System row leads to Automations: no rows for who cannot open it (audit, 25 October 2026).
     read('system', { text: 'System health could not be read just now. Open Automations to see it.', href: AUTOMATIONS }, access.can('home-health') && access.can('automations'), () => systemRows(access, zone, now)),
     read('access', { text: 'Invitations could not be read just now.' }, access.can('d-portal'), () => accessRows(access, zone, today)),
     read('approvals', retry('Approvals could not be read just now.', 'Approvals', APPROVALS, approvalsOpen), needsViewer(approvalsOpen), withViewer(x => approvalRows(x, today, now))),
     read('requests to decide', retry('Requests to decide could not be read just now.', 'Approvals', APPROVALS, approvalsOpen), needsViewer(decides), withViewer(x => decisionRows(x, today, now))),
     read('fixed invoices', { text: 'The fixed-pay invoices of the 1st could not be read just now.' }, needsViewer(approvalsOpen), withViewer(x => invoiceRows(x, today, now))),
+    read('invoices to pay', retry('Invoices to pay could not be read just now.', 'Invoices', INVOICES, true), pays.invoices, () => payInvoices(zone, today)),
+    read('documents to pay', { text: 'Reimbursement documents to pay could not be read just now.' }, pays.documents, () => payDocuments(zone, today)),
     read('my work', retry('My Work could not be read just now.', 'My Work', MY_WORK, true), needsViewer(access.can('my-work')), withViewer(x => workRows(x, now))),
     read('own time off', { text: 'Your time off could not be read just now.' }, needsViewer(access.can('rq-time-off')), withViewer(x => myTimeOff(x, now))),
     read('own reimbursements', { text: 'Your reimbursements could not be read just now.' }, needsViewer(access.can('rq-reimbursements')), withViewer(x => myReimbursements(x, now))),
@@ -127,13 +140,14 @@ export async function loadNeedsYou(now: Date = new Date()): Promise<NeedsYouData
     return { rows: sort ? rows.sort(sort) : rows, errors: uniqueErrors([...extra, ...parts.map(p => p.error)]) }
   }
   return {
-    needs: tab([system, invites, approvals, decisions, invoices], byDue, unlinked && viewerKinds.some(Boolean) ? [{ text: NOT_LINKED }] : []),
+    needs: tab([system, invites, approvals, decisions, invoices, payInv, payDocs], byDue, unlinked && viewerKinds.some(Boolean) ? [{ text: NOT_LINKED }] : []),
     work: access.can('my-work') ? tab([work]) : null,
     // Waiting first, then done; each kind already newest first.
     mine: (() => {
       const t = tab(mine)
       return { ...t, rows: [...t.rows.filter(r => r.mine?.state === 'wait'), ...t.rows.filter(r => r.mine?.state !== 'wait')] }
     })(),
+    today,
   }
 }
 
@@ -342,6 +356,54 @@ async function invoiceRows(v: Viewer, today: string, now: Date): Promise<HomeRow
     sub: `${andList(coming.map(p => firstName(p.full_name)))}. ${n === 1 ? 'It comes' : 'They come'} straight to you.`,
     due: dueOnDay(first, today), button: null, panel: null,
   }]
+}
+
+// ── To pay: Finance's invoices and reimbursement documents ──────────────────
+
+/** Every approved invoice, not paid yet: the ones the Invoices page offers Mark paid on. */
+async function payInvoices(zone: string, today: string): Promise<HomeRow[]> {
+  const { data, error } = await db().from('invoices')
+    .select('id, number, person_id, total, period_start, period_end, due_on, approved_by, approved_at')
+    .eq('state', 'approved').order('due_on').limit(500)
+  if (error) throw new Error(error.message)
+  type R = { id: number; number: string; person_id: string; total: number; period_start: string; period_end: string; due_on: string; approved_by: string | null; approved_at: string | null }
+  const rows = (data ?? []) as R[]
+  if (!rows.length) return []
+  const dir = await loadDirectory()
+  // The page's words: the person's name, the period in full, the total in dollars (invoices-view.ts).
+  return rows.map(r => payInvoiceRow({
+    id: r.id, number: r.number, who: dir.nameOf(r.person_id),
+    period: periodLabel({ start: r.period_start, end: r.period_end }).full, total: usd(Number(r.total)), dueOn: r.due_on,
+    approvedBy: r.approved_by ? dir.nameOf(r.approved_by) : null, approvedOn: r.approved_at ? localDate(r.approved_at, zone) : null,
+  }, today))
+}
+
+/** Every reimbursement document waiting for Finance, with its items as its page lists them (requests-data.ts loadRmbDocPage). */
+async function payDocuments(zone: string, today: string): Promise<HomeRow[]> {
+  const c = db()
+  const { data, error } = await c.from('reimbursement_documents').select('id, number, person_id, created_at').eq('state', 'approved').order('created_at').limit(500)
+  if (error) throw new Error(error.message)
+  type D = { id: number; number: string; person_id: string; created_at: string }
+  const docs = (data ?? []) as D[]
+  if (!docs.length) return []
+  const [{ data: items, error: iErr }, dir] = await Promise.all([
+    c.from('reimbursements').select('document_id, spent_on, category, purpose, amount, currency, decided_by, decided_at').in('document_id', docs.map(d => d.id)).order('decided_at'),
+    loadDirectory(),
+  ])
+  if (iErr) throw new Error(iErr.message)
+  type I = { document_id: number; spent_on: string; category: string; purpose: string; amount: number; currency: string; decided_by: string | null; decided_at: string | null }
+  const byDoc = new Map<number, I[]>()
+  for (const i of (items ?? []) as I[]) byDoc.set(i.document_id, [...(byDoc.get(i.document_id) ?? []), i])
+  return docs.map(d => {
+    const list = byDoc.get(d.id) ?? []
+    return payDocumentRow({
+      id: d.id, number: d.number, who: dir.nameOf(d.person_id),
+      items: list.map(i => ({ date: monthDay(i.spent_on), category: i.category, purpose: i.purpose, amount: money(Number(i.amount), i.currency) })),
+      total: moneyTotal(list.map(i => ({ amount: Number(i.amount), currency: i.currency }))),
+      approvedBy: [...new Set(list.map(i => i.decided_by).filter((x): x is string => !!x).map(id => dir.nameOf(id)))],
+      createdOn: localDate(d.created_at, zone),
+    }, today)
+  })
 }
 
 // ── My Work ─────────────────────────────────────────────────────────────────

@@ -98,6 +98,8 @@ describe('the rail', () => {
       ['The module', [['Which job?', '/clocky-hours/which-job'], ['Clock safety', '/clocky-hours/safety'], ['Import', '/clocky-hours/import']]],
     ])
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-approvals')?.count).toBe('approvals')
+    // Finance's To pay sits on the row Finance opens (owner, 25 October 2026); the counter gives it to Finance alone.
+    expect(clocky.groups[0].items.find(i => i.key === 'clocky-invoices')?.count).toBe('to-pay')
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-reports')?.soon).toBeUndefined()
     expect(clocky.readiness).toBeUndefined()
   })
@@ -127,11 +129,12 @@ describe('the rail', () => {
 // The attention counters (owner, 25 October 2026): a number on each rail icon
 // whenever something in it needs the person.
 describe('the rail counts', () => {
-  const ALL = { approvals: 3, 'my-late': 5, 'integration-errors': 2, 'monday-unlinked': 4, 'automations-down': 1, 'no-rate': 2 } as const
+  const ALL = { approvals: 3, 'my-late': 5, 'integration-errors': 2, 'monday-unlinked': 4, 'automations-down': 1, 'no-rate': 2, 'to-pay': 4 } as const
 
   it('sums the distinct counts of a hub\'s visible rows', () => {
     const rail = railFor('super_admin')
-    expect(hubCount(hub(rail, 'clocky')!, ALL)).toBe(3)
+    // Approvals, and To pay on Invoices.
+    expect(hubCount(hub(rail, 'clocky')!, ALL)).toBe(3 + 4)
     // Requests repeats Approvals as a shortcut: its own hub shows it once.
     expect(hubCount(hub(rail, 'requests')!, ALL)).toBe(3)
     expect(hubCount(hub(rail, 'my-work')!, ALL)).toBe(5)

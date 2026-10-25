@@ -159,7 +159,9 @@ export const RAIL: readonly RailEntry[] = [
           { key: 'clocky-hours', label: 'Time entries', href: '/clocky-hours', icon: 'my-hours', surface: 'clocky-hours' },
           { key: 'clocky-approvals', label: 'Approvals', href: '/clocky-hours/approvals', icon: 'tests', surface: 'clocky-approvals', count: 'approvals' },
           { key: 'clocky-whos-working', label: "Who's working", href: '/clocky-hours/whos-working', icon: 'my-team', surface: 'ck-whos-working', alsoSurface: 'clocky-hours' },
-          { key: 'clocky-invoices', label: 'Invoices', href: '/clocky-hours/invoices', icon: 'client-reports', surface: 'clocky-invoices', needs: 'invoices' },
+          // To pay counts reimbursement documents too (owner, 25 October 2026): they have no
+          // list of their own, so Finance's one number sits on the row Finance opens.
+          { key: 'clocky-invoices', label: 'Invoices', href: '/clocky-hours/invoices', icon: 'client-reports', surface: 'clocky-invoices', needs: 'invoices', count: 'to-pay' },
           { key: 'clocky-reports', label: 'Reports', href: '/clocky-hours/reports', icon: 'client-reports', surface: 'clocky-reports' },
         ],
       },

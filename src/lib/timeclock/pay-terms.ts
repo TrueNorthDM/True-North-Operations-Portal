@@ -90,6 +90,17 @@ export function seesMoney(access: Pick<Access, 'isAdmin' | 'personId'>, personId
 export const isFinance = (access: Pick<Access, 'personId'>, settings: Pick<InvoiceSettings, 'finance'>): boolean =>
   !!access.personId && settings.finance.includes(access.personId)
 
+/**
+ * What waits for this person to pay (owner, 25 October 2026): Finance alone,
+ * invoices where Invoices is open to them (markInvoicePaid's gate) and
+ * reimbursement documents where Reimbursements is (markRmbPaid's). Home's To
+ * pay rows and the rail's To pay count both read this one rule.
+ */
+export function paysWhat(access: Pick<Access, 'personId' | 'can'>, settings: Pick<InvoiceSettings, 'finance'>): { invoices: boolean; documents: boolean } {
+  const finance = isFinance(access, settings)
+  return { invoices: finance && access.can('clocky-invoices'), documents: finance && access.can('rq-reimbursements') }
+}
+
 
 type PersonRow = { id: string; manager_id: string | null; employment_type: string | null; internal_rate: number | null; monthly_salary: number | null }
 type TermsRow = { person_id: string; pays_as: PaysAs | null; allowance_hours: number | null; allowance_period: 'week' | 'month' | null }

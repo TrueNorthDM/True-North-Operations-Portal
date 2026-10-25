@@ -8,12 +8,13 @@
  * Not a "use server" file: the actions decide who may cause it.
  */
 
+import type { Access } from '@/lib/access/resolve'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { allRows, loadCatalog } from './clocky-context'
 import { entrySeconds } from './clocky-panel'
 import type { EntryRow } from './clocky-store'
 import { buildInvoiceLines, dueOn, missingRate, type ReimbursementForInvoice } from './invoice-lines'
-import { loadInvoiceSettings, loadPayTerms } from './pay-terms'
+import { loadInvoiceSettings, loadPayTerms, paysWhat } from './pay-terms'
 import { periodLabel } from './periods'
 import type { PaysAs } from './routing'
 
@@ -65,6 +66,26 @@ export async function countMissingRates(): Promise<number> {
   if (!ids.length) return 0
   const terms = await loadPayTerms(ids)
   return [...terms.values()].filter(t => missingRate({ ...t, isContractor: t.route.isContractor })).length
+}
+
+/**
+ * The rail's "To pay" on Invoices (owner, 25 October 2026): for Finance alone,
+ * the approved invoices not paid yet and the reimbursement documents waiting,
+ * the rows Home's Needs you lists under the same rule (paysWhat). 0 for
+ * anyone else, read or not.
+ */
+export async function countToPay(access: Pick<Access, 'personId' | 'can'>): Promise<number> {
+  const pays = paysWhat(access, await loadInvoiceSettings())
+  if (!pays.invoices && !pays.documents) return 0
+  const c = createAdminClient()
+  const count = async (table: 'invoices' | 'reimbursement_documents', on: boolean) => {
+    if (!on) return 0
+    const { count: n, error } = await c.from(table).select('id', { count: 'exact', head: true }).eq('state', 'approved')
+    if (error) throw new Error(`${table === 'invoices' ? 'Invoices' : 'Reimbursement documents'} could not be counted: ${error.message}`)
+    return n ?? 0
+  }
+  const [invoices, documents] = await Promise.all([count('invoices', pays.invoices), count('reimbursement_documents', pays.documents)])
+  return invoices + documents
 }
 
 /**

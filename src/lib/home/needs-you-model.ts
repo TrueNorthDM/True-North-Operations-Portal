@@ -8,9 +8,10 @@
 
 import type { QueueRow } from '@/lib/timeclock/approval-queue'
 import { NOTE_TO_APPROVE } from '@/lib/timeclock/entry-rules'
+import { dateLabel } from '@/lib/timeclock/format'
 
 /** What a row is, which picks its chip (README, the type chip table). */
-export type RowKind = 'approval' | 'request' | 'work' | 'system' | 'access' | 'invoices' | 'mine'
+export type RowKind = 'approval' | 'request' | 'work' | 'system' | 'access' | 'invoices' | 'pay' | 'mine'
 
 export type TabKey = 'needs' | 'work' | 'mine'
 
@@ -30,6 +31,11 @@ export type PanelOp =
   | { do: 'extra-hours'; id: number; decision: 'approve' | 'deny' }
   | { do: 'resend-invite'; id: string }
   | { do: 'run-checks' }
+  | { do: 'pay-invoice'; id: number }
+  | { do: 'pay-document'; id: number }
+
+/** What the panel's Mark paid form sends with its op: the day (YYYY-MM-DD) and the reference. */
+export interface PaidForm { paidOn: string; ref: string }
 
 export interface PanelButton {
   label: string
@@ -57,6 +63,13 @@ export interface Panel {
   secondary: PanelButton | null
   /** Approving needs a note too (hours over the allowance not approved before). */
   approveNeedsNote?: boolean
+  /**
+   * Mark paid asks for the day and a reference first, as the pages' Mark paid
+   * dialog (InvoiceParts.tsx, 6G) does: Paid on, filled with today in the
+   * viewer's zone ("Oct 26, 2026"), and Reference (optional), with the page's
+   * own example.
+   */
+  payForm?: { paidOn: string; refPlaceholder: string }
 }
 
 export interface HomeRow {
@@ -92,6 +105,8 @@ export interface NeedsYouData {
   /** Null when My Work is not open to the person. */
   work: HomeTab | null
   mine: HomeTab
+  /** The viewer's day the rows were dated by: the banner's "this week" counts only up to a week after it. */
+  today?: string
 }
 
 // ── Due labels ─────────────────────────────────────────────────────────────
@@ -160,14 +175,17 @@ export function tabCount(tab: TabKey, rows: readonly HomeRow[], done: ReadonlySe
 
 /**
  * What the day banner sums up (README "Summary"): the open Needs you and My
- * Work rows, late, due today, and due later this week.
+ * Work rows, late, due today, and due later this week. An invoice to pay can
+ * be due weeks ahead: "this week" stops 7 days after the rows' day, the
+ * window My Work's rows use.
  */
 export function dayCounts(data: NeedsYouData): { late: number; today: number; week: number } {
   const open = [...data.needs.rows, ...(data.work?.rows ?? [])].filter(r => r.button && r.due)
+  const inWeek = (at: string) => !data.today || daysBetween(data.today, at.slice(0, 10)) <= 7
   return {
     late: open.filter(r => r.due!.tone === 'late').length,
     today: open.filter(r => r.due!.tone === 'today').length,
-    week: open.filter(r => r.due!.tone === 'later').length,
+    week: open.filter(r => r.due!.tone === 'later' && inWeek(r.due!.at)).length,
   }
 }
 
@@ -262,4 +280,97 @@ export function timesheetRow(r: QueueRow, isLead: boolean, today: string, approv
     approveNeedsNote: !isLead && !!r.flag?.text.includes('over the allowance'),
   }
   return { key: `q-${r.key}`, kind: 'approval', title, sub, due: dueToday(today), button: asInvoice ? 'Approve invoice' : 'Review hours', panel }
+}
+
+// ── To pay: Finance's invoices and reimbursement documents ──────────────────
+
+/** An approved invoice, as Home's loader reads it (needs-you.ts payInvoices). */
+export interface InvoiceToPay {
+  id: number
+  number: string
+  who: string
+  /** "October 2026", the period as the Invoices page writes it. */
+  period: string
+  /** "$2,295.00" */
+  total: string
+  /** Its due day, YYYY-MM-DD. */
+  dueOn: string
+  approvedBy: string | null
+  /** The day it was approved in the viewer's zone, YYYY-MM-DD. */
+  approvedOn: string | null
+}
+
+/** An employee's reimbursement document waiting for Finance (needs-you.ts payDocuments). */
+export interface DocumentToPay {
+  id: number
+  number: string
+  who: string
+  /** Its items, in the order they were approved. */
+  items: { date: string; category: string; purpose: string; amount: string }[]
+  /** "$86.40", or "$120.00 + KES 4,500.00" as the page adds them. */
+  total: string
+  /** Who approved its items, once each. */
+  approvedBy: string[]
+  /** The day it was made, its first item approved, in the viewer's zone (the page's "Date"). */
+  createdOn: string
+}
+
+const MARK_PAID = 'Mark paid'
+
+/**
+ * "Pay INV-2026-0012: Samuel Manzi", due when the invoice says. The note under
+ * the facts is the Mark paid dialog's own line (InvoiceParts.tsx), and so is
+ * the reference's example.
+ */
+export function payInvoiceRow(i: InvoiceToPay, today: string): HomeRow {
+  const title = `Pay ${i.number}: ${i.who}`
+  const sub = `${i.total} · ${i.period}`
+  const panel: Panel = {
+    title, sub,
+    facts: [
+      { k: 'Invoice', v: i.number },
+      { k: 'Person', v: i.who },
+      { k: 'Period', v: i.period },
+      { k: 'Total', v: i.total },
+      ...(i.approvedOn ? [{ k: 'Approved', v: `${i.approvedBy ? `${i.approvedBy}, ` : ''}${dateLabel(i.approvedOn)}` }] : []),
+      { k: 'Due', v: dateLabel(i.dueOn) },
+    ],
+    note: `${i.who} sees "Paid" with this date and reference. Paid once: the action goes away after this.`,
+    link: { label: 'Open in Invoices', href: `/clocky-hours/invoices/${i.id}` },
+    primary: { label: MARK_PAID, op: { do: 'pay-invoice', id: i.id }, icon: 'check' },
+    secondary: { label: 'Close' },
+    payForm: { paidOn: dateLabel(today), refPlaceholder: 'e.g. WISE-88412' },
+  }
+  return { key: `p-i${i.id}`, kind: 'pay', title, sub, due: dueOnDay(i.dueOn, today), button: MARK_PAID, panel }
+}
+
+/**
+ * "Pay RMB-2026-0003: Tina Gennette". A document has no due day: it is
+ * payable from the day it was made, so that day dates the row (the brief, 25
+ * October 2026), late after it. Its items are the facts, as the decision rows
+ * list a request's receipts; the note is the document page's own line for
+ * Finance (requests-data.ts), and the reference's example is the page's.
+ */
+export function payDocumentRow(d: DocumentToPay, today: string): HomeRow {
+  const title = `Pay ${d.number}: ${d.who}`
+  const purposes = d.items.map(i => i.purpose)
+  const sub = `${d.total} · ${purposes.slice(0, 3).join(', ')}${purposes.length > 3 ? ', …' : ''}`
+  const first = d.who.split(' ')[0]
+  const panel: Panel = {
+    title, sub,
+    facts: [
+      { k: 'Document', v: d.number },
+      { k: 'Person', v: d.who },
+      ...d.items.map(i => ({ k: `${i.date}, ${i.category}`, v: i.amount })),
+      { k: 'Total', v: d.total },
+      ...(d.approvedBy.length ? [{ k: 'Approved by', v: d.approvedBy.join(' and ') }] : []),
+      { k: 'Date', v: dateLabel(d.createdOn) },
+    ],
+    note: `You are Finance. Pay ${first} outside Rippling payroll, then mark it paid here.`,
+    link: { label: 'Open in Reimbursements', href: `/requests/reimbursements/${d.id}` },
+    primary: { label: MARK_PAID, op: { do: 'pay-document', id: d.id }, icon: 'check' },
+    secondary: { label: 'Close' },
+    payForm: { paidOn: dateLabel(today), refPlaceholder: 'e.g. ACH-20261103' },
+  }
+  return { key: `p-d${d.id}`, kind: 'pay', title, sub, due: dueOnDay(d.createdOn, today), button: MARK_PAID, panel }
 }

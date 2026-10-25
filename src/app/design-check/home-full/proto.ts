@@ -1,6 +1,7 @@
 // The prototype's sample, level by level (Home Final.dc.html: C.L, C.PERIOD,
 // C.CLOSED, C.MEETS, C.OUT, C.UPCOMING and ppModeOf), in the shapes the real
-// components take. Monday, October 26 2026, 10:46 AM in New York.
+// components take. Monday, October 26 2026, 10:46 AM in New York. Finance
+// (fin, not in the prototype) is the employee's day with the To pay rows.
 
 import { FRAMES } from '@/app/design-check/clocky-clock/sample'
 import { SAMPLE, type Level } from '@/app/design-check/home-needs-you/sample'
@@ -33,6 +34,7 @@ export const LEVELS: Record<Level, Lvl> = {
   lead: { label: 'Team Leader', first: 'Rock', clock: { on: true, since: 9.33, job: 'AAAF · Social strategy', mins: 86 }, kind: 'con', auto: 'late' },
   emp: { label: 'User · employee', first: 'Tina', clock: { on: false, mins: 0 }, kind: 'emp', auto: 'running' },
   con: { label: 'User · contractor', first: 'Cheyenne', clock: { on: true, since: 7.83, job: 'AAAF · Articles', mins: 176 }, kind: 'con', auto: 'late' },
+  fin: { label: 'Finance', first: 'Tina', clock: { on: false, mins: 0 }, kind: 'emp', auto: 'running' },
 }
 
 // ── The clock ────────────────────────────────────────────────────────────────
@@ -63,9 +65,10 @@ function days(start: string, list: number[][]): Record<string, PayDayTime> {
 const prev = (start: string, end: string, x: Partial<PrevFacts> = {}): PrevFacts => ({ start, end, state: null, withName: null, paidOn: null, logged: true, ...x })
 
 // C.PERIOD and C.CLOSED. The employees' period runs Oct 18 to 31, the contractors' Oct 26 to Nov 8.
-const EMP_DAYS: Record<'admin' | 'emp', number[][]> = {
+const EMP_DAYS: Record<'admin' | 'emp' | 'fin', number[][]> = {
   admin: [[0], [480], [480], [480], [480], [0, 480], [0], [0]],
   emp: [[0], [480], [480], [240, 0, 0, 240], [480], [480], [0], [0]],
+  fin: [[0], [480], [480], [240, 0, 0, 240], [480], [480], [0], [0]],
 }
 const CLOSED: Record<Level, { start: string; end: string; approver: string; days: number[][] }> = {
   super: { start: '2026-10-12', end: '2026-10-25', approver: 'Dave Sharpe', days: [[480], [480], [480], [480], [480], [0], [0], [480], [480], [480], [480], [480], [0], [0]] },
@@ -73,8 +76,9 @@ const CLOSED: Record<Level, { start: string; end: string; approver: string; days
   con: { start: '2026-10-12', end: '2026-10-25', approver: 'Arnaldo Oliveira', days: [[480], [480], [480], [480], [0], [0], [0], [480], [480], [480], [480], [495], [0], [0]] },
   admin: { start: '2026-10-18', end: '2026-10-31', approver: 'Rippling', days: [[0], [480], [480], [480], [480], [0, 480], [0], [0], [480], [480], [480], [480], [480], [0]] },
   emp: { start: '2026-10-18', end: '2026-10-31', approver: 'Rippling', days: [[0], [480], [480], [240, 0, 0, 240], [480], [480], [0], [0], [480], [480], [480], [480], [480], [0]] },
+  fin: { start: '2026-10-18', end: '2026-10-31', approver: 'Rippling', days: [[0], [480], [480], [240, 0, 0, 240], [480], [480], [0], [0], [480], [480], [480], [480], [480], [0]] },
 }
-const APPROVER: Record<Level, string> = { super: 'Dave Sharpe', admin: 'Rippling', lead: 'Dave Sharpe', emp: 'Rippling', con: 'Arnaldo Oliveira' }
+const APPROVER: Record<Level, string> = { super: 'Dave Sharpe', admin: 'Rippling', lead: 'Dave Sharpe', emp: 'Rippling', con: 'Arnaldo Oliveira', fin: 'Rippling' }
 
 export function payOf(level: Level, mode: PayMode): { view: PayPeriodView; state: Exclude<PayMode, 'auto'> } {
   const L = LEVELS[level]
@@ -103,7 +107,7 @@ export function payOf(level: Level, mode: PayMode): { view: PayPeriodView; state
       current: { start: '2026-10-18', end: '2026-10-31' }, next: { start: '2026-11-01', end: '2026-11-14' },
       prev: prev('2026-10-04', '2026-10-17', { state: 'approved', paidOn: '2026-10-23' }),
       due: null,
-      time: { ...days('2026-10-18', EMP_DAYS[level as 'admin' | 'emp']), ...todayTime },
+      time: { ...days('2026-10-18', EMP_DAYS[level as 'admin' | 'emp' | 'fin']), ...todayTime },
     }
   } else {
     src = {
@@ -127,6 +131,7 @@ const MEETS: Record<Level, [number, number, string][]> = {
   lead: [[13, 13.5, 'Social team standup']],
   emp: [[10, 10.5, 'Ops weekly'], [14, 14.5, 'i7 call']],
   con: [[12, 12.5, 'Writers check-in']],
+  fin: [[10, 10.5, 'Ops weekly'], [14, 14.5, 'i7 call']],
 }
 export function agendaItemsOf(level: Level): AgendaItem[] {
   const rest = ITEMS.filter(i => !(i.k === 'event' && i.a === TODAY))

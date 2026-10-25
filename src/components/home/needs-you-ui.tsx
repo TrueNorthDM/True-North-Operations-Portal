@@ -21,6 +21,9 @@ const LOOK: Record<Exclude<HomeRow['kind'], 'mine'>, Look> = {
   system: { label: 'System', bg: '#fdecea', fg: '#b3271f', icon: 'alert' },
   access: { label: 'Access', bg: '#f1f3f6', fg: '#5b6b82', icon: 'admin' },
   invoices: { label: 'Invoices', bg: '#f1f3f6', fg: '#5b6b82', icon: 'client-reports' },
+  // Finance's invoices and documents to pay (owner, 25 October 2026): the Invoices
+  // kind's ground and icon, as the design has no colour of its own for money to pay.
+  pay: { label: 'To pay', bg: '#f1f3f6', fg: '#5b6b82', icon: 'client-reports' },
 }
 
 export function typeOf(row: HomeRow): Look {

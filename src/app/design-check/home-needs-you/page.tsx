@@ -1,6 +1,7 @@
 // Design check: Home's Needs you / My Work / Requests card and its side panel
 // (design_handoff_home, README section 3), with the prototype's rows per level.
-// /design-check/home-needs-you?level=super|admin|lead|emp|con; &error=1 adds a
+// /design-check/home-needs-you?level=super|admin|lead|emp|con|fin (fin: Finance's
+// To pay rows, with the Mark paid form in the panel); &error=1 adds a
 // failed read; &fail=1 makes the panel's actions refuse. The right column is a
 // stand-in of the prototype's height, so the card stretches as it does on Home.
 

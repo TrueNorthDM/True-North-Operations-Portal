@@ -31,7 +31,7 @@ export function NewHome({ choice }: { choice: HomeChoice }) {
   const { level, pay, bess } = choice
   const L = LEVELS[level]
   const needs = needsOf(level)
-  const rank = { super: 4, admin: 3, lead: 2, emp: 1, con: 1 }[level]
+  const rank = { super: 4, admin: 3, lead: 2, emp: 1, con: 1, fin: 1 }[level]
   return (
     <HomeLayout
       banner={<DayBanner firstName={L.first} zone="America/New_York" summary={summaryLine(dayCounts(needs))} serverNow={NOW} hasClock sample={clockOf(level)} />}

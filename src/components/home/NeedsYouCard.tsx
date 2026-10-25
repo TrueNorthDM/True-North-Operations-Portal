@@ -32,11 +32,12 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 const LABEL: Record<TabKey, string> = { needs: 'Needs you', work: 'My Work', mine: 'Requests' }
 
 // The portal's small white button (owner, 25 October 2026): navy words and a green
-// symbol, a check to approve and an arrow for the rest; teal border on hover.
+// symbol, a check to approve or mark paid (as the Invoices page's own Mark paid) and
+// an arrow for the rest; teal border on hover.
 const ROW_BUTTON = 'flex-none inline-flex items-center gap-1.5 cursor-pointer border border-[var(--panel-border)] bg-white rounded-[9px] px-[11px] py-[7px] font-(family-name:--font-display) font-extrabold text-[12.5px] text-tn-ink transition-colors hover:border-tn-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40'
 
 function RowSymbol({ label }: { label: string }) {
-  return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={label.startsWith('Approve') ? 'M5 12l5 5 9-10' : 'M9 6l6 6-6 6'} /></svg>
+  return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={label.startsWith('Approve') || label === 'Mark paid' ? 'M5 12l5 5 9-10' : 'M9 6l6 6-6 6'} /></svg>
 }
 
 export function NeedsYouCard({ data, run, className = '' }: {

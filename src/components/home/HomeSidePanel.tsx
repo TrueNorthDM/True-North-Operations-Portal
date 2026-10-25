@@ -16,6 +16,11 @@
  * person approves again. An action that ran but leaves the row (an invitation
  * sent again, checks run now) says so here and keeps the panel open.
  *
+ * Mark paid (Finance's To pay rows, 25 October 2026) asks what the pages' Mark
+ * paid dialog asks, in its words and fields: Paid on, today written out, and
+ * Reference (optional). The day is read as the dialog reads it (parsePaidOn)
+ * before the action runs, and the action checks it again.
+ *
  * Focus moves in, Tab stays inside, Escape closes it and focus goes back to
  * the row's button: the drawers' useModal (NeedsYouCard finds a place for it
  * when that button is gone).
@@ -24,6 +29,8 @@
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useModal } from '@/components/ui/useModal'
+import { FieldLabel } from '@/components/clocky/entries/ui'
+import { parsePaidOn } from '@/lib/timeclock/paid-on'
 import { asksForNote, panelText, type HomeRow, type PanelButton, type PanelField } from '@/lib/home/needs-you-model'
 import { DUE_FG, TypeChip, typeOf } from './needs-you-ui'
 import type { Runner } from './needs-you-actions'
@@ -31,6 +38,8 @@ import type { Runner } from './needs-you-actions'
 const SYMBOL = { check: 'M5 12l5 5 9-10', arrow: 'M9 6l6 6-6 6' }
 const PRIMARY = 'flex-1 cursor-pointer border-0 rounded-[11px] px-4 py-[13px] font-(family-name:--font-display) font-extrabold text-[14px] flex items-center justify-center gap-2 bg-tn-primary text-[#ffffff] disabled:opacity-60 disabled:cursor-wait'
 const SECONDARY = 'cursor-pointer border border-[#d9dee6] bg-white rounded-[11px] px-4 py-[13px] font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink disabled:opacity-60 disabled:cursor-wait'
+// The Mark paid dialog's input (InvoiceParts.tsx INPUT).
+const INPUT = 'h-10 box-border px-3 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] text-tn-ink outline-none focus:border-tn-teal focus:shadow-[0_0_0_3px_rgba(30,125,127,.15)]'
 
 export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
   row: HomeRow
@@ -48,6 +57,8 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
   // What the box is for now: a Note to approve, a Reason to send back or decline, or nothing yet.
   const [field, setField] = useState<PanelField>(p.approveNeedsNote ? 'note' : null)
   const [note, setNote] = useState('')
+  const [paidOn, setPaidOn] = useState(p.payForm?.paidOn ?? '')
+  const [ref, setRef] = useState('')
   const [pending, setPending] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const noteRef = useRef<HTMLTextAreaElement>(null)
@@ -67,9 +78,12 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
       focusField()
       return
     }
+    // Mark paid: the day first, as the dialog checks it.
+    const paid = !isSecondary && p.payForm ? parsePaidOn(paidOn) : null
+    if (!isSecondary && p.payForm && !paid) { setMsg({ ok: false, text: 'Write the day it was paid, like Nov 3, 2026.' }); return }
     setPending(true); setMsg(null)
     try {
-      const r = await run(b.op, panelText(field, isSecondary, note))
+      const r = await run(b.op, panelText(field, isSecondary, note), paid ? { paidOn: paid, ref } : undefined)
       if (r.ok && r.message) { setMsg({ ok: true, text: r.message }); onRan?.(); return }
       if (r.ok) { onDone(); return }
       setMsg({ ok: false, text: r.error })
@@ -132,6 +146,18 @@ export function HomeSidePanel({ row, run, onClose, onDone, onRan }: {
             ))}
           </div>
           {p.note && <div className="bg-[#f4f2ec] rounded-[12px] px-4 py-[14px] text-[13.5px] text-foreground leading-[1.55]">{p.note}</div>}
+          {p.payForm && (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-[5px]">
+                <FieldLabel>Paid on</FieldLabel>
+                <input value={paidOn} onChange={e => setPaidOn(e.target.value)} className={INPUT} />
+              </label>
+              <label className="flex flex-col gap-[5px]">
+                <FieldLabel>Reference (optional)</FieldLabel>
+                <input value={ref} onChange={e => setRef(e.target.value)} placeholder={p.payForm.refPlaceholder} maxLength={120} className={INPUT} />
+              </label>
+            </div>
+          )}
           {field && (
             <label className="flex flex-col gap-1.5">
               <span className="text-[13px] font-bold text-tn-ink">{asking ? 'Reason' : 'Note'}</span>

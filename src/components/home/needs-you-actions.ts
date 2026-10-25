@@ -8,19 +8,28 @@
 // what they found while the page, refreshed, decides whether the row stays.
 // Those come back with `message`, and the row is not marked Done. An
 // invitation whose email did not go out is a failure here: the panel shows why.
+//
+// Mark paid (Finance's To pay rows, 25 October 2026) sends the day and the
+// reference the panel's form asks for, to markInvoicePaid or markRmbPaid,
+// which check Finance and the day again.
 
-import type { PanelOp } from '@/lib/home/needs-you-model'
+import type { PaidForm, PanelOp } from '@/lib/home/needs-you-model'
 import { approveTimesheet, decideCorrection, decideExtraHours, decideInvoice, decideReimbursement, decideReimbursementReport, decideTimeOff, decideTimeOffCancel, returnTimesheet } from '@/app/(app)/clocky-hours/approvals/actions'
 import { invitePerson } from '@/app/(app)/admin/people/actions'
 import { runChecksNow } from '@/app/(app)/admin/automations/actions'
+import { markInvoicePaid } from '@/app/(app)/clocky-hours/invoices/actions'
+import { markRmbPaid } from '@/app/(app)/requests/actions'
 
 /** ok: the row is done. ok with `message`: it ran, the panel says this, and the row stays. */
 export type RunResult = { ok: true; message?: string } | { ok: false; error: string }
-export type Runner = (op: PanelOp, note: string) => Promise<RunResult>
+export type Runner = (op: PanelOp, note: string, paid?: PaidForm) => Promise<RunResult>
 
 const done = (r: { ok: boolean; error?: string }): RunResult => (r.ok ? { ok: true } : { ok: false, error: r.error ?? 'Not saved. Try again in a moment.' })
 
-export const runPanelOp: Runner = async (op, note) => {
+/** The pages' own answer when the day is missing (InvoiceParts.tsx, MarkPaidDialog). */
+const NO_DAY = 'Write the day it was paid, like Nov 3, 2026.'
+
+export const runPanelOp: Runner = async (op, note, paid) => {
   switch (op.do) {
     case 'approve-timesheet': return done(await approveTimesheet({ id: op.id, note }))
     case 'return-timesheet': return done(await returnTimesheet({ id: op.id, reason: note }))
@@ -39,5 +48,7 @@ export const runPanelOp: Runner = async (op, note) => {
       const r = await runChecksNow()
       return r.ok ? { ok: true, message: r.message } : { ok: false, error: r.message }
     }
+    case 'pay-invoice': return paid ? done(await markInvoicePaid({ id: op.id, paidOn: paid.paidOn, ref: paid.ref })) : { ok: false, error: NO_DAY }
+    case 'pay-document': return paid ? done(await markRmbPaid({ id: op.id, paidOn: paid.paidOn, ref: paid.ref })) : { ok: false, error: NO_DAY }
   }
 }

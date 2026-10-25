@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { asksForNote, byDue, dayCounts, dueOnDay, dueSince, EMPTY_TAB, panelText, tabCount, timesheetRow, uniqueErrors, unreadNeedsYou, type HomeRow } from './needs-you-model'
+import { asksForNote, byDue, dayCounts, dueOnDay, dueSince, EMPTY_TAB, panelText, payDocumentRow, payInvoiceRow, tabCount, timesheetRow, uniqueErrors, unreadNeedsYou, type HomeRow } from './needs-you-model'
 import type { QueueRow } from '@/lib/timeclock/approval-queue'
 
 const row = (key: string, due: HomeRow['due'], button: string | null = 'Open', mine?: HomeRow['mine']): HomeRow =>
@@ -42,6 +42,16 @@ describe('needs you', () => {
       mine: { rows: [], errors: [] },
     }
     expect(dayCounts(data)).toEqual({ late: 1, today: 1, week: 1 })
+  })
+
+  it('leaves out of "this week" what is due later than a week from the rows\' day', () => {
+    const t = '2026-10-26'
+    const data = {
+      needs: { rows: [row('soon', dueOnDay('2026-11-02', t)), row('far', dueOnDay('2026-11-09', t))], errors: [] },
+      work: null, mine: { rows: [], errors: [] },
+    }
+    expect(dayCounts(data).week).toBe(2)
+    expect(dayCounts({ ...data, today: t }).week).toBe(1)
   })
 
   it('says what an empty tab means, tab by tab', () => {
@@ -110,5 +120,55 @@ describe('approval rows', () => {
   it('says a line once when the flag and the queue say the same', () => {
     const r = timesheetRow(q({ key: 'n3', main: 'October 2026 · fixed monthly', sub: 'No timesheet', flag: { text: 'No timesheet', tone: 'neu' } }), false, today, '/a')
     expect(r.sub).toBe('No timesheet')
+  })
+})
+
+// Finance's To pay (owner, 25 October 2026).
+describe('to pay rows', () => {
+  const today = '2026-10-26'
+  const facts = (r: HomeRow) => Object.fromEntries(r.panel!.facts.map(f => [f.k, f.v]))
+  const inv = { id: 138, number: 'INV-2026-0138', who: 'Samuel Manzi', period: 'October 2026', total: '$2,295.00', dueOn: '2026-10-15', approvedBy: 'Dave Sharpe', approvedOn: '2026-10-24' }
+
+  it('names an invoice to pay, dates it by its due day, and marks it paid with the form', () => {
+    const r = payInvoiceRow(inv, today)
+    expect(r.kind).toBe('pay')
+    expect(r.title).toBe('Pay INV-2026-0138: Samuel Manzi')
+    expect(r.sub).toBe('$2,295.00 · October 2026')
+    expect(r.due).toEqual({ label: 'Was due Oct 15', tone: 'late', at: '2026-10-15' })
+    expect(payInvoiceRow({ ...inv, dueOn: today }, today).due?.label).toBe('Today')
+    expect(payInvoiceRow({ ...inv, dueOn: '2026-11-09' }, today).due?.tone).toBe('later')
+    expect(r.button).toBe('Mark paid')
+    expect(r.panel!.primary).toEqual({ label: 'Mark paid', op: { do: 'pay-invoice', id: 138 }, icon: 'check' })
+    expect(r.panel!.secondary).toEqual({ label: 'Close' })
+    expect(r.panel!.link).toEqual({ label: 'Open in Invoices', href: '/clocky-hours/invoices/138' })
+    expect(r.panel!.payForm).toEqual({ paidOn: 'Oct 26, 2026', refPlaceholder: 'e.g. WISE-88412' })
+    expect(facts(r)).toMatchObject({ Invoice: 'INV-2026-0138', Person: 'Samuel Manzi', Total: '$2,295.00', Approved: 'Dave Sharpe, Oct 24, 2026', Due: 'Oct 15, 2026' })
+  })
+
+  it('leaves out the approval it does not know', () => {
+    expect(facts(payInvoiceRow({ ...inv, approvedBy: null, approvedOn: null }, today)).Approved).toBeUndefined()
+  })
+
+  it('names a document to pay, its items as facts, dated by the day it was made', () => {
+    const r = payDocumentRow({
+      id: 30, number: 'RMB-2026-0030', who: 'Dave Sharpe',
+      items: [{ date: 'Oct 19', category: 'Software', purpose: 'Figma', amount: '$45.00' }, { date: 'Oct 21', category: 'Internet', purpose: 'Internet', amount: '$41.40' }],
+      total: '$86.40', approvedBy: ['Arnaldo Oliveira'], createdOn: '2026-10-21',
+    }, today)
+    expect(r.title).toBe('Pay RMB-2026-0030: Dave Sharpe')
+    expect(r.sub).toBe('$86.40 · Figma, Internet')
+    expect(r.due).toEqual({ label: 'Was due Wed', tone: 'late', at: '2026-10-21' })
+    expect(r.panel!.primary.op).toEqual({ do: 'pay-document', id: 30 })
+    expect(r.panel!.link.href).toBe('/requests/reimbursements/30')
+    expect(r.panel!.payForm?.refPlaceholder).toBe('e.g. ACH-20261103')
+    expect(r.panel!.note).toBe('You are Finance. Pay Dave outside Rippling payroll, then mark it paid here.')
+    expect(facts(r)).toMatchObject({ 'Oct 19, Software': '$45.00', 'Oct 21, Internet': '$41.40', Total: '$86.40', 'Approved by': 'Arnaldo Oliveira', Date: 'Oct 21, 2026' })
+  })
+
+  it('counts in its tab and in the banner, and not once paid here', () => {
+    const r = payInvoiceRow(inv, today)
+    expect(tabCount('needs', [r])).toBe(1)
+    expect(tabCount('needs', [r], new Set([r.key]))).toBe(0)
+    expect(dayCounts({ needs: { rows: [r], errors: [] }, work: null, mine: { rows: [], errors: [] }, today })).toEqual({ late: 1, today: 0, week: 0 })
   })
 })

@@ -1,18 +1,21 @@
 // The prototype's rows (Home Final.dc.html, C.L and C.D) per level, in the
 // shape the server builds (lib/home/needs-you.ts). Monday, October 26, 10:46 AM.
+// Finance (fin) is not in the prototype: its To pay rows (owner, 25 October
+// 2026) are built by the same functions the server uses.
 // The prototype's timesheet rows ("send") and its invoice in Requests are not
 // here: the timesheet is never a row (the Pay period card owns it), and an
 // invoice is not something a person asks for.
 
-import type { HomeRow, HomeTab, NeedsYouData, Panel, PanelButton } from '@/lib/home/needs-you-model'
+import { payDocumentRow, payInvoiceRow, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type PanelButton } from '@/lib/home/needs-you-model'
 
-export type Level = 'super' | 'admin' | 'lead' | 'emp' | 'con'
+export type Level = 'super' | 'admin' | 'lead' | 'emp' | 'con' | 'fin'
 export const LEVELS: { key: Level; label: string; note: string }[] = [
   { key: 'super', label: 'Super Admin', note: 'Arnaldo Oliveira, contractor, approves invoices and decides requests.' },
   { key: 'admin', label: 'Admin', note: 'Dave Sharpe, employee, Admin access.' },
   { key: 'lead', label: 'Team Leader', note: 'Rock Kai, contractor, leads Social Media.' },
   { key: 'emp', label: 'User · employee', note: 'Tina Gennette, employee, Operations.' },
   { key: 'con', label: 'User · contractor', note: 'Cheyenne Wilson, contractor, Writers.' },
+  { key: 'fin', label: 'Finance', note: 'Tina Gennette as Finance (Company settings > Invoices): pays invoices and reimbursement documents.' },
 ]
 
 const LATE = (label: string, at: string) => ({ label, tone: 'late' as const, at })
@@ -126,6 +129,17 @@ const L3 = leadRow('l3', 'Stephanie Aguirre, Oct 12 to 25', '40h 00m. 2 entries 
   [['Period', 'Oct 12 to 25'], ['Hours', '40h 00m'], ['Edited by hand', '2 entries'], ['Over the allowance', 'No'], ['After you', 'Arnaldo Oliveira, the invoice']],
   'Oct 19: 9:00 AM to 1:00 PM added, "forgot to clock in". Oct 22: end changed from 6:40 to 5:30 PM.')
 
+// Finance's To pay: one late, one due today, one later than this week, and a document.
+const DAY = '2026-10-26'
+const F1 = payInvoiceRow({ id: 131, number: 'INV-2026-0131', who: 'Stephanie Aguirre', period: 'September 2026', total: '$2,304.00', dueOn: '2026-10-15', approvedBy: 'Arnaldo Oliveira', approvedOn: '2026-10-03' }, DAY)
+const F2 = payInvoiceRow({ id: 138, number: 'INV-2026-0138', who: 'Samuel Manzi', period: 'Sep 28 to Oct 11, 2026', total: '$2,295.00', dueOn: '2026-10-26', approvedBy: 'Dave Sharpe', approvedOn: '2026-10-24' }, DAY)
+const F3 = payInvoiceRow({ id: 140, number: 'INV-2026-0140', who: 'Justus Tsofa', period: 'Oct 12 to 25, 2026', total: '$1,920.00', dueOn: '2026-11-09', approvedBy: 'Arnaldo Oliveira', approvedOn: '2026-10-26' }, DAY)
+const F4 = payDocumentRow({
+  id: 30, number: 'RMB-2026-0030', who: 'Dave Sharpe',
+  items: [{ date: 'Oct 19', category: 'Software', purpose: 'Figma Professional', amount: '$45.00' }, { date: 'Oct 21', category: 'Internet', purpose: 'Internet for October', amount: '$41.40' }],
+  total: '$86.40', approvedBy: ['Arnaldo Oliveira'], createdOn: '2026-10-21',
+}, DAY)
+
 export const SAMPLE: Record<Level, NeedsYouData> = {
   super: {
     needs: tab([S1, S2, S3, S4, S7, S8]),
@@ -160,6 +174,13 @@ export const SAMPLE: Record<Level, NeedsYouData> = {
       task('c4', 'HFA donor story', 'Hope for Africa', LATER('Thu, Oct 29', '2026-10-29')),
     ]),
     mine: tab([mine('r1', 'Extra hours, 5h', 'Waiting on Arnaldo Oliveira', 'wait', 'clock')]),
+  },
+  fin: {
+    // Sorted as the server sorts them (byDue): late, today, later.
+    needs: tab([F1, F4, F2, F3]),
+    work: tab([task('f1', 'Update the October publishing tracker', 'Operations', TODAY)]),
+    mine: tab([mine('r1', 'Time off, Nov 25 to 27', 'Waiting on Arnaldo Oliveira', 'wait')]),
+    today: DAY,
   },
 }
 
