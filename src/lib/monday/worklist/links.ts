@@ -49,19 +49,31 @@ export function waitingOnAnswer<U extends { id: number; is_external: boolean }>(
 }
 
 /**
- * How many accounts wait on an answer, without the screen's assignment counts
- * and suggestions: two small reads.
+ * An account already deleted in Monday, kept only so its old work has an
+ * owner (the "Removed account" placeholder the Monday sync writes). Nobody can
+ * be linked to it, so it is not news (decided 13 October 2026, after 28 of
+ * them reached five admins at once), and the rail does not count it either.
+ */
+export const isRemovedAccount = (u: { name: string; email: string | null }) =>
+  !u.email && /^Removed account \d+$/.test(u.name)
+
+/**
+ * The rail's "Accounts to link": the accounts waiting on an answer that
+ * someone can actually answer, so without the "Removed account" placeholders
+ * (owner, 25 October 2026: all 37 waiting on staging were placeholders, a
+ * number that would never go down). The screen still lists them. Two small
+ * reads, without the screen's assignment counts and suggestions.
  */
 export async function countWaitingOnAnswer(supabase: Client): Promise<number> {
   const [userRead, linkRead] = await Promise.all([
-    selectAllPages((from, to) => supabase.from('monday_users').select('id, is_external').order('id').range(from, to)),
+    selectAllPages((from, to) => supabase.from('monday_users').select('id, name, email, is_external').order('id').range(from, to)),
     selectAllPages((from, to) => supabase.from('monday_user_links').select('monday_user_id').order('monday_user_id').range(from, to)),
   ])
   for (const [what, r] of [['Monday accounts', userRead], ['account links', linkRead]] as const) {
     if (r.error) throw new Error(`Could not read the ${what}: ${r.error.message}`)
   }
   const linked = new Set((linkRead.data as { monday_user_id: number }[]).map(l => l.monday_user_id))
-  return waitingOnAnswer(userRead.data as { id: number; is_external: boolean }[], linked).length
+  return waitingOnAnswer(userRead.data as { id: number; name: string; email: string | null; is_external: boolean }[], linked).filter(u => !isRemovedAccount(u)).length
 }
 
 export interface PendingAccount {

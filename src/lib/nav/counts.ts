@@ -16,7 +16,7 @@ import type { ResolvedEntry } from '@/lib/access/nav'
  *   approvals            what waits for their decision (North Time, Requests)
  *   my-late              their own open steps past their due date (My Work)
  *   integration-errors   failed outbox jobs Company settings offers to try again
- *   monday-unlinked      Monday accounts waiting on an answer (Monday accounts)
+ *   monday-unlinked      Monday accounts waiting on an answer, not the "Removed account" placeholders (Monday accounts)
  *   automations-down     services down, warning, or checks gone stale (Automations)
  *   no-rate              contractors whose invoice cannot be made for want of a rate (Rates & Costs)
  */

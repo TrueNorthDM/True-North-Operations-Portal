@@ -16,6 +16,7 @@
 import type { Db } from '@/lib/supabase/types'
 import { selectAllPages } from '@/lib/monday/worklist/resilience'
 import { loadWorklist, type WorkRow } from '@/lib/monday/worklist/data'
+import { isRemovedAccount } from '@/lib/monday/worklist/links'
 import { loadPublishingWeeks } from '@/lib/boards/publishing-weeks'
 import { workingDaysGone } from '@/lib/boards/publishing-cycles'
 import { loadI7Carryover } from '@/lib/tsheets/report-data'
@@ -441,14 +442,7 @@ export async function unlinkedSeen(ctx: Ctx, unlinked: readonly { id: number }[]
   return [...new Set([...(seen ?? []), ...unlinked.map(u => u.id)])]
 }
 
-/**
- * An account already deleted in Monday, kept only so its old work has an
- * owner (the "Removed account" placeholder the Monday sync writes). Nobody can
- * be linked to it, so it is not news (decided 13 October 2026, after 28 of
- * them reached five admins at once).
- */
-export const isRemovedAccount = (u: { name: string; email: string | null }) =>
-  !u.email && /^Removed account \d+$/.test(u.name)
+// isRemovedAccount (the "Removed account" placeholders) lives in worklist/links.ts, shared with the rail's count.
 
 export async function unlinkedDrafts(ctx: Ctx, unlinked: readonly { id: number; name: string; email: string | null }[]): Promise<Draft[]> {
   const seen = await readState<number[]>(ctx.db, UNLINKED_SEEN)
