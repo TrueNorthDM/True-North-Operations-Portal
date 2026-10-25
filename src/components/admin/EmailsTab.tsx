@@ -4,7 +4,8 @@
  * EmailsTab: which company mailboxes each active person holds (True North /
  * GoodNews / COE). A check means the address exists; a row opens the Work tab
  * of their page, where the addresses are changed. Sortable columns + "filter by anything"
- * share the Directory grid engine (./grid).
+ * share the Directory grid engine (./grid). The mailbox columns can be hidden
+ * (Columns menu, kept in the person's account); the person cannot.
  */
 
 import { useMemo, useState } from 'react'
@@ -14,6 +15,8 @@ import { FilterBar } from './grid/FilterBar'
 import { SortHeader } from './grid/SortHeader'
 import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
+import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
+import { fixedOf, layoutColumns } from '@/lib/settings/columns'
 
 // The personal address is on the person's own page (Personal tab), not here.
 const COLS: { key: 'trueNorth' | 'goodnews' | 'coe'; label: string }[] = [
@@ -24,8 +27,20 @@ const COLS: { key: 'trueNorth' | 'goodnews' | 'coe'; label: string }[] = [
 
 const shorten = (a: string) => (a.length > 22 ? a.slice(0, 20) + '…' : a)
 const MAILBOX_OPTIONS = [{ value: 'has', label: 'Has address' }, { value: 'none', label: 'None' }]
+const TABLE_COLUMNS = [
+  { key: 'person', label: 'Person', track: '2fr', min: 0 },
+  ...COLS.map(c => ({ key: c.key, label: c.label, track: '1fr', min: 0 })),
+]
 
-export function EmailsTab({ people, onOpen }: { people: PersonView[]; onOpen: (id: string) => void }) {
+export function EmailsTab({ people, onOpen, columns: given }: {
+  people: PersonView[]
+  onOpen: (id: string) => void
+  /** Which columns this person hides (Columns menu); kept on this screen only when absent. */
+  columns?: ColumnChoice
+}) {
+  const choice = useColumnChoice('directory-emails', given)
+  const layout = layoutColumns(TABLE_COLUMNS, choice.hidden, fixedOf('directory-emails'), { gap: 14, padX: 44 })
+  const shownCols = COLS.filter(c => layout.visible.some(v => v.key === c.key))
   const [q, setQ] = useState('')
   const [conds, setConds] = useState<FilterCond[]>([])
   const [sort, setSort] = useState<SortState | null>(null)
@@ -63,12 +78,13 @@ export function EmailsTab({ people, onOpen }: { people: PersonView[]; onOpen: (i
           className="flex-1 min-w-[230px] max-w-[340px]"
         />
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
+        <ColumnsMenu columns={TABLE_COLUMNS} fixed={fixedOf('directory-emails')} choice={choice} />
       </div>
 
       <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200">
+        <div className="grid gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200" style={{ gridTemplateColumns: layout.template }}>
           <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
-          {COLS.map(c => (
+          {shownCols.map(c => (
             <SortHeader key={c.key} label={c.label} active={sort?.id === c.key} dir={sort?.id === c.key ? sort.dir : null} onClick={() => setSort(s => nextSort(s, c.key))} />
           ))}
         </div>
@@ -81,7 +97,8 @@ export function EmailsTab({ people, onOpen }: { people: PersonView[]; onOpen: (i
             aria-label={`Open ${p.full_name}`}
             onClick={() => onOpen(p.id)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onOpen(p.id) } }}
-            className={`grid grid-cols-[2fr_1fr_1fr_1fr] gap-3.5 items-center px-[22px] py-[13px] cursor-pointer transition-colors hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2 ${i === 0 ? '' : 'border-t border-slate-200'}`}
+            className={`grid gap-3.5 items-center px-[22px] py-[13px] cursor-pointer transition-colors hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2 ${i === 0 ? '' : 'border-t border-slate-200'}`}
+            style={{ gridTemplateColumns: layout.template }}
           >
             <span className="inline-flex items-center gap-3 min-w-0">
               <span className="shrink-0 inline-flex items-center justify-center rounded-full text-white font-(family-name:--font-display) font-extrabold text-[12px]" style={{ width: 38, height: 38, background: p.color }}>{initialsOf(p.full_name)}</span>
@@ -90,7 +107,7 @@ export function EmailsTab({ people, onOpen }: { people: PersonView[]; onOpen: (i
                 <span className="block text-xs text-muted truncate">{p.title ?? '-'}</span>
               </span>
             </span>
-            {COLS.map(c => {
+            {shownCols.map(c => {
               const addr = p.emails[c.key]
               return (
                 <span key={c.key} className="flex flex-col gap-[3px] min-w-0">

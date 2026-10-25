@@ -33,6 +33,8 @@ import { agendaViewer, loadAgendaItems } from '@/lib/agenda/data'
 import { thisWeek, viewDays } from '@/lib/agenda/model'
 import { localDate } from '@/lib/timeclock/format'
 import { addDays } from '@/lib/timeclock/periods'
+import { loadHomeTimesheet } from '@/lib/timeclock/home-timesheet'
+import { TimesheetDueCard } from '@/components/home/TimesheetDueCard'
 
 export default async function HomePage() {
   const perf = perfRun('home')
@@ -72,7 +74,11 @@ export default async function HomePage() {
     const today = localDate(new Date(), v.zone), { from } = viewDays('week', today)
     return thisWeek(await loadAgendaItems(v, from, addDays(today, 31)), today)
   }).catch(e => { console.error('[home] this week:', (e as Error).message); return null })
-  const [org, access, me, celebPeople, publishing, i7Carryover, favourites, week] = await Promise.all([
+  // A timesheet to send (owner, 25 October 2026): from the day the person's period
+  // closes until they send it. A read that fails leaves the card out.
+  const sheetP = Promise.all([accessP, meP]).then(([a, m]) => (m && a.can('clocky-hours') ? loadHomeTimesheet(m.id) : null))
+    .catch(e => { console.error('[home] timesheet:', (e as Error).message); return null })
+  const [org, access, me, celebPeople, publishing, i7Carryover, favourites, week, sheet] = await Promise.all([
     perf.time('org', getOrgChart()),
     perf.time('access', accessP),
     perf.time('person', meP),
@@ -86,12 +92,15 @@ export default async function HomePage() {
     perf.time('i7', carryoverP),
     perf.time('favourites', favouritesP),
     perf.time('this-week', weekP),
+    perf.time('timesheet', sheetP),
   ])
   perf.done({ budget: i7Carryover !== null })
 
   return (
     <div className="space-y-8">
       <WelcomeBanner name={me?.full_name ?? null} />
+
+      {sheet && <TimesheetDueCard t={sheet} href="/clocky-hours?submit=1" />}
 
       <Favourites items={favourites} />
 

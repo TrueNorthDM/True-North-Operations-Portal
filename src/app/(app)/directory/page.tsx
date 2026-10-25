@@ -27,6 +27,7 @@ import { getCurrentPerson, getSessionUser } from '@/lib/auth/session'
 import { loadInvitesByPerson } from '@/lib/directory/invites'
 import { loadTwoStepByAccount } from '@/lib/auth/two-step'
 import { loadRatesPay } from '@/lib/timeclock/pay-terms'
+import { loadHiddenColumns } from '@/lib/settings/columns'
 
 // The columns the list reads, and what each row carries by access, live in
 // lib/directory/list-gates.ts, where a test holds them.
@@ -67,8 +68,10 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     const ratesCadence = periods?.ok
       ? { byPerson: Object.fromEntries(periods.data.people.map(p => [p.personId, p.notSet ? null : p.cadence])), canEdit: periods.data.access === 'edit' }
       : null
+    // The columns this person hides (owner, 25 October 2026), read here so the first paint has them.
+    const hiddenColumns = await loadHiddenColumns(createAdminClient(), (await getCurrentPerson())?.id)
     return (
-      <RatesCostsPage people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} />
+      <RatesCostsPage people={budget.people} allClients={budget.clients.map(c => ({ id: c.id, name: c.name }))} cadence={ratesCadence} pay={ratesPay} hiddenColumns={hiddenColumns} />
     )
   }
   // Directory is reachable by everyone; the configured directory level decides
@@ -106,7 +109,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   const seesLogin = gates.login
   const seesWork = gates.work
 
-  const [{ data: tData }, { data: prData }, dRes, alRes, accessRules] = await Promise.all([
+  const [{ data: tData }, { data: prData }, dRes, alRes, accessRules, hiddenColumns] = await Promise.all([
     supabase.from('teams').select('id, name, color'),
     supabase.from('profiles').select('id, email'),
     // Separate + graceful: role_type (035) / avatar_url (036) may not exist
@@ -119,6 +122,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       : Promise.resolve({ data: [], error: null }),
     // Each tool's team list, as Access levels sets it (lib/access/team-tools.ts).
     loadRules(createAdminClient()),
+    // The columns this person hides in each table (owner, 25 October 2026),
+    // read here so the first paint has them.
+    loadHiddenColumns(createAdminClient(), mePerson?.id),
   ])
 
   const people = (pRows ?? []) as unknown as PRow[]
@@ -448,6 +454,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         allowed={([['emails', 'd-emails'], ['teams', 'd-teams'], ['access', 'd-log'], ['portal', 'd-portal']] as const)
           .filter(([, key]) => access.can(key)).map(([tab]) => tab)}
         startTab={startTab}
+        hiddenColumns={hiddenColumns}
       />
     </div>
   )

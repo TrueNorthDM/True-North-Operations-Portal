@@ -7,27 +7,38 @@
 // are read-only (from Directory); the rates are edited inline and saved via
 // the tr_assignments + people.internal_rate actions inside PeopleTab. Timesheet
 // (Clocky, 16 October 2026) is how each person submits their hours, the same
-// setting as their page's Work tab.
+// setting as their page's Work tab. Columns (owner, 25 October 2026): each
+// person hides the columns they do not need, kept in their account.
 
 import type { ComponentProps } from 'react'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { PeopleTab, type CadenceColumn, type PayColumn, type PersonWithAssignments } from '@/components/tsheets/settings/PeopleTab'
+import { useColumnChoices } from '@/components/ui/ColumnsMenu'
+import { saveHiddenColumns } from '@/app/(app)/settings/actions'
+import type { HiddenColumns, SaveHidden } from '@/lib/settings/columns'
 
-export type CheckProps = Pick<ComponentProps<typeof PeopleTab>, 'cadenceActions' | 'startEditing' | 'startCadences' | 'startDialog'>
+export type CheckProps = Pick<ComponentProps<typeof PeopleTab>, 'cadenceActions' | 'startEditing' | 'startCadences' | 'startDialog'> & {
+  /** Saves the Columns choice without the server. */
+  saveColumns?: SaveHidden
+}
 
-export function RatesCostsPage({ people, allClients, cadence = null, pay = null, check }: {
+export function RatesCostsPage({ people, allClients, cadence = null, pay = null, hiddenColumns = {}, check }: {
   people: PersonWithAssignments[]
   allClients: { id: number; name: string }[]
   /** Pays as, Allowance and Over (Clocky part 2, 10A-2). */
   pay?: PayColumn | null
   /** The Timesheet column, for whoever opens Company settings > Timesheet periods. */
   cadence?: CadenceColumn | null
+  /** The columns this person hides, as their account keeps them (read on the server, so the first paint has them). */
+  hiddenColumns?: HiddenColumns
   /** Design check only: answers and a state to open in. */
   check?: CheckProps
 }) {
+  const { saveColumns = saveHiddenColumns, ...tabCheck } = check ?? {}
+  const columns = useColumnChoices(hiddenColumns, saveColumns)
   return (
     <div className="flex flex-col gap-4">
-      <PeopleTab people={people} allClients={allClients} cadence={cadence} pay={pay} {...check} head={actions => (
+      <PeopleTab people={people} allClients={allClients} cadence={cadence} pay={pay} {...tabCheck} columns={columns('rates')} head={actions => (
         <div className="flex items-end justify-between gap-3.5 flex-wrap mb-[18px]">
           {/* On a phone the words take the row and the buttons go under them. */}
           <div className="min-w-0 basis-full md:basis-auto md:flex-1">

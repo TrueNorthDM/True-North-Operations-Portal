@@ -3,11 +3,13 @@
 // 10A-2: Rates & Costs, its own page under People, with Pays as, Allowance and Over (Company
 // Settings.dc.html, frame 10A2), the real tab in Edit with the prototype's
 // values: Olivia Hale fixed monthly, Cheyenne Wilson 11h 15m over 140h a
-// month, Wendy Cacka an employee with 40h a week.
+// month, Wendy Cacka an employee with 40h a week. The Columns menu works and
+// "saves" without the server (design-check/columns starts it with columns hidden).
 
 import { RatesCostsPage } from '@/components/admin/RatesCostsPage'
 import type { CadenceActions } from '@/components/person/PersonForms'
 import type { PayColumn } from '@/components/tsheets/settings/PeopleTab'
+import type { SaveHidden } from '@/lib/settings/columns'
 import { idOf, previewCadenceChange, ratesPeople, SEED, setCadence } from '../clocky-periods/sample'
 
 const ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
@@ -32,14 +34,23 @@ const payColumn = (): PayColumn => ({
   canEdit: true,
 })
 
-export function RatesPayCheck({ editing }: { editing: boolean }) {
+/** A save that goes through, a moment later, like the server's. */
+const saved: SaveHidden = () => new Promise(done => setTimeout(() => done({ ok: true }), 250))
+
+export function RatesPayCheck({ editing, hidden, saveColumns = saved }: {
+  editing: boolean
+  /** The Rates & Costs columns hidden at first. */
+  hidden?: string[]
+  saveColumns?: SaveHidden
+}) {
   return (
     <RatesCostsPage
       people={ratesPeople()}
       allClients={[{ id: 1, name: 'i7 Marketing' }]}
       cadence={{ byPerson: BY_PERSON, canEdit: true }}
       pay={payColumn()}
-      check={{ cadenceActions: ACTIONS, startEditing: editing }}
+      hiddenColumns={hidden ? { rates: hidden } : {}}
+      check={{ cadenceActions: ACTIONS, startEditing: editing, saveColumns }}
     />
   )
 }

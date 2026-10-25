@@ -3,7 +3,9 @@
 /**
  * DirectoryTabs: the single admin surface for the org: People, Emails, Teams,
  * and Access. Owns the shared person modal (opened from People and Emails) and
- * the "Add person" menu. Each tab renders its own manager component.
+ * the "Add person" menu. Each tab renders its own manager component. Holds
+ * which columns each table shows (the Columns menus), so a tab keeps its
+ * choice when another one was open in between.
  */
 
 import { useState } from 'react'
@@ -18,6 +20,9 @@ import { AccessLogManager, type AccessLogEntry } from './AccessLogManager'
 import { PortalAccessTab } from './PortalAccessTab'
 import { PersonModal, type ModalState } from './PersonModal'
 import type { PersonView, CardRights } from '@/lib/directory/people-types'
+import { useColumnChoices } from '@/components/ui/ColumnsMenu'
+import { saveHiddenColumns } from '@/app/(app)/settings/actions'
+import type { HiddenColumns, SaveHidden } from '@/lib/settings/columns'
 
 type Tab = 'people' | 'emails' | 'teams' | 'access' | 'portal'
 
@@ -32,6 +37,8 @@ export function DirectoryTabs({
   accessLog,
   allowed,
   startTab = 'people',
+  hiddenColumns = {},
+  saveColumns = saveHiddenColumns,
 }: {
   people: PersonView[]
   teamOptions: TeamOption[]
@@ -42,7 +49,12 @@ export function DirectoryTabs({
   allowed?: readonly string[]
   /** The tab open at first (?tab=emails and the like). Rates & Costs is its own page since 10A-2. */
   startTab?: string
+  /** The columns this person hides, by table, as their account keeps them (read on the server, so the first paint has them). */
+  hiddenColumns?: HiddenColumns
+  /** Design check only: saves a Columns choice without the server. */
+  saveColumns?: SaveHidden
 }) {
+  const columns = useColumnChoices(hiddenColumns, saveColumns)
   const [tab, setTab] = useState<Tab>(() => (startTab === 'people' || !(['emails', 'teams', 'access', 'portal'] as string[]).includes(startTab) || (allowed && !allowed.includes(startTab)) ? 'people' : startTab as Tab))
   // Deep-link: open a person's card on mount when ?open=<id> was passed.
   const router = useRouter()
@@ -176,16 +188,16 @@ export function DirectoryTabs({
               </div>
             </div>
           </div>
-          <PeopleManager people={people} teamOptions={teamOptions} workColumns={rights.work} onOpen={id => router.push(withViewAs(personHref(id)))} />
+          <PeopleManager people={people} teamOptions={teamOptions} workColumns={rights.work} columns={columns('directory-people')} onOpen={id => router.push(withViewAs(personHref(id)))} />
         </div>
       )}
       {tab === 'emails' && (
-        <EmailsTab people={activePeople} onOpen={id => router.push(withViewAs(personHref(id, 'work')))} />
+        <EmailsTab people={activePeople} columns={columns('directory-emails')} onOpen={id => router.push(withViewAs(personHref(id, 'work')))} />
       )}
       {tab === 'teams' && <TeamsManager cards={teamCards} people={activePeople} canEdit={rights.positions} />}
-      {tab === 'access' && <AccessLogManager entries={accessLog} />}
+      {tab === 'access' && <AccessLogManager entries={accessLog} columns={columns('directory-access')} />}
       {tab === 'portal' && (
-        <PortalAccessTab people={activePeople} twoStep={twoStep} canInvite={rights.invite} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
+        <PortalAccessTab people={activePeople} twoStep={twoStep} columns={columns('directory-portal')} canInvite={rights.invite} showLastSignIn={rights.accessLog} onOpen={id => router.push(withViewAs(personHref(id, 'hr')))} />
       )}
       </div>
 

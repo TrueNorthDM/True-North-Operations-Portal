@@ -23,7 +23,7 @@ import { getEntries } from './entries-actions'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Time entries' }
 
-export default async function TimeEntriesPage({ searchParams }: { searchParams: Promise<{ entry?: string; person?: string }> }) {
+export default async function TimeEntriesPage({ searchParams }: { searchParams: Promise<{ entry?: string; person?: string; submit?: string }> }) {
   await requireSurface('clocky-hours')
   const params = await searchParams
   const asked = Number(params.entry)
@@ -56,10 +56,11 @@ export default async function TimeEntriesPage({ searchParams }: { searchParams: 
   // page (the Who's working drawer, the bell), starts the screen afresh.
   return (
     <TimeEntriesLive
-      key={`${member ?? 'me'}-${openEntry ?? ''}`}
+      key={`${member ?? 'me'}-${openEntry ?? ''}-${params.submit ?? ''}`}
       initialData={entries.data}
       openEntry={openEntry}
       member={member}
+      openSubmit={params.submit === '1' && !member}
       catalog={{ me, now, today: panel.data.today, jobs, fields, defaults, combinations, correctionGoesTo, running }}
     />
   )

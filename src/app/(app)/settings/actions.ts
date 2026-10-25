@@ -8,6 +8,10 @@
  *
  * Favourites are checked against the person's own navigation: a page they
  * cannot open is dropped, whatever the browser sent.
+ *
+ * Also which columns a table shows (owner, 25 October 2026), from the Columns
+ * menu of Rates & Costs and of the Directory's tables: one table per call, the
+ * other tables' choices read and kept.
  */
 
 import { revalidatePath } from 'next/cache'
@@ -18,6 +22,7 @@ import { buildRail } from '@/lib/access/nav'
 import { loadNavFacts } from '@/lib/access/nav-facts'
 import { pinnable } from '@/lib/settings/pages'
 import { cleanSettings, type SettingsPatch } from '@/lib/settings/person'
+import { cleanHiddenChoice, readHidden, type TableId } from '@/lib/settings/columns'
 
 type Result = { ok: boolean; error?: string }
 
@@ -55,4 +60,33 @@ async function save(patch: SettingsPatch): Promise<Result> {
   }
   if ('favourites' in clean || 'show_birthday' in clean || 'show_anniversary' in clean) revalidatePath('/')
   return { ok: true }
+}
+
+export async function saveHiddenColumns(table: TableId, hidden: string[]): Promise<Result> {
+  try {
+    const clean = cleanHiddenChoice(table, hidden)
+    if (!clean) return { ok: false, error: 'That choice could not be read. Reload the page and try again.' }
+    const signed = await signedInPerson('change your columns')
+    if ('error' in signed) return { ok: false, error: signed.error }
+
+    const db = createAdminClient()
+    const { data, error: readError } = await db.from('person_settings').select('hidden_columns').eq('person_id', signed.personId).maybeSingle()
+    if (readError) {
+      console.error('[settings] columns read:', readError.message)
+      return { ok: false, error: NOT_SAVED }
+    }
+    const next = { ...readHidden(data?.hidden_columns), [clean.table]: clean.hidden }
+    const { error } = await db.from('person_settings').upsert(
+      { person_id: signed.personId, hidden_columns: next, updated_at: new Date().toISOString() },
+      { onConflict: 'person_id' },
+    )
+    if (error) {
+      console.error('[settings] columns save:', error.message)
+      return { ok: false, error: NOT_SAVED }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('[settings] columns save:', (e as Error).message)
+    return { ok: false, error: NOT_SAVED }
+  }
 }

@@ -3,10 +3,12 @@
 /**
  * PeopleManager: the People tab of the Directory. A searchable, filterable,
  * column-configurable roster grouped into Active / Inactive. Rows open the
- * shared person modal (owned by DirectoryTabs).
+ * shared person modal (owned by DirectoryTabs). Which columns show is kept in
+ * the person's account since 25 October 2026 (lib/settings/columns.ts), no
+ * longer in each browser.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { SearchField } from '@/components/ui/SearchField'
 import {
   PILL_CLASS,
@@ -27,7 +29,8 @@ import { FilterBar } from './grid/FilterBar'
 import { SortHeader } from './grid/SortHeader'
 import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
-import { BTN_ICON } from '@/lib/ui/buttons'
+import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
+import { fixedOf, layoutColumns } from '@/lib/settings/columns'
 
 type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 'status' | 'tsheets'
 
@@ -42,7 +45,7 @@ type ColId = 'team' | 'role' | 'job' | 'reports' | 'type' | 'time' | 'joined' | 
 // in Rates & Costs alone since 8 October 2026.)
 //
 // The visible set is filtered THROUGH this array, so changing the order here
-// reorders every table, including column choices already saved in localStorage.
+// reorders every table, including column choices already saved.
 const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
   { id: 'job', label: 'Job title', fr: '1.2fr' },
   { id: 'team', label: 'Team', fr: '1fr' },
@@ -56,8 +59,8 @@ const COLUMNS: { id: ColId; label: string; fr: string; align?: 'right' }[] = [
 ]
 /** Read from the Work tab: without that item they are not on the list at all. */
 const WORK_COLS = new Set<ColId>(['type', 'time', 'joined'])
-const DEFAULT_COLS: ColId[] = ['team', 'reports', 'joined', 'status', 'tsheets']
-const LS_COLS = 'tn-directory-cols-v2'
+// Person first and fixed; the shown columns after it (the default set is in lib/settings/columns.ts).
+const PERSON = { key: 'person', label: 'Person', track: '2fr', min: 0 }
 
 const primaryEmail = (p: PersonView) => p.emails.trueNorth || p.emails.goodnews || p.emails.coe || ''
 
@@ -67,7 +70,14 @@ function PillBadge({ pill }: { pill: Pill }) {
   )
 }
 
-export function PeopleManager({ people, teamOptions, workColumns, onOpen }: { people: PersonView[]; teamOptions: TeamOption[]; workColumns: boolean; onOpen: (id: string) => void }) {
+export function PeopleManager({ people, teamOptions, workColumns, onOpen, columns: given }: {
+  people: PersonView[]
+  teamOptions: TeamOption[]
+  workColumns: boolean
+  onOpen: (id: string) => void
+  /** Which columns this person hides (Columns menu); kept on this screen only when absent. */
+  columns?: ColumnChoice
+}) {
   // The internal rate lives in Rates & Costs alone (8 October 2026), not on this list.
   const columns = useMemo(() => (workColumns ? COLUMNS : COLUMNS.filter(c => !WORK_COLS.has(c.id))), [workColumns])
   // The manager's avatar takes the manager's own colour, the one on their row.
@@ -78,8 +88,7 @@ export function PeopleManager({ people, teamOptions, workColumns, onOpen }: { pe
   const [q, setQ] = useState('')
   const [conds, setConds] = useState<FilterCond[]>([])
   const [sort, setSort] = useState<SortState | null>(null)
-  const [cols, setCols] = useState<ColId[]>(DEFAULT_COLS)
-  const [colMenu, setColMenu] = useState(false)
+  const choice = useColumnChoice('directory-people', given)
 
   // Filterable/sortable columns, a superset of the visible table columns, so you
   // can filter or sort by anything even when the column is hidden. Person = name.
@@ -96,40 +105,6 @@ export function PeopleManager({ people, teamOptions, workColumns, onOpen }: { pe
     { id: 'tsheets', label: 'TSheets', type: 'enum', get: p => (p.hasTsheets ? 'linked' : 'unlinked'), options: [{ value: 'linked', label: 'Linked' }, { value: 'unlinked', label: 'Not linked' }] },
   ] satisfies GridColumn<PersonView>[]).filter(c => workColumns || !WORK_COLS.has(c.id as ColId)), [teamOptions, workColumns])
 
-  // Hydrate saved column choices once on mount. Deliberately a post-mount effect
-  // (not a lazy initializer) so the server and first client render agree, then we
-  // adopt localStorage, avoids an SSR/hydration mismatch on the table columns.
-  useEffect(() => {
-    try {
-      const rawV2 = window.localStorage.getItem(LS_COLS)
-      if (rawV2) {
-        const arr = JSON.parse(rawV2)
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage hydration
-        if (Array.isArray(arr)) setCols(COLUMNS.filter(c => arr.includes(c.id)).map(c => c.id))
-        return
-      }
-      // Migrate v1 → v2 once, forcing the new TSheets column into everyone's set
-      // (later toggles are saved to v2, so it can still be hidden afterwards).
-      const rawV1 = window.localStorage.getItem('tn-directory-cols-v1')
-      if (rawV1) {
-        const arr = JSON.parse(rawV1)
-        if (Array.isArray(arr)) {
-          const merged = COLUMNS.filter(c => arr.includes(c.id) || c.id === 'tsheets').map(c => c.id)
-          setCols(merged)
-          window.localStorage.setItem(LS_COLS, JSON.stringify(merged))
-        }
-      }
-    } catch {}
-  }, [])
-
-  function toggleCol(id: ColId) {
-    setCols(cur => {
-      const next = cur.includes(id) ? cur.filter(x => x !== id) : COLUMNS.filter(c => cur.includes(c.id) || c.id === id).map(c => c.id)
-      try { window.localStorage.setItem(LS_COLS, JSON.stringify(next)) } catch {}
-      return next
-    })
-  }
-
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase()
     const base = term
@@ -138,8 +113,10 @@ export function PeopleManager({ people, teamOptions, workColumns, onOpen }: { pe
     return applyFilters(base, filterColumns, conds)
   }, [people, q, conds, filterColumns])
 
-  const visCols = columns.filter(c => cols.includes(c.id))
-  const gridTemplate = `2fr ${visCols.map(c => c.fr).join(' ')}`
+  const menuColumns = useMemo(() => [PERSON, ...columns.map(c => ({ key: c.id, label: c.label, track: c.fr, min: 0 }))], [columns])
+  const layout = layoutColumns(menuColumns, choice.hidden, fixedOf('directory-people'), { gap: 14, padX: 44 })
+  const visCols = columns.filter(c => layout.visible.some(v => v.key === c.id))
+  const gridTemplate = layout.template
   // Sort is applied WITHIN each group so the Active / Inactive split is preserved.
   const groups = [
     { key: 'active', label: 'Active', on: true, rows: applySort(filtered.filter(p => p.status === 'active'), filterColumns, sort) },
@@ -162,42 +139,8 @@ export function PeopleManager({ people, teamOptions, workColumns, onOpen }: { pe
         {/* filter builder, "filter by anything" (replaces the fixed team + status pills) */}
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
 
-        {/* columns control */}
-        <div className="relative ml-auto">
-          <button
-            type="button"
-            onClick={() => setColMenu(v => !v)}
-            className="inline-flex items-center gap-2 font-(family-name:--font-display) font-extrabold text-[12.5px] text-foreground bg-white border border-slate-200 rounded-full px-3.5 py-[7px] transition-all hover:border-tn-teal hover:text-tn-teal"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M15 3v18" /></svg>
-            Columns
-            <span className="font-(family-name:--font-display) font-extrabold text-[11px] text-muted bg-subtle rounded-full px-[7px] py-px">{visCols.length}</span>
-          </button>
-          {colMenu && (
-            <>
-              <div onClick={() => setColMenu(false)} className="fixed inset-0 z-30" />
-              <div className="absolute top-[calc(100%+8px)] right-0 z-[31] w-[230px] bg-white border border-slate-200 rounded-[13px] shadow-[0_24px_60px_-22px_rgba(1,35,88,.5)] p-2">
-                <div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.07em] uppercase text-muted px-2.5 pt-1.5 pb-2">Show columns</div>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-[9px] opacity-65">
-                  <span className="shrink-0 w-[18px] h-[18px] rounded-md bg-tn-teal inline-flex items-center justify-center text-white"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>
-                  <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">Person</span>
-                  <span className="ml-auto text-[10.5px] font-bold text-muted">Always</span>
-                </div>
-                {columns.map(c => {
-                  const on = cols.includes(c.id)
-                  return (
-                    <button key={c.id} type="button" onClick={() => toggleCol(c.id)} className="flex items-center gap-2.5 w-full p-2.5 rounded-[9px] text-left transition-colors hover:bg-subtle">
-                      <span className={`shrink-0 w-[18px] h-[18px] rounded-md inline-flex items-center justify-center transition-all ${on ? 'bg-tn-teal text-white border border-tn-teal' : 'bg-transparent text-transparent border-[1.5px] border-slate-300'}`}>
-                        {on && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>}
-                      </span>
-                      <span className="font-(family-name:--font-display) font-bold text-[13px] text-tn-ink">{c.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </div>
+        {/* columns control: which columns show, kept in the person's account */}
+        <ColumnsMenu columns={menuColumns} fixed={fixedOf('directory-people')} choice={choice} />
       </div>
 
       {/* table */}

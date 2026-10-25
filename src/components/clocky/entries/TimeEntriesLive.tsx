@@ -22,16 +22,18 @@ const API: EntriesApi = {
   decideCorrection, decideTimeOff, clockIn, switchTo,
 }
 
-export function TimeEntriesLive({ initialData, catalog, openEntry = null, member = null }: {
+export function TimeEntriesLive({ initialData, catalog, openEntry = null, member = null, openSubmit = false }: {
   initialData: EntriesData
   catalog: Catalog
   /** ?entry=<id>: open that entry's history. */
   openEntry?: number | null
   /** ?person=<id>, in the viewer's scope: All (My team) with that Team member picked; the data is already theirs. */
   member?: string | null
+  /** ?submit=1 (the Home card for a timesheet to send): the Submit window open on the period to send. */
+  openSubmit?: boolean
 }) {
   const router = useRouter()
-  const initial = { ...(openEntry ? { drawer: `e${openEntry}` } : {}), ...(member ? { who: 'all' as const, member } : {}) }
+  const initial = { ...(openEntry ? { drawer: `e${openEntry}` } : {}), ...(member ? { who: 'all' as const, member } : {}), ...(openSubmit ? { modal: { kind: 'submit' as const } } : {}) }
   return (
     <TimeEntries initialData={initialData} catalog={catalog} api={API} clock={{ now: catalog.now }} onChanged={() => router.refresh()} initial={initial}
       onInvoiceMade={id => router.push(withViewAs(`/clocky-hours/invoices/${id}?submitted=1`))} />

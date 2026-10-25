@@ -3,7 +3,9 @@
 /**
  * AccessLogManager: the Access log tab. A searchable, filterable, sortable list
  * of portal accesses (who, when, from which device). Read-only; admin-only (the
- * whole DirectoryTabs surface is already gated to privileged tiers).
+ * whole DirectoryTabs surface is already gated to privileged tiers). Email and
+ * Device can be hidden (Columns menu, kept in the person's account); who and
+ * when cannot.
  */
 
 import { useMemo, useState } from 'react'
@@ -15,6 +17,8 @@ import { FilterBar } from './grid/FilterBar'
 import { SortHeader } from './grid/SortHeader'
 import { applyFilters, applySort, nextSort } from './grid/utils'
 import type { FilterCond, GridColumn, SortState } from './grid/types'
+import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
+import { fixedOf, layoutColumns } from '@/lib/settings/columns'
 
 export interface AccessLogEntry {
   id: string
@@ -34,7 +38,21 @@ function fmtWhen(iso: string): string {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-export function AccessLogManager({ entries }: { entries: AccessLogEntry[] }) {
+const TABLE_COLUMNS = [
+  { key: 'person', label: 'Person', track: '2fr', min: 0 },
+  { key: 'email', label: 'Email', track: '1.6fr', min: 0 },
+  { key: 'when', label: 'When', track: '1.2fr', min: 0 },
+  { key: 'device', label: 'Device', track: '1fr', min: 0 },
+]
+
+export function AccessLogManager({ entries, columns: given }: {
+  entries: AccessLogEntry[]
+  /** Which columns this person hides (Columns menu); kept on this screen only when absent. */
+  columns?: ColumnChoice
+}) {
+  const choice = useColumnChoice('directory-access', given)
+  const layout = layoutColumns(TABLE_COLUMNS, choice.hidden, fixedOf('directory-access'), { gap: 14, padX: 44 })
+  const show = new Set(layout.visible.map(c => c.key))
   const [q, setQ] = useState('')
   const [conds, setConds] = useState<FilterCond[]>([])
   const [sort, setSort] = useState<SortState | null>({ id: 'when', dir: 'desc' })
@@ -54,7 +72,7 @@ export function AccessLogManager({ entries }: { entries: AccessLogEntry[] }) {
     return applySort(applyFilters(base, filterColumns, conds), filterColumns, sort)
   }, [entries, q, conds, sort, filterColumns])
 
-  const gridTemplate = '2fr 1.6fr 1.2fr 1fr'
+  const gridTemplate = layout.template
 
   return (
     <div>
@@ -66,15 +84,16 @@ export function AccessLogManager({ entries }: { entries: AccessLogEntry[] }) {
           className="flex-1 min-w-[230px] max-w-[340px]"
         />
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
+        <ColumnsMenu columns={TABLE_COLUMNS} fixed={fixedOf('directory-access')} choice={choice} />
         <span className="ml-auto text-[12.5px] text-muted">{rows.length} of {entries.length} accesses</span>
       </div>
 
       <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
         <div className="grid gap-3.5 items-center px-[22px] py-[13px] bg-subtle border-b border-slate-200" style={{ gridTemplateColumns: gridTemplate }}>
           <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
-          <SortHeader label="Email" active={sort?.id === 'email'} dir={sort?.id === 'email' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'email'))} />
+          {show.has('email') && <SortHeader label="Email" active={sort?.id === 'email'} dir={sort?.id === 'email' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'email'))} />}
           <SortHeader label="When" active={sort?.id === 'when'} dir={sort?.id === 'when' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'when'))} />
-          <SortHeader label="Device" active={sort?.id === 'device'} dir={sort?.id === 'device' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'device'))} />
+          {show.has('device') && <SortHeader label="Device" active={sort?.id === 'device'} dir={sort?.id === 'device' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'device'))} />}
         </div>
 
         {rows.map((e, i) => (
@@ -83,9 +102,9 @@ export function AccessLogManager({ entries }: { entries: AccessLogEntry[] }) {
               <Avatar name={e.name} avatarUrl={e.avatarUrl} size={32} color={e.color} />
               <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink truncate">{e.name}</span>
             </span>
-            <span className="text-[13px] text-muted truncate">{e.email || '-'}</span>
+            {show.has('email') && <span className="text-[13px] text-muted truncate">{e.email || '-'}</span>}
             <span className="text-[13px] text-foreground whitespace-nowrap tabular-nums">{fmtWhen(e.accessedAt)}</span>
-            <span className="text-[13px] text-foreground truncate">{deviceLabel(e.userAgent)}</span>
+            {show.has('device') && <span className="text-[13px] text-foreground truncate">{deviceLabel(e.userAgent)}</span>}
           </div>
         ))}
 

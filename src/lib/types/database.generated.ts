@@ -2379,6 +2379,7 @@ export type Database = {
       person_settings: {
         Row: {
           favourites: string[]
+          hidden_columns: Json
           person_id: string
           show_anniversary: boolean
           show_birthday: boolean
@@ -2389,6 +2390,7 @@ export type Database = {
         }
         Insert: {
           favourites?: string[]
+          hidden_columns?: Json
           person_id: string
           show_anniversary?: boolean
           show_birthday?: boolean
@@ -2399,6 +2401,7 @@ export type Database = {
         }
         Update: {
           favourites?: string[]
+          hidden_columns?: Json
           person_id?: string
           show_anniversary?: boolean
           show_birthday?: boolean

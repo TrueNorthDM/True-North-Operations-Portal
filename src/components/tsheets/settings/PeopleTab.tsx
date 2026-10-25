@@ -17,6 +17,10 @@
  * a choice per row for whoever may change it (cs-periods-edit), changed rows in
  * amber, and Save asks first ("Change how these people submit?") with the
  * dates each change takes effect. A name opens the person's page.
+ *
+ * Columns (owner, 25 October 2026): each person hides the columns they do not
+ * need, kept in their account (lib/settings/columns.ts). A hidden column
+ * leaves the grid, in Edit too; Save still saves every change.
  */
 
 import { useMemo, useRef, useState, type ReactNode } from 'react'
@@ -43,6 +47,8 @@ import { SortHeader } from '@/components/admin/grid/SortHeader'
 import { applyFilters, applySort, nextSort } from '@/components/admin/grid/utils'
 import type { FilterCond, GridColumn, SortState } from '@/components/admin/grid/types'
 import { MONTH_LONG } from '@/lib/format/months'
+import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
+import { fixedOf, fixedTrack, flexTrack, layoutColumns } from '@/lib/settings/columns'
 
 // Kept for the data loader (budget-usage-data.ts builds objects of this shape).
 // Only `name`, `teamName`, `managerName`, `hireDate`, `costRate`, `assignments`,
@@ -116,6 +122,8 @@ interface Props {
    * is no save bar under the table.
    */
   head?: (actions: ReactNode) => ReactNode
+  /** Which columns this person hides (Columns menu); kept on this screen only when absent. */
+  columns?: ColumnChoice
 }
 
 const CADENCE_ACTIONS: CadenceActions = { previewCadenceChange, setCadence }
@@ -142,12 +150,35 @@ function monthName(iso: string): string {
   return `${MONTH_LONG[m - 1]} ${y}`
 }
 
-const GRID = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_224px_224px_224px_224px] gap-3.5 items-center'
-// With the Timesheet column (Timesheet Periods.dc.html, 5C): the rates narrow to make room.
-const GRID_TS = 'grid grid-cols-[1.9fr_1fr_1.4fr_1fr_210px_150px_150px_160px_150px] gap-3.5 items-center'
-// With Pays as (after Timesheet), Allowance and Over (at the end), Clocky part 2.
-const GRID_PAY = 'grid grid-cols-[1.9fr_1fr_1.4fr_1.1fr_170px_224px_224px_224px_224px_160px_90px] gap-3.5 items-center'
-const GRID_TS_PAY = 'grid grid-cols-[1.9fr_1fr_1.4fr_1fr_210px_170px_150px_150px_160px_150px_160px_90px] gap-3.5 items-center'
+// The grid is built from the columns shown (the Columns menu), so a hidden one
+// leaves it and the table narrows. The Person column is never narrower than
+// 142px: with the row's padding that is the 178px it keeps on a phone, where it
+// stays in view as the table scrolls sideways.
+const GRID = 'grid gap-3.5 items-center'
+const GAP = 14
+const PAD_X = 44
+
+/**
+ * The table's columns, in order: Timesheet with the cadence (Timesheet
+ * Periods.dc.html, 5C), where the rates narrow to make room; Pays as (after
+ * Timesheet), Allowance and Over (at the end) with pay, Clocky part 2.
+ */
+function tableColumns(withCadence: boolean, withPay: boolean) {
+  const rate = (px: number) => fixedTrack(withCadence ? px : 224)
+  return [
+    { key: 'person', label: 'Person', ...flexTrack(1.9, 142) },
+    { key: 'team', label: 'Team', ...flexTrack(1, 64) },
+    { key: 'reports', label: 'Report to', ...flexTrack(1.4, 96) },
+    { key: 'joined', label: 'Joined on', ...flexTrack(withCadence ? 1 : 1.1, 80) },
+    ...(withCadence ? [{ key: 'timesheet', label: 'Timesheet', ...fixedTrack(210) }] : []),
+    ...(withPay ? [{ key: 'paysAs', label: 'Pays as', ...fixedTrack(170) }] : []),
+    { key: 'clientRate', label: 'Rate / client', ...rate(150) },
+    { key: 'costRate', label: 'Rate / cost', ...rate(150) },
+    { key: 'beRate', label: 'Rate / break-even', ...rate(160) },
+    { key: 'salary', label: 'Month / salary', ...rate(150) },
+    ...(withPay ? [{ key: 'allowance', label: 'Allowance', ...fixedTrack(160) }, { key: 'over', label: 'Over', ...fixedTrack(90) }] : []),
+  ]
+}
 
 const PAYS_AS: Record<PaysAs, string> = { hourly: 'Hourly', fixed_monthly: 'Fixed monthly', fixed_no_timesheet: 'Fixed, no timesheet' }
 const ALLOWANCES = ['none', '30w', '35w', '40w', '80m', '100m', '120m', '130m', '140m', '150m', '160m', '170m', '180m']
@@ -156,9 +187,13 @@ const alOf = (k: string): { hours: number; period: 'week' | 'month' } | null => 
 const alText = (k: string) => (k === 'none' ? 'None' : `${k.slice(0, -1)}h ${k.endsWith('w') ? 'a week' : 'a month'}`)
 const overText = (sec: number) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` }
 
-export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head }: Props) {
+export function PeopleTab({ people, allClients, pay = null, cadence = null, cadenceActions = CADENCE_ACTIONS, startEditing = false, startCadences, startDialog = null, head, columns: given }: Props) {
   const router = useRouter()
-  const grid = pay ? (cadence ? GRID_TS_PAY : GRID_PAY) : cadence ? GRID_TS : GRID
+  const choice = useColumnChoice('rates', given)
+  const allColumns = useMemo(() => tableColumns(!!cadence, !!pay), [cadence, pay])
+  const layout = layoutColumns(allColumns, choice.hidden, fixedOf('rates'), { gap: GAP, padX: PAD_X })
+  const show = new Set(layout.visible.map(c => c.key))
+  const gridStyle = { gridTemplateColumns: layout.template }
   // Pays as and Allowance being changed (Clocky part 2): "hourly" etc., and "140m" / "40w" / "none".
   const [payDraft, setPayDraft] = useState<Record<string, { paysAs?: PaysAs; allowance?: string }>>({})
   const payOf = (id: string) => pay?.byPerson[id] ?? null
@@ -488,39 +523,36 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
           />
         )}
         <FilterBar columns={filterColumns} conds={conds} onChange={setConds} />
+        <ColumnsMenu columns={allColumns} fixed={fixedOf('rates')} choice={choice} />
       </div>
 
       <div className="rounded-[16px] border border-slate-200 bg-white overflow-x-auto shadow-[0_1px_2px_rgba(1,35,88,.06)] leading-[normal]">
-        <div className={pay ? (cadence ? 'min-w-[1840px]' : 'min-w-[1830px]') : cadence ? 'min-w-[1420px]' : 'min-w-[1404px]'}>
+        <div style={{ minWidth: layout.minWidth }}>
           {/* header */}
-          <div className={`${grid} px-[22px] py-3.5 bg-subtle border-b border-slate-200`}>
+          <div className={`${GRID} px-[22px] py-3.5 bg-subtle border-b border-slate-200`} style={gridStyle}>
             {/* The name stays in view when the table scrolls sideways (a phone, a narrow window). */}
             <span className="sticky left-0 z-[1] max-md:w-[178px] max-md:justify-self-start -ml-[22px] pl-[22px] -mr-3.5 pr-3.5 -my-3.5 py-3.5 self-stretch flex items-center bg-subtle">
               <SortHeader label="Person" active={sort?.id === 'name'} dir={sort?.id === 'name' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'name'))} />
             </span>
-            <SortHeader label="Team" active={sort?.id === 'team'} dir={sort?.id === 'team' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'team'))} />
-            <SortHeader label="Report to" active={sort?.id === 'reports'} dir={sort?.id === 'reports' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'reports'))} />
-            <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />
-            {cadence && (
+            {show.has('team') && <SortHeader label="Team" active={sort?.id === 'team'} dir={sort?.id === 'team' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'team'))} />}
+            {show.has('reports') && <SortHeader label="Report to" active={sort?.id === 'reports'} dir={sort?.id === 'reports' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'reports'))} />}
+            {show.has('joined') && <SortHeader label="Joined on" active={sort?.id === 'joined'} dir={sort?.id === 'joined' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'joined'))} />}
+            {cadence && show.has('timesheet') && (
               <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">
                 Timesheet<NewTag size={8.5} />
               </span>
             )}
-            {pay && (
+            {pay && show.has('paysAs') && (
               <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">
                 Pays as<NewTag size={8.5} />
               </span>
             )}
-            <SortHeader label="Rate / client" align="right" active={sort?.id === 'clientRate'} dir={sort?.id === 'clientRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'clientRate'))} />
-            <SortHeader label="Rate / cost" align="right" active={sort?.id === 'costRate'} dir={sort?.id === 'costRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'costRate'))} />
-            <SortHeader label="Rate / break-even" align="right" active={sort?.id === 'beRate'} dir={sort?.id === 'beRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'beRate'))} />
-            <SortHeader label="Month / salary" align="right" active={sort?.id === 'salary'} dir={sort?.id === 'salary' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'salary'))} />
-            {pay && (
-              <>
-                <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Allowance<NewTag size={8.5} /></span>
-                <span className="text-right font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Over</span>
-              </>
-            )}
+            {show.has('clientRate') && <SortHeader label="Rate / client" align="right" active={sort?.id === 'clientRate'} dir={sort?.id === 'clientRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'clientRate'))} />}
+            {show.has('costRate') && <SortHeader label="Rate / cost" align="right" active={sort?.id === 'costRate'} dir={sort?.id === 'costRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'costRate'))} />}
+            {show.has('beRate') && <SortHeader label="Rate / break-even" align="right" active={sort?.id === 'beRate'} dir={sort?.id === 'beRate' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'beRate'))} />}
+            {show.has('salary') && <SortHeader label="Month / salary" align="right" active={sort?.id === 'salary'} dir={sort?.id === 'salary' ? sort.dir : null} onClick={() => setSort(s => nextSort(s, 'salary'))} />}
+            {pay && show.has('allowance') && <span className="flex items-center gap-1.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Allowance<NewTag size={8.5} /></span>}
+            {pay && show.has('over') && <span className="text-right font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-tn-ink leading-[normal]">Over</span>}
           </div>
 
           {rows.map(p => {
@@ -531,7 +563,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
             const salaryVal = editing ? (d?.salary ?? '') : (p.monthlySalary != null ? String(p.monthlySalary) : '')
             const changed = editing && ((cadence?.canEdit && cadDraft[p.id] && cadDraft[p.id] !== cadOf(p.id)) || payChanged(p.id))
             return (
-              <div key={p.id} className={`${grid} px-[22px] py-3 border-b border-slate-100 last:border-0 ${changed ? 'bg-[var(--warn-bg)]' : ''}`}>
+              <div key={p.id} className={`${GRID} px-[22px] py-3 border-b border-slate-100 last:border-0 ${changed ? 'bg-[var(--warn-bg)]' : ''}`} style={gridStyle}>
                 {/* Person: navy avatar + name (from Directory); the name opens their page, and stays in view when the table scrolls sideways */}
                 <span className={`sticky left-0 z-[1] max-md:w-[178px] max-md:justify-self-start -ml-[22px] pl-[22px] -mr-3.5 pr-3.5 -my-3 py-3 self-stretch inline-flex items-center gap-[11px] min-w-0 ${changed ? 'bg-[var(--warn-bg)]' : 'bg-white'}`}>
                   <span className="w-[30px] h-[30px] rounded-full shrink-0 bg-tn-primary text-white inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[10.5px]">
@@ -544,10 +576,10 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 </span>
 
                 {/* Team */}
-                <span><TeamBadge team={p.teamName} color={p.teamColor} /></span>
+                {show.has('team') && <span><TeamBadge team={p.teamName} color={p.teamColor} /></span>}
 
                 {/* Report to */}
-                <span className="inline-flex items-center gap-2 min-w-0">
+                {show.has('reports') && <span className="inline-flex items-center gap-2 min-w-0">
                   {p.managerName ? (
                     <>
                       <span className="w-6 h-6 rounded-full shrink-0 bg-slate-100 text-foreground inline-flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[9px]">
@@ -556,15 +588,15 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                       <span className="text-[13px] text-foreground truncate">{p.managerName}</span>
                     </>
                   ) : <span className="text-slate-300">-</span>}
-                </span>
+                </span>}
 
                 {/* Joined on */}
-                <span className="text-[13px] text-foreground tabular-nums">
+                {show.has('joined') && <span className="text-[13px] text-foreground tabular-nums">
                   {p.hireDate ? formatDate(p.hireDate) : <span className="text-slate-300">-</span>}
-                </span>
+                </span>}
 
                 {/* Timesheet: the pill, or in Edit the choice (changed rows amber) */}
-                {cadence && (
+                {cadence && show.has('timesheet') && (
                   <span className="flex flex-col gap-1 items-start">
                     {/* Paid a fixed amount with no timesheet: nothing to submit (Company Settings.dc.html 10A2) */}
                     {pay && (payDraft[p.id]?.paysAs ?? payOf(p.id)?.paysAs) === 'fixed_no_timesheet' ? <span className="text-[13px] text-foreground">None</span> : editing && cadence.canEdit ? (
@@ -582,7 +614,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 )}
 
                 {/* Pays as: contractors only; employees are paid through Rippling */}
-                {pay && (() => {
+                {pay && show.has('paysAs') && (() => {
                   const now = payOf(p.id)
                   if (!now) return <span className="text-slate-300">-</span>
                   if (!now.isContractor) return <span className="text-[13px] text-muted">Salary (Rippling)</span>
@@ -595,19 +627,19 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                 })()}
 
                 {/* Rate / client (teal focus) */}
-                {rateInput(clientVal, v => setDraft(p.id, 'client', v), '#1E7D7F')}
+                {show.has('clientRate') && rateInput(clientVal, v => setDraft(p.id, 'client', v), '#1E7D7F')}
 
                 {/* Rate / cost (violet focus) */}
-                {rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0')}
+                {show.has('costRate') && rateInput(costVal, v => setDraft(p.id, 'cost', v), '#6d5ae0')}
 
                 {/* Rate / break-even (amber focus) */}
-                {rateInput(beVal, v => setDraft(p.id, 'be', v), '#a8660a')}
+                {show.has('beRate') && rateInput(beVal, v => setDraft(p.id, 'be', v), '#a8660a')}
 
                 {/* Month / salary (green focus) */}
-                {rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}
+                {show.has('salary') && rateInput(salaryVal, v => setDraft(p.id, 'salary', v), '#15803d')}
 
                 {/* Allowance and Over (Clocky part 2) */}
-                {pay && (() => {
+                {pay && show.has('allowance') && (() => {
                   const now = payOf(p.id)
                   const k = payDraft[p.id]?.allowance ?? alKey(now?.allowance ?? null)
                   const opts = ALLOWANCES.includes(k) ? ALLOWANCES : [...ALLOWANCES, k]
@@ -617,7 +649,7 @@ export function PeopleTab({ people, allClients, pay = null, cadence = null, cade
                         onChange={o => setPayDraft(prev => ({ ...prev, [p.id]: { ...prev[p.id], allowance: o } }))} />
                     : <span className="text-[13px] text-foreground">{alText(k)}</span>
                 })()}
-                {pay && (() => {
+                {pay && show.has('over') && (() => {
                   const over = payOf(p.id)?.overSeconds ?? null
                   return over && over > 0
                     ? <span className="text-right font-(family-name:--font-display) font-extrabold text-[13px] text-[#c8323d] tabular-nums lining-nums">{overText(over)}</span>

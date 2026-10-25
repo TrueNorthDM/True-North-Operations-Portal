@@ -8,6 +8,8 @@
  * signed in yet, signed in, and whether their second step is set up. The chips
  * on top count each group and filter by it; ticking people invites them, or
  * sends the invitation again, in one go. A row opens the person's card.
+ * Signs in with, Last sign-in and Two-step can be hidden (Columns menu, kept in
+ * the person's account); the person and their portal access cannot.
  */
 
 import { useMemo, useState, useTransition } from 'react'
@@ -17,6 +19,8 @@ import { SearchField } from '@/components/ui/SearchField'
 import { invitePerson } from '@/app/(app)/admin/people/actions'
 import { portalAccessState, type PortalAccessState } from '@/lib/auth/portal-rule'
 import { PILL_CLASS, formatDate, initialsOf, type Pill, type PersonView } from '@/lib/directory/people-types'
+import { ColumnsMenu, useColumnChoice, type ColumnChoice } from '@/components/ui/ColumnsMenu'
+import { fixedOf, layoutColumns } from '@/lib/settings/columns'
 
 /** A person's second step: set up, not yet, or nothing to set up (no account). */
 export type TwoStep = 'on' | 'none'
@@ -33,12 +37,16 @@ const ACCESS_PILL: Record<PortalAccessState, Pill> = {
 
 // The Two-step column only once two-step sign-in is live (twoStep not null);
 // Last sign-in only with the Access log item (d-log), which is what reads it.
-// Written out whole: Tailwind only builds classes it finds as literal text.
-const GRIDS = {
-  both: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1.1fr_1fr] gap-3.5 items-center',
-  log: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1.1fr] gap-3.5 items-center',
-  twoStep: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr_1fr] gap-3.5 items-center',
-  neither: 'grid grid-cols-[28px_2fr_1.6fr_1.3fr] gap-3.5 items-center',
+// The tick box comes first on every row and is not one of the columns to choose.
+const GRID = 'grid gap-3.5 items-center'
+function tableColumns(lastSignIn: boolean, twoStep: boolean) {
+  return [
+    { key: 'person', label: 'Person', track: '2fr', min: 0 },
+    { key: 'signsIn', label: 'Signs in with', track: '1.6fr', min: 0 },
+    { key: 'access', label: 'Portal access', track: '1.3fr', min: 0 },
+    ...(lastSignIn ? [{ key: 'lastSignIn', label: 'Last sign-in', track: '1.1fr', min: 0 }] : []),
+    ...(twoStep ? [{ key: 'twoStep', label: 'Two-step', track: '1fr', min: 0 }] : []),
+  ]
 }
 
 function pill(p: Pill, title?: string) {
@@ -58,7 +66,7 @@ function ago(iso: string | null): string {
   return formatDate(iso) ?? 'Never'
 }
 
-export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, showLastSignIn = false }: {
+export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, showLastSignIn = false, columns: given }: {
   /** Active people only. */
   people: PersonView[]
   /** Second step by person id, for people with an account. Null until two-step sign-in ships. */
@@ -69,10 +77,16 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
   canInvite?: boolean
   /** d-log: the Last sign-in column. Without it the column would only ever say "Never". */
   showLastSignIn?: boolean
+  /** Which columns this person hides (Columns menu); kept on this screen only when absent. */
+  columns?: ColumnChoice
 }) {
   const router = useRouter()
   const withTwoStep = twoStep !== null
-  const GRID = GRIDS[withTwoStep ? (showLastSignIn ? 'both' : 'twoStep') : (showLastSignIn ? 'log' : 'neither')]
+  const choice = useColumnChoice('directory-portal', given)
+  const allColumns = useMemo(() => tableColumns(showLastSignIn, withTwoStep), [showLastSignIn, withTwoStep])
+  const layout = layoutColumns(allColumns, choice.hidden, fixedOf('directory-portal'), { gap: 14, padX: 44 })
+  const show = new Set(layout.visible.map(c => c.key))
+  const gridStyle = { gridTemplateColumns: `28px ${layout.template}` }
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -182,6 +196,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
 
       <div className="flex items-center gap-3.5 flex-wrap mb-[14px]">
         <SearchField value={q} onChange={setQ} placeholder="Search people…" className="flex-1 min-w-[230px] max-w-[340px]" />
+        <ColumnsMenu columns={allColumns} fixed={fixedOf('directory-portal')} choice={choice} />
         <div className="ml-auto flex items-center gap-3">
           {progress && <span className="text-[12.5px] font-semibold text-tn-teal">{progress}</span>}
           {canInvite && <button
@@ -197,7 +212,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
       {report && <p className="text-[12.5px] font-semibold text-tn-teal mb-3">{report}</p>}
 
       <div className="border border-slate-200 bg-white rounded-[16px] overflow-hidden shadow-[0_1px_2px_rgba(1,35,88,.06)]">
-        <div className={`${GRID} px-[22px] py-[13px] bg-subtle border-b border-slate-200 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted`}>
+        <div className={`${GRID} px-[22px] py-[13px] bg-subtle border-b border-slate-200 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-wide uppercase text-muted`} style={gridStyle}>
           <input
             type="checkbox"
             aria-label="Select everyone who can be invited"
@@ -212,10 +227,10 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
             className="h-4 w-4 accent-[#012358]"
           />
           <span>Person</span>
-          <span>Signs in with</span>
+          {show.has('signsIn') && <span>Signs in with</span>}
           <span>Portal access</span>
-          {showLastSignIn && <span>Last sign-in</span>}
-          {withTwoStep && <span>Two-step</span>}
+          {show.has('lastSignIn') && <span>Last sign-in</span>}
+          {show.has('twoStep') && <span>Two-step</span>}
         </div>
 
         {shown.map((r, i) => (
@@ -226,6 +241,7 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
             aria-label={onOpen ? `Open ${r.p.full_name}` : undefined}
             onClick={() => onOpen?.(r.p.id)}
             onKeyDown={e => { if (onOpen && e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); onOpen(r.p.id) } }}
+            style={gridStyle}
             className={`${GRID} px-[22px] py-[12px] cursor-pointer transition-colors hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-2 focus-visible:outline-tn-teal focus-visible:-outline-offset-2 ${i === 0 ? '' : 'border-t border-slate-200'}`}
           >
             <span onClick={e => e.stopPropagation()}>
@@ -240,13 +256,13 @@ export function PortalAccessTab({ people, twoStep, onOpen, canInvite = false, sh
                 <span className="block text-xs text-muted truncate">{r.p.title ?? '-'}</span>
               </span>
             </span>
-            <span className="text-[12.5px] text-foreground truncate" title={r.p.emails.goodnews ?? r.p.accountEmail ?? undefined}>{r.p.emails.goodnews ?? r.p.accountEmail ?? <span className="text-slate-300">-</span>}</span>
+            {show.has('signsIn') && <span className="text-[12.5px] text-foreground truncate" title={r.p.emails.goodnews ?? r.p.accountEmail ?? undefined}>{r.p.emails.goodnews ?? r.p.accountEmail ?? <span className="text-slate-300">-</span>}</span>}
             <span className="inline-flex flex-col items-start gap-0.5">
               {pill(ACCESS_PILL[r.state])}
               {r.invitedAt && r.state !== 'no-address' && <span className="text-[11px] text-muted">Invited {formatDate(r.invitedAt)}</span>}
             </span>
-            {showLastSignIn && <span className="text-[12.5px] text-foreground">{r.p.accountId ? ago(r.p.lastAccessAt) : <span className="text-slate-300">-</span>}</span>}
-            {withTwoStep && <span>
+            {show.has('lastSignIn') && <span className="text-[12.5px] text-foreground">{r.p.accountId ? ago(r.p.lastAccessAt) : <span className="text-slate-300">-</span>}</span>}
+            {show.has('twoStep') && <span>
               {r.second === 'on' && pill({ kind: 'green', label: 'On' })}
               {r.second === 'none' && pill({ kind: 'amber', label: 'Not set up' })}
               {r.second === null && <span className="text-[13px] text-slate-300">-</span>}
