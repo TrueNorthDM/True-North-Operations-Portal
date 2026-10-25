@@ -7,8 +7,9 @@
  *   contractor_due    monthly submitters: "Your October timesheet is due tomorrow"
  *   pay_period_ends   every 2 weeks: "Your pay period ends Saturday (Oct 18 to 31)",
  *                     the Thursday before
- *   late              "Submit October: it is 3 days late", the person every
- *                     morning; the Super Admins from the 3rd day
+ *   late              "Submit October: it is 3 days late", the person and the
+ *                     Super Admins every morning from the first day late (owner,
+ *                     25 October 2026)
  *   allowance         90% and over to the person; over without approval also to
  *                     the Team Leader and the Super Admins
  *   birthday          "Today: Joy Inyele's birthday." to everyone else, 7:00 AM
@@ -86,7 +87,7 @@ export async function runClockyReminders(now = new Date()): Promise<RemindersRep
         const n = daysBetween(prev.end, today)
         const pl = periodLabel(prev)
         if (n >= 1) reminders.push({ personId: p.id, key: `late:${prev.start}:${today}`, text: `Submit ${pl.label}: it is ${n} day${n === 1 ? '' : 's'} late.` })
-        if (n >= 3) late.push({ personId: p.id, key: `late:${p.id}:${prev.start}:${today}`, text: `Submit ${pl.label}: it is ${n} days late. ${p.name} has not submitted.` })
+        if (n >= 1) late.push({ personId: p.id, key: `late:${p.id}:${prev.start}:${today}`, text: `Submit ${pl.label}: it is ${n} day${n === 1 ? '' : 's'} late. ${p.name} has not submitted.` })
       }
     }
   }

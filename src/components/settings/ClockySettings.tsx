@@ -19,6 +19,7 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import type { IntegrationsData, InvoiceSettingsData } from '@/lib/timeclock/company-settings'
 import type { ReminderKey } from '@/lib/timeclock/reminder-kinds'
 import { REMINDERS } from '@/lib/timeclock/reminder-kinds'
+import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
 import { openDrawer } from '@/components/NotificationButton'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
 
@@ -234,23 +235,27 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
             {field('paymentDays', 'Payment terms (days)', true)}
             <div className="flex flex-col gap-[5px]"><span className={LABEL}>Currency</span><div className={`${INPUT} flex items-center bg-subtle text-muted`}>USD</div></div>
           </div>
-          <div className="text-[12px] text-muted leading-[1.5]">Every invoice is in USD. A reimbursement paid in another currency is converted at the rate of the expense date.</div>
+          <div className="text-[12px] text-muted leading-[1.5]">Every invoice is in USD: contractors ask for their reimbursements in dollars. An employee's reimbursement in another currency is converted by Finance at the rate of the expense date.</div>
           {canEdit && <div className="flex justify-end"><button type="button" disabled={busy} onClick={() => void submit()} className={BTN_N}><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save</button></div>}
         </div>
         <div className="flex flex-col gap-2 xl:sticky xl:top-0">
           <span className={LABEL}>How an invoice reads</span>
-          <div className="bg-white border border-[var(--panel-border)] rounded-[14px] px-6 py-[22px] flex flex-col gap-3.5 shadow-[0_10px_24px_-18px_rgba(1,35,88,.4)]">
-            <div className="flex justify-between items-start">
-              <div><div className="font-(family-name:--font-display) font-black text-[22px] text-tn-ink">Invoice</div><div className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-teal">{nextInv}</div></div>
-              <div className="text-[12px] text-right leading-[1.6] tabular-nums lining-nums"><div className="text-muted">Date Dec 1, {y}</div><div className="text-tn-ink font-bold">Due {due}</div></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-[12px] leading-[1.55] text-foreground">
-              <div><div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.08em] uppercase text-muted">From</div><div className="text-tn-ink font-bold">The contractor</div><div>Name, country, email from the Directory</div></div>
-              <div><div className="font-(family-name:--font-display) font-extrabold text-[9.5px] tracking-[.08em] uppercase text-muted">To</div><div className="text-tn-ink font-bold">{f.billingName}</div><div>{f.address}</div><div>{f.country}</div><div>{f.email}</div></div>
-            </div>
-            <div className="h-px bg-[var(--row-rule)]" />
-            <div className="text-[12px] text-muted">Lines come from the timesheet (one per client, or the fixed monthly amount) and the approved reimbursements. Nobody types money on an invoice.</div>
+          {/* The invoice as contractors get it (owner, 25 October 2026): its real design, with example lines and this form's numbers. */}
+          <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden shadow-[0_10px_24px_-18px_rgba(1,35,88,.4)]">
+            <InvoiceDoc variant="detail" inv={{
+              number: nextInv, date: `Dec 1, ${y}`, period: `November ${y}`, due,
+              lines: [
+                { desc: '2 - i7 Marketing', hrs: '120h 00m', muted: false, rate: '$22.00', amt: '$2,640.00' },
+                { desc: '1 - True North', hrs: '20h 00m', muted: false, rate: '$22.00', amt: '$440.00' },
+              ],
+              reimb: [{ desc: 'Home internet, November', cat: 'Internet', amt: '$35.00' }],
+              total: '$3,115.00',
+              from: { name: 'The contractor', line: 'Their name and country, from the Directory', email: 'Their email' },
+              to: { name: f.billingName, line1: f.address, line2: [f.country, f.email].filter(Boolean).join(' · ') },
+              paid: null,
+            }} />
           </div>
+          <div className="text-[12px] text-muted leading-[1.5]">Example lines. They come from the timesheet (one per client, or the fixed monthly amount) and the approved reimbursements. Nobody types money on an invoice.</div>
         </div>
       </div>
       <Toast toast={toast} />
