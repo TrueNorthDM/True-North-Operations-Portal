@@ -5,7 +5,8 @@
  *
  *   9B   My reimbursements: each request with where it is (waiting, on an
  *        invoice, on a reimbursement document, paid, denied); an employee's
- *        open document is a card that opens it
+ *        open document is a card that opens it. Super Admins, Admins and
+ *        Finance also get Everyone and Documents (RmbDocsList.tsx)
  *   9A   New reimbursement: the receipt (required), the date, the category,
  *        the amount and currency, what it was for, the client and whether it
  *        is billable; what happens after, for a contractor or an employee
@@ -23,6 +24,7 @@ import { Select } from '@/components/ui/Select'
 import { usePhone } from '@/components/clocky/clock/hooks'
 import { PhoneSheet } from './PhoneSheet'
 import { totalsText } from '@/lib/timeclock/reimbursement-reports'
+import { RmbDocsList, type DocFilter, type MarkRmbPaid } from './RmbDocsList'
 
 export const REQ_TONE: Record<ReqTone, { bg: string; fg: string }> = {
   ok: { bg: '#e6f6ee', fg: '#0d7a4f' }, warn: { bg: '#fdf8e7', fg: '#8a6d1a' }, bad: { bg: '#fdeeef', fg: '#c8323d' },
@@ -64,18 +66,34 @@ export const sendReimbursement: SendReimbursement = async form => {
   }
 }
 
-export function ReimbursementsView({ data, send, initial }: { data: ReimbursementsPage; send: SendReimbursement; initial?: { form?: boolean; draft?: Partial<Draft>; tab?: 'mine' | 'all' } }) {
+type Tab = 'mine' | 'all' | 'docs'
+
+export function ReimbursementsView({ data, send, markRmbPaid, initial }: { data: ReimbursementsPage; send: SendReimbursement; markRmbPaid: MarkRmbPaid; initial?: { form?: boolean; draft?: Partial<Draft>; tab?: Tab; st?: DocFilter; pay?: number } }) {
   const router = useRouter()
   const [form, setForm] = useState(!!initial?.form)
   const [toast, setToast] = useState<ToastState | null>(null)
   const phone = usePhone()
   // Super Admins, Admins and Finance also see everyone's (owner, 2026-10-23), as Time off does.
-  const [tab, setTab] = useState<'mine' | 'all'>(initial?.tab ?? 'mine')
+  // Documents (owner, 25 October 2026): the same people, every reimbursement document, as the Invoices list.
+  const [tab, setTab] = useState<Tab>(initial?.tab ?? 'mine')
   const all = tab === 'all' && !!data.everyone
+  const docs = tab === 'docs' && data.documents ? data.documents : null
+  const pick = (k: Tab) => {
+    setTab(k)
+    // The address follows the view (?view=documents), so Back from a document comes back to it.
+    try {
+      const u = new URL(window.location.href)
+      if (k === 'docs') u.searchParams.set('view', 'documents')
+      else u.searchParams.delete('view')
+      u.searchParams.delete('state')
+      window.history.replaceState(null, '', u)
+    } catch { /* the address is a convenience */ }
+  }
   const list = all ? data.everyone! : data.rows
   const say = (t: ToastState) => { setToast(t); setTimeout(() => setToast(null), 4200) }
-  const sub = data.contractor
-    ? 'Ask for money you spent for work, with the receipt. Approved, it goes on your next invoice by itself.'
+  const sub = docs && docs.finance ? 'Every employee reimbursement document. You are Finance: you pay them outside Rippling payroll, then mark them paid.'
+    : docs ? 'Every employee reimbursement document. Made when a Super Admin approves an employee\'s reimbursement, paid by Finance outside Rippling payroll.'
+    : data.contractor ? 'Ask for money you spent for work, with the receipt. Approved, it goes on your next invoice by itself.'
     : 'Ask for money you spent for work, with the receipt. Approved, Finance pays it with a reimbursement document.'
 
   return (
@@ -105,14 +123,16 @@ export function ReimbursementsView({ data, send, initial }: { data: Reimbursemen
 
       {data.everyone && (
         <div role="tablist" aria-label="Whose reimbursements" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 self-start justify-self-start">
-          {([['mine', 'Mine'], ['all', 'Everyone']] as const).map(([k, label]) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+          {([['mine', 'Mine'], ['all', 'Everyone'], ...(data.documents ? [['docs', 'Documents']] as const : [])] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => pick(k)}
               className={`border-0 cursor-pointer rounded-[8px] px-3 py-1.5 font-(family-name:--font-display) font-bold text-[12.5px] ${tab === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
           ))}
         </div>
       )}
 
-      {list.length > 0 && phone ? (
+      {docs ? (
+        <RmbDocsList data={docs} markRmbPaid={markRmbPaid} initial={{ st: initial?.st, pay: initial?.pay }} say={say} />
+      ) : list.length > 0 && phone ? (
         // On a phone each reimbursement is a short card, the request's name and total above its receipts.
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
           {list.map(r => (

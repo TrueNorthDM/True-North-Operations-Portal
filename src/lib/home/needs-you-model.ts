@@ -399,7 +399,7 @@ export function invoicesToPayRow(list: readonly { amount: number; dueOn: string 
   }
 }
 
-/** The same for reimbursement documents: "Reimbursements to pay", waiting since the oldest, opening Reimbursements. */
+/** The same for reimbursement documents: "Reimbursements to pay", waiting since the oldest, opening Reimbursements on its Documents, the ones to pay. */
 export function documentsToPayRow(list: readonly { createdOn: string }[], total: string, today: string): HomeRow | null {
   if (!list.length) return null
   const first = [...list].sort((a, b) => a.createdOn.localeCompare(b.createdOn))[0]
@@ -407,6 +407,6 @@ export function documentsToPayRow(list: readonly { createdOn: string }[], total:
     key: 'pay-documents', kind: 'pay', title: 'Reimbursements to pay',
     sub: `${list.length} document${list.length === 1 ? '' : 's'} · waiting since ${dateLabel(first.createdOn).replace(/, \d{4}$/, '')}`,
     // A document has no due day: dated by the oldest for the order, never drawn as late (amber, not red).
-    due: { ...dueOnDay(first.createdOn, today), tone: 'later' }, button: 'Open Reimbursements', panel: null, href: '/requests/reimbursements', figure: total,
+    due: { ...dueOnDay(first.createdOn, today), tone: 'later' }, button: 'Open Reimbursements', panel: null, href: '/requests/reimbursements?view=documents&state=appr', figure: total,
   }
 }

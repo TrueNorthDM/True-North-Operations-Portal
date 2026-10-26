@@ -32,9 +32,12 @@ export function RequestsCheck({ frame, timeOff, rmb, doc, sheet, extra }: { fram
   if (rmb) {
     return (
       <ReimbursementsView key={frame} data={rmb} send={async () => ({ ok: true })}
+        markRmbPaid={async ({ id }) => ({ ok: true, toast: `RMB-2026-${String(id).padStart(4, '0')} marked paid. ${rmb.documents?.rows.find(r => r.id === id)?.who ?? 'The employee'} sees it in the bell.` })}
         initial={frame === '9A' ? { form: true, draft: { file, fileLabel: 'PDF, 1 page, 96 KB', category: 'Internet', amount: '35.00', what: 'Home internet for October (Safaricom Home Fibre).', date: 'Oct 31, 2026' } }
           : frame === '9Ap' ? { form: true, draft: { file, fileLabel: 'Photo from the camera, 1.2 MB', category: 'Software', amount: '12.99', what: 'Canva Pro for November, for client social posts.', date: 'Oct 31, 2026' } }
           : frame === '9Be' ? { tab: 'all' }
+          : frame === '9L' || frame === '9La' ? { tab: 'docs' }
+          : frame === '9Lm' ? { tab: 'docs', pay: 31 }
           : frame === '9Ar' ? { form: true, draft: { file, fileLabel: 'PDF, 180 KB', category: 'Travel', amount: '412.00', what: 'Flight GRU, round trip', date: 'Oct 12, 2026', name: 'São Paulo trip, Oct 12 to 15', client: '2 - i7 Marketing', billable: 'yes', more: trip } } : undefined} />
     )
   }

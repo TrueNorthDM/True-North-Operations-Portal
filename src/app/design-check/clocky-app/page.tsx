@@ -12,6 +12,7 @@
 //   ?frame=5A ... 5C3                        Timesheet periods (settings, a person's page, Rates & Costs)
 //   ?frame=10A1 | 10A1v ...                  Clocky part 2 (Part2Frame, the overview's codes)
 //   ?frame=6A | 6B | 6Ec | 6Es | 6Ef | 6F | 6Fp | 6G   Invoices, part 2 (the frame's own level)
+//   ?frame=9L | 9La | 9Lm                    Reimbursements, Documents: Finance, an Admin, Mark paid open
 //   ?frame=4A | 4B                           Clock safety, with data or empty (Super Admin)
 //   ?frame=AP1 | AP3 | AP2 | APL | APD       Approvals, part 2 (Super Admin: waiting, others, decided; Team Leader; Dave Sharpe)
 //   ?frame=2A ... 2E | 2P                       Who's working, the drawer open (2B as Wendy
@@ -64,10 +65,10 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
   const workingPage = frame === '2P'
   // Invoices.dc.html: 6A, 6B, 6Ec, 6F and 6Fp as a User (Justus Tsofa, Wendy Cacka), 6Ef and 6G as Finance (Tina Gennette).
   const invUser = ['6A', '6B', '6Ec', '6F', '6Fp', '7A', '7Ap', '7B', '7D', '7E', '9A', '9Ap', '9Ar', '9B', '9Br', '10E', '10C'].includes(frame)
-  const invFinance = frame === '6Ef' || frame === '6G' || frame === '9D' || frame === '9Dp'
+  const invFinance = frame === '6Ef' || frame === '6G' || frame === '9D' || frame === '9Dp' || frame === '9L' || frame === '9Lm'
   const role = invUser ? 'user' : invFinance ? 'admin'
     : bell === 'lead' || entriesLevel === 'lead' || frame === '2B' || approvals === 'APL' || frame === '6Ct' || frame === '6Ce' ? 'team_leader'
-    : approvals === 'APD' || frame === '6Cd' ? 'admin'
+    : approvals === 'APD' || frame === '6Cd' || frame === '9La' ? 'admin'
     : bell === 'user' || entriesLevel === 'user' ? 'user'
     : entriesLevel === 'admin' ? 'admin'
     : entriesLevel === 'super' ? 'super_admin'
@@ -98,7 +99,7 @@ export default async function ClockyAppCheck({ searchParams }: { searchParams: P
       <div className="flex flex-1">
         <Sidebar rail={rail} menuOpen={false} twoStepDaysLeft={null} startHub={null} startCounts={{}}
           activePath={part2 ? (/^6[CD]/.test(frame) ? '/clocky-hours/approvals' : /^6[EFG]/.test(frame) ? '/clocky-hours/invoices' : /^6[AB]$/.test(frame) ? '/clocky-hours' : /^(7|9|10[CE])/.test(frame) ? '/requests' : /^13/.test(frame) ? '/admin' : frame === '8F' ? '/' : /^8/.test(frame) ? '/agenda' : /^12/.test(frame) ? '/clocky-hours/reports' : frame === '11D' ? '/clocky-hours/which-job' : /^11/.test(frame) ? '/admin' : '/directory') : periods ? (frame.startsWith('5A') ? '/admin' : '/directory') : approvals ? '/clocky-hours/approvals' : safety ? '/clocky-hours/safety' : entries || userBell ? '/clocky-hours' : bell ? '/clocky-hours/safety' : workingPage ? '/clocky-hours/whos-working' : '/'}
-          user={{ email: null, name: frame === '6B' ? 'Wendy Cacka' : /^7/.test(frame) && frame !== '7Dx' && frame !== '7C' ? 'Tina Gennette' : /^10[CE]$/.test(frame) ? 'Cheyenne Wilson' : invUser ? 'Justus Tsofa' : invFinance ? 'Tina Gennette' : entriesLevel ? ME[entriesLevel] : bell === 'lead' ? ME.lead : bell === 'user' ? ME.user : frame === '2B' || approvals === 'APL' || frame === '6Ct' || frame === '6Ce' ? 'Wendy Cacka' : approvals === 'APD' || frame === '6Cd' ? 'Dave Sharpe' : 'Arnaldo Oliveira', avatarUrl: null }} />
+          user={{ email: null, name: frame === '6B' ? 'Wendy Cacka' : /^7/.test(frame) && frame !== '7Dx' && frame !== '7C' ? 'Tina Gennette' : /^10[CE]$/.test(frame) ? 'Cheyenne Wilson' : invUser ? 'Justus Tsofa' : invFinance ? 'Tina Gennette' : entriesLevel ? ME[entriesLevel] : bell === 'lead' ? ME.lead : bell === 'user' ? ME.user : frame === '2B' || approvals === 'APL' || frame === '6Ct' || frame === '6Ce' ? 'Wendy Cacka' : approvals === 'APD' || frame === '6Cd' || frame === '9La' ? 'Dave Sharpe' : 'Arnaldo Oliveira', avatarUrl: null }} />
         {part2 ? (
           <MainContent notice={null}><Part2Frame frame={frame} /></MainContent>
         ) : periods ? (

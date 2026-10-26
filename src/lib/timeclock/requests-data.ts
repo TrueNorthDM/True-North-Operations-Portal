@@ -12,7 +12,7 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { db, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf } from './clocky-context'
+import { db, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf, type Directory } from './clocky-context'
 import { allowanceRange } from './allowance'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { dateLabel, localDate, monthYear, stampLabel } from './format'
@@ -23,6 +23,7 @@ import { addDays } from './periods'
 import { formatDuration } from './rounding'
 import { clientFolder } from './invoices-data'
 import { reportTitle, totalsText } from './reimbursement-reports'
+import { buildRmbDocList, type RmbDocItem, type RmbDocList, type RmbDocSource } from './rmb-docs-list'
 import { teamColour } from '@/lib/directory/team-colour'
 
 export type ReqTone = 'ok' | 'warn' | 'bad' | 'neu' | 'teal' | 'navy'
@@ -49,6 +50,8 @@ export interface ReimbursementsPage {
   rows: RmbRow[]
   /** Super Admins, Admins and Finance (owner, 2026-10-23): everyone's, with who sent each. Null for the rest. */
   everyone: RmbRow[] | null
+  /** The same people: every reimbursement document, as the Invoices list (owner, 25 October 2026). Null for the rest. */
+  documents: RmbDocList | null
   /** An employee's document waiting for Finance: the card that opens it. */
   doc: { id: number; number: string } | null
   clients: string[]
@@ -125,13 +128,28 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
     return { id: r.id, date: dateLabel(r.spent_on), category: r.category, what: r.purpose, amount: money(Number(r.amount), r.currency), hasReceipt: !!r.receipt_path, st, info, report, ...(withWho ? { who: whoOf(r.person_id) } : {}) }
   })
   const route = routes.get(me)
+  const documents = seesAll ? await loadRmbDocList(isFinance(v, settings), settings.finance.map(dir.nameOf).join(' and '), dir, zone, localDate(now, zone)) : null
   const open = docs.find(d => d.state !== 'paid' && loaded.some(r => r.document_id === d.id && r.person_id === me))
   return {
     contractor: !!route?.isContractor,
     rows: build(arrangeReimbursements(loaded.filter(r => r.person_id === me)), false),
     everyone: seesAll ? build(arrangeReimbursements(loaded), true) : null,
+    documents,
     doc: !route?.isContractor && open ? { id: open.id, number: open.number } : null, clients, today: localDate(now, zone),
   }
+}
+
+/** Every reimbursement document and its items' amounts. Only after the caller's check that the viewer sees everyone's money. */
+async function loadRmbDocList(finance: boolean, financeNames: string, dir: Directory, zone: string, today: string): Promise<RmbDocList> {
+  const c = db()
+  const docs = rowsOf(await c.from('reimbursement_documents').select('id, number, person_id, state, total, paid_on, paid_ref, created_at').order('number', { ascending: false }).limit(1000), 'Reimbursement documents could not be read') as RmbDocSource[]
+  // A failed read throws: a document with no items would show its total in dollars only.
+  const items = docs.length ? rowsOf(await c.from('reimbursements').select('document_id, amount, currency, decided_at').in('document_id', docs.map(d => d.id)), 'The documents\' items could not be read') as RmbDocItem[] : []
+  const person = (id: string) => {
+    const p = dir.people.get(id), t = p?.teamId ? dir.teams.get(p.teamId) : undefined
+    return { name: dir.nameOf(id), team: t?.name ?? '', color: teamColour(t?.color, t?.name) }
+  }
+  return buildRmbDocList({ finance, docs, items, person, financeNames, zone, today })
 }
 
 // ── One reimbursement document (9D) ─────────────────────────────────────────

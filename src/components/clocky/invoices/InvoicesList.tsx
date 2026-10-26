@@ -24,6 +24,7 @@ import type { Result } from '@/lib/timeclock/clocky-types'
 import { LabeledSelect, Toast, type ToastState } from '../entries/ui'
 import { InvoicePdfModal } from './InvoicePdfModal'
 import { MarkPaidDialog, STATE_PILL, type PayTarget } from './InvoiceParts'
+import { ExportCsvButton, LIST_HEAD, ListStrip, PersonCell, RowMarkPaid, StatePill, StateSwitch, downloadCsv } from './ListParts'
 
 export interface InvoicesApi {
   getInvoiceDoc(i: { id: number }): Promise<Result<{ doc: InvoiceDocView }>>
@@ -34,14 +35,10 @@ export type StFilter = 'all' | 'wait' | 'appr' | 'paid' | 'draft'
 const SEG: [StFilter, string][] = [['all', 'All'], ['wait', 'Waiting'], ['appr', 'Approved'], ['paid', 'Paid'], ['draft', 'Draft']]
 const ALL_PERIODS = 'All periods'
 const EVERYONE = 'Everyone'
-const HEAD = 'px-3.5 py-2.5 font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted whitespace-nowrap'
 const EYE = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
-const DOWN = 'M12 3v12M7 10l5 5 5-5M5 21h14'
 
 /** "Waiting" counts what the strip counts: waiting for the hours or for the invoice approver. */
 const matches = (st: InvoiceStateKey, f: StFilter) => f === 'all' || st === f || (f === 'wait' && st === 'hrs')
-
-const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
 
 export function InvoicesList({ data, api, initial }: {
   data: InvoiceList
@@ -97,12 +94,7 @@ export function InvoicesList({ data, api, initial }: {
     const head = ['Number', 'Person', 'Team', 'Period', 'Pays as', 'Total', 'State', 'Paid']
     const lines = [head, ...shown.map(r => [r.number, r.who, r.team, r.period, r.pays, r.amount.toFixed(2), STATE_PILL[r.st].label, r.where])]
     const name = `invoices-${period.toLowerCase().replace(/\s+/g, '-')}.csv`
-    const url = URL.createObjectURL(new Blob([lines.map(l => l.map(csvCell).join(',')).join('\n')], { type: 'text/csv' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = name
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    downloadCsv(name, lines)
     say({ text: `Exported ${shown.length} invoice${shown.length === 1 ? '' : 's'} to ${name}` })
   }
 
@@ -134,25 +126,9 @@ export function InvoicesList({ data, api, initial }: {
 
       {data.mode === 'all' && (
         <>
-          <div className="grid grid-cols-3 gap-3">
-            {strip.map(c => (
-              <button key={c.k} type="button" onClick={() => { setSt(c.k); setPeriod(c.period) }} aria-pressed={st === c.k}
-                className={`text-left bg-white border rounded-[14px] px-[18px] py-[15px] flex flex-col gap-[5px] cursor-pointer hover:border-tn-teal ${st === c.k ? 'border-tn-teal' : 'border-[var(--panel-border)]'}`}>
-                <span className="font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted">{c.label}</span>
-                <span className="flex items-baseline gap-2.5">
-                  <span className="font-(family-name:--font-display) font-black text-[26px] tabular-nums lining-nums" style={{ color: c.fg }}>{c.val}</span>
-                  <span className="text-[13px] text-foreground font-semibold tabular-nums lining-nums">{c.sub}</span>
-                </span>
-              </button>
-            ))}
-          </div>
+          <ListStrip cards={strip} active={st} onPick={c => { setSt(c.k); setPeriod(c.period) }} />
           <div className="flex flex-wrap gap-2.5 items-end">
-            <div role="group" aria-label="State" className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5 self-end">
-              {SEG.map(([k, label]) => (
-                <button key={k} type="button" aria-pressed={st === k} onClick={() => setSt(k)}
-                  className={`border-0 cursor-pointer rounded-[8px] px-3 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] ${st === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{label}</button>
-              ))}
-            </div>
+            <StateSwitch options={SEG} value={st} onChange={setSt} />
             <div className="w-[220px]">
               <LabeledSelect label="Person" value={person} onChange={setPerson} search
                 options={[EVERYONE, ...data.people].map(p => ({ value: p, label: p }))} />
@@ -161,10 +137,7 @@ export function InvoicesList({ data, api, initial }: {
               <LabeledSelect label="Period" value={period} onChange={setPeriod}
                 options={[...data.periods, ALL_PERIODS].map(p => ({ value: p, label: p }))} />
             </div>
-            <button type="button" onClick={exportCsv}
-              className="ml-auto inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-[15px] py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] cursor-pointer hover:border-tn-teal">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={DOWN} /></svg>Export CSV
-            </button>
+            <ExportCsvButton onClick={exportCsv} />
           </div>
         </>
       )}
@@ -174,7 +147,7 @@ export function InvoicesList({ data, api, initial }: {
           <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
             <div className="min-w-[860px]">
               <div className={`grid ${cols} bg-subtle border-b border-[var(--panel-border)]`}>
-                {heads.map(([label, right], i) => <div key={i} className={`${HEAD} ${right ? 'text-right' : ''}`}>{label}</div>)}
+                {heads.map(([label, right], i) => <div key={i} className={`${LIST_HEAD} ${right ? 'text-right' : ''}`}>{label}</div>)}
               </div>
               {shown.map(r => (
                 <div key={r.id} role="link" tabIndex={0} aria-label={`Open ${r.number}`}
@@ -182,29 +155,14 @@ export function InvoicesList({ data, api, initial }: {
                   onKeyDown={e => { if (e.key === 'Enter') router.push(withViewAs(`/clocky-hours/invoices/${r.id}`)) }}
                   className={`grid ${cols} items-center border-b border-[var(--row-rule)] text-[13px] cursor-pointer tabular-nums lining-nums hover:bg-[#f8f7f3]`}>
                   <div className="px-3.5 py-[11px] font-(family-name:--font-display) font-extrabold text-tn-ink whitespace-nowrap">{r.number}</div>
-                  {!mine && (
-                    <div className="px-3.5 py-[9px] flex items-center gap-[9px] min-w-0">
-                      <span className="w-7 h-7 rounded-full bg-tn-primary text-[#ffffff] flex items-center justify-center font-(family-name:--font-display) font-extrabold text-[10.5px] flex-none">{r.initials}</span>
-                      <span className="flex flex-col min-w-0">
-                        <span className="font-(family-name:--font-display) font-bold text-[13.5px] text-tn-ink whitespace-nowrap">{r.who}</span>
-                        <span className="flex items-center gap-[5px] text-[11.5px] text-muted"><span className="w-[7px] h-[7px] rounded-full" style={{ background: r.teamColor }} />{r.team}</span>
-                      </span>
-                    </div>
-                  )}
+                  {!mine && <PersonCell initials={r.initials} who={r.who} team={r.team} teamColor={r.teamColor} />}
                   <div className="px-3.5 py-[11px] text-foreground whitespace-nowrap">{r.period}</div>
                   <div className="px-3.5 py-[11px] text-[#5b6b82] whitespace-nowrap">{r.pays}</div>
                   <div className="px-3.5 py-[11px] text-right font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink whitespace-nowrap">{r.total}</div>
-                  <div className="px-3.5 py-[11px]">
-                    <span className="font-(family-name:--font-display) font-extrabold text-[10px] tracking-[.05em] uppercase whitespace-nowrap rounded-full px-[9px] py-1" style={{ background: STATE_PILL[r.st].bg, color: STATE_PILL[r.st].fg }}>{STATE_PILL[r.st].label}</span>
-                  </div>
+                  <div className="px-3.5 py-[11px]"><StatePill st={r.st} /></div>
                   <div className="px-3.5 py-[11px] text-foreground whitespace-nowrap overflow-hidden text-ellipsis">{r.where}</div>
                   <div className="px-3.5 py-2 flex justify-end">
-                    {r.canPay ? (
-                      <button type="button" onClick={e => { e.stopPropagation(); setPay(payTarget(r)) }}
-                        className="inline-flex shrink-0 items-center gap-[7px] border border-slate-200 rounded-[10px] px-3 py-[7px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] whitespace-nowrap cursor-pointer hover:border-tn-teal">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Mark paid
-                      </button>
-                    ) : (
+                    {r.canPay ? <RowMarkPaid onClick={() => setPay(payTarget(r))} /> : (
                       <button type="button" disabled={busy === r.id} onClick={e => { e.stopPropagation(); void openPdf(r) }} aria-label={`Preview ${r.number}.pdf`}
                         className="inline-flex items-center gap-1.5 border border-slate-200 rounded-[9px] px-[11px] py-1.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12px] cursor-pointer hover:border-tn-teal disabled:opacity-60">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.white} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={EYE} /></svg>PDF

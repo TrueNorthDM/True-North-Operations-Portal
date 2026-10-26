@@ -6,6 +6,7 @@ import { checksOf, countText, daysText, historyOf, offDays, pillOf, stepsOf, typ
 import type { TimeOffPage, TimeOffRow } from '@/lib/timeclock/time-off-data'
 import type { ExtraPage, ReimbursementsPage, RmbDocPage } from '@/lib/timeclock/requests-data'
 import { rmbDocOf, type DocSheetData } from '@/lib/timeclock/pay-docs'
+import { buildRmbDocList } from '@/lib/timeclock/rmb-docs-list'
 
 const TODAY = '2026-11-03'
 const HOL: Record<string, string> = { '2026-11-26': 'Thanksgiving', '2026-11-27': 'Day after Thanksgiving', '2026-12-24': 'Christmas Eve', '2026-12-25': 'Christmas Day', '2027-01-01': "New Year's Day" }
@@ -108,7 +109,41 @@ export function reimbursementsFrame(frame: string): ReimbursementsPage {
     { id: 24, date: 'Oct 19, 2026', category: 'Equipment', what: 'USB-C hub for a second monitor', amount: '$12.99', hasReceipt: true, st: { label: 'Approved', tone: 'teal' as const }, info: 'Approved Oct 21. On reimbursement document RMB-2026-0031, waiting for Finance.', who: wc },
     { ...rows[2], who: jt }, { ...rows[3], who: jt },
   ]
-  return { contractor: true, everyone: frame === '9Be' ? everyone : null, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : frame === '9Br' ? [...trip, ...rows] : rows, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY }
+  return { contractor: true, everyone: frame === '9Be' ? everyone : null, rows: frame === '9A' ? rows.filter(r => r.id !== 3) : frame === '9Br' ? [...trip, ...rows] : rows, documents: null, doc: null, clients: ['1 - True North', '2 - i7 Marketing', 'A.org Job', 'Adventist Messengers/HFA', 'DDI', 'GNA', 'Rwanda-Incidental'], today: TODAY }
+}
+
+/**
+ * 9L: Documents (owner, 25 October 2026), every reimbursement document, as
+ * Finance (Tina Gennette, 9L and 9Lm with Mark paid open) or an Admin (Dave
+ * Sharpe, 9La), through the real list builder. One mixes currencies.
+ */
+export function rmbDocsFrame(frame: string): ReimbursementsPage {
+  const PEOPLE: Record<string, { name: string; team: string; color: string }> = {
+    wc: { name: 'Wendy Cacka', team: 'Web', color: '#A99BD4' }, ds: { name: 'Dave Sharpe', team: 'Leadership', color: '#012358' },
+    ji: { name: 'Joy Inyele', team: 'Africa', color: '#F0A35E' }, tg: { name: 'Tina Gennette', team: 'Operations', color: '#1E7D7F' },
+  }
+  const doc = (id: number, person_id: string, state: 'approved' | 'paid', created: string, paid?: [string, string]) =>
+    ({ id, number: `RMB-2026-${String(id).padStart(4, '0')}`, person_id, state, total: 0, paid_on: paid?.[0] ?? null, paid_ref: paid?.[1] ?? null, created_at: at(created) })
+  const item = (document_id: number, amount: number, decided: string, currency = 'USD') => ({ document_id, amount, currency, decided_at: at(decided) })
+  const documents = buildRmbDocList({
+    finance: frame !== '9La',
+    docs: [
+      doc(31, 'wc', 'approved', 'Oct 21, 2026, 4:05 PM'),
+      doc(30, 'ds', 'approved', 'Oct 19, 2026, 11:20 AM'),
+      doc(29, 'ji', 'paid', 'Oct 14, 2026, 9:40 AM', ['2026-11-02', 'ACH-20261102']),
+      doc(28, 'wc', 'paid', 'Sep 30, 2026, 2:15 PM', ['2026-10-09', 'ACH-20261009']),
+      doc(27, 'tg', 'paid', 'Aug 28, 2026, 10:02 AM', ['2026-09-04', 'ACH-20260904']),
+    ],
+    items: [
+      item(31, 12.99, 'Oct 21, 2026, 4:05 PM'), item(31, 45, 'Nov 3, 2026, 9:32 AM'),
+      item(30, 45, 'Oct 19, 2026, 11:20 AM'), item(30, 41.4, 'Oct 21, 2026, 3:48 PM'),
+      item(29, 4500, 'Oct 14, 2026, 9:40 AM', 'KES'), item(29, 18.4, 'Oct 14, 2026, 9:41 AM'),
+      item(28, 35, 'Sep 30, 2026, 2:15 PM'),
+      item(27, 64.2, 'Aug 28, 2026, 10:02 AM'),
+    ],
+    person: id => PEOPLE[id], financeNames: 'Tina Gennette', zone: 'America/New_York', today: TODAY,
+  })
+  return { ...reimbursementsFrame('9Be'), contractor: false, documents }
 }
 
 /** 9D: RMB-2026-0031, Wendy Cacka's, as Finance (Tina Gennette). */

@@ -10,14 +10,15 @@ import type { ExtraPage, ReimbursementsPage, RmbDocPage } from '@/lib/timeclock/
 import { TimeOffView } from './TimeOffView'
 import { ReimbursementsView, sendReimbursement } from './ReimbursementsView'
 import { RmbDocView } from './RmbDocView'
+import type { DocFilter } from './RmbDocsList'
 import { ExtraHoursView } from './ExtraHoursView'
 
 export function TimeOffLive({ data }: { data: TimeOffPage }) {
   return <TimeOffView data={data} api={{ askTimeOff, cancelTimeOff, askCancelTimeOff, retryTimeOffRippling }} />
 }
 
-export function ReimbursementsLive({ data }: { data: ReimbursementsPage }) {
-  return <ReimbursementsView data={data} send={sendReimbursement} />
+export function ReimbursementsLive({ data, documents }: { data: ReimbursementsPage; documents?: { st?: DocFilter } }) {
+  return <ReimbursementsView data={data} send={sendReimbursement} markRmbPaid={markRmbPaid} initial={documents ? { tab: 'docs', st: documents.st } : undefined} />
 }
 
 export function RmbDocLive({ d }: { d: RmbDocPage }) {

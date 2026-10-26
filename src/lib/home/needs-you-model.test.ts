@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { asksForNote, byDue, dayCounts, dueOnDay, dueSince, EMPTY_TAB, panelText, payDocumentRow, payInvoiceRow, tabCount, timesheetRow, uniqueErrors, unreadNeedsYou, type HomeRow } from './needs-you-model'
+import { asksForNote, byDue, dayCounts, documentsToPayRow, dueOnDay, dueSince, EMPTY_TAB, panelText, payDocumentRow, payInvoiceRow, tabCount, timesheetRow, uniqueErrors, unreadNeedsYou, type HomeRow } from './needs-you-model'
 import type { QueueRow } from '@/lib/timeclock/approval-queue'
 
 const row = (key: string, due: HomeRow['due'], button: string | null = 'Open', mine?: HomeRow['mine']): HomeRow =>
@@ -170,5 +170,13 @@ describe('to pay rows', () => {
     expect(tabCount('needs', [r])).toBe(1)
     expect(tabCount('needs', [r], new Set([r.key]))).toBe(0)
     expect(dayCounts({ needs: { rows: [r], errors: [] }, work: null, mine: { rows: [], errors: [] }, today })).toEqual({ late: 1, today: 0, week: 0 })
+  })
+
+  it('opens the documents to pay from "Reimbursements to pay" (owner, 25 October 2026)', () => {
+    const r = documentsToPayRow([{ createdOn: '2026-10-21' }, { createdOn: '2026-10-19' }], '$86.40', '2026-10-26')!
+    expect(r.href).toBe('/requests/reimbursements?view=documents&state=appr')
+    expect(r.sub).toBe('2 documents · waiting since Oct 19')
+    expect(r.due?.tone).toBe('later')
+    expect(documentsToPayRow([], '$0.00', '2026-10-26')).toBeNull()
   })
 })
