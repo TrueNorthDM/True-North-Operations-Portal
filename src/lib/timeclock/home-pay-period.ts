@@ -21,7 +21,8 @@
  *   PTO, sick  tc_entries of kind absence (approved time off writes them),
  *              sick and holiday told apart by the job code's name
  *   holiday    the company holidays the Agenda shows (time-off.ts), credited
- *              with the person's daily hours on a weekday up to today
+ *              with the person's daily hours on a weekday up to today;
+ *              employees only: a contractor is paid for hours worked
  *   expected   weekdays in the period x daily hours (people.weekly_hours / 5,
  *              8h when it is not set)
  *
@@ -379,7 +380,9 @@ async function readPayPeriod(personId: string, now: Date): Promise<PayPeriodResu
     due,
     approver: first ? dir.nameOf(first) : null,
     time,
-    holidays: Object.fromEntries(holidaysBetween(prev.start, current.end)),
+    // Contractors are paid only for hours worked and may work on a holiday within their
+    // allowance (owner, 26 October 2026): a holiday credits nothing and changes nothing for them.
+    holidays: route.isContractor ? {} : Object.fromEntries(holidaysBetween(prev.start, current.end)),
   })
   return { ok: true, view }
 }
