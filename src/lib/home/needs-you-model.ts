@@ -88,6 +88,8 @@ export interface HomeRow {
   href?: string
   /** Your own requests: waiting, or done; picks the chip's colours and its icon. */
   mine?: { state: 'wait' | 'done'; icon: 'requests' | 'clock' | 'client-reports' }
+  /** To pay: the total, drawn large on the line pinned to the top of Needs you. */
+  figure?: string
 }
 
 /**
@@ -373,4 +375,38 @@ export function payDocumentRow(d: DocumentToPay, today: string): HomeRow {
     payForm: { paidOn: dateLabel(today), refPlaceholder: 'e.g. ACH-20261103' },
   }
   return { key: `p-d${d.id}`, kind: 'pay', title, sub, due: dueOnDay(d.createdOn, today), button: MARK_PAID, panel }
+}
+
+
+/**
+ * One line for every invoice waiting to be paid, not a line each (owner, 25
+ * October 2026), pinned to the top of Needs you with the total drawn large
+ * (option A of /design-check/to-pay-options.html). "3 invoices · 1 past due
+ * since Oct 15", or "· next due Oct 30" when none is late; dated by the one
+ * due first. It opens the Invoices page on the approved ones, where Finance
+ * marks each paid.
+ */
+export function invoicesToPayRow(list: readonly { amount: number; dueOn: string }[], today: string, usdText: (n: number) => string): HomeRow | null {
+  if (!list.length) return null
+  const first = [...list].sort((a, b) => a.dueOn.localeCompare(b.dueOn))[0]
+  const late = list.filter(i => i.dueOn < today).length
+  const due = dueOnDay(first.dueOn, today)
+  const when = late ? `${late} past due since ${dateLabel(first.dueOn).replace(/, \d{4}$/, '')}` : `next due ${due.tone === 'today' ? 'today' : dateLabel(first.dueOn).replace(/, \d{4}$/, '')}`
+  return {
+    key: 'pay-invoices', kind: 'pay', title: 'Invoices to pay', sub: `${list.length} invoice${list.length === 1 ? '' : 's'} · ${when}`,
+    due, button: 'Open Invoices', panel: null, href: '/clocky-hours/invoices?state=appr',
+    figure: usdText(list.reduce((n, i) => n + i.amount, 0)),
+  }
+}
+
+/** The same for reimbursement documents: "Reimbursements to pay", waiting since the oldest, opening Reimbursements. */
+export function documentsToPayRow(list: readonly { createdOn: string }[], total: string, today: string): HomeRow | null {
+  if (!list.length) return null
+  const first = [...list].sort((a, b) => a.createdOn.localeCompare(b.createdOn))[0]
+  return {
+    key: 'pay-documents', kind: 'pay', title: 'Reimbursements to pay',
+    sub: `${list.length} document${list.length === 1 ? '' : 's'} · waiting since ${dateLabel(first.createdOn).replace(/, \d{4}$/, '')}`,
+    // A document has no due day: dated by the oldest for the order, never drawn as late (amber, not red).
+    due: { ...dueOnDay(first.createdOn, today), tone: 'later' }, button: 'Open Reimbursements', panel: null, href: '/requests/reimbursements', figure: total,
+  }
 }

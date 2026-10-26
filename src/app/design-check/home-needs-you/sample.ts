@@ -6,7 +6,7 @@
 // here: the timesheet is never a row (the Pay period card owns it), and an
 // invoice is not something a person asks for.
 
-import { payDocumentRow, payInvoiceRow, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type PanelButton } from '@/lib/home/needs-you-model'
+import { documentsToPayRow, invoicesToPayRow, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type PanelButton } from '@/lib/home/needs-you-model'
 
 export type Level = 'super' | 'admin' | 'lead' | 'emp' | 'con' | 'fin'
 export const LEVELS: { key: Level; label: string; note: string }[] = [
@@ -129,25 +129,22 @@ const L3 = leadRow('l3', 'Stephanie Aguirre, Oct 12 to 25', '40h 00m. 2 entries 
   [['Period', 'Oct 12 to 25'], ['Hours', '40h 00m'], ['Edited by hand', '2 entries'], ['Over the allowance', 'No'], ['After you', 'Arnaldo Oliveira, the invoice']],
   'Oct 19: 9:00 AM to 1:00 PM added, "forgot to clock in". Oct 22: end changed from 6:40 to 5:30 PM.')
 
-// Finance's To pay: one late, one due today, one later than this week, and a document.
+// To pay, one line each (owner, 25 October 2026): three invoices (one late,
+// one due today, one later) and one reimbursement document; for Super Admins,
+// Admins and Finance.
 const DAY = '2026-10-26'
-const F1 = payInvoiceRow({ id: 131, number: 'INV-2026-0131', who: 'Stephanie Aguirre', period: 'September 2026', total: '$2,304.00', dueOn: '2026-10-15', approvedBy: 'Arnaldo Oliveira', approvedOn: '2026-10-03' }, DAY)
-const F2 = payInvoiceRow({ id: 138, number: 'INV-2026-0138', who: 'Samuel Manzi', period: 'Sep 28 to Oct 11, 2026', total: '$2,295.00', dueOn: '2026-10-26', approvedBy: 'Dave Sharpe', approvedOn: '2026-10-24' }, DAY)
-const F3 = payInvoiceRow({ id: 140, number: 'INV-2026-0140', who: 'Justus Tsofa', period: 'Oct 12 to 25, 2026', total: '$1,920.00', dueOn: '2026-11-09', approvedBy: 'Arnaldo Oliveira', approvedOn: '2026-10-26' }, DAY)
-const F4 = payDocumentRow({
-  id: 30, number: 'RMB-2026-0030', who: 'Dave Sharpe',
-  items: [{ date: 'Oct 19', category: 'Software', purpose: 'Figma Professional', amount: '$45.00' }, { date: 'Oct 21', category: 'Internet', purpose: 'Internet for October', amount: '$41.40' }],
-  total: '$86.40', approvedBy: ['Arnaldo Oliveira'], createdOn: '2026-10-21',
-}, DAY)
+const usdText = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const PAY_INV = invoicesToPayRow([{ amount: 2304, dueOn: '2026-10-15' }, { amount: 2295, dueOn: '2026-10-26' }, { amount: 1920, dueOn: '2026-11-09' }], DAY, usdText)!
+const PAY_DOC = documentsToPayRow([{ createdOn: '2026-10-21' }], '$86.40', DAY)!
 
 export const SAMPLE: Record<Level, NeedsYouData> = {
   super: {
-    needs: tab([S1, S2, S3, S4, S7, S8]),
+    needs: tab([S1, PAY_INV, S2, S3, S4, S7, PAY_DOC, S8]),
     work: tab([task('s5', 'HFA translation targets for November', 'Hope for Africa', LATE('Was due Fri', '2026-10-23')), task('s6', 'Sign off the i7 October report', 'i7', LATER('Wed, Oct 28', '2026-10-28'))]),
     mine: tab([]),
   },
   admin: {
-    needs: tab([A1, A2]),
+    needs: tab([A1, PAY_INV, A2, PAY_DOC]),
     work: tab([task('a3', 'Q4 budget review with Arnaldo', 'Leadership', TODAY), task('a4', 'Bessemeters launch brief', 'Bessemeters', LATER('Wed, Oct 28', '2026-10-28'))]),
     mine: tab([mine('r1', 'Time off, Dec 28 to 31', 'Approved, on the team calendar', 'done')]),
   },
@@ -177,7 +174,7 @@ export const SAMPLE: Record<Level, NeedsYouData> = {
   },
   fin: {
     // Sorted as the server sorts them (byDue): late, today, later.
-    needs: tab([F1, F4, F2, F3]),
+    needs: tab([PAY_INV, PAY_DOC]),
     work: tab([task('f1', 'Update the October publishing tracker', 'Operations', TODAY)]),
     mine: tab([mine('r1', 'Time off, Nov 25 to 27', 'Waiting on Arnaldo Oliveira', 'wait')]),
     today: DAY,

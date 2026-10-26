@@ -69,12 +69,12 @@ export async function countMissingRates(): Promise<number> {
 }
 
 /**
- * The rail's "To pay" on Invoices (owner, 25 October 2026): for Finance alone,
- * the approved invoices not paid yet and the reimbursement documents waiting,
- * the rows Home's Needs you lists under the same rule (paysWhat). 0 for
- * anyone else, read or not.
+ * The rail's "To pay" on Invoices (owner, 25 October 2026): for Super Admins,
+ * Admins and Finance, the approved invoices not paid yet and the
+ * reimbursement documents waiting, under the same rule as Home's lines
+ * (paysWhat). 0 for anyone else, read or not.
  */
-export async function countToPay(access: Pick<Access, 'personId' | 'can'>): Promise<number> {
+export async function countToPay(access: Pick<Access, 'personId' | 'can' | 'isAdmin'>): Promise<number> {
   const pays = paysWhat(access, await loadInvoiceSettings())
   if (!pays.invoices && !pays.documents) return 0
   const c = createAdminClient()

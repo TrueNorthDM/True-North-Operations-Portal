@@ -10,9 +10,13 @@ import { InvoicesListLive } from '@/components/clocky/invoices/InvoicesLive'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Invoices' }
 
-export default async function InvoicesPage() {
+const STATES = ['all', 'wait', 'appr', 'paid', 'draft'] as const
+
+/** ?state=appr opens on the approved ones: Home's "Invoices to pay" line links here (owner, 25 October 2026). */
+export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ state?: string }> }) {
+  const { state } = await searchParams
   const access = await requireSurface('clocky-invoices')
   const v = await viewerFor(access)
   const data = await loadInvoiceList(invoiceViewer(access, v?.zone ?? 'America/New_York'))
-  return <InvoicesListLive data={data} />
+  return <InvoicesListLive data={data} st={STATES.find(x => x === state)} />
 }

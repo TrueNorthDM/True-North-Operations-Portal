@@ -74,7 +74,10 @@ export function NeedsYouCard({ data, run, className = '' }: {
     return rows
   }
   const current = tabs.find(([k]) => k === tab) ?? tabs[0]
-  const rows = rowsOf(current[0], current[1])
+  const all = rowsOf(current[0], current[1])
+  // Money waiting to be paid is pinned to the top in its own colour (owner, 25 October 2026, option A).
+  const pinned = all.filter(r => r.kind === 'pay' && r.href)
+  const rows = all.filter(r => !pinned.includes(r))
 
   const close = (row: HomeRow) => { setOpen(null); setRefocus({ key: row.key }) }
   const resolve = (row: HomeRow) => {
@@ -110,6 +113,7 @@ export function NeedsYouCard({ data, run, className = '' }: {
         id="home-tab-list" role="tabpanel" aria-labelledby={`home-tab-${current[0]}`}
         className="flex-1 min-h-0 lg:min-h-[250px] lg:[contain:size] overflow-y-auto pb-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-mask-image:linear-gradient(to_bottom,#000_calc(100%-28px),transparent)] [mask-image:linear-gradient(to_bottom,#000_calc(100%-28px),transparent)]"
       >
+        {pinned.map(r => <PinnedPay key={r.key} row={r} />)}
         {current[1].errors.map(e => (
           <p key={e.text} role="status" className="m-0 py-[13px] border-b border-[#f1f3f6] text-[13px] font-semibold text-[#c8323d]">
             {e.href ? <Link href={e.href} className="text-inherit underline-offset-2 hover:underline">{e.text}</Link> : e.text}
@@ -138,7 +142,7 @@ export function NeedsYouCard({ data, run, className = '' }: {
             </div>
           )
         })}
-        {!rows.length && !current[1].errors.length && (
+        {!rows.length && !pinned.length && !current[1].errors.length && (
           <div className="py-[26px] text-center text-[13.5px] text-muted">{EMPTY_TAB[current[0]]}</div>
         )}
       </div>
@@ -147,3 +151,35 @@ export function NeedsYouCard({ data, run, className = '' }: {
     </div>
   )
 }
+
+const PAY_TONE = {
+  late: { bg: '#fdeeef', border: '#f3c6ca', fg: '#c8323d', title: '#c8323d' },
+  due: { bg: '#fdf8e7', border: '#f0e2a8', fg: '#8a6d1a', title: '#012358' },
+} as const
+const PAY_ICON = 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9.5 14.5 12 12l2.5 2.5'
+
+/**
+ * "Invoices to pay" / "Reimbursements to pay", pinned above the other rows:
+ * red while one is past due, amber otherwise; the total large, and the navy
+ * button (white words, gold symbol) to the page where Finance pays them.
+ */
+function PinnedPay({ row }: { row: HomeRow }) {
+  const t = PAY_TONE[row.due?.tone === 'late' ? 'late' : 'due']
+  return (
+    <div data-row={row.key} tabIndex={-1} className="mt-3 mb-1 -mx-2.5 rounded-xl border px-3.5 py-3.5 flex flex-wrap sm:flex-nowrap items-center gap-x-3.5 gap-y-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-tn-teal/40" style={{ background: t.bg, borderColor: t.border }}>
+      <span className="w-10 h-10 rounded-[11px] bg-white flex items-center justify-center flex-none" style={{ color: t.fg }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PAY_ICON} /></svg>
+      </span>
+      <span className="flex-1 min-w-[150px] flex flex-col gap-0.5">
+        <span className="font-(family-name:--font-display) font-extrabold text-[15px]" style={{ color: t.title }}>{row.title}</span>
+        <span className="text-[12.5px] text-[#5b6b82] tabular-nums lining-nums">{row.sub}</span>
+      </span>
+      {row.figure && <span className="font-(family-name:--font-display) font-black text-[24px] leading-none text-tn-ink tabular-nums lining-nums whitespace-nowrap max-sm:pl-[54px]">{row.figure}</span>}
+      <Link href={row.href!} className="inline-flex items-center gap-2 rounded-[10px] px-4 py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] whitespace-nowrap hover:bg-[#0a2f6b] max-sm:ml-auto">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={BTN_ICON.navy} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        {row.button}
+      </Link>
+    </div>
+  )
+}
+

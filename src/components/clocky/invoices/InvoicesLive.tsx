@@ -5,10 +5,10 @@
 import { getInvoiceDoc, markInvoicePaid } from '@/app/(app)/clocky-hours/invoices/actions'
 import type { InvoiceDetail, InvoiceList } from '@/lib/timeclock/invoices-view'
 import { InvoiceDetailView } from './InvoiceDetailView'
-import { InvoicesList } from './InvoicesList'
+import { InvoicesList, type StFilter } from './InvoicesList'
 
-export function InvoicesListLive({ data }: { data: InvoiceList }) {
-  return <InvoicesList data={data} api={{ getInvoiceDoc, markInvoicePaid }} />
+export function InvoicesListLive({ data, st }: { data: InvoiceList; st?: StFilter }) {
+  return <InvoicesList data={data} api={{ getInvoiceDoc, markInvoicePaid }} initial={st ? { st } : undefined} />
 }
 
 export function InvoiceDetailLive({ d, submitted }: { d: InvoiceDetail; submitted: boolean }) {

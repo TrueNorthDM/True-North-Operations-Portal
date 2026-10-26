@@ -30,7 +30,7 @@ export interface InvoicesApi {
   markInvoicePaid(i: { id: number; paidOn: string; ref?: string; note?: string }): Promise<Result<{ toast: string }>>
 }
 
-type StFilter = 'all' | 'wait' | 'appr' | 'paid' | 'draft'
+export type StFilter = 'all' | 'wait' | 'appr' | 'paid' | 'draft'
 const SEG: [StFilter, string][] = [['all', 'All'], ['wait', 'Waiting'], ['appr', 'Approved'], ['paid', 'Paid'], ['draft', 'Draft']]
 const ALL_PERIODS = 'All periods'
 const EVERYONE = 'Everyone'
@@ -47,11 +47,11 @@ export function InvoicesList({ data, api, initial }: {
   data: InvoiceList
   api: InvoicesApi
   /** The design checks open a frame's state. */
-  initial?: { pay?: number; pdf?: InvoiceDocView }
+  initial?: { pay?: number; pdf?: InvoiceDocView; st?: StFilter }
 }) {
   const router = useRouter()
   const mine = data.mode === 'mine'
-  const [st, setSt] = useState<StFilter>('all')
+  const [st, setSt] = useState<StFilter>(initial?.st ?? 'all')
   const [person, setPerson] = useState(EVERYONE)
   const [period, setPeriod] = useState(data.defaultPeriod)
   const [pdf, setPdf] = useState<InvoiceDocView | null>(initial?.pdf ?? null)

@@ -91,14 +91,15 @@ export const isFinance = (access: Pick<Access, 'personId'>, settings: Pick<Invoi
   !!access.personId && settings.finance.includes(access.personId)
 
 /**
- * What waits for this person to pay (owner, 25 October 2026): Finance alone,
- * invoices where Invoices is open to them (markInvoicePaid's gate) and
- * reimbursement documents where Reimbursements is (markRmbPaid's). Home's To
- * pay rows and the rail's To pay count both read this one rule.
+ * Who is shown what waits to be paid (owner, 25 October 2026): Super Admins,
+ * Admins and Finance; invoices where Invoices is open to them and
+ * reimbursement documents where Reimbursements is. Only Finance marks them
+ * paid (on the pages); the others see that payments are waiting. Home's "to
+ * pay" lines and the rail's To pay count both read this one rule.
  */
-export function paysWhat(access: Pick<Access, 'personId' | 'can'>, settings: Pick<InvoiceSettings, 'finance'>): { invoices: boolean; documents: boolean } {
-  const finance = isFinance(access, settings)
-  return { invoices: finance && access.can('clocky-invoices'), documents: finance && access.can('rq-reimbursements') }
+export function paysWhat(access: Pick<Access, 'personId' | 'can' | 'isAdmin'>, settings: Pick<InvoiceSettings, 'finance'>): { invoices: boolean; documents: boolean } {
+  const sees = access.isAdmin || isFinance(access, settings)
+  return { invoices: sees && access.can('clocky-invoices'), documents: sees && access.can('rq-reimbursements') }
 }
 
 
