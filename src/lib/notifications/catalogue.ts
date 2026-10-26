@@ -400,8 +400,9 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
     key: 'clocky-allowance', src: 'North Time · allowance', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Allowance', stat: 'allowance lines', statOne: 'allowance line',
     example: { title: 'You have used 90% of your allowance', body: '126h of 140h this month.' },
-    title: 'Your hours allowance: 90%, or over',
-    description: 'Once at 90% and once over, each week or month. Ask for extra hours before going over. In the bell only.',
+    title: 'Your hours allowance: 90%, reached, or over',
+    // Since 25 October 2026 the allowance is a real limit (owner): the same row says when the clock stopped at it.
+    description: 'Once at 90% and once over, each week or month, and when your clock stops by itself at your allowance: nobody logs time past it. Ask for extra hours to log more. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
     button: { label: 'Ask for extra hours', href: '/requests/extra-hours?ask=1' },
   },

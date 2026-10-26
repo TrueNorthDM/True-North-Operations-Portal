@@ -212,6 +212,14 @@ export const notifyClockyReminders = (x: {
   ...x.over.flatMap(r => clockyAllowanceOverDrafts(ctx, r)),
 ])
 
+/**
+ * A running clock stopped at the person's hours allowance (owner, 25 October
+ * 2026): the allowance's own bell row, with its "Ask for extra hours" button,
+ * once per stopped entry. The bell only: no end time to confirm, no email.
+ */
+export const notifyClockyLimitStopped = (x: { personId: string; entryId: number; text: string }, db?: Client) =>
+  simple('clocky-allowance', ctx => clockyAllowanceDrafts(ctx, { personId: x.personId, key: `stop:${x.entryId}`, text: x.text }), db)
+
 export const notifyClockyTypeChange = (x: { changeId: number; personId: string; to: readonly string[]; text: string; body: string }) =>
   simple('clocky-type-change', ctx => clockyTypeChangeDrafts(ctx, x))
 

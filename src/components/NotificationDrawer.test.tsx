@@ -79,5 +79,8 @@ describe('North Time in the bell', () => {
     expect(clockyTone({ type: 'clocky-correction-decided', who: 'Rock Kai approved your time correction: 1h 30m on Wed, Oct 14.' }).fg).toBe('var(--ok-fg)')
     expect(clockyTone({ type: 'clocky-correction-decided', who: 'Rock Kai denied your time correction for Thu, Oct 8 (0h 30m). Reason: "x"' }).fg).toBe('#c8323d')
     expect(clockyTone({ type: 'clocky-auto-stops', who: '' }).fg).toBe('var(--color-tn-teal)')
+    // The allowance's row: red when it says the clock stopped at the limit (owner, 25 October 2026).
+    expect(clockyTone({ type: 'clocky-allowance', who: 'Your clock stopped at 4:15 PM: you have used your 140h 00m allowance for October. Ask for extra hours to log more.' }).fg).toBe('#c8323d')
+    expect(clockyTone({ type: 'clocky-allowance', who: 'You have used 90% of your allowance: 126h of 140h this month.' }).fg).toBe('var(--color-tn-teal)')
   })
 })

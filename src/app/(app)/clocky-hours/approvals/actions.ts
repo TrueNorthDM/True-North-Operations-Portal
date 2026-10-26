@@ -8,7 +8,8 @@
  * Admin, never by the person (lib/timeclock/scope.ts); time off by Super
  * Admins only. Approving a correction turns it into a normal entry marked
  * Edited, with the request in its history, unless the time now overlaps an
- * entry; denying needs a reason. The requester hears either way.
+ * entry or would go past the person's hours allowance (owner, 25 October
+ * 2026); denying needs a reason. The requester hears either way.
  *
  * Writes are for the person really signed in (writerAccess), never during a
  * View Stage preview, and go through the privileged client.
@@ -29,6 +30,7 @@ import { currentStep, hoursApprover, invoiceApprover, stateAfterApprove, type Ti
 import { hoursByClient } from '@/lib/timeclock/invoices-data'
 import { loadApprovedExtra } from '@/lib/timeclock/allowance-data'
 import { allowanceStatus } from '@/lib/timeclock/allowance'
+import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import { loadConnections } from '@/lib/integrations/connections'
 import { NOTE_TO_APPROVE, REASON_REQUIRED, approveOverlapLine, reasonOf } from '@/lib/timeclock/entry-rules'
 import { formatDuration, recordedSeconds, roundSeconds } from '@/lib/timeclock/rounding'
@@ -80,8 +82,9 @@ type Request = { id: number; person_id: string; entry_date: string; started_at: 
 
 /**
  * Approve or deny a time correction. Approve: the time becomes a normal entry
- * (marked Edited by the approver), refused if it now overlaps an entry or its
- * period is locked. Deny: a reason, which the requester is told.
+ * (marked Edited by the approver), refused if it now overlaps an entry, its
+ * period is locked, or it would go past the person's allowance. Deny: a
+ * reason, which the requester is told.
  */
 export async function decideCorrection(input: { id: number; decision: 'approve' | 'deny'; note?: string }): Promise<Result<{ entryId?: number; toast: string }>> {
   const v = await actor('clocky-approvals')
@@ -119,6 +122,8 @@ export async function decideCorrection(input: { id: number; decision: 'approve' 
         overlap: { entryId: o.other.row.id, name: other, start: o.other.row.started_at!, end: o.other.row.ended_at, sharedStart: o.start, sharedEnd: o.end },
       })
     }
+    const limit = await limitRefusal(r.person_id, { add: [{ day: r.entry_date, seconds: recordedSeconds(r.started_at, r.ended_at) }] }, now, name)
+    if (limit) return fail(limit)
     // Claimed first, so two approvers at once make one entry.
     const { data: claimed, error: e3 } = await c.from('tc_correction_requests')
       .update({ state: 'approved', decided_by: v.personId, decided_at: at }).eq('id', r.id).eq('state', 'pending').select('id')
@@ -509,7 +514,8 @@ export async function approveTimesheet(input: { id: number; note?: string }): Pr
     if (!route || !step || step.owner !== v.personId || t.personId === v.personId) return fail(NOT_WAITING)
     const next = stateAfterApprove(route, settings, t.state)!
     const note = reasonOf(input.note)
-    // Over the allowance: the invoice approver decides, and says why.
+    // Over the allowance: the invoice approver decides, and says why. Rare since the allowance became a real
+    // limit (owner, 25 October 2026): kept for time that was over before it, imported or old entries.
     if (step.step === 'both' || step.step === 'invoice') {
       const over = await overFor(t.personId, t.start, t.end)
       if (over > 0 && !note) return fail(`${formatDuration(over)} over the allowance were not approved in advance. ${NOTE_TO_APPROVE}`)

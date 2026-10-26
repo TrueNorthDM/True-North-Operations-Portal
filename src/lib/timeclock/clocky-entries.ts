@@ -18,7 +18,7 @@ import { attentionReason, missingFields, overlapsAmong } from './entry-rules'
 import { historyLines, type AuditRow } from './history'
 import { holidaysBetween, offDays } from './time-off'
 import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
-import { canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
+import { canAddFor, canApproveCorrection, canDecideTimeOff, canView, changeRight, isLeader, seesEveryone, whoChoice } from './scope'
 import type { AttentionItem, EntriesData, EntryView, HistoryData, Pill, SubmitSummary } from './clocky-types'
 import { attentionOrder, goesToLabel, requestHistoryLines, teamLeadNames } from './clocky-requests'
 import { loadPayTerms, loadRouteSettings } from './pay-terms'
@@ -288,6 +288,8 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       .map(t => ({ id: t.id, name: t.name, color: t.color })),
     submit: { ...period, ...periodLabel(period), state: mine?.state ?? null, submitted: isSent(mine?.state) },
     canAdd: isLeader(v),
+    // A Team Leader adds for their team, not for themselves (owner, 25 October 2026).
+    canAddOwn: canAddFor(v, dir.target(v.personId)),
     anchors: settings.anchors.map(a => ({ anchor: a.anchor, effectiveFrom: a.effectiveFrom })),
   }
 }

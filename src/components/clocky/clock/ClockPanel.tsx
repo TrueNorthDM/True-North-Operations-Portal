@@ -157,7 +157,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
 
   // ── Calls ─────────────────────────────────────────────────────────────────
 
-  /** Run one call; a refusal shows its sentence, a stopped clock reloads into 1L. */
+  /** Run one call; a refusal shows its sentence, a stopped clock reloads into 1L (at the allowance, with its sentence). */
   async function run<T extends { ok: boolean }>(call: () => Promise<T>, then?: (r: Extract<T, { ok: true }>) => void | Promise<void>): Promise<T | Fail> {
     setBusy(true)
     setError(null)
@@ -166,7 +166,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     if (res.ok) await then?.(res as Extract<T, { ok: true }>)
     else {
       const f = res as Fail
-      if (f.stopped) { set({ ...PANEL_UI }); await refresh() }
+      if (f.stopped) { set({ ...PANEL_UI }); await refresh(); if (f.allowance) setError(f.error) }
       else if (!f.missing) setError(f.error)
     }
     setBusy(false)

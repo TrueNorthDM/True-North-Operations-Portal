@@ -11,8 +11,10 @@
  *   - every change needs a reason, kept in the entry's history;
  *   - a User only shortens their own entries (start later, end earlier) and
  *     fixes their details; more time comes through a time correction request;
- *   - Team Leaders change their teams' hours, Admins and Super Admins anyone's
- *     (lib/timeclock/scope.ts);
+ *   - Team Leaders change their teams' hours, not their own (the same as a
+ *     User there); Admins and Super Admins anyone's (lib/timeclock/scope.ts);
+ *   - nobody's hours go past their allowance plus the extra hours approved,
+ *     whoever adds them (owner, 25 October 2026; allowance-limit.ts);
  *   - no overlaps, no entry over 24 hours;
  *   - a submitted or approved period is locked for everyone; a Super Admin
  *     reopens it first.
@@ -34,7 +36,7 @@ import { correctionGoesTo } from '@/lib/timeclock/clocky-panel'
 import { announceCorrectionRequested, announceInvoiceMade, announceTimesheetSubmitted } from '@/lib/timeclock/clocky-notify'
 import { usd } from '@/lib/timeclock/invoice-doc'
 import { dayLabel, localDate, weekdayShort } from '@/lib/timeclock/format'
-import { formatDuration, parseDuration, recordedSeconds, roundIso, roundSeconds } from '@/lib/timeclock/rounding'
+import { formatDuration, parseDuration, recordedSeconds, roundIso, roundSeconds, runningSeconds } from '@/lib/timeclock/rounding'
 import {
   DAY_SECONDS, DURATION_FORMAT, END_AFTER_START, NOTHING_LEFT, OVER_24H, REASON_REQUIRED, correctionOverlapLine, instantOf,
   overlapLine, reasonOf, trimOther, trimThis,
@@ -44,7 +46,8 @@ import { addDays, isSent, lockedMessage, periodLabel } from '@/lib/timeclock/per
 import { loadRouteSettings, loadRoutes } from '@/lib/timeclock/pay-terms'
 import { currentStep, stateOnSubmit } from '@/lib/timeclock/routing'
 import { invoiceBlocker, makeInvoiceForSubmission } from '@/lib/timeclock/invoices-data'
-import { SHORTEN_ONLY, canAddFor, changeRight, onlyShorter } from '@/lib/timeclock/scope'
+import { SHORTEN_ONLY, canAddFor, changeRight, isLeader, onlyShorter } from '@/lib/timeclock/scope'
+import { limitRefusal } from '@/lib/timeclock/allowance-limit'
 import type { EntriesData, Fail, HistoryData, OverlapInfo, Result, SubmitSummary } from '@/lib/timeclock/clocky-types'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
@@ -56,6 +59,11 @@ const GONE = 'That entry is not there any more.'
 const PICK_JOB = 'Pick a job code.'
 /** The week grid's note for a User (exact copy), also the refusal of "Add time" to a User. */
 const USER_NO_ADD = 'Hours come from your clock. To add time, ask your Team Leader.'
+/** The same to a Team Leader adding to their own hours (owner, 25 October 2026: "só as do time"). */
+const LEADER_NO_ADD = 'Hours come from your clock. For missing time of your own, request a time correction.'
+const noAddOwn = (v: Viewer) => (isLeader(v) ? LEADER_NO_ADD : USER_NO_ADD)
+/** Whose limit a refusal names: nobody for one's own hours ("your"), else the person. */
+const whose = (v: Viewer, personId: string, dir: { nameOf: (id: string) => string }) => (personId === v.personId ? null : dir.nameOf(personId))
 
 const fail = (error: string, extra: Omit<Fail, 'ok' | 'error'> = {}): Fail => ({ ok: false, error, ...extra })
 function notSaved(e: unknown): Fail {
@@ -252,7 +260,7 @@ async function resolveOverlap(
 
 // ── Add, edit, delete (3E, 3F, 3I) ──────────────────────────────────────────
 
-/** "Add time": Team Leaders (their teams, themselves included), Admins and Super Admins, with a reason. */
+/** "Add time": Team Leaders (their teams, not themselves), Admins and Super Admins (anyone, themselves included), with a reason. */
 export async function addTime(input: EntryInput & { personId: string }): Promise<Result<{ entryId: number; toast: string }>> {
   const v = await actor()
   if (isFail(v)) return v
@@ -262,7 +270,7 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
-    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? USER_NO_ADD : NOT_YOURS)
+    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? noAddOwn(v) : NOT_YOURS)
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const job = catalog.jobs.get(Number(input.jobcodeId))
@@ -290,6 +298,8 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     } else {
       seconds = times.seconds
     }
+    const limit = await limitRefusal(personId, { add: [{ day: start ? localDate(start, zone) : input.date, seconds }] }, now, whose(v, personId, dir))
+    if (limit) return fail(limit)
     const at = now.toISOString()
     const { data, error } = await c.from('tc_entries').insert({
       person_id: personId, jobcode_id: job.id, started_at: start, ended_at: end, duration_seconds: seconds,
@@ -379,6 +389,10 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
       if (trimOther) { await trimOther(); refresh() }
       return { ok: true, entryId: e.id, changes: 0, toast: 'Saved. Nothing changed.' }
     }
+    // Longer, or moved to another week or month: not past the person's allowance.
+    const counts = start && !end ? runningSeconds(start, now) : next.duration_seconds!
+    const limit = await limitRefusal(e.person_id, { add: [{ day: next.entry_date!, seconds: counts }], exclude: [e.id] }, now, whose(v, e.person_id, dir))
+    if (limit) return fail(limit)
 
     const at = now.toISOString()
     const confirm = e.auto_stopped_at && !e.end_confirmed_at ? { end_confirmed_at: at, end_confirmed_by: v.personId } : {}
@@ -452,7 +466,7 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
     const [catalog, dir] = await Promise.all([loadCatalog(), loadDirectory()])
     const personId = String(input.personId ?? '')
     if (!dir.people.has(personId)) return fail(NOT_YOURS)
-    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? USER_NO_ADD : NOT_YOURS)
+    if (!canAddFor(v, dir.target(personId))) return fail(personId === v.personId ? noAddOwn(v) : NOT_YOURS)
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.weekStart ?? ''))) return fail('Pick a week.')
@@ -500,6 +514,9 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
         + changes.filter(ch => ch.day === day).reduce((s, ch) => s + ch.seconds, 0)
       if (total > DAY_SECONDS) return fail(`More than 24 hours on ${weekdayShort(day)}. A day has 24 hours; fix the cells in red.`)
     }
+    // Not past the person's allowance, in each week or month the cells fall in.
+    const limit = await limitRefusal(personId, { add: changes.map(ch => ({ day: ch.day, seconds: ch.seconds })), exclude: changes.flatMap(ch => ch.replace.map(e => e.id)) }, now, whose(v, personId, dir))
+    if (limit) return fail(limit)
 
     const at = now.toISOString()
     for (const ch of changes) {

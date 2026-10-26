@@ -264,6 +264,36 @@ export async function stopIfDue(c: Client, e: EntryRow, now: Date, dir: Director
   }
 }
 
+// ── The stop at the hours allowance ─────────────────────────────────────────
+
+export interface LimitStop {
+  personId: string
+  entryId: number
+  /** Where it stopped: recorded (what counts) and real. */
+  stoppedAt: string
+  stoppedAtReal: string
+}
+
+/**
+ * End a running clock where it reached the person's hours allowance (owner,
+ * 25 October 2026), at that instant, with a line in its history naming the
+ * allowance ("140h 00m allowance for October"). It is not the safety net's
+ * automatic stop: the clock was not forgotten, the hours ran out, so there is
+ * no end time to confirm (no auto_stopped_at) and no Clock safety row. Does
+ * nothing (null) for a clock another write already ended.
+ */
+export async function stopAtLimit(c: Client, e: EntryRow, at: { real: string; recorded: string }, zone: string, catalog: Catalog, allowance: string): Promise<LimitStop | null> {
+  if (e.ended_at !== null || e.kind !== 'clock' || !e.started_at) return null
+  const closed = await closeClock(c, e, at.real, zone, { recordedEnd: at.recorded })
+  if (!closed) return null
+  await audit(c, [{
+    entryId: closed.lastId, action: 'auto_stop', by: null,
+    before: snapshot(e, catalog),
+    after: snapshot({ ...e, ended_at: closed.recordedEnd, ended_at_real: at.real }, catalog, { split_ids: closed.ids, allowance }),
+  }])
+  return { personId: e.person_id, entryId: closed.lastId, stoppedAt: closed.recordedEnd, stoppedAtReal: at.real }
+}
+
 // ── Checking what a form sent ───────────────────────────────────────────────
 
 /**

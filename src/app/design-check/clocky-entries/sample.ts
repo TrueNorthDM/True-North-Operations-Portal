@@ -307,7 +307,7 @@ function viewOf(x: Rec, level: Level, overlaps: Set<number>): EntryView {
     kind: x.kind === 'req' ? 'correction' : x.kind === 'off' ? 'time_off' : x.manual ? 'manual' : 'clock', imported: !!x.imported,
     pills, autoOut: x.auto ? { confirmed: !!x.confirmed, flagged: false } : null, edited: x.edited ? { by: x.edited, at: NOW_ISO } : null,
     clockedOutBy: null, locked: work && locked(x), lockWhy: work && locked(x) ? x.status.toLowerCase() : null,
-    canEdit, shortenOnly: canEdit && level === 'user' && x.who === me, canDelete: canEdit,
+    canEdit, shortenOnly: canEdit && (level === 'user' || level === 'lead') && x.who === me, canDelete: canEdit,
     canContinue: work && x.who === me && x.s != null && x.e != null, continuesPrevious: false,
     attention: attnOf(x, level, overlaps),
     correction: x.kind === 'req' ? {
@@ -390,6 +390,8 @@ export function entriesData(store: Store, q: { from: string; to: string; who: 'm
     teams: TEAMS.filter(([t]) => teamIds.has(tid(t))).map(([t, color]) => ({ id: tid(t), name: t, color })),
     submit: { start: sp.start, end: sp.end, kind: sp.kind, label: sp.label, full: sp.full, state: submitted ? 'submitted' : null, submitted },
     canAdd: level !== 'user',
+    // A Team Leader's own hours: shorten only, like a User's (owner, 25 October 2026).
+    canAddOwn: level === 'super' || level === 'admin',
     anchors: [{ anchor: '2026-10-04', effectiveFrom: null }],
   }
 }

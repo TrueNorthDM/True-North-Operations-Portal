@@ -56,6 +56,10 @@ export function runningSeconds(recordedStartIso: string, now: Date): number {
   return recordedSeconds(recordedStartIso, roundIso(now))
 }
 
+/** What an entry counts: its recorded duration, a running clock to now (on the quarter hour). */
+export const entrySeconds = (e: { ended_at: string | null; started_at: string | null; duration_seconds: number; kind: string }, now: Date): number =>
+  e.ended_at === null && e.kind === 'clock' && e.started_at ? runningSeconds(e.started_at, now) : e.duration_seconds
+
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** "7h 45m": every duration and total the portal shows, on the quarter hour. */

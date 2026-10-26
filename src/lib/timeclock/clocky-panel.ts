@@ -7,22 +7,23 @@
  * automatic stops waiting for an end time, the safety window, and whether
  * today's period is locked.
  *
- * "As soon as it notices": a clock past its 5-hour mark is stopped here, when
- * the person really signed in opens the panel, as the safety job would.
+ * "As soon as it notices": a clock past its 5-hour mark, or past the person's
+ * hours allowance (owner, 25 October 2026), is stopped here, when the person
+ * really signed in opens the panel, as the safety job would.
  *
  * Not a "use server" file: app/(app)/clocky-hours/clock-actions.ts serves it.
  */
 
 import type { Db } from '@/lib/supabase/types'
 import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, loadCadenceChanges, must, rulesFor, type Catalog, type Viewer } from './clocky-context'
-import { runningOf, stopIfDue, loadSubmissions, lockOn, type EntryRow } from './clocky-store'
-import { announceStop, portalOrigin } from './clocky-notify'
+import { runningOf, loadSubmissions, lockOn, type EntryRow } from './clocky-store'
+import { announceClockStop, portalOrigin } from './clocky-notify'
 import { dayLabel, localDate, timeLabel, zoneAbbr } from './format'
-import { roundIso, runningSeconds } from './rounding'
+import { entrySeconds, roundIso, runningSeconds } from './rounding'
 import { endOptions, safetyState, sessionStart, stillWorkingPanelText, stopWhen, windowStart } from './safety'
 import { missingFields, type FieldKeys } from './entry-rules'
 import { weekBounds } from './clock'
-import { allowanceRange, allowanceStatus } from './allowance'
+import { loadWindows, statusOf, limitStopIn, stopClockIfDue, type ClockStop } from './allowance-limit'
 import { loadPayTerms } from './pay-terms'
 import { addDays, lockedMessage, periodContaining, periodLabel } from './periods'
 import type { ClockChoice, ClockPanelData, PanelFolder, PanelJob, RunningEntry, ToConfirm } from './clocky-types'
@@ -80,14 +81,17 @@ export async function correctionGoesTo(personId: string): Promise<string> {
   return 'Goes to the Admins and Super Admins.'
 }
 
-/** Stop the person's clock if its 5-hour window ran out, and tell them (bell and email). */
-export async function stopOwnIfDue(c: Db, e: EntryRow | null, now: Date): Promise<boolean> {
-  if (!e) return false
+/**
+ * Stop the person's clock if its 5-hour window ran out (bell and email) or it
+ * reached their allowance (the bell), and tell them. null when it goes on.
+ */
+export async function stopOwnIfDue(c: Db, e: EntryRow | null, now: Date): Promise<ClockStop | null> {
+  if (!e) return null
   const [dir, catalog] = await Promise.all([loadDirectory(), loadCatalog()])
-  const st = await stopIfDue(c, e, now, dir, catalog)
-  if (!st) return false
-  await announceStop(st, await portalOrigin(), now, c)
-  return true
+  const st = await stopClockIfDue(c, e, now, dir, catalog)
+  if (!st) return null
+  await announceClockStop(st, await portalOrigin(), now, c)
+  return st
 }
 
 export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boolean }): Promise<ClockPanelData> {
@@ -124,16 +128,15 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     .sort((a, b) => a.start.localeCompare(b.start))
   const weekSeconds = work.filter(e => e.entry_date >= week.start && e.entry_date <= week.end).reduce((s, e) => s + counted(e), 0)
 
-  // The hours allowance (Clocky part 2, 10B): this week or month against the allowance plus the extra hours approved.
+  // The hours allowance (Clocky part 2, 10B): this week or month against the allowance plus the extra hours approved,
+  // read as the limit reads it (allowance-limit.ts), with where the running clock will stop at it.
   let allowance: ClockPanelData['allowance'] = null
   const terms = (await loadPayTerms([me])).get(me)
   if (terms?.allowance) {
-    const r = allowanceRange(today, terms.allowance.period, settings.weekStart)
-    // Unread is not "none": the panel would call approved hours over the allowance.
-    const extra = must(await c.from('extra_hours_requests').select('hours').eq('person_id', me).eq('state', 'approved').lte('period_start', r.to).gte('period_end', r.from), 'Extra hours could not be read')
-    const used = work.filter(e => e.entry_date >= r.from && e.entry_date <= r.to).reduce((s, e) => s + counted(e), 0)
-    const st = allowanceStatus(used, terms.allowance.hours, extra.reduce((n, x) => n + Number(x.hours), 0))
-    allowance = { ...st, period: terms.allowance.period, hours: terms.allowance.hours }
+    const w = (await loadWindows(me, terms.allowance, [today], now)).get(today)!
+    const inWindow = running && w.counted.some(x => x.id === running!.id)
+    const stop = inWindow ? limitStopIn(w, running!, now) : null
+    allowance = { ...statusOf(w), period: terms.allowance.period, hours: terms.allowance.hours, stopAt: stop?.at.real ?? null }
   }
 
   // The running entry.
@@ -291,6 +294,5 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   }
 }
 
-/** What an entry counts: its recorded duration, a running one to now (on the quarter hour). */
-export const entrySeconds = (e: Pick<EntryRow, 'ended_at' | 'started_at' | 'duration_seconds' | 'kind'>, now: Date): number =>
-  e.ended_at === null && e.kind === 'clock' && e.started_at ? runningSeconds(e.started_at, now) : e.duration_seconds
+// Moved to rounding.ts (pure) so the allowance's limit can count with it; kept here for its callers.
+export { entrySeconds }

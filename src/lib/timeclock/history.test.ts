@@ -38,6 +38,17 @@ describe('historyLines', () => {
     expect(lines[2].when).toBe('Oct 15, 2026, 8:07 AM')
   })
 
+  it('names the allowance when North Time stopped the clock at it (owner, 25 October 2026)', () => {
+    const lines = historyLines({
+      ...base,
+      audit: [row(1, 'auto_stop', null, '2026-10-15T20:02:00Z', { ended_at: null },
+        { ended_at: '2026-10-15T20:00:00Z', ended_at_real: '2026-10-15T20:00:00Z', job, allowance: '140h 00m allowance for October' })],
+    })
+    expect(lines.map(l => l.text)).toEqual(['North Time stopped the clock at the 140h 00m allowance for October'])
+    expect(lines[0].who).toBe('North Time')
+    expect(lines[0].dot).toBe('#c8323d')
+  })
+
   it('keeps who edited, what changed and why', () => {
     const [line] = historyLines({
       ...base,

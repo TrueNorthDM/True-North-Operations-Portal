@@ -34,8 +34,10 @@ export interface Fail {
   missing?: MissingName[]
   /** 3F: the entry the times run into. */
   overlap?: OverlapInfo
-  /** The clock had passed its 5-hour mark: Clocky stopped it; show 1L. */
+  /** The clock had passed its 5-hour mark: Clocky stopped it; show 1L. Or it reached the allowance (`allowance`). */
   stopped?: true
+  /** The clock stopped at the person's hours allowance: nothing to confirm, show the sentence (owner, 25 October 2026). */
+  allowance?: true
   /** 3H: what must be fixed before the period can be submitted. */
   attention?: AttentionItem[]
   /** The clock's read: the login is linked to nobody in the Directory, so there is no clock to show. */
@@ -162,8 +164,11 @@ export interface ClockPanelData {
    */
   todaySpans: { start: string; end: string | null }[]
   weekSeconds: number
-  /** The hours allowance this week or month (Clocky part 2, 10B); null without one. */
-  allowance: (import('./allowance').AllowanceStatus & { period: 'week' | 'month'; hours: number }) | null
+  /**
+   * The hours allowance this week or month (Clocky part 2, 10B); null without one.
+   * `stopAt`: where the running clock stops by itself at the limit (owner, 25 October 2026); null when not running.
+   */
+  allowance: (import('./allowance').AllowanceStatus & { period: 'week' | 'month'; hours: number; stopAt: string | null }) | null
   running: RunningEntry | null
   safety: SafetyView | null
   toConfirm: ToConfirm[]
@@ -291,7 +296,10 @@ export interface EntriesData {
   teams: { id: string; name: string; color: string | null }[]
   /** The viewer's own current period and where it stands (the Submit button). */
   submit: { start: string; end: string; kind: Period['kind']; label: string; full: string; state: string | null; submitted: boolean }
+  /** Adds time and uses the week grid for someone in view (Team Leaders and up). */
   canAdd: boolean
+  /** The same for the viewer's own hours: Admins and Super Admins, not Team Leaders (owner, 25 October 2026). */
+  canAddOwn: boolean
   /** Pay periods for the "Pay period" segment: the anchor moves, oldest first. */
   anchors: { anchor: string; effectiveFrom: string | null }[]
 }

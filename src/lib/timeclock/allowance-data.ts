@@ -8,7 +8,7 @@
  */
 
 import { allRows, db, loadClockySettings, loadDirectory } from './clocky-context'
-import { entrySeconds } from './clocky-panel'
+import { entrySeconds } from './rounding'
 import { localDate } from './format'
 import { allowanceRange, allowanceStatus, type AllowanceStatus } from './allowance'
 import type { EntryRow } from './clocky-store'

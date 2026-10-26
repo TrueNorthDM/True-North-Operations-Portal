@@ -13,6 +13,10 @@
  * (lib/timeclock/clocky-store.ts). Every time saved is on the quarter hour; the
  * real instants are kept beside it.
  *
+ * The hours allowance is a real limit (owner, 25 October 2026): the clock does
+ * not start or switch once the person has used it, and a running clock found
+ * past it stops at the instant it was reached (lib/timeclock/allowance-limit.ts).
+ *
  * Each returns { ok: true, ... } or { ok: false, error }: the error is a
  * sentence for the person; the database's wording goes to the server log.
  */
@@ -27,10 +31,11 @@ import {
 } from '@/lib/timeclock/clocky-store'
 import { entrySeconds, labelFor, loadClockPanel, loadCombos, stopOwnIfDue, choiceOf } from '@/lib/timeclock/clocky-panel'
 import { localDate, minutesLabel, localMinutes, timeLabel } from '@/lib/timeclock/format'
-import { formatDuration, roundIso } from '@/lib/timeclock/rounding'
-import { FIELD_LABEL, END_AFTER_START, gateText, missingFields, overlapLine } from '@/lib/timeclock/entry-rules'
+import { QUARTER, formatDuration, recordedSeconds, roundIso } from '@/lib/timeclock/rounding'
+import { FIELD_LABEL, END_AFTER_START, gateText, missingFields, overlapLine, splitAtMidnight } from '@/lib/timeclock/entry-rules'
 import { KEEP_GOING_TOAST_BELL, KEEP_GOING_TOAST_PANEL, keptGoingNote, sessionStart, windowStart } from '@/lib/timeclock/safety'
 import { lockedMessage } from '@/lib/timeclock/periods'
+import { limitRefusal, type ClockStop } from '@/lib/timeclock/allowance-limit'
 import type { ClockChoice, ClockPanelData, Fail, Result } from '@/lib/timeclock/clocky-types'
 
 const NOT_SAVED = 'Not saved. Try again in a moment.'
@@ -63,14 +68,22 @@ async function actor(key = 'clocky-hours'): Promise<Viewer | Fail> {
 }
 const isFail = (x: unknown): x is Fail => !!x && typeof x === 'object' && (x as Fail).ok === false
 
-/** The running entry, stopped first if it ran past its 5-hour mark (then the person confirms the end, 1L). */
+/** A clock that stopped by itself: at its 5-hour mark (the person confirms the end, 1L), or at the allowance (the sentence). */
+const stoppedFail = (st: ClockStop): Fail =>
+  st.kind === 'limit' ? fail(st.text, { stopped: true, allowance: true }) : fail(STOPPED, { stopped: true })
+
+/** The running entry, stopped first if it ran past its 5-hour mark or the person's allowance. */
 async function running(v: Viewer, now: Date): Promise<EntryRow | Fail> {
   const c = db()
   const e = await runningOf(c, v.personId)
   if (!e) return fail(NOT_CLOCKED_IN)
-  if (await stopOwnIfDue(c, e, now)) return fail(STOPPED, { stopped: true })
+  const st = await stopOwnIfDue(c, e, now)
+  if (st) return stoppedFail(st)
   return e
 }
+
+/** At least a quarter hour must fit before the allowance for the clock to start (time is logged on the quarter hour). */
+const limitAt = (v: Viewer, day: string, now: Date) => limitRefusal(v.personId, { add: [{ day, seconds: QUARTER }] }, now)
 
 // ── The panel ───────────────────────────────────────────────────────────────
 
@@ -117,12 +130,17 @@ export async function clockIn(input: ClockInput): Promise<Result<{ entryId: numb
     const choice = await checkedChoice(input)
     if (isFail(choice)) return choice
     const open = await runningOf(c, v.personId)
-    if (open) return (await stopOwnIfDue(c, open, now)) ? fail(STOPPED, { stopped: true }) : fail(ALREADY)
+    if (open) {
+      const st = await stopOwnIfDue(c, open, now)
+      return st ? stoppedFail(st) : fail(ALREADY)
+    }
 
     const start = roundIso(now)
     const date = localDate(start, v.zone)
     const lock = lockOn([date], (await loadSubmissions(c, [v.personId])).get(v.personId) ?? [])
     if (lock) return fail(lockedMessage(lock))
+    const limit = await limitAt(v, date, now)
+    if (limit) return fail(limit)
 
     const row = {
       person_id: v.personId, jobcode_id: choice.jobcodeId, started_at: start, started_at_real: now.toISOString(),
@@ -206,6 +224,9 @@ export async function switchTo(input: ClockInput & { finish?: Finish }): Promise
     const date = localDate(start, v.zone)
     const lock = lockOn([date], (await loadSubmissions(c, [v.personId])).get(v.personId) ?? [])
     if (lock) return fail(lockedMessage(lock))
+    // The running clock counts to now: the next one needs room after it.
+    const limit = await limitAt(v, date, now)
+    if (limit) return fail(limit)
 
     const closed = await closeClock(c, done, now, v.zone)
     if (!closed) return fail(NOT_CLOCKED_IN)
@@ -414,6 +435,10 @@ export async function confirmEnd(input: { entryId: number; end: string; stillWor
     const lock = lockOn(days, (await loadSubmissions(c, [v.personId])).get(v.personId) ?? [], e.state)
     if (lock) return fail(lockedMessage(lock))
     if (later) {
+      // "I was still working until..." adds time: not past the allowance (owner, 25 October 2026).
+      const add = splitAtMidnight(e.started_at, end, v.zone).map(p => ({ day: p.date, seconds: recordedSeconds(p.start, p.end) }))
+      const limit = await limitRefusal(v.personId, { add, exclude: [e.id] }, now)
+      if (limit) return fail(limit)
       const o = await overlapFor(c, v.personId, { start: e.started_at, end }, [e.id], now)
       if (o) {
         const name = catalog.jobs.get(o.other.row.jobcode_id ?? -1)?.short ?? ''

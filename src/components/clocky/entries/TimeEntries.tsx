@@ -6,7 +6,9 @@
  * Manual Time Card and Time Slider.
  *
  *   header      Home / Clocky / Time entries
- *   toolbar     Add time (leaders) or Request a time correction (Users),
+ *   toolbar     Add time (leaders, for the people they add for) or Request a
+ *               time correction (Users, and Team Leaders in My: their own
+ *               hours are a User's, owner 25 October 2026),
  *               Submit <period> by cadence, Day | Week | Pay period | Month,
  *               Today, the arrows, the range, the calendar; My | All (My |
  *               My team for a Team Leader) and the Team member picker
@@ -105,6 +107,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const [nowMs, setNowMs] = useState(() => Date.parse(clock.now))
   const viewer = data.viewer
   const leader = data.canAdd
+  // Whose hours the viewer adds to: a Team Leader their team's, never their own (owner, 25 October 2026).
+  const addsFor = (p: string) => (p === viewer.personId ? data.canAddOwn : leader && data.people.some(x => x.id === p))
   const [ui, setUi] = useState<EntriesUi>(() => ({
     period: 'week', anchor: localDate(new Date(Date.parse(clock.now)), initialData.viewer.zone), who: 'my', member: null, teamF: null, memberQ: '',
     tab: 'list', cols: { ...DEFAULT_COLUMNS }, colsOpen: false, memberOpen: false, calOpen: false, addRowOpen: false,
@@ -179,6 +183,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
   const today = localDate(new Date(nowMs), viewer.zone)
   const range = periodRange(ui.period, ui.anchor, data.anchors)
   const all = ui.who === 'all' && viewer.who !== null
+  /** "Add time" here, or "Request a time correction": in My, only for those who add to their own hours. */
+  const addHere = all ? leader : data.canAddOwn
   const rows = data.rows
   const shown = ui.attnOnly ? rows.filter(r => r.attention) : rows
   const totals = totalsOf(rows, nowMs)
@@ -194,8 +200,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     setUi(u => ({ ...u, modal: { kind: 'edit', form: formFromRow(r) }, drawer: null }))
   }
   const openAdd = (pre?: { personId: string; date: string; start?: number; end?: number }) => {
-    if (!leader) return
-    const personId = pre?.personId ?? (all && ui.member ? ui.member : viewer.personId)
+    const personId = pre?.personId ?? (all && ui.member ? ui.member : data.canAddOwn ? viewer.personId : data.people.find(p => addsFor(p.id))?.id ?? viewer.personId)
+    if (!addsFor(personId)) return
     const person = data.people.find(p => p.id === personId)
     const zone = rows.find(r => r.personId === personId)?.zone ?? viewer.zone
     const date = pre?.date ?? (today >= range.from && today <= range.to ? today : ui.anchor)
@@ -333,7 +339,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     if (!sources.some(s => s.key === key)) sources.push({ key, jobcodeId: r.jobcodeId, path: r.path, activity: r.activity, fields: r.fields })
   }
   for (const s of ui.gExtra) if (!sources.some(x => x.key === s.key)) sources.push(s)
-  const canGrid = leader && (gridWho === viewer.personId || data.people.some(p => p.id === gridWho))
+  const canGrid = addsFor(gridWho)
   const grid = buildGrid({
     days: gridDays, sources, edits: ui.gEdits, editable: canGrid,
     entries: gridRows.map(r => ({ rowKey: gridRowKey(r.jobcodeId, r.activity), date: r.date, seconds: r.seconds, clocked: r.kind !== 'manual' || r.imported, locked: r.locked })),
@@ -394,7 +400,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     if (m.kind === 'edit') {
       return (
         <EntryForm form={m.form} setForm={patch => setUi(u => (u.modal?.kind === 'edit' ? { ...u, modal: { kind: 'edit', form: { ...u.modal.form, ...patch } } } : u))}
-          catalog={catalog} people={data.people} pickPerson={all && leader} leader={leader} viewerId={viewer.personId} rows={rows} nowMs={nowMs} busy={busy}
+          catalog={catalog} people={data.people.filter(p => addsFor(p.id))} pickPerson={all && leader} leader={addsFor(m.form.personId)} viewerId={viewer.personId} rows={rows} nowMs={nowMs} busy={busy}
           onClose={() => setUi(u => ({ ...u, modal: null, drag: null }))}
           onSave={() => void saveForm(m.form)}
           onDelete={() => m.form.id !== null && setModal({ kind: 'delete', key: `e${m.form.id}` })}
@@ -464,7 +470,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
-        {leader ? (
+        {addHere ? (
           <button type="button" onClick={() => openAdd()} className={`${BTN_PAGE_NAVY} whitespace-nowrap`}>
             <Icon d={ICON.plus} size={14} color={BTN_ICON.navy} width={3} />Add time
           </button>
@@ -578,7 +584,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
                 ? "Each person's times are in their own time zone; the zone shows when it differs from yours. Times round to the nearest 15 minutes."
                 : `Times in your time zone (${zoneCity(viewer.zone)}), rounded to the nearest 15 minutes.`}
               emptyText={ui.attnOnly ? 'Nothing needs attention in this period.' : 'No time in this period.'}
-              canAdd={leader}
+              canAdd={addHere}
               onEdit={openRow} onHistory={r => setUi(u => ({ ...u, drawer: `${r.rowType === 'correction' ? 'c' : 'e'}${r.id}` }))} onContinue={r => void cont(r)}
               onDelete={r => setModal({ kind: 'delete', key: r.key })} onOpen={openRow} onAdd={() => openAdd()} onRequest={() => openRequest()} />
           )}
@@ -594,8 +600,8 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
               }} />
           )}
           {ui.tab === 'timeline' && (
-            <DayTimeline day={ui.anchor} today={today} rows={rows} all={all} viewer={me} teams={data.teams} canAdd={leader}
-              canChange={p => p === viewer.personId || data.people.some(x => x.id === p)} combos={catalog.combinations} nowMs={nowMs}
+            <DayTimeline day={ui.anchor} today={today} rows={rows} all={all} viewer={me} teams={data.teams} canAdd={addHere}
+              canChange={addsFor} combos={catalog.combinations} nowMs={nowMs}
               full={ui.tlFull} setFull={f => setUi(u => ({ ...u, tlFull: f }))}
               ghost={ui.ghost} setGhost={g => setUi(u => ({ ...u, ghost: g }))}
               drag={ui.drag} setDrag={d => setUi(u => ({ ...u, drag: d }))}

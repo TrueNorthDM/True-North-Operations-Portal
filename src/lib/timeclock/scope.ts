@@ -1,17 +1,23 @@
 /**
  * Who may see, change and approve whose hours in Clocky (design handoff of
- * 16 October 2026, README "Who sees what"):
+ * 16 October 2026, README "Who sees what"; Team Leaders' own hours, owner, 25
+ * October 2026):
  *
- *   Level        Time entries        Change hours                Approvals
- *   Super Admin  own + everyone      anything, anyone            corrections + time off, everyone
- *   Admin        own + everyone      anything, anyone            corrections, everyone
- *   Team Leader  own + own team      anything, own team          corrections, own team
- *   User         own only            shorten own entries only    hidden
+ *   Level        Time entries        Change hours                          Approvals
+ *   Super Admin  own + everyone      anything, anyone, themselves too      corrections + time off, everyone
+ *   Admin        own + everyone      anything, anyone, themselves too      corrections, everyone
+ *   Team Leader  own + own team      anything, own team; their own hours   corrections, own team
+ *                                    like a User: shorten only
+ *   User         own only            shorten own entries only              hidden
  *
  * A Team Leader is a person with the Lead position in a team; "own team" is
- * the people on the teams they lead. Only Super Admins decide time off and
- * reopen submitted periods; corrections are approved by the person's Team
- * Lead, an Admin or a Super Admin, never by the person.
+ * the people on the teams they lead, never themselves (owner: "só as do
+ * time"): their own missing time goes through a time correction request, like
+ * a User's, decided by another Lead of a team they are on, an Admin or a Super
+ * Admin. Admins and Super Admins still change their own hours: the rule is
+ * about Team Leaders, and they see and change everyone's. Only Super Admins
+ * decide time off and reopen submitted periods; corrections are approved by
+ * the person's Team Lead, an Admin or a Super Admin, never by the person.
  *
  * The levels are the access catalogue's starting answers (lib/access/
  * catalogue.ts, module Clocky), so a Super Admin can still move a tick on
@@ -72,7 +78,7 @@ export const seesEveryone = (v: ScopeViewer): boolean => v.can(CLOCKY_KEYS.entri
 export const leadsTeamOf = (v: ScopeViewer, t: ScopeTarget): boolean =>
   v.can(CLOCKY_KEYS.entries) && v.can(CLOCKY_KEYS.team) && t.teamIds.some(id => v.ledTeamIds.has(id))
 
-/** Team Leader and up: adds time, uses the week grid and the timeline, lengthens. */
+/** Team Leader and up: adds time, uses the week grid and the timeline, lengthens (a Team Leader for their team only). */
 export const isLeader = (v: ScopeViewer): boolean =>
   v.can(CLOCKY_KEYS.entries) && (v.can(CLOCKY_KEYS.all) || (v.can(CLOCKY_KEYS.team) && v.ledTeamIds.size > 0))
 
@@ -86,15 +92,16 @@ export type ChangeRight = 'full' | 'shorten' | 'none'
 
 /**
  * What the viewer may do to the person's entries: anything (with a reason),
- * only make their own shorter (a User), or nothing. Locks are a separate rule.
+ * only make their own shorter (a User, and a Team Leader on their own), or
+ * nothing. Locks are a separate rule.
  */
 export function changeRight(v: ScopeViewer, t: ScopeTarget): ChangeRight {
   if (!canView(v, t)) return 'none'
-  if (own(v, t)) return isLeader(v) ? 'full' : 'shorten'
+  if (own(v, t)) return seesEveryone(v) ? 'full' : 'shorten'
   return 'full'
 }
 
-/** "Add time" and the week grid: Team Leaders (own team, themselves included), Admins and Super Admins. */
+/** "Add time" and the week grid: Team Leaders (their team, not themselves), Admins and Super Admins (anyone). */
 export const canAddFor = (v: ScopeViewer, t: ScopeTarget): boolean => changeRight(v, t) === 'full'
 
 /** Approve or deny a time correction: the person's Team Lead, an Admin or a Super Admin, never the person. */

@@ -31,6 +31,8 @@ export interface Snapshot {
   notes?: string | null
   /** Set on the entry a switch ended: where the person went. */
   next_job?: string | null
+  /** Set on a clock North Time stopped at the hours allowance: "140h 00m allowance for October" (owner, 25 October 2026). */
+  allowance?: string | null
 }
 
 export interface AuditRow {
@@ -149,7 +151,9 @@ export function historyLines(h: HistoryInput): HistoryLine[] {
         out.push(line(a.changed_at, who, `${who} undid the clock out`))
         break
       case 'auto_stop':
-        out.push(line(after.ended_at_real ?? a.changed_at, 'North Time', 'North Time stopped the clock automatically after 5h 00m', { dot: RED }))
+        out.push(line(after.ended_at_real ?? a.changed_at, 'North Time', after.allowance
+          ? `North Time stopped the clock at the ${after.allowance}`
+          : 'North Time stopped the clock automatically after 5h 00m', { dot: RED }))
         break
       case 'confirm_end': {
         const real = after.ended_at_real ?? after.ended_at

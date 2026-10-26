@@ -321,6 +321,8 @@ export function clockyTone(i: Pick<NotificationItem, 'type' | 'who'>): { d: stri
   switch (i.type) {
     case 'clocky-still-working': return { d: ICON.alert, ...WARN }
     case 'clocky-stopped': return { d: ICON.stop, ...DANGER }
+    // The allowance's row also says a clock stopped at the limit (owner, 25 October 2026).
+    case 'clocky-allowance': return /^Your clock stopped at /.test(i.who) ? { d: ICON.stop, ...DANGER } : { d: ICON.shield, bg: 'var(--color-tn-teal-soft)', fg: 'var(--color-tn-teal)' }
     case 'clocky-correction-requested':
     case 'clocky-timeoff-requested': return { d: ICON.request, ...WARN }
     // One type for both answers: the sentence says which (lib/timeclock/notify-text.ts).

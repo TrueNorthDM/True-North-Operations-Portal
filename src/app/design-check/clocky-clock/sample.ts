@@ -236,9 +236,11 @@ export const FRAMES: ClockFrame[] = [
   { code: '1D', title: 'Details', data: base(), ui: { view: 'details', draft: draftFor({ defaults: DEFAULTS, fields: FIELDS }, job('2 - i7 Marketing › Web Dev')) } },
   { code: '1E', title: 'On the clock', data: on() },
   // Clocky part 2, 10B: the allowance lines (Clock Panel.dc.html 10B0, 10B1, 10B2).
-  { code: '10B0', title: 'Allowance, quiet', data: on({ allowance: { used: H(128), limit: H(140), over: 0, left: H(12), state: 'ok', period: 'month', hours: 140 } }) },
-  { code: '10B1', title: 'Allowance, 90%', data: on({ allowance: { used: H(128), limit: H(140), over: 0, left: H(12), state: 'near', period: 'month', hours: 140 } }) },
-  { code: '10B2', title: 'Allowance, over', data: on({ allowance: { used: H(143), limit: H(140), over: H(3), left: 0, state: 'over', period: 'month', hours: 140 } }) },
+  { code: '10B0', title: 'Allowance, quiet', data: on({ allowance: { used: H(128), limit: H(140), over: 0, left: H(12), state: 'ok', period: 'month', hours: 140, stopAt: et(23, 45) } }) },
+  { code: '10B1', title: 'Allowance, 90%', data: on({ allowance: { used: H(128), limit: H(140), over: 0, left: H(12), state: 'near', period: 'month', hours: 140, stopAt: et(23, 45) } }) },
+  { code: '10B2', title: 'Allowance, over', data: on({ allowance: { used: H(143), limit: H(140), over: H(3), left: 0, state: 'over', period: 'month', hours: 140, stopAt: null } }) },
+  // The allowance as a real limit (owner, 25 October 2026): 1h 15m left, so the clock stops by itself at 1:00 PM.
+  { code: '10B3', title: 'Allowance, stops at the limit', data: on({ allowance: { used: H(138, 45), limit: H(140), over: 0, left: H(1, 15), state: 'near', period: 'month', hours: 140, stopAt: et(13) } }) },
   {
     code: '1F', title: 'Missing field',
     data: (() => {

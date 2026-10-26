@@ -12,7 +12,7 @@
 import { headers } from 'next/headers'
 import {
   notifyClockyCorrectionDecided, notifyClockyCorrectionRequested, notifyClockyStillWorking,
-  notifyClockyStopped, notifyClockyTimeOffRequested, notifyClockyTimeOffDecided, notifyClockyClockedOutFor,
+  notifyClockyStopped, notifyClockyLimitStopped, notifyClockyTimeOffRequested, notifyClockyTimeOffDecided, notifyClockyClockedOutFor,
   notifyClockyTimesheetSubmitted, notifyClockyTimesheetDecided,
   notifyClockyInvoiceMade, notifyClockyInvoiceApproved, notifyClockyInvoicePaid,
   notifyClockyReimbursementRequested, notifyClockyReimbursementDecided, notifyClockyRmbReady, notifyClockyRmbPaid, notifyClockyExtraRequested, notifyClockyExtraDecided,
@@ -28,7 +28,9 @@ import {
   hoursApprovedForApproverText, hoursApprovedForPersonText,
 } from './notify-text'
 import { stillWorkingText, stopWhen, stoppedText } from './safety'
+import { limitStoppedText } from './allowance'
 import type { AutoStop } from './clocky-store'
+import type { ClockStop } from './allowance-limit'
 
 /** Where links in an email point: the portal's public address (APP_URL), else this request's. */
 export async function portalOrigin(): Promise<string> {
@@ -70,6 +72,21 @@ export async function announceStop(st: AutoStop, origin: string, now: Date = new
   })
 }
 
+/** A clock stopped at the allowance: the bell, "Your clock stopped at 4:15 PM: you have used your 140h 00m allowance for October. Ask for extra hours to log more." */
+export async function announceLimitStop(st: Extract<ClockStop, { kind: 'limit' }>, now: Date = new Date(), db?: Db): Promise<void> {
+  await quiet('clock stopped at the allowance', async () => {
+    const dir = await loadDirectory()
+    const zone = dir.zoneOf(st.stop.personId)
+    const when = stopWhen(st.stop.stoppedAt, zone, localDate(now, zone))
+    await notifyClockyLimitStopped({ personId: st.stop.personId, entryId: st.stop.entryId, text: limitStoppedText(when, st.words) }, db)
+  })
+}
+
+/** Either stop, told the way it should be. */
+export async function announceClockStop(st: ClockStop, origin: string, now: Date = new Date(), db?: Db): Promise<void> {
+  if (st.kind === 'limit') await announceLimitStop(st, now, db)
+  else await announceStop(st.stop, origin, now, db)
+}
 
 export async function announceCorrectionRequested(r: { id: number; person_id: string; started_at: string; ended_at: string; entry_date: string }): Promise<void> {
   await quiet('correction requested', async () => {

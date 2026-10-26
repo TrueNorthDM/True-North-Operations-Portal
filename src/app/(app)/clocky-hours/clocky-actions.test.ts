@@ -138,3 +138,31 @@ describe('the full audit of 20 October 2026', () => {
     expect(body(clock, 'keepGoing')).toMatch(/input\?\.notificationId/)
   })
 })
+
+describe('the allowance is a real limit (owner, 25 October 2026)', () => {
+  it('the clock does not start or switch at the limit, and stops itself past it', () => {
+    const clock = read('clock-actions.ts')
+    expect(body(clock, 'clockIn')).toMatch(/limitAt\(v, date, now\)/)
+    expect(body(clock, 'switchTo')).toMatch(/limitAt\(v, date, now\)/)
+    expect(body(clock, 'confirmEnd')).toMatch(/limitRefusal\(v\.personId, \{ add, exclude: \[e\.id\] \}/)
+    // Every action that finds the running clock asks first whether it is due to stop.
+    expect(clock).toMatch(/const st = await stopOwnIfDue\(c, e, now\)\n\s+if \(st\) return stoppedFail\(st\)/)
+  })
+
+  it('adding, lengthening, the week grid and approving a correction are refused past it, whoever does it', () => {
+    const e = read('entries-actions.ts')
+    for (const name of ['addTime', 'editEntry', 'saveWeekGrid']) expect(body(e, name), name).toMatch(/limitRefusal\(/)
+    expect(body(read('approvals/actions.ts'), 'decideCorrection')).toMatch(/limitRefusal\(r\.person_id/)
+  })
+
+  it('the safety job stops a running clock at the allowance too', () => {
+    const run = readFileSync(join(DIR, '../../../lib/timeclock/clocky-safety-run.ts'), 'utf8')
+    expect(run).toMatch(/stopClockIfDue\(c, e, now, dir, catalog, allowance\)/)
+    expect(run).toMatch(/announceClockStop\(/)
+  })
+
+  it('a Team Leader adding to their own hours hears how to ask instead', () => {
+    const e = read('entries-actions.ts')
+    for (const name of ['addTime', 'saveWeekGrid']) expect(body(e, name), name).toMatch(/noAddOwn\(v\)/)
+  })
+})
