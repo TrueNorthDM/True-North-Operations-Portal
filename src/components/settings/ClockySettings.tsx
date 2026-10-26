@@ -19,6 +19,7 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import type { IntegrationsData, InvoiceSettingsData } from '@/lib/timeclock/company-settings'
 import type { ReminderKey } from '@/lib/timeclock/reminder-kinds'
 import { REMINDERS } from '@/lib/timeclock/reminder-kinds'
+import { docNumber } from '@/lib/timeclock/doc-number'
 import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
 import { openDrawer } from '@/components/NotificationButton'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
@@ -194,7 +195,7 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
   const [f, setF] = useState({ prefix: data.prefix, nextNumber: data.nextNumber, rmbPrefix: data.rmbPrefix, billingName: data.billing.name, address: data.billing.address, country: data.billing.country, email: data.billing.email, paymentDays: String(data.paymentDays) })
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF(x => ({ ...x, [k]: e.target.value }))
   const y = data.nextInvoice.split('-')[1]
-  const nextInv = `${f.prefix.toUpperCase()}-${y}-${String(Number(f.nextNumber) || 0).padStart(4, '0')}`
+  const nextInv = docNumber(f.prefix.toUpperCase(), y, Number(f.nextNumber) || 0)
   const nextRmb = `${f.rmbPrefix.toUpperCase()}-${y}-${data.nextRmb.split('-')[2]}`
   const due = (() => { const d = new Date(Date.UTC(Number(y), 11, 1)); d.setUTCDate(d.getUTCDate() + (parseInt(f.paymentDays, 10) || 0)); return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}` })()
   const field = (k: keyof typeof f, label: string, num = false) => (
@@ -219,7 +220,7 @@ export function InvoiceSettings({ data, canEdit, save }: { data: InvoiceSettings
         <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-3.5">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Numbering</span>
           <div className="grid grid-cols-3 gap-3">{field('prefix', 'Prefix')}{field('nextNumber', 'Next number', true)}{field('rmbPrefix', 'Reimbursement prefix')}</div>
-          <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 tabular-nums lining-nums">Next invoice: <b className="text-tn-ink">{nextInv}</b> · next reimbursement document: <b className="text-tn-ink">{nextRmb}</b>. Numbers restart at 0001 every January.</div>
+          <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 tabular-nums lining-nums">Next invoice: <b className="text-tn-ink">{nextInv}</b> · next reimbursement document: <b className="text-tn-ink">{nextRmb}</b>. The count never restarts: only the year changes ({f.prefix.toUpperCase()}-2026-059, then {f.prefix.toUpperCase()}-2027-060).</div>
           <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex flex-col gap-2">
             <span className={LABEL}>Who approves invoices</span>
             {data.approvers.map((a, i) => (

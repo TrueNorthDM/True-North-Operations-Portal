@@ -320,7 +320,7 @@ export interface DocumentToPay {
 const MARK_PAID = 'Mark paid'
 
 /**
- * "Pay INV-2026-0012: Samuel Manzi", due when the invoice says. The note under
+ * "Pay INV-2026-012: Samuel Manzi", due when the invoice says. The note under
  * the facts is the Mark paid dialog's own line (InvoiceParts.tsx), and so is
  * the reference's example.
  */
@@ -347,7 +347,7 @@ export function payInvoiceRow(i: InvoiceToPay, today: string): HomeRow {
 }
 
 /**
- * "Pay RMB-2026-0003: Tina Gennette". A document has no due day: it is
+ * "Pay RMB-2026-003: Tina Gennette". A document has no due day: it is
  * payable from the day it was made, so that day dates the row (the brief, 25
  * October 2026), late after it. Its items are the facts, as the decision rows
  * list a request's receipts; the note is the document page's own line for

@@ -49,7 +49,7 @@ export interface QueueRow {
   team: { name: string; color: string | null } | null
   /** "October 2026 · 151h 15m" */
   main: string
-  /** "Invoice INV-2026-0143 · $3,357.50", "Hours only" */
+  /** "Invoice INV-2026-143 · $3,357.50", "Hours only" */
   sub: string
   flag: { text: string; tone: Tone } | null
   /** "Submitted with 1 reimbursement.", a request's reason in quotes. */

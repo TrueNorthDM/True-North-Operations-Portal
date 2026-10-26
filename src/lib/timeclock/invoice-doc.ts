@@ -43,7 +43,7 @@ export function moneyTotal(items: readonly { amount: number; currency?: string |
   return [...by.entries()].sort(([a], [b]) => (a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b))).map(([c, cents]) => money(cents / 100, c)).join(' + ')
 }
 
-/** "INV-2026-0142 · Paid Nov 12, 2026 · WISE-88412" without the number: the paid stamp and the Paid column. */
+/** "INV-2026-142 · Paid Nov 12, 2026 · WISE-88412" without the number: the paid stamp and the Paid column. */
 export const paidText = (paidOn: string, ref: string | null): string => `${dateLabel(paidOn)}${ref ? ` · ${ref}` : ''}`
 
 export function invoiceDocOf(i: InvRow, lines: LineRow[], periodName: string): InvoiceDocView {

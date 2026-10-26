@@ -246,7 +246,7 @@ export async function announceReimbursementDecided(x: { id: number; personId: st
   })
 }
 
-/** "RMB-2026-0030 (Dave Sharpe, $86.40) was approved. Ready to pay." */
+/** "RMB-2026-030 (Dave Sharpe, $86.40) was approved. Ready to pay." */
 export async function announceRmbReady(x: { documentId: number; itemId: number; number: string; personId: string; total: number; finance: readonly string[] }): Promise<void> {
   await quiet('rmb ready', async () => {
     const dir = await loadDirectory()
@@ -254,7 +254,7 @@ export async function announceRmbReady(x: { documentId: number; itemId: number; 
   })
 }
 
-/** "RMB-2026-0031 was paid on Nov 3, 2026. Ref. ACH-20261103." */
+/** "RMB-2026-031 was paid on Nov 3, 2026. Ref. ACH-20261103." */
 export async function announceRmbPaid(x: { documentId: number; number: string; personId: string; paidOn: string; ref: string | null }): Promise<void> {
   await quiet('rmb paid', () => notifyClockyRmbPaid({ documentId: x.documentId, personId: x.personId, text: `${x.number} was paid on ${x.paidOn}.${x.ref ? ` Ref. ${x.ref}.` : ''}` }))
 }

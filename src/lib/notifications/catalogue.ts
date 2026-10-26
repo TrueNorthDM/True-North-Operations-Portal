@@ -279,7 +279,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-invoice-made', src: 'North Time · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Invoices', stat: 'invoices made', statOne: 'invoice made',
-    example: { title: 'We created invoice INV-2026-0142 for October', body: '$2,310.00. It waits for approval with your hours.' },
+    example: { title: 'We created invoice INV-2026-142 for October', body: '$2,310.00. It waits for approval with your hours.' },
     title: 'Your invoice was made',
     description: 'A contractor submits a timesheet and the invoice is made from it, with the rate from Rates & Costs. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
@@ -288,7 +288,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-invoice-approved', src: 'North Time · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Invoices', stat: 'invoices to pay', statOne: 'invoice to pay',
-    example: { title: 'INV-2026-0138 (Stephanie Aguirre, $2,304.00) was approved', body: 'Ready to pay.' },
+    example: { title: 'INV-2026-138 (Stephanie Aguirre, $2,304.00) was approved', body: 'Ready to pay.' },
     title: 'An invoice is ready to pay',
     description: 'An invoice was approved: pay it outside Rippling, then mark it paid. In the bell only.',
     who: 'Finance', audience: { kind: 'everyone' },
@@ -297,7 +297,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-invoice-paid', src: 'North Time · invoices', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Invoices', stat: 'invoices paid', statOne: 'invoice paid',
-    example: { title: 'INV-2026-0131 (September) was paid on Oct 12, 2026', body: 'Ref. WISE-77310.' },
+    example: { title: 'INV-2026-131 (September) was paid on Oct 12, 2026', body: 'Ref. WISE-77310.' },
     title: 'Your invoice was paid',
     description: 'Finance paid it and marked it paid, with the date and the reference. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
@@ -316,7 +316,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-reimbursement-decided', src: 'Requests · reimbursement', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Reimbursements', stat: 'reimbursements decided', statOne: 'reimbursement decided',
-    example: { title: 'Arnaldo Oliveira approved "Internet, October" ($35.00)', body: 'It is on invoice INV-2026-0142.' },
+    example: { title: 'Arnaldo Oliveira approved "Internet, October" ($35.00)', body: 'It is on invoice INV-2026-142.' },
     title: 'Your reimbursement was approved or denied',
     description: 'Approved, it goes on your next invoice or on a reimbursement document; denied, with the reason. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },
@@ -325,7 +325,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-rmb-ready', src: 'Requests · reimbursement', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Reimbursements', stat: 'documents to pay', statOne: 'document to pay',
-    example: { title: 'RMB-2026-0030 (Dave Sharpe, $86.40) was approved', body: 'Ready to pay.' },
+    example: { title: 'RMB-2026-030 (Dave Sharpe, $86.40) was approved', body: 'Ready to pay.' },
     title: 'A reimbursement document is ready to pay',
     description: "An employee's approved reimbursements, on one document: pay it outside Rippling payroll, then mark it paid. In the bell only.",
     who: 'Finance', audience: { kind: 'everyone' },
@@ -334,7 +334,7 @@ export const NOTIFICATION_TYPES: readonly NotificationType[] = [
   {
     key: 'clocky-rmb-paid', src: 'Requests · reimbursement', block: 'tools', icon: 'clocky', defaultTiming: 'instant', available: true,
     timings: 'instant', section: 'Reimbursements', stat: 'documents paid', statOne: 'document paid',
-    example: { title: 'RMB-2026-0031 was paid on Nov 3, 2026', body: 'Ref. ACH-20261103.' },
+    example: { title: 'RMB-2026-031 was paid on Nov 3, 2026', body: 'Ref. ACH-20261103.' },
     title: 'Your reimbursement document was paid',
     description: 'Finance paid it and marked it paid, with the date and the reference. In the bell only.',
     who: 'You', audience: { kind: 'everyone' },

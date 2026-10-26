@@ -16,6 +16,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { accessToken, parseServiceAccount } from '@/lib/integrations/google-calendar'
 import { releaseWaiting } from '@/lib/integrations/outbox'
 import { REMINDERS, type ReminderKey } from '@/lib/timeclock/company-settings'
+import { allRows } from '@/lib/timeclock/clocky-context'
+import { seqOf } from '@/lib/timeclock/doc-number'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
 const no = (error: string): Done => ({ ok: false, error })
@@ -153,14 +155,19 @@ export async function saveInvoiceSettings(input: { prefix: string; nextNumber: s
   const name = String(input.billingName ?? '').trim().slice(0, 200)
   if (!name) return no('Write the billing name.')
   const c = createAdminClient()
-  // A number already used cannot be given again this year.
-  const y = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric' }).format(new Date())
-  const { data: used } = await c.from('invoices').select('number').like('number', `${prefix}-${y}-%`).order('number', { ascending: false }).limit(1)
-  const last = used?.[0] ? Number(used[0].number.slice(-4)) : 0
-  if (next <= last) return no(`${prefix}-${y}-${String(last).padStart(4, '0')} is already used: the next number must be ${last + 1} or more.`)
+  // The count runs across years, so a number used in any year cannot be given again.
+  let used: { number: string }[]
+  try {
+    used = await allRows<{ number: string }>((from, to) => c.from('invoices').select('number').like('number', `${prefix}-%`).order('id').range(from, to), 'Invoice numbers')
+  } catch (e) {
+    console.error('[settings] invoices:', e instanceof Error ? e.message : e)
+    return no(NOT_SAVED)
+  }
+  const top = used.reduce<{ n: number; number: string }>((m, u) => (seqOf(u.number) > m.n ? { n: seqOf(u.number), number: u.number } : m), { n: 0, number: '' })
+  if (next <= top.n) return no(`${top.number} is already used: the next number must be ${top.n + 1} or more.`)
   const me = await getRealPerson()
   const { error } = await c.from('invoice_settings').update({
-    prefix, next_number: next, rmb_prefix: rmb, number_year: Number(y), billing_name: name,
+    prefix, next_number: next, rmb_prefix: rmb, billing_name: name,
     billing_address: [String(input.address ?? '').trim(), String(input.country ?? '').trim()].filter(Boolean).join('\n') || null,
     billing_email: email || null, payment_days: days, updated_by: me?.id ?? null, updated_at: new Date().toISOString(),
   }).eq('singleton_id', 1)

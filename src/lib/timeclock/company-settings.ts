@@ -18,6 +18,7 @@ import { loadDirectory } from './clocky-context'
 import { dateLabel, dayLabel, localDate, stampLabel } from './format'
 import { loadConnections } from '@/lib/integrations/connections'
 import { loadInvoiceSettings } from './pay-terms'
+import { docNumber, seqText } from './doc-number'
 import { REMINDERS, type ReminderKey } from './reminder-kinds'
 
 export interface IntegrationError { id: number; when: string; what: string; text: string; failed: boolean; doneText: string | null }
@@ -117,20 +118,15 @@ export interface InvoiceSettingsData {
 }
 
 export async function loadInvoiceSettingsData(now = new Date()): Promise<InvoiceSettingsData> {
-  const [s, dir, { data: raw, error: rawErr }] = await Promise.all([
-    loadInvoiceSettings(), loadDirectory(),
-    createAdminClient().from('invoice_settings').select('number_year, rmb_number_year').eq('singleton_id', 1).maybeSingle(),
-  ])
-  // The next numbers shown depend on it: unread, they could show last year's count.
-  if (rawErr) throw new Error(`Invoice settings could not be read: ${rawErr.message}`)
+  const [s, dir] = await Promise.all([loadInvoiceSettings(), loadDirectory()])
+  // The count never restarts: only the year in the number changes.
   const y = Number(localDate(now, 'America/New_York').slice(0, 4))
-  const next = (n: number, year: number | null) => String(year && year !== y ? 1 : n).padStart(4, '0')
   const lines = (s.billingAddress ?? '').split('\n')
   const def = s.defaultApprover
   const others = s.invoiceApprovers.filter(id => id !== def)
   return {
-    prefix: s.prefix, nextNumber: next(s.nextNumber, raw?.number_year ?? null), rmbPrefix: s.rmbPrefix,
-    nextInvoice: `${s.prefix}-${y}-${next(s.nextNumber, raw?.number_year ?? null)}`, nextRmb: `${s.rmbPrefix}-${y}-${next(s.rmbNextNumber, raw?.rmb_number_year ?? null)}`,
+    prefix: s.prefix, nextNumber: seqText(s.nextNumber), rmbPrefix: s.rmbPrefix,
+    nextInvoice: docNumber(s.prefix, y, s.nextNumber), nextRmb: docNumber(s.rmbPrefix, y, s.rmbNextNumber),
     approvers: [
       ...(def ? [{ name: dir.nameOf(def), who: others.length ? `Everyone, except the people who report to ${others.map(o => dir.nameOf(o)).join(' or ')}` : 'Everyone' }] : []),
       ...others.map(o => ({ name: dir.nameOf(o), who: 'The people who report to them' })),
