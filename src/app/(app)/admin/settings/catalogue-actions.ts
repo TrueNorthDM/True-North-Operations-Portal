@@ -212,7 +212,9 @@ export async function addOption(input: { fieldId: number; label: string }): Prom
   const label = String(input.label ?? '').trim()
   if (!label) return no('Write the new option.')
   if (label.length > 120) return no('The name is too long.')
-  const { data: existing } = await c.from('tc_field_options').select('label, position').eq('field_id', input.fieldId).limit(5000)
+  // Unread is not "no options": the same name could go in twice, at position 0.
+  const { data: existing, error: readError } = await c.from('tc_field_options').select('label, position').eq('field_id', input.fieldId).limit(5000)
+  if (readError) { console.error('[catalogue]', readError.message); return no(NOT_SAVED) }
   if ((existing ?? []).some(o => o.label.toLowerCase() === label.toLowerCase())) return no(`There is already an option called "${label}".`)
   const position = Math.max(-1, ...(existing ?? []).map(o => o.position)) + 1
   const { error } = await c.from('tc_field_options').insert({ field_id: input.fieldId, label, position, active: true, edited_in_portal_at: now() })
