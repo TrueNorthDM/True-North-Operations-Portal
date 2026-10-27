@@ -28,7 +28,7 @@ export interface IntegrationsData {
   google: { connected: boolean; saved: boolean; account: string | null; who: string; teamCalendarId: string; goodNewsCalendarId: string; facts: { k: string; v: string }[]; errors: IntegrationError[] }
 }
 
-type JobRow = { id: number; kind: string; payload: Record<string, unknown>; state: string; last_error: string | null; attempts: number; created_at: string; done_at: string | null; next_at: string }
+type JobRow = { id: number; kind: string; ref_table: string; payload: Record<string, unknown>; state: string; last_error: string | null; attempts: number; created_at: string; done_at: string | null; next_at: string }
 
 const WHAT: Record<string, string> = { rippling_pto: 'Time off', rippling_pto_cancel: 'Time off', rippling_hours: 'Hours', gcal_upsert: 'Calendar', gcal_delete: 'Calendar' }
 
@@ -37,7 +37,7 @@ const GOOGLE_KINDS = ['gcal_upsert', 'gcal_delete']
 
 /** The outbox as 13A reads it: what is waiting or failed, and what went out in the last two weeks. */
 async function readOutbox(now: Date): Promise<JobRow[]> {
-  const { data, error } = await createAdminClient().from('integration_jobs').select('id, kind, payload, state, last_error, attempts, created_at, done_at, next_at')
+  const { data, error } = await createAdminClient().from('integration_jobs').select('id, kind, ref_table, payload, state, last_error, attempts, created_at, done_at, next_at')
     .or(`state.in.(failed,waiting_connection,queued),done_at.gte.${new Date(now.getTime() - 14 * 86_400_000).toISOString()}`).order('id', { ascending: false }).limit(200)
   if (error) throw new Error(`The outbox could not be read: ${error.message}`)
   return (data ?? []) as JobRow[]
@@ -46,6 +46,25 @@ async function readOutbox(now: Date): Promise<JobRow[]> {
 /** The jobs an integration's error list shows: failed, or sent after a failed try; the newest twelve. */
 export function listedErrors<J extends Pick<JobRow, 'kind' | 'state' | 'last_error' | 'attempts'>>(list: readonly J[], kinds: readonly string[]): J[] {
   return list.filter(j => kinds.includes(j.kind) && j.last_error && (j.state === 'failed' || (j.state === 'done' && j.attempts > 1))).slice(0, 12)
+}
+
+/**
+ * One error line of 13A: who or what the job was for, the kind, the days, and
+ * the error. A time off job names its person; an Agenda event's job (8E) has
+ * no person, so it names the event by its title and its day (audit, 27
+ * October 2026: those lines read "Someone").
+ */
+export function jobErrorText(p: Record<string, unknown>, error: string | null, nameOf: (id: string) => string, zone: string): string {
+  const who = typeof p.who === 'string' ? p.who
+    : typeof p.person_id === 'string' ? nameOf(p.person_id)
+      : typeof p.summary === 'string' && p.summary.trim() ? `"${p.summary.trim()}"`
+        : 'Someone'
+  // A timed Agenda event carries instants (startAt, endAt): its day in the viewer's zone.
+  const a = typeof p.start === 'string' ? p.start : typeof p.startAt === 'string' ? localDate(p.startAt, zone) : ''
+  const b = typeof p.end === 'string' ? p.end : typeof p.endAt === 'string' ? localDate(p.endAt, zone) : ''
+  // One day with its weekday ("Thu, Oct 29", 13A); a span as "Oct 4 to Oct 17".
+  const days = a && b ? (a === b ? dayLabel(a) : `${dateLabel(a).replace(/, \d{4}$/, '')} to ${dateLabel(b).replace(/, \d{4}$/, '')}`) : ''
+  return `${who}${typeof p.kind === 'string' ? `, ${p.kind}` : ''}${days ? `, ${days}` : ''}: "${error}"`
 }
 
 /**
@@ -60,25 +79,19 @@ export async function countRetryable(now = new Date()): Promise<number> {
 export async function loadIntegrations(zone: string, now = new Date()): Promise<IntegrationsData> {
   const [conn, dir, list] = await Promise.all([loadConnections(), loadDirectory(), readOutbox(now)])
   const at = (t: string) => stampLabel(t, zone).replace(/, \d{4},/, ',')
-  const days = (p: Record<string, unknown>) => {
-    const a = String(p.start ?? ''), b = String(p.end ?? '')
-    // One day with its weekday ("Thu, Oct 29", 13A); a span as "Oct 4 to Oct 17".
-    return a && b ? (a === b ? dayLabel(a) : `${dateLabel(a).replace(/, \d{4}$/, '')} to ${dateLabel(b).replace(/, \d{4}$/, '')}`) : ''
-  }
   const errorsOf = (kinds: string[]): IntegrationError[] => listedErrors(list, kinds)
     .map(j => {
-      const p = j.payload ?? {}
-      const who = typeof p.who === 'string' ? p.who : typeof p.person_id === 'string' ? dir.nameOf(p.person_id) : 'Someone'
       const what = WHAT[j.kind] ?? j.kind
       return {
         id: j.id, when: at(j.next_at ?? j.created_at), what,
-        text: `${who}${typeof p.kind === 'string' ? `, ${p.kind}` : ''}${days(p) ? `, ${days(p)}` : ''}: "${j.last_error}"`,
+        text: jobErrorText(j.payload ?? {}, j.last_error, id => dir.nameOf(id), zone),
         failed: j.state === 'failed', doneText: j.state === 'done' && j.done_at ? `Sent ${at(j.done_at)}` : null,
       }
     })
   const waitingRippling = list.filter(j => j.kind.startsWith('rippling') && (j.state === 'waiting_connection' || j.state === 'queued')).length
   const todayLocal = localDate(now, zone)
-  const gcalToday = list.filter(j => j.kind === 'gcal_upsert' && j.state === 'done' && j.done_at && localDate(j.done_at, zone) === todayLocal)
+  // "PTO events written today": time off only, not the Agenda's events (audit, 27 October 2026).
+  const gcalToday = list.filter(j => j.kind === 'gcal_upsert' && j.ref_table === 'tc_absence_requests' && j.state === 'done' && j.done_at && localDate(j.done_at, zone) === todayLocal)
   const lastGcal = list.filter(j => j.kind.startsWith('gcal') && j.done_at).sort((a, b) => (a.done_at! < b.done_at! ? 1 : -1))[0]
   const by = (id: string | null, when: string | null) => `${id ? ` by ${dir.nameOf(id)}` : ''}${when ? `, ${dateLabel(localDate(when, zone))}` : ''}`
   return {
