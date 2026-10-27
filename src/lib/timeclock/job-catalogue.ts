@@ -10,7 +10,8 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { FieldName } from './entry-rules'
+import { structureOn, type FieldName, type Structure } from './entry-rules'
+import { localDate } from './format'
 import { allRows, loadCatalog, type Catalog, type Job } from './clocky-context'
 
 export interface CatalogueRow {
@@ -19,7 +20,10 @@ export interface CatalogueRow {
   path: string
   folder: boolean
   parentId: number | null
-  depth: 0 | 1
+  /** 0 a top folder or job; 1 inside it; 2 a 2026 project inside a division. */
+  depth: 0 | 1 | 2
+  structure: Structure
+  level: 'client' | 'division' | 'project' | null
   use: string
   billable: boolean
   active: boolean
@@ -30,6 +34,7 @@ export interface CatalogueRow {
 
 export interface CatalogueField {
   key: FieldName
+  structure: Structure
   id: string
   label: string
   hint: string
@@ -37,7 +42,14 @@ export interface CatalogueField {
 }
 
 export interface CatalogueData {
+  /** The TSheets job tree. */
   rows: CatalogueRow[]
+  /** The 2026 structure: clients, divisions, projects. */
+  rows2026?: CatalogueRow[]
+  /** The day the 2026 structure starts, or null. */
+  switchDate?: string | null
+  /** From the switch date the TSheets tree is frozen: switched off, never renamed or moved (the history keeps its names). */
+  frozen?: boolean
   fields: CatalogueField[]
   clients: { name: string; folder: string; active: boolean }[]
 }
@@ -53,17 +65,26 @@ const HINT: Record<FieldName, string> = {
 const shown = (j: Job) => j.kind === 'regular' && (j.active || j.editedInPortal)
 const byOrder = (a: Job, b: Job) => (a.sortOrder ?? 1e9) - (b.sortOrder ?? 1e9) || a.name.localeCompare(b.name)
 
-/** The tree as listed: each top-level folder or job in order, a folder's jobs under it. */
-export function catalogueRows(catalog: Pick<Catalog, 'jobs'>): CatalogueRow[] {
-  const all = [...catalog.jobs.values()]
-  const row = (j: Job, depth: 0 | 1): CatalogueRow => ({
-    id: j.id, name: j.name, path: j.path, folder: j.isFolder, parentId: j.parentId, depth, use: j.whenToUse ?? '',
+/**
+ * The tree as listed: each top-level folder or job in order, a folder's jobs
+ * under it. The TSheets tree has two levels; the 2026 structure three
+ * (Client › Division › Project, True North Internal's projects right under it).
+ */
+export function catalogueRows(catalog: Pick<Catalog, 'jobs'>, structure: Structure = 1): CatalogueRow[] {
+  const all = [...catalog.jobs.values()].filter(j => (j.structure ?? 1) === structure)
+  const row = (j: Job, depth: 0 | 1 | 2): CatalogueRow => ({
+    id: j.id, name: j.name, path: j.path, folder: j.isFolder, parentId: j.parentId, depth, structure, level: j.level ?? null, use: j.whenToUse ?? '',
     billable: j.billable, active: j.active, i7: j.isI7, company: j.defaultCompany ?? '', project: j.defaultProject ?? '',
   })
   const out: CatalogueRow[] = []
+  const under = (id: number) => all.filter(j => j.parentId === id && shown(j)).sort(byOrder)
   for (const top of all.filter(j => j.parentId == null && shown(j)).sort(byOrder)) {
     out.push(row(top, 0))
-    if (top.isFolder) for (const k of all.filter(j => j.parentId === top.id && shown(j)).sort(byOrder)) out.push(row(k, 1))
+    if (!top.isFolder) continue
+    for (const k of under(top.id)) {
+      out.push(row(k, 1))
+      if (structure === 2 && k.isFolder) for (const p of under(k.id)) out.push(row(p, 2))
+    }
   }
   return out
 }
@@ -89,10 +110,15 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
   const ext = await allRows<{ id: number; external_id: number | null }>((a, b) => c.from('tc_jobcodes').select('id, external_id').not('external_id', 'is', null).order('id').range(a, b), 'Job codes could not be read')
   for (const r of ext) { const j = catalog.jobs.get(r.id); if (j && r.external_id != null) byExternal.set(Number(r.external_id), j) }
 
+  const today = localDate(new Date(), 'America/New_York')
   return {
     rows: catalogueRows(catalog),
+    rows2026: catalogueRows(catalog, 2),
+    switchDate: catalog.switchDate,
+    frozen: structureOn(today, catalog.switchDate) === 2,
     fields: catalog.fields.map(f => ({
-      key: f.key, id: f.id, label: f.label, hint: HINT[f.key],
+      key: f.key, structure: f.structure, id: f.id, label: f.structure === 2 ? `${f.label} (2026 structure)` : f.label,
+      hint: f.structure === 2 ? 'The kind of work, in families. Client, Division and Project are the job.' : HINT[f.key],
       options: (optRes.data ?? []).filter(o => String(o.field_id) === f.id)
         .map(o => ({ id: o.id, label: o.label, shown: o.active, used: used.get(`${f.id}:${o.label}`) ?? 0 })),
     })),
@@ -105,8 +131,8 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
 export interface GuideGroup { folder: string; use: string; rows: { id: number; name: string; path: string; use: string; billable: boolean }[] }
 
 /** Every job people can pick, by folder, with its line; top-level jobs together under "Other jobs". */
-export function guideGroups(catalog: Pick<Catalog, 'jobs'>): GuideGroup[] {
-  return groupsOf(catalogueRows(catalog))
+export function guideGroups(catalog: Pick<Catalog, 'jobs' | 'switchDate'>, day = localDate(new Date(), 'America/New_York')): GuideGroup[] {
+  return groupsOf(catalogueRows(catalog, structureOn(day, catalog.switchDate)))
 }
 
 /** The same, from the catalogue's rows. */
@@ -115,9 +141,10 @@ export function groupsOf(all: readonly CatalogueRow[]): GuideGroup[] {
   const groups: GuideGroup[] = []
   let other: GuideGroup | null = null
   for (const r of rows) {
-    if (r.depth === 0 && r.folder) { groups.push({ folder: r.name, use: r.use, rows: [] }); continue }
+    // A folder starts a group: a TSheets client, or a 2026 client or division ("COE Group › Africa").
+    if (r.folder) { groups.push({ folder: r.depth === 0 ? r.name : r.path, use: r.use, rows: [] }); continue }
     const item = { id: r.id, name: r.name, path: r.path, use: r.use, billable: r.billable }
-    if (r.depth === 1) { groups.at(-1)?.rows.push(item); continue }
+    if (r.depth > 0) { groups.at(-1)?.rows.push(item); continue }
     if (!other) { other = { folder: 'Other jobs', use: 'Client jobs with no folder.', rows: [] }; groups.push(other) }
     other.rows.push(item)
   }

@@ -234,7 +234,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
 
   // Jobs and folders: time off is requested, not clocked; folders are not clocked into.
   // In the job catalogue's order (Company settings > Job catalogue), then by name.
-  const rank = new Map(catalogueRows(catalog).map((r, i) => [r.id, i]))
+  const rank = new Map([...catalogueRows(catalog), ...catalogueRows(catalog, 2)].map((r, i) => [r.id, i]))
   const byRank = (a: { id: number; path: string }, b: { id: number; path: string }) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9) || a.path.localeCompare(b.path)
   // Every job either structure may need: the clock offers today's, the forms the day of the entry
   // (the TSheets jobs before the switch date, the 2026 projects from it; none of those before a date is set).

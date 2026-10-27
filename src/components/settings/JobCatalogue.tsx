@@ -22,7 +22,7 @@ type Done = { ok: true; toast: string; id?: number } | { ok: false; error: strin
 const settle = (p: Promise<Done>): Promise<Done> => p.catch(() => ({ ok: false, error: 'That did not go through. Check your connection and try again.' }))
 export interface CatalogueApi {
   saveJob: (i: { id: number; name: string; parentId: number | null; active: boolean; billable: boolean; company: string; project: string; use: string }) => Promise<Done>
-  addFolder: () => Promise<Done>
+  addFolder: (i?: { structure?: 1 | 2; parentId?: number | null }) => Promise<Done>
   addJob: (i: { parentId: number | null }) => Promise<Done>
   reorderJobs: (i: { parentId: number | null; ids: number[] }) => Promise<Done>
   setOptionShown: (i: { optionId: number; shown: boolean }) => Promise<Done>
@@ -76,7 +76,7 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
         </div>
         {!canEdit && <span className="text-[12px] text-[#5b6b82] bg-[#f1f3f6] rounded-full px-[11px] py-[5px] leading-[normal]">Read only at the Admin level. Super Admins edit the catalogue.</span>}
       </div>
-      {tab === 'jobs' && <Jobs data={data} canEdit={canEdit} api={api} startId={startId} say={say} />}
+      {tab === 'jobs' && <JobsPart data={data} canEdit={canEdit} api={api} startId={startId} say={say} />}
       {tab === 'fields' && <Fields data={data} canEdit={canEdit} api={api} startField={startField} say={say} />}
       {tab === 'clients' && <Clients data={data} />}
       <Toast toast={toast} />
@@ -86,11 +86,42 @@ export function JobCatalogue({ data, canEdit, api, startTab = 'jobs', startId, s
 
 // ── 11A Jobs ────────────────────────────────────────────────────────────────
 
+/** The two trees: the 2026 structure and the TSheets jobs (frozen from the switch date). */
+function JobsPart({ data, canEdit, api, startId, say }: { data: CatalogueData; canEdit: boolean; api: CatalogueApi; startId?: number; say: (r: Done) => void }) {
+  const has2026 = !!data.rows2026?.length
+  const [which, setWhich] = useState<1 | 2>(has2026 && data.frozen ? 2 : 1)
+  const rows = which === 2 ? data.rows2026 ?? [] : data.rows
+  const frozenTree = which === 1 && !!data.frozen
+  const label = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  const when = data.switchDate ? label(new Date(`${data.switchDate}T12:00:00Z`)) : null
+  const lastDay = data.switchDate ? label(new Date(Date.parse(`${data.switchDate}T12:00:00Z`) - 86_400_000)) : null
+  return (
+    <div className="flex flex-col gap-3">
+      {has2026 && (
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex bg-white border border-[var(--panel-border)] rounded-[10px] p-[3px] gap-0.5" role="group" aria-label="Which structure">
+            {([[2, '2026 structure'], [1, 'TSheets jobs']] as const).map(([k, l]) => (
+              <button key={k} type="button" aria-pressed={which === k} onClick={() => setWhich(k)}
+                className={`border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal] ${which === k ? 'bg-tn-primary text-[#ffffff]' : 'bg-transparent text-foreground'}`}>{l}</button>
+            ))}
+          </div>
+          <span className="text-[12px] text-muted leading-[1.5]">
+            {which === 2
+              ? (when ? `Client › Division › Project. Offered from ${when}; entries before it keep the TSheets jobs.` : 'Client › Division › Project. Offered once a switch date is set.')
+              : frozenTree ? `Frozen since ${when}: a job can be switched off, not renamed or moved, so the history keeps its names.` : lastDay ? `Offered through ${lastDay}.` : 'What people pick today.'}
+          </span>
+        </div>
+      )}
+      <Jobs key={which} rows={rows} structure={which} data={data} canEdit={canEdit} frozenTree={frozenTree} api={api} startId={startId} say={say} />
+    </div>
+  )
+}
+
 type Draft = { name: string; parent: string; active: boolean; billable: boolean; company: string; project: string; use: string }
 const draftOf = (r: CatalogueRow): Draft => ({ name: r.name, parent: r.parentId == null ? NO_FOLDER : String(r.parentId), active: r.active, billable: r.billable, company: r.company, project: r.project, use: r.use })
 
-function Jobs({ data, canEdit, api, startId, say }: { data: CatalogueData; canEdit: boolean; api: CatalogueApi; startId?: number; say: (r: Done) => void }) {
-  const rows = data.rows
+function Jobs({ rows, structure, data, canEdit, frozenTree, api, startId, say }: { rows: CatalogueRow[]; structure: 1 | 2; data: CatalogueData; canEdit: boolean; frozenTree: boolean; api: CatalogueApi; startId?: number; say: (r: Done) => void }) {
+  const v2 = structure === 2
   const [sel, setSel] = useState<number | null>(startId ?? rows.find(r => !r.folder)?.id ?? rows[0]?.id ?? null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [drag, setDrag] = useState<number | null>(null)
@@ -99,7 +130,8 @@ function Jobs({ data, canEdit, api, startId, say }: { data: CatalogueData; canEd
   const row = rows.find(r => r.id === sel) ?? null
   const ed = row ? { ...draftOf(row), ...draft } : null
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft(d => ({ ...(d ?? {}), [k]: v }) as Draft)
-  const folders = rows.filter(r => r.depth === 0 && r.folder)
+  // Where a job can go: a TSheets top folder; a 2026 division, or a client with no divisions.
+  const folders = rows.filter(r => r.folder && (v2 || r.depth === 0))
   const jobs = rows.filter(r => !r.folder).length
   const fieldOpts = (key: string) => [{ value: '', label: 'None' }, ...(data.fields.find(f => f.key === key)?.options.filter(o => o.shown).map(o => ({ value: o.label, label: o.label })) ?? [])]
 
@@ -114,29 +146,35 @@ function Jobs({ data, canEdit, api, startId, say }: { data: CatalogueData; canEd
     void run(api.reorderJobs({ parentId: a.parentId, ids: group }))
   }
   const addHere = () => {
-    const parent = row ? (row.folder && row.depth === 0 ? row.id : row.parentId) : null
+    const parent = row ? (row.folder && (v2 || row.depth === 0) ? row.id : row.parentId) : null
+    if (v2 && parent == null) { say({ ok: false, error: 'Pick the division (or client) the project goes in.' }); return }
     void run(api.addJob({ parentId: parent })).then(r => { if (r.ok && r.id) { setSel(r.id); setDraft(null) } })
   }
+  // In the 2026 structure: a division in the client picked (or the project's client), else a new client.
+  const clientOf = (r: CatalogueRow | null): number | null => !r ? null : r.level === 'client' ? r.id : clientOf(rows.find(x => x.id === r.parentId) ?? null)
+  const addFolderHere = () => void run(v2 ? api.addFolder({ structure: 2, parentId: clientOf(row) }) : api.addFolder()).then(r => { if (r.ok && r.id) { setSel(r.id); setDraft(null) } })
+  const edit = canEdit && !frozenTree
+  const noun = (r: CatalogueRow) => r.level ?? (r.folder ? 'folder' : 'job')
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-4 items-start">
       <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-hidden">
         <div className="flex items-center justify-between gap-2.5 px-3.5 py-3 border-b border-[var(--panel-border)] bg-subtle">
-          <span className={LABEL}>{`${jobs} jobs in ${folders.length} folders`}</span>
-          {canEdit && (
+          <span className={LABEL}>{v2 ? `${jobs} projects in ${rows.filter(r => r.level === 'client').length} clients` : `${jobs} jobs in ${folders.length} folders`}</span>
+          {edit && (
             <div className="flex gap-2">
-              <button type="button" disabled={busy} onClick={() => void run(api.addFolder()).then(r => { if (r.ok && r.id) { setSel(r.id); setDraft(null) } })} className={SMALL_BTN}><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />Folder</button>
-              <button type="button" disabled={busy} onClick={addHere} className={SMALL_BTN}><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />Job</button>
+              <button type="button" disabled={busy} onClick={addFolderHere} className={SMALL_BTN}><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />{v2 ? (clientOf(row) != null ? 'Division' : 'Client') : 'Folder'}</button>
+              <button type="button" disabled={busy} onClick={addHere} className={SMALL_BTN}><Icon d="M12 5v14M5 12h14" size={13} color="#1E9E6A" width={2.6} />{v2 ? 'Project' : 'Job'}</button>
             </div>
           )}
         </div>
         {rows.map(r => {
           const b = billPill(r.billable)
           return (
-            <div key={r.id} draggable={canEdit} onDragStart={e => { try { e.dataTransfer.setData('text/plain', String(r.id)) } catch { /* the browser keeps it */ } setDrag(r.id) }}
+            <div key={r.id} draggable={edit} onDragStart={e => { try { e.dataTransfer.setData('text/plain', String(r.id)) } catch { /* the browser keeps it */ } setDrag(r.id) }}
               onDragOver={e => { e.preventDefault(); if (over !== r.id) setOver(r.id) }} onDrop={e => { e.preventDefault(); move(drag, r.id) }} onDragEnd={() => { setDrag(null); setOver(null) }}
               onClick={() => { setSel(r.id); setDraft(null) }} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(r.id); setDraft(null) } }}
-              className={`flex items-center gap-2.5 border-b border-[var(--row-rule)] cursor-pointer leading-[normal] hover:bg-[#f8f7f3] ${r.depth === 1 ? 'py-[9px] pr-3.5 pl-[46px]' : 'px-3.5 py-[11px]'}`}
+              className={`flex items-center gap-2.5 border-b border-[var(--row-rule)] cursor-pointer leading-[normal] hover:bg-[#f8f7f3] ${r.depth === 2 ? 'py-[9px] pr-3.5 pl-[78px]' : r.depth === 1 ? 'py-[9px] pr-3.5 pl-[46px]' : 'px-3.5 py-[11px]'}`}
               style={{ background: r.id === sel ? '#eaf4f4' : r.folder ? '#faf9f5' : undefined, borderTop: `2px solid ${over === r.id && drag && drag !== r.id ? '#1E7D7F' : 'transparent'}` }}>
               <span title="Drag to reorder" className="text-[#cbd2da] flex flex-none cursor-grab"><Icon d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" size={14} width={3} /></span>
               {r.folder && <Icon d={FOLDER} size={16} color="#8593a4" width={1.9} className="flex-none" />}
@@ -155,32 +193,32 @@ function Jobs({ data, canEdit, api, startId, say }: { data: CatalogueData; canEd
       {row && ed && (
         <div className="bg-white border border-[var(--panel-border)] rounded-[14px] p-[18px] flex flex-col gap-[13px] xl:sticky xl:top-0">
           <div className="flex items-center justify-between gap-2.5 leading-[normal]">
-            <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{row.folder ? 'Edit folder' : 'Edit job'}</span>
-            <span className="text-[11.5px] text-muted">{!row.folder && row.parentId != null ? rows.find(r => r.id === row.parentId)?.name : 'Top level'}</span>
+            <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">{`Edit ${noun(row)}`}</span>
+            <span className="text-[11.5px] text-muted">{row.parentId != null ? rows.find(r => r.id === row.parentId)?.path : 'Top level'}</span>
           </div>
           <label className="flex flex-col gap-[5px]">
             <FieldLabel>Name</FieldLabel>
-            <input value={ed.name} disabled={!canEdit} maxLength={120} onChange={e => set('name', e.target.value)} className={INPUT} />
+            <input value={ed.name} disabled={!edit} maxLength={120} onChange={e => set('name', e.target.value)} className={INPUT} />
           </label>
           {!row.folder && (
-            <LabeledSelect label="Parent folder" value={ed.parent} disabled={!canEdit} onChange={v => set('parent', v)}
-              options={[...folders.map(f => ({ value: String(f.id), label: f.name })), { value: NO_FOLDER, label: 'No folder (top level)' }]} />
+            <LabeledSelect label={v2 ? 'Division' : 'Parent folder'} value={ed.parent} disabled={!edit} onChange={v => set('parent', v)}
+              options={v2 ? folders.map(f => ({ value: String(f.id), label: f.path })) : [...folders.map(f => ({ value: String(f.id), label: f.name })), { value: NO_FOLDER, label: 'No folder (top level)' }]} />
           )}
           {/* One column on a phone: "Billable by default" does not fit beside Active at 390px. */}
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-2.5">
             <Switch on={ed.active} label="Active" disabled={!canEdit} onChange={() => set('active', !ed.active)} />
-            <Switch on={ed.billable} label="Billable by default" disabled={!canEdit} onChange={() => set('billable', !ed.billable)} />
+            <Switch on={ed.billable} label={v2 ? 'Billable' : 'Billable by default'} disabled={!edit} onChange={() => set('billable', !ed.billable)} />
             {row.i7 && !row.folder && <Switch on label="Asks for an i7 Code" disabled onChange={() => {}} />}
           </div>
-          {!row.folder && (
+          {!row.folder && !v2 && (
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
-              <LabeledSelect label="Default Company" value={ed.company} disabled={!canEdit} onChange={v => set('company', v)} options={fieldOpts('company')} />
-              <LabeledSelect label="Default Project" value={ed.project} disabled={!canEdit} search onChange={v => set('project', v)} options={fieldOpts('project')} />
+              <LabeledSelect label="Default Company" value={ed.company} disabled={!edit} onChange={v => set('company', v)} options={fieldOpts('company')} />
+              <LabeledSelect label="Default Project" value={ed.project} disabled={!edit} search onChange={v => set('project', v)} options={fieldOpts('project')} />
             </div>
           )}
           <label className="flex flex-col gap-[5px]">
             <FieldLabel>When to use</FieldLabel>
-            <textarea value={ed.use} disabled={!canEdit} rows={3} maxLength={400} onChange={e => set('use', e.target.value)}
+            <textarea value={ed.use} disabled={!edit} rows={3} maxLength={400} onChange={e => set('use', e.target.value)}
               className="w-full box-border resize-y px-3 py-2.5 border border-[var(--panel-border)] rounded-[10px] font-sans text-[13px] leading-[1.5] text-tn-ink bg-white outline-none focus:border-tn-teal disabled:bg-subtle" />
             <span className="text-[11.5px] text-muted leading-[normal]">One plain line. It shows under the job in the clock panel, in Add time and on &quot;Which job?&quot;.</span>
           </label>
@@ -212,11 +250,12 @@ function Jobs({ data, canEdit, api, startId, say }: { data: CatalogueData; canEd
 // ── 11B Fields and options ──────────────────────────────────────────────────
 
 function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; canEdit: boolean; api: CatalogueApi; startField?: string; say: (r: Done) => void }) {
-  const [key, setKey] = useState(startField ?? data.fields[0]?.key ?? '')
+  // By id: the TSheets Activity and the 2026 Activity share the key.
+  const [key, setKey] = useState((data.fields.find(x => x.key === startField) ?? data.fields[0])?.id ?? '')
   const [renaming, setRenaming] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [fresh, setFresh] = useState('')
-  const f = data.fields.find(x => x.key === key)
+  const f = data.fields.find(x => x.id === key)
   if (!f) return null
   const mono = f.key === 'code'
   const commit = async (id: number, old: string) => {
@@ -228,8 +267,8 @@ function Fields({ data, canEdit, api, startField, say }: { data: CatalogueData; 
     <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-4 items-start">
       <div className="flex flex-col gap-2">
         {data.fields.map(x => (
-          <button key={x.key} type="button" aria-pressed={x.key === key} onClick={() => { setKey(x.key); setRenaming(null) }}
-            className={`text-left flex flex-col gap-[3px] border rounded-[12px] px-3.5 py-3 cursor-pointer leading-[normal] min-w-0 ${x.key === key ? 'border-tn-teal bg-tn-teal-soft' : 'border-[var(--panel-border)] bg-white'}`}>
+          <button key={x.id} type="button" aria-pressed={x.id === key} onClick={() => { setKey(x.id); setRenaming(null) }}
+            className={`text-left flex flex-col gap-[3px] border rounded-[12px] px-3.5 py-3 cursor-pointer leading-[normal] min-w-0 ${x.id === key ? 'border-tn-teal bg-tn-teal-soft' : 'border-[var(--panel-border)] bg-white'}`}>
             <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">{x.label}</span>
             <span className="text-[12px] text-muted whitespace-nowrap overflow-hidden text-ellipsis">{`${x.options.length} options · ${x.hint}`}</span>
           </button>
