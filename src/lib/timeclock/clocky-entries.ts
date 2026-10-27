@@ -323,7 +323,7 @@ export async function entryHistory(v: Viewer, id: number, now: Date): Promise<Hi
   const zone = dir.zoneOf(e.person_id)
   const names = new Map([...dir.people.values()].map(p => [p.id, p.name]))
   const lines = historyLines({
-    audit: rows, names, personId: e.person_id, ownerZone: zone, viewerZone: v.zone, keys: catalog.keys,
+    audit: rows, names, personId: e.person_id, ownerZone: zone, viewerZone: v.zone, keys: [catalog.keys, catalog.keys2026],
     jobPath: catalog.pathOf(e.jobcode_id),
     importedAt: e.source === 'tsheets' ? e.created_at : null,
     request: req ? { requestedAt: req.requested_at, reason: req.reason, seconds: recordedSeconds(req.started_at, req.ended_at), job: catalog.pathOf(req.jobcode_id) } : null,

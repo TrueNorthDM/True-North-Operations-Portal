@@ -384,7 +384,8 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
       notes: cleanNotes(input.notes),
       kind: start ? 'clock' : 'manual',
     }
-    const changes = changesBetween(snapshot(e, catalog), snapshot({ ...e, ...next }, catalog), catalog.keys, zone)
+    // Both structures' fields: a change of a 2026 project's Activity alone is a change, and it is saved.
+    const changes = changesBetween(snapshot(e, catalog), snapshot({ ...e, ...next }, catalog), [catalog.keys, catalog.keys2026], zone)
     if (!changes.length) {
       // This entry stays, but the other was picked to give way: that still happens.
       if (trimOther) { await trimOther(); refresh() }

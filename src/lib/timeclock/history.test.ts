@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { historyLines, type AuditRow } from './history'
+import { changesBetween, historyLines, type AuditRow } from './history'
 import type { FieldKeys } from './entry-rules'
 
 // SPEC 3G and Time Entries.dc.html: every change, newest first, with real and
@@ -98,5 +98,24 @@ describe('historyLines', () => {
       'Arnaldo Oliveira added 2h 45m for Wendy Cacka in the week grid',
       'Arnaldo Oliveira added time for Wendy Cacka',
     ])
+  })
+})
+
+describe('the 2026 Activity is a change too (audit 2026-10-27)', () => {
+  const keys2026: FieldKeys = { company: null, project: null, activity: '90', billable: null, code: null }
+  const before = { entry_date: '2026-11-03', started_at: '2026-11-03T13:00:00Z', ended_at: '2026-11-03T14:00:00Z', job: 'TN › Web', fields: { 90: 'Design' }, notes: null }
+  const after = { ...before, fields: { 90: 'Copywriting' } }
+
+  it('with the TSheets keys alone, a 2026 project\'s new Activity read as no change (and editEntry saved nothing)', () => {
+    expect(changesBetween(before, after, keys, NY)).toEqual([])
+  })
+
+  it('with both structures\' keys it is one change, named Activity', () => {
+    expect(changesBetween(before, after, [keys, keys2026], NY)).toEqual([{ field: 'Activity', old: 'Design', new: 'Copywriting' }])
+  })
+
+  it('and the history line shows it', () => {
+    const [line] = historyLines({ ...base, keys: [keys, keys2026], audit: [row(1, 'edit', 'arnaldo', '2026-11-04T12:00:00Z', before, after, 'wrong activity')] })
+    expect(line.changes).toEqual([{ field: 'Activity', old: 'Design', new: 'Copywriting' }])
   })
 })

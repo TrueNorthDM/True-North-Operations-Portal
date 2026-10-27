@@ -68,8 +68,12 @@ const labelOfField: [keyof FieldKeys, string][] = [
   ['activity', 'Activity'], ['company', 'Company'], ['project', 'Project'], ['billable', 'Billable'], ['code', 'i7 Code'],
 ]
 
-/** The fields that changed between two snapshots, old and new as the person reads them ("empty" when none). */
-export function changesBetween(before: Snapshot, after: Snapshot, keys: FieldKeys, zone: string): Change[] {
+/**
+ * The fields that changed between two snapshots, old and new as the person
+ * reads them ("empty" when none). `keys` may be both structures' (the TSheets
+ * fields and the 2026 Activity, which is a field of its own): each is compared.
+ */
+export function changesBetween(before: Snapshot, after: Snapshot, keys: FieldKeys | readonly FieldKeys[], zone: string): Change[] {
   const out: Change[] = []
   const cmp = (field: string, o: string, n: string) => { if (o !== n) out.push({ field, old: o || 'empty', new: n || 'empty' }) }
   if (before.entry_date && after.entry_date) cmp('Date', dayLabel(before.entry_date), dayLabel(after.entry_date))
@@ -84,10 +88,15 @@ export function changesBetween(before: Snapshot, after: Snapshot, keys: FieldKey
   if (before.job !== undefined || after.job !== undefined) cmp('Job', before.job ?? '', after.job ?? '')
   // Activity first, as the prototype lists them, then the other fields.
   const order: [keyof FieldKeys, string][] = [labelOfField[0], ...labelOfField.slice(1)]
+  const sets: readonly FieldKeys[] = Array.isArray(keys) ? keys : [keys as FieldKeys]
+  const seen = new Set<string>()
   for (const [k, label] of order) {
-    const id = keys[k]
-    if (!id) continue
-    cmp(label, before.fields?.[id] ?? '', after.fields?.[id] ?? '')
+    for (const set of sets) {
+      const id = set[k]
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      cmp(label, before.fields?.[id] ?? '', after.fields?.[id] ?? '')
+    }
   }
   cmp('Notes', before.notes ?? '', after.notes ?? '')
   return out
@@ -104,7 +113,8 @@ export interface HistoryInput {
   personId: string
   ownerZone: string
   viewerZone: string
-  keys: FieldKeys
+  /** The fields' ids: both structures' when the entry may be in either. */
+  keys: FieldKeys | readonly FieldKeys[]
   /** The entry's job path today, for lines written before the path was kept. */
   jobPath: string
   /** source = 'tsheets': imported, with when it arrived. */

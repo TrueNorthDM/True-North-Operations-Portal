@@ -184,3 +184,9 @@ describe('the week grid keeps each 2026 Activity on its own row (audit 2026-10-2
     expect(b).toMatch(/const k = keysOfJob\(catalog, catalog\.jobs\.get\(jobcode \?\? -1\)\)/)
   })
 })
+
+describe('an edit of a 2026 entry is saved (audit 2026-10-27)', () => {
+  it('editEntry decides "Nothing changed" with both structures\' fields', () => {
+    expect(body(read('entries-actions.ts'), 'editEntry')).toMatch(/changesBetween\([^\n]*\[catalog\.keys, catalog\.keys2026\], zone\)/)
+  })
+})
