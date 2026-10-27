@@ -55,6 +55,12 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
           // An Agenda event or milestone (8E): at a time in its zone, or all day.
           const p = j.payload as { summary?: string; start?: string; end?: string; startAt?: string; endAt?: string; timeZone?: string; location?: string | null; description?: string | null }
           if (!p.summary) throw new Final('The job has no title.')
+          // Deleted in the Agenda before it went out: nothing to put on the calendar.
+          const { data: still } = await c.from('agenda_events').select('id').eq('id', j.ref_id).maybeSingle()
+          if (!still) {
+            await c.from('integration_jobs').update({ state: 'done', done_at: new Date().toISOString(), last_error: null, attempts: j.attempts + 1 }).eq('id', j.id)
+            continue
+          }
           const id = p.startAt && p.endAt && p.timeZone
             ? await insertTimed(g.token, g.calendar, { summary: p.summary, startAt: p.startAt, endAt: p.endAt, timeZone: p.timeZone, location: p.location, description: p.description })
             : p.start && p.end ? await insertAllDay(g.token, g.calendar, { summary: p.summary, start: p.start, end: p.end, transparent: false, location: p.location, description: p.description })
@@ -71,6 +77,7 @@ export async function runOutbox(now = new Date()): Promise<OutboxReport> {
       } else if (j.kind === 'gcal_delete') {
         const g = await google()
         const eventId = (j.payload as { event_id?: string | null }).event_id
+        // Time off cancelled, or an Agenda event edited or deleted (its old copy).
         if (eventId) await deleteEvent(g.token, g.calendar, eventId)
         if (j.ref_table === 'tc_absence_requests') await c.from('tc_absence_requests').update({ calendar_event_id: null }).eq('id', j.ref_id)
       } else {

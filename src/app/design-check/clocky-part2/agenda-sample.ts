@@ -26,13 +26,16 @@ const EV: AgendaItem[] = [
   { id: 'a1', k: 'anni', who: who('Justus Tsofa'), yrs: 4, a: '2026-11-09', b: '2026-11-09' },
   { id: 'a2', k: 'anni', who: who('Joy Inyele'), yrs: 3, a: '2026-11-16', b: '2026-11-16' },
   { id: 'a3', k: 'anni', who: who('Cheyenne Wilson'), yrs: 2, a: '2026-11-20', b: '2026-11-20' },
-  { id: 'e1', k: 'event', title: 'All-hands', a: '2026-11-05', b: '2026-11-05', s: 11, e: 12, place: 'Google Meet · meet.google.com/tnd-allh-ands', link: 'https://meet.google.com/tnd-allh-ands', teams: 'Everyone', by: 'Arnaldo Oliveira', desc: 'October numbers, the North Time part 2 launch, and Q4 priorities. Bring one win from your team.', onGoogle: true, audience: [] },
+  { id: 'e1', k: 'event', title: 'All-hands', a: '2026-11-05', b: '2026-11-05', s: 11, e: 12, place: 'Google Meet · meet.google.com/tnd-allh-ands', link: 'https://meet.google.com/tnd-allh-ands', teams: 'Everyone', by: 'Arnaldo Oliveira', desc: 'October numbers, the North Time part 2 launch, and Q4 priorities. Bring one win from your team.', onGoogle: true, audience: [],
+    // A Super Admin may edit and delete it (8D3, 8D5, 8E2).
+    edit: { id: 1, kind: 'event', when: 'time', title: 'All-hands', date: '2026-11-05', end: '', from: '11:00', to: '12:00', zone: 'America/New_York', place: 'Google Meet · meet.google.com/tnd-allh-ands', teams: [], client: '', desc: 'October numbers, the North Time part 2 launch, and Q4 priorities. Bring one win from your team.', google: true } },
   { id: 'e2', k: 'event', title: 'Q4 planning', a: '2026-11-17', b: '2026-11-17', s: 10, e: 12, place: 'Google Meet', teams: 'Leadership', by: 'Arnaldo Oliveira', desc: 'Budgets and hiring for Q1.', onGoogle: true, audience: ['Leadership'] },
   { id: 'e3', k: 'event', title: 'Thanksgiving gratitude call', a: '2026-11-24', b: '2026-11-24', s: 13, e: 13.75, place: 'Google Meet', teams: 'Everyone', by: 'Dave Sharpe', desc: 'Fifteen minutes to thank each other before the holiday.', onGoogle: true, audience: [] },
   { id: 't1', k: 'event', team: team('Writers'), title: 'Writers sync', a: '2026-11-10', b: '2026-11-10', s: 14, e: 15, place: 'Google Meet', teams: 'Writers', by: 'Amy Prindle', desc: 'Editorial calendar for December.', audience: ['Writers'] },
   { id: 't2', k: 'event', team: team('Web'), title: 'Web sprint review', a: '2026-11-13', b: '2026-11-13', s: 15, e: 16, place: 'Google Meet', teams: 'Web', by: 'Wendy Cacka', desc: 'Demo of the portal changes. Shared with Leadership.', audience: ['Web'] },
   { id: 't3', k: 'event', team: team('Social Media'), title: 'Content calendar review', a: '2026-11-18', b: '2026-11-18', s: 9, e: 10, place: 'Google Meet', teams: 'Social Media', by: 'Rock Kai', desc: 'December posts for i7 and GNA.', audience: ['Social Media'] },
-  { id: 'm1', k: 'ms', title: 'i7 site launch', a: '2026-11-13', b: '2026-11-13', client: '2 - i7 Marketing', by: 'Arnaldo Oliveira', desc: 'The new i7 site goes live. Web and SEO on call that day.', audience: [] },
+  { id: 'm1', k: 'ms', title: 'i7 site launch', a: '2026-11-13', b: '2026-11-13', client: '2 - i7 Marketing', by: 'Arnaldo Oliveira', desc: 'The new i7 site goes live. Web and SEO on call that day.', audience: [],
+    edit: { id: 2, kind: 'milestone', when: 'day', title: 'i7 site launch', date: '2026-11-13', end: '', from: '09:00', to: '10:00', zone: 'America/New_York', place: '', teams: [], client: '2 - i7 Marketing', desc: 'The new i7 site goes live. Web and SEO on call that day.', google: false } },
   { id: 'm2', k: 'ms', title: 'GNA campaign goes live', a: '2026-11-30', b: '2026-11-30', client: 'GNA', by: 'Dave Sharpe', desc: 'Christmas campaign for GNA and GYC.', audience: [] },
   { id: 'g1', k: 'gn', title: 'Pathfinder camporee recap', a: '2026-11-07', b: '2026-11-07', desc: 'Photos and stories from the camporee weekend.', link: 'https://calendar.google.com/' },
   { id: 'g2', k: 'gn', title: 'Community food drive, Nairobi', a: '2026-11-14', b: '2026-11-14', desc: 'The Africa team joins the food drive.', link: 'https://calendar.google.com/' },
@@ -62,8 +65,11 @@ export function agendaFrame(frame: string): AgendaData {
       calendar: 'True North Team (set in Company settings › Integrations)',
       sample: { title: 'Year-end celebration', kind: 'event', when: 'time', date: '2026-12-11', from: '15:00', to: '16:30', zone: 'America/New_York', place: 'Google Meet · meet.google.com/tnd-year-end', teams: [], desc: 'Thank-yous, a few awards and a first look at 2027.', google: true },
     },
-    startCard: ({ '8D1': 'o3', '8D2': 'b1', '8D3': 'e1', '8D4': 'g2' } as Record<string, string>)[frame],
+    startCard: ({ '8D1': 'o3', '8D2': 'b1', '8D3': 'e1', '8D4': 'g2', '8D5': 'e1', '8D6': 'm1', '8E2': 'e1' } as Record<string, string>)[frame],
     startNew: frame === '8E',
+    // Edit and delete (not in the handoff): 8D5 the card asking to confirm Delete, 8D6 a milestone's card, 8E2 Edit open.
+    startConfirm: frame === '8D5',
+    startEdit: frame === '8E2',
   }
 }
 

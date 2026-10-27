@@ -23,6 +23,7 @@ import { localDate, localMinutes } from '@/lib/timeclock/format'
 import { addDays } from '@/lib/timeclock/periods'
 import { countryOf, nationalHolidays } from './holidays'
 import { linkIn, type AgendaItem, type AgendaWho } from './model'
+import { editOf, mayManageEvent, type EventRights, type EventRow } from './events'
 
 export interface AgendaViewer { id: string; zone: string; superAdmin: boolean; admin: boolean; teamIds: readonly string[] }
 
@@ -43,7 +44,8 @@ export function holidaysIn(from: string, to: string): Map<string, string> {
   return out
 }
 
-export async function loadAgendaItems(v: AgendaViewer, from: string, to: string): Promise<AgendaItem[]> {
+/** `rights`: the viewer's event rights; the events they may edit carry the form to edit them. */
+export async function loadAgendaItems(v: AgendaViewer, from: string, to: string, rights?: EventRights): Promise<AgendaItem[]> {
   const c = createAdminClient()
   const [dir, people, catalog, offRes, evRes, gnRes, homeRes] = await Promise.all([
     loadDirectory(),
@@ -51,7 +53,7 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string)
     loadCatalog(),
     c.from('tc_absence_requests').select('id, person_id, jobcode_id, start_date, end_date, calendar_state').eq('state', 'approved').lte('start_date', to).gte('end_date', from).limit(2000),
     // A day either side: a timed event can fall on another day in the viewer's zone.
-    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, place, audience_team_ids, client, description, calendar_state, created_by')
+    c.from('agenda_events').select('id, kind, team_id, title, start_date, end_date, starts_at, ends_at, time_zone, place, audience_team_ids, client, description, add_to_google, calendar_state, created_by')
       .lte('start_date', addDays(to, 1)).gte('end_date', addDays(from, -1)).limit(2000),
     c.from('agenda_good_news').select('google_event_id, title, start_date, end_date, description, html_link').lte('start_date', to).gte('end_date', from).limit(2000),
     // Where people live, for the national holidays.
@@ -97,6 +99,7 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string)
       teams: audience.length ? audience.map(t => dir.teams.get(t)?.name).filter(Boolean).join(', ') : 'Everyone',
       team: team ? { id: team.id, name: team.name, color: teamColour(team.color, team.name) } : null,
       by: e.created_by ? dir.nameOf(e.created_by) : null, desc: e.description, client: e.client, onGoogle: e.calendar_state === 'done', audience,
+      ...(rights && mayManageEvent(rights, e) ? { edit: editOf(e.id, e as EventRow, v.zone) } : {}),
     })
   }
 

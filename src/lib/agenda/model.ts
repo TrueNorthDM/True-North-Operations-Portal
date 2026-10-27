@@ -14,6 +14,7 @@
  */
 
 import { addDays } from '@/lib/timeclock/periods'
+import type { EventEdit } from './events'
 
 export type AgendaKind = 'pto' | 'bday' | 'anni' | 'event' | 'ms' | 'gn' | 'hol'
 export type AgendaView = 'month' | 'week' | 'list'
@@ -51,6 +52,8 @@ export interface AgendaItem {
   audience?: string[]
   /** A holiday: its country (ISO code). US ones are the company holidays. */
   country?: string | null
+  /** An event the viewer may edit and delete (lib/agenda/events.ts): the form 8E opens with. */
+  edit?: EventEdit
 }
 
 export const KIND: Record<AgendaKind, { label: string; swatch: string }> = {

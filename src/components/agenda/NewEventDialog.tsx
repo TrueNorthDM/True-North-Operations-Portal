@@ -5,6 +5,9 @@
  * Event or Milestone and who sees it; a Team Leader makes an event for a team
  * they lead. "Add to the team Google Calendar" sends it there through the
  * outbox (it waits while Google Calendar is not connected).
+ *
+ * Edit opens the same form filled with the event (`editing`), and saves it
+ * with the same checks.
  */
 
 import { useState } from 'react'
@@ -12,10 +15,12 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import { EVENT_ZONES } from '@/lib/agenda/zones'
 import { fday, hourLabel } from '@/lib/agenda/model'
 import { CloseButton, FieldLabel, Icon, LabeledSelect, Modal, MODAL_TITLE, TEXTAREA_PLAIN } from '@/components/clocky/entries/ui'
-import type { NewEventInput } from '@/app/(app)/agenda/actions'
+import type { EventEdit, EventInput } from '@/lib/agenda/events'
 
 type Done = { ok: true; toast: string } | { ok: false; error: string }
-export type CreateEvent = (i: NewEventInput) => Promise<Done>
+export type CreateEvent = (i: EventInput) => Promise<Done>
+export type UpdateEvent = (i: EventInput & { id: number }) => Promise<Done>
+export type DeleteEvent = (i: { id: number }) => Promise<Done>
 
 export interface NewEventSetup {
   mode: 'company' | 'team'
@@ -61,19 +66,31 @@ function DayField({ label, value, min, onChange }: { label: string; value: strin
   )
 }
 
-export function NewEventDialog({ setup, api, onClose, onDone }: { setup: NewEventSetup; api: CreateEvent; onClose: () => void; onDone: (toast: string) => void }) {
+export function NewEventDialog({ setup, api, editing, onClose, onDone }: {
+  setup: NewEventSetup
+  /** Saves the form: create, or (editing) the edit of that event. */
+  api: CreateEvent
+  /** Edit: the event, as the form shows it. */
+  editing?: EventEdit
+  onClose: () => void
+  onDone: (toast: string) => void
+}) {
   const lead = setup.mode === 'team'
-  const [f, setF] = useState<Form>(() => ({
-    title: '', kind: 'event', when: 'time', date: setup.today, end: '', from: '09:00', to: '10:00',
-    zone: EVENT_ZONES.some(z => z.zone === setup.zone) ? setup.zone : EVENT_ZONES[0].zone,
-    place: '', teams: lead && setup.teams[0] ? [setup.teams[0].id] : [], client: '', desc: '', google: true,
-    ...setup.sample,
-  }))
+  const [f, setF] = useState<Form>(() => editing
+    ? { title: editing.title, kind: editing.kind, when: editing.when, date: editing.date, end: editing.end, from: editing.from, to: editing.to,
+        zone: editing.zone, place: editing.place, teams: editing.teams, client: editing.client, desc: editing.desc, google: editing.google }
+    : {
+        title: '', kind: 'event', when: 'time', date: setup.today, end: '', from: '09:00', to: '10:00',
+        zone: EVENT_ZONES.some(z => z.zone === setup.zone) ? setup.zone : EVENT_ZONES[0].zone,
+        place: '', teams: lead && setup.teams[0] ? [setup.teams[0].id] : [], client: '', desc: '', google: true,
+        ...setup.sample,
+      })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF(x => ({ ...x, [k]: v }))
   const ok = !!f.title.trim() && !!f.date
   const ms = f.kind === 'milestone'
+  const heading = `${editing ? 'Edit' : 'New'} ${ms ? 'milestone' : lead ? 'team event' : 'event'}`
 
   const toggleTeam = (id: string) => {
     if (lead) { set('teams', [id]); return }
@@ -98,9 +115,9 @@ export function NewEventDialog({ setup, api, onClose, onDone }: { setup: NewEven
   }
 
   return (
-    <Modal label={ms ? 'New milestone' : 'New event'} width={596} onClose={onClose}>
+    <Modal label={heading} width={596} onClose={onClose}>
       <div className="flex items-center justify-between gap-2.5">
-        <h2 className={MODAL_TITLE}>{ms ? 'New milestone' : lead ? 'New team event' : 'New event'}</h2>
+        <h2 className={MODAL_TITLE}>{heading}</h2>
         <CloseButton onClick={onClose} />
       </div>
       <label className="flex flex-col gap-[5px]">
@@ -179,7 +196,9 @@ export function NewEventDialog({ setup, api, onClose, onDone }: { setup: NewEven
         <button type="button" onClick={onClose} className="border border-slate-200 rounded-[10px] px-4 py-2.5 bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:border-tn-teal">Cancel</button>
         <button type="button" disabled={!ok || busy} onClick={() => void submit()}
           className="inline-flex items-center gap-2 border-0 rounded-[10px] px-[18px] py-[11px] bg-tn-primary text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:bg-[#0a2f6b] disabled:opacity-45 disabled:cursor-not-allowed">
-          <Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{ms ? 'Create milestone' : 'Create event'}
+          {editing
+            ? <><Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save changes</>
+            : <><Icon d="M12 5v14M5 12h14" size={14} color={BTN_ICON.navy} width={3} />{ms ? 'Create milestone' : 'Create event'}</>}
         </button>
       </div>
     </Modal>

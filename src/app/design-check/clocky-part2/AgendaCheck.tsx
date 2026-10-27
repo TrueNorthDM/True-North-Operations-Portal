@@ -22,5 +22,12 @@ export function AgendaCheck({ data, week }: { data?: AgendaData; week?: ThisWeek
       </div>
     )
   }
-  return <AgendaView data={data!} linked={false} api={async i => ({ ok: true, toast: `Created. Everyone who can see it finds it in Agenda${i.google ? ' and on the team Google Calendar' : ''}.` })} />
+  return (
+    <AgendaView data={data!} linked={false}
+      api={async i => ({ ok: true, toast: `Created. Everyone who can see it finds it in Agenda${i.google ? ' and on the team Google Calendar' : ''}.` })}
+      edit={{
+        update: async () => ({ ok: true, toast: 'Saved. Everyone who can see it finds the change in Agenda.' }),
+        remove: async () => ({ ok: true, toast: 'Deleted. The event is off the Agenda for everyone.' }),
+      }} />
+  )
 }

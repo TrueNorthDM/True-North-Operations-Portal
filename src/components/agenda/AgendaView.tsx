@@ -2,7 +2,9 @@
 
 /**
  * The Agenda (Clocky part 2, Agenda.dc.html): 8A month, 8B week, 8C list, the
- * "Coming up" panel, 8D the item card and 8E a new event or milestone.
+ * "Coming up" panel, 8D the item card and 8E a new event or milestone. An
+ * event the viewer may manage (the same people who may create it) has Edit,
+ * which opens 8E filled, and Delete, confirmed inside the card.
  *
  * The server sends the items of the days on screen (lib/agenda/data.ts), with
  * what the viewer may not see already left out. Moving to other days changes
@@ -18,7 +20,7 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { Select } from '@/components/ui/Select'
 import { useModal } from '@/components/ui/useModal'
 import { BTN_ICON } from '@/lib/ui/buttons'
-import { FieldLabel, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
+import { BTN_MODAL_WHITE, FieldLabel, ICON, Icon, Toast, useIsClient, type ToastState } from '@/components/clocky/entries/ui'
 import {
   ALL_TEAMS, AG_ICON, KIND, KINDS, cardOf, comingUp, dayKinds, fday, filterItems, listDays, monthCells, rangeTitle, stepAnchor, viewDays, weekModel, weekNumber,
   type AgendaItem, type AgendaKind, type AgendaView as View, type ListDay,
@@ -27,7 +29,8 @@ import { usePhone } from '@/components/clocky/clock/hooks'
 import { addDays } from '@/lib/timeclock/periods'
 import { TenureBadge } from '@/components/TenureBadge'
 import { yearColor } from '@/lib/tenure'
-import { NewEventDialog, type NewEventSetup, type CreateEvent } from './NewEventDialog'
+import type { EventEdit } from '@/lib/agenda/events'
+import { NewEventDialog, type NewEventSetup, type CreateEvent, type DeleteEvent, type UpdateEvent } from './NewEventDialog'
 
 export interface AgendaData {
   view: View
@@ -43,7 +46,13 @@ export interface AgendaData {
   /** Design checks: a card or the new event dialog already open. */
   startCard?: string
   startNew?: boolean
+  /** Design checks: the open card already asking to confirm Delete, or its Edit form open. */
+  startConfirm?: boolean
+  startEdit?: boolean
 }
+
+/** Edit and delete an event (the page passes its server actions; the design checks, stand-ins). */
+export interface EventEditApi { update: UpdateEvent; remove: DeleteEvent }
 
 const DOWS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
@@ -54,7 +63,7 @@ const Anni = ({ yrs, size, compact = false }: { yrs: number; size: number; compa
   <TenureBadge milestone={{ kind: 'year', value: yrs, color: yearColor(yrs) }} size={size} compact={compact} />
 const SEG_BTN = 'border-0 cursor-pointer rounded-[8px] px-3.5 py-[7px] font-(family-name:--font-display) font-bold text-[12.5px] leading-[normal]'
 
-export function AgendaView({ data, api, linked = true }: { data: AgendaData; api: CreateEvent; linked?: boolean }) {
+export function AgendaView({ data, api, edit, linked = true }: { data: AgendaData; api: CreateEvent; edit?: EventEditApi; linked?: boolean }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [view, setView] = useState<View>(data.view)
@@ -63,6 +72,7 @@ export function AgendaView({ data, api, linked = true }: { data: AgendaData; api
   const [team, setTeam] = useState(ALL_TEAMS)
   const [card, setCard] = useState<string | null>(data.startCard ?? null)
   const [creating, setCreating] = useState(!!data.startNew)
+  const [editing, setEditing] = useState<EventEdit | null>(() => (data.startEdit && data.items.find(x => x.id === data.startCard)?.edit) || null)
   const [toast, setToast] = useState<ToastState | null>(null)
   // A phone: the month in dots, and the day picked listed under it (no phone design in the handoff).
   const phone = usePhone()
@@ -141,10 +151,21 @@ export function AgendaView({ data, api, linked = true }: { data: AgendaData; api
         <ComingUp items={items} today={data.today} onOpen={setCard} />
       </div>
 
-      {open && <ItemCard item={open} me={data.me} today={data.today} holidays={holidays} onClose={() => setCard(null)} />}
+      {open && !editing && (
+        <ItemCard item={open} me={data.me} today={data.today} holidays={holidays} onClose={() => setCard(null)} startConfirm={!!data.startConfirm}
+          manage={edit && data.create && open.edit ? {
+            onEdit: () => setEditing(open.edit!),
+            onDelete: () => edit.remove({ id: open.edit!.id }),
+            onDeleted: t => { setCard(null); say({ text: t }); if (linked) router.refresh() },
+          } : undefined} />
+      )}
       {creating && data.create && (
         <NewEventDialog setup={data.create} api={api} onClose={() => setCreating(false)}
           onDone={t => { setCreating(false); say({ text: t }); if (linked) router.refresh() }} />
+      )}
+      {editing && edit && data.create && (
+        <NewEventDialog key={editing.id} setup={data.create} editing={editing} api={i => edit.update({ ...i, id: editing.id })} onClose={() => setEditing(null)}
+          onDone={t => { setEditing(null); setCard(null); say({ text: t }); if (linked) router.refresh() }} />
       )}
       <Toast toast={toast} />
     </div>
@@ -379,12 +400,39 @@ function ComingUp({ items, today, onOpen }: { items: AgendaItem[]; today: string
 
 // ── 8D ──────────────────────────────────────────────────────────────────────
 
-function ItemCard({ item, me, today, holidays, onClose }: { item: AgendaItem; me: AgendaData['me']; today: string; holidays: ReadonlySet<string>; onClose: () => void }) {
+type Done = { ok: true; toast: string } | { ok: false; error: string }
+/** The card's Edit and Delete, for an event the viewer may manage. */
+interface Manage { onEdit: () => void; onDelete: () => Promise<Done>; onDeleted: (toast: string) => void }
+
+/** The small white row actions (the "Open in Google Calendar" link's look): green symbol, navy words. */
+const ROW_BTN = 'inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] leading-[normal] no-underline cursor-pointer hover:border-tn-teal'
+
+function ItemCard({ item, me, today, holidays, onClose, manage, startConfirm = false }: {
+  item: AgendaItem; me: AgendaData['me']; today: string; holidays: ReadonlySet<string>; onClose: () => void
+  manage?: Manage; startConfirm?: boolean
+}) {
   const box = useRef<HTMLDivElement>(null)
   useModal(true, box, onClose)
   const client = useIsClient()
+  const [confirm, setConfirm] = useState(startConfirm && !!manage)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   if (!client) return null
   const c = cardOf(item, { meId: me.id, superAdmin: me.superAdmin, today, zone: me.zone, holidays })
+  const what = item.k === 'ms' ? 'milestone' : 'event'
+  const remove = async () => {
+    if (!manage || busy) return
+    setBusy(true); setError(null)
+    try {
+      const r = await manage.onDelete()
+      if (r.ok) manage.onDeleted(r.toast)
+      else setError(r.error)
+    } catch {
+      setError('That did not go through. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
   return createPortal(
     <div className="fixed inset-0 z-[70] bg-[rgba(1,35,88,.24)] flex items-center justify-center p-7" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div ref={box} role="dialog" aria-modal="true" aria-label={c.title} className="w-full max-w-[440px] bg-white rounded-[16px] shadow-[0_30px_70px_-20px_rgba(1,35,88,.5)] overflow-hidden flex flex-col leading-[normal]">
@@ -412,11 +460,36 @@ function ItemCard({ item, me, today, holidays, onClose }: { item: AgendaItem; me
           </div>
           {c.desc && <div className="text-[13px] text-foreground leading-[1.55] bg-subtle rounded-[10px] px-3 py-2.5 [text-wrap:pretty]">{c.desc}</div>}
           {c.foot && <div className="text-[12px] text-muted leading-[1.5]">{c.foot}</div>}
-          {c.button && (
-            <div className="flex justify-end">
-              <a href={c.button.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-slate-200 rounded-[10px] px-3.5 py-[9px] bg-white text-tn-ink font-(family-name:--font-display) font-extrabold text-[12.5px] no-underline hover:border-tn-teal">
-                <Icon d={AG_ICON.ext} size={14} color="#1E9E6A" width={2.2} />{c.button.label}
-              </a>
+          {confirm && manage ? (
+            <div role="alertdialog" aria-label={`Delete this ${what}?`} className="flex flex-col gap-2.5 border border-[#f3c9cd] bg-[#fdf5f6] rounded-[12px] px-3.5 py-3">
+              <span className="font-(family-name:--font-display) font-extrabold text-[14px] text-tn-ink">Delete this {what}?</span>
+              <span className="text-[13px] text-foreground leading-[1.5] [text-wrap:pretty]">
+                It comes off the Agenda for everyone{item.edit?.google ? ', and off the team Google Calendar' : ''}. This cannot be undone.
+              </span>
+              {error && <p role="alert" className="m-0 text-[12.5px] font-semibold text-[#c8323d]">{error}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" disabled={busy} onClick={() => { setConfirm(false); setError(null) }} className={`${BTN_MODAL_WHITE} cursor-pointer`}>Keep it</button>
+                <button type="button" disabled={busy} onClick={() => void remove()}
+                  className="inline-flex items-center rounded-[10px] px-[18px] py-[11px] border-0 bg-[#c8323d] text-[#ffffff] font-(family-name:--font-display) font-extrabold text-[13px] leading-[normal] cursor-pointer hover:bg-[#b02a34] disabled:opacity-45 disabled:cursor-not-allowed">
+                  {busy ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          ) : (c.button || manage) && (
+            <div className="flex justify-end gap-2 flex-wrap">
+              {manage && <>
+                <button type="button" onClick={() => setConfirm(true)} className={ROW_BTN}>
+                  <Icon d={ICON.trash} size={14} color={BTN_ICON.white} width={2.2} />Delete
+                </button>
+                <button type="button" onClick={manage.onEdit} className={ROW_BTN}>
+                  <Icon d={AG_ICON.edit} size={14} color={BTN_ICON.white} width={2.2} />Edit
+                </button>
+              </>}
+              {c.button && (
+                <a href={c.button.href} target="_blank" rel="noopener noreferrer" className={ROW_BTN}>
+                  <Icon d={AG_ICON.ext} size={14} color="#1E9E6A" width={2.2} />{c.button.label}
+                </a>
+              )}
             </div>
           )}
         </div>
