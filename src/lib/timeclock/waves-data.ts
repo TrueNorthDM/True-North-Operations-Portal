@@ -124,32 +124,43 @@ export interface SkippedEntry {
   deletedInTsheets: boolean
   firstSeenAt: string
   decision: string | null
+  decidedAt: string | null
+  decidedByName: string | null
+  decisionReason: string | null
 }
 
 type SkippedRow = {
   external_id: number; person_id: string; entry_date: string; starts_on: string; duration_seconds: number
   started_at: string | null; ended_at: string | null; job_path: string | null; kind: string | null; state: string | null
   notes: string | null; fields: unknown; already_in_entries: boolean; deleted_in_tsheets_at: string | null
-  first_seen_at: string; decision: string | null
+  first_seen_at: string; decision: string | null; decided_at: string | null; decided_by: string | null; decision_reason?: string | null
 }
 
 /** Every entry set aside, newest day first, with the person's name and the fields by label. Empty before migration 129. */
 export async function loadSkippedEntries(c: Db): Promise<SkippedEntry[]> {
   const rows: SkippedRow[] = []
+  const BASE = 'external_id, person_id, entry_date, starts_on, duration_seconds, started_at, ended_at, job_path, kind, state, notes, fields, already_in_entries, deleted_in_tsheets_at, first_seen_at, decision, decided_at, decided_by'
+  // decision_reason arrives with migration 130: until it runs, read without it.
+  let columns = `${BASE}, decision_reason`
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await c.from('tc_import_skipped')
-      .select('external_id, person_id, entry_date, starts_on, duration_seconds, started_at, ended_at, job_path, kind, state, notes, fields, already_in_entries, deleted_in_tsheets_at, first_seen_at, decision')
+    let res = await c.from('tc_import_skipped').select(columns)
       .order('entry_date', { ascending: false }).order('external_id', { ascending: false }).range(from, from + 999)
+    if (res.error && columns !== BASE && /decision_reason/.test(res.error.message)) {
+      columns = BASE
+      res = await c.from('tc_import_skipped').select(columns)
+        .order('entry_date', { ascending: false }).order('external_id', { ascending: false }).range(from, from + 999)
+    }
+    const { data, error } = res
     if (error) {
       if (missingTable(error)) return []
       throw new Error(`The entries set aside could not be read: ${error.message}`)
     }
-    const page = (data ?? []) as SkippedRow[]
+    const page = (data ?? []) as unknown as SkippedRow[]
     rows.push(...page)
     if (page.length < 1000) break
   }
   if (!rows.length) return []
-  const ids = [...new Set(rows.map(r => r.person_id))]
+  const ids = [...new Set(rows.flatMap(r => [r.person_id, r.decided_by].filter((x): x is string => !!x)))]
   const [people, fieldDefs] = await Promise.all([
     c.from('people').select('id, full_name').in('id', ids),
     c.from('tc_fields').select('id, name'),
@@ -177,5 +188,8 @@ export async function loadSkippedEntries(c: Db): Promise<SkippedEntry[]> {
     deletedInTsheets: !!r.deleted_in_tsheets_at,
     firstSeenAt: r.first_seen_at,
     decision: r.decision,
+    decidedAt: r.decided_at,
+    decidedByName: r.decided_by ? nameOf.get(r.decided_by) ?? null : null,
+    decisionReason: r.decision_reason ?? null,
   }))
 }

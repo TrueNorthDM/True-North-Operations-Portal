@@ -3459,9 +3459,11 @@ export type Database = {
       tc_import_skipped: {
         Row: {
           already_in_entries: boolean
+          counted_entry_id: number | null
           decided_at: string | null
           decided_by: string | null
           decision: string | null
+          decision_reason: string | null
           deleted_in_tsheets_at: string | null
           duration_seconds: number
           ended_at: string | null
@@ -3483,9 +3485,11 @@ export type Database = {
         }
         Insert: {
           already_in_entries?: boolean
+          counted_entry_id?: number | null
           decided_at?: string | null
           decided_by?: string | null
           decision?: string | null
+          decision_reason?: string | null
           deleted_in_tsheets_at?: string | null
           duration_seconds?: number
           ended_at?: string | null
@@ -3507,9 +3511,11 @@ export type Database = {
         }
         Update: {
           already_in_entries?: boolean
+          counted_entry_id?: number | null
           decided_at?: string | null
           decided_by?: string | null
           decision?: string | null
+          decision_reason?: string | null
           deleted_in_tsheets_at?: string | null
           duration_seconds?: number
           ended_at?: string | null

@@ -22,6 +22,8 @@ export interface SettingsSection {
   editable?: boolean
   /** A gold "New" tag beside the label (Timesheet periods, 16 October 2026). */
   isNew?: boolean
+  /** A count waiting for someone, shown beside the label in place of "New" (North Time rollout, 27 October 2026). */
+  badge?: { count: number; label: string }
 }
 
 
@@ -77,7 +79,9 @@ export function SettingsNav({
                 <span className="inline-flex w-[17px] h-[17px] items-center justify-center shrink-0">{s.icon}</span>
                 <span className="flex-1">{s.label}</span>
                 {/* NEW marks a section not opened yet; the open one does not need it (Company Settings.dc.html). */}
-                {s.isNew && !on && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-0.5 leading-[normal]">New</span>}
+                {s.badge && s.badge.count > 0
+                  ? <span title={s.badge.label} aria-label={s.badge.label} className="font-(family-name:--font-display) font-extrabold text-[11px] text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-px tabular-nums lining-nums leading-[normal]">{s.badge.count}</span>
+                  : s.isNew && !on && <span className="font-(family-name:--font-display) font-extrabold text-[9px] tracking-[.06em] uppercase text-tn-ink bg-[#F2C40A] rounded-full px-[7px] py-0.5 leading-[normal]">New</span>}
               </button>
             )
           })}

@@ -420,8 +420,11 @@ export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: Rol
       <Link href={skippedHref} className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-4 flex items-center gap-3 no-underline hover:border-tn-teal">
         <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
           <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Clocked in TSheets after switching</span>
-          <span className="text-[12.5px] text-muted">{data.setAside ? `${data.setAside} TSheets ${data.setAside === 1 ? 'entry' : 'entries'} set aside, waiting for someone to decide.` : 'Nothing set aside. TSheets entries dated on or after a person\'s start date show here.'}</span>
+          <span className="text-[12.5px] text-muted">{data.setAside ? `${data.setAside} TSheets ${data.setAside === 1 ? 'entry' : 'entries'} set aside, waiting for someone to decide: count it or discard it.` : 'Nothing waiting. TSheets entries dated on or after a person\'s start date show here, and the ones decided stay listed.'}</span>
         </span>
+        {data.setAside > 0 && (
+          <span aria-label={`${data.setAside} to decide`} className="font-(family-name:--font-display) font-extrabold text-[12px] text-tn-ink bg-[#F2C40A] rounded-full px-2 py-0.5 tabular-nums lining-nums leading-[normal]">{data.setAside}</span>
+        )}
         <Icon d="M9 6l6 6-6 6" size={16} color="#1E7D7F" width={2.4} />
       </Link>
 

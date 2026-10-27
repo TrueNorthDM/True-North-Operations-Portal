@@ -183,6 +183,7 @@ const TREE: Node[] = [
       { key: 'cs-reminders-edit', label: 'Turn the reminders on or off', kind: 'action', superOnly: true },
       // North Time rollout (owner, 27 October 2026): the two waves' start dates and who is in each.
       { key: 'cs-rollout', label: 'North Time rollout: the waves, their start dates, and the TSheets entries set aside', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-rollout-decide', label: 'Decide the TSheets entries set aside after the start date: count them as hours, or discard them', kind: 'action', v: [1, 0, 0] },
       { key: 'cs-rollout-edit', label: 'Set the North Time start dates and move people between waves', kind: 'action', superOnly: true },
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },

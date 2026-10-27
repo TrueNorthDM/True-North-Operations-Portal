@@ -463,6 +463,7 @@ export default async function SettingsPage() {
       label: 'North Time rollout',
       icon: RolloutIcon,
       isNew: true,
+      badge: { count: rollout.setAside, label: `${rollout.setAside} TSheets ${rollout.setAside === 1 ? 'entry' : 'entries'} to decide` },
       editable: false,
       content: (
         <div>
