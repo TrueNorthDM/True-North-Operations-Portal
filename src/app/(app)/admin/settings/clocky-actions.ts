@@ -182,7 +182,9 @@ export async function setReminder(input: { key: ReminderKey; on: boolean }): Pro
   if (!(await allowedTo('cs-reminders-edit'))) return no('Only Super Admins change the reminders.')
   if (!REMINDERS.some(r => r.key === input.key)) return no('No such reminder.')
   const c = createAdminClient()
-  const { data } = await c.from('app_settings').select('clocky_reminders').eq('singleton_id', 1).maybeSingle()
+  // Unread is not "none set": the others would be written back as missing, and missing reads as on.
+  const { data, error: readError } = await c.from('app_settings').select('clocky_reminders').eq('singleton_id', 1).maybeSingle()
+  if (readError) { console.error('[settings] reminders:', readError.message); return no(NOT_SAVED) }
   const next = { ...((data?.clocky_reminders ?? {}) as Record<string, boolean>), [input.key]: !!input.on }
   const { error } = await c.from('app_settings').update({ clocky_reminders: next, updated_at: new Date().toISOString() }).eq('singleton_id', 1)
   if (error) { console.error('[settings] reminders:', error.message); return no(NOT_SAVED) }
