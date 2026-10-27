@@ -3809,6 +3809,7 @@ export type Database = {
       }
       tc_safety_events: {
         Row: {
+          allowance: string | null
           at: string
           confirmed_at: string | null
           confirmed_end_at: string | null
@@ -3823,6 +3824,7 @@ export type Database = {
           window_started_at: string
         }
         Insert: {
+          allowance?: string | null
           at?: string
           confirmed_at?: string | null
           confirmed_end_at?: string | null
@@ -3837,6 +3839,7 @@ export type Database = {
           window_started_at: string
         }
         Update: {
+          allowance?: string | null
           at?: string
           confirmed_at?: string | null
           confirmed_end_at?: string | null

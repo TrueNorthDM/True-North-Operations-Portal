@@ -1,6 +1,10 @@
 // The sample data of Clock Safety.dc.html (frames 4A and 4B), worked out the
 // way the prototype's renderVals does, in the shape getClockSafety returns.
-// "Today" is Thu, Oct 15, 2026, New York. Development only.
+// "Today" is Thu, Oct 15, 2026, New York. Development only. The stops at the
+// hours allowance (LIMIT, 27 October 2026) are not in the prototype: a few are
+// added so the "Allowance reached" reason shows.
+
+type Row = [string, string, string, string, string, string | null, boolean, string | null]
 
 import type { ClockSafetyData } from '@/lib/timeclock/clocky-types'
 import { dayLabel } from '@/lib/timeclock/format'
@@ -27,6 +31,16 @@ const OCC: [string, string, string, string, string, string | null, boolean][] = 
   ['2026-08-14', 'Clarise Nixon', '2 - i7 Marketing › Content', '7:00 AM', '12:00 PM', '11:30 AM', false],
   ['2026-07-30', 'Wendy Cacka', '2 - i7 Marketing › Web Dev', '8:00 AM', '1:00 PM', '12:15 PM', false],
 ]
+// [day, who, job, clock started, stopped at the allowance, the allowance]
+const LIMIT: [string, string, string, string, string, string][] = [
+  ['2026-10-12', 'Samuel Manzi', '1 - True North › Web Dev', '9:00 AM', '11:45 AM', '40h 00m allowance for the week of Oct 11'],
+  ['2026-09-30', 'Cheyenne Wilson', '2 - i7 Marketing › Content', '1:00 PM', '3:20 PM', '120h 00m allowance for September'],
+]
+// Every stop, newest first; the last field is the allowance (null: the 5-hour check).
+const ALL: Row[] = [
+  ...OCC.map(x => [...x, null] as Row),
+  ...LIMIT.map(([d, who, job, start, stop, al]) => [d, who, job, start, stop, null, false, al] as Row),
+].sort((a, b) => (a[0] < b[0] ? 1 : -1))
 // "Keep going" per person, July to October.
 const KEEP: Record<string, number[]> = { 'Justus Tsofa': [2, 5, 4, 6], 'Samuel Manzi': [1, 3, 4, 5], 'Cheyenne Wilson': [0, 2, 3, 4], 'Wendy Cacka': [1, 1, 2, 2], 'Clarise Nixon': [0, 1, 1, 1], 'Hosea Moturi': [0, 0, 1, 1] }
 
@@ -39,29 +53,31 @@ export function sampleSafety(o: { period: Period; q: string; empty: boolean; acc
   const q = o.q.trim().toLowerCase()
   const from = o.period === 'month' ? '2026-10-01' : o.period === '3m' ? '2026-08-01' : '0000'
   const months = o.period === 'month' ? [3] : o.period === '3m' ? [1, 2, 3] : [0, 1, 2, 3]
-  let occ = o.empty ? [] : OCC.filter(x => x[0] >= from)
+  let occ = o.empty ? [] : ALL.filter(x => x[0] >= from)
   if (q) occ = occ.filter(x => x[1].toLowerCase().includes(q))
   const keepFor = (n: string) => months.reduce((a, i) => a + KEEP[n][i], 0)
   const keepPeople = Object.keys(KEEP).filter(n => !q || n.toLowerCase().includes(q))
   const names = [...new Set([...occ.map(x => x[1]), ...(o.empty ? [] : keepPeople)])]
   const byPerson = names.map(n => {
     const mine = occ.filter(x => x[1] === n)
-    const all = OCC.filter(x => x[1] === n)
+    const all = ALL.filter(x => x[1] === n)
     return {
       personId: n,
       name: n,
       team: { name: TEAM[n], color: TEAMS[TEAM[n]] },
-      autoStops: mine.length,
+      autoStops: mine.filter(x => !x[7]).length,
+      allowanceStops: mine.filter(x => x[7]).length,
       keptGoing: keepFor(n),
       last: all.length ? `${dayLabel(all[0][0])}, 2026` : null,
       byMonth: ['07', '08', '09', '10'].map(m => ({ month: `2026-${m}`, count: all.filter(x => x[0].slice(5, 7) === m).length })),
     }
-  }).sort((a, b) => b.autoStops - a.autoStops || b.keptGoing - a.keptGoing)
+  }).sort((a, b) => (b.autoStops + b.allowanceStops) - (a.autoStops + a.allowanceStops) || b.keptGoing - a.keptGoing)
   return {
     access: o.access,
     zone: 'America/New_York',
     cards: {
-      autoStops: occ.length,
+      autoStops: occ.filter(x => !x[7]).length,
+      allowanceStops: occ.filter(x => x[7]).length,
       people: new Set(occ.map(x => x[1])).size,
       confirmed: occ.filter(x => x[5]).length,
       keptGoing: o.empty ? 0 : keepPeople.reduce((a, n) => a + keepFor(n), 0),
@@ -73,6 +89,8 @@ export function sampleSafety(o: { period: Period; q: string; empty: boolean; acc
       personId: x[1],
       name: x[1],
       job: x[2],
+      reason: x[7] ? 'allowance' as const : 'five_hours' as const,
+      allowance: x[7],
       clockStarted: x[3],
       stoppedAt: x[4],
       confirmedEnd: x[5],

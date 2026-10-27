@@ -15,6 +15,7 @@ import { roundIso, recordedSeconds } from './rounding'
 import { FIELD_LABEL, splitAtMidnight, firstOverlap, type Timed } from './entry-rules'
 import { lockedBy, type SubmittedPeriod } from './periods'
 import { safetyState, stopPoint, windowStart, sessionStart } from './safety'
+import { limitStopEvent } from './safety-stops'
 import type { Snapshot } from './history'
 
 type Client = Db
@@ -279,13 +280,22 @@ export interface LimitStop {
  * 25 October 2026), at that instant, with a line in its history naming the
  * allowance ("140h 00m allowance for October"). It is not the safety net's
  * automatic stop: the clock was not forgotten, the hours ran out, so there is
- * no end time to confirm (no auto_stopped_at) and no Clock safety row. Does
- * nothing (null) for a clock another write already ended.
+ * no end time to confirm (no auto_stopped_at). Clock safety lists it with its
+ * own reason, "Allowance reached" (a limit_stop row, migration 126); a row
+ * that cannot be written is logged and the clock stays stopped. Does nothing
+ * (null) for a clock another write already ended.
  */
-export async function stopAtLimit(c: Client, e: EntryRow, at: { real: string; recorded: string }, zone: string, catalog: Catalog, allowance: string): Promise<LimitStop | null> {
+export async function stopAtLimit(c: Client, e: EntryRow, at: { real: string; recorded: string }, zone: string, catalog: Catalog, allowance: string, now: Date = new Date()): Promise<LimitStop | null> {
   if (e.ended_at !== null || e.kind !== 'clock' || !e.started_at) return null
   const closed = await closeClock(c, e, at.real, zone, { recordedEnd: at.recorded })
   if (!closed) return null
+  try {
+    const ev = await c.from('tc_safety_events')
+      .upsert(limitStopEvent({ ...e, started_at: e.started_at }, closed.lastId, at.real, allowance, now), { onConflict: 'person_id,kind,window_started_at' })
+    if (ev.error) console.error('[clocky] allowance stop not written to Clock safety:', ev.error.message)
+  } catch (err) {
+    console.error('[clocky] allowance stop not written to Clock safety:', (err as Error).message)
+  }
   await audit(c, [{
     entryId: closed.lastId, action: 'auto_stop', by: null,
     before: snapshot(e, catalog),

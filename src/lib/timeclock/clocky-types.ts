@@ -447,6 +447,10 @@ export interface SafetyOccurrence {
   personId: string
   name: string
   job: string
+  /** Why North Time stopped it: the 5-hour check (a forgotten clock) or the hours allowance. */
+  reason: 'five_hours' | 'allowance'
+  /** Allowance stops: the allowance reached ("140h 00m allowance for October"); null otherwise or when not recorded. */
+  allowance: string | null
   /** Times in the viewer's zone. */
   clockStarted: string
   stoppedAt: string
@@ -461,8 +465,9 @@ export interface SafetyOccurrence {
 export interface ClockSafetyData {
   access: 'full' | 'read'
   zone: string
-  cards: { autoStops: number; people: number; confirmed: number; keptGoing: number }
-  byPerson: { personId: string; name: string; team: { name: string; color: string | null } | null; autoStops: number; keptGoing: number; last: string | null; byMonth: { month: string; count: number }[] }[]
+  /** autoStops: the 5-hour stops (the ones with an end to confirm); allowanceStops: the stops at the hours allowance. */
+  cards: { autoStops: number; allowanceStops: number; people: number; confirmed: number; keptGoing: number }
+  byPerson: { personId: string; name: string; team: { name: string; color: string | null } | null; autoStops: number; allowanceStops: number; keptGoing: number; last: string | null; byMonth: { month: string; count: number }[] }[]
   occurrences: SafetyOccurrence[]
 }
 

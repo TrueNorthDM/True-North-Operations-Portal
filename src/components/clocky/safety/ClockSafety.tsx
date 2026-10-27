@@ -2,8 +2,9 @@
 
 /**
  * Clock safety (design handoff of 16 October 2026, Clock Safety.dc.html frames
- * 4A with data and 4B empty): every time Clocky stopped a forgotten clock.
- * Totals, by person (with "Pressed Keep going" and a month by month bar), and
+ * 4A with data and 4B empty): every time Clocky stopped a forgotten clock,
+ * and (since 27 October 2026) every clock stopped at its hours allowance,
+ * each with its reason. Totals, by person (with "Pressed Keep going" and a month by month bar), and
  * each occurrence with the real end the person confirmed. Super Admins have it
  * in full, Admins read it; nothing here changes hours.
  *
@@ -21,7 +22,8 @@ import { withViewAs } from '@/components/ViewAsKeeper'
 import { getClockSafety } from '@/app/(app)/clocky-hours/safety/actions'
 import { dayLabel, initials } from '@/lib/timeclock/format'
 import { MONTH_LONG, MONTH_SHORT } from '@/lib/format/months'
-import type { ClockSafetyData, Result } from '@/lib/timeclock/clocky-types'
+import type { ClockSafetyData, Result, SafetyOccurrence } from '@/lib/timeclock/clocky-types'
+import { STOP_REASON_LABEL } from '@/lib/timeclock/safety-stops'
 
 export type SafetyPeriod = 'month' | '3m' | 'all'
 export type SafetyLoad = (input: { period: SafetyPeriod; q: string }) => Promise<Result<{ data: ClockSafetyData }>>
@@ -34,10 +36,25 @@ const PERIODS: { key: SafetyPeriod; label: string }[] = [
 const CARD_PERIOD: Record<SafetyPeriod, string> = { month: 'this month', '3m': 'in 3 months', all: 'in total' }
 
 const LABEL = 'font-(family-name:--font-display) font-extrabold text-[10.5px] tracking-[.08em] uppercase text-muted'
-const PERSON_GRID = 'grid grid-cols-[minmax(200px,1.4fr)_150px_150px_180px_130px]'
+const PERSON_GRID = 'grid grid-cols-[minmax(200px,1.4fr)_150px_150px_150px_180px_130px]'
 // The prototype's columns, with "Stopped by Clocky" and "Kept going earlier" at 150px:
-// at its 120px and 110px those headings ran into the next one.
-const OCC_GRID = 'grid grid-cols-[110px_160px_minmax(210px,1fr)_110px_150px_150px_90px_150px_90px]'
+// at its 120px and 110px those headings ran into the next one. "Reason" (27
+// October 2026) tells a 5-hour stop from one at the hours allowance.
+const OCC_GRID = 'grid grid-cols-[110px_160px_minmax(210px,1fr)_190px_110px_150px_150px_90px_150px_90px]'
+
+/** The reason chip: neutral for the 5-hour check, amber for the allowance (with the allowance it reached below). */
+function ReasonCell({ o }: { o: SafetyOccurrence }) {
+  const allowance = o.reason === 'allowance'
+  return (
+    <div className="px-3 py-2.5 flex flex-col items-start gap-0.5 min-w-0">
+      <span
+        className="text-[11.5px] font-bold rounded-full px-[9px] py-[3px] whitespace-nowrap"
+        style={allowance ? { background: '#fdf8e7', color: '#8a6d1a' } : { background: 'var(--chip-neutral-bg)', color: 'var(--chip-neutral-fg)' }}
+      >{STOP_REASON_LABEL[o.reason]}</span>
+      {allowance && o.allowance && <span className="text-[11.5px] text-muted truncate max-w-full" title={o.allowance}>{o.allowance}</span>}
+    </div>
+  )
+}
 
 /** "New York" from "America/New_York". */
 const zoneCity = (zone: string) => (zone.split('/').pop() ?? zone).replace(/_/g, ' ')
@@ -81,6 +98,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
   const occ = data.occurrences
   const cards = [
     { label: `Auto clock-outs ${CARD_PERIOD[period]}`, value: String(data.cards.autoStops), color: data.cards.autoStops ? '#c8323d' : '#012358' },
+    { label: `Allowance reached ${CARD_PERIOD[period]}`, value: String(data.cards.allowanceStops), color: data.cards.allowanceStops ? '#8a6d1a' : '#012358' },
     { label: 'People affected', value: String(data.cards.people), color: '#012358' },
     { label: 'Confirmed end times', value: `${data.cards.confirmed} of ${data.cards.autoStops}`, color: '#012358' },
     { label: 'Kept going (answered in time)', value: String(data.cards.keptGoing), color: '#0d7a4f' },
@@ -94,7 +112,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
       <div>
         <Breadcrumb parents={['/clocky-hours']} now="Clock safety" />
         <h1 className="m-0 mt-0.5 font-(family-name:--font-display) font-extrabold text-[30px] text-tn-ink">Clock safety</h1>
-        <p className="m-0 mt-1 text-[13.5px] text-muted">Every time North Time stopped a forgotten clock. Times in your time zone ({zoneCity(data.zone)}).</p>
+        <p className="m-0 mt-1 text-[13.5px] text-muted">Every time North Time stopped a clock: a forgotten one at the 5-hour check, or one that reached its hours allowance. Times in your time zone ({zoneCity(data.zone)}).</p>
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
@@ -126,10 +144,10 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
           <section className="flex flex-col gap-2.5">
             <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">By person</h2>
             <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
-              <div className="min-w-[720px]">
+              <div className="min-w-[870px]">
                 <div className={`${PERSON_GRID} bg-subtle border-b border-[var(--panel-border)]`}>
-                  {(['Person', 'Auto clock-outs', 'Pressed Keep going', 'Last occurrence', 'By month'] as const).map((h, i) => (
-                    <div key={h} className={`px-3.5 py-2.5 ${LABEL} ${i === 1 || i === 2 ? 'text-right' : ''}`}>{h}</div>
+                  {(['Person', 'Auto clock-outs', 'Allowance reached', 'Pressed Keep going', 'Last occurrence', 'By month'] as const).map((h, i) => (
+                    <div key={h} className={`px-3.5 py-2.5 ${LABEL} ${i >= 1 && i <= 3 ? 'text-right' : ''}`}>{h}</div>
                   ))}
                 </div>
                 {data.byPerson.map(p => (
@@ -146,6 +164,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
                       </span>
                     </div>
                     <div className="px-3.5 py-2.5 text-right font-(family-name:--font-display) font-extrabold text-[15px] tabular-nums lining-nums" style={{ color: p.autoStops ? '#c8323d' : 'var(--faint)' }}>{p.autoStops}</div>
+                    <div className="px-3.5 py-2.5 text-right font-(family-name:--font-display) font-extrabold text-[15px] tabular-nums lining-nums" style={{ color: p.allowanceStops ? '#8a6d1a' : 'var(--faint)' }}>{p.allowanceStops}</div>
                     <div className="px-3.5 py-2.5 text-right font-semibold text-[13.5px] text-foreground tabular-nums lining-nums">{p.keptGoing}</div>
                     <div className="px-3.5 py-2.5 text-[13px] text-foreground tabular-nums lining-nums">{p.last ?? 'Never'}</div>
                     <div
@@ -166,7 +185,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
             </div>
             {months.length > 0 && (
               <p className="m-0 text-[12px] text-muted">
-                Bars: automatic clock-outs per month, {MONTH_LONG[Number(months[0].slice(5, 7)) - 1]} to {MONTH_LONG[Number(months[months.length - 1].slice(5, 7)) - 1]}.
+                Bars: clocks North Time stopped per month, for either reason, {MONTH_LONG[Number(months[0].slice(5, 7)) - 1]} to {MONTH_LONG[Number(months[months.length - 1].slice(5, 7)) - 1]}.
               </p>
             )}
           </section>
@@ -174,22 +193,27 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
           <section className="flex flex-col gap-2.5">
             <h2 className="m-0 font-(family-name:--font-display) font-extrabold text-[18px] text-tn-ink">Every occurrence</h2>
             <div className="bg-white border border-[var(--panel-border)] rounded-[14px] overflow-auto">
-              <div className="min-w-[1110px]">
+              <div className="min-w-[1300px]">
                 <div className={`${OCC_GRID} bg-subtle border-b border-[var(--panel-border)]`}>
-                  {['Date', 'Person', 'Job', 'Clock started', 'Stopped by North Time', 'Real end confirmed', 'Difference', 'Kept going earlier', 'Entry'].map(h => (
+                  {['Date', 'Person', 'Job', 'Reason', 'Clock started', 'Stopped by North Time', 'Real end confirmed', 'Difference', 'Kept going earlier', 'Entry'].map(h => (
                     <div key={h} className={`px-3 py-2.5 whitespace-nowrap ${LABEL}`}>{h}</div>
                   ))}
                 </div>
                 {occ.map(o => {
                   const diff = diffText(o.diffMinutes)
+                  // At the allowance the hours ran out: there is no end to confirm.
+                  const atLimit = o.reason === 'allowance'
                   return (
                     <div key={o.eventId} className={`${OCC_GRID} items-center border-b border-[var(--row-rule)] text-[13px] tabular-nums lining-nums hover:bg-[var(--row-hover)]`}>
                       <div className="px-3 py-2.5 text-tn-ink font-semibold whitespace-nowrap">{dayLabel(o.date)}</div>
                       <div className="px-3 py-2.5 text-tn-ink font-(family-name:--font-display) font-bold whitespace-nowrap">{o.name}</div>
                       <div className="px-3 py-2.5 text-foreground truncate" title={o.job}>{o.job}</div>
+                      <ReasonCell o={o} />
                       <div className="px-3 py-2.5 text-foreground whitespace-nowrap">{o.clockStarted}</div>
                       <div className="px-3 py-2.5 text-foreground whitespace-nowrap">{o.stoppedAt}</div>
-                      <div className={`px-3 py-2.5 whitespace-nowrap ${o.confirmedEnd ? 'text-foreground' : 'text-[#c8323d] font-bold'}`}>{o.confirmedEnd ?? 'Not confirmed'}</div>
+                      {atLimit
+                        ? <div className="px-3 py-2.5 whitespace-nowrap text-muted" title="The clock reached the hours allowance: there is no end to confirm.">Not needed</div>
+                        : <div className={`px-3 py-2.5 whitespace-nowrap ${o.confirmedEnd ? 'text-foreground' : 'text-[#c8323d] font-bold'}`}>{o.confirmedEnd ?? 'Not confirmed'}</div>}
                       <div className="px-3 py-2.5 font-bold whitespace-nowrap" style={{ color: diff.color }}>{diff.text}</div>
                       <div className="px-3 py-2.5 text-foreground whitespace-nowrap">{o.keptGoingEarlier ? 'Yes' : 'No'}</div>
                       <div className="px-3 py-2.5 whitespace-nowrap">
@@ -202,7 +226,7 @@ export function ClockSafety({ initial, load = getClockSafety as SafetyLoad }: {
                 })}
               </div>
             </div>
-            <p className="m-0 text-[12px] text-muted">&quot;Kept going earlier&quot; means the person answered &quot;Still working?&quot; at least once that day before the clock stopped.</p>
+            <p className="m-0 text-[12px] text-muted">&quot;Kept going earlier&quot; means the person answered &quot;Still working?&quot; at least once that day before the clock stopped. &quot;Allowance reached&quot; means the clock stopped where the person used up their hours allowance; to log more they ask for extra hours.</p>
           </section>
         </>
       )}

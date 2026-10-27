@@ -125,7 +125,7 @@ export async function stopClockIfDue(c: Db, e: EntryRow, now: Date, dir: Directo
     const ws = windowStart(e)
     const safetyAt = ws && safetyState(ws, now).due ? Date.parse(stopPoint(ws, e.started_at).real) : null
     if (lim?.due && (safetyAt === null || Date.parse(lim.at.real) <= safetyAt)) {
-      const stop = await stopAtLimit(c, e, lim.at, dir.zoneOf(e.person_id), catalog, lim.allowance)
+      const stop = await stopAtLimit(c, e, lim.at, dir.zoneOf(e.person_id), catalog, lim.allowance, now)
       if (!stop) return null
       const s = statusOf(w, [e.id])
       const words = wordsOf(w, s)

@@ -1,7 +1,8 @@
 /**
  * Clock safety's data (design handoff of 16 October 2026, SPEC section 10,
  * Clock Safety.dc.html frames 4A and 4B): every automatic clock-out in a
- * period, by person (with how often they pressed "Keep going" and a month by
+ * period (the 5-hour stops, and since 27 October 2026 the stops at the hours
+ * allowance, each with its reason), by person (with how often they pressed "Keep going" and a month by
  * month count) and one by one (the job, when the clock started, where Clocky
  * stopped it, the real end the person confirmed, the difference, and whether
  * they had kept going earlier that day). Times in the viewer's zone. Super
@@ -16,10 +17,11 @@ import { roundIso } from './rounding'
 import { addDays, monthStart } from './periods'
 import { safetyAccess } from './scope'
 import type { ClockSafetyData, SafetyOccurrence } from './clocky-types'
+import { STOP_KINDS, isStopKind, stopCounts, stopReasonOf } from './safety-stops'
 
 export type SafetyPeriod = 'month' | '3m' | 'all'
 
-type Event = { id: number; person_id: string; entry_id: number | null; kind: string; at: string; window_started_at: string; session_started_at: string | null; jobcode_id: number | null; stopped_at: string | null; confirmed_end_at: string | null; confirmed_at: string | null; flagged: boolean }
+type Event = { id: number; person_id: string; entry_id: number | null; kind: string; at: string; window_started_at: string; session_started_at: string | null; jobcode_id: number | null; stopped_at: string | null; confirmed_end_at: string | null; confirmed_at: string | null; flagged: boolean; allowance?: string | null }
 
 /** The first day a period covers, in the viewer's calendar: this month, the last three, or everything. */
 export function safetyFrom(period: SafetyPeriod, today: string): string | null {
@@ -43,20 +45,20 @@ export async function loadClockSafety(v: Viewer, now: Date, opts: { period: Safe
   // A day early in UTC, so the viewer's own calendar decides the edge.
   const fromIso = from ? new Date(Date.parse(`${addDays(from, -1)}T00:00:00Z`)).toISOString() : null
   const events = await allRows<Event>((a, b) => {
-    let q = c.from('tc_safety_events').select('*').in('kind', ['auto_stop', 'keep_going'])
+    let q = c.from('tc_safety_events').select('*').in('kind', [...STOP_KINDS, 'keep_going'])
     if (fromIso) q = q.gte('at', fromIso)
     return q.order('at').range(a, b)
   }, 'Clock safety could not be read')
   // Every stop, for each person's last one and the sparkline (always the last four months).
   const allStops = await allRows<{ person_id: string; stopped_at: string | null; at: string }>(
-    (a, b) => c.from('tc_safety_events').select('person_id, stopped_at, at').eq('kind', 'auto_stop').order('at').range(a, b), 'Clock safety could not be read')
+    (a, b) => c.from('tc_safety_events').select('person_id, stopped_at, at').in('kind', [...STOP_KINDS]).order('at').range(a, b), 'Clock safety could not be read')
 
   const q = (opts.q ?? '').trim().toLowerCase()
   const name = (id: string) => dir.nameOf(id)
   const inPeriod = (iso: string) => !from || localDate(iso, v.zone) >= from
   const match = (id: string) => !q || name(id).toLowerCase().includes(q)
 
-  const stops = events.filter(e => e.kind === 'auto_stop' && inPeriod(e.stopped_at ?? e.at) && match(e.person_id))
+  const stops = events.filter(e => isStopKind(e.kind) && inPeriod(e.stopped_at ?? e.at) && match(e.person_id))
     .sort((a, b) => ((b.stopped_at ?? b.at) < (a.stopped_at ?? a.at) ? -1 : 1))
   const keeps = events.filter(e => e.kind === 'keep_going' && inPeriod(e.at) && match(e.person_id))
 
@@ -72,6 +74,8 @@ export async function loadClockSafety(v: Viewer, now: Date, opts: { period: Safe
       personId: e.person_id,
       name: name(e.person_id),
       job: catalog.pathOf(e.jobcode_id),
+      reason: stopReasonOf(e.kind),
+      allowance: e.allowance ?? null,
       clockStarted: timeLabel(roundIso(e.session_started_at ?? e.window_started_at), v.zone),
       stoppedAt: timeLabel(stop, v.zone),
       confirmedEnd: conf ? timeLabel(conf, v.zone) : null,
@@ -98,23 +102,19 @@ export async function loadClockSafety(v: Viewer, now: Date, opts: { period: Safe
       personId: id,
       name: name(id),
       team: team ? { name: team.name, color: team.color } : null,
-      autoStops: stops.filter(e => e.person_id === id).length,
+      autoStops: stops.filter(e => e.person_id === id && stopReasonOf(e.kind) === 'five_hours').length,
+      allowanceStops: stops.filter(e => e.person_id === id && stopReasonOf(e.kind) === 'allowance').length,
       keptGoing: keeps.filter(e => e.person_id === id).length,
       // "Thu, Oct 15, 2026", as Clock Safety.dc.html writes the last occurrence.
       last: last ? lastLabel(localDate(last, v.zone)) : null,
       byMonth: months.map(m => ({ month: m, count: mine.filter(s => localDate(s.stopped_at ?? s.at, v.zone).startsWith(m)).length })),
     }
-  }).sort((a, b) => b.autoStops - a.autoStops || b.keptGoing - a.keptGoing)
+  }).sort((a, b) => (b.autoStops + b.allowanceStops) - (a.autoStops + a.allowanceStops) || b.keptGoing - a.keptGoing)
 
   return {
     access,
     zone: v.zone,
-    cards: {
-      autoStops: stops.length,
-      people: new Set(stops.map(e => e.person_id)).size,
-      confirmed: stops.filter(e => e.confirmed_at).length,
-      keptGoing: keeps.length,
-    },
+    cards: { ...stopCounts(stops), keptGoing: keeps.length },
     byPerson,
     occurrences,
   }
