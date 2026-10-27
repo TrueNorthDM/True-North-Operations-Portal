@@ -9,17 +9,22 @@
  *        details, payment terms, and how an invoice reads
  *   13C  RemindersSettings      the timesheet reminders, on or off, and the
  *        bell lines part 2 adds
+ *   RolloutSettings              North Time rollout: the two waves' start
+ *        dates and who is in each (owner, 27 October 2026)
  *
  * Read only below Super Admin ("Read only at the Admin level.").
  */
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { IntegrationsData, InvoiceSettingsData } from '@/lib/timeclock/company-settings'
 import type { ReminderKey } from '@/lib/timeclock/reminder-kinds'
 import { REMINDERS } from '@/lib/timeclock/reminder-kinds'
 import { docNumber } from '@/lib/timeclock/doc-number'
+import type { RolloutData } from '@/lib/timeclock/waves-data'
+import { startDayLabel } from '@/lib/timeclock/waves'
 import { InvoiceDoc } from '@/components/clocky/invoices/InvoiceDoc'
 import { openDrawer } from '@/components/NotificationButton'
 import { FieldLabel, Icon, Modal, MODAL_TITLE, TEXTAREA_PLAIN, Toast, type ToastState } from '@/components/clocky/entries/ui'
@@ -336,6 +341,114 @@ export function RemindersSettings({ on, canEdit, set }: { on: Record<ReminderKey
             <div className="md:px-[18px] md:py-[9px] text-tn-teal font-(family-name:--font-display) font-extrabold">{area}</div>
             <div className="md:px-3 md:py-[9px] text-tn-ink font-semibold leading-[1.45]">{line}</div>
             <div className={`md:px-3 md:py-[9px] leading-[1.45] ${/red/.test(to) ? 'text-[#c8323d]' : 'text-foreground'}`}>{to}</div>
+          </div>
+        ))}
+      </div>
+      <Toast toast={toast} />
+    </div>
+  )
+}
+
+// ── North Time rollout ──────────────────────────────────────────────────────
+
+export interface RolloutApi {
+  saveRolloutDates(i: { wave1: string; wave2: string }): Promise<Done>
+  moveToWave(i: { personId: string; wave: 1 | 2 | null }): Promise<Done>
+}
+
+/**
+ * The two waves (owner, 27 October 2026): wave 1 is everyone at Team Leader
+ * level or above, plus anyone added by hand; wave 2 is everyone else. Each
+ * starts on its own day; until a day is set nothing changes for its people.
+ */
+export function RolloutSettings({ data, canEdit, api, skippedHref }: { data: RolloutData; canEdit: boolean; api: RolloutApi; skippedHref: string }) {
+  const router = useRouter()
+  const [toast, say] = useToast()
+  const [busy, setBusy] = useState(false)
+  const [d1, setD1] = useState(data.dates[1] ?? '')
+  const [d2, setD2] = useState(data.dates[2] ?? '')
+  const run = async (p: () => Promise<Done>) => {
+    setBusy(true)
+    try {
+      const r = await p()
+      say(r.ok ? { text: r.toast } : { text: r.error, error: true })
+      if (r.ok) router.refresh()
+    } catch {
+      say({ text: 'That did not go through. Check your connection and try again.', error: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+  const waves = ([1, 2] as const).map(w => ({ w, date: data.dates[w], people: data.people.filter(p => p.wave === w) }))
+  const changed = d1 !== (data.dates[1] ?? '') || d2 !== (data.dates[2] ?? '')
+  return (
+    <div className="flex flex-col gap-[18px]">
+      {!canEdit && <ReadOnly />}
+      {!data.ready && (
+        <div role="alert" className="text-[13px] text-[#8a6d1a] bg-[var(--warn-bg)] rounded-[12px] px-4 py-3 leading-[1.5]">
+          The rollout tables are not in the database yet (migration 129). Until they are, nobody has a start date and nothing changes.
+        </div>
+      )}
+      <div className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-5 flex flex-col gap-3.5">
+        <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Start dates</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {([[1, d1, setD1, 'Wave 1: Team Leaders and above'], [2, d2, setD2, 'Wave 2: everyone else']] as const).map(([w, v, setV, label]) => (
+            <label key={w} className="flex flex-col gap-[5px]">
+              <span className={LABEL}>{label}</span>
+              <input type="date" value={v} onChange={e => setV(e.target.value)} disabled={!canEdit || busy || !data.ready} className={`${INPUT} tabular-nums lining-nums`} />
+              <span className="text-[12px] text-muted">{v ? `Starts on ${startDayLabel(v)}, in each person's own time zone.` : 'Not set: nothing changes for these people yet.'}</span>
+            </label>
+          ))}
+        </div>
+        <div className="text-[12.5px] text-foreground bg-subtle rounded-[10px] px-3 py-2.5 leading-[1.55]">
+          From a person&apos;s start date, North Time&apos;s clock starts for them, and the TSheets import stops taking their entries dated on or after it: those are set aside for someone to decide, never dropped. Before it, Clock in tells them the day they start and to keep clocking in TSheets. Adding time by hand and approvals are not affected.
+        </div>
+        <div className="text-[12.5px] text-foreground leading-[1.55]">
+          TSheets accounts: {data.archiveOn
+            ? <b className="text-tn-ink">each person&apos;s TSheets account is archived on their start date.</b>
+            : <>archiving is <b className="text-tn-ink">off</b> (TSHEETS_ARCHIVE_USERS). The daily job only writes to the server log what it would archive.</>}
+        </div>
+        {canEdit && (
+          <div className="flex justify-end">
+            <button type="button" disabled={busy || !changed || !data.ready} onClick={() => void run(() => api.saveRolloutDates({ wave1: d1, wave2: d2 }))} className={BTN_N}>
+              <Icon d="M5 12l5 5 9-10" size={14} color={BTN_ICON.navy} width={3} />Save dates
+            </button>
+          </div>
+        )}
+      </div>
+
+      <Link href={skippedHref} className="bg-white border border-[var(--panel-border)] rounded-[16px] px-[22px] py-4 flex items-center gap-3 no-underline hover:border-tn-teal">
+        <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
+          <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Clocked in TSheets after switching</span>
+          <span className="text-[12.5px] text-muted">{data.setAside ? `${data.setAside} TSheets ${data.setAside === 1 ? 'entry' : 'entries'} set aside, waiting for someone to decide.` : 'Nothing set aside. TSheets entries dated on or after a person\'s start date show here.'}</span>
+        </span>
+        <Icon d="M9 6l6 6-6 6" size={16} color="#1E7D7F" width={2.4} />
+      </Link>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+        {waves.map(({ w, date, people }) => (
+          <div key={w} className="bg-white border border-[var(--panel-border)] rounded-[16px] overflow-hidden">
+            <div className="px-[18px] py-3.5 border-b border-[var(--panel-border)] flex flex-col gap-[3px]">
+              <span className="font-(family-name:--font-display) font-extrabold text-[15px] text-tn-ink">Wave {w} · {people.length} {people.length === 1 ? 'person' : 'people'}</span>
+              <span className="text-[12.5px] text-muted">{date ? `Starts on ${startDayLabel(date)}.` : 'No date yet.'} {w === 1 ? 'Team Leader level and above, plus anyone added by hand.' : 'Everyone else.'}</span>
+            </div>
+            {people.length === 0 && <div className="px-[18px] py-3.5 text-[13px] text-muted">Nobody.</div>}
+            {people.map(p => (
+              <div key={p.id} className="flex items-center gap-3 px-[18px] py-2.5 border-b border-[var(--row-rule)] flex-wrap">
+                <span className="flex-1 min-w-[160px] flex flex-col gap-0.5">
+                  <span className="text-[13.5px] text-tn-ink font-bold">{p.name}</span>
+                  <span className="text-[12px] text-muted">{p.levelLabel}{p.by === 'hand' ? ' · moved here by hand' : ''}</span>
+                </span>
+                {canEdit && (
+                  <span className="flex items-center gap-2">
+                    {p.by === 'hand' && (
+                      <button type="button" disabled={busy} onClick={() => void run(() => api.moveToWave({ personId: p.id, wave: null }))} className={BTN_W}>Follow their level</button>
+                    )}
+                    <button type="button" disabled={busy || !data.ready} onClick={() => void run(() => api.moveToWave({ personId: p.id, wave: w === 1 ? 2 : 1 }))} className={BTN_W}>Move to wave {w === 1 ? 2 : 1}</button>
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         ))}
       </div>

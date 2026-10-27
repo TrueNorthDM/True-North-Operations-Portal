@@ -192,8 +192,12 @@ export interface ClockPanelData {
   fields: PanelField[]
   /** Smart defaults: job id -> field id -> the value that job carries most often. */
   defaults: Record<string, Record<string, string>>
-  /** Today's period is submitted: clocking in is refused with this sentence (1N). */
+  /** Today's period is submitted, or the person has not started on North Time yet: clocking in is refused with this sentence (1N). */
   locked: string | null
+  /** The person's North Time start date (their rollout wave), or null while their wave has no date. */
+  startsOn: string | null
+  /** Before the start date: "You start on North Time on Sunday, Nov 22. Until then, keep clocking in TSheets." */
+  notYet: string | null
   period: Period & { label: string; full: string }
   /** No history and no combinations (1B). */
   firstTime: boolean

@@ -45,7 +45,7 @@ const data = (o: Partial<ClockPanelData> = {}): ClockPanelData => ({
   now: et(11, 50, 34), today: '2026-10-15', todayLabel: 'Thu, Oct 15', todaySeconds: 0, todaySpans: [], weekSeconds: 31.25 * 3600, allowance: null,
   running: null, safety: null, toConfirm: [], resume: WEB, combinations: [WEB, HFA], recents: [RECENT], todayByCombination: [],
   jobs: JOBS, folders: FOLDERS, fields: FIELDS, defaults: { 22: { 1: 'True North', 2: 'In-House', 4: 'yes', 5: 'i7-WEBDVT' } },
-  locked: null, period: { start: '2026-10-01', end: '2026-10-31', kind: 'month', label: 'October', full: 'October 2026' },
+  locked: null, startsOn: null, notYet: null, period: { start: '2026-10-01', end: '2026-10-31', kind: 'month', label: 'October', full: 'October 2026' },
   firstTime: false, correctionGoesTo: '', ...o,
 })
 

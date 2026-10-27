@@ -18,3 +18,7 @@ SHELL=/bin/bash
 */5 * * * *  portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-outbox
 # The timesheet reminders, the allowance lines and the change to employee on its day, every hour.
 5 * * * *    portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/clocky-reminders
+# The TSheets account archive on each North Time start date, every hour. Always a dry run here
+# (it logs what it would archive): staging reads the real TSheets account, and archiving needs
+# TSHEETS_ARCHIVE_USERS=on and TSHEETS_ARCHIVE_ON_STAGING=on, neither set in staging.env.
+20 * * * *   portal  PORTAL_ENV=/opt/tnportal/staging.env PORT=3001 PORTAL_LOG_DIR=/opt/tnportal/logs/staging /opt/tnportal/app/deploy/cron/run.sh /api/cron/north-time-archive

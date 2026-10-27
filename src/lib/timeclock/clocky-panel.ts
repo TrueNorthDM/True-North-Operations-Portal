@@ -28,6 +28,8 @@ import { loadPayTerms } from './pay-terms'
 import { addDays, lockedMessage, periodContaining, periodLabel } from './periods'
 import type { ClockChoice, ClockPanelData, PanelFolder, PanelJob, RunningEntry, ToConfirm } from './clocky-types'
 import { catalogueRows } from './job-catalogue'
+import { startDateOf } from './waves-data'
+import { clockGate } from './waves'
 
 export interface ComboRow { id: number; name: string; jobcode_id: number; fields: Record<string, string>; notes: string | null; position: number }
 
@@ -249,6 +251,10 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const rules = rulesFor(me, changes, settings)
   const period = periodContaining(today, rules)
   const lock = lockOn([today], subs.get(me) ?? [])
+  // Before the person's North Time start date (their wave, Company settings >
+  // North Time rollout), the clock does not start: they still clock in TSheets.
+  const startsOn = await northTimeStart(viewer)
+  const notYet = clockGate(startsOn, today)
 
   // What each job fills in: the person's own history first, then the job
   // catalogue's defaults (Company, Project, billable by default; 11A).
@@ -292,11 +298,26 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     folders,
     fields: catalog.fields.map(f => ({ key: f.key, id: f.id, label: f.label, options: f.options, required: f.required, structure: f.structure, families: f.families })),
     defaults,
-    locked: lock ? lockedMessage(lock) : null,
+    locked: notYet ?? (lock ? lockedMessage(lock) : null),
+    startsOn,
+    notYet,
     period: { ...period, ...periodLabel(period) },
     firstTime: !combos.length && !recent.length,
     switchDate: catalog.switchDate,
     correctionGoesTo: await correctionGoesTo(me),
+  }
+}
+
+/**
+ * The person's North Time start date, or null (no wave date set: no gate). A
+ * failed read leaves the clock as it was rather than lock everyone out of it.
+ */
+export async function northTimeStart(v: Pick<Viewer, 'personId' | 'level' | 'leader'>): Promise<string | null> {
+  try {
+    return await startDateOf(db(), v.personId, { level: v.level, leader: v.leader })
+  } catch (e) {
+    console.error('[clocky] North Time start date:', e instanceof Error ? e.message : e)
+    return null
   }
 }
 

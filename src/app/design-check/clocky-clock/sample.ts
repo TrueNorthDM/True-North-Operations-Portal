@@ -148,6 +148,8 @@ const base = (o: Partial<ClockPanelData> = {}): ClockPanelData => ({
   fields: FIELDS,
   defaults: DEFAULTS,
   locked: null,
+  startsOn: null,
+  notYet: null,
   period: { start: '2026-10-01', end: '2026-10-31', kind: 'month', label: 'October', full: 'October 2026' },
   firstTime: false,
   correctionGoesTo: 'Goes to Rock Kai, your Team Leader. Admins and Super Admins can also approve it.',
@@ -286,6 +288,7 @@ export const FRAMES: ClockFrame[] = [
   { code: '1K', title: 'Manage', data: base(), ui: { modal: 'manage' } },
   { code: '1L', title: 'Auto out', data: base({ now: et(15, 20), toConfirm: [autoItem()] }) },
   { code: '1N2', title: 'Locked month', data: base({ locked: 'October is submitted. Ask a Super Admin to reopen it.' }) },
+  { code: 'NT1', title: 'Before the North Time start date', data: base({ startsOn: '2026-11-22', notYet: 'You start on North Time on Sunday, Nov 22. Until then, keep clocking in TSheets.', locked: 'You start on North Time on Sunday, Nov 22. Until then, keep clocking in TSheets.' }) },
   { code: '1N3', title: 'Offline', data: on(), offline: true },
 ]
 

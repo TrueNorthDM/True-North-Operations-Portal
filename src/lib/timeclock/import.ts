@@ -22,6 +22,9 @@ import {
   fetchTimesheetRange, fetchDeletedIds,
   type SourceTimesheet,
 } from './source'
+import { splitByStart } from './waves'
+import { missingTable } from '@/lib/supabase/errors'
+import { jobPath } from './format'
 
 type Client = Db
 
@@ -290,6 +293,8 @@ export interface MonthResult {
   sourceSeconds: number
   written: number
   skipped: number
+  /** Entries dated on or after their person's North Time start date, kept in tc_import_skipped. */
+  setAside: number
 }
 
 /** One month, pulled and upserted, then reconciled against what we now hold. */
@@ -300,6 +305,7 @@ export async function importMonth(
   maps: Maps,
   jobcodeKinds: Map<number, string>,
   modifiedSince?: string,
+  starts: ReadonlyMap<string, string> = new Map(),
 ): Promise<MonthResult> {
   const [y, m] = month.split('-').map(Number)
   const start = `${month}-01`
@@ -307,7 +313,11 @@ export async function importMonth(
 
   const source = await fetchTimesheetRange(token, start, end, modifiedSince)
   const all = source.map(t => toEntry(t, maps, jobcodeKinds)).filter(Boolean) as NonNullable<ReturnType<typeof toEntry>>[]
-  const rows = await keepClockyChanges(supabase, all)
+  // From a person's North Time start date (waves.ts), their TSheets entries on
+  // or after it are set aside for someone to decide, never written as hours.
+  const { keep, skip } = splitByStart(all, starts)
+  await setAside(supabase, skip, source)
+  const rows = await keepClockyChanges(supabase, keep)
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const { error } = await supabase
@@ -315,7 +325,11 @@ export async function importMonth(
     if (error) throw new Error(`tc_entries upsert (${month}): ${error.message}`)
   }
 
-  await reconcileMonth(supabase, month, source.length, source.reduce((s, t) => s + (t.duration ?? 0), 0))
+  // Reconciled against what TSheets holds less what was set aside: those are
+  // counted in tc_import_skipped, and the month should not read as a gap.
+  const aside = new Set(skip.map(r => r.external_id))
+  const counted = source.filter(t => !aside.has(t.id))
+  await reconcileMonth(supabase, month, counted.length, counted.reduce((s, t) => s + (t.duration ?? 0), 0))
 
   return {
     month,
@@ -323,7 +337,76 @@ export async function importMonth(
     sourceSeconds: source.reduce((s, t) => s + (t.duration ?? 0), 0),
     written: rows.length,
     skipped: source.length - rows.length,
+    setAside: skip.length,
   }
+}
+
+/**
+ * The entries set aside after their person's start date, kept whole in
+ * tc_import_skipped (migration 129): the raw timesheet, the person, the day,
+ * the hours, the job path and the fields. Upserted by TSheets id, so a later
+ * import refreshes them without touching a decision already taken.
+ */
+async function setAside(
+  supabase: Client,
+  rows: readonly (NonNullable<ReturnType<typeof toEntry>> & { starts_on: string })[],
+  source: readonly SourceTimesheet[],
+): Promise<void> {
+  if (!rows.length) return
+  const raw = new Map(source.map(t => [t.id, t]))
+  const paths = await loadJobPaths(supabase)
+  const inEntries = new Set<number>()
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const { data, error } = await supabase.from('tc_entries').select('external_id').in('external_id', rows.slice(i, i + BATCH).map(r => r.external_id))
+    if (error) throw new Error(`tc_entries read: ${error.message}`)
+    for (const r of (data ?? []) as { external_id: number | null }[]) if (r.external_id != null) inEntries.add(r.external_id)
+  }
+  const now = new Date().toISOString()
+  const out = rows.map(r => ({
+    external_id: r.external_id,
+    person_id: r.person_id,
+    tsheets_user_id: raw.get(r.external_id)?.user_id ?? 0,
+    entry_date: r.entry_date,
+    starts_on: r.starts_on,
+    duration_seconds: r.duration_seconds,
+    started_at: r.started_at,
+    ended_at: r.ended_at,
+    jobcode_id: r.jobcode_id,
+    job_path: r.jobcode_id != null ? paths.get(r.jobcode_id) ?? null : null,
+    kind: r.kind,
+    state: r.state,
+    notes: r.notes,
+    fields: r.fields,
+    raw: JSON.parse(JSON.stringify(raw.get(r.external_id) ?? {})),
+    already_in_entries: inEntries.has(r.external_id),
+    last_seen_at: now,
+    deleted_in_tsheets_at: null,
+  }))
+  for (let i = 0; i < out.length; i += BATCH) {
+    const { error } = await supabase.from('tc_import_skipped').upsert(out.slice(i, i + BATCH), { onConflict: 'external_id' })
+    if (error) throw new Error(`tc_import_skipped upsert: ${error.message}`)
+  }
+}
+
+/** Every job's path ("2 - i7 Marketing › Web Dev"), for the entries set aside. */
+async function loadJobPaths(supabase: Client): Promise<Map<number, string>> {
+  const rows: { id: number; name: string; parent_id: number | null }[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from('tc_jobcodes').select('id, name, parent_id').order('id').range(from, from + 999)
+    if (error) throw new Error(`tc_jobcodes read: ${error.message}`)
+    const page = (data ?? []) as typeof rows
+    rows.push(...page)
+    if (page.length < 1000) break
+  }
+  const byId = new Map(rows.map(r => [r.id, r]))
+  const out = new Map<number, string>()
+  for (const r of rows) {
+    const names = [r.name]
+    let cur = r
+    for (let i = 0; i < 20 && cur.parent_id != null && byId.has(cur.parent_id); i++) { cur = byId.get(cur.parent_id)!; names.unshift(cur.name) }
+    out.set(r.id, names.length === 1 ? names[0] : jobPath(names.slice(1).join(' › '), names[0]))
+  }
+  return out
 }
 
 /**
@@ -380,6 +463,10 @@ export async function applyDeletions(supabase: Client, token: string, since: str
       .from('tc_entries').delete({ count: 'exact' }).in('external_id', chunk).is('changed_here_at', null)
     if (error) throw new Error(`delete: ${error.message}`)
     removed += count ?? 0
+    // An entry set aside after its person's start date stays listed, marked as deleted in TSheets.
+    const { error: asideErr } = await supabase.from('tc_import_skipped')
+      .update({ deleted_in_tsheets_at: new Date().toISOString() }).in('external_id', chunk).is('deleted_in_tsheets_at', null)
+    if (asideErr && !missingTable(asideErr)) throw new Error(`tc_import_skipped delete mark: ${asideErr.message}`)
   }
   return removed
 }

@@ -181,6 +181,9 @@ const TREE: Node[] = [
       { key: 'cs-invoices-edit', label: 'Change the invoice numbering and billing details', kind: 'action', superOnly: true },
       { key: 'cs-reminders', label: 'Reminders: the timesheet reminders and bell lines', kind: 'tab', v: [1, 0, 0] },
       { key: 'cs-reminders-edit', label: 'Turn the reminders on or off', kind: 'action', superOnly: true },
+      // North Time rollout (owner, 27 October 2026): the two waves' start dates and who is in each.
+      { key: 'cs-rollout', label: 'North Time rollout: the waves, their start dates, and the TSheets entries set aside', kind: 'tab', v: [1, 0, 0] },
+      { key: 'cs-rollout-edit', label: 'Set the North Time start dates and move people between waves', kind: 'action', superOnly: true },
     ] },
     { key: 'notification-rules', label: 'Notification rules', kind: 'page', v: [1, 0, 0] },
     { key: 'tests', label: 'Tests', kind: 'page', v: [1, 0, 0] },

@@ -12,6 +12,7 @@ import {
   importMonth, applyDeletions, monthsToImport,
 } from './import'
 import { fetchTimesheetRange } from './source'
+import { loadStartDates } from './waves-data'
 
 type Client = Db
 
@@ -123,6 +124,10 @@ export async function runImport(
 
     const maps = await loadMaps(supabase)
     const kinds = await jobcodeKindMap(supabase)
+    // Each person's North Time start date (Company settings > North Time
+    // rollout): from it, their TSheets entries are set aside, not imported.
+    // Empty until a wave has a date, and then the import runs as before.
+    const starts = await loadStartDates(supabase)
 
     if (opts.kind === 'recheck') {
       // Only the months that currently disagree, pulled fresh and counted again.
@@ -140,7 +145,7 @@ export async function runImport(
 
       for (const r of off) {
         if (Date.now() - t0 > budget) break
-        const res = await importMonth(supabase, token, r.month, maps, kinds)
+        const res = await importMonth(supabase, token, r.month, maps, kinds, undefined, starts)
         written += res.written
         monthsDone.push(r.month)
       }
@@ -161,7 +166,7 @@ export async function runImport(
             nextMonth: month, elapsedMs: Date.now() - t0,
           }
         }
-        const res = await importMonth(supabase, token, month, maps, kinds)
+        const res = await importMonth(supabase, token, month, maps, kinds, undefined, starts)
         written += res.written
         monthsDone.push(month)
         await supabase.from('tc_import_runs').update({
@@ -207,7 +212,7 @@ export async function runImport(
       // partial count, and a reconciliation that reports the wrong total is
       // worse than none: it is a green light nobody checked.
       for (const month of touched) {
-        const res = await importMonth(supabase, token, month, maps, kinds)
+        const res = await importMonth(supabase, token, month, maps, kinds, undefined, starts)
         written += res.written
         monthsDone.push(month)
       }

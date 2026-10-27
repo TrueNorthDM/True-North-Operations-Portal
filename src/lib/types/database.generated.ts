@@ -3456,6 +3456,81 @@ export type Database = {
         }
         Relationships: []
       }
+      tc_import_skipped: {
+        Row: {
+          already_in_entries: boolean
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          deleted_in_tsheets_at: string | null
+          duration_seconds: number
+          ended_at: string | null
+          entry_date: string
+          external_id: number
+          fields: Json
+          first_seen_at: string
+          job_path: string | null
+          jobcode_id: number | null
+          kind: string | null
+          last_seen_at: string
+          notes: string | null
+          person_id: string
+          raw: Json
+          started_at: string | null
+          starts_on: string
+          state: string | null
+          tsheets_user_id: number
+        }
+        Insert: {
+          already_in_entries?: boolean
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          deleted_in_tsheets_at?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          entry_date: string
+          external_id: number
+          fields?: Json
+          first_seen_at?: string
+          job_path?: string | null
+          jobcode_id?: number | null
+          kind?: string | null
+          last_seen_at?: string
+          notes?: string | null
+          person_id: string
+          raw: Json
+          started_at?: string | null
+          starts_on: string
+          state?: string | null
+          tsheets_user_id: number
+        }
+        Update: {
+          already_in_entries?: boolean
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          deleted_in_tsheets_at?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          entry_date?: string
+          external_id?: number
+          fields?: Json
+          first_seen_at?: string
+          job_path?: string | null
+          jobcode_id?: number | null
+          kind?: string | null
+          last_seen_at?: string
+          notes?: string | null
+          person_id?: string
+          raw?: Json
+          started_at?: string | null
+          starts_on?: string
+          state?: string | null
+          tsheets_user_id?: number
+        }
+        Relationships: []
+      }
       tc_jobcodes: {
         Row: {
           level: string | null
@@ -3819,6 +3894,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tc_rollout_people: {
+        Row: {
+          person_id: string
+          set_at: string
+          set_by: string | null
+          wave: number
+        }
+        Insert: {
+          person_id: string
+          set_at?: string
+          set_by?: string | null
+          wave: number
+        }
+        Update: {
+          person_id?: string
+          set_at?: string
+          set_by?: string | null
+          wave?: number
+        }
+        Relationships: []
+      }
+      tc_rollout_waves: {
+        Row: {
+          starts_on: string | null
+          updated_at: string
+          updated_by: string | null
+          wave: number
+        }
+        Insert: {
+          starts_on?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wave: number
+        }
+        Update: {
+          starts_on?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          wave?: number
+        }
+        Relationships: []
+      }
       tc_safety_events: {
         Row: {
           allowance: string | null
@@ -4009,6 +4126,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tc_tsheets_archives: {
+        Row: {
+          archived_at: string | null
+          last_error: string | null
+          person_id: string
+          starts_on: string
+          tried_at: string
+          tsheets_user_id: number
+        }
+        Insert: {
+          archived_at?: string | null
+          last_error?: string | null
+          person_id: string
+          starts_on: string
+          tried_at?: string
+          tsheets_user_id: number
+        }
+        Update: {
+          archived_at?: string | null
+          last_error?: string | null
+          person_id?: string
+          starts_on?: string
+          tried_at?: string
+          tsheets_user_id?: number
+        }
+        Relationships: []
       }
       tc_user_links: {
         Row: {

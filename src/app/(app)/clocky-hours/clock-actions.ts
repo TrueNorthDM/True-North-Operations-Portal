@@ -29,7 +29,8 @@ import {
   audit, cleanFields, cleanNotes, closeClock, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan,
   runningOf, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
-import { entrySeconds, labelFor, loadClockPanel, loadCombos, stopOwnIfDue, choiceOf } from '@/lib/timeclock/clocky-panel'
+import { entrySeconds, labelFor, loadClockPanel, loadCombos, northTimeStart, stopOwnIfDue, choiceOf } from '@/lib/timeclock/clocky-panel'
+import { clockGate } from '@/lib/timeclock/waves'
 import { localDate, minutesLabel, localMinutes, timeLabel } from '@/lib/timeclock/format'
 import { QUARTER, formatDuration, recordedSeconds, roundIso } from '@/lib/timeclock/rounding'
 import { FIELD_LABEL, END_AFTER_START, gateText, missingFields, offeredOn, overlapLine, splitAtMidnight } from '@/lib/timeclock/entry-rules'
@@ -85,6 +86,9 @@ async function running(v: Viewer, now: Date): Promise<EntryRow | Fail> {
 /** At least a quarter hour must fit before the allowance for the clock to start (time is logged on the quarter hour). */
 const limitAt = (v: Viewer, day: string, now: Date) => limitRefusal(v.personId, { add: [{ day, seconds: QUARTER }] }, now)
 
+/** Before the person's North Time start date (in their zone) no clock starts: the sentence saying the day, else null. */
+const notStarted = async (v: Viewer, now: Date) => clockGate(await northTimeStart(v), localDate(now, v.zone))
+
 // ── The panel ───────────────────────────────────────────────────────────────
 
 /** Everything the clock panel and the top-bar button show (1A to 1N). */
@@ -132,6 +136,8 @@ export async function clockIn(input: ClockInput): Promise<Result<{ entryId: numb
   try {
     const now = new Date()
     const c = db()
+    const gate = await notStarted(v, now)
+    if (gate) return fail(gate)
     const choice = await checkedChoice(input, localDate(now, v.zone))
     if (isFail(choice)) return choice
     const open = await runningOf(c, v.personId)
@@ -229,6 +235,9 @@ export async function switchTo(input: ClockInput & { finish?: Finish }): Promise
     const date = localDate(start, v.zone)
     const lock = lockOn([date], (await loadSubmissions(c, [v.personId])).get(v.personId) ?? [])
     if (lock) return fail(lockedMessage(lock))
+    // A switch starts a new clock: not before the person's North Time start date.
+    const gate = await notStarted(v, now)
+    if (gate) return fail(gate)
     // The running clock counts to now: the next one needs room after it.
     const limit = await limitAt(v, date, now)
     if (limit) return fail(limit)
