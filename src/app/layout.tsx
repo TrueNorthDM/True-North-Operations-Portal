@@ -1,19 +1,10 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono, Nunito, Open_Sans, Bebas_Neue, Raleway } from 'next/font/google'
 import { ViewAsKeeper } from '@/components/ViewAsKeeper'
+// The six typefaces and their --font-* variables, self-hosted (see fonts/fonts.ts).
+import './fonts/fonts'
 import './globals.css'
 import { IS_STAGING } from '@/lib/environment'
 import { StagingBanner } from '@/components/StagingBanner'
-
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
-
-const nunito = Nunito({ variable: '--font-nunito', subsets: ['latin'], weight: ['700', '800'] })
-const openSans = Open_Sans({ variable: '--font-open-sans', subsets: ['latin'], weight: ['400', '600', '700'] })
-const bebas = Bebas_Neue({ variable: '--font-bebas-neue', subsets: ['latin'], weight: ['400'] })
-// Portal display face, Raleway (True North brand; headings via globals.css h1–h3).
-// 600 is the Clocky handoff's weight for fields and selects; without it they drew at 700.
-const raleway = Raleway({ variable: '--font-raleway', subsets: ['latin'], weight: ['600', '700', '800', '900'] })
 
 export const metadata: Metadata = {
   title: 'True North Operations Portal',
@@ -40,7 +31,7 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} ${openSans.variable} ${bebas.variable} ${raleway.variable} h-full antialiased${IS_STAGING ? ' staging' : ''}`}>
+    <html lang="en" className={`h-full antialiased${IS_STAGING ? ' staging' : ''}`}>
       {/* suppressHydrationWarning on <body>: browser extensions (e.g. Grammarly)
           inject attributes like data-gr-ext-installed into <body> before React
           hydrates, causing a harmless attribute mismatch. This suppresses the

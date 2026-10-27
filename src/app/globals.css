@@ -69,7 +69,7 @@
   --success: #1e9e6a;
   --warning: #e0940e;
   --danger: #d64545;
-  /* Display face for headings, Raleway (loaded via next/font). */
+  /* Display face for headings, Raleway (self-hosted, src/app/fonts). */
   --font-display: var(--font-raleway), var(--font-open-sans), system-ui, sans-serif;
   /* Org chart connector default (when a node has no team colour). */
   --org-thread: #d6d3cb;
@@ -122,7 +122,7 @@
   --color-bm-primary: #c8323d;
   --color-bm-soft: #fdeeef;
 
-  /* Brand display fonts (defined via next/font in layout.tsx) */
+  /* Brand display fonts (self-hosted in src/app/fonts) */
   --font-aaaf-display: var(--font-nunito), system-ui, sans-serif;
   --font-aaaf-body: var(--font-open-sans), system-ui, sans-serif;
   --font-hfa-display: var(--font-bebas-neue), system-ui, sans-serif;

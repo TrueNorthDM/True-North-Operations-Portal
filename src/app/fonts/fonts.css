@@ -1,0 +1,67 @@
+/* The font variables globals.css builds on, and the Arial fallback each family
+   shows until its file arrives (or for a character it lacks). These are the
+   exact rules next/font/google generated: same names, same metrics, so the
+   self-hosted fonts in fonts.ts look and lay out as before. */
+
+@font-face {
+  font-family: 'Geist Fallback';
+  src: local('Arial');
+  ascent-override: 95.94%;
+  descent-override: 28.16%;
+  line-gap-override: 0%;
+  size-adjust: 104.76%;
+}
+
+@font-face {
+  font-family: 'Geist Mono Fallback';
+  src: local('Arial');
+  ascent-override: 74.67%;
+  descent-override: 21.92%;
+  line-gap-override: 0%;
+  size-adjust: 134.59%;
+}
+
+@font-face {
+  font-family: 'Nunito Fallback';
+  src: local('Arial');
+  ascent-override: 99.71%;
+  descent-override: 34.82%;
+  line-gap-override: 0%;
+  size-adjust: 101.39%;
+}
+
+@font-face {
+  font-family: 'Open Sans Fallback';
+  src: local('Arial');
+  ascent-override: 101.65%;
+  descent-override: 27.86%;
+  line-gap-override: 0%;
+  size-adjust: 105.15%;
+}
+
+@font-face {
+  font-family: 'Bebas Neue Fallback';
+  src: local('Arial');
+  ascent-override: 117.32%;
+  descent-override: 39.11%;
+  line-gap-override: 0%;
+  size-adjust: 76.72%;
+}
+
+@font-face {
+  font-family: 'Raleway Fallback';
+  src: local('Arial');
+  ascent-override: 90.51%;
+  descent-override: 22.53%;
+  line-gap-override: 0%;
+  size-adjust: 103.86%;
+}
+
+:root {
+  --font-geist-sans: 'Geist', 'Geist Fallback';
+  --font-geist-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-nunito: 'Nunito', 'Nunito Fallback';
+  --font-open-sans: 'Open Sans', 'Open Sans Fallback';
+  --font-bebas-neue: 'Bebas Neue', 'Bebas Neue Fallback';
+  --font-raleway: 'Raleway', 'Raleway Fallback';
+}
