@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ClockChoice, ClockPanelData, PanelField, PanelFolder, PanelJob, RunningEntry } from '@/lib/timeclock/clocky-types'
-import { fieldByKey, jobsOn, runningJobOf, valueOf,
+import { fieldByKey, jobsOn, runningChips, runningJobOf, valueOf,
   breakdown, browseJobs, choiceRow, clockSkew, draftFor, liveTotals, missingOf, overWarn, panelHeader, resumeCard, roundNoteText,
   saveDraftFrom, searchJobs, suggestName, switchChoices, tabTitle, topBarState, zoneCity,
 } from './clock-model'
@@ -149,6 +149,18 @@ describe('drafts', () => {
     expect(fieldByKey(fields, 'activity', runningJobOf(JOBS, r))?.id).toBe('9')
     expect(missingOf(r.fields, '', fields, { isI7: false })).toEqual(['company', 'project', 'activity', 'billable'])
     expect(runningJobOf(JOBS, running())).toBe(JOBS.find(j => j.id === 22))
+  })
+
+  it('the running entry\'s chips: a 2026 project shows its Activity and the project\'s Billable, no dead "+ Add Company" (audit 2026-10-27)', () => {
+    const fields = [...FIELDS, { key: 'activity' as const, id: '9', label: 'Activity', options: ['Other', 'Admin'], required: 'always' as const, structure: 2 as const }]
+    expect(runningChips({ 9: 'Admin' }, fields, { isI7: false, structure: 2, billable: true })).toEqual([
+      { key: 'activity', text: 'Admin' }, { key: 'billable', text: 'Billable' },
+    ])
+    expect(runningChips({}, fields, { isI7: false, structure: 2 })).toEqual([{ key: 'activity', text: null }])
+    // A TSheets job: every field, "+ Add" for the empty ones, the i7 Code on i7 jobs.
+    expect(runningChips({ 1: 'True North', 4: 'yes' }, fields, { isI7: true })).toEqual([
+      { key: 'company', text: 'True North' }, { key: 'project', text: null }, { key: 'activity', text: null }, { key: 'billable', text: 'Billable' }, { key: 'code', text: null },
+    ])
   })
 })
 

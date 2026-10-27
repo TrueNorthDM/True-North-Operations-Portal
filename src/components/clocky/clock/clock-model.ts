@@ -70,6 +70,25 @@ export const billableText = (v: string): string => (isYes(v) ? 'Billable' : 'Not
 export const runningJobOf = (jobs: readonly PanelJob[], r: Pick<RunningEntry, 'jobcodeId' | 'isI7' | 'structure'>): { isI7: boolean; structure?: Structure } =>
   jobs.find(j => j.id === r.jobcodeId) ?? { isI7: r.isI7, structure: r.structure }
 
+/**
+ * The running entry's chips, in the order the panel asks: each field of the
+ * job's structure with its value, or null for "+ Add ...". A 2026 project asks
+ * only its Activity; its Billable is the project's, shown and never asked.
+ */
+export function runningChips(values: Readonly<Record<string, string>>, fields: readonly PanelField[], job: { isI7: boolean; structure?: Structure; billable?: boolean }): { key: FieldName; text: string | null }[] {
+  const out: { key: FieldName; text: string | null }[] = []
+  for (const key of keysFor(job.isI7)) {
+    const f = fieldByKey(fields, key, job)
+    if (f) {
+      const v = values[f.id] ?? ''
+      out.push({ key, text: v ? (key === 'billable' ? billableText(v) : v) : null })
+    } else if (key === 'billable' && job.structure === 2 && typeof job.billable === 'boolean') {
+      out.push({ key, text: billableText(job.billable ? 'yes' : 'no') })
+    }
+  }
+  return out
+}
+
 /** What a running entry or a draft still lacks, in the order the panel asks. */
 export function missingOf(values: Readonly<Record<string, string>>, notes: string | null, fields: readonly PanelField[], job: { isI7: boolean; structure?: Structure } | null | undefined): MissingName[] {
   return missingFields(values, notes, fieldKeys(fieldsForJob(fields, job)), !!job?.isI7)

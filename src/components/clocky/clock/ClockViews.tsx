@@ -15,8 +15,8 @@ import { timeLabel } from '@/lib/timeclock/format'
 import { limitAheadText } from '@/lib/timeclock/allowance'
 import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
-  FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf,
-  overWarn, resumeCard, roundNoteText, runningJobOf, searchJobs, switchChoices, timerStart, valueOf, type Draft,
+  FIELD_SHORT, SHOWN_COMBINATIONS, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf,
+  overWarn, resumeCard, roundNoteText, runningChips, runningJobOf, searchJobs, switchChoices, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
 
@@ -298,7 +298,6 @@ export function OnView({
   const activity = valueOf(values, data.fields, 'activity')
   const head = data.combinations.find(c => c.jobcodeId === running.jobcodeId && (c.activity || '') === activity)?.name ?? 'Now'
   const runningJob = runningJobOf(data.jobs, running)
-  const keys = keysFor(running.isI7)
   const switchRows = switchChoices(data, { jobcodeId: running.jobcodeId, fields: values })
   const gateFields = gate ? missing.filter((m): m is FieldName => m !== 'notes') : []
   const gateOut = gate?.kind === 'out'
@@ -354,11 +353,9 @@ export function OnView({
           <span className="text-[12px] text-muted whitespace-nowrap tabular-nums lining-nums">since {timeLabel(running.startedAt, zone)}</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {keys.map(k => {
-            const f = field(k)
-            const v = f ? values[f.id] ?? '' : ''
-            return v
-              ? <span key={k} className="text-[11.5px] font-semibold text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[9px] py-1">{k === 'billable' ? billableText(v) : v}</span>
+          {runningChips(values, data.fields, runningJob).map(({ key: k, text }) => {
+            return text
+              ? <span key={k} className="text-[11.5px] font-semibold text-[var(--chip-neutral-fg)] bg-[var(--chip-neutral-bg)] rounded-full px-[9px] py-1">{text}</span>
               : <button key={k} type="button" onClick={() => onEditKey(k)} aria-expanded={editKey === k} className={`text-[11.5px] font-bold text-[#8a6d1a] bg-[#fdf8e7] border border-dashed border-[#e9d48a] rounded-full px-[9px] py-[3px] cursor-pointer hover:border-solid ${FOCUS}`}>+ Add {FIELD_SHORT[k]}</button>
           })}
         </div>
