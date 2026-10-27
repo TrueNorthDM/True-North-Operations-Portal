@@ -72,7 +72,7 @@ function add(map: Map<string, GrantPassSlice>, label: string, side: Side, second
 export async function loadGrantPassData(supabase: Client): Promise<GrantPassData> {
   // The two ways a Grant Pass hour is marked, resolved once.
   const reads = await Promise.all([
-    supabase.from('tc_fields').select('id, external_id'),
+    supabase.from('tc_fields').select('id, external_id, structure'),
     supabase.from('tc_jobcodes').select('id, name, parent_id'),
     supabase.from('people').select('id, full_name'),
     supabase.from('tc_field_options').select('field_id, label'),
@@ -82,9 +82,11 @@ export async function loadGrantPassData(supabase: Client): Promise<GrantPassData
   if (failed) throw new Error(`Grant Pass could not be read: ${failed.message}`)
   const [{ data: fieldRows }, { data: jcRows }, { data: peopleRows }, { data: optionRows }] = reads
 
-  const fields = (fieldRows ?? []) as { id: number; external_id: number | null }[]
+  const fields = (fieldRows ?? []) as { id: number; external_id: number | null; structure?: number }[]
   const projectKey = fields.find(f => String(f.external_id) === PROJECT_CF)?.id
   const activityKey = fields.find(f => String(f.external_id) === ACTIVITY_CF)?.id
+  // From the switch date the GP Church and GP School projects carry the 2026 Activity instead.
+  const activity2026Key = fields.find(f => f.structure === 2)?.id
 
   const jcs = (jcRows ?? []) as { id: number; name: string; parent_id: number | null }[]
   const sideByJobcode = new Map<number, Side>()
@@ -172,7 +174,7 @@ export async function loadGrantPassData(supabase: Client): Promise<GrantPassData
     months.set(ym, m)
 
     add(byPerson, nameById.get(r.person_id) ?? 'Unknown', side, secs)
-    const activity = (activityKey ? f[String(activityKey)] : '')?.trim() || 'Not specified'
+    const activity = ((activityKey ? f[String(activityKey)] : '') || (activity2026Key ? f[String(activity2026Key)] : ''))?.trim() || 'Not specified'
     add(byActivity, activity, side, secs)
   }
 

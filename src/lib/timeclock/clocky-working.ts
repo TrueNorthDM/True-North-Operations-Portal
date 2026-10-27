@@ -9,7 +9,7 @@
  * Not a "use server" file: app/(app)/clocky-hours/whos-working/actions.ts serves it.
  */
 
-import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, type Viewer } from './clocky-context'
+import { allRows, db, keysOfJob, loadCatalog, loadClockySettings, loadDirectory, type Viewer } from './clocky-context'
 import type { EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
 import { dayLabel, initials, localDate, monthLong, timeLabel, weekdayShort, zoneAbbr } from './format'
@@ -98,7 +98,7 @@ export async function loadWhosWorking(v: Viewer, now: Date): Promise<WhosWorking
       current: run && run.started_at ? {
         entryId: run.id,
         path: catalog.pathOf(run.jobcode_id),
-        activity: catalog.keys.activity ? fields[catalog.keys.activity] ?? '' : '',
+        activity: (k => (k ? fields[k] ?? '' : ''))(keysOfJob(catalog, catalog.jobs.get(run.jobcode_id ?? -1)).activity),
         timerFrom: run.started_at_real ?? run.started_at,
         startedAt: run.started_at,
         sessionStartedAt: session,

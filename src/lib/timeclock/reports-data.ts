@@ -67,10 +67,17 @@ export async function loadReport(access: Pick<Access, 'personId' | 'can' | 'isAd
   const clientOf = (jobId: number | null) => {
     const j = jobId != null ? catalog.jobs.get(jobId) : undefined
     if (!j) return 'No job'
+    // A 2026 project's client is the first step of its path (COE Group › Africa › ...).
+    if (j.structure === 2) return j.path.split(' › ')[0]
     return j.folderId != null ? catalog.jobs.get(j.folderId)?.name ?? j.name : j.name
   }
+  // A 2026 project's Billable is the project's own; a TSheets entry's, its "4 Billable" field.
+  const billableOf = (e: { jobcode_id: number | null; fields: Record<string, string> | null }) => {
+    const j = e.jobcode_id != null ? catalog.jobs.get(e.jobcode_id) : undefined
+    return j?.structure === 2 ? j.billable : !!keys.billable && (e.fields?.[keys.billable] ?? '').toLowerCase() === 'yes'
+  }
   const rows: ReportRow[] = entries.map(e => ({
-    personId: e.person_id, client: squash(clientOf(e.jobcode_id)), billable: !!keys.billable && (e.fields?.[keys.billable] ?? '').toLowerCase() === 'yes',
+    personId: e.person_id, client: squash(clientOf(e.jobcode_id)), billable: billableOf(e),
     seconds: Number(e.duration_seconds) || 0, date: e.entry_date,
   }))
 

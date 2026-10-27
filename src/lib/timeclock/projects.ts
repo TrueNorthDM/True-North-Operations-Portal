@@ -35,6 +35,7 @@ import type { Db } from '@/lib/supabase/types'
 import { PROJECT_CF, i7Invoice } from '@/lib/tsheets/i7report'
 import { loadCompensationByPerson } from '@/lib/hr/compensation'
 import { loadI7EntriesHere } from '@/lib/timeclock/report-source'
+import { translateProject } from '@/lib/timeclock/structure-2026'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateFor, type Assignment } from '@/lib/tsheets/rates'
 import type { I7Entry } from '@/lib/tsheets/types'
@@ -159,6 +160,35 @@ function monthEnd(month: string): string {
 /** Hours by project and person over a date range, from the "2 Project" field. */
 interface Bucket { total: number; byPerson: Map<string, number>; byId: Map<string, number> }
 
+/**
+ * The 2026 projects each tracked row reads from the switch date on, by the
+ * translation table (structure-2026.ts): AAAF is the AAAF project, GP church
+ * and GP School their Grants Pass projects, Africa every project of the Africa
+ * division. Old entries keep matching the "2 Project" field; an entry is
+ * counted once even if it carries both (owner, 26 October 2026).
+ */
+export async function projects2026For(supabase: Client, labels: readonly string[]): Promise<Map<string, number[]>> {
+  const { data, error } = await supabase.from('tc_jobcodes').select('id, parent_id, name, level').eq('structure', 2)
+  if (error) throw new Error(`Project Hours could not read the 2026 projects: ${error.message}`)
+  const rows = (data ?? []) as { id: number; parent_id: number | null; name: string; level: string | null }[]
+  const byId = new Map(rows.map(r => [r.id, r]))
+  const pathOf = (r: { id: number }): string[] => {
+    const names: string[] = []
+    let cur = byId.get(r.id)
+    for (let i = 0; i < 5 && cur; i++) { names.unshift(cur.name.trim().toLowerCase()); cur = cur.parent_id != null ? byId.get(cur.parent_id) : undefined }
+    return names
+  }
+  const out = new Map<string, number[]>()
+  for (const label of labels) {
+    const t = translateProject(label)
+    const to = t && t.to && typeof t.to !== 'string' ? t.to : null
+    if (!to) { out.set(label, []); continue }
+    const want = [to.client, to.division, to.project].filter((x): x is string => !!x).map(x => x.toLowerCase())
+    out.set(label, rows.filter(r => r.level === 'project' && want.every((w, i) => pathOf(r)[i] === w)).map(r => r.id))
+  }
+  return out
+}
+
 async function hoursIn(
   supabase: Client,
   projectKey: number,
@@ -166,9 +196,11 @@ async function hoursIn(
   start: string,
   end: string,
   firstNameById: Map<string, string>,
+  ids2026: ReadonlyMap<string, number[]> = new Map(),
 ): Promise<Map<string, Bucket>> {
   const out = new Map<string, Bucket>()
   for (const label of labels) {
+    const seen = new Set<number>()
     // byPerson is keyed by first name, which is what the sheet's columns are.
     // byId is keyed by person, which is what a rate is keyed by: cost cannot be
     // worked out from a display name, and two Amys would share one.
@@ -177,13 +209,34 @@ async function hoursIn(
     // answer. A scan of all 136,000 entries is what froze this page once.
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await supabase
-        .from('tc_entries').select('person_id, duration_seconds')
+        .from('tc_entries').select('id, person_id, duration_seconds')
         .contains('fields', { [String(projectKey)]: label })
         .gte('entry_date', start).lte('entry_date', end)
         .order('id', { ascending: true }).range(from, from + PAGE - 1)
       if (error) throw new Error(error.message)
-      const rows = (data ?? []) as { person_id: string; duration_seconds: number }[]
+      const rows = (data ?? []) as { id: number; person_id: string; duration_seconds: number }[]
       for (const r of rows) {
+        seen.add(r.id)
+        const hours = r.duration_seconds / 3600
+        bucket.total += hours
+        const who = firstNameById.get(r.person_id) ?? 'Unknown'
+        bucket.byPerson.set(who, (bucket.byPerson.get(who) ?? 0) + hours)
+        bucket.byId.set(r.person_id, (bucket.byId.get(r.person_id) ?? 0) + hours)
+      }
+      if (rows.length < PAGE) break
+    }
+    // From the switch date: the label's 2026 projects.
+    const ids = ids2026.get(label) ?? []
+    for (let from = 0; ids.length; from += PAGE) {
+      const { data, error } = await supabase
+        .from('tc_entries').select('id, person_id, duration_seconds')
+        .in('jobcode_id', ids)
+        .gte('entry_date', start).lte('entry_date', end)
+        .order('id', { ascending: true }).range(from, from + PAGE - 1)
+      if (error) throw new Error(error.message)
+      const rows = (data ?? []) as { id: number; person_id: string; duration_seconds: number }[]
+      for (const r of rows) {
+        if (seen.has(r.id)) continue
         const hours = r.duration_seconds / 3600
         bucket.total += hours
         const who = firstNameById.get(r.person_id) ?? 'Unknown'
@@ -210,19 +263,24 @@ async function hoursByMonth(
   labels: string[],
   start: string,
   end: string,
+  ids2026: ReadonlyMap<string, number[]> = new Map(),
 ): Promise<Map<string, Map<string, Map<string, number>>>> {
   const out = new Map<string, Map<string, Map<string, number>>>()
   for (const label of labels) {
     const byMonth = new Map<string, Map<string, number>>()
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabase
-        .from('tc_entries').select('person_id, duration_seconds, entry_date')
-        .contains('fields', { [String(projectKey)]: label })
+    const seen = new Set<number>()
+    const ids = ids2026.get(label) ?? []
+    // The "2 Project" field, then (from the switch date) the label's 2026 projects, each entry once.
+    for (const pass of ids.length ? ['field', 'project'] as const : ['field'] as const) for (let from = 0; ; from += PAGE) {
+      const q = supabase.from('tc_entries').select('id, person_id, duration_seconds, entry_date')
+      const { data, error } = await (pass === 'field' ? q.contains('fields', { [String(projectKey)]: label }) : q.in('jobcode_id', ids))
         .gte('entry_date', start).lte('entry_date', end)
         .order('id', { ascending: true }).range(from, from + PAGE - 1)
       if (error) throw new Error(error.message)
-      const rows = (data ?? []) as { person_id: string; duration_seconds: number; entry_date: string }[]
+      const rows = (data ?? []) as { id: number; person_id: string; duration_seconds: number; entry_date: string }[]
       for (const r of rows) {
+        if (seen.has(r.id)) continue
+        seen.add(r.id)
         const ym = r.entry_date.slice(0, 7)
         const byId = byMonth.get(ym) ?? new Map<string, number>()
         byMonth.set(ym, byId)
@@ -354,6 +412,7 @@ export async function loadProjectTracking(
   const inMonth = (m: string) => m >= from && m <= to
   const inYearToDate = (m: string) => m.slice(0, 4) === giftYear && m <= to
   const labels = TRACKED_PROJECTS.map(p => p.label)
+  const ids2026 = await projects2026For(supabase, labels)
   const year = to.slice(0, 4)
   // The same stretch a year earlier, both ends moved back, so a range of three
   // months is compared with three months rather than with one.
@@ -363,15 +422,15 @@ export async function loadProjectTracking(
   const beforeEnd = shiftMonth(from, -1)
 
   const [thisMonth, ytd, lastYear, before] = await Promise.all([
-    hoursIn(supabase, projectKey, labels, `${from}-01`, monthEnd(to), firstNameById),
-    hoursIn(supabase, projectKey, labels, `${year}-01-01`, monthEnd(to), firstNameById),
-    hoursIn(supabase, projectKey, labels, `${lastFrom}-01`, monthEnd(lastTo), firstNameById),
+    hoursIn(supabase, projectKey, labels, `${from}-01`, monthEnd(to), firstNameById, ids2026),
+    hoursIn(supabase, projectKey, labels, `${year}-01-01`, monthEnd(to), firstNameById, ids2026),
+    hoursIn(supabase, projectKey, labels, `${lastFrom}-01`, monthEnd(lastTo), firstNameById, ids2026),
     // Asked for rather than derived from the year to date. Subtracting one from
     // the other is only right while the range sits inside a single year, and
     // "last 12 months" stops doing that the moment it crosses a January.
     beforeEnd < DATA_FLOOR
       ? Promise.resolve(new Map<string, { total: number }>())
-      : hoursIn(supabase, projectKey, labels, `${DATA_FLOOR}-01`, monthEnd(beforeEnd), firstNameById),
+      : hoursIn(supabase, projectKey, labels, `${DATA_FLOOR}-01`, monthEnd(beforeEnd), firstNameById, ids2026),
   ])
 
   const unratedAll = new Set<string>()
@@ -563,7 +622,7 @@ export async function loadProjectHistory(
   const labels = TRACKED_PROJECTS.map(p => p.label)
   const kindById = new Map(((peopleRows ?? []) as { id: string; employment_type: string | null }[])
     .map(p => [p.id, p.employment_type]))
-  const byProject = await hoursByMonth(supabase, projectKey, labels, `${from}-01`, monthEnd(to))
+  const byProject = await hoursByMonth(supabase, projectKey, labels, `${from}-01`, monthEnd(to), await projects2026For(supabase, labels))
 
   const gifts = (giftRows ?? []) as { project_label: string | null; month: string; amount_usd: number }[]
   const months = monthsOf(from, to)
