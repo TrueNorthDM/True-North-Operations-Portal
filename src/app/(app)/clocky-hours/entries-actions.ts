@@ -27,7 +27,7 @@
 import { revalidatePath } from 'next/cache'
 import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { db, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } from '@/lib/timeclock/clocky-context'
+import { db, keysOfJob, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } from '@/lib/timeclock/clocky-context'
 import { offeredOn } from '@/lib/timeclock/entry-rules'
 import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
@@ -476,8 +476,11 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
     if (error) return notSaved(error)
     const week = (data ?? []) as EntryRow[]
     const subs = (await loadSubmissions(c, [personId])).get(personId) ?? []
-    const k = catalog.keys
-    const keyOf = (jobcode: number | null, fields: Record<string, string>) => `${jobcode}|${k.activity ? fields[k.activity] ?? '' : ''}`
+    // A row is its job and Activity, as the grid shows it: a 2026 project's Activity is its own field.
+    const keyOf = (jobcode: number | null, fields: Record<string, string>) => {
+      const k = keysOfJob(catalog, catalog.jobs.get(jobcode ?? -1))
+      return `${jobcode}|${k.activity ? fields[k.activity] ?? '' : ''}`
+    }
     const gridOwned = (e: EntryRow) => e.kind === 'manual' && e.source === 'portal' && !e.manual_batch
 
     type Change = { day: string; key: string; seconds: number; jobcodeId: number; fields: Record<string, string>; replace: EntryRow[] }

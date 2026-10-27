@@ -175,3 +175,12 @@ describe('the 2026 structure by date (audit 2026-10-27)', () => {
     }
   })
 })
+
+describe('the week grid keeps each 2026 Activity on its own row (audit 2026-10-27)', () => {
+  it('a row is the job and the Activity of the job\'s structure, as the grid on screen keys it', () => {
+    const b = body(read('entries-actions.ts'), 'saveWeekGrid')
+    // With only the TSheets Activity, every Activity of a 2026 project was one row: saving one cell replaced the others.
+    expect(b).not.toMatch(/const k = catalog\.keys\n/)
+    expect(b).toMatch(/const k = keysOfJob\(catalog, catalog\.jobs\.get\(jobcode \?\? -1\)\)/)
+  })
+})
