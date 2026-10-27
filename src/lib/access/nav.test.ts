@@ -85,8 +85,8 @@ describe('the rail', () => {
   })
 
   it('gives each level its North Time rows, in the designed order', () => {
-    expect(rows(railFor('super_admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-import'])
-    expect(rows(railFor('admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-import'])
+    expect(rows(railFor('super_admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-transition', 'clocky-import'])
+    expect(rows(railFor('admin'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job', 'clocky-safety', 'clocky-transition', 'clocky-import'])
     expect(rows(railFor('team_leader'), 'clocky')).toEqual(['clocky-hours', 'clocky-approvals', 'clocky-whos-working', 'clocky-invoices', 'clocky-reports', 'clocky-which-job'])
     expect(rows(railFor('user'), 'clocky')).toEqual(['clocky-hours', 'clocky-invoices', 'clocky-reports', 'clocky-which-job'])
   })
@@ -95,7 +95,7 @@ describe('the rail', () => {
     const clocky = hub(railFor('super_admin'), 'clocky')!
     expect(clocky.groups.map(g => [g.label, g.items.map(i => [i.label, i.href])])).toEqual([
       [null, [['Time entries', '/clocky-hours'], ['Approvals', '/clocky-hours/approvals'], ["Who's working", '/clocky-hours/whos-working'], ['Invoices', '/clocky-hours/invoices'], ['Reports', '/clocky-hours/reports']]],
-      ['The module', [['Which job?', '/clocky-hours/which-job'], ['Clock safety', '/clocky-hours/safety'], ['Import', '/clocky-hours/import']]],
+      ['The module', [['Which job?', '/clocky-hours/which-job'], ['Clock safety', '/clocky-hours/safety'], ['TSheets transition', '/clocky-hours/transition'], ['Import', '/clocky-hours/import']]],
     ])
     expect(clocky.groups[0].items.find(i => i.key === 'clocky-approvals')?.count).toBe('approvals')
     // Finance's To pay sits on the row Finance opens (owner, 25 October 2026); the counter gives it to Finance alone.
