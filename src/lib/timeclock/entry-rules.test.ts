@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  REASON_REQUIRED, activityNeedsNotes, approveOverlapLine, attentionReason, correctionOverlapLine, firstOverlap, gateText,
+  REASON_REQUIRED, activityNeedsNotes, clockDay, structureOn, approveOverlapLine, attentionReason, correctionOverlapLine, firstOverlap, gateText,
   missingFields, overlapLine, overlapsAmong, reasonOf, sharedSpan, splitAtMidnight, trimOther, trimThis, type FieldKeys,
 } from './entry-rules'
 
@@ -129,5 +129,18 @@ describe('a reason for every change (README "Rules" 7)', () => {
     expect(reasonOf(undefined)).toBeNull()
     expect(reasonOf('x'.repeat(3000))).toHaveLength(2000)
     expect(REASON_REQUIRED).toBeTruthy()
+  })
+})
+
+describe('the clock checks the job against the day its entry is recorded on (audit 2026-10-27)', () => {
+  it('at 11:53 PM the start rounds to 12:00 AM: the next day, and from the switch date its structure', () => {
+    // 03:53Z on Oct 30 is 11:53 PM on Oct 29 in New York.
+    const late = new Date('2026-10-30T03:53:00.000Z')
+    expect(clockDay(late, NY)).toBe('2026-10-30')
+    expect(structureOn(clockDay(late, NY), '2026-10-30')).toBe(2)
+    // 11:52 PM still rounds to 11:45 PM: the day before, the TSheets jobs.
+    const before = new Date('2026-10-30T03:52:00.000Z')
+    expect(clockDay(before, NY)).toBe('2026-10-29')
+    expect(structureOn(clockDay(before, NY), '2026-10-30')).toBe(1)
   })
 })

@@ -166,3 +166,12 @@ describe('the allowance is a real limit (owner, 25 October 2026)', () => {
     for (const name of ['addTime', 'saveWeekGrid']) expect(body(e, name), name).toMatch(/noAddOwn\(v\)/)
   })
 })
+
+describe('the 2026 structure by date (audit 2026-10-27)', () => {
+  it('clock in and switch check the job against the day of the rounded start, the day the entry gets', () => {
+    const clock = read('clock-actions.ts')
+    for (const name of ['clockIn', 'switchTo']) {
+      expect(body(clock, name), name).toMatch(/checkedChoice\(input, clockDay\(now, v\.zone\)\)/)
+    }
+  })
+})

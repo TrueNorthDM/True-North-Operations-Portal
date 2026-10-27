@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useConfirm } from '@/components/ui/useConfirm'
 import type { ClockChoice, ClockPanelData, Fail } from '@/lib/timeclock/clocky-types'
-import type { FieldName } from '@/lib/timeclock/entry-rules'
+import { clockDay, type FieldName } from '@/lib/timeclock/entry-rules'
 import type { ClockApi } from './clock-api'
 import { choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
 import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon, byWidth, type Phone } from './ClockParts'
@@ -388,7 +388,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
         )}
 
         {mode === 'choose' && (
-          <ChooseView data={data} phone={phone} first={first} query={ui.query} browse={ui.browse}
+          <ChooseView data={data} day={clockDay(new Date(nowMs), data.me.zone)} phone={phone} first={first} query={ui.query} browse={ui.browse}
             onQuery={q => set({ query: q })}
             onBrowse={id => set({ browse: id })}
             onPick={pickJob} />

@@ -10,7 +10,7 @@
 
 import { wallToInstant } from './clock'
 import { addDays } from './periods'
-import { formatDuration } from './rounding'
+import { formatDuration, roundIso } from './rounding'
 import { localDate, minutesLabel, localMinutes } from './format'
 
 export const DAY_SECONDS = 24 * 3600
@@ -188,6 +188,13 @@ export const fieldsOfStructure = <F extends { structure?: Structure }>(fields: r
  */
 export const structureOn = (day: string, switchDate: string | null | undefined): Structure =>
   switchDate && day >= switchDate ? 2 : 1
+
+/**
+ * The day a clock started now is recorded on: the day of its start rounded to
+ * the quarter hour, in the person's zone (at 11:53 PM it is the next day's
+ * 12:00 AM). The job is checked against this day, the one the entry gets.
+ */
+export const clockDay = (now: Date, zone: string): string => localDate(roundIso(now), zone)
 
 /** A job can be picked for an entry on this day: pickable at all, and of that day's structure. */
 export const offeredOn = <J extends { selectable: boolean; structure?: Structure }>(job: J | null | undefined, day: string, switchDate: string | null | undefined): job is J =>

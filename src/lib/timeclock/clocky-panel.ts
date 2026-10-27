@@ -21,7 +21,7 @@ import { announceClockStop, portalOrigin } from './clocky-notify'
 import { dayLabel, localDate, timeLabel, zoneAbbr } from './format'
 import { entrySeconds, roundIso, runningSeconds } from './rounding'
 import { endOptions, safetyState, sessionStart, stillWorkingPanelText, stopWhen, windowStart } from './safety'
-import { missingFields, offeredOn, type FieldKeys } from './entry-rules'
+import { clockDay, missingFields, offeredOn, type FieldKeys } from './entry-rules'
 import { weekBounds } from './clock'
 import { loadWindows, statusOf, limitStopIn, stopClockIfDue, type ClockStop } from './allowance-limit'
 import { loadPayTerms } from './pay-terms'
@@ -200,8 +200,9 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
       }
     })
 
-  // Combinations, recents and the resume card.
-  const selectable = (id: number | null) => id != null && offeredOn(catalog.jobs.get(id), today, catalog.switchDate)
+  // Combinations, recents and the resume card: the jobs of the day a clock started now is recorded on.
+  const startsDay = clockDay(now, zone)
+  const selectable = (id: number | null) => id != null && offeredOn(catalog.jobs.get(id), startsDay, catalog.switchDate)
   const combinations = combos.filter(x => selectable(x.jobcode_id)).map(x => choiceOf({ ...x, fields: x.fields ?? {} }, catalog))
   const finished = recent.filter(e => e.kind !== 'absence' && selectable(e.jobcode_id) && e.ended_at !== null)
     .sort((a, b) => (b.ended_at ?? b.entry_date).localeCompare(a.ended_at ?? a.entry_date))

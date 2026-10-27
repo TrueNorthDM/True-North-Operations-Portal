@@ -33,7 +33,7 @@ import { entrySeconds, labelFor, loadClockPanel, loadCombos, northTimeStart, sto
 import { clockGate } from '@/lib/timeclock/waves'
 import { localDate, minutesLabel, localMinutes, timeLabel } from '@/lib/timeclock/format'
 import { QUARTER, formatDuration, recordedSeconds, roundIso } from '@/lib/timeclock/rounding'
-import { FIELD_LABEL, END_AFTER_START, gateText, missingFields, offeredOn, overlapLine, splitAtMidnight } from '@/lib/timeclock/entry-rules'
+import { FIELD_LABEL, END_AFTER_START, clockDay, gateText, missingFields, offeredOn, overlapLine, splitAtMidnight } from '@/lib/timeclock/entry-rules'
 import { KEEP_GOING_TOAST_BELL, KEEP_GOING_TOAST_PANEL, keptGoingNote, sessionStart, windowStart } from '@/lib/timeclock/safety'
 import { lockedMessage } from '@/lib/timeclock/periods'
 import { limitRefusal, type ClockStop } from '@/lib/timeclock/allowance-limit'
@@ -138,7 +138,8 @@ export async function clockIn(input: ClockInput): Promise<Result<{ entryId: numb
     const c = db()
     const gate = await notStarted(v, now)
     if (gate) return fail(gate)
-    const choice = await checkedChoice(input, localDate(now, v.zone))
+    // The job of the day the entry is recorded on (its start on the quarter hour), not of the clock's minute.
+    const choice = await checkedChoice(input, clockDay(now, v.zone))
     if (isFail(choice)) return choice
     const open = await runningOf(c, v.personId)
     if (open) {
@@ -223,7 +224,8 @@ export async function switchTo(input: ClockInput & { finish?: Finish }): Promise
     const now = new Date()
     const c = db()
     const [catalog, combos] = await Promise.all([loadCatalog(), loadCombos(c, v.personId)])
-    const choice = await checkedChoice(input, localDate(now, v.zone))
+    // The next entry starts on the quarter hour: the job of that day.
+    const choice = await checkedChoice(input, clockDay(now, v.zone))
     if (isFail(choice)) return choice
     const nextLabel = labelFor({ jobcode_id: choice.jobcodeId, fields: choice.fields }, combos, catalog)
     const cur = await running(v, now)

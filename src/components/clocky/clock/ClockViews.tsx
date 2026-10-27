@@ -118,8 +118,10 @@ export function OffView({ data, phone, more, busy, query, onQuery, onToggleMore,
 
 // ── 1B, 1C, 1C-b Choosing a job ─────────────────────────────────────────────
 
-export function ChooseView({ data, phone, first, query, browse, onQuery, onBrowse, onPick }: {
+export function ChooseView({ data, day, phone, first, query, browse, onQuery, onBrowse, onPick }: {
   data: ClockPanelData
+  /** The day the clock would record the entry on (its start on the quarter hour); today by default. */
+  day?: string
   phone: Phone
   first: boolean
   query: string
@@ -130,7 +132,7 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
 }) {
   const q = query.trim()
   // Today's structure only: the TSheets jobs before the switch date, the 2026 projects from it.
-  const todays = jobsOn(data.jobs, data.today, data.switchDate)
+  const todays = jobsOn(data.jobs, day ?? data.today, data.switchDate)
   const ids = new Set(todays.map(j => j.id))
   const folders = data.folders.filter(f => f.jobIds.some(id => ids.has(id)))
   const rows = q ? searchJobs(todays, folders, q) : browseJobs(todays, folders, browse)
