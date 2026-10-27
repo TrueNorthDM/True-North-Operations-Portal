@@ -15,6 +15,12 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { g
 vi.mock('@/lib/directory/current-person', () => ({ loadCurrentPerson: async () => ({ id: ME }) }))
 vi.mock('./manual-fields', () => ({ loadEntryFieldKeys: async () => ({ code: '1', activity: '3', company: '4', project: '2', billable: '5' }) }))
 vi.mock('./report-source', () => ({ i7JobcodeIdsHere: async () => new Set([I7_CODE, I7_FOLDER]) }))
+// The limit itself is allowance-limit.ts's (allowance.test.ts); here, only what the batch asks of it.
+let refusal: string | null = null
+const limitCalls: { personId: string; change: { add: { day: string; seconds: number }[]; exclude?: number[] }; name: string | null }[] = []
+vi.mock('./allowance-limit', () => ({
+  limitRefusal: async (personId: string, change: never, _now: Date, name: string | null) => { limitCalls.push({ personId, change, name }); return refusal },
+}))
 vi.mock('@/lib/tsheets/report-data', () => ({ loadI7Assignments: async () => [{ personId: 'ana', rate: 95, from: '2026-01-01', to: null }] }))
 
 const { addManualEntries, deleteManualEntry } = await import('./manual-actions')
@@ -24,6 +30,8 @@ const line = (over: Record<string, unknown> = {}) => ({
 }) as never
 
 beforeEach(() => {
+  refusal = null
+  limitCalls.length = 0
   granted = new Set(['i7-manual'])
   fake = fakeDb({
     tc_jobcodes: [
@@ -74,6 +82,23 @@ describe('hours added by hand (audit, 9 October 2026)', () => {
 
   it('says so when the line is already gone, instead of "done"', async () => {
     expect((await deleteManualEntry(99)).ok).toBe(false)
+  })
+})
+
+describe('the hours allowance is a real limit here too (owner, 25 October 2026)', () => {
+  it('asks once per person with all their lines, named, and adds nothing when refused', async () => {
+    refusal = "That goes past Ana's 140h 00m allowance for September: 2h 00m left. Ask for extra hours to log more."
+    const r = await addManualEntries([line(), line({ entryDate: '2026-09-16', hours: 1.5 })], BATCH)
+    expect(r).toEqual({ ok: false, error: refusal })
+    expect(limitCalls).toEqual([{ personId: 'ana', name: 'Ana', change: { add: [{ day: '2026-09-15', seconds: 10800 }, { day: '2026-09-16', seconds: 5400 }], exclude: [] } }])
+    expect(fake.tables.tc_entries.filter(r => r.manual_batch === BATCH)).toHaveLength(0)
+  })
+
+  it('a batch sent twice leaves its own lines out of the count, so it lands once', async () => {
+    expect(await addManualEntries([line()], BATCH)).toEqual({ ok: true })
+    const id = fake.tables.tc_entries.find(r => r.manual_batch === BATCH)!.id
+    expect(await addManualEntries([line()], BATCH)).toEqual({ ok: true })
+    expect(limitCalls[1].change.exclude).toEqual([id])
   })
 })
 

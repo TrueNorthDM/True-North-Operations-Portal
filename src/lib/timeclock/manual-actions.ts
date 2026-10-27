@@ -10,7 +10,10 @@
  * - every line of a batch carries the batch (migration 101), so the same batch
  *   sent twice lands once, and the panel lists and removes only what it added;
  * - a removal must remove exactly one such row, and is written to the entry
- *   history (tc_entry_audit).
+ *   history (tc_entry_audit);
+ * - nobody's hours go past their allowance plus the extra hours approved,
+ *   whoever adds them (owner, 25 October 2026): the same limit and the same
+ *   sentence as North Time's Time entries (allowance-limit.ts).
  */
 
 import { revalidatePath } from 'next/cache'
@@ -23,7 +26,8 @@ import { i7JobcodeIdsHere } from './report-source'
 import { loadI7Assignments } from '@/lib/tsheets/report-data'
 import { rateStateFor } from '@/lib/tsheets/rates'
 import { monthName } from './periods'
-import { ERROR_TEXT, toSeconds, validateManualEntry, type ManualEntryInput } from './manual-entry'
+import { ERROR_TEXT, manualAdds, toSeconds, validateManualEntry, type ManualEntryInput } from './manual-entry'
+import { limitRefusal } from './allowance-limit'
 import { dateInZone } from './clock'
 import { ROUTES } from '@/lib/nav/routes'
 
@@ -162,6 +166,24 @@ async function addBatch(inputs: ManualEntryInput[], batchId: string): Promise<Re
       manual_batch: batchId,
       manual_line: i,
     })
+  }
+
+  // Not past anyone's allowance, in each week or month the lines fall in. The
+  // lines of this batch already there (sent twice) are left out of the count,
+  // so a retry lands once instead of being refused by itself.
+  const people = [...new Set(inputs.map(i => i.personId))]
+  const [{ data: landed, error: landedErr }, { data: names, error: namesErr }] = await Promise.all([
+    supabase.from('tc_entries').select('id').eq('manual_batch', batchId),
+    supabase.from('people').select('id, full_name').in('id', people),
+  ])
+  if (landedErr) return failed('batch', landedErr, NOT_ADDED)
+  if (namesErr) return failed('names', namesErr, NOT_ADDED)
+  const exclude = ((landed ?? []) as { id: number }[]).map(r => r.id)
+  const nameOf = new Map(((names ?? []) as { id: string; full_name: string }[]).map(p => [p.id, p.full_name]))
+  const now = new Date()
+  for (const [personId, add] of manualAdds(inputs)) {
+    const limit = await limitRefusal(personId, { add, exclude }, now, nameOf.get(personId) ?? 'This person')
+    if (limit) return { ok: false, error: limit }
   }
 
   const { error } = await supabase.from('tc_entries').insert(rows)

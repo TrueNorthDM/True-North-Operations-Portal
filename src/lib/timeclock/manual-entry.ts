@@ -71,3 +71,21 @@ export const ERROR_TEXT: Record<ManualEntryError, string> = {
 export function toSeconds(hours: number): number {
   return Math.round(hours * 3600)
 }
+
+/**
+ * A batch as the hours allowance reads it (owner, 25 October 2026: nobody
+ * logs time past their allowance, whoever adds it): per person, what each
+ * line adds on its day. A batch can name several people and several months,
+ * so each person is checked once with all their lines. allowance-limit.ts
+ * decides; the arithmetic lives there, not here.
+ */
+export function manualAdds(inputs: readonly Pick<ManualEntryInput, 'personId' | 'entryDate' | 'hours'>[]): Map<string, { day: string; seconds: number }[]> {
+  const out = new Map<string, { day: string; seconds: number }[]>()
+  for (const i of inputs) {
+    const add = { day: i.entryDate, seconds: toSeconds(i.hours) }
+    const mine = out.get(i.personId)
+    if (mine) mine.push(add)
+    else out.set(i.personId, [add])
+  }
+  return out
+}
