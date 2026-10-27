@@ -157,6 +157,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
       short: job?.short ?? '',
       label: labelFor({ jobcode_id: running.jobcode_id, fields }, combos, catalog),
       isI7: !!job?.isI7,
+      structure: job?.structure ?? 1,
       fields,
       notes: running.notes ?? '',
       startedAt: running.started_at,

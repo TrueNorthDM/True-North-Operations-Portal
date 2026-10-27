@@ -17,7 +17,7 @@ import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
 import { fieldsForJob, jobsOn, optionsOf } from '@/components/clocky/clock/clock-model'
 import { BillableFromProject } from '@/components/clocky/clock/ClockViews'
-import { FIELD_ORDER, formSpan, overlapAmong, withCombination, withJob, type FormState } from './form'
+import { FIELD_ORDER, formJob, formSpan, overlapAmong, withCombination, withJob, type FormState } from './form'
 import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
 import { addDays } from '@/lib/timeclock/periods'
 import {
@@ -64,7 +64,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const job = catalog.jobs.find(j => j.id === f.jobcodeId)
   const isI7 = job?.isI7 ?? /^2 - i7/.test(f.jobPath)
   // The fields of the job's structure: a 2026 project asks only its Activity; its Billable is shown.
-  const defs = fieldsForJob(catalog.fields, job)
+  const defs = fieldsForJob(catalog.fields, formJob(f, catalog.jobs))
   const shownFields = defs
     .filter(d => d.required === 'always' || isI7)
     .sort((a, b) => FIELD_ORDER.indexOf(a.key) - FIELD_ORDER.indexOf(b.key))

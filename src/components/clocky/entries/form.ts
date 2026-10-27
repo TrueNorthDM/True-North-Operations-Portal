@@ -8,8 +8,8 @@ import { addDays } from '@/lib/timeclock/periods'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { localMinutes } from '@/lib/timeclock/format'
 import { sharedSpan } from '@/lib/timeclock/entry-rules'
-import type { FieldName } from '@/lib/timeclock/entry-rules'
-import type { ClockChoice, EntryView, PanelField } from '@/lib/timeclock/clocky-types'
+import type { FieldName, Structure } from '@/lib/timeclock/entry-rules'
+import type { ClockChoice, EntryView, PanelField, PanelJob } from '@/lib/timeclock/clocky-types'
 import { hhmmOf, isWork, type Bounds } from './model'
 
 export type FieldValues = Record<FieldName, string>
@@ -35,6 +35,8 @@ export interface FormState {
   jobcodeId: number | null
   /** The entry's own job path, kept as an option when it is no longer offered. */
   jobPath: string
+  /** The entry's own job's structure, for its fields when that job is no longer offered. */
+  structure?: Structure
   values: FieldValues
   /** Filled from the job's history ("auto"). */
   auto: Partial<Record<FieldName, boolean>>
@@ -69,12 +71,22 @@ export function formFromRow(r: EntryView): FormState {
   return {
     id: r.id, personId: r.personId, personName: r.personName, zone: r.zone, date: r.date,
     type: r.start ? 'range' : 'dur', start, end, dur: formatDuration(r.seconds), combo: '',
-    jobcodeId: r.jobcodeId, jobPath: r.path,
+    jobcodeId: r.jobcodeId, jobPath: r.path, structure: r.structure,
     values: { company: r.company, project: r.project, activity: r.activity, billable: r.billable, code: r.code },
     auto: {}, notes: r.notes, reason: '', running: r.running,
     bounds: r.shortenOnly ? { start: r.start ? start : null, end: r.start && !r.running ? (end as number) : null, seconds: r.start ? null : r.seconds } : null,
     fix: null, fixNote: null, error: null,
   }
+}
+
+/**
+ * The job whose fields the form asks and sends: the one picked from the list,
+ * else the entry's own (switched off since, so not in the list) by its
+ * structure. Without it a 2026 project's Activity was sent as the TSheets one
+ * and the server dropped it.
+ */
+export function formJob(f: Pick<FormState, 'jobcodeId' | 'structure'>, jobs: readonly PanelJob[]): PanelJob | { structure: Structure } | undefined {
+  return jobs.find(j => j.id === f.jobcodeId) ?? (f.structure ? { structure: f.structure } : undefined)
 }
 
 /** The values a set of fields carries, by name (a combination's, an entry's). */

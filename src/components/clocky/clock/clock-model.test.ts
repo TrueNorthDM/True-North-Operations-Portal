@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ClockChoice, ClockPanelData, PanelField, PanelFolder, PanelJob, RunningEntry } from '@/lib/timeclock/clocky-types'
-import { fieldByKey, jobsOn, valueOf,
+import { fieldByKey, jobsOn, runningJobOf, valueOf,
   breakdown, browseJobs, choiceRow, clockSkew, draftFor, liveTotals, missingOf, overWarn, panelHeader, resumeCard, roundNoteText,
   saveDraftFrom, searchJobs, suggestName, switchChoices, tabTitle, topBarState, zoneCity,
 } from './clock-model'
@@ -139,6 +139,16 @@ describe('drafts', () => {
     expect(jobsOn([{ id: 1, structure: 1 as const }, { id: 2, structure: 2 as const }], '2026-11-01', '2026-11-01').map(j => j.id)).toEqual([2])
     expect(jobsOn([{ id: 1 }, { id: 2, structure: 2 as const }], '2026-10-31', '2026-11-01').map(j => j.id)).toEqual([1])
     expect(jobsOn([{ id: 1 }, { id: 2, structure: 2 as const }], '2026-12-01', null).map(j => j.id)).toEqual([1])
+  })
+
+  it('a running 2026 project switched off since keeps asking its own Activity, not the TSheets fields (audit 2026-10-27)', () => {
+    const fields = [...FIELDS, { key: 'activity' as const, id: '9', label: 'Activity', options: ['Other', 'Admin'], required: 'always' as const, structure: 2 as const }]
+    // Its job is gone from the list (not selectable any more): before, it read as a TSheets job and Company, Project, Activity and Billable were "missing".
+    const r = running({ jobcodeId: 77, isI7: false, structure: 2, fields: { 9: 'Admin' } })
+    expect(missingOf(r.fields, '', fields, runningJobOf(JOBS, r))).toEqual([])
+    expect(fieldByKey(fields, 'activity', runningJobOf(JOBS, r))?.id).toBe('9')
+    expect(missingOf(r.fields, '', fields, { isI7: false })).toEqual(['company', 'project', 'activity', 'billable'])
+    expect(runningJobOf(JOBS, running())).toBe(JOBS.find(j => j.id === 22))
   })
 })
 

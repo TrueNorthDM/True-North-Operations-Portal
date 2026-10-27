@@ -32,7 +32,7 @@ import { DayTimeline, droppedOverlap, type Drag, type Ghost } from './DayTimelin
 import { CorrectionReview, DeleteDialog, GridReasonDialog, SubmitDialog, TimeOffCard } from './Dialogs'
 import { EntriesList, useOutside } from './EntriesList'
 import { EntryForm } from './EntryForm'
-import { blankForm, blankRequest, fieldsOf, formFromRow, formSpan, overlapAmong, type FormState, type RequestState } from './form'
+import { blankForm, blankRequest, fieldsOf, formFromRow, formJob, formSpan, overlapAmong, type FormState, type RequestState } from './form'
 import { fieldsForJob } from '@/components/clocky/clock/clock-model'
 import { HistoryDrawer } from './HistoryDrawer'
 import {
@@ -232,7 +232,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       mode: f.type === 'range' ? 'range' : 'duration',
       ...(f.type === 'range' ? { start: hhmmOf(f.start), end: f.end === 'now' ? 'now' : hhmmOf(f.end) } : { duration: f.dur }),
       jobcodeId: f.jobcodeId!,
-      fields: fieldsOf(f.values, fieldsForJob(catalog.fields, job), job?.isI7 ?? /^2 - i7/.test(f.jobPath)),
+      fields: fieldsOf(f.values, fieldsForJob(catalog.fields, formJob(f, catalog.jobs)), job?.isI7 ?? /^2 - i7/.test(f.jobPath)),
       notes: f.notes,
       reason: f.reason.trim(),
       ...(f.fix ? { fix: f.fix } : {}),

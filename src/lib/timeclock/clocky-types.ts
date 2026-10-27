@@ -111,6 +111,8 @@ export interface RunningEntry {
   short: string
   label: string
   isI7: boolean
+  /** The job's structure (1 TSheets, 2 the 2026 one): its fields, even once the job is switched off and gone from the list. */
+  structure?: Structure
   fields: Record<string, string>
   notes: string
   /** Recorded start (on the quarter hour) and the real one (null for QuickBooks Time). */
@@ -235,6 +237,8 @@ export interface EntryView {
   short: string
   client: string
   isI7: boolean
+  /** The job's structure (1 TSheets, 2 the 2026 one), for the form's fields when the job is no longer offered. */
+  structure?: Structure
   fields: Record<string, string>
   company: string
   project: string

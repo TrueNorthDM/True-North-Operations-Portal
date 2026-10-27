@@ -14,7 +14,7 @@ import { useConfirm } from '@/components/ui/useConfirm'
 import type { ClockChoice, ClockPanelData, Fail } from '@/lib/timeclock/clocky-types'
 import { clockDay, type FieldName } from '@/lib/timeclock/entry-rules'
 import type { ClockApi } from './clock-api'
-import { choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
+import { choiceValues, draftFor, fieldByKey, liveAnnouncement, missingOf, panelHeader, runningJobOf, saveDraftFrom, topBarState, valueOf, type Draft, type SaveDraft } from './clock-model'
 import { ClockDot, FOCUS, HeadButton, ICON, Icon, PlayIcon, StopIcon, byWidth, type Phone } from './ClockParts'
 import { AutoView, ChooseView, DetailsView, ErrorBanner, OffView, OfflineBanner, OnView, type NoteStatus } from './ClockViews'
 import { ManageCombosModal, SaveComboModal } from './ComboModals'
@@ -153,7 +153,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   const mode = base === 'auto' ? 'auto' : ui.view !== 'base' && !(ui.view === 'details' && !ui.draft) ? ui.view : base
   const first = base === 'choose' && ui.ret !== 'switch'
   const header = panelHeader(mode, { data, nowMs, switching: ui.ret === 'switch', first })
-  const runningJob: { isI7: boolean; structure?: 1 | 2 } | null = running ? data.jobs.find(j => j.id === running.jobcodeId) ?? { isI7: running.isI7 } : null
+  const runningJob = running ? runningJobOf(data.jobs, running) : null
   const missing = running ? missingOf(values, notes, data.fields, runningJob) : []
 
   // ── Calls ─────────────────────────────────────────────────────────────────

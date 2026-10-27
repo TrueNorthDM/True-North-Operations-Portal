@@ -16,7 +16,7 @@ import { limitAheadText } from '@/lib/timeclock/allowance'
 import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
   FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf,
-  overWarn, resumeCard, roundNoteText, searchJobs, switchChoices, timerStart, valueOf, type Draft,
+  overWarn, resumeCard, roundNoteText, runningJobOf, searchJobs, switchChoices, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
 
@@ -297,7 +297,7 @@ export function OnView({
   const bars = breakdown(data, nowMs)
   const activity = valueOf(values, data.fields, 'activity')
   const head = data.combinations.find(c => c.jobcodeId === running.jobcodeId && (c.activity || '') === activity)?.name ?? 'Now'
-  const runningJob = data.jobs.find(j => j.id === running.jobcodeId)
+  const runningJob = runningJobOf(data.jobs, running)
   const keys = keysFor(running.isI7)
   const switchRows = switchChoices(data, { jobcodeId: running.jobcodeId, fields: values })
   const gateFields = gate ? missing.filter((m): m is FieldName => m !== 'notes') : []

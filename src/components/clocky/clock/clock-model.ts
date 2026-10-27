@@ -63,6 +63,13 @@ export const isYes = (v: string | null | undefined): boolean => (v ?? '').trim()
 /** The Billable chip and lines: "Billable" / "Not billable". */
 export const billableText = (v: string): string => (isYes(v) ? 'Billable' : 'Not billable')
 
+/**
+ * The running entry's job as the panel asks its fields: the job of the list,
+ * else (a job switched off since the clock started) its own structure.
+ */
+export const runningJobOf = (jobs: readonly PanelJob[], r: Pick<RunningEntry, 'jobcodeId' | 'isI7' | 'structure'>): { isI7: boolean; structure?: Structure } =>
+  jobs.find(j => j.id === r.jobcodeId) ?? { isI7: r.isI7, structure: r.structure }
+
 /** What a running entry or a draft still lacks, in the order the panel asks. */
 export function missingOf(values: Readonly<Record<string, string>>, notes: string | null, fields: readonly PanelField[], job: { isI7: boolean; structure?: Structure } | null | undefined): MissingName[] {
   return missingFields(values, notes, fieldKeys(fieldsForJob(fields, job)), !!job?.isI7)
