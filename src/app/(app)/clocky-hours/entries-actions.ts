@@ -28,7 +28,7 @@ import { revalidatePath } from 'next/cache'
 import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, keysOfJob, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } from '@/lib/timeclock/clocky-context'
-import { offeredOn } from '@/lib/timeclock/entry-rules'
+import { offeredOn, structureOn } from '@/lib/timeclock/entry-rules'
 import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
@@ -348,7 +348,11 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
 
     const jobId = Number(input.jobcodeId)
     const job = catalog.jobs.get(jobId)
-    if (!job || (jobId !== e.jobcode_id && !offeredOn(job, String(input.date ?? e.entry_date), catalog.switchDate))) return fail(PICK_JOB)
+    const day = String(input.date ?? e.entry_date)
+    // Its own job stays even if no longer offered (an old imported entry), but not moved to a day
+    // of the other structure: a TSheets job is not recorded from the switch date, nor a 2026 project before it.
+    const sameJob = jobId === e.jobcode_id
+    if (!job || (sameJob ? day !== e.entry_date && job.structure !== structureOn(day, catalog.switchDate) : !offeredOn(job, day, catalog.switchDate))) return fail(PICK_JOB)
     const current = (e.fields ?? {}) as Record<string, string>
     const f = cleanFields(input.fields, catalog, job, current)
     if ('error' in f) return fail(f.error)
