@@ -8,6 +8,7 @@ import type { ClockChoice, ClockPanelData, PanelField, PanelFolder, PanelJob, Ru
 import type { ClockApi } from '@/components/clocky/clock/clock-api'
 import { draftFor, saveDraftFrom } from '@/components/clocky/clock/clock-model'
 import type { PanelUi, Toast } from '@/components/clocky/clock/ClockPanel'
+import { ACTIVITIES, STRUCTURE } from '@/lib/timeclock/structure-2026'
 
 const ZONE = 'America/New_York'
 /** An instant on Thu, Oct 15, 2026 in New York (EDT, UTC-4). */
@@ -229,6 +230,31 @@ export interface ClockFrame {
   offline?: boolean
 }
 
+/** The 2026 structure (Client › Division › Project, the 26 activities by family) as the server loads it, from the switch date. */
+function data2026(): Pick<ClockPanelData, 'jobs' | 'folders' | 'fields' | 'defaults' | 'combinations' | 'recents' | 'resume' | 'switchDate' | 'today'> {
+  const jobs: PanelJob[] = [], folders: PanelFolder[] = []
+  let id = 2000
+  for (const c of STRUCTURE) {
+    const groups = [...c.divisions.map(d => ({ name: d.name, projects: d.projects })), ...(c.projects.length ? [{ name: c.name, projects: c.projects }] : [])]
+    for (const g of groups) {
+      const fid = ++id
+      const own = g.name === c.name ? c.name : `${c.name} › ${g.name}`
+      const f: PanelFolder = { id: fid, name: own, jobIds: [], use: null, order: fid }
+      for (const p of g.projects) {
+        const path = `${own} › ${p.name}`
+        jobs.push({ id: ++id, name: p.name, path, short: `${g.name} › ${p.name}`, folderId: fid, isI7: false, use: null, billable: c.billable, order: id, structure: 2 })
+        f.jobIds.push(id)
+      }
+      folders.push(f)
+    }
+  }
+  const families = Object.fromEntries(ACTIVITIES.map(a => [a.name, a.family]))
+  const fields: PanelField[] = [...FIELDS, { key: 'activity', id: '99', label: 'Activity', options: ACTIVITIES.map(a => a.name), required: 'always', structure: 2, families }]
+  const africa = jobs.find(j => j.name === 'HopeFor.Africa')!
+  const gc = (j: PanelJob, activity: string): ClockChoice => ({ combinationId: null, name: null, jobcodeId: j.id, path: j.path, short: j.short, isI7: false, fields: { 99: activity }, notes: '', label: j.short, activity, billable: j.billable ? 'yes' : 'no' })
+  return { jobs, folders, fields, defaults: {}, combinations: [{ ...gc(africa, 'Content: Translation'), combinationId: 31, name: 'HFA Translation' }], recents: [gc(jobs.find(j => j.name === 'TN General')!, 'Meeting: Status')], resume: null, switchDate: '2026-10-01', today: '2026-10-15' }
+}
+
 export const FRAMES: ClockFrame[] = [
   { code: '1A', title: 'Off the clock', data: base() },
   { code: '1B', title: 'First time', data: base({ combinations: [], recents: [], resume: null, firstTime: true }) },
@@ -237,6 +263,10 @@ export const FRAMES: ClockFrame[] = [
   { code: '11C', title: 'Browse, When to use', data: base(), ui: { view: 'choose', browse: FOLDERS[1].id } },
   { code: '1D', title: 'Details', data: base(), ui: { view: 'details', draft: draftFor({ defaults: DEFAULTS, fields: FIELDS }, job('2 - i7 Marketing › Web Dev')) } },
   { code: '1E', title: 'On the clock', data: on() },
+  // The 2026 structure, from the switch date (owner, 26 October 2026).
+  { code: '26C', title: '2026 browse', data: base(data2026()), ui: { view: 'choose', browse: data2026().folders.find(f => f.name === 'COE Group › Africa')!.id } },
+  { code: '26D', title: '2026 details', data: base(data2026()), ui: { view: 'details', draft: draftFor({ defaults: {}, fields: data2026().fields }, data2026().jobs.find(j => j.name === 'HopeFor.Africa')!) } },
+  { code: '26E', title: '2026 Activity', data: base(data2026()), ui: { view: 'details', draft: draftFor({ defaults: {}, fields: data2026().fields }, data2026().jobs.find(j => j.name === 'HopeFor.Africa')!, { activity: 'Other' }) } },
   // Clocky part 2, 10B: the allowance lines (Clock Panel.dc.html 10B0, 10B1, 10B2).
   { code: '10B0', title: 'Allowance, quiet', data: on({ allowance: { used: H(128), limit: H(140), over: 0, left: H(12), state: 'ok', period: 'month', hours: 140, stopAt: et(23, 45) } }) },
   { code: '10B1', title: 'Allowance, 90%', data: on({ allowance: { used: H(128), limit: H(140), over: 0, left: H(12), state: 'near', period: 'month', hours: 140, stopAt: et(23, 45) } }) },
