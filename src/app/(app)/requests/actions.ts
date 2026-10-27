@@ -195,7 +195,13 @@ export async function markRmbPaid(input: { id: number; paidOn: string; ref?: str
     if (error) return notSaved(error)
     const d = data?.[0]
     if (!d) return fail('That document is not waiting to be paid. It may have been marked paid already.')
-    await c.from('reimbursements').update({ state: 'paid' }).eq('document_id', d.id).eq('state', 'approved')
+    // The items go paid with their document; if they cannot, the document goes back to waiting, so the two never disagree.
+    const items = await c.from('reimbursements').update({ state: 'paid' }).eq('document_id', d.id).eq('state', 'approved')
+    if (items.error) {
+      const back = await c.from('reimbursement_documents').update({ state: 'approved', paid_on: null, paid_ref: null, paid_note: null, paid_by: null, updated_at: at }).eq('id', d.id).eq('state', 'paid')
+      if (back.error) console.error('[requests] document left paid with its items approved:', d.number, back.error.message)
+      return notSaved(items.error)
+    }
     await announceRmbPaid({ documentId: d.id, number: d.number, personId: d.person_id, paidOn: dateLabel(paidOn), ref })
     refresh()
     return { ok: true, toast: `${d.number} marked paid. ${(await loadDirectory()).nameOf(d.person_id)} sees it in the bell.` }

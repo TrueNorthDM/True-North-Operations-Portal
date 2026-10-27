@@ -70,7 +70,9 @@ export async function saveGoogle(input: { serviceAccount?: string; teamCalendarI
     patch.google_connected_by = me?.id ?? null
     patch.google_connected_at = new Date().toISOString()
   }
-  const { data: before } = await c.from('app_settings').select('google_service_account').eq('singleton_id', 1).maybeSingle()
+  // Unread is not "no key": saving on a guess would say "Add the key" and leave the waiting jobs where they are.
+  const { data: before, error: readError } = await c.from('app_settings').select('google_service_account').eq('singleton_id', 1).maybeSingle()
+  if (readError) { console.error('[settings] google read:', readError.message); return no(NOT_SAVED) }
   const { error } = await c.from('app_settings').update(patch).eq('singleton_id', 1)
   if (error) { console.error('[settings] google:', error.message); return no(NOT_SAVED) }
   if (key) await logChange('google_service_account', 'saved')

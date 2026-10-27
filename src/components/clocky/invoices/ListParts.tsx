@@ -27,8 +27,8 @@ export function downloadCsv(name: string, lines: readonly (readonly string[])[])
 
 export interface StripCard { k: string; label: string; val: string; sub: string; fg: string }
 
-/** The totals strip: each card a filter, the chosen one outlined. */
-export function ListStrip<C extends StripCard>({ cards, active, onPick, cols = 'grid-cols-3' }: { cards: C[]; active: string; onPick: (c: C) => void; cols?: string }) {
+/** The totals strip: each card a filter, the chosen one outlined. One card a row on a phone, where three totals like "$21,527.00" do not fit side by side. */
+export function ListStrip<C extends StripCard>({ cards, active, onPick, cols = 'grid-cols-1 md:grid-cols-3' }: { cards: C[]; active: string; onPick: (c: C) => void; cols?: string }) {
   return (
     <div className={`grid ${cols} gap-3`}>
       {cards.map(c => (
