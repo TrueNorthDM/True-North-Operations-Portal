@@ -130,7 +130,7 @@ export async function updateAgendaEvent(input: NewEventInput & { id: number }): 
     const before = await loadEvent(id)
     if (!before) return fail(GONE)
     if (!mayManageEvent(w.rights, before)) return fail('Editing this event is not open to your access.')
-    const checked = checkEvent(input, { rights: w.rights, teams: new Set(w.dir.teams.keys()), keepTeam: before.team_id })
+    const checked = checkEvent(input, { rights: w.rights, teams: new Set(w.dir.teams.keys()), keepTeam: before.team_id, keepAudience: before.audience_team_ids })
     if (!checked.ok) return fail(checked.error)
     const row = checked.row
     if (!(await clientOk(row))) return fail('Pick the client or project from the list.')

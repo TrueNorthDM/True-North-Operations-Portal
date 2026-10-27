@@ -29,6 +29,7 @@ import { monthName } from './periods'
 import { ERROR_TEXT, manualAdds, toSeconds, validateManualEntry, type ManualEntryInput } from './manual-entry'
 import { limitRefusal } from './allowance-limit'
 import { dateInZone } from './clock'
+import { structureOn } from './entry-rules'
 import { ROUTES } from '@/lib/nav/routes'
 
 type Result = { ok: boolean; error?: string }
@@ -108,8 +109,15 @@ async function addBatch(inputs: ManualEntryInput[], batchId: string): Promise<Re
 
   // The job codes named: real, still active, and a code rather than a folder.
   const jobIds = [...new Set(inputs.map(i => i.jobcodeId))]
-  const { data: jobs, error: jobsErr } = await supabase.from('tc_jobcodes').select('id, active').in('id', jobIds)
+  const [{ data: jobs, error: jobsErr }, { data: sw, error: swErr }] = await Promise.all([
+    supabase.from('tc_jobcodes').select('id, active, kind, structure').in('id', jobIds),
+    supabase.from('tc_settings').select('structure_switch_date').eq('singleton_id', 1).maybeSingle(),
+  ])
   if (jobsErr) return failed('job codes', jobsErr, NOT_ADDED)
+  // Unread is not "no switch date": a line could land in the wrong structure.
+  if (swErr) return failed('the structure switch date', swErr, NOT_ADDED)
+  const switchDate = (sw as { structure_switch_date: string | null } | null)?.structure_switch_date ?? null
+  const jobById = new Map(((jobs ?? []) as { id: number; active: boolean | null; kind: string | null; structure: number | null }[]).map(j => [j.id, j]))
   const { data: kids, error: kidsErr } = await supabase.from('tc_jobcodes').select('parent_id').in('parent_id', jobIds)
   if (kidsErr) return failed('job code folders', kidsErr, NOT_ADDED)
   const activeIds = new Set(((jobs ?? []) as { id: number; active: boolean | null }[]).filter(j => j.active !== false).map(j => j.id))
@@ -124,8 +132,12 @@ async function addBatch(inputs: ManualEntryInput[], batchId: string): Promise<Re
     if (input.personId === me.id) {
       return { ok: false, error: `${at(i)}These hours would be approved as they are added, so someone else adds your own.` }
     }
-    if (!activeIds.has(input.jobcodeId) || folders.has(input.jobcodeId)) {
+    if (!activeIds.has(input.jobcodeId) || folders.has(input.jobcodeId) || (jobById.get(input.jobcodeId)?.kind ?? 'regular') !== 'regular') {
       return { ok: false, error: `${at(i)}Choose an active job code, not a folder.` }
+    }
+    // These lines carry the TSheets fields: only a TSheets job, on a day before the switch date.
+    if ((jobById.get(input.jobcodeId)?.structure ?? 1) !== 1 || structureOn(input.entryDate, switchDate) !== 1) {
+      return { ok: false, error: `${at(i)}From the switch date hours go in North Time > Time entries, on a 2026 project. This list adds hours to the TSheets jobs before that day.` }
     }
     if (isI7 && !input.i7Code?.trim()) {
       return { ok: false, error: `${at(i)}Choose the i7 code: without it the hours land under Unassigned.` }

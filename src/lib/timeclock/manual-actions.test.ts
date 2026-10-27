@@ -56,6 +56,19 @@ describe('hours added by hand (audit, 9 October 2026)', () => {
     expect(fake.tables.tc_entries.filter(r => r.manual_batch === BATCH)).toHaveLength(1)
   })
 
+  it('keeps each structure to its own days: TSheets jobs before the switch date, nothing after it', async () => {
+    fake = fakeDb({
+      tc_jobcodes: [{ id: I7_CODE, active: true, parent_id: null, kind: 'regular', structure: 1 }, { id: 30, active: true, parent_id: null, kind: 'regular', structure: 2 }, { id: 31, active: true, parent_id: null, kind: 'pto', structure: 1 }],
+      tc_settings: [{ singleton_id: 1, structure_switch_date: '2026-10-01' }],
+      tc_entries: [], tc_entry_audit: [], people: [{ id: 'ana', full_name: 'Ana' }],
+    })
+    granted = new Set(['i7-manual', 'ph-manual'])
+    expect(await addManualEntries([line({ entryDate: '2026-10-20' })], BATCH)).toMatchObject({ ok: false, error: expect.stringMatching(/switch date/) })
+    expect(await addManualEntries([line({ jobcodeId: 30, entryDate: '2026-09-20', i7Code: undefined })], BATCH)).toMatchObject({ ok: false, error: expect.stringMatching(/switch date/) })
+    expect(await addManualEntries([line({ jobcodeId: 31, entryDate: '2026-09-20' })], BATCH)).toMatchObject({ ok: false, error: expect.stringMatching(/not a folder/) })
+    expect(await addManualEntries([line({ entryDate: '2026-09-20' })], BATCH)).toEqual({ ok: true })
+  })
+
   it('refuses your own hours: they would land approved', async () => {
     const r = await addManualEntries([line({ personId: ME })], BATCH)
     expect(r.ok).toBe(false)

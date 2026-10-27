@@ -106,11 +106,11 @@ describe('8D cards', () => {
   it('says when someone is back, skipping weekends and holidays', () => {
     expect(backOn('2026-11-25', v.holidays)).toBe('2026-11-30')
     const c = cardOf(items.find(x => x.id === 'o3')!, v)
-    expect(c.rows.map(r => r.b + r.t)).toEqual(['Wed, Nov 25 to Fri, Nov 27', 'Back on Mon, Nov 30', 'Vacation (you see the type because you are a Super Admin)', 'Web'])
+    expect(c.rows.map(r => r.b + r.t)).toEqual(['Wed, Nov 25 to Fri, Nov 27', 'Back on Mon, Nov 30', 'Vacation', 'Web'])
   })
   it('never shows a type the server left out', () => {
     const c = cardOf({ ...items.find(x => x.id === 'o3')!, type: null }, { ...v, superAdmin: false })
-    expect(c.rows.some(r => r.d.includes('M5 11h14'))).toBe(false)
+    expect(c.rows.some(r => r.b === 'Vacation')).toBe(false)
   })
   it('never writes the year of a birthday', () => {
     const c = cardOf(items.find(x => x.id === 'b1')!, v)

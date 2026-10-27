@@ -109,7 +109,7 @@ export function stepsOf(r: OffRequest, x: { days: number; seconds: number; stamp
         ? { t: 'Being sent to Rippling', sub: `${formatDuration(x.seconds)} of ${r.type}, by day, for payroll. It goes in the next few minutes.`, state: 'wait', retry: false }
         : { t: 'Waiting for Rippling', sub: 'Rippling is not connected yet. It is sent by itself once a Super Admin connects it in Company settings, Integrations.', state: 'wait', retry: false }
   const cal: OffStep = r.calendar === 'done'
-    ? { t: 'On the team calendar', sub: `"${r.who}, out" on ${daysText(r.start, r.end)}. Agenda shows it to everyone; the type only to Super Admins and ${first}.`, state: 'ok', retry: false }
+    ? { t: 'On the team calendar', sub: `"${r.who}, out" on ${daysText(r.start, r.end)}. Agenda shows it to everyone, with the type.`, state: 'ok', retry: false }
     : r.calendar === 'failed'
       ? { t: 'Not on the team calendar', sub: 'Google Calendar refused it. A Super Admin can try again from Company settings, Integrations.', state: 'bad', retry: false }
       : { t: r.calendar === 'queued' ? 'Going on the team calendar' : 'Waiting for Google Calendar', sub: r.calendar === 'queued' ? `"${r.who}, out" on ${daysText(r.start, r.end)}, in the next few minutes.` : 'Google Calendar is not connected yet. It goes on the team calendar by itself once a Super Admin connects it.', state: 'wait', retry: false }

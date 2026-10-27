@@ -62,12 +62,12 @@ export async function loadAgendaItems(v: AgendaViewer, from: string, to: string,
   for (const r of [offRes, evRes, gnRes, homeRes]) if (r.error) throw new Error(`The Agenda could not be read: ${r.error.message}`)
   const items: AgendaItem[] = []
 
-  // Approved time off. Everyone sees "<name>, out"; the type only the person and a Super Admin.
+  // Approved time off, with its kind (Vacation, Sick...) for everyone (owner, 27 October 2026; it was the person and Super Admins only).
   for (const r of offRes.data ?? []) {
     if (!dir.people.get(r.person_id)?.active) continue
     const j = catalog.jobs.get(r.jobcode_id)
     items.push({ id: `pto:${r.id}`, k: 'pto', a: r.start_date, b: r.end_date, who: whoOf(dir, r.person_id),
-      type: v.superAdmin || r.person_id === v.id ? (j?.short || j?.path || 'Time off') : null, onGoogle: r.calendar_state === 'done' })
+      type: j?.short || j?.path || 'Time off', onGoogle: r.calendar_state === 'done' })
   }
 
   // Birthdays (never the year) and work anniversaries, from the Directory.

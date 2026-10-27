@@ -4,7 +4,7 @@
  * design check build it from the Agenda's own items, so Home and /agenda agree.
  *
  *   Out today   approved time off covering today, working days only (as the
- *               Agenda draws it); the type only where the Agenda shows it
+ *               Agenda draws it), with its type
  *   Today       today's all-day items ("Today, birthday"), then the timed ones
  *               not over yet ("Today, 30 min")
  *   Coming up   the days after, in date order, until there are 5
@@ -84,7 +84,7 @@ export function homeAgenda(items: readonly AgendaItem[], today: string, now: num
     .sort((p, q) => p.b.localeCompare(q.b) || p.who!.name.localeCompare(q.who!.name))
     .map(x => ({
       id: x.id, personId: x.who!.id, name: x.who!.name, avatarUrl: avatarOf(x.who!.id),
-      // The type only reaches a Super Admin and the person (data.ts); everyone else reads Unavailable.
+      // The type, as the Agenda shows it to everyone (data.ts); Unavailable when it has none.
       reason: x.type || 'Unavailable', until: untilLabel(x.b, today),
     }))
 

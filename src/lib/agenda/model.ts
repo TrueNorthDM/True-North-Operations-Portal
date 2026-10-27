@@ -3,8 +3,8 @@
  * company, as plain data. Everything here is pure: the page, the Home card
  * and the design checks build their grids from a list of items and a day.
  *
- *   pto     approved time off ("Olivia Hale, out"); the type only reaches the
- *           browser of a Super Admin or the person (lib/agenda/data.ts)
+ *   pto     approved time off ("Olivia Hale, out") with its type, for everyone
+ *           (owner, 27 October 2026)
  *   bday    Directory birthdays, month and day only
  *   anni    work anniversaries from the start date
  *   event   company events (Super Admins, Admins) and team events (Team Leaders)
@@ -367,7 +367,7 @@ export function cardOf(x: AgendaItem, v: { meId: string; superAdmin: boolean; to
       rows: [
         { d: AG_ICON.cal, b: drng(x.a, x.b), t: '', bold: true },
         { d: AG_ICON.undo, b: '', t: `Back on ${fday(backOn(x.b, v.holidays))}`, bold: false },
-        ...(x.type ? [{ d: AG_ICON.lock, b: x.type, t: v.superAdmin && !mine ? ' (you see the type because you are a Super Admin)' : ' (only you and Super Admins see the type)', bold: true }] : []),
+        ...(x.type ? [{ d: AG_ICON.clock, b: x.type, t: '', bold: true }] : []),
         ...(team ? [{ d: AG_ICON.people, b: '', t: team, bold: false }] : []),
       ],
       foot: `From approved time off, by itself.${x.onGoogle ? ' It is also on the team Google Calendar.' : ''}`,

@@ -56,6 +56,11 @@ describe('checkEvent', () => {
     const r = checkEvent(input({ teams: ['web'] }), { rights: LEAD, teams: TEAMS })
     expect(r.ok && r.row.team_id).toBe('web')
   })
+  it('lets a Team Leader save their event with a team an Admin added, but not add one', () => {
+    const kept = checkEvent(input({ teams: ['web', 'seo'] }), { rights: LEAD, teams: TEAMS, keepTeam: 'web', keepAudience: ['web', 'seo'] })
+    expect(kept.ok && kept.row).toMatchObject({ team_id: 'web', audience_team_ids: ['web', 'seo'] })
+    expect(checkEvent(input({ teams: ['web', 'seo'] }), { rights: LEAD, teams: TEAMS, keepTeam: 'web', keepAudience: ['web'] }).ok).toBe(false)
+  })
   it('drops unknown teams, and keeps a team event its team when an Admin edits it', () => {
     const r = checkEvent(input({ teams: ['web', 'ghost'] }), { rights: ADMIN, teams: TEAMS, keepTeam: 'web' })
     expect(r.ok && r.row).toMatchObject({ team_id: 'web', audience_team_ids: ['web'] })

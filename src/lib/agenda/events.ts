@@ -93,9 +93,11 @@ export function mayManageEvent(r: EventRights, ev: { kind: string; team_id: stri
  * What a create or an edit may save, checked on the server. `teams` are the
  * team ids that exist; `keepTeam` is the team an edited event belongs to
  * (a Team Leader's), kept when a Super Admin or Admin edits it and that team
- * still sees it.
+ * still sees it. `keepAudience` is who an edited event is for now: a Team
+ * Leader may keep the other teams a Super Admin or Admin added to their
+ * team's event, but not add one.
  */
-export function checkEvent(input: EventInput, ctx: { rights: EventRights; teams: ReadonlySet<string>; keepTeam?: string | null }):
+export function checkEvent(input: EventInput, ctx: { rights: EventRights; teams: ReadonlySet<string>; keepTeam?: string | null; keepAudience?: readonly string[] | null }):
   { ok: false; error: string } | { ok: true; row: EventFields } {
   const fail = (error: string) => ({ ok: false as const, error })
   const { company, led } = ctx.rights
@@ -112,8 +114,10 @@ export function checkEvent(input: EventInput, ctx: { rights: EventRights; teams:
   const teams = [...new Set((Array.isArray(input.teams) ? input.teams : []).map(String))].filter(t => ctx.teams.has(t))
   let teamId: string | null = null
   if (!company) {
-    if (teams.length !== 1 || !led.has(teams[0])) return fail('Pick the team you lead.')
-    teamId = teams[0]
+    const own = teams.filter(t => led.has(t))
+    const added = teams.filter(t => !led.has(t))
+    if (own.length !== 1 || added.some(t => !(ctx.keepAudience ?? []).includes(t))) return fail('Pick the team you lead.')
+    teamId = own[0]
   } else if (ctx.keepTeam && kind === 'event' && teams.includes(ctx.keepTeam)) {
     teamId = ctx.keepTeam
   }
