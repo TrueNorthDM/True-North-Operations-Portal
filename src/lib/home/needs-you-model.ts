@@ -184,10 +184,13 @@ export function tabCount(tab: TabKey, rows: readonly HomeRow[], done: ReadonlySe
 export function dayCounts(data: NeedsYouData): { late: number; today: number; week: number } {
   const open = [...data.needs.rows, ...(data.work?.rows ?? [])].filter(r => r.button && r.due)
   const inWeek = (at: string) => !data.today || daysBetween(data.today, at.slice(0, 10)) <= 7
+  // A row drawn "later" but dated today or before (reimbursement documents to pay, payable
+  // since the day they were made) waits now: it counts with today, never as "more this week".
+  const waitsNow = (r: HomeRow) => r.due!.tone === 'today' || (r.due!.tone === 'later' && !!data.today && r.due!.at.slice(0, 10) <= data.today)
   return {
     late: open.filter(r => r.due!.tone === 'late').length,
-    today: open.filter(r => r.due!.tone === 'today').length,
-    week: open.filter(r => r.due!.tone === 'later' && inWeek(r.due!.at)).length,
+    today: open.filter(waitsNow).length,
+    week: open.filter(r => r.due!.tone === 'later' && !waitsNow(r) && inWeek(r.due!.at)).length,
   }
 }
 

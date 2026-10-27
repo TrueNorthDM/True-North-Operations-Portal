@@ -180,6 +180,12 @@ describe('to pay rows', () => {
     expect(documentsToPayRow([], '$0.00', '2026-10-26')).toBeNull()
   })
 
+  it('counts documents waiting to be paid with today in the banner, not as "more this week" (audit, 27 October 2026)', () => {
+    const today = '2026-10-26'
+    const r = documentsToPayRow([{ createdOn: '2026-10-19' }], '$86.40', today)!
+    expect(dayCounts({ needs: { rows: [r], errors: [] }, work: null, mine: { rows: [], errors: [] }, today })).toEqual({ late: 0, today: 1, week: 0 })
+  })
+
   it('keeps a cancelled time off on Requests 30 days, even when its cancellation was asked (audit, 27 October 2026)', () => {
     const since = '2026-09-27T00:00:00.000Z'
     const t = { state: 'approved', cancel_asked_at: null, decided_at: null, cancelled_at: null }
