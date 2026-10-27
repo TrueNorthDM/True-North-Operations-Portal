@@ -44,6 +44,7 @@ import { getTimesheetPeriods } from '@/app/(app)/clocky-hours/periods/actions'
 import { viewerFor } from '@/lib/timeclock/clocky-context'
 import { loadIntegrations, loadInvoiceSettingsData, loadReminders } from '@/lib/timeclock/company-settings'
 import { loadCatalogueData } from '@/lib/timeclock/job-catalogue'
+import { loadCatalog } from '@/lib/timeclock/clocky-context'
 import { JobCatalogue } from '@/components/settings/JobCatalogue'
 import { addFolder, addJob, addOption, renameOption, reorderJobs, saveJob, setOptionShown } from './catalogue-actions'
 import { IntegrationsSettings, InvoiceSettings, RemindersSettings } from '@/components/settings/ClockySettings'
@@ -490,12 +491,18 @@ async function loadPeriods(): Promise<{ data: TimesheetPeriodsData; options: str
 async function loadBoardLinks(): Promise<{ boards: BoardLink[]; jobcodes: { id: number; name: string }[] }> {
   const supabase = createAdminClient()
 
-  const [{ data: boards }, { data: jobcodes }] = await Promise.all([
+  const [{ data: boards }, catalog] = await Promise.all([
     supabase.from('monday_boards')
       .select('id, name, workspace_name, assignments_count, tc_jobcode_id')
       .eq('included', true),
-    supabase.from('tc_jobcodes').select('id, name').eq('active', true).eq('kind', 'regular').order('name'),
+    loadCatalog(),
   ])
+  // Every job hours can be logged to, by its full path: the TSheets jobs and the
+  // 2026 projects ("COE Group › Africa › HopeFor.Africa"), so a board can be
+  // linked to the project it will be clocked under after the switch date.
+  const jobcodes = [...catalog.jobs.values()].filter(j => j.selectable)
+    .map(j => ({ id: j.id, name: j.structure === 2 ? j.path : j.name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   type Row = {
     id: number; name: string; workspace_name: string | null
@@ -512,6 +519,6 @@ async function loadBoardLinks(): Promise<{ boards: BoardLink[]; jobcodes: { id: 
         jobcodeId: b.tc_jobcode_id,
       }))
       .sort((a, b) => b.assignments - a.assignments),
-    jobcodes: (jobcodes ?? []) as { id: number; name: string }[],
+    jobcodes,
   }
 }
