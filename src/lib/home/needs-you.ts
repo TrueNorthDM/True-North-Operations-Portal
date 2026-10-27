@@ -477,10 +477,14 @@ async function myReimbursements(v: Viewer, now: Date): Promise<HomeRow[]> {
 
 async function myExtraHours(v: Viewer, now: Date): Promise<HomeRow[]> {
   const mineRow = mineRows('/requests/extra-hours')
-  const { data, error } = await db().from('extra_hours_requests')
+  // The newest 100, and every one still pending however old: a pending request past the 100th must still show.
+  const mine = () => db().from('extra_hours_requests')
     .select('id, person_id, asked_by, hours, state, asked_at, decided_by, decided_at')
-    .or(`person_id.eq.${v.personId},asked_by.eq.${v.personId}`).order('asked_at', { ascending: false }).limit(100)
-  if (error) throw new Error(error.message)
+    .or(`person_id.eq.${v.personId},asked_by.eq.${v.personId}`)
+  const [recent, pending] = await Promise.all([mine().order('asked_at', { ascending: false }).limit(100), mine().eq('state', 'pending').order('asked_at', { ascending: false }).limit(1000)])
+  if (recent.error) throw new Error(recent.error.message)
+  if (pending.error) throw new Error(pending.error.message)
+  const data = [...new Map([...(recent.data ?? []), ...(pending.data ?? [])].map(r => [r.id, r])).values()]
   type R = { id: number; person_id: string; asked_by: string | null; hours: number; state: string; asked_at: string; decided_by: string | null; decided_at: string | null }
   const since = sinceIso(now)
   const rows = ((data ?? []) as R[]).filter(r => r.state === 'pending' || (r.decided_at ?? '') >= since)
