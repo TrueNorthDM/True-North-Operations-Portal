@@ -3343,30 +3343,30 @@ export type Database = {
       }
       tc_field_options: {
         Row: {
-          family: string | null
           active: boolean
           edited_in_portal_at: string | null
           external_id: number | null
+          family: string | null
           field_id: number
           id: number
           label: string
           position: number
         }
         Insert: {
-          family?: string | null
           active?: boolean
           edited_in_portal_at?: string | null
           external_id?: number | null
+          family?: string | null
           field_id: number
           id?: number
           label: string
           position?: number
         }
         Update: {
-          family?: string | null
           active?: boolean
           edited_in_portal_at?: string | null
           external_id?: number | null
+          family?: string | null
           field_id?: number
           id?: number
           label?: string
@@ -3383,7 +3383,6 @@ export type Database = {
       }
       tc_fields: {
         Row: {
-          structure: number
           active: boolean
           created_at: string
           external_id: number | null
@@ -3391,9 +3390,9 @@ export type Database = {
           name: string
           position: number
           required: boolean
+          structure: number
         }
         Insert: {
-          structure?: number
           active?: boolean
           created_at?: string
           external_id?: number | null
@@ -3401,9 +3400,9 @@ export type Database = {
           name: string
           position?: number
           required?: boolean
+          structure?: number
         }
         Update: {
-          structure?: number
           active?: boolean
           created_at?: string
           external_id?: number | null
@@ -3411,6 +3410,7 @@ export type Database = {
           name?: string
           position?: number
           required?: boolean
+          structure?: number
         }
         Relationships: []
       }
@@ -3535,12 +3535,35 @@ export type Database = {
           state?: string | null
           tsheets_user_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tc_import_skipped_counted_entry_id_fkey"
+            columns: ["counted_entry_id"]
+            referencedRelation: "tc_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_import_skipped_decided_by_fkey"
+            columns: ["decided_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_import_skipped_jobcode_id_fkey"
+            columns: ["jobcode_id"]
+            referencedRelation: "tc_jobcodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_import_skipped_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tc_jobcodes: {
         Row: {
-          level: string | null
-          structure: number
           active: boolean
           billable: boolean
           created_at: string
@@ -3552,14 +3575,14 @@ export type Database = {
           id: number
           imported_at: string | null
           kind: string
+          level: string | null
           name: string
           parent_id: number | null
           sort_order: number | null
+          structure: number
           when_to_use: string | null
         }
         Insert: {
-          level?: string | null
-          structure?: number
           active?: boolean
           billable?: boolean
           created_at?: string
@@ -3571,14 +3594,14 @@ export type Database = {
           id?: number
           imported_at?: string | null
           kind?: string
+          level?: string | null
           name: string
           parent_id?: number | null
           sort_order?: number | null
+          structure?: number
           when_to_use?: string | null
         }
         Update: {
-          level?: string | null
-          structure?: number
           active?: boolean
           billable?: boolean
           created_at?: string
@@ -3590,9 +3613,11 @@ export type Database = {
           id?: number
           imported_at?: string | null
           kind?: string
+          level?: string | null
           name?: string
           parent_id?: number | null
           sort_order?: number | null
+          structure?: number
           when_to_use?: string | null
         }
         Relationships: [
@@ -3919,7 +3944,20 @@ export type Database = {
           set_by?: string | null
           wave?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tc_rollout_people_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tc_rollout_people_set_by_fkey"
+            columns: ["set_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tc_rollout_waves: {
         Row: {
@@ -3940,7 +3978,14 @@ export type Database = {
           updated_by?: string | null
           wave?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tc_rollout_waves_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tc_safety_events: {
         Row: {
@@ -4011,7 +4056,6 @@ export type Database = {
       }
       tc_settings: {
         Row: {
-          structure_switch_date: string | null
           auto_clockout_hours: number | null
           calculate_overtime: boolean
           daily_regular_hours: number
@@ -4024,13 +4068,13 @@ export type Database = {
           round_minutes: number
           singleton_id: number
           split_at_midnight: boolean
+          structure_switch_date: string | null
           timezone: string
           updated_at: string
           week_start: number
           weekly_regular_hours: number
         }
         Insert: {
-          structure_switch_date?: string | null
           auto_clockout_hours?: number | null
           calculate_overtime?: boolean
           daily_regular_hours?: number
@@ -4043,13 +4087,13 @@ export type Database = {
           round_minutes?: number
           singleton_id?: number
           split_at_midnight?: boolean
+          structure_switch_date?: string | null
           timezone?: string
           updated_at?: string
           week_start?: number
           weekly_regular_hours?: number
         }
         Update: {
-          structure_switch_date?: string | null
           auto_clockout_hours?: number | null
           calculate_overtime?: boolean
           daily_regular_hours?: number
@@ -4062,6 +4106,7 @@ export type Database = {
           round_minutes?: number
           singleton_id?: number
           split_at_midnight?: boolean
+          structure_switch_date?: string | null
           timezone?: string
           updated_at?: string
           week_start?: number
@@ -4158,7 +4203,14 @@ export type Database = {
           tried_at?: string
           tsheets_user_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tc_tsheets_archives_person_id_fkey"
+            columns: ["person_id"]
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tc_user_links: {
         Row: {
