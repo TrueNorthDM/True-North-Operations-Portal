@@ -28,6 +28,7 @@ import { revalidatePath } from 'next/cache'
 import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
 import { db, loadCatalog, loadDirectory, viewerFor, type Catalog, type Viewer } from '@/lib/timeclock/clocky-context'
+import { offeredOn } from '@/lib/timeclock/entry-rules'
 import {
   audit, cleanFields, cleanNotes, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan, snapshot, type EntryRow,
 } from '@/lib/timeclock/clocky-store'
@@ -274,7 +275,7 @@ export async function addTime(input: EntryInput & { personId: string }): Promise
     const reason = reasonOf(input.reason)
     if (!reason) return fail(REASON_REQUIRED)
     const job = catalog.jobs.get(Number(input.jobcodeId))
-    if (!job?.selectable) return fail(PICK_JOB)
+    if (!offeredOn(job, String(input.date ?? ''), catalog.switchDate)) return fail(PICK_JOB)
     const f = cleanFields(input.fields, catalog, job)
     if ('error' in f) return fail(f.error)
     const zone = dir.zoneOf(personId)
@@ -347,7 +348,7 @@ export async function editEntry(input: EntryInput & { id: number }): Promise<Res
 
     const jobId = Number(input.jobcodeId)
     const job = catalog.jobs.get(jobId)
-    if (!job || (jobId !== e.jobcode_id && !job.selectable)) return fail(PICK_JOB)
+    if (!job || (jobId !== e.jobcode_id && !offeredOn(job, String(input.date ?? e.entry_date), catalog.switchDate))) return fail(PICK_JOB)
     const current = (e.fields ?? {}) as Record<string, string>
     const f = cleanFields(input.fields, catalog, job, current)
     if ('error' in f) return fail(f.error)
@@ -503,7 +504,7 @@ export async function saveWeekGrid(input: { personId: string; weekStart: string;
         }
         const lock = lockOn([day], subs, null)
         if (lock || mine.some(e => lockOn([day], subs, e.state))) return fail(lockedMessage(lock ?? { start: day, end: day }))
-        if (seconds > 0 && !job.selectable) return fail(PICK_JOB)
+        if (seconds > 0 && !offeredOn(job, day, catalog.switchDate)) return fail(PICK_JOB)
         changes.push({ day, key, seconds, jobcodeId: job.id, fields: f.fields, replace: mine })
       }
     }
@@ -565,7 +566,7 @@ export async function requestCorrection(input: { date: string; start: string; en
     const today = localDate(now, v.zone)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.date ?? '')) || input.date > today || input.date < addDays(today, -6)) return fail('Pick a day of this week.')
     const job = catalog.jobs.get(Number(input.jobcodeId))
-    if (!job?.selectable) return fail(PICK_JOB)
+    if (!offeredOn(job, String(input.date), catalog.switchDate)) return fail(PICK_JOB)
     const f = cleanFields(input.fields, catalog, job)
     if ('error' in f) return fail(f.error)
     const times = parseTimes({ date: input.date, mode: 'range', start: input.start, end: input.end }, v.zone, now, false)

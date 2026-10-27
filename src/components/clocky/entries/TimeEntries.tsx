@@ -33,6 +33,7 @@ import { CorrectionReview, DeleteDialog, GridReasonDialog, SubmitDialog, TimeOff
 import { EntriesList, useOutside } from './EntriesList'
 import { EntryForm } from './EntryForm'
 import { blankForm, blankRequest, fieldsOf, formFromRow, formSpan, overlapAmong, type FormState, type RequestState } from './form'
+import { fieldsForJob } from '@/components/clocky/clock/clock-model'
 import { HistoryDrawer } from './HistoryDrawer'
 import {
   DEFAULT_COLUMNS, buildGrid, calendarWeeks, gridChanges, gridRowKey, hhmmOf, isWork, nameFor, periodRange, rangeText, shiftAnchor,
@@ -231,7 +232,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       mode: f.type === 'range' ? 'range' : 'duration',
       ...(f.type === 'range' ? { start: hhmmOf(f.start), end: f.end === 'now' ? 'now' : hhmmOf(f.end) } : { duration: f.dur }),
       jobcodeId: f.jobcodeId!,
-      fields: fieldsOf(f.values, catalog.fields, job?.isI7 ?? /^2 - i7/.test(f.jobPath)),
+      fields: fieldsOf(f.values, fieldsForJob(catalog.fields, job), job?.isI7 ?? /^2 - i7/.test(f.jobPath)),
       notes: f.notes,
       reason: f.reason.trim(),
       ...(f.fix ? { fix: f.fix } : {}),
@@ -289,7 +290,7 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
     const job = catalog.jobs.find(j => j.id === q.jobcodeId)
     const r = await call(() => api.requestCorrection({
       date: q.date, start: hhmmOf(q.start), end: hhmmOf(q.end), jobcodeId: q.jobcodeId!,
-      fields: fieldsOf(q.values, catalog.fields, !!job?.isI7), reason: q.reason.trim(),
+      fields: fieldsOf(q.values, fieldsForJob(catalog.fields, job), !!job?.isI7), reason: q.reason.trim(),
     }))
     if (!r) return
     if (!r.ok) return setModal({ kind: 'request', rq: { ...q, error: r.error } })

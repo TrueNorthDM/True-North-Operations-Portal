@@ -9,12 +9,12 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
-import { allRows, db, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Viewer } from './clocky-context'
+import { allRows, db, keysOfJob, loadCadenceChanges, loadCatalog, loadClockySettings, loadDirectory, must, rulesFor, type Catalog, type Directory, type Viewer } from './clocky-context'
 import { loadSubmissions, lockOn, type EntryRow } from './clocky-store'
 import { entrySeconds } from './clocky-panel'
 import { clientOf, dayLabel, initials, localDate, timeLabel, zoneAbbr } from './format'
 import { formatDuration, recordedSeconds } from './rounding'
-import { attentionReason, missingFields, overlapsAmong } from './entry-rules'
+import { attentionReason, missingFields, offeredOn, overlapsAmong } from './entry-rules'
 import { historyLines, type AuditRow } from './history'
 import { holidaysBetween, offDays } from './time-off'
 import { SUBMIT_LOOKBACK, isSent, addDays, cadenceLine, cadenceOn, daysBetween, periodContaining, periodLabel, periodToSubmit, type CadenceRules, type Period, type SubmittedPeriod } from './periods'
@@ -72,7 +72,7 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
   const zone = dir.zoneOf(e.person_id)
   const job = catalog.jobs.get(e.jobcode_id ?? -1)
   const fields = (e.fields ?? {}) as Record<string, string>
-  const k = catalog.keys
+  const k = keysOfJob(catalog, job)
   const val = (id: string | null) => (id ? fields[id] ?? '' : '')
   const running = e.ended_at === null && e.kind === 'clock' && !!e.started_at
   const lock = lockOn([e.entry_date], x.subs.get(e.person_id) ?? [], e.state)
@@ -115,7 +115,7 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
     client: clientOf(job?.path ?? ''),
     isI7: !!job?.isI7,
     fields,
-    company: val(k.company), project: val(k.project), activity: val(k.activity), billable: val(k.billable), code: val(k.code),
+    company: val(k.company), project: val(k.project), activity: val(k.activity), billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : val(k.billable), code: val(k.code),
     notes: e.notes ?? '',
     kind,
     imported: e.source === 'tsheets',
@@ -128,7 +128,7 @@ export function entryView(e: EntryRow, x: Ctx, overlap: boolean): EntryView {
     canEdit: canChange,
     shortenOnly: right === 'shorten',
     canDelete: canChange,
-    canContinue: e.person_id === v.personId && kind !== 'absence' && !!e.started_at && !running && !!job?.selectable,
+    canContinue: e.person_id === v.personId && kind !== 'absence' && !!e.started_at && !running && offeredOn(job, localDate(now, v.zone), catalog.switchDate),
     continuesPrevious: false,
     attention: attentionReason({
       kind,
@@ -192,7 +192,7 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
     const decides = canApproveCorrection(v, dir.target(r.person_id))
     const goesTo = goesToLabel(teamLeadNames(r.person_id, dir.target(r.person_id).teamIds, dir.led, id => !!dir.people.get(id)?.active, id => dir.nameOf(id)))
     const f = r.fields ?? {}
-    const k = catalog.keys
+    const k = keysOfJob(catalog, catalog.jobs.get(r.jobcode_id ?? -1))
     rows.push({
       key: `c${r.id}`, rowType: 'correction', id: r.id, personId: r.person_id,
       personName: person?.name ?? 'Someone', initials: initials(person?.name ?? ''),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ClockChoice, ClockPanelData, PanelField, PanelFolder, PanelJob, RunningEntry } from '@/lib/timeclock/clocky-types'
-import {
+import { fieldByKey, jobsOn, valueOf,
   breakdown, browseJobs, choiceRow, clockSkew, draftFor, liveTotals, missingOf, overWarn, panelHeader, resumeCard, roundNoteText,
   saveDraftFrom, searchJobs, suggestName, switchChoices, tabTitle, topBarState, zoneCity,
 } from './clock-model'
@@ -123,8 +123,22 @@ describe('drafts', () => {
   })
 
   it('knows what is missing, notes included when the Activity asks for them', () => {
-    expect(missingOf({ 1: 'True North', 2: 'In-House', 4: 'yes' }, '', FIELDS, true)).toEqual(['activity', 'code'])
-    expect(missingOf({ 1: 'a', 2: 'b', 3: 'Other (indicate in Notes)', 4: 'no' }, '', FIELDS, false)).toEqual(['notes'])
+    expect(missingOf({ 1: 'True North', 2: 'In-House', 4: 'yes' }, '', FIELDS, { isI7: true })).toEqual(['activity', 'code'])
+    expect(missingOf({ 1: 'a', 2: 'b', 3: 'Other (indicate in Notes)', 4: 'no' }, '', FIELDS, { isI7: false })).toEqual(['notes'])
+  })
+
+  it('asks a 2026 project only its own Activity, and the Notes for Other', () => {
+    const fields = [...FIELDS, { key: 'activity' as const, id: '9', label: 'Activity', options: ['Other', 'Admin'], required: 'always' as const, structure: 2 as const }]
+    const v2 = { isI7: false, structure: 2 as const }
+    expect(missingOf({}, '', fields, v2)).toEqual(['activity'])
+    expect(missingOf({ 9: 'Admin' }, '', fields, v2)).toEqual([])
+    expect(missingOf({ 9: 'Other' }, '', fields, v2)).toEqual(['notes'])
+    expect(fieldByKey(fields, 'activity', v2)?.id).toBe('9')
+    expect(fieldByKey(fields, 'activity')?.id).toBe('3')
+    expect(valueOf({ 9: 'Admin' }, fields, 'activity')).toBe('Admin')
+    expect(jobsOn([{ id: 1, structure: 1 as const }, { id: 2, structure: 2 as const }], '2026-11-01', '2026-11-01').map(j => j.id)).toEqual([2])
+    expect(jobsOn([{ id: 1 }, { id: 2, structure: 2 as const }], '2026-10-31', '2026-11-01').map(j => j.id)).toEqual([1])
+    expect(jobsOn([{ id: 1 }, { id: 2, structure: 2 as const }], '2026-12-01', null).map(j => j.id)).toEqual([1])
   })
 })
 

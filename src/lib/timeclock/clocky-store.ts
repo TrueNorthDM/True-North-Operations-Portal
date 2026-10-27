@@ -12,7 +12,7 @@ import type { Db } from '@/lib/supabase/types'
 import type { Json, Tables, TablesInsert } from '@/lib/types/database.types'
 import { allRows, must, type Catalog, type Directory } from './clocky-context'
 import { roundIso, recordedSeconds } from './rounding'
-import { FIELD_LABEL, splitAtMidnight, firstOverlap, type Timed } from './entry-rules'
+import { FIELD_LABEL, fieldsOfStructure, splitAtMidnight, firstOverlap, type Structure, type Timed } from './entry-rules'
 import { lockedBy, type SubmittedPeriod } from './periods'
 import { safetyState, stopPoint, windowStart, sessionStart } from './safety'
 import { limitStopEvent } from './safety-stops'
@@ -316,11 +316,12 @@ export async function stopAtLimit(c: Client, e: EntryRow, at: { real: string; re
 export function cleanFields(
   values: Readonly<Record<string, unknown>> | undefined,
   catalog: Catalog,
-  job: { isI7: boolean } | undefined,
+  job: { isI7: boolean; structure?: Structure } | undefined,
   keep: Readonly<Record<string, string>> = {},
 ): { fields: Record<string, string> } | { error: string } {
   const out: Record<string, string> = {}
-  for (const f of catalog.fields) {
+  // Only the fields of the job's structure (the 2026 projects ask their own Activity).
+  for (const f of fieldsOfStructure(catalog.fields, job?.structure)) {
     const v = String(values?.[f.id] ?? '').trim()
     if (!v) continue
     if (f.key === 'code' && !job?.isI7) continue

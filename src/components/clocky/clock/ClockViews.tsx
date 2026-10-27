@@ -10,12 +10,12 @@
 
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
-import type { FieldName, MissingName } from '@/lib/timeclock/entry-rules'
+import { activityNeedsNotes, type FieldName, type MissingName } from '@/lib/timeclock/entry-rules'
 import { timeLabel } from '@/lib/timeclock/format'
 import { limitAheadText } from '@/lib/timeclock/allowance'
 import { formatClock, formatDuration, formatTimer } from '@/lib/timeclock/rounding'
 import {
-  FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, keysFor, liveTotals,
+  FIELD_SHORT, SHOWN_COMBINATIONS, billableText, breakdown, browseJobs, choiceRow, lineOf, fieldByKey, jobsOn, keysFor, liveTotals, optionsOf,
   overWarn, resumeCard, roundNoteText, searchJobs, switchChoices, timerStart, valueOf, type Draft,
 } from './clock-model'
 import { BTN_DANGER, BTN_WHITE_DANGER, CK_BTN_NAVY, CK_BTN_NAVY_FLAT, CK_BTN_WHITE, byWidth, type Phone, ChoiceRowView, ClockField, FOCUS, ICON, INPUT_FOCUS, Icon, LINK_BTN, PlayIcon, SearchInput, SectionLabel, StopIcon } from './ClockParts'
@@ -129,7 +129,11 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
   onPick: (jobId: number) => void
 }) {
   const q = query.trim()
-  const rows = q ? searchJobs(data.jobs, data.folders, q) : browseJobs(data.jobs, data.folders, browse)
+  // Today's structure only: the TSheets jobs before the switch date, the 2026 projects from it.
+  const todays = jobsOn(data.jobs, data.today, data.switchDate)
+  const ids = new Set(todays.map(j => j.id))
+  const folders = data.folders.filter(f => f.jobIds.some(id => ids.has(id)))
+  const rows = q ? searchJobs(todays, folders, q) : browseJobs(todays, folders, browse)
   const folder = browse != null ? data.folders.find(f => f.id === browse) : null
   const rowPad = byWidth(phone, 'py-[13px] px-2.5', 'py-[9px] px-2', 'py-[13px] px-2.5 md:py-[9px] md:px-2')
   return (
@@ -185,6 +189,18 @@ export function ChooseView({ data, phone, first, query, browse, onQuery, onBrows
 
 // ── 1D Details before clocking in ───────────────────────────────────────────
 
+/** A 2026 project's Billable: the project's own, shown and not chosen (owner, 26 October 2026). */
+export function BillableFromProject({ billable }: { billable: boolean }) {
+  return (
+    <div className="flex flex-col gap-[5px] min-w-0">
+      <div className="flex items-center gap-1.5 min-h-4"><SectionLabel>Billable</SectionLabel></div>
+      <div title="Set by the project. Ask an Admin if this project is billed wrongly." className="h-10 px-3 flex items-center gap-2 bg-subtle border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-semibold text-[13px] text-tn-ink">
+        {billable ? 'Yes' : 'No'}<span className="text-[11.5px] font-sans font-normal text-muted">from the project</span>
+      </div>
+    </div>
+  )
+}
+
 export function DetailsView({ data, draft, switching, busy, onChangeJob, onField, onNotes, onGo, onSave, onCancel }: {
   data: ClockPanelData
   draft: Draft
@@ -198,25 +214,27 @@ export function DetailsView({ data, draft, switching, busy, onChangeJob, onField
   onCancel: () => void
 }) {
   const job = data.jobs.find(j => j.id === draft.jobId)
-  const notesReq = /in notes/i.test(valueOf(draft.values, data.fields, 'activity'))
+  const notesReq = activityNeedsNotes(valueOf(draft.values, data.fields, 'activity'))
+  const v2 = job?.structure === 2
   return (
     <div className="flex flex-col gap-4">
       <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-3 flex items-center gap-3 bg-subtle">
         <div className="flex-1 min-w-0">
-          <SectionLabel>Job</SectionLabel>
+          <SectionLabel>{v2 ? 'Project' : 'Job'}</SectionLabel>
           <div className="font-(family-name:--font-display) font-bold text-[14px] text-tn-ink mt-[3px]">{job?.path ?? ''}</div>
         </div>
         <button type="button" onClick={onChangeJob} className={LINK_BTN}>Change</button>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {keysFor(!!job?.isI7).map(key => {
-          const f = fieldByKey(data.fields, key)
+          const f = fieldByKey(data.fields, key, job)
           if (!f) return null
           return (
-            <ClockField key={key} label={f.label} value={draft.values[f.id] ?? ''} options={f.options} onChange={v => onField(key, v)}
+            <ClockField key={key} label={f.label} value={draft.values[f.id] ?? ''} options={optionsOf(f)} onChange={v => onField(key, v)}
               search={key === 'activity' || key === 'code'} auto={!!draft.auto[key]} placeholder={key === 'activity' ? 'Search activities' : 'Choose'} />
           )
         })}
+        {v2 && job && <BillableFromProject billable={job.billable} />}
       </div>
       <div className="flex flex-col gap-[5px]">
         <SectionLabel>{notesReq ? 'Notes (required for this Activity)' : 'Notes'}</SectionLabel>
@@ -277,16 +295,17 @@ export function OnView({
   const bars = breakdown(data, nowMs)
   const activity = valueOf(values, data.fields, 'activity')
   const head = data.combinations.find(c => c.jobcodeId === running.jobcodeId && (c.activity || '') === activity)?.name ?? 'Now'
+  const runningJob = data.jobs.find(j => j.id === running.jobcodeId)
   const keys = keysFor(running.isI7)
   const switchRows = switchChoices(data, { jobcodeId: running.jobcodeId, fields: values })
   const gateFields = gate ? missing.filter((m): m is FieldName => m !== 'notes') : []
   const gateOut = gate?.kind === 'out'
-  const field = (k: FieldName) => fieldByKey(data.fields, k)
+  const field = (k: FieldName) => fieldByKey(data.fields, k, runningJob)
   const sel = (k: FieldName, from: 'edit' | 'gate') => {
     const f = field(k)
     if (!f) return null
     return (
-      <ClockField key={`${from}-${k}`} label={f.label} value={values[f.id] ?? ''} options={f.options} onChange={v => onField(k, v, from)}
+      <ClockField key={`${from}-${k}`} label={f.label} value={values[f.id] ?? ''} options={optionsOf(f)} onChange={v => onField(k, v, from)}
         search={k === 'activity' || k === 'code'} placeholder={k === 'activity' ? 'Search activities' : 'Choose'} />
     )
   }

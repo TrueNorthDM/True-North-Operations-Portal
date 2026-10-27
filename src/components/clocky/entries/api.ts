@@ -49,4 +49,4 @@ export interface EntriesApi {
  * their smart defaults, the viewer's saved combinations, who a correction goes
  * to, and the server's now (for the live timer and the running entries).
  */
-export type Catalog = Pick<ClockPanelData, 'me' | 'now' | 'today' | 'jobs' | 'fields' | 'defaults' | 'combinations' | 'correctionGoesTo' | 'running'>
+export type Catalog = Pick<ClockPanelData, 'me' | 'now' | 'today' | 'jobs' | 'fields' | 'defaults' | 'combinations' | 'correctionGoesTo' | 'running' | 'switchDate'>

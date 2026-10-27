@@ -4,7 +4,7 @@ import type { Job } from './clocky-context'
 
 const job = (j: Partial<Job> & { id: number; name: string }): Job => ({
   path: j.name, short: j.name, parentId: null, folderId: null, kind: 'regular', active: true, isI7: false, isFolder: false, selectable: true,
-  whenToUse: null, billable: false, defaultCompany: null, defaultProject: null, sortOrder: null, imported: true, editedInPortal: false, ...j,
+  whenToUse: null, billable: false, defaultCompany: null, defaultProject: null, sortOrder: null, imported: true, editedInPortal: false, structure: 1, level: null, ...j,
 })
 const jobs = new Map([
   job({ id: 1, name: '2 - i7 Marketing', isFolder: true, sortOrder: 1 }),

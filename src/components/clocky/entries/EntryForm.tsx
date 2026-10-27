@@ -15,6 +15,8 @@ import { overlapLine } from '@/lib/timeclock/entry-rules'
 import { localMinutes } from '@/lib/timeclock/format'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
+import { fieldsForJob, jobsOn, optionsOf } from '@/components/clocky/clock/clock-model'
+import { BillableFromProject } from '@/components/clocky/clock/ClockViews'
 import { FIELD_ORDER, formSpan, overlapAmong, withCombination, withJob, type FormState } from './form'
 import { QUARTERS, checkLine, nameFor, weekStartOf, type Check } from './model'
 import { addDays } from '@/lib/timeclock/periods'
@@ -61,7 +63,9 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const check = formCheck(f, rows, catalog, nowMs)
   const job = catalog.jobs.find(j => j.id === f.jobcodeId)
   const isI7 = job?.isI7 ?? /^2 - i7/.test(f.jobPath)
-  const shownFields = catalog.fields
+  // The fields of the job's structure: a 2026 project asks only its Activity; its Billable is shown.
+  const defs = fieldsForJob(catalog.fields, job)
+  const shownFields = defs
     .filter(d => d.required === 'always' || isI7)
     .sort((a, b) => FIELD_ORDER.indexOf(a.key) - FIELD_ORDER.indexOf(b.key))
   const overlapOnly = check.bad && !f.error && !check.shortenOnly && /Overlaps /.test(check.text)
@@ -75,7 +79,8 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
   const times = QUARTERS.filter(inside).map(timeOption)
   const endTimes = f.running && (!b || b.end === null) ? [{ value: 'now', label: 'now' }, ...times] : times
 
-  const jobOptions = catalog.jobs.map(j => ({ value: String(j.id), label: j.path }))
+  // The jobs of the entry's day: the TSheets ones before the switch date, the 2026 projects from it.
+  const jobOptions = jobsOn(catalog.jobs, f.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path }))
   if (f.jobcodeId && !job) jobOptions.unshift({ value: String(f.jobcodeId), label: f.jobPath })
   const comboOptions = catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label }))
 
@@ -100,7 +105,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
           onChange={v => {
             const c = catalog.combinations.find((x, i) => String(x.combinationId ?? `r${i}`) === v)
             if (!c) return
-            const w = withCombination(c, catalog.fields)
+            const w = withCombination(c, fieldsForJob(catalog.fields, catalog.jobs.find(j => j.id === c.jobcodeId)))
             setForm({ combo: v, jobcodeId: w.jobcodeId, jobPath: c.path, values: w.values, auto: {}, error: null })
           }} />
       </div>
@@ -132,18 +137,18 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
         </button>
       )}
 
-      <LabeledSelect label="Job" value={f.jobcodeId ? String(f.jobcodeId) : ''} options={jobOptions} search placeholder="Search jobs"
+      <LabeledSelect label={job?.structure === 2 ? 'Project' : 'Job'} value={f.jobcodeId ? String(f.jobcodeId) : ''} options={jobOptions} search placeholder="Search jobs"
         onChange={v => {
           const id = Number(v)
           const j = catalog.jobs.find(x => x.id === id)
-          const w = withJob(f.values, id, !!j?.isI7, catalog.defaults, catalog.fields)
+          const w = withJob(f.values, id, !!j?.isI7, catalog.defaults, fieldsForJob(catalog.fields, j))
           setForm({ jobcodeId: id, jobPath: j?.path ?? '', values: w.values, auto: w.auto, combo: '', error: null })
         }} />
 
       <div className="grid grid-cols-2 gap-3">
         {shownFields.map(d => {
           const value = f.values[d.key] ?? ''
-          const options = d.options.map(o => ({ value: o, label: o }))
+          const options: { value: string; label: string; group?: string }[] = optionsOf(d)
           if (value && !d.options.includes(value)) options.unshift({ value, label: value })
           const search = d.key === 'activity' || d.key === 'code'
           return (
@@ -152,6 +157,7 @@ export function EntryForm({ form, setForm, catalog, people, pickPerson, leader, 
               onChange={v => setForm({ values: { ...f.values, [d.key]: v }, auto: { ...f.auto, [d.key]: false }, error: null })} />
           )
         })}
+        {job?.structure === 2 && <BillableFromProject billable={job.billable} />}
       </div>
 
       <label className="flex flex-col gap-[5px]">

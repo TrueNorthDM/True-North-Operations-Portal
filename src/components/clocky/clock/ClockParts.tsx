@@ -140,7 +140,7 @@ export function HeadButton({ label, onClick, size = 30, title, children, classNa
 export function ClockField({ label, value, options, onChange, search = false, auto = false, placeholder = 'Choose', warn, compact = false, ariaLabel }: {
   label?: string
   value: string
-  options: readonly (string | { value: string; label: string })[]
+  options: readonly (string | { value: string; label: string; group?: string })[]
   onChange: (v: string) => void
   search?: boolean
   auto?: boolean

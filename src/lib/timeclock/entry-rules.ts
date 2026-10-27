@@ -167,7 +167,31 @@ export const FIELD_LABEL: Record<MissingName, string> = {
 }
 
 /** Notes become required for an Activity that says to explain in the notes ("Other (indicate in Notes)"). */
-export const activityNeedsNotes = (activity: string | null | undefined): boolean => /in notes/i.test(activity ?? '')
+export const activityNeedsNotes = (activity: string | null | undefined): boolean =>
+  /in notes/i.test(activity ?? '') || /^(meeting: )?other$/i.test((activity ?? '').trim())
+
+/**
+ * 1 = the TSheets job tree, 2 = the 2026 structure (Client › Division ›
+ * Project, structure-2026.ts). A field belongs to one of them: the 2026
+ * structure asks only its own Activity, since Client, Division and Project
+ * are the job and Billable comes from the project.
+ */
+export type Structure = 1 | 2
+
+/** The fields a job of this structure asks; lists without a structure are the TSheets ones. */
+export const fieldsOfStructure = <F extends { structure?: Structure }>(fields: readonly F[], structure: Structure | undefined): F[] =>
+  fields.filter(f => (f.structure ?? 1) === (structure ?? 1))
+
+/**
+ * Which structure an entry on this day is recorded in: the 2026 one from the
+ * switch date, the TSheets one before it (and while no date is set).
+ */
+export const structureOn = (day: string, switchDate: string | null | undefined): Structure =>
+  switchDate && day >= switchDate ? 2 : 1
+
+/** A job can be picked for an entry on this day: pickable at all, and of that day's structure. */
+export const offeredOn = <J extends { selectable: boolean; structure?: Structure }>(job: J | null | undefined, day: string, switchDate: string | null | undefined): job is J =>
+  !!job?.selectable && (job.structure ?? 1) === structureOn(day, switchDate)
 
 /**
  * What an entry still lacks to switch or clock out (README "Rules" 11):

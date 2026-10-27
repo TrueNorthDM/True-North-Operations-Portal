@@ -11,7 +11,8 @@ import { BTN_ICON } from '@/lib/ui/buttons'
 import { wallToInstant } from '@/lib/timeclock/clock'
 import { addDays } from '@/lib/timeclock/periods'
 import { dayLabel, minutesLabel } from '@/lib/timeclock/format'
-import { correctionOverlapLine, END_AFTER_START } from '@/lib/timeclock/entry-rules'
+import { correctionOverlapLine, END_AFTER_START, structureOn } from '@/lib/timeclock/entry-rules'
+import { fieldsForJob, jobsOn, optionsOf } from '@/components/clocky/clock/clock-model'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import type { EntryView } from '@/lib/timeclock/clocky-types'
 import type { Catalog } from './api'
@@ -46,7 +47,9 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
   const check = rq.error ? { text: rq.error, bad: true } : requestCheck(rq, personId, zone, rows, catalog, nowMs)
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6)).map(d => ({ value: d, label: dayLabel(d) }))
   const times = QUARTERS.map(m => ({ value: String(m), label: minutesLabel(m) }))
-  const activity = catalog.fields.find(f => f.key === 'activity')
+  const job = catalog.jobs.find(j => j.id === rq.jobcodeId)
+  // The Activity of the job's structure (of the day's, before a job is picked).
+  const activity = fieldsForJob(catalog.fields, job ?? { structure: structureOn(rq.date, catalog.switchDate) }).find(f => f.key === 'activity')
   const comboOptions = catalog.combinations.map((c, i) => ({ value: String(c.combinationId ?? `r${i}`), label: c.name ?? c.label }))
   const disabled = busy || (check.bad && !rq.error) || !rq.jobcodeId || !rq.reason.trim()
 
@@ -70,19 +73,19 @@ export function CorrectionRequest({ rq, setRq, catalog, today, personId, zone, r
           onChange={v => {
             const c = catalog.combinations.find((x, i) => String(x.combinationId ?? `r${i}`) === v)
             if (!c) return
-            const w = withCombination(c, catalog.fields)
+            const w = withCombination(c, fieldsForJob(catalog.fields, catalog.jobs.find(j => j.id === c.jobcodeId)))
             setRq({ combo: v, jobcodeId: w.jobcodeId, values: w.values, error: null })
           }} />
         <LabeledSelect label={activity?.label ?? '3 Activity'} value={rq.values.activity} search placeholder="Search activities"
-          options={(activity?.options ?? []).map(o => ({ value: o, label: o }))}
+          options={activity ? optionsOf(activity) : []}
           onChange={v => setRq({ values: { ...rq.values, activity: v }, error: null })} />
       </div>
       <LabeledSelect label="Job" value={rq.jobcodeId ? String(rq.jobcodeId) : ''} search placeholder="Search jobs"
-        options={catalog.jobs.map(j => ({ value: String(j.id), label: j.path }))}
+        options={jobsOn(catalog.jobs, rq.date, catalog.switchDate).map(j => ({ value: String(j.id), label: j.path }))}
         onChange={v => {
           const id = Number(v)
           const j = catalog.jobs.find(x => x.id === id)
-          setRq({ jobcodeId: id, values: withJob(rq.values, id, !!j?.isI7, catalog.defaults, catalog.fields).values, combo: '', error: null })
+          setRq({ jobcodeId: id, values: withJob(rq.values, id, !!j?.isI7, catalog.defaults, fieldsForJob(catalog.fields, j)).values, combo: '', error: null })
         }} />
       <label className="flex flex-col gap-[5px]">
         <FieldLabel warn>What happened (required)</FieldLabel>

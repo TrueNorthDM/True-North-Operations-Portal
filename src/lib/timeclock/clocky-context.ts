@@ -24,7 +24,7 @@ import { DAILY_ZONE } from '@/lib/notifications/catalogue'
 import { I7_PARENT_JOBCODE_ID } from '@/lib/tsheets/i7report'
 import { loadEntryFieldKeys } from './manual-fields'
 import { jobPath, shortJob } from './format'
-import type { FieldKeys, FieldName } from './entry-rules'
+import type { FieldKeys, FieldName, Structure } from './entry-rules'
 import { isLeader, type ScopeTarget, type ScopeViewer } from './scope'
 import type { AnchorChange, Cadence, CadenceChange, CadenceRules } from './periods'
 
@@ -206,24 +206,47 @@ export interface Job {
   /** Came from QuickBooks Time (the import may still add to it). */
   imported: boolean
   editedInPortal: boolean
+  /** 1 = the TSheets job tree, 2 = the 2026 structure (Client › Division › Project). */
+  structure: Structure
+  /** The 2026 structure's level; null for the TSheets jobs. */
+  level: 'client' | 'division' | 'project' | null
 }
 
-export interface FieldDef { key: FieldName; id: string; label: string; options: string[]; required: 'always' | 'i7' }
+export interface FieldDef {
+  key: FieldName; id: string; label: string; options: string[]; required: 'always' | 'i7'
+  /** The structure the field belongs to (the 2026 Activity is its own field). */
+  structure: Structure
+  /** The 2026 activities' families, by option, for the grouped list. */
+  families?: Record<string, string>
+}
 
 export interface Catalog {
   jobs: ReadonlyMap<number, Job>
   keys: FieldKeys
+  /** The 2026 structure's keys: only its Activity; the job is Client, Division and Project. */
+  keys2026: FieldKeys
   fields: FieldDef[]
+  /** The day the 2026 structure starts (tc_settings), or null while it is not set. */
+  switchDate: string | null
   pathOf: (id: number | null | undefined) => string
 }
 
+/** The field keys an entry on this job is checked against. */
+export const keysOfJob = (catalog: Pick<Catalog, 'keys' | 'keys2026'>, job: { structure?: Structure } | null | undefined): FieldKeys =>
+  job?.structure === 2 ? catalog.keys2026 : catalog.keys
+
 export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> {
   const c = db()
-  const [rows, keys] = await Promise.all([
-    allRows<{ id: number; name: string; parent_id: number | null; external_id: number | null; kind: string; active: boolean; billable: boolean; when_to_use: string | null; default_company: string | null; default_project: string | null; sort_order: number | null; folder: boolean; edited_in_portal_at: string | null }>(
-      (a, b) => c.from('tc_jobcodes').select('id, name, parent_id, external_id, kind, active, billable, when_to_use, default_company, default_project, sort_order, folder, edited_in_portal_at').order('id').range(a, b), 'Job codes could not be read'),
+  const [rows, keys, settingsRes, field2026Res] = await Promise.all([
+    allRows<{ id: number; name: string; parent_id: number | null; external_id: number | null; kind: string; active: boolean; billable: boolean; when_to_use: string | null; default_company: string | null; default_project: string | null; sort_order: number | null; folder: boolean; edited_in_portal_at: string | null; structure: number; level: string | null }>(
+      (a, b) => c.from('tc_jobcodes').select('id, name, parent_id, external_id, kind, active, billable, when_to_use, default_company, default_project, sort_order, folder, edited_in_portal_at, structure, level').order('id').range(a, b), 'Job codes could not be read'),
     loadEntryFieldKeys(c),
+    c.from('tc_settings').select('structure_switch_date').eq('singleton_id', 1).maybeSingle(),
+    c.from('tc_fields').select('id, name').eq('structure', 2).eq('active', true).order('id').limit(1).maybeSingle(),
   ])
+  // Unread is not "no switch": the clock would offer the wrong structure.
+  const switchDate = (must(settingsRes, 'The structure switch date could not be read') as { structure_switch_date: string | null } | null)?.structure_switch_date ?? null
+  const field2026 = must(field2026Res, 'The 2026 Activity field could not be read') as { id: number; name: string } | null
   const byId = new Map(rows.map(r => [r.id, r]))
   const children = new Map<number, typeof rows>()
   for (const r of rows) if (r.parent_id != null) (children.get(r.parent_id) ?? children.set(r.parent_id, []).get(r.parent_id)!).push(r)
@@ -245,6 +268,7 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
     const root = top(r.id)
     // A folder made in the portal is one from the start; an imported one while it holds active jobs.
     const isFolder = r.folder || (children.get(r.id) ?? []).some(k => k.active && k.kind === 'regular')
+    const v2 = r.structure === 2
     const path = pathOfRow(r)
     jobs.set(r.id, {
       id: r.id,
@@ -252,7 +276,8 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
       path,
       short: shortJob(path),
       parentId: r.parent_id,
-      folderId: root.id === r.id ? null : root.id,
+      // The 2026 structure browses by division (or by client where there is none).
+      folderId: v2 ? r.parent_id : root.id === r.id ? null : root.id,
       kind: r.kind,
       active: r.active,
       isI7: root.external_id === I7_PARENT_JOBCODE_ID,
@@ -265,6 +290,8 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
       sortOrder: r.sort_order,
       imported: r.external_id != null,
       editedInPortal: !!r.edited_in_portal_at,
+      structure: v2 ? 2 : 1,
+      level: v2 && (r.level === 'client' || r.level === 'division' || r.level === 'project') ? r.level : null,
     })
   }
 
@@ -285,13 +312,26 @@ export const loadCatalog = cache(async function loadCatalog(): Promise<Catalog> 
     const id = keys[k]
     if (!id) continue
     fields.push({
-      key: k, id, required,
+      key: k, id, required, structure: 1,
       label: names.get(id) ?? k,
       options: optionRows.filter(o => String(o.field_id) === id).map(o => o.label),
     })
   }
 
-  return { jobs, keys, fields, pathOf: id => (id != null ? jobs.get(id)?.path ?? '' : '') }
+  // The 2026 Activity, in its families' order.
+  const keys2026: FieldKeys = { company: null, project: null, activity: field2026 ? String(field2026.id) : null, billable: null, code: null }
+  if (field2026) {
+    const opts = await allRows<{ label: string; family: string | null; position: number }>(
+      (a, b) => c.from('tc_field_options').select('label, family, position').eq('field_id', field2026.id).eq('active', true)
+        .order('position').order('label').range(a, b), 'The 2026 activities could not be read')
+    fields.push({
+      key: 'activity', id: String(field2026.id), required: 'always', structure: 2, label: field2026.name,
+      options: opts.map(o => o.label),
+      families: Object.fromEntries(opts.filter(o => o.family).map(o => [o.label, o.family!])),
+    })
+  }
+
+  return { jobs, keys, keys2026, fields, switchDate, pathOf: id => (id != null ? jobs.get(id)?.path ?? '' : '') }
 })
 
 // ── The company's rules ─────────────────────────────────────────────────────

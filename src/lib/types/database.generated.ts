@@ -3343,6 +3343,7 @@ export type Database = {
       }
       tc_field_options: {
         Row: {
+          family: string | null
           active: boolean
           edited_in_portal_at: string | null
           external_id: number | null
@@ -3352,6 +3353,7 @@ export type Database = {
           position: number
         }
         Insert: {
+          family?: string | null
           active?: boolean
           edited_in_portal_at?: string | null
           external_id?: number | null
@@ -3361,6 +3363,7 @@ export type Database = {
           position?: number
         }
         Update: {
+          family?: string | null
           active?: boolean
           edited_in_portal_at?: string | null
           external_id?: number | null
@@ -3380,6 +3383,7 @@ export type Database = {
       }
       tc_fields: {
         Row: {
+          structure: number
           active: boolean
           created_at: string
           external_id: number | null
@@ -3389,6 +3393,7 @@ export type Database = {
           required: boolean
         }
         Insert: {
+          structure?: number
           active?: boolean
           created_at?: string
           external_id?: number | null
@@ -3398,6 +3403,7 @@ export type Database = {
           required?: boolean
         }
         Update: {
+          structure?: number
           active?: boolean
           created_at?: string
           external_id?: number | null
@@ -3452,6 +3458,8 @@ export type Database = {
       }
       tc_jobcodes: {
         Row: {
+          level: string | null
+          structure: number
           active: boolean
           billable: boolean
           created_at: string
@@ -3469,6 +3477,8 @@ export type Database = {
           when_to_use: string | null
         }
         Insert: {
+          level?: string | null
+          structure?: number
           active?: boolean
           billable?: boolean
           created_at?: string
@@ -3486,6 +3496,8 @@ export type Database = {
           when_to_use?: string | null
         }
         Update: {
+          level?: string | null
+          structure?: number
           active?: boolean
           billable?: boolean
           created_at?: string
@@ -3876,6 +3888,7 @@ export type Database = {
       }
       tc_settings: {
         Row: {
+          structure_switch_date: string | null
           auto_clockout_hours: number | null
           calculate_overtime: boolean
           daily_regular_hours: number
@@ -3894,6 +3907,7 @@ export type Database = {
           weekly_regular_hours: number
         }
         Insert: {
+          structure_switch_date?: string | null
           auto_clockout_hours?: number | null
           calculate_overtime?: boolean
           daily_regular_hours?: number
@@ -3912,6 +3926,7 @@ export type Database = {
           weekly_regular_hours?: number
         }
         Update: {
+          structure_switch_date?: string | null
           auto_clockout_hours?: number | null
           calculate_overtime?: boolean
           daily_regular_hours?: number

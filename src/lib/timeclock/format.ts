@@ -152,7 +152,10 @@ export const jobPath = (name: string, parentName: string | null): string =>
  */
 export function shortJob(path: string): string {
   if (!path) return ''
-  const [top, leaf] = path.split(' › ')
+  const parts = path.split(' › ')
+  // The 2026 structure (Client › Division › Project): the division and the project.
+  if (parts.length >= 3) return `${parts[parts.length - 2]} › ${parts[parts.length - 1]}`
+  const [top, leaf] = parts
   if (!leaf) return top === 'Adventist Messengers/HFA' ? 'HFA' : top
   const root = top.replace(/^\d+\s*-\s*/, '')
   const short = /^i7\b/i.test(root) ? 'i7' : root === 'True North' ? 'TN' : root

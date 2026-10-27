@@ -9,7 +9,7 @@
  */
 
 import type { ClockChoice, ClockPanelData, PanelField, PanelFolder, PanelJob, RunningEntry } from '@/lib/timeclock/clocky-types'
-import { missingFields, type FieldKeys, type FieldName, type MissingName } from '@/lib/timeclock/entry-rules'
+import { fieldsOfStructure, missingFields, structureOn, type FieldKeys, type FieldName, type MissingName, type Structure } from '@/lib/timeclock/entry-rules'
 import { formatClock, formatDuration, formatTimer, roundIso, runningSeconds } from '@/lib/timeclock/rounding'
 import { dayLabel, timeLabel } from '@/lib/timeclock/format'
 import { WARN_AFTER_SECONDS } from '@/lib/timeclock/safety'
@@ -25,18 +25,37 @@ export const FIELD_SHORT: Record<FieldName, string> = {
 /** The fields an entry on this job asks: the i7 Code only on i7 jobs. */
 export const keysFor = (isI7: boolean): FieldName[] => FIELD_ORDER.filter(k => k !== 'code' || isI7)
 
-export const fieldByKey = (fields: readonly PanelField[], key: FieldName): PanelField | undefined => fields.find(f => f.key === key)
+/**
+ * The field of this name. With a job, the one of the job's structure (the
+ * 2026 projects have their own Activity); without, the TSheets one.
+ */
+export const fieldByKey = (fields: readonly PanelField[], key: FieldName, job?: { structure?: Structure } | null): PanelField | undefined =>
+  fieldsOfStructure(fields, job?.structure).find(f => f.key === key)
+
+/** A field's options for the list: the 2026 activities under their family headings. */
+export const optionsOf = (f: Pick<PanelField, 'options' | 'families'>): { value: string; label: string; group?: string }[] =>
+  f.options.map(o => ({ value: o, label: o, ...(f.families?.[o] ? { group: f.families[o] } : {}) }))
+
+/** The fields a job asks: its structure's, the i7 Code only on i7 jobs. */
+export const fieldsForJob = (fields: readonly PanelField[], job: { structure?: Structure } | null | undefined): PanelField[] =>
+  fieldsOfStructure(fields, job?.structure)
+
+/** The jobs offered for an entry on this day: the TSheets jobs before the switch date, the 2026 projects from it. */
+export const jobsOn = <J extends { structure?: Structure }>(jobs: readonly J[], day: string, switchDate: string | null | undefined): J[] =>
+  jobs.filter(j => (j.structure ?? 1) === structureOn(day, switchDate))
 
 /** tc_fields ids by name, as lib/timeclock/entry-rules.ts wants them. */
 export function fieldKeys(fields: readonly PanelField[]): FieldKeys {
-  const id = (k: FieldName) => fieldByKey(fields, k)?.id ?? null
+  // The list as given: a caller narrowed to one structure keeps it.
+  const id = (k: FieldName) => fields.find(f => f.key === k)?.id ?? null
   return { company: id('company'), project: id('project'), activity: id('activity'), billable: id('billable'), code: id('code') }
 }
 
 /** The value of one named field in a fields object keyed by tc_fields id. */
 export function valueOf(values: Readonly<Record<string, string>>, fields: readonly PanelField[], key: FieldName): string {
-  const f = fieldByKey(fields, key)
-  return f ? values[f.id] ?? '' : ''
+  // Whichever structure's field the values carry (an entry holds one structure's ids).
+  for (const f of fields) if (f.key === key && values[f.id]) return values[f.id]
+  return ''
 }
 
 export const isYes = (v: string | null | undefined): boolean => (v ?? '').trim().toLowerCase() === 'yes'
@@ -45,8 +64,8 @@ export const isYes = (v: string | null | undefined): boolean => (v ?? '').trim()
 export const billableText = (v: string): string => (isYes(v) ? 'Billable' : 'Not billable')
 
 /** What a running entry or a draft still lacks, in the order the panel asks. */
-export function missingOf(values: Readonly<Record<string, string>>, notes: string | null, fields: readonly PanelField[], isI7: boolean): MissingName[] {
-  return missingFields(values, notes, fieldKeys(fields), isI7)
+export function missingOf(values: Readonly<Record<string, string>>, notes: string | null, fields: readonly PanelField[], job: { isI7: boolean; structure?: Structure } | null | undefined): MissingName[] {
+  return missingFields(values, notes, fieldKeys(fieldsForJob(fields, job)), !!job?.isI7)
 }
 
 // ── Rows ────────────────────────────────────────────────────────────────────
@@ -278,12 +297,12 @@ export interface Draft {
 }
 
 /** A job chosen: Company, Project, Billable (and the i7 Code) from its usual values; Activity left for the person. */
-export function draftFor(d: Pick<ClockPanelData, 'defaults' | 'fields'>, job: Pick<PanelJob, 'id' | 'isI7'>, extra: { activity?: string; notes?: string } = {}): Draft {
+export function draftFor(d: Pick<ClockPanelData, 'defaults' | 'fields'>, job: Pick<PanelJob, 'id' | 'isI7' | 'structure'>, extra: { activity?: string; notes?: string } = {}): Draft {
   const def = d.defaults[String(job.id)] ?? {}
   const values: Record<string, string> = {}
   const auto: Partial<Record<FieldName, boolean>> = {}
   for (const key of keysFor(job.isI7)) {
-    const f = fieldByKey(d.fields, key)
+    const f = fieldByKey(d.fields, key, job)
     if (!f) continue
     if (key === 'activity') { values[f.id] = extra.activity ?? ''; continue }
     values[f.id] = def[f.id] ?? ''
@@ -293,10 +312,10 @@ export function draftFor(d: Pick<ClockPanelData, 'defaults' | 'fields'>, job: Pi
 }
 
 /** The fields a choice carries, limited to what its job asks. */
-export function choiceValues(values: Readonly<Record<string, string>>, fields: readonly PanelField[], isI7: boolean): Record<string, string> {
+export function choiceValues(values: Readonly<Record<string, string>>, fields: readonly PanelField[], job: { isI7: boolean; structure?: Structure } | null | undefined): Record<string, string> {
   const out: Record<string, string> = {}
-  for (const key of keysFor(isI7)) {
-    const f = fieldByKey(fields, key)
+  for (const key of keysFor(!!job?.isI7)) {
+    const f = fieldByKey(fields, key, job)
     if (f && values[f.id]) out[f.id] = values[f.id]
   }
   return out

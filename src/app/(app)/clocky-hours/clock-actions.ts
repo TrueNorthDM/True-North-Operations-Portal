@@ -24,7 +24,7 @@
 import { revalidatePath } from 'next/cache'
 import { loadAccess, writerAccess } from '@/lib/access/resolve'
 import { getViewAs } from '@/lib/auth/view-as-server'
-import { db, loadCatalog, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
+import { db, keysOfJob, loadCatalog, viewerFor, type Viewer } from '@/lib/timeclock/clocky-context'
 import {
   audit, cleanFields, cleanNotes, closeClock, loadEntry, loadSubmissions, lockOn, overlapFor, rewriteSpan,
   runningOf, snapshot, type EntryRow,
@@ -32,7 +32,7 @@ import {
 import { entrySeconds, labelFor, loadClockPanel, loadCombos, stopOwnIfDue, choiceOf } from '@/lib/timeclock/clocky-panel'
 import { localDate, minutesLabel, localMinutes, timeLabel } from '@/lib/timeclock/format'
 import { QUARTER, formatDuration, recordedSeconds, roundIso } from '@/lib/timeclock/rounding'
-import { FIELD_LABEL, END_AFTER_START, gateText, missingFields, overlapLine, splitAtMidnight } from '@/lib/timeclock/entry-rules'
+import { FIELD_LABEL, END_AFTER_START, gateText, missingFields, offeredOn, overlapLine, splitAtMidnight } from '@/lib/timeclock/entry-rules'
 import { KEEP_GOING_TOAST_BELL, KEEP_GOING_TOAST_PANEL, keptGoingNote, sessionStart, windowStart } from '@/lib/timeclock/safety'
 import { lockedMessage } from '@/lib/timeclock/periods'
 import { limitRefusal, type ClockStop } from '@/lib/timeclock/allowance-limit'
@@ -111,10 +111,15 @@ export interface ClockInput {
   notes?: string
 }
 
-async function checkedChoice(input: ClockInput): Promise<{ jobcodeId: number; fields: Record<string, string>; notes: string | null; isI7: boolean } | Fail> {
+/**
+ * The job and fields chosen. With a day, the job must be of that day's
+ * structure (the TSheets jobs before the switch date, the 2026 projects from
+ * it); a combination is saved for whichever structure it was made in.
+ */
+async function checkedChoice(input: ClockInput, day?: string): Promise<{ jobcodeId: number; fields: Record<string, string>; notes: string | null; isI7: boolean } | Fail> {
   const catalog = await loadCatalog()
   const job = catalog.jobs.get(Number(input.jobcodeId))
-  if (!job?.selectable) return fail(PICK_JOB)
+  if (!job || (day ? !offeredOn(job, day, catalog.switchDate) : !job.selectable)) return fail(PICK_JOB)
   const f = cleanFields(input.fields, catalog, job)
   if ('error' in f) return fail(f.error)
   return { jobcodeId: job.id, fields: f.fields, notes: cleanNotes(input.notes), isI7: job.isI7 }
@@ -127,7 +132,7 @@ export async function clockIn(input: ClockInput): Promise<Result<{ entryId: numb
   try {
     const now = new Date()
     const c = db()
-    const choice = await checkedChoice(input)
+    const choice = await checkedChoice(input, localDate(now, v.zone))
     if (isFail(choice)) return choice
     const open = await runningOf(c, v.personId)
     if (open) {
@@ -179,7 +184,7 @@ async function finishRunning(v: Viewer, e: EntryRow, finish: Finish | undefined,
     const { error } = await c.from('tc_entries').update({ fields, notes, updated_at: new Date().toISOString() }).eq('id', e.id).is('ended_at', null)
     if (error) return notSaved(error)
   }
-  const missing = missingFields(fields, notes, catalog.keys, !!job?.isI7)
+  const missing = missingFields(fields, notes, keysOfJob(catalog, job), !!job?.isI7)
   if (missing.length) return fail(`${gateText(kind, toLabel)} ${missing.map(m => FIELD_LABEL[m]).join(', ')}.`, { missing })
   return { ...e, fields, notes }
 }
@@ -212,7 +217,7 @@ export async function switchTo(input: ClockInput & { finish?: Finish }): Promise
     const now = new Date()
     const c = db()
     const [catalog, combos] = await Promise.all([loadCatalog(), loadCombos(c, v.personId)])
-    const choice = await checkedChoice(input)
+    const choice = await checkedChoice(input, localDate(now, v.zone))
     if (isFail(choice)) return choice
     const nextLabel = labelFor({ jobcode_id: choice.jobcodeId, fields: choice.fields }, combos, catalog)
     const cur = await running(v, now)
@@ -357,7 +362,7 @@ export async function saveRunningDetails(input: Finish): Promise<Result<{ missin
       .eq('id', cur.id).is('ended_at', null).select('id')
     if (error) return notSaved(error)
     if (!data?.length) return fail(NOT_CLOCKED_IN)
-    return { ok: true, missing: missingFields(f.fields, notes, catalog.keys, !!job?.isI7) }
+    return { ok: true, missing: missingFields(f.fields, notes, keysOfJob(catalog, job), !!job?.isI7) }
   } catch (e) {
     return notSaved(e)
   }

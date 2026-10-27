@@ -10,7 +10,7 @@
  */
 
 import type { AccessLevel } from '@/lib/access/catalogue'
-import type { FieldName, MissingName } from './entry-rules'
+import type { FieldName, MissingName, Structure } from './entry-rules'
 import type { Cadence, Period } from './periods'
 
 // ── Results ─────────────────────────────────────────────────────────────────
@@ -64,6 +64,8 @@ export interface PanelJob {
   billable: boolean
   /** Its place in the job catalogue's order. */
   order: number
+  /** 1 = a TSheets job, 2 = a 2026 project (asks only the 2026 Activity; Billable is the project's). */
+  structure?: Structure
 }
 
 export interface PanelFolder { id: number; name: string; jobIds: number[]; use: string | null; order: number }
@@ -77,6 +79,10 @@ export interface PanelField {
   options: string[]
   /** i7 Code is asked, and required, only on i7 jobs. */
   required: 'always' | 'i7'
+  /** Which structure the field belongs to; missing means the TSheets one. */
+  structure?: Structure
+  /** The 2026 activities' families, by option. */
+  families?: Record<string, string>
 }
 
 /** A saved combination, a recent one, or the resume card. */
@@ -151,6 +157,8 @@ export interface ToConfirm {
 }
 
 export interface ClockPanelData {
+  /** The day the 2026 structure starts; jobs and fields are offered by the day of the entry (entry-rules structureOn). */
+  switchDate?: string | null
   me: { personId: string; name: string; zone: string; zoneAbbr: string; level: AccessLevel; leader: boolean }
   /** The server's now, to anchor the live timers. */
   now: string

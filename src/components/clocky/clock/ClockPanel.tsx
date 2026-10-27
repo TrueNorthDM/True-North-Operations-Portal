@@ -153,7 +153,8 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   const mode = base === 'auto' ? 'auto' : ui.view !== 'base' && !(ui.view === 'details' && !ui.draft) ? ui.view : base
   const first = base === 'choose' && ui.ret !== 'switch'
   const header = panelHeader(mode, { data, nowMs, switching: ui.ret === 'switch', first })
-  const missing = running ? missingOf(values, notes, data.fields, running.isI7) : []
+  const runningJob: { isI7: boolean; structure?: 1 | 2 } | null = running ? data.jobs.find(j => j.id === running.jobcodeId) ?? { isI7: running.isI7 } : null
+  const missing = running ? missingOf(values, notes, data.fields, runningJob) : []
 
   // ── Calls ─────────────────────────────────────────────────────────────────
 
@@ -282,7 +283,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
 
   const onField = (k: FieldName, v: string, from: 'edit' | 'gate') => {
     if (!running) return
-    const f = fieldByKey(data.fields, k)
+    const f = fieldByKey(data.fields, k, runningJob)
     if (!f) return
     const next = { ...(overlay?.id === running.id ? overlay.values : {}), [f.id]: v }
     setOverlay({ id: running.id, values: next })
@@ -299,7 +300,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     const s = ui.save
     if (!s || !s.name.trim()) return
     const job = data.jobs.find(j => j.id === s.jobId)
-    const input = { name: s.name, jobcodeId: s.jobId, fields: choiceValues(s.values, data.fields, !!job?.isI7), notes: s.notes }
+    const input = { name: s.name, jobcodeId: s.jobId, fields: choiceValues(s.values, data.fields, job), notes: s.notes }
     void run(() => (s.editing ? api.updateCombination({ ...input, id: s.editing }) : api.createCombination(input)), async r => {
       toast({ text: r.toast })
       set({ modal: ui.back ? 'manage' : null, save: null, back: false })
@@ -330,7 +331,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   }
 
   const setDraftField = (k: FieldName, v: string) => {
-    const f = fieldByKey(data.fields, k)
+    const f = fieldByKey(data.fields, k, data.jobs.find(j => j.id === ui.draft?.jobId))
     if (!f || !ui.draft) return
     set({ draft: { ...ui.draft, values: { ...ui.draft.values, [f.id]: v }, auto: { ...ui.draft.auto, [k]: false } } })
   }
@@ -339,9 +340,9 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     const d = ui.draft
     if (!d) return
     const job = data.jobs.find(j => j.id === d.jobId)
-    const choice = { jobcodeId: d.jobId, fields: choiceValues(d.values, data.fields, !!job?.isI7), notes: d.notes }
+    const choice = { jobcodeId: d.jobId, fields: choiceValues(d.values, data.fields, job), notes: d.notes }
     if (ui.ret === 'switch' && running) {
-      const to: ClockChoice = { combinationId: null, name: null, jobcodeId: d.jobId, path: job?.path ?? '', short: job?.short ?? '', isI7: !!job?.isI7, fields: choice.fields, notes: d.notes, label: job?.short ?? '', activity: valueOf(d.values, data.fields, 'activity'), billable: valueOf(d.values, data.fields, 'billable') }
+      const to: ClockChoice = { combinationId: null, name: null, jobcodeId: d.jobId, path: job?.path ?? '', short: job?.short ?? '', isI7: !!job?.isI7, fields: choice.fields, notes: d.notes, label: job?.short ?? '', activity: valueOf(d.values, data.fields, 'activity'), billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : valueOf(d.values, data.fields, 'billable') }
       switchTo(choice, to)
     } else startWith(choice)
   }

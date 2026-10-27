@@ -15,13 +15,13 @@
  */
 
 import type { Db } from '@/lib/supabase/types'
-import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, loadCadenceChanges, must, rulesFor, type Catalog, type Viewer } from './clocky-context'
+import { allRows, db, keysOfJob, loadCatalog, loadClockySettings, loadDirectory, loadCadenceChanges, must, rulesFor, type Catalog, type Viewer } from './clocky-context'
 import { runningOf, loadSubmissions, lockOn, type EntryRow } from './clocky-store'
 import { announceClockStop, portalOrigin } from './clocky-notify'
 import { dayLabel, localDate, timeLabel, zoneAbbr } from './format'
 import { entrySeconds, roundIso, runningSeconds } from './rounding'
 import { endOptions, safetyState, sessionStart, stillWorkingPanelText, stopWhen, windowStart } from './safety'
-import { missingFields, type FieldKeys } from './entry-rules'
+import { missingFields, offeredOn, type FieldKeys } from './entry-rules'
 import { weekBounds } from './clock'
 import { loadWindows, statusOf, limitStopIn, stopClockIfDue, type ClockStop } from './allowance-limit'
 import { loadPayTerms } from './pay-terms'
@@ -44,7 +44,7 @@ export const sameChoice = (a: { jobcode_id: number | null; fields: Record<string
 
 /** How an entry is named in toasts and breakdowns: the saved combination's name, else the short job. */
 export function labelFor(e: { jobcode_id: number | null; fields: Record<string, string> }, combos: readonly ComboRow[], catalog: Catalog): string {
-  const c = combos.find(x => sameChoice(x, e, catalog.keys))
+  const c = combos.find(x => sameChoice(x, e, keysOfJob(catalog, catalog.jobs.get(e.jobcode_id ?? -1))))
   return c?.name ?? catalog.jobs.get(e.jobcode_id ?? -1)?.short ?? ''
 }
 
@@ -53,7 +53,7 @@ export function choiceOf(
   catalog: Catalog,
 ): ClockChoice {
   const job = catalog.jobs.get(src.jobcode_id)
-  const keys = catalog.keys
+  const keys = keysOfJob(catalog, job)
   return {
     combinationId: src.id ?? null,
     name: src.name ?? null,
@@ -65,7 +65,8 @@ export function choiceOf(
     notes: src.notes ?? '',
     label: src.name ?? job?.short ?? '',
     activity: keys.activity ? src.fields?.[keys.activity] ?? '' : '',
-    billable: keys.billable ? src.fields?.[keys.billable] ?? '' : '',
+    // A 2026 project's Billable is the project's own.
+    billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : keys.billable ? src.fields?.[keys.billable] ?? '' : '',
   }
 }
 
@@ -162,7 +163,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
       windowStartedAt: windowStart(running),
       recordedSeconds: runningSeconds(running.started_at, now),
       roundNote: realLabel && realLabel !== recLabel ? { recorded: recLabel, real: realLabel } : null,
-      missing: missingFields(fields, running.notes, keys, !!job?.isI7),
+      missing: missingFields(fields, running.notes, keysOfJob(catalog, job), !!job?.isI7),
       imported: running.source === 'tsheets',
     }
     const ws = windowStart(running)
@@ -198,7 +199,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     })
 
   // Combinations, recents and the resume card.
-  const selectable = (id: number | null) => id != null && !!catalog.jobs.get(id)?.selectable
+  const selectable = (id: number | null) => id != null && offeredOn(catalog.jobs.get(id), today, catalog.switchDate)
   const combinations = combos.filter(x => selectable(x.jobcode_id)).map(x => choiceOf({ ...x, fields: x.fields ?? {} }, catalog))
   const finished = recent.filter(e => e.kind !== 'absence' && selectable(e.jobcode_id) && e.ended_at !== null)
     .sort((a, b) => (b.ended_at ?? b.entry_date).localeCompare(a.ended_at ?? a.entry_date))
@@ -207,9 +208,9 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   for (const e of [...(running ? [running] : []), ...finished]) {
     const f = (e.fields ?? {}) as Record<string, string>
     const k = { jobcode_id: e.jobcode_id, fields: f }
-    if (seen.some(s => sameChoice(s, k, keys))) continue
+    if (seen.some(s => sameChoice(s, k, keysOfJob(catalog, catalog.jobs.get(k.jobcode_id ?? -1))))) continue
     seen.push(k)
-    if (combos.some(x => sameChoice(x, k, keys)) || !selectable(e.jobcode_id)) continue
+    if (combos.some(x => sameChoice(x, k, keysOfJob(catalog, catalog.jobs.get(k.jobcode_id ?? -1)))) || !selectable(e.jobcode_id)) continue
     recents.push(choiceOf({ jobcode_id: e.jobcode_id!, fields: f, notes: e.notes }, catalog))
     if (recents.length >= 5) break
   }
@@ -217,7 +218,7 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const resume = last
     ? (() => {
       const f = (last.fields ?? {}) as Record<string, string>
-      const saved = combos.find(x => sameChoice(x, { jobcode_id: last.jobcode_id, fields: f }, keys))
+      const saved = combos.find(x => sameChoice(x, { jobcode_id: last.jobcode_id, fields: f }, keysOfJob(catalog, catalog.jobs.get(last.jobcode_id ?? -1))))
       return choiceOf({ jobcode_id: last.jobcode_id!, fields: f, notes: last.notes, name: saved?.name ?? null, id: saved?.id ?? null }, catalog)
     })()
     : null
@@ -235,11 +236,13 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   // In the job catalogue's order (Company settings > Job catalogue), then by name.
   const rank = new Map(catalogueRows(catalog).map((r, i) => [r.id, i]))
   const byRank = (a: { id: number; path: string }, b: { id: number; path: string }) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9) || a.path.localeCompare(b.path)
-  const jobs: PanelJob[] = [...catalog.jobs.values()].filter(j => j.selectable)
-    .map(j => ({ id: j.id, name: j.name, path: j.path, short: j.short, folderId: j.folderId, isI7: j.isI7, use: j.whenToUse, billable: j.billable, order: rank.get(j.id) ?? 1e9 }))
+  // Every job either structure may need: the clock offers today's, the forms the day of the entry
+  // (the TSheets jobs before the switch date, the 2026 projects from it; none of those before a date is set).
+  const jobs: PanelJob[] = [...catalog.jobs.values()].filter(j => j.selectable && (j.structure === 1 || !!catalog.switchDate))
+    .map(j => ({ id: j.id, name: j.name, path: j.path, short: j.short, folderId: j.folderId, isI7: j.isI7, use: j.whenToUse, billable: j.billable, order: rank.get(j.id) ?? 1e9, structure: j.structure }))
     .sort(byRank)
   const folderIds = [...new Set(jobs.map(j => j.folderId).filter((x): x is number => x != null))]
-  const folders: PanelFolder[] = folderIds.map(id => ({ id, name: catalog.jobs.get(id)?.name ?? '', jobIds: jobs.filter(j => j.folderId === id).map(j => j.id), use: catalog.jobs.get(id)?.whenToUse ?? null, order: rank.get(id) ?? 1e9 }))
+  const folders: PanelFolder[] = folderIds.map(id => ({ id, name: catalog.jobs.get(id)?.structure === 2 ? catalog.pathOf(id) : catalog.jobs.get(id)?.name ?? '', jobIds: jobs.filter(j => j.folderId === id).map(j => j.id), use: catalog.jobs.get(id)?.whenToUse ?? null, order: rank.get(id) ?? 1e9 }))
     .sort((a, b) => byRank({ id: a.id, path: a.name }, { id: b.id, path: b.name }))
 
   // Today's period, and whether it is locked (1N).
@@ -258,6 +261,8 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
   const defaults: Record<string, Record<string, string>> = {}
   for (const j of jobs) {
     const cj = catalog.jobs.get(j.id)!
+    // A 2026 project fills nothing from the catalogue: its Client, Division and Billable are the project.
+    if (cj.structure === 2) { if (history[String(j.id)]) defaults[String(j.id)] = history[String(j.id)]; continue }
     const fromCatalogue = Object.fromEntries(([
       [keys.company, optionOf(keys.company, cj.defaultCompany)],
       [keys.project, optionOf(keys.project, cj.defaultProject)],
@@ -285,11 +290,12 @@ export async function loadClockPanel(viewer: Viewer, now: Date, opts: { act: boo
     todayByCombination,
     jobs,
     folders,
-    fields: catalog.fields.map(f => ({ key: f.key, id: f.id, label: f.label, options: f.options, required: f.required })),
+    fields: catalog.fields.map(f => ({ key: f.key, id: f.id, label: f.label, options: f.options, required: f.required, structure: f.structure, families: f.families })),
     defaults,
     locked: lock ? lockedMessage(lock) : null,
     period: { ...period, ...periodLabel(period) },
     firstTime: !combos.length && !recent.length,
+    switchDate: catalog.switchDate,
     correctionGoesTo: await correctionGoesTo(me),
   }
 }

@@ -13,7 +13,7 @@ import { useModal } from '@/components/ui/useModal'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData } from '@/lib/timeclock/clocky-types'
 import type { FieldName } from '@/lib/timeclock/entry-rules'
-import { SHOWN_COMBINATIONS, fieldByKey, keysFor, suggestName, valueOf, type SaveDraft } from './clock-model'
+import { SHOWN_COMBINATIONS, fieldByKey, jobsOn, keysFor, suggestName, valueOf, type SaveDraft } from './clock-model'
 import { ErrorBanner } from './ClockViews'
 import { CK_BTN_NAVY, CK_BTN_WHITE, ClockField, FOCUS, HeadButton, ICON, INPUT_FOCUS, Icon, LINK_BTN, SectionLabel } from './ClockParts'
 
@@ -62,19 +62,20 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
   const [jobEdit, setJobEdit] = useState(false)
   const job = data.jobs.find(j => j.id === save.jobId)
   const setField = (key: FieldName, v: string) => {
-    const f = fieldByKey(data.fields, key)
+    const f = fieldByKey(data.fields, key, job)
     if (f) onChange({ ...save, values: { ...save.values, [f.id]: v } })
   }
   const setJob = (id: string) => {
     const next = data.jobs.find(j => String(j.id) === id)
     if (!next) return
     const def = data.defaults[String(next.id)] ?? {}
-    const values = { ...save.values }
+    // Another structure's job keeps none of this one's fields.
+    const values = (next.structure ?? 1) === (job?.structure ?? 1) ? { ...save.values } : {}
     for (const key of ['company', 'project', 'billable'] as const) {
-      const f = fieldByKey(data.fields, key)
+      const f = fieldByKey(data.fields, key, next)
       if (f && def[f.id]) values[f.id] = def[f.id]
     }
-    const code = fieldByKey(data.fields, 'code')
+    const code = fieldByKey(data.fields, 'code', next)
     if (code) values[code.id] = next.isI7 ? def[code.id] ?? '' : ''
     setJobEdit(false)
     onChange({ ...save, jobId: next.id, values, name: suggestName(next.short, next.folderId != null, valueOf(values, data.fields, 'activity')) })
@@ -90,7 +91,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
             className={`w-full box-border h-10 px-3 border border-[var(--panel-border)] rounded-[10px] font-(family-name:--font-display) font-bold text-[14px] text-tn-ink ${INPUT_FOCUS}`} />
         </label>
         {jobEdit ? (
-          <ClockField label="Job" value={String(save.jobId)} options={data.jobs.map(j => ({ value: String(j.id), label: j.path }))} onChange={setJob} search />
+          <ClockField label="Job" value={String(save.jobId)} options={jobsOn(data.jobs, data.today, data.switchDate).map(j => ({ value: String(j.id), label: j.path }))} onChange={setJob} search />
         ) : (
           <div className="border border-[var(--panel-border)] rounded-[12px] px-3.5 py-[11px] flex items-center gap-3 bg-subtle">
             <div className="flex-1 min-w-0">
@@ -102,7 +103,7 @@ export function SaveComboModal({ data, save, busy, error, contained, onChange, o
         )}
         <div className="grid grid-cols-2 gap-3">
           {keysFor(!!job?.isI7).map(key => {
-            const f = fieldByKey(data.fields, key)
+            const f = fieldByKey(data.fields, key, job)
             if (!f) return null
             return (
               <ClockField key={key} label={f.label + (key === 'activity' ? ' (optional)' : '')} value={save.values[f.id] ?? ''} options={f.options}
