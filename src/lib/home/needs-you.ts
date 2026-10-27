@@ -59,7 +59,7 @@ import { loadRequestRows, type CardRow } from '@/lib/timeclock/request-cards'
 import { formatDuration } from '@/lib/timeclock/rounding'
 import { currentStep, invoiceApprover, type TimesheetState } from '@/lib/timeclock/routing'
 import { periodLabel } from '@/lib/timeclock/periods'
-import { byDue, dueOnDay, dueSince, dueToday, documentsToPayRow, invoicesToPayRow, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
+import { byDue, dueOnDay, dueSince, dueToday, documentsToPayRow, invoicesToPayRow, ownTimeOffShown, timesheetRow, uniqueErrors, type HomeRow, type HomeTab, type NeedsYouData, type Panel, type TabError } from './needs-you-model'
 
 const APPROVALS = '/clocky-hours/approvals'
 const AUTOMATIONS = '/admin/automations'
@@ -436,11 +436,12 @@ async function myTimeOff(v: Viewer, now: Date): Promise<HomeRow[]> {
     .eq('person_id', v.personId).or(`state.eq.pending,cancel_asked_at.not.is.null,decided_at.gte.${since},cancelled_at.gte.${since}`)
   if (error) throw new Error(error.message)
   type R = { id: number; start_date: string; end_date: string; state: string; requested_at: string; decided_by: string | null; decided_at: string | null; cancel_asked_at: string | null; cancelled_at: string | null }
-  const rows = (data ?? []) as R[]
+  // The read is wide (a cancellation keeps cancel_asked_at once approved); what shows is ownTimeOffShown's.
+  const rows = ((data ?? []) as R[]).filter(r => ownTimeOffShown(r, since))
   if (!rows.length) return []
   const [dir, wait] = await Promise.all([loadDirectory(), waitingOn(v.personId)])
   return newestFirst(rows.map(r => {
-    const title = `Time off, ${r.start_date === r.end_date ? monthDay(r.start_date) : rangeLabel(r.start_date, r.end_date)}`
+    const title = `Time off,${r.start_date === r.end_date ? monthDay(r.start_date) : rangeLabel(r.start_date, r.end_date)}`
     const on = (t: string | null) => (t ? monthDay(localDate(t, v.zone)) : '')
     if (r.state === 'pending') return mineRow(`o${r.id}`, title, wait, 'wait', 'requests', r.requested_at)
     if (r.state === 'approved' && r.cancel_asked_at) return mineRow(`o${r.id}`, title, `Cancellation asked. ${wait}`, 'wait', 'requests', r.cancel_asked_at)

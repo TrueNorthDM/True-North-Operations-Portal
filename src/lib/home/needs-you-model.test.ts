@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { asksForNote, byDue, dayCounts, documentsToPayRow, dueOnDay, dueSince, EMPTY_TAB, panelText, payDocumentRow, payInvoiceRow, tabCount, timesheetRow, uniqueErrors, unreadNeedsYou, type HomeRow } from './needs-you-model'
+import { asksForNote, byDue, dayCounts, documentsToPayRow, dueOnDay, dueSince, EMPTY_TAB, ownTimeOffShown, panelText, payDocumentRow, payInvoiceRow, tabCount, timesheetRow, uniqueErrors, unreadNeedsYou, type HomeRow } from './needs-you-model'
 import type { QueueRow } from '@/lib/timeclock/approval-queue'
 
 const row = (key: string, due: HomeRow['due'], button: string | null = 'Open', mine?: HomeRow['mine']): HomeRow =>
@@ -178,5 +178,16 @@ describe('to pay rows', () => {
     expect(r.sub).toBe('2 documents · waiting since Oct 19')
     expect(r.due?.tone).toBe('later')
     expect(documentsToPayRow([], '$0.00', '2026-10-26')).toBeNull()
+  })
+
+  it('keeps a cancelled time off on Requests 30 days, even when its cancellation was asked (audit, 27 October 2026)', () => {
+    const since = '2026-09-27T00:00:00.000Z'
+    const t = { state: 'approved', cancel_asked_at: null, decided_at: null, cancelled_at: null }
+    expect(ownTimeOffShown({ ...t, state: 'pending' }, since)).toBe(true)
+    expect(ownTimeOffShown({ ...t, cancel_asked_at: '2026-10-20T10:00:00Z', decided_at: '2026-05-01T10:00:00Z' }, since)).toBe(true)
+    expect(ownTimeOffShown({ ...t, decided_at: '2026-10-01T10:00:00Z' }, since)).toBe(true)
+    // Cancelled in May after asking: it kept cancel_asked_at, and is long done.
+    expect(ownTimeOffShown({ state: 'cancelled', cancel_asked_at: '2026-05-01T10:00:00Z', decided_at: '2026-04-01T10:00:00Z', cancelled_at: '2026-05-02T10:00:00Z' }, since)).toBe(false)
+    expect(ownTimeOffShown({ state: 'cancelled', cancel_asked_at: '2026-10-01T10:00:00Z', decided_at: '2026-09-01T10:00:00Z', cancelled_at: '2026-10-02T10:00:00Z' }, since)).toBe(true)
   })
 })

@@ -191,6 +191,19 @@ export function dayCounts(data: NeedsYouData): { late: number; today: number; we
   }
 }
 
+/**
+ * A time off of the person's own on the Requests tab: waiting (asked, or its
+ * cancellation asked), or decided or cancelled within the last 30 days
+ * (`since`, an instant). A cancellation once approved keeps its
+ * cancel_asked_at, so "cancellation asked" holds only while it is still
+ * approved (audit, 27 October 2026: those stayed on the list for good).
+ */
+export function ownTimeOffShown(r: { state: string; cancel_asked_at: string | null; decided_at: string | null; cancelled_at: string | null }, since: string): boolean {
+  if (r.state === 'pending') return true
+  if (r.state === 'approved' && r.cancel_asked_at) return true
+  return (r.state === 'cancelled' ? r.cancelled_at ?? '' : r.decided_at ?? '') >= since
+}
+
 /** What an empty tab says (audit, 25 October 2026: "Nothing else here." when nothing was ever there). */
 export const EMPTY_TAB: Record<TabKey, string> = {
   needs: 'Nothing needs you right now.',
