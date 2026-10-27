@@ -205,7 +205,8 @@ export async function loadEntries(v: Viewer, q: EntriesQuery, now: Date): Promis
       jobcodeId: r.jobcode_id, path: job?.path ?? '', short: job?.short ?? '', client: clientOf(job?.path ?? ''), isI7: !!job?.isI7,
       structure: job?.structure ?? 1, fields: f,
       company: k.company ? f[k.company] ?? '' : '', project: k.project ? f[k.project] ?? '' : '', activity: k.activity ? f[k.activity] ?? '' : '',
-      billable: k.billable ? f[k.billable] ?? '' : '', code: k.code ? f[k.code] ?? '' : '',
+      // A 2026 project's Billable is the project's own, as on its entries.
+      billable: job?.structure === 2 ? (job.billable ? 'yes' : 'no') : k.billable ? f[k.billable] ?? '' : '', code: k.code ? f[k.code] ?? '' : '',
       notes: r.notes ?? r.reason, kind: 'correction', imported: false,
       pills: [state === 'pending' ? PILL.warn('Correction: Pending', 'Requested time. It counts only after it is approved.')
         : PILL.bad('Correction: Denied', 'Requested time. It counts only after it is approved.')],

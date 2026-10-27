@@ -202,3 +202,10 @@ describe('an entry moved across the switch date takes that day\'s structure (aud
     expect(body(e, 'requestCorrection')).toMatch(/offeredOn\(job, String\(input\.date\), catalog\.switchDate\)/)
   })
 })
+
+describe('a 2026 project\'s Billable is the project\'s, on every row (audit 2026-10-27)', () => {
+  it('entries and pending corrections alike', () => {
+    const src = readFileSync(join(DIR, '../../../lib/timeclock/clocky-entries.ts'), 'utf8')
+    expect(src.match(/billable: job\?\.structure === 2 \? \(job\.billable \? 'yes' : 'no'\)/g)).toHaveLength(2)
+  })
+})
