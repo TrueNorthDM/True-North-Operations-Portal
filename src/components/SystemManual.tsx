@@ -18,10 +18,17 @@
  *
  * 16 October 2026: Clocky, the portal's own time clock, for every level (the
  * My Hours hub is gone; /hours opens Clocky's Time entries).
+ *
+ * 27 October 2026: the new Home, North Time as built, a quick start for each
+ * audience, the move from TSheets and "Where do I find..." (manual/
+ * NorthTimeManual.tsx); the rail in its current order, Agenda and Requests
+ * with it, and the counts on its icons.
  */
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Eyebrow, Heading, Lede, card } from './manual/ManualParts'
+import { HomeSection, NORTH_TIME_TOC, NorthTimeSection, QuickStartSection, TransitionSection, WhereSection } from './manual/NorthTimeManual'
 
 // ── Icons (line style, system look) ─────────────────────────────────
 const S = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
@@ -37,6 +44,8 @@ const ICONS: Record<string, React.ReactNode> = {
   dir: <svg {...S}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
   work: <svg {...S}><rect x="3" y="7" width="18" height="14" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>,
   clock: <svg {...S}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2" /><path d="M9.5 2h5" /><path d="M12 2v3" /></svg>,
+  agenda: <svg {...S}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>,
+  requests: <svg {...S}><path d="M22 2 11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></svg>,
 }
 const Chip = ({ k, className = '' }: { k: string; className?: string }) => (
   <span className={`shrink-0 inline-flex items-center justify-center rounded-xl bg-tn-teal-soft text-tn-teal ${className}`}>
@@ -48,6 +57,7 @@ const Arrow = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" 
 const TOC = [
   { id: 'overview', label: 'Overview', eyebrow: 'Overview', heading: 'What this portal is' },
   { id: 'navigation', label: 'Getting around', eyebrow: 'Getting around', heading: 'The left rail' },
+  ...NORTH_TIME_TOC,
   { id: 'pages', label: 'Pages & sections', eyebrow: 'Reference', heading: 'Pages & sections' },
   { id: 'access', label: 'Access model', eyebrow: 'Permissions', heading: 'Access model' },
   { id: 'monday', label: 'How Monday feeds it', eyebrow: 'Data flow', heading: 'How Monday feeds the portal' },
@@ -56,13 +66,15 @@ const TOC = [
 
 const RAIL = [
   { icon: 'home', name: 'Home', desc: 'What you need to do today: your day and clock, what needs you, your pay period, the Agenda.', admin: false },
+  { icon: 'agenda', name: 'Agenda', desc: 'The company calendar, for everyone: who is out, holidays, birthdays and events.', admin: false },
   { icon: 'work', name: 'My Work', desc: 'A panel of three views: My Work, Report and My Team. With only one granted, it goes straight there.', admin: false },
+  { icon: 'clock', name: 'North Time', desc: 'The time clock, for every level. A panel: Time entries, Approvals and Who’s working (Team Leaders and up), Invoices (contractors, Super Admins, Admins and Finance) and Reports; under The module, Which job? for everyone, and for Admins Clock safety, TSheets transition and Import.', admin: false },
+  { icon: 'requests', name: 'Requests', desc: 'A panel: Time off (US employees), Reimbursements and Extra hours, with Approvals under Decisions. Everyone sees their own; Super Admins decide.', admin: false },
   { icon: 'book', name: 'Chat · Emails', desc: 'Two places coming soon: the company chat, and the mailboxes you hold.', admin: false },
   { icon: 'tools', name: 'Tools', desc: 'A panel in two groups. SEO Tools: Href Links, and seven tools coming soon. Operations: Publishing Goals, Boards and Client Reports. Each tool is granted per team.', admin: false },
-  { icon: 'dir', name: 'People', desc: 'A panel: the Directory, the Organization chart, History, and Human Resources (Admins, unless Access levels says otherwise).', admin: false },
-  { icon: 'admin', name: 'Admin', desc: 'A panel: Access levels, View Stage, Monday accounts, Automations, Tests and this manual. Its title opens the Admin page.', admin: true },
-  { icon: 'clock', name: 'North Time', desc: 'The time clock, for every level. A panel: Time entries, Approvals and Who’s working (Team Leaders and up, with the count of requests waiting for you), Reports (coming soon), and for Admins Clock safety, Timesheet periods and Import.', admin: false },
-  { icon: 'settings', name: 'Company settings', desc: 'In the Admin panel, under Configuration: sites, targets, clients and budgets, My Work sources, API tokens and timesheet periods. Notification rules for everyone sit beside it.', admin: true },
+  { icon: 'dir', name: 'People', desc: 'A panel: the Directory, Rates & Costs, the Organization chart, Human Resources (Admins, unless Access levels says otherwise) and History.', admin: false },
+  { icon: 'admin', name: 'Admin', desc: 'A panel: Access levels, View Stage, Monday accounts, Automations, Company settings, Notification rules, Tests and this manual. Its title opens the Admin page.', admin: true },
+  { icon: 'settings', name: 'Company settings', desc: 'In the Admin panel, under Configuration: sites, targets, clients and budgets, My Work sources, API tokens, timesheet periods, the job catalogue, invoices, integrations, reminders and the North Time rollout. Notification rules for everyone sit beside it.', admin: true },
 ]
 
 const SRC: Record<string, { color: string; bg: string }> = {
@@ -73,7 +85,7 @@ const SRC: Record<string, { color: string; bg: string }> = {
   none: { color: '#8593a4', bg: 'var(--color-subtle)' },
 }
 const PAGES = [
-  { icon: 'home', name: 'Home', desc: 'The landing screen, one question per level: what do I need to do today? The day banner with the clock, Needs you / My Work / Requests, the pay period, the Agenda, the i7 budget and Publishing goals (design_handoff_home, 25 October 2026).', src: 'Monday', srcKey: 'monday' as const },
+  { icon: 'home', name: 'Home', desc: 'The landing screen, one question per level: what do I need to do today? The day banner with the clock, Needs you / My Work / Requests, the pay period, the Agenda, the i7 budget and Publishing goals. See Home above.', src: 'Portal + Monday', srcKey: 'mixed' as const },
   { icon: 'work', name: 'My Work', desc: 'Everything assigned to you across Monday in one list, in your team\'s priority order. Team leaders and admins set that order, by whole workspace, by board, or step by step; Admin, Access levels says who else can.', src: 'Monday', srcKey: 'monday' as const },
   { icon: 'dash', name: 'Publishing Goals · Boards', desc: 'Operations tools. Publishing Goals tracks publishing pace versus target for AAAF, HFA and Bessemeters over a chosen timeframe; Boards is the Monday boards review.', src: 'Monday', srcKey: 'monday' as const, sub: ['Publishing Goals', 'Boards'] },
   { icon: 'proj', name: 'Href Links', desc: 'An SEO tool: manages the hreflang tag workflow for the AAAF and HFA WordPress sites, the one place the portal writes back to Monday.', src: 'Monday + WordPress', srcKey: 'mixed' as const },
@@ -81,9 +93,10 @@ const PAGES = [
   { icon: 'test', name: 'Tests', desc: 'A pre-launch checklist to verify the whole system end to end, walk each area, tick off what works, flag what doesn’t.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'dir', name: 'Directory', desc: 'People and teams in one place: add or edit people, who is on each team and who leads it, and who is invited to the portal. Each person has their own page (Personal, Work, HR and access, Reports). What each level can open is set in Admin, Access levels.', src: 'Portal', srcKey: 'portal' as const },
   { icon: 'book', name: 'System manual', desc: 'This page, how the portal works, who can see what, and how the data flows in.', src: 'Portal', srcKey: 'portal' as const },
-  { icon: 'clock', name: 'North Time', desc: 'The company’s own time clock, for every level. Clock in from the button in the top bar: pick a job, one of your saved combinations (a job with its Company, Project, Activity and Billable, under a name), or Resume the last one. Switch to another job without clocking out: one entry ends and the next starts at the same second. There are no breaks: a break is a clock out, and coming back is a new clock in. Every start, end and typed duration is recorded on the nearest 15 minutes (8:07 counts as 8:00, 8:08 as 8:15), and every total is a whole quarter hour; the real times stay in each entry’s history. Time entries shows your hours, and your team’s or everyone’s by level, as a list, a week grid and a day timeline.', src: 'Portal + QuickBooks Time', srcKey: 'mixed' as const, sub: ['Time entries', 'Who’s working', 'Reports (coming soon)'] },
-  { icon: 'clock', name: 'North Time: safety, corrections and periods', desc: 'A clock nobody answers stops itself. At 4h 30m on the clock, counted from the clock in across every switch, it asks “Still working?” in the clock panel and the bell; Keep going starts a new 5-hour window. With no answer it stops at the 5-hour mark, the person gets one email and confirms when they really stopped, and Clock safety logs every automatic stop, including a clock stopped at the person’s hours allowance, with its reason (Admins, read only below Super Admin). Users only shorten their own entries; for missing time they send a time correction request, which counts once their Team Leader, an Admin or a Super Admin approves it on Approvals. Every change needs a reason and is kept in the entry’s history. Each person submits their hours monthly or every 2 weeks (pay periods of 14 days from the start date in Company settings, Timesheet periods); a submitted period is locked until a Super Admin reopens it, and changing someone’s cadence never cuts a period in half.', src: 'Portal', srcKey: 'portal' as const, sub: ['Approvals', 'Clock safety', 'Timesheet periods', 'Import'] },
-  { icon: 'settings', name: 'Company settings', desc: 'Sites & languages, publishing targets, clients & budgets, My Work sources, API tokens, and timesheet periods (when pay periods start, and how new people submit). This is where connections are configured. In Admin, Configuration.', src: 'Config', srcKey: 'config' as const },
+  { icon: 'clock', name: 'North Time', desc: 'The company’s own time clock, for every level. Clock in from the button in the top bar: pick a job, one of your saved combinations (a job with its Activity and note, under a name), or Resume the last one. From the switch date a job is a 2026 project (Client, Division, Project) with its Activity; Billable comes from the project. Switch to another job without clocking out: one entry ends and the next starts at the same second. There are no breaks: a break is a clock out, and coming back is a new clock in. Every start, end and typed duration is recorded on the nearest 15 minutes (8:07 counts as 8:00, 8:08 as 8:15), and every total is a whole quarter hour; the real times stay in each entry’s history. Time entries shows your hours, and your team’s or everyone’s by level, as a list, a week grid and a day timeline.', src: 'Portal + QuickBooks Time', srcKey: 'mixed' as const, sub: ['Time entries', 'Approvals', 'Who’s working', 'Invoices', 'Reports', 'Which job?'] },
+  { icon: 'clock', name: 'North Time: safety, corrections and periods', desc: 'A clock nobody answers stops itself. At 4h 30m on the clock, counted from the clock in across every switch, it asks “Still working?” in the clock panel and the bell; Keep going starts a new 5-hour window. With no answer it stops at the 5-hour mark, the person gets one email and confirms when they really stopped, and Clock safety logs every automatic stop, including a clock stopped at the person’s hours allowance, with its reason (Admins, read only below Super Admin). Users and Team Leaders only shorten their own entries; for missing time they send a time correction request, which counts once their Team Leader, an Admin or a Super Admin approves it on Approvals. Every change needs a reason and is kept in the entry’s history. Each person submits their hours monthly or every 2 weeks (pay periods of 14 days from the start date in Company settings, Timesheet periods); a submitted period is locked until a Super Admin reopens it, and changing someone’s cadence never cuts a period in half.', src: 'Portal', srcKey: 'portal' as const, sub: ['Clock safety', 'Timesheet periods', 'TSheets transition', 'Import'] },
+  { icon: 'requests', name: 'Requests', desc: 'What people ask for, in one place: Time off (US employees), Reimbursements (one or several receipts in a request) and Extra hours (before going over the allowance). Super Admins decide them in Approvals. A contractor’s approved reimbursements go on their next invoice; an employee’s on a reimbursement document Finance pays. See North Time above.', src: 'Portal', srcKey: 'portal' as const, sub: ['Time off', 'Reimbursements', 'Extra hours'] },
+  { icon: 'settings', name: 'Company settings', desc: 'Sites & languages, publishing targets, clients & budgets, My Work sources, API tokens, timesheet periods (when pay periods start, and how new people submit), the job catalogue, invoices (numbering and billing details), integrations (Rippling and Google Calendar), reminders and the North Time rollout. This is where connections are configured. In Admin, Configuration.', src: 'Config', srcKey: 'config' as const },
 ]
 
 const FLOWS = [
@@ -118,17 +131,6 @@ const LEVEL_ORDER = [
   { key: 'team_leader', label: 'Team Leader' },
   { key: 'user', label: 'User' },
 ] as const
-
-const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-  <div className="font-(family-name:--font-display) font-extrabold text-[11px] uppercase tracking-[.09em] text-tn-teal mb-2">{children}</div>
-)
-const Heading = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="font-(family-name:--font-display) font-extrabold text-[22px] text-tn-ink mb-3">{children}</h2>
-)
-const Lede = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[14.5px] leading-[1.7] text-foreground mb-4">{children}</p>
-)
-const card = 'rounded-2xl border border-slate-200 bg-white shadow-sm'
 
 /**
  * `superOnly`: the labels of the catalogue's Super Admin only items, worked out
@@ -178,7 +180,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
           <section id="overview" className="scroll-mt-6">
             <Eyebrow>Overview</Eyebrow>
             <Heading>What this portal is</Heading>
-            <Lede>The Operations Portal is True North’s single home for the tools, dashboards, and to-do lists that keep publishing and client work moving. It doesn’t replace Monday, WordPress or QuickBooks Time, it reads from them and gives the team one calm, consistent place to see status and act on it.</Lede>
+            <Lede>The Operations Portal is True North’s single home for the tools, dashboards, and to-do lists that keep publishing and client work moving. It doesn’t replace Monday or WordPress, it reads from them and gives the team one calm, consistent place to see status and act on it. For hours it has its own time clock, North Time, which replaces QuickBooks Time (TSheets).</Lede>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {[
                 { t: 'Who signs in', d: 'True North staff and contractors an admin has invited, with their GoodNews address. No public access.' },
@@ -197,7 +199,7 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
           <section id="navigation" className="scroll-mt-6">
             <Eyebrow>Getting around</Eyebrow>
             <Heading>The left rail</Heading>
-            <Lede>Every screen shares the same navy icon rail on the left, in three groups: your own things, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon). Your avatar sits at the foot and holds My profile (your own page in the Directory), My Team, Settings and Sign out. The top bar carries search (Cmd+K), Who’s working (Team Leaders and up), the clock button and two drawers: Messages (Chat and Email) and Notifications (Tools and System). Counts appear on the top bar’s buttons and on North Time’s Approvals row, never on the rail’s icons.</Lede>
+            <Lede>Every screen shares the same navy icon rail on the left, in groups: the day’s work (Home, Agenda, My Work, North Time, Requests), messages, the company, and (for admins) the machinery. Most icons open a panel of their pages beside the rail. A faded icon is a module that is not finished yet (Chat and Emails are coming soon). Your avatar sits at the foot and holds My profile (your own page in the Directory), My Team, Settings and Sign out. The top bar carries search (Cmd+K), Who’s working (Team Leaders and up), the clock button and two drawers: Messages (Chat and Email) and Notifications (Tools and System). A module’s icon carries a count of what needs your attention in it, such as approvals waiting for you or invoices to pay; the top bar’s buttons carry their own.</Lede>
             <div className={`${card} overflow-hidden`}>
               {RAIL.map((r, i) => (
                 <div key={r.name} className={`flex items-center gap-3.5 px-[18px] py-3.5 ${i > 0 ? 'border-t border-slate-100' : ''} ${r.admin ? 'bg-subtle' : ''}`}>
@@ -209,6 +211,12 @@ export function SystemManual({ superOnly }: { superOnly: readonly string[] }) {
               ))}
             </div>
           </section>
+
+          <HomeSection />
+          <NorthTimeSection />
+          <QuickStartSection />
+          <TransitionSection />
+          <WhereSection />
 
           {/* Pages & sections */}
           <section id="pages" className="scroll-mt-6">
