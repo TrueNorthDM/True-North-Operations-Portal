@@ -93,12 +93,13 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
   const c = createAdminClient()
   const catalog = await loadCatalog()
   const fieldIds = catalog.fields.map(f => Number(f.id))
-  const [optRes, clientRes, ...useRes] = await Promise.all([
-    c.from('tc_field_options').select('id, field_id, label, active, position').in('field_id', fieldIds).order('position').order('label').limit(5000),
+  type Opt = { id: number; field_id: number; label: string; active: boolean; position: number }
+  const [opts, clientRes, ...useRes] = await Promise.all([
+    // Every option, a page at a time: PostgREST stops at 1,000 whatever the limit asked (audit, 27 October 2026).
+    allRows<Opt>((a, b) => c.from('tc_field_options').select('id, field_id, label, active, position').in('field_id', fieldIds).order('position').order('label').order('id').range(a, b), 'The field options could not be read'),
     c.from('tr_clients').select('name, active, tsheets_jobcode_id, parent_id').is('parent_id', null).order('name'),
     ...fieldIds.map(id => c.rpc('tc_field_option_use', { p_field_id: id })),
   ])
-  if (optRes.error) throw new Error(`The field options could not be read: ${optRes.error.message}`)
   if (clientRes.error) throw new Error(`The clients could not be read: ${clientRes.error.message}`)
   const used = new Map<string, number>()
   useRes.forEach((r, i) => {
@@ -119,7 +120,7 @@ export async function loadCatalogueData(): Promise<CatalogueData> {
     fields: catalog.fields.map(f => ({
       key: f.key, structure: f.structure, id: f.id, label: f.structure === 2 ? `${f.label} (2026 structure)` : f.label,
       hint: f.structure === 2 ? 'The kind of work, in families. Client, Division and Project are the job.' : HINT[f.key],
-      options: (optRes.data ?? []).filter(o => String(o.field_id) === f.id)
+      options: opts.filter(o => String(o.field_id) === f.id)
         .map(o => ({ id: o.id, label: o.label, shown: o.active, used: used.get(`${f.id}:${o.label}`) ?? 0 })),
     })),
     clients: (clientRes.data ?? []).map(r => ({ name: r.name, folder: r.tsheets_jobcode_id != null ? byExternal.get(Number(r.tsheets_jobcode_id))?.path ?? '' : '', active: r.active })),

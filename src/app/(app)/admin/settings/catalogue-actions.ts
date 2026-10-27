@@ -25,6 +25,7 @@ import { revalidatePath } from 'next/cache'
 import { allowedTo } from '@/lib/access/resolve'
 import { getRealPerson } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { allRows } from '@/lib/timeclock/clocky-context'
 import { structureOn } from '@/lib/timeclock/entry-rules'
 import { localDate } from '@/lib/timeclock/format'
 
@@ -212,9 +213,12 @@ export async function addOption(input: { fieldId: number; label: string }): Prom
   const label = String(input.label ?? '').trim()
   if (!label) return no('Write the new option.')
   if (label.length > 120) return no('The name is too long.')
-  // Unread is not "no options": the same name could go in twice, at position 0.
-  const { data: existing, error: readError } = await c.from('tc_field_options').select('label, position').eq('field_id', input.fieldId).limit(5000)
-  if (readError) { console.error('[catalogue]', readError.message); return no(NOT_SAVED) }
+  // Unread is not "no options": the same name could go in twice, at position 0. Every
+  // option, a page at a time: PostgREST stops at 1,000 whatever the limit asked.
+  let existing: { label: string; position: number }[]
+  try {
+    existing = await allRows<{ label: string; position: number }>((a, b) => c.from('tc_field_options').select('label, position').eq('field_id', input.fieldId).order('id').range(a, b), 'The options could not be read')
+  } catch (e) { console.error('[catalogue]', e instanceof Error ? e.message : e); return no(NOT_SAVED) }
   if ((existing ?? []).some(o => o.label.toLowerCase() === label.toLowerCase())) return no(`There is already an option called "${label}".`)
   const position = Math.max(-1, ...(existing ?? []).map(o => o.position)) + 1
   const { error } = await c.from('tc_field_options').insert({ field_id: input.fieldId, label, position, active: true, edited_in_portal_at: now() })

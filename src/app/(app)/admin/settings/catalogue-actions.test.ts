@@ -8,7 +8,8 @@ const inserts: Record<string, unknown>[] = []
 
 const client = {
   from: () => ({
-    select: () => ({ eq: () => ({ limit: async () => (readFails ? { data: null, error: { message: 'boom' } } : { data: options, error: null }) }) }),
+    // As PostgREST answers: never more than 1,000 rows at once, whatever was asked.
+    select: () => ({ eq: () => ({ order: () => ({ range: async (a: number, b: number) => (readFails ? { data: null, error: { message: 'boom' } } : { data: options.slice(a, Math.min(b + 1, a + 1000)), error: null }) }) }) }),
     insert: async (row: Record<string, unknown>) => { inserts.push(row); return { error: null } },
   }),
 }
@@ -31,6 +32,13 @@ describe('addOption', () => {
     expect((await addOption({ fieldId: 7, label: 'Video' })).ok).toBe(true)
     expect(inserts[0]).toMatchObject({ field_id: 7, label: 'Video', position: 2 })
     expect((await addOption({ fieldId: 7, label: 'design' })).ok).toBe(false)
+  })
+
+  it('reads every option of a field past the first 1,000', async () => {
+    options = Array.from({ length: 1200 }, (_, i) => ({ label: `Code ${i}`, position: i }))
+    expect((await addOption({ fieldId: 7, label: 'code 1100' })).ok).toBe(false)
+    expect((await addOption({ fieldId: 7, label: 'Code 1200' })).ok).toBe(true)
+    expect(inserts[0]).toMatchObject({ label: 'Code 1200', position: 1200 })
   })
 
   it('adds nothing when the field\'s options could not be read', async () => {
