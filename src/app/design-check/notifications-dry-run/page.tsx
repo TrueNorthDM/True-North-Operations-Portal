@@ -35,7 +35,7 @@ export default async function DryRun({ searchParams }: { searchParams: Promise<{
     const morning = new Date(Math.max(...mine.map(r => Date.parse(r.deliver_at)), clock()))
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-slate-200 bg-white px-6 py-3.5 flex items-center justify-between h-[65px]">
+        <header className="border-b border-slate-200 bg-white px-6 flex items-center justify-between h-[var(--topbar-h)]">
           <span className="text-sm font-semibold text-slate-500">{`Dry run: the bell for ${person?.name ?? as}`}</span>
           <NotificationButton kind="bell" items={toItems(mine, morning)} startOpen />
         </header>

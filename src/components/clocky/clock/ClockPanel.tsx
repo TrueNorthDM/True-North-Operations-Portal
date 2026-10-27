@@ -67,7 +67,7 @@ interface PanelProps {
   nowMs: number
   phone: Phone
   /** Design check: drawn inside a frame, this far below its top, instead of fixed to the window. */
-  frameTop?: number
+  frameTop?: number | string
   initialUi?: Partial<PanelUi>
   /** Design check: show 1N3 without unplugging anything. */
   forceOffline?: boolean
@@ -476,7 +476,7 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
 
 function Shell({ phone, frameTop, box, header, onBack, onClose, live, children }: {
   phone: Phone
-  frameTop?: number
+  frameTop?: number | string
   box: React.RefObject<HTMLDivElement | null>
   header: { title: string; sub: string; dot: 'green' | 'red' | null; back: boolean }
   onBack: () => void

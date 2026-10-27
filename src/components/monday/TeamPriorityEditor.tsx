@@ -113,7 +113,7 @@ function swap<T>(list: T[], i: number, dir: -1 | 1): T[] {
 }
 
 export function TeamPriorityEditor({
-  team, teams, steps, saved, savedAt, savedBy, savedBySelf, preview = false, stickyTop = 65,
+  team, teams, steps, saved, savedAt, savedBy, savedBySelf, preview = false, stickyTop,
   canSeeEveryone = true, today: givenToday,
 }: {
   team: { id: string; name: string }
@@ -563,7 +563,7 @@ export function TeamPriorityEditor({
 
   // The column heading pins under the portal's chrome, as the list's does on
   // My Work: --chrome-top already counts the staging strip (audit, 10 October 2026).
-  const stickTo = stickyTop === 65 ? 'var(--chrome-top)' : stickyTop
+  const stickTo = stickyTop ?? 'var(--chrome-top)'
   const views = [
     { key: 'mine' as const, label: 'Mine' },
     ...(canSeeEveryone ? [{ key: 'all' as const, label: 'Everyone' }] : []),

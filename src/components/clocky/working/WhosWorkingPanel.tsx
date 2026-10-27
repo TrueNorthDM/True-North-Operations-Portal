@@ -46,7 +46,7 @@ export function WhosWorkingPanel({
   meName: string
   nowMs: number
   /** Design check: drawn inside a frame, this far down, instead of fixed to the window. */
-  frameTop?: number
+  frameTop?: number | string
   initialUi?: Partial<WorkingUi>
   /** The order of the team groups when known (a design check gives the prototype's); else by name. */
   teamOrder?: readonly string[]

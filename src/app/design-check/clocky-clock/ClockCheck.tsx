@@ -44,7 +44,7 @@ export function ClockCheck({ frame, device, frozen, bare = false }: { frame: str
   const q = (o: { frame?: string; device?: string }) => `?frame=${o.frame ?? f.code}&device=${o.device ?? device}${frozen ? '&frozen=1' : ''}`
   const clock = (
     <ClockyClock key={`${f.code}-${device}`} initial={{ ok: true, data: f.data }} api={api} open={open} onOpenChange={setOpen}
-      device={device} frameTop={phone ? 44 : 65} initialUi={f.ui} initialToast={f.toast} frozen={frozen} forceOffline={f.offline} />
+      device={device} frameTop={phone ? 44 : 'var(--topbar-h)'} initialUi={f.ui} initialToast={f.toast} frozen={frozen} forceOffline={f.offline} />
   )
 
   return (
@@ -84,7 +84,7 @@ export function ClockCheck({ frame, device, frozen, bare = false }: { frame: str
           </div>
         ) : (
           <div className="relative h-[860px] border border-[#d9d6cc] rounded-[14px] overflow-hidden bg-white flex flex-col shadow-[0_8px_30px_rgba(1,35,88,.08)]">
-            <header className="h-[65px] shrink-0 border-b border-slate-200 bg-white px-6 flex items-center justify-between gap-4">
+            <header className="h-[var(--topbar-h)] shrink-0 border-b border-slate-200 bg-white px-6 flex items-center justify-between gap-4">
               <span className="flex items-end gap-2.5">
                 <Image src="/logos/true-north.png" alt="True North Digital Marketing" width={1352} height={705} className="h-9 w-auto" />
                 <span className="text-sm font-semibold text-slate-500 pb-0.5">Operations Portal</span>

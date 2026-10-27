@@ -191,7 +191,7 @@ export interface BandsConfig {
   /** "Your list" on someone's own work, "This list" otherwise. */
   title: string
   /** Room the sticky column heading takes, so a jump lands below it. */
-  offset: number
+  offset: number | string
 }
 
 export function Block({

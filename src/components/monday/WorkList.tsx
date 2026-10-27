@@ -114,7 +114,7 @@ export interface PreviewState {
 }
 
 export function WorkList({
-  data, people, teams, selfPersonId, isAdmin = false, preview, stickyTop = 65, teamOrder = null, canSetPriority = false, canSeeEveryone = true, today: givenToday,
+  data, people, teams, selfPersonId, isAdmin = false, preview, stickyTop, teamOrder = null, canSetPriority = false, canSeeEveryone = true, today: givenToday,
 }: {
   data: Worklist
   people: Option[]
@@ -132,7 +132,7 @@ export function WorkList({
   today?: string
   /**
    * Where the column heading pins as the page scrolls: under the portal's top
-   * bar, which is 65px tall. The design check has no top bar and passes 0.
+   * bar (--chrome-top, left out here). The design check has no top bar and passes 0.
    */
   stickyTop?: number
 }) {
@@ -599,7 +599,7 @@ export function WorkList({
           className="sticky z-10 overflow-hidden rounded-[12px] border border-[var(--panel-border)] bg-subtle shadow-[0_8px_16px_-14px_rgba(1,35,88,.45)]"
           // Under the portal's chrome (top bar, and the staging strip there):
           // the default follows --chrome-top; a design check passes its own.
-          style={{ top: stickyTop === 65 ? 'var(--chrome-top)' : stickyTop }}
+          style={{ top: stickyTop ?? 'var(--chrome-top)' }}
         >
           <div className="grid" style={{ gridTemplateColumns: grid.template, minWidth: grid.minWidth - 2 }}>
             {grid.columns.map(c => <HeadCell key={c.key} col={c} sort={sort} onSort={onSort} />)}
@@ -640,7 +640,7 @@ export function WorkList({
                 leader: teamOrder!.updatedBySelf ? 'you' : teamOrder!.updatedBy ?? 'a team leader',
                 levels: teamOrder!.levels,
                 title: mine ? 'Your list' : 'This list',
-                offset: stickyTop + 52,
+                offset: stickyTop == null ? 'calc(var(--chrome-top) + 52px)' : stickyTop + 52,
               } : null}
             />
 

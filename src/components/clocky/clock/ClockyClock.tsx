@@ -36,7 +36,7 @@ export function ClockyClock({
   onOpenChange: (open: boolean) => void
   device?: 'auto' | 'phone' | 'desktop'
   /** Design check: draw the panel and the toast inside a frame, this far down. */
-  frameTop?: number
+  frameTop?: number | string
   initialUi?: Partial<PanelUi>
   initialToast?: Toast
   /** Design check: the timers stand still on the frame's instant. */

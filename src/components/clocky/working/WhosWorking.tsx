@@ -39,7 +39,7 @@ export function WhosWorking({ count: initialCount, api, open, onOpenChange, meNa
   meName: string
   /** Design check: the list without asking the server. */
   initialData?: WhosWorkingData
-  frameTop?: number
+  frameTop?: number | string
   initialUi?: Partial<WorkingUi>
   teamOrder?: readonly string[]
   frozen?: boolean

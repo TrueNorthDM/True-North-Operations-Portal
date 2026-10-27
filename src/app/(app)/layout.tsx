@@ -77,7 +77,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           where the rail is hidden. On a phone the bar follows the phone frame of
           Clock Panel.dc.html (390px): the logo at 30px, no "Operations
           Portal", 16px sides, so the clock fits beside the icons. */}
-      <header className="border-b border-slate-200 bg-white px-4 md:px-6 py-3.5 flex items-center justify-between gap-4 sticky top-[var(--banner-h)] z-20">
+      <header className="border-b border-slate-200 bg-white px-4 md:px-6 h-[var(--topbar-h)] shrink-0 flex items-center justify-between gap-4 sticky top-[var(--banner-h)] z-20">
         {/* True North lockup. On dark the navy wordmark sits on a white chip so
             it stays legible; on the white light bar the chip is invisible. */}
         <Link href="/" className="flex items-end gap-2.5 group" aria-label="Go to dashboard">

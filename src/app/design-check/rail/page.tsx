@@ -74,7 +74,7 @@ export default async function RailDesignCheck({ searchParams }: { searchParams: 
       {/* The development badge sits where the avatar is; this page is for looking at the avatar. */}
       <style>{'nextjs-portal{display:none!important}'}</style>
       {/* The real layout's top bar (app/(app)/layout.tsx), with the clock and Who's working on sample data. */}
-      <header className="border-b border-slate-200 bg-white px-4 md:px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-20">
+      <header className="border-b border-slate-200 bg-white px-4 md:px-6 h-[var(--topbar-h)] shrink-0 flex items-center justify-between gap-4 sticky top-0 z-20">
         <span className="flex items-end gap-2.5">
           <Image src="/logos/true-north.png" alt="True North Digital Marketing" width={1352} height={705} priority className="h-[30px] md:h-9 w-auto" />
           <span className="hidden md:inline text-sm font-semibold text-slate-500 pb-0.5">Operations Portal</span>

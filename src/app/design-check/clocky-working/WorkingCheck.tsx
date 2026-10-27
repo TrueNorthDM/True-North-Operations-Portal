@@ -43,7 +43,7 @@ export function WorkingCheck({ frame, frozen, bare = false }: { frame: string; f
         </div>}
 
         <div className="relative h-[880px] border border-[#d9d6cc] rounded-[14px] overflow-hidden bg-white flex flex-col shadow-[0_8px_30px_rgba(1,35,88,.08)]">
-          <header className="h-[65px] shrink-0 border-b border-slate-200 bg-white px-6 flex items-center justify-between gap-4">
+          <header className="h-[var(--topbar-h)] shrink-0 border-b border-slate-200 bg-white px-6 flex items-center justify-between gap-4">
             <span className="flex items-end gap-2.5">
               <Image src="/logos/true-north.png" alt="True North Digital Marketing" width={1352} height={705} className="h-9 w-auto" />
               <span className="text-sm font-semibold text-slate-500 pb-0.5">Operations Portal</span>
@@ -52,7 +52,7 @@ export function WorkingCheck({ frame, frozen, bare = false }: { frame: string; f
               <span className={ICON_BTN}><NavIcon name="launcher" /></span>
               <span className={ICON_BTN}><NavIcon name="messages" /></span>
               <WhosWorking key={f.code} count={f.data.onTheClock} api={api} open={open} onOpenChange={setOpen} meName={f.meName}
-                initialData={f.data} frameTop={65} initialUi={f.ui} teamOrder={TEAM_ORDER} frozen={frozen} />
+                initialData={f.data} frameTop="var(--topbar-h)" initialUi={f.ui} teamOrder={TEAM_ORDER} frozen={frozen} />
               <ClockButton state={{ kind: 'on', text: `${Math.floor(mine / 3600)}:${String(Math.floor((mine % 3600) / 60)).padStart(2, '0')}:${String(mine % 60).padStart(2, '0')}`, job: 'i7 › Web Dev', aria: 'On the clock' }} phone={false} open={false} onClick={() => {}} />
               <span className={`relative ${ICON_BTN}`}>
                 <NavIcon name="bell" />

@@ -3,9 +3,13 @@
 
 :root {
   /* The fixed chrome above the page: the staging strip (0 on the real portal)
-     and the top bar. The rail and the drawers start below it. */
+     and the top bar. The rail and the drawers start below it. --topbar-h is
+     the one place the bar's height lives: the bar itself is sized from it
+     (app/(app)/layout.tsx), so the bar and everything under it cannot drift
+     apart. 69px is 40px of buttons, 14px above and below, and the 1px rule. */
   --banner-h: 0px;
-  --chrome-top: calc(var(--banner-h) + 65px);
+  --topbar-h: 69px;
+  --chrome-top: calc(var(--banner-h) + var(--topbar-h));
   /* Single system-wide page background, the warm off-white from the COE
      dashboard, applied everywhere for consistency (no per-brand tint). */
   /* True North Digital Marketing brand, warm off-white canvas, navy ink. */
