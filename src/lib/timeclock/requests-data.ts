@@ -12,7 +12,7 @@
  */
 
 import type { Access } from '@/lib/access/resolve'
-import { db, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf, type Directory } from './clocky-context'
+import { allRows, db, loadCatalog, loadClockySettings, loadDirectory, oneOf, rowsOf, type Directory } from './clocky-context'
 import { allowanceRange } from './allowance'
 import { loadAllowanceUse, loadApprovedExtra } from './allowance-data'
 import { dateLabel, localDate, monthYear, stampLabel } from './format'
@@ -68,30 +68,39 @@ export function arrangeReimbursements<T extends Pick<RRow, 'id' | 'spent_on' | '
   return [...list].sort((a, b) => key(b).localeCompare(key(a)) || (a.report_id ?? 0) - (b.report_id ?? 0) || (a.report_id != null ? a.spent_on.localeCompare(b.spent_on) || a.id - b.id : b.id - a.id))
 }
 
+/** Rows read by id, 200 ids a call (each under PostgREST's 1,000 rows and a short address); none for no ids. */
+export async function byIds<T>(ids: readonly number[], read: (ids: number[]) => PromiseLike<T[]>): Promise<T[]> {
+  const out: T[] = []
+  for (let i = 0; i < ids.length; i += 200) out.push(...(await read(ids.slice(i, i + 200))))
+  return out
+}
+
 export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>, zone: string, now = new Date()): Promise<ReimbursementsPage | null> {
   if (!v.personId) return null
   const me = v.personId
   const c = db()
   const [dir, clients, settings] = await Promise.all([loadDirectory(), loadClients(), loadRouteSettings()])
   const seesAll = v.isAdmin || isFinance(v, settings)
-  let q = c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, state, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, report_id').order('spent_on', { ascending: false })
-  q = seesAll ? q.limit(1000) : q.eq('person_id', me).limit(200)
-  const { data, error } = await q
-  if (error) throw new Error(`Reimbursements could not be read: ${error.message}`)
-  const loaded = (data ?? []) as RRow[]
+  // Every row, a page at a time: PostgREST stops at 1,000, and everyone's list (with the
+  // viewer's own rows taken from it) would lose the oldest without a word (audit, 27 October 2026).
+  const loaded = await allRows<RRow>((a, b) => {
+    const q = c.from('reimbursements').select('id, person_id, spent_on, category, purpose, amount, currency, state, decided_by, decided_at, decision_note, invoice_id, document_id, receipt_path, report_id')
+    return (seesAll ? q : q.eq('person_id', me)).order('spent_on', { ascending: false }).order('id', { ascending: false }).range(a, b)
+  }, 'Reimbursements could not be read')
   const people = [...new Set([me, ...loaded.map(r => r.person_id)])]
   const reportIds = [...new Set(loaded.map(r => r.report_id).filter((x): x is number => x != null))]
   const invIds = [...new Set(loaded.map(r => r.invoice_id).filter((x): x is number => x != null))]
   const docIds = [...new Set(loaded.map(r => r.document_id).filter((x): x is number => x != null))]
   // A failed read throws: a missing invoice or document would say "It goes on your next invoice" of one already on it.
+  // By ids in short lists: every row is read now, and one address with them all would be too long.
   const [routes, reports, invs, docs] = await Promise.all([
     loadRoutes(people),
-    reportIds.length ? c.from('reimbursement_reports').select('id, name').in('id', reportIds).then(r => rowsOf(r, 'Reimbursement requests could not be read')) : Promise.resolve([] as { id: number; name: string | null }[]),
-    invIds.length ? c.from('invoices').select('id, number, state, paid_on, submission_id').in('id', invIds).then(r => rowsOf(r, 'Invoices could not be read')) : Promise.resolve([] as { id: number; number: string; state: string; paid_on: string | null; submission_id: number | null }[]),
-    docIds.length ? c.from('reimbursement_documents').select('id, number, state, paid_on').in('id', docIds).then(r => rowsOf(r, 'Reimbursement documents could not be read')) : Promise.resolve([] as { id: number; number: string; state: string; paid_on: string | null }[]),
+    byIds(reportIds, ids => c.from('reimbursement_reports').select('id, name').in('id', ids).then(r => rowsOf(r, 'Reimbursement requests could not be read'))),
+    byIds(invIds, ids => c.from('invoices').select('id, number, state, paid_on, submission_id').in('id', ids).then(r => rowsOf(r, 'Invoices could not be read'))),
+    byIds(docIds, ids => c.from('reimbursement_documents').select('id, number, state, paid_on').in('id', ids).then(r => rowsOf(r, 'Reimbursement documents could not be read'))),
   ])
   const subIds = invs.map(i => i.submission_id).filter((x): x is number => x != null)
-  const subs = subIds.length ? rowsOf(await c.from('tc_submissions').select('id, state').in('id', subIds), 'Timesheets could not be read') : []
+  const subs = await byIds(subIds, ids => c.from('tc_submissions').select('id, state').in('id', ids).then(r => rowsOf(r, 'Timesheets could not be read')))
   const inv = new Map(invs.map(i => [i.id, i]))
   const doc = new Map(docs.map(d => [d.id, d]))
   const subState = new Map(subs.map(s => [s.id, s.state]))
@@ -142,9 +151,11 @@ export async function loadReimbursements(v: Pick<Access, 'personId' | 'isAdmin'>
 /** Every reimbursement document and its items' amounts. Only after the caller's check that the viewer sees everyone's money. */
 async function loadRmbDocList(finance: boolean, financeNames: string, dir: Directory, zone: string, today: string): Promise<RmbDocList> {
   const c = db()
-  const docs = rowsOf(await c.from('reimbursement_documents').select('id, number, person_id, state, total, paid_on, paid_ref, created_at').order('number', { ascending: false }).limit(1000), 'Reimbursement documents could not be read') as RmbDocSource[]
+  // Every document and every item on one, a page at a time: PostgREST stops at 1,000 rows,
+  // and a cut list of items would make the totals wrong without a word (audit, 27 October 2026).
+  const docs = await allRows<RmbDocSource>((a, b) => c.from('reimbursement_documents').select('id, number, person_id, state, total, paid_on, paid_ref, created_at').order('id').range(a, b), 'Reimbursement documents could not be read')
   // A failed read throws: a document with no items would show its total in dollars only.
-  const items = docs.length ? rowsOf(await c.from('reimbursements').select('document_id, amount, currency, decided_at').in('document_id', docs.map(d => d.id)), 'The documents\' items could not be read') as RmbDocItem[] : []
+  const items = docs.length ? await allRows<RmbDocItem>((a, b) => c.from('reimbursements').select('document_id, amount, currency, decided_at').not('document_id', 'is', null).order('id').range(a, b), 'The documents\' items could not be read') : []
   const person = (id: string) => {
     const p = dir.people.get(id), t = p?.teamId ? dir.teams.get(p.teamId) : undefined
     return { name: dir.nameOf(id), team: t?.name ?? '', color: teamColour(t?.color, t?.name) }
