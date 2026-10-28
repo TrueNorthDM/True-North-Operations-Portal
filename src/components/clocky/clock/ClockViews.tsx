@@ -3,11 +3,12 @@
 /**
  * The clock panel's bodies, one per mode (Clock Panel.dc.html): off the clock
  * (1A), choosing a job (1B, 1C, 1C-b), the details before clocking in (1D), on
- * the clock (1E, with 1F, 1I and the notes that save themselves), and the
+ * the clock (1E, with 1F, 1I and its one note, shown with Edit once saved), and the
  * automatic stop waiting for its real end time (1L). Presentational: the
  * panel (ClockPanel.tsx) holds the state and calls the server.
  */
 
+import { useState } from 'react'
 import { BTN_ICON } from '@/lib/ui/buttons'
 import type { ClockChoice, ClockPanelData, RunningEntry, ToConfirm } from '@/lib/timeclock/clocky-types'
 import { ChooseFields } from './ChooseFields'
@@ -352,6 +353,10 @@ export function OnView({
   const bars = breakdown(data, nowMs)
   const activity = valueOf(values, data.fields, 'activity')
   const head = data.combinations.find(c => c.jobcodeId === running.jobcodeId && (c.activity || '') === activity)?.name ?? 'Now'
+  // The note box shows while there is no note, while editing, and until the save has gone through.
+  const [noteEditing, setNoteEditing] = useState(false)
+  const noteOpen = noteEditing || !notes.trim() || noteStatus === 'typing' || noteStatus === 'saving' || noteStatus === 'failed'
+  const commitNote = () => { setNoteEditing(false); onNotesCommit() }
   const runningJob = runningJobOf(data.jobs, running)
   const switchRows = switchChoices(data, { jobcodeId: running.jobcodeId, fields: values })
   const gateFields = gate ? missing.filter((m): m is FieldName => m !== 'notes') : []
@@ -416,9 +421,25 @@ export function OnView({
         </div>
         {running.roundNote && <div className="text-[12px] text-muted leading-[1.45] -mt-[3px]">{roundNoteText(running.roundNote)}</div>}
         {editKey && !gate && sel(editKey, 'edit')}
-        <input value={notes} onChange={e => onNotes(e.target.value)} onBlur={onNotesCommit} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-          placeholder="Add a note" aria-label="Notes"
-          className={`w-full box-border h-9 px-[11px] border border-[var(--row-rule)] rounded-[9px] text-[13px] text-tn-ink bg-white placeholder:text-muted ${INPUT_FOCUS}`} />
+        {/* One note per entry (owner, 28 October 2026): once saved it shows as text with Edit, the box only while writing. */}
+        {noteOpen ? (
+          <div className="flex gap-2">
+            <input value={notes} onChange={e => onNotes(e.target.value)} onBlur={commitNote} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+              placeholder="Add a note" aria-label="Notes" autoFocus={noteEditing}
+              className={`flex-1 min-w-0 box-border h-9 px-[11px] border border-[var(--row-rule)] rounded-[9px] text-[13px] text-tn-ink bg-white placeholder:text-muted ${INPUT_FOCUS}`} />
+            {notes.trim() && (
+              <button type="button" onMouseDown={e => e.preventDefault()} onClick={commitNote} disabled={noteStatus === 'saving'}
+                className={`${CK_BTN_NAVY_FLAT} h-9 !py-0 !px-3.5 disabled:opacity-60 ${FOCUS}`}>Save note</button>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 bg-subtle rounded-[9px] px-[11px] py-2">
+            <div className="flex-1 min-w-0 text-[13px] text-tn-ink leading-[1.45] break-words">{notes}</div>
+            <button type="button" onClick={() => setNoteEditing(true)} className={`${LINK_BTN} inline-flex items-center gap-1 shrink-0`}>
+              <Icon d={ICON.pencil} size={13} stroke="currentColor" sw={2} />Edit
+            </button>
+          </div>
+        )}
         {noteStatus && noteStatus !== 'typing' && (
           <div aria-live="polite" className={`flex items-center gap-1.5 text-[11.5px] font-semibold -mt-[5px] ${noteStatus === 'failed' ? 'text-[#8a6d1a]' : 'text-muted'}`}>
             {noteStatus === 'saved' && <Icon d={ICON.check} size={12} stroke="#1E9E6A" sw={3} />}

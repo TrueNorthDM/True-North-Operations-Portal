@@ -140,10 +140,8 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
   const notes = running && noteDraft?.id === running.id ? noteDraft.text : running?.notes ?? ''
   const values = running ? { ...running.fields, ...(overlay?.id === running.id ? overlay.values : {}) } : {}
   const noteStatus = running && noteSt?.id === running.id ? noteSt.st : null
-  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => {
-    if (noteTimer.current) clearTimeout(noteTimer.current)
     if (savedTimer.current) clearTimeout(savedTimer.current)
   }, [])
 
@@ -248,10 +246,11 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     }
   }
 
-  // Notes on the running entry save themselves: a second after typing stops, on leaving the field, on Enter.
+  // The running entry's note saves on Save note, on Enter and on leaving the field; not
+  // while typing, so the box does not turn into text mid-sentence. An unsaved note still
+  // goes with Clock out and Switch (finish).
   const commitNotes = async (text = notes) => {
     if (!running) return
-    if (noteTimer.current) { clearTimeout(noteTimer.current); noteTimer.current = null }
     const id = running.id
     setNoteSt({ id, st: 'saving', error: null })
     let res: { ok: boolean; error?: string }
@@ -268,8 +267,6 @@ function PanelWithData({ data, api, nowMs, phone, frameTop, initialUi, forceOffl
     if (!running) return
     setNoteDraft({ id: running.id, text })
     setNoteSt({ id: running.id, st: 'typing', error: null })
-    if (noteTimer.current) clearTimeout(noteTimer.current)
-    noteTimer.current = setTimeout(() => { void commitNotes(text) }, 1000)
   }
   const onNotesBlur = () => { if (noteStatus === 'typing') void commitNotes() }
 
