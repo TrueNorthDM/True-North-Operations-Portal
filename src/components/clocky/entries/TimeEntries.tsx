@@ -419,8 +419,10 @@ export function TimeEntries({ initialData, catalog, api, initial, clock, clockHr
       const bEnd = m.other.end ?? new Date(nowMs).toISOString()
       const b = { s: daySeconds(m.other.start, zone), e: daySeconds(bEnd, zone), running: !m.other.end, name: m.other.name }
       const notes = overlapModel(a, b)
-      const cancel = () => (m.from === 'form' ? setModal({ kind: 'edit', form: m.form }) : setUi(u => ({ ...u, modal: null, drag: null })))
-      return <OverlapFix a={a} b={b} busy={busy} onCancel={cancel} onTrim={w => trim(m, w, w === 'other' ? notes.otherSub : notes.thisSub)} />
+      // Back and edit: the form as it was (from the timeline, with the times dragged); Cancel closes.
+      const back = () => setUi(u => ({ ...u, drag: null, modal: { kind: 'edit', form: m.form } }))
+      const cancel = () => setUi(u => ({ ...u, modal: null, drag: null }))
+      return <OverlapFix a={a} b={b} busy={busy} onBack={back} onCancel={cancel} onTrim={w => trim(m, w, w === 'other' ? notes.otherSub : notes.thisSub)} />
     }
     if (m.kind === 'delete') {
       const r = rowByKey(m.key)

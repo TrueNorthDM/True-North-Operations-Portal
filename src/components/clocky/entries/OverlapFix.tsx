@@ -4,12 +4,14 @@
  * 3F, "This overlaps another entry." (Time Entries.dc.html, frame 3F): the
  * two entries drawn on a small timeline with what they share hatched in red,
  * and the two ways out, trim the other entry or trim this one. Overlaps are
- * never saved.
+ * never saved. "Back and edit" goes back to the form with what was typed
+ * (owner, 28 October 2026); Cancel closes. A trim that would leave an entry
+ * with no time (one inside the other) is not offered.
  */
 
 import { minutesLabel } from '@/lib/timeclock/format'
 import { formatDuration } from '@/lib/timeclock/rounding'
-import { BTN_MODAL_WHITE, MODAL_TITLE, Modal } from './ui'
+import { BTN_MODAL_NAVY, BTN_MODAL_WHITE, MODAL_TITLE, Modal } from './ui'
 
 /** A span in seconds of the person's day. */
 export interface DaySpan { s: number; e: number }
@@ -34,15 +36,20 @@ export function overlapModel(a: DaySpan, b: { s: number; e: number; running: boo
     shared: { x: px(xs), w: Math.max(2, px(xe) - px(xs)) },
     otherSub: b.s < a.s ? `${b.name} becomes ${clk(b.s)} to ${clk(a.s)}.` : `${b.name} becomes ${clk(a.e)} to ${clk(b.e)}.`,
     thisSub: a.s >= b.s ? `This one becomes ${clk(b.e)} to ${clk(a.e)}.` : `This one becomes ${clk(a.s)} to ${clk(b.s)}.`,
+    // One inside the other: trimming the inner one would leave it no time ("3:00 PM to 2:30 PM").
+    otherGone: !b.running && b.s >= a.s && b.e <= a.e,
+    thisGone: a.s >= b.s && a.e <= b.e,
   }
 }
 
 const CHOICE = 'flex flex-col items-start gap-0.5 whitespace-nowrap border border-slate-200 rounded-[11px] px-3.5 py-[11px] bg-white text-left transition-colors hover:border-tn-teal'
 
-export function OverlapFix({ a, b, onTrim, onCancel, busy }: {
+export function OverlapFix({ a, b, onTrim, onBack, onCancel, busy }: {
   a: DaySpan
   b: { s: number; e: number; running: boolean; name: string }
   onTrim: (which: 'other' | 'this') => void
+  /** Back to the form, as it was, to change the times or the job. */
+  onBack: () => void
   onCancel: () => void
   busy: boolean
 }) {
@@ -63,17 +70,25 @@ export function OverlapFix({ a, b, onTrim, onCancel, busy }: {
           className="absolute box-content top-[18px] bottom-2 border-l-[1.5px] border-r-[1.5px] border-[#c8323d]" />
       </div>
       <div className="flex flex-col gap-2">
-        <button type="button" disabled={busy} onClick={() => onTrim('other')} className={CHOICE}>
-          <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Trim the other entry</span>
-          <span className="text-[12px] text-muted tabular-nums lining-nums">{m.otherSub}</span>
-        </button>
-        <button type="button" disabled={busy} onClick={() => onTrim('this')} className={CHOICE}>
-          <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Trim this one</span>
-          <span className="text-[12px] text-muted tabular-nums lining-nums">{m.thisSub}</span>
-        </button>
+        {!m.otherGone && (
+          <button type="button" disabled={busy} onClick={() => onTrim('other')} className={CHOICE}>
+            <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Trim the other entry</span>
+            <span className="text-[12px] text-muted tabular-nums lining-nums">{m.otherSub}</span>
+          </button>
+        )}
+        {!m.thisGone && (
+          <button type="button" disabled={busy} onClick={() => onTrim('this')} className={CHOICE}>
+            <span className="font-(family-name:--font-display) font-extrabold text-[13px] text-tn-ink">Trim this one</span>
+            <span className="text-[12px] text-muted tabular-nums lining-nums">{m.thisSub}</span>
+          </button>
+        )}
+        {(m.otherGone || m.thisGone) && (
+          <p className="m-0 text-[12px] text-muted leading-normal">{m.otherGone ? `${b.name} sits inside this one, so trimming it would leave it no time.` : 'This one sits inside the other, so trimming it would leave it no time.'} Go back and change the times, or trim the other way.</p>
+        )}
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className={BTN_MODAL_WHITE}>Cancel</button>
+        <button type="button" onClick={onBack} disabled={busy} className={`${BTN_MODAL_NAVY} text-[#ffffff] disabled:opacity-60`}>Back and edit</button>
       </div>
     </Modal>
   )
